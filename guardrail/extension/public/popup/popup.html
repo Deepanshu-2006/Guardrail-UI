@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail UI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo-badge">G</div>
+        <div>
+          <h1 class="title">Guardrail UI</h1>
+          <p class="subtitle">Client Extension Foundation</p>
+        </div>
+      </div>
+      <span class="status-indicator">Ready</span>
+    </header>
+
+    <main class="content">
+      <section class="info-card">
+        <div class="card-row">
+          <span class="label">Status</span>
+          <span class="value" id="ext-status">Active</span>
+        </div>
+        <div class="card-row">
+          <span class="label">Manifest</span>
+          <span class="value">V3</span>
+        </div>
+        <div class="card-row">
+          <span class="label">Version</span>
+          <span class="value" id="ext-version">0.1.0</span>
+        </div>
+      </section>
+
+      <section class="description-card">
+        <p>Day 1 extension foundation initialized with TypeScript and Manifest V3 architecture.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span class="footer-text">Guardrail Observability</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
