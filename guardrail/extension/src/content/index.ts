@@ -6,6 +6,11 @@
  * normalizes interactions into structured GuardrailAction models, and dispatches
  * them to the background service worker coordinator.
  *
+ * Supported Action Types:
+ * - CLICK: Buttons, links, role="button" elements (excluding form submit buttons)
+ * - INPUT: Form control modifications (inputs, textareas, selects - value-free)
+ * - SUBMIT: Form submissions (form level)
+ *
  * PRIVACY SAFEGUARD: Never captures or transmits user-typed form values or credentials.
  *
  * NOTE: Risk scoring, action interception, payment logic, and backend
@@ -24,7 +29,53 @@ import {
   extractPageInfo,
   findFormInputElement,
   findInteractiveElement,
+  isFormSubmitTrigger,
 } from '../utils/index.js';
+
+/**
+ * Safely dispatches an action message to the background service worker.
+ * Gracefully handles browser extension reloads / context invalidation.
+ */
+function safelyDispatchAction(action: GuardrailAction): void {
+  // Guard against disconnected runtime if extension was reloaded in chrome://extensions
+  if (!chrome.runtime?.id) {
+    console.info('[Guardrail Content] Extension was updated. Please refresh the webpage tab to reconnect.');
+    return;
+  }
+
+  const message: GuardrailActionMessage = {
+    type: 'GUARDRAIL_ACTION',
+    action,
+  };
+
+  try {
+    chrome.runtime.sendMessage<GuardrailActionMessage, ActionAcknowledgementResponse>(message)
+      .then((response) => {
+        if (response) {
+          console.log(
+            `%c[Guardrail Content]%c Received background acknowledgement for ${action.type}:`,
+            'color: #a855f7; font-weight: bold;',
+            'color: inherit;',
+            response
+          );
+        }
+      })
+      .catch((error: Error) => {
+        if (error?.message?.includes('Extension context invalidated')) {
+          console.info('[Guardrail Content] Extension was updated. Please refresh the webpage tab to reconnect.');
+        } else {
+          console.warn(`[Guardrail Content] Failed to dispatch ${action.type} action:`, error);
+        }
+      });
+  } catch (syncError: unknown) {
+    const errorMsg = syncError instanceof Error ? syncError.message : String(syncError);
+    if (errorMsg.includes('Extension context invalidated')) {
+      console.info('[Guardrail Content] Extension was updated. Please refresh the webpage tab to reconnect.');
+    } else {
+      console.warn(`[Guardrail Content] Sync error dispatching ${action.type} action:`, syncError);
+    }
+  }
+}
 
 /**
  * Handles generic click events across the document via event delegation.
@@ -33,21 +84,26 @@ function handleDocumentClick(event: MouseEvent): void {
   // 1. Identify the nearest interactive element (button, link, role="button", etc.)
   const interactiveElement = findInteractiveElement(event.target);
 
-  // 2. Ignore non-interactive clicks (empty space, plain text paragraphs, etc.)
+  // 2. Ignore non-interactive clicks
   if (!interactiveElement) {
     return;
   }
 
-  // 3. Extract normalized element information
+  // 3. De-duplicate: If clicking a form submit button, defer to the higher-level SUBMIT event
+  if (isFormSubmitTrigger(interactiveElement)) {
+    return;
+  }
+
+  // 4. Extract normalized element information
   const elementInfo = extractElementInfo(interactiveElement);
 
-  // 4. Extract current page context
+  // 5. Extract current page context
   const pageInfo = extractPageInfo();
 
-  // 5. Generate unique action ID and timestamp
+  // 6. Generate unique action ID and timestamp
   const metadata = createActionMetadata('act');
 
-  // 6. Construct normalized GuardrailAction
+  // 7. Construct normalized GuardrailAction
   const action: GuardrailAction = {
     id: metadata.id,
     type: ActionType.CLICK,
@@ -63,27 +119,8 @@ function handleDocumentClick(event: MouseEvent): void {
     action
   );
 
-  // 7. Wrap into typed extension message
-  const message: GuardrailActionMessage = {
-    type: 'GUARDRAIL_ACTION',
-    action,
-  };
-
   // 8. Dispatch to background service worker
-  chrome.runtime.sendMessage<GuardrailActionMessage, ActionAcknowledgementResponse>(message)
-    .then((response) => {
-      if (response) {
-        console.log(
-          '%c[Guardrail Content]%c Received background acknowledgement for CLICK:',
-          'color: #a855f7; font-weight: bold;',
-          'color: inherit;',
-          response
-        );
-      }
-    })
-    .catch((error) => {
-      console.warn('[Guardrail Content] Failed to dispatch CLICK action to background worker:', error);
-    });
+  safelyDispatchAction(action);
 }
 
 /**
@@ -124,27 +161,55 @@ function handleDocumentChange(event: Event): void {
     action
   );
 
-  // 7. Wrap into typed extension message
-  const message: GuardrailActionMessage = {
-    type: 'GUARDRAIL_ACTION',
-    action,
+  // 7. Dispatch to background service worker
+  safelyDispatchAction(action);
+}
+
+/**
+ * Handles generic form submit events across the document via event delegation.
+ * Captures form-level submission actions without reading field contents.
+ */
+function handleDocumentSubmit(event: Event): void {
+  // 1. Identify the submitted form element
+  let formElement: HTMLFormElement | null = null;
+  if (event.target instanceof HTMLFormElement) {
+    formElement = event.target;
+  } else if (event.target instanceof Element) {
+    formElement = event.target.closest('form');
+  }
+
+  // 2. Ignore if not a form
+  if (!formElement) {
+    return;
+  }
+
+  // 3. Extract normalized form metadata (strictly value-free)
+  const elementInfo = extractElementInfo(formElement);
+
+  // 4. Extract current page context
+  const pageInfo = extractPageInfo();
+
+  // 5. Generate unique action ID and timestamp
+  const metadata = createActionMetadata('act');
+
+  // 6. Construct normalized GuardrailAction with SUBMIT type
+  const action: GuardrailAction = {
+    id: metadata.id,
+    type: ActionType.SUBMIT,
+    element: elementInfo,
+    page: pageInfo,
+    timestamp: metadata.timestamp,
   };
 
-  // 8. Dispatch to background service worker
-  chrome.runtime.sendMessage<GuardrailActionMessage, ActionAcknowledgementResponse>(message)
-    .then((response) => {
-      if (response) {
-        console.log(
-          '%c[Guardrail Content]%c Received background acknowledgement for INPUT:',
-          'color: #a855f7; font-weight: bold;',
-          'color: inherit;',
-          response
-        );
-      }
-    })
-    .catch((error) => {
-      console.warn('[Guardrail Content] Failed to dispatch INPUT action to background worker:', error);
-    });
+  console.log(
+    '%c[Guardrail Content]%c Detected Generic SUBMIT Action (Value-Free):',
+    'color: #06b6d4; font-weight: bold; background: rgba(6, 182, 212, 0.1); padding: 2px 6px; border-radius: 3px;',
+    'color: inherit; font-weight: normal;',
+    action
+  );
+
+  // 7. Dispatch to background service worker
+  safelyDispatchAction(action);
 }
 
 /**
@@ -170,6 +235,9 @@ function initializeActionDetection(): void {
 
   // 2. Generic Input Listener (Form Controls: input, textarea, select)
   document.addEventListener('change', handleDocumentChange, true);
+
+  // 3. Generic Form Submit Listener (Form level submission)
+  document.addEventListener('submit', handleDocumentSubmit, true);
 }
 
 // Ensure execution occurs after DOM is ready

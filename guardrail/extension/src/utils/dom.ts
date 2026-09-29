@@ -66,6 +66,27 @@ export function findFormInputElement(target: EventTarget | null): HTMLElement | 
 }
 
 /**
+ * Checks if a clicked element is a form submit button/trigger.
+ *
+ * @param element The interactive element
+ * @returns True if the element triggers a form submit
+ */
+export function isFormSubmitTrigger(element: HTMLElement | null): boolean {
+  if (!element) return false;
+
+  if (element instanceof HTMLButtonElement) {
+    // Buttons inside forms default to type="submit" unless type="button"
+    return (element.type === 'submit' || !element.type) && Boolean(element.form);
+  }
+
+  if (element instanceof HTMLInputElement) {
+    return element.type === 'submit' && Boolean(element.form);
+  }
+
+  return false;
+}
+
+/**
  * Safely extracts human-readable visible text or placeholders from a DOM element.
  * PRIVACY SAFEGUARD: NEVER extracts typed user values from input fields or textareas.
  *
@@ -74,6 +95,11 @@ export function findFormInputElement(target: EventTarget | null): HTMLElement | 
  */
 function extractVisibleText(element: HTMLElement | Element): string | undefined {
   let rawText = '';
+
+  if (element instanceof HTMLFormElement) {
+    // For forms, never concatenate inner text of inputs or labels
+    return undefined;
+  }
 
   if (element instanceof HTMLInputElement) {
     // For button-like inputs, value is the visible label on the button (e.g. <input type="submit" value="Submit Form" />)
