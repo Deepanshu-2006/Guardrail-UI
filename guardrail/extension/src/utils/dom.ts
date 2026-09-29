@@ -10,6 +10,39 @@
 import { ActionElementInfo, ActionPageInfo } from '../types/index.js';
 
 /**
+ * CSS selector matching relevant clickable/interactive elements for generic click detection.
+ */
+export const INTERACTIVE_CLICK_SELECTOR = [
+  'button',
+  'a',
+  'input[type="button"]',
+  'input[type="submit"]',
+  'input[type="reset"]',
+  'input[type="image"]',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="tab"]',
+].join(', ');
+
+/**
+ * Traverses upwards from the clicked target element to locate the nearest
+ * interactive element (such as a button, link, or role="button").
+ *
+ * @param target The raw event target from a click event
+ * @returns The nearest interactive HTMLElement, or null if non-interactive
+ */
+export function findInteractiveElement(target: EventTarget | null): HTMLElement | null {
+  if (!target || !(target instanceof Element)) {
+    return null;
+  }
+
+  // Locate the nearest interactive element ancestor or the element itself
+  const interactive = target.closest<HTMLElement>(INTERACTIVE_CLICK_SELECTOR);
+  return interactive || null;
+}
+
+/**
  * Safely extracts human-readable visible text from a DOM element.
  *
  * @param element The target DOM element
