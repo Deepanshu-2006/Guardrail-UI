@@ -5,6 +5,7 @@
  * JSON-serializable representations matching the GuardrailAction data model.
  *
  * Does not retain live references to DOM nodes.
+ * Enforces strict privacy: never captures typed user input values.
  */
 
 import { ActionElementInfo, ActionPageInfo } from '../types/index.js';
@@ -26,6 +27,15 @@ export const INTERACTIVE_CLICK_SELECTOR = [
 ].join(', ');
 
 /**
+ * CSS selector matching form input controls for generic INPUT action detection.
+ */
+export const FORM_INPUT_SELECTOR = [
+  'input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"])',
+  'textarea',
+  'select',
+].join(', ');
+
+/**
  * Traverses upwards from the clicked target element to locate the nearest
  * interactive element (such as a button, link, or role="button").
  *
@@ -38,12 +48,26 @@ export function findInteractiveElement(target: EventTarget | null): HTMLElement 
   }
 
   // Locate the nearest interactive element ancestor or the element itself
-  const interactive = target.closest<HTMLElement>(INTERACTIVE_CLICK_SELECTOR);
-  return interactive || null;
+  return target.closest<HTMLElement>(INTERACTIVE_CLICK_SELECTOR) || null;
 }
 
 /**
- * Safely extracts human-readable visible text from a DOM element.
+ * Checks if the target element is a form input control (input, textarea, select).
+ *
+ * @param target The event target
+ * @returns The form control HTMLElement, or null if not an input control
+ */
+export function findFormInputElement(target: EventTarget | null): HTMLElement | null {
+  if (!target || !(target instanceof Element)) {
+    return null;
+  }
+
+  return target.closest<HTMLElement>(FORM_INPUT_SELECTOR) || null;
+}
+
+/**
+ * Safely extracts human-readable visible text or placeholders from a DOM element.
+ * PRIVACY SAFEGUARD: NEVER extracts typed user values from input fields or textareas.
  *
  * @param element The target DOM element
  * @returns Cleaned text string or undefined if empty
@@ -52,17 +76,26 @@ function extractVisibleText(element: HTMLElement | Element): string | undefined 
   let rawText = '';
 
   if (element instanceof HTMLInputElement) {
-    // For button-like inputs (e.g., <input type="submit" value="Pay Now" />)
+    // For button-like inputs, value is the visible label on the button (e.g. <input type="submit" value="Submit Form" />)
     if (['submit', 'button', 'reset'].includes(element.type.toLowerCase()) && element.value) {
       rawText = element.value;
     } else if (element.placeholder) {
+      // For text/data inputs, ONLY extract the placeholder (e.g., "Enter your email"), NEVER typed input values!
       rawText = element.placeholder;
     }
+  } else if (element instanceof HTMLTextAreaElement) {
+    // For textareas, ONLY extract the placeholder, NEVER typed content
+    if (element.placeholder) {
+      rawText = element.placeholder;
+    }
+  } else if (element instanceof HTMLSelectElement) {
+    // For select dropdowns, do not extract user-selected option values
+    rawText = '';
   } else if ('innerText' in element && typeof (element as HTMLElement).innerText === 'string') {
-    // innerText reflects what is rendered on screen (aware of CSS styling and visibility)
+    // innerText reflects what is rendered on screen for standard DOM elements
     rawText = (element as HTMLElement).innerText;
   } else if (element.textContent) {
-    // Fallback to textContent for non-HTML elements or unrendered DOM fragments
+    // Fallback to textContent for non-HTML elements
     rawText = element.textContent;
   }
 
@@ -73,7 +106,7 @@ function extractVisibleText(element: HTMLElement | Element): string | undefined 
     return undefined;
   }
 
-  // Cap length to prevent gigantic text payloads if a container element is clicked
+  // Cap length to prevent gigantic text payloads
   const MAX_TEXT_LENGTH = 200;
   return trimmed.length > MAX_TEXT_LENGTH
     ? `${trimmed.substring(0, MAX_TEXT_LENGTH)}...`
@@ -117,7 +150,7 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
     ? element.id.trim()
     : undefined;
 
-  // Extract visible text and class name
+  // Extract visible text/placeholder and class name (strictly value-free)
   const visibleText = extractVisibleText(element);
   const className = extractClassName(element);
 
