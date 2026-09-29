@@ -2,6 +2,8 @@
  * Foundation types for Guardrail Extension
  */
 
+export * from './actions.js';
+
 export interface ExtensionManifestInfo {
   name: string;
   version: string;
