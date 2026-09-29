@@ -3,3 +3,4 @@
  */
 
 export * from './rules.js';
+export * from './classifier.js';
