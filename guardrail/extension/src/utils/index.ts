@@ -4,3 +4,4 @@
 
 export * from './metadata.js';
 export * from './dom.js';
+export * from './messaging.js';
