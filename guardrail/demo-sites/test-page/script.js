@@ -3,6 +3,8 @@
   const testActionBtn = document.getElementById('test-action-btn');
   const testForm = document.getElementById('test-form');
   const testInput = document.getElementById('test-input');
+  const testTextarea = document.getElementById('test-textarea');
+  const testSelect = document.getElementById('test-select');
   const eventLog = document.getElementById('event-log');
   const clearLogBtn = document.getElementById('clear-log-btn');
 
@@ -37,21 +39,36 @@
     });
   }
 
+  if (testInput) {
+    testInput.addEventListener('change', () => {
+      appendLog(`Input changed: [${testInput.value ? `"${testInput.value}"` : '(empty)'}]`);
+    });
+  }
+
+  if (testTextarea) {
+    testTextarea.addEventListener('change', () => {
+      appendLog(`Textarea changed: [${testTextarea.value ? `"${testTextarea.value}"` : '(empty)'}]`);
+    });
+  }
+
+  if (testSelect) {
+    testSelect.addEventListener('change', () => {
+      appendLog(`Select changed: [${testSelect.value}]`);
+    });
+  }
+
   if (testForm) {
     testForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const val = testInput ? testInput.value.trim() : '';
       appendLog(`Form submitted: ${val ? `"${val}"` : '(empty input)'}`);
-      if (testInput) {
-        testInput.value = '';
-      }
     });
   }
 
   if (clearLogBtn) {
     clearLogBtn.addEventListener('click', () => {
       if (eventLog) {
-        eventLog.innerHTML = '<p class="log-placeholder">No actions recorded yet. Click a button or submit text above.</p>';
+        eventLog.innerHTML = '<p class="log-placeholder">No actions recorded yet. Interact with the controls above.</p>';
       }
     });
   }

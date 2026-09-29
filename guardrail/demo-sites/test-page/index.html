@@ -13,23 +13,29 @@
         <div class="badge">Development Environment</div>
         <h1 id="page-title">Guardrail Test Page</h1>
         <p class="description">
-          This minimal test page provides standard DOM elements (buttons, text inputs, and forms) to develop, inspect, and verify the Guardrail browser extension content script.
+          This controlled test page provides standard interactive elements (buttons, links, text inputs, textareas, dropdowns, and forms) to verify the Guardrail Action Detection engine.
         </p>
       </header>
 
       <section class="test-section">
         <h2 class="section-title">Interactive Elements</h2>
         
-        <!-- Standard Button -->
+        <!-- 1. Standard Button & Link -->
         <div class="field-group">
-          <label class="field-label">Generic Action</label>
-          <button id="test-action-btn" type="button" class="btn btn-secondary">
-            Test Action
-          </button>
+          <label class="field-label">Generic Actions</label>
+          <div class="button-row">
+            <button id="test-action-btn" type="button" class="btn btn-secondary">
+              Test Action
+            </button>
+            <a id="test-link" href="page2.html" class="test-link">
+              Go to Page 2 &rarr;
+            </a>
+          </div>
         </div>
 
-        <!-- Form with Text Input & Submit Button -->
+        <!-- 2. Form with Inputs, Textarea, Select, and Submit -->
         <form id="test-form" class="test-form">
+          <!-- Text Input -->
           <div class="field-group">
             <label for="test-input" class="field-label">Text Input</label>
             <input 
@@ -42,22 +48,45 @@
             />
           </div>
 
+          <!-- Textarea -->
+          <div class="field-group">
+            <label for="test-textarea" class="field-label">Multiline Textarea</label>
+            <textarea 
+              id="test-textarea" 
+              name="testTextarea" 
+              class="text-input textarea-input" 
+              placeholder="Enter multiline notes..." 
+              rows="2"
+            ></textarea>
+          </div>
+
+          <!-- Select Dropdown -->
+          <div class="field-group">
+            <label for="test-select" class="field-label">Dropdown Select</label>
+            <select id="test-select" name="testSelect" class="text-input select-input">
+              <option value="standard">Standard Policy</option>
+              <option value="strict">Strict Guardrail</option>
+              <option value="audit_only">Audit Only</option>
+            </select>
+          </div>
+
+          <!-- Submit Button -->
           <div class="field-group">
             <button id="submit-btn" type="submit" class="btn btn-primary">
-              Submit
+              Submit Form
             </button>
           </div>
         </form>
       </section>
 
-      <!-- Local Interaction Status (for developer feedback) -->
+      <!-- Local Interaction Status -->
       <section class="log-section">
         <div class="log-header">
           <span>Page Event Log</span>
           <button id="clear-log-btn" type="button" class="btn-link">Clear</button>
         </div>
         <div id="event-log" class="event-log">
-          <p class="log-placeholder">No actions recorded yet. Click a button or submit text above.</p>
+          <p class="log-placeholder">No actions recorded yet. Interact with the controls above.</p>
         </div>
       </section>
     </div>

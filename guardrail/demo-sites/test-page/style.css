@@ -108,6 +108,13 @@ h1 {
   gap: 8px;
 }
 
+.button-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .field-label {
   font-size: 13px;
   font-weight: 500;
@@ -127,6 +134,15 @@ h1 {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.textarea-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.select-input {
+  cursor: pointer;
+}
+
 .text-input:focus {
   border-color: var(--input-focus-border);
   box-shadow: 0 0 0 3px var(--accent-glow);
@@ -134,6 +150,19 @@ h1 {
 
 .text-input::placeholder {
   color: var(--text-muted);
+}
+
+.test-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.test-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
 }
 
 .btn {
