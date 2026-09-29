@@ -3,12 +3,17 @@
  *
  * Runs in an isolated Service Worker environment independent of web page DOMs.
  * Acts as the centralized coordinator and message hub for the extension.
+ * Receives normalized GuardrailAction models from content scripts.
  *
  * NOTE: WebSockets, risk evaluation, authentication, and policy enforcement
  * are intentionally omitted for Day 1 foundation.
  */
 
-import { ActionAcknowledgementResponse, TestActionMessage } from '../types/index.js';
+import {
+  ActionAcknowledgementResponse,
+  GuardrailActionMessage,
+  TestActionMessage,
+} from '../types/index.js';
 
 const manifest = chrome.runtime.getManifest();
 const startTime = new Date().toISOString();
@@ -38,31 +43,55 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // Extension Message Listener: Receives messages from content scripts and returns an acknowledgement
-chrome.runtime.onMessage.addListener((message: TestActionMessage, sender, sendResponse: (response: ActionAcknowledgementResponse) => void) => {
-  if (message && message.type === 'TEST_ACTION') {
-    // 1. Log the received action and page URL information
-    console.log(
-      '%c[Guardrail Background]%c Received TEST_ACTION from content script:',
-      'color: #10b981; font-weight: bold; padding: 2px 4px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
-      'color: inherit; font-weight: normal;',
-      {
-        action: message.action,
-        url: message.url,
-        senderTabId: sender.tab?.id,
-        senderTabTitle: sender.tab?.title,
-        timestamp: new Date().toISOString(),
-      }
-    );
+chrome.runtime.onMessage.addListener(
+  (
+    message: GuardrailActionMessage | TestActionMessage,
+    sender,
+    sendResponse: (response: ActionAcknowledgementResponse) => void
+  ) => {
+    // 1. Handle normalized GuardrailAction messages
+    if (message && message.type === 'GUARDRAIL_ACTION') {
+      console.log(
+        '%c[Guardrail Background]%c Received GuardrailAction from content script:',
+        'color: #10b981; font-weight: bold; padding: 2px 4px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
+        'color: inherit; font-weight: normal;',
+        {
+          action: message.action,
+          senderTabId: sender.tab?.id,
+          senderTabTitle: sender.tab?.title,
+          receivedAt: new Date().toISOString(),
+        }
+      );
 
-    // 2. Return a simple acknowledgement response back to the sender
-    const response: ActionAcknowledgementResponse = {
-      success: true,
-      message: 'Guardrail received the action',
-    };
+      sendResponse({
+        success: true,
+        message: `Guardrail successfully registered action ${message.action.id}`,
+      });
 
-    sendResponse(response);
+      return false;
+    }
+
+    // 2. Backward-compatible handler for legacy TEST_ACTION messages
+    if (message && message.type === 'TEST_ACTION') {
+      console.log(
+        '%c[Guardrail Background]%c Received legacy TEST_ACTION:',
+        'color: #10b981; font-weight: bold;',
+        'color: inherit;',
+        {
+          action: message.action,
+          url: message.url,
+          senderTabId: sender.tab?.id,
+        }
+      );
+
+      sendResponse({
+        success: true,
+        message: 'Guardrail received the action',
+      });
+
+      return false;
+    }
+
+    return false;
   }
-
-  // Return false (synchronous response handled)
-  return false;
-});
+);

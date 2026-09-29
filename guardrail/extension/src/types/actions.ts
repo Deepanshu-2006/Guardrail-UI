@@ -76,3 +76,11 @@ export interface GuardrailAction {
   /** ISO 8601 string or epoch milliseconds timestamp when the action occurred */
   timestamp: string;
 }
+
+/**
+ * Extension message carrying a normalized GuardrailAction payload.
+ */
+export interface GuardrailActionMessage {
+  type: 'GUARDRAIL_ACTION';
+  action: GuardrailAction;
+}
