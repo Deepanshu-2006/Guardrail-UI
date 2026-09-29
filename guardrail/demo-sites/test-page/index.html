@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail Test Page</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card">
+      <header class="card-header">
+        <div class="badge">Development Environment</div>
+        <h1 id="page-title">Guardrail Test Page</h1>
+        <p class="description">
+          This minimal test page provides standard DOM elements (buttons, text inputs, and forms) to develop, inspect, and verify the Guardrail browser extension content script.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <h2 class="section-title">Interactive Elements</h2>
+        
+        <!-- Standard Button -->
+        <div class="field-group">
+          <label class="field-label">Generic Action</label>
+          <button id="test-action-btn" type="button" class="btn btn-secondary">
+            Test Action
+          </button>
+        </div>
+
+        <!-- Form with Text Input & Submit Button -->
+        <form id="test-form" class="test-form">
+          <div class="field-group">
+            <label for="test-input" class="field-label">Text Input</label>
+            <input 
+              type="text" 
+              id="test-input" 
+              name="testInput" 
+              class="text-input" 
+              placeholder="Enter sample input..." 
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="field-group">
+            <button id="submit-btn" type="submit" class="btn btn-primary">
+              Submit
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Local Interaction Status (for developer feedback) -->
+      <section class="log-section">
+        <div class="log-header">
+          <span>Page Event Log</span>
+          <button id="clear-log-btn" type="button" class="btn-link">Clear</button>
+        </div>
+        <div id="event-log" class="event-log">
+          <p class="log-placeholder">No actions recorded yet. Click a button or submit text above.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,20 +1,36 @@
 /**
  * Guardrail Extension - Background Service Worker
  *
- * Manifest V3 background script managing lifecycle events.
- * (Business logic, interceptors, and web sockets are omitted for Day 1 foundation.)
+ * Runs in an isolated Service Worker environment independent of web page DOMs.
+ * Acts as the centralized coordinator and event listener for the extension.
+ *
+ * NOTE: WebSockets, risk evaluation, authentication, and policy enforcement
+ * are intentionally omitted for Day 1 foundation.
  */
 
-import { ExtensionLifecycleState } from '../types/index.js';
+const manifest = chrome.runtime.getManifest();
+const startTime = new Date().toISOString();
 
-let currentState: ExtensionLifecycleState = 'initializing';
+// Top-level execution log whenever Chrome wakes or starts the service worker
+console.log(
+  '%c[Guardrail]%c Background service worker started',
+  'color: #0ea5e9; font-weight: bold; padding: 2px 4px; background: rgba(14, 165, 233, 0.1); border-radius: 3px;',
+  'color: inherit; font-weight: normal;',
+  {
+    name: manifest.name,
+    version: manifest.version,
+    versionName: manifest.version_name,
+    manifestVersion: manifest.manifest_version,
+    startedAt: startTime,
+  }
+);
 
-chrome.runtime.onInstalled.addListener((details) => {
-  currentState = 'ready';
-  console.log(`[Guardrail Service Worker] Installed: reason=${details.reason}, state=${currentState}`);
+// Lifecycle listener: Extension installed or updated
+chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
+  console.log(`[Guardrail] Extension lifecycle event: onInstalled (reason: ${details.reason})`);
 });
 
+// Lifecycle listener: Browser startup
 chrome.runtime.onStartup.addListener(() => {
-  currentState = 'ready';
-  console.log('[Guardrail Service Worker] Startup initialized');
+  console.log('[Guardrail] Extension lifecycle event: onStartup');
 });

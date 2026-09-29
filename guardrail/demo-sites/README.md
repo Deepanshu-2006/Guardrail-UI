@@ -1,10 +1,9 @@
-# Guardrail Demo Sites (Future Scope)
+# Guardrail Demo Sites
 
 ## Overview
-This directory will contain reproducible mock web applications to test Guardrail detection and enforcement scenarios:
-- **E-Commerce Checkout:** Testing high-value transaction and payment flow boundaries.
-- **Form Submission Site:** Testing credential, PII, and form injection safeguards.
-- **Admin Portal:** Testing privilege escalation and destructive action interception.
+This directory contains reproducible test pages and mock web applications to test Guardrail detection and enforcement scenarios:
+- **`test-page/`**: A minimal, controlled static webpage containing standard interactive DOM elements (buttons, inputs, forms) for testing the Guardrail browser extension content script during active development.
+- **E-Commerce Checkout (Future):** Testing high-value transaction and payment flow boundaries.
+- **Form Submission Site (Future):** Testing credential, PII, and form injection safeguards.
+- **Admin Portal (Future):** Testing privilege escalation and destructive action interception.
 
-## Status
-*Out of scope for Day 1.* No mock sites are initialized during the initial foundation phase.
