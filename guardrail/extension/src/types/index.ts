@@ -3,6 +3,7 @@
  */
 
 export * from './actions.js';
+export * from './classification.js';
 
 export interface ExtensionManifestInfo {
   name: string;

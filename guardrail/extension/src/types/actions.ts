@@ -3,11 +3,12 @@
  *
  * Defines the normalized interaction data structures observed across web pages.
  * Acts as the standard data contract between the content script sensors,
- * service worker coordinator, and future policy/risk evaluation engines.
+ * action classifiers, service worker coordinator, and future policy/risk evaluation engines.
  */
 
 /**
  * Canonical interaction types recognized by Guardrail.
+ * Describes the physical/DOM mechanism through which an interaction occurred.
  */
 export enum ActionType {
   /** User or automated click on a button, link, or actionable element */
@@ -27,6 +28,41 @@ export enum ActionType {
  * String union type representing valid ActionType values.
  */
 export type ActionTypeString = 'CLICK' | 'INPUT' | 'SUBMIT' | 'NAVIGATION';
+
+/**
+ * Canonical semantic categories describing WHAT an interaction represents.
+ * Captures the domain intent behind an action, independent of risk severity scoring.
+ */
+export enum ActionCategory {
+  /** Routine interactions with standard UI controls */
+  GENERAL = 'GENERAL',
+
+  /** Login, registration, password entry, credential updates, 2FA */
+  AUTHENTICATION = 'AUTHENTICATION',
+
+  /** Checkout, fund transfers, payments, credit card input, billing */
+  PAYMENT = 'PAYMENT',
+
+  /** Permanent deletions, account cancellations, data purging, destructive updates */
+  DESTRUCTIVE = 'DESTRUCTIVE',
+
+  /** File downloads, document exports, software installation packages */
+  DOWNLOAD = 'DOWNLOAD',
+
+  /** Navigating away to external third-party websites or untrusted domains */
+  EXTERNAL_NAVIGATION = 'EXTERNAL_NAVIGATION',
+}
+
+/**
+ * String union type representing valid ActionCategory values.
+ */
+export type ActionCategoryString =
+  | 'GENERAL'
+  | 'AUTHENTICATION'
+  | 'PAYMENT'
+  | 'DESTRUCTIVE'
+  | 'DOWNLOAD'
+  | 'EXTERNAL_NAVIGATION';
 
 /**
  * Normalized representation of the DOM element involved in an interaction.
@@ -67,8 +103,11 @@ export interface GuardrailAction {
   /** Unique action identifier for event tracing and audit logging (e.g., UUID or nanoid) */
   id: string;
 
-  /** Categorized type of interaction */
+  /** Categorized DOM event mechanism */
   type: ActionType;
+
+  /** Semantic category classifying the domain intent of the action */
+  category?: ActionCategory;
 
   /** Detailed metadata about the targeted DOM element (omitted for global page events like navigation) */
   element?: ActionElementInfo;
