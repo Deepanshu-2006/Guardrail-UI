@@ -14,3 +14,20 @@ export interface BaseMessage<T = unknown> {
   type: string;
   payload?: T;
 }
+
+/**
+ * Message payload dispatched when user performs a test action on the demo page.
+ */
+export interface TestActionMessage {
+  type: 'TEST_ACTION';
+  action: string;
+  url: string;
+}
+
+/**
+ * Acknowledgement response returned by the background service worker.
+ */
+export interface ActionAcknowledgementResponse {
+  success: boolean;
+  message: string;
+}
