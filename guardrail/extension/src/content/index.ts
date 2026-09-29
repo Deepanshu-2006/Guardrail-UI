@@ -13,6 +13,7 @@
  * communication are intentionally omitted at this stage.
  */
 
+import { classifyAction } from '../classifier/index.js';
 import { ActionDetector } from '../detector/index.js';
 import { dispatchActionToBackground, extractPageInfo } from '../utils/index.js';
 
@@ -23,7 +24,7 @@ function bootstrap(): void {
   const pageInfo = extractPageInfo();
 
   console.log(
-    '%c[Guardrail Content]%c Unified Action Detector initialized on page',
+    '%c[Guardrail Content]%c Unified Action Detector & Classifier initialized on page',
     'color: #0ea5e9; font-weight: bold; padding: 2px 4px; background: rgba(14, 165, 233, 0.1); border-radius: 3px;',
     'color: inherit; font-weight: normal;',
     {
@@ -34,17 +35,23 @@ function bootstrap(): void {
     }
   );
 
-  // Instantiate the unified ActionDetector and connect it to the messaging pipeline
+  // Instantiate the unified ActionDetector with classification pipeline
   const detector = new ActionDetector((action) => {
+    // 1. Pass the unchanged normalized action to the Action Classifier
+    const classification = classifyAction(action);
+
     console.log(
-      `%c[Guardrail Content]%c Action Captured [${action.type}]:`,
+      `%c[Guardrail Content]%c Action [${action.type}] → Classified as [${classification.category}] via [${classification.matchedRule}]`,
       'color: #10b981; font-weight: bold; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 3px;',
       'color: inherit; font-weight: normal;',
-      action
+      {
+        action,
+        classification,
+      }
     );
 
-    // Forward the normalized action to the background coordinator
-    dispatchActionToBackground(action);
+    // 2. Forward the normalized action and its classification result to the background coordinator
+    dispatchActionToBackground(action, classification);
   });
 
   // Start ambient observation

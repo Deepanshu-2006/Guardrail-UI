@@ -49,23 +49,43 @@ chrome.runtime.onMessage.addListener(
     sender,
     sendResponse: (response: ActionAcknowledgementResponse) => void
   ) => {
-    // 1. Handle normalized GuardrailAction messages
+    // 1. Handle normalized GuardrailAction messages with Classification
     if (message && message.type === 'GUARDRAIL_ACTION') {
+      const { action, classification } = message;
+      const targetSummary = action.element?.visibleText
+        ? `"${action.element.visibleText}"`
+        : action.element?.tagName
+        ? `<${action.element.tagName.toLowerCase()}>`
+        : action.page.url;
+
+      const ruleSummary = classification?.matchedRule
+        ? `${classification.matchedRule}${classification.reason ? ` (${classification.reason})` : ''}`
+        : 'none';
+
       console.log(
-        '%c[Guardrail Background]%c Received GuardrailAction from content script:',
-        'color: #10b981; font-weight: bold; padding: 2px 4px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
+        `%c[Guardrail Pipeline]%c ACTION & CLASSIFICATION RECEIVED\n` +
+        `  ACTION\n` +
+        `  → ${action.type}\n` +
+        `  → ${targetSummary}\n\n` +
+        `  CLASSIFICATION\n` +
+        `  → ${classification?.category || 'UNCLASSIFIED'}\n` +
+        `  → matched rule: ${ruleSummary}`,
+        'color: #0ea5e9; font-weight: bold; padding: 3px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;',
         'color: inherit; font-weight: normal;',
         {
-          action: message.action,
+          actionId: action.id,
+          type: action.type,
+          category: classification?.category,
+          action,
+          classification,
           senderTabId: sender.tab?.id,
-          senderTabTitle: sender.tab?.title,
           receivedAt: new Date().toISOString(),
         }
       );
 
       sendResponse({
         success: true,
-        message: `Guardrail successfully registered action ${message.action.id}`,
+        message: `Guardrail successfully registered action ${action.id} [${classification?.category || 'GENERAL'}]`,
       });
 
       return false;

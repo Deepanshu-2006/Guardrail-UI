@@ -119,10 +119,13 @@ export interface GuardrailAction {
   timestamp: string;
 }
 
+import type { ActionClassificationResult } from './classification.js';
+
 /**
- * Extension message carrying a normalized GuardrailAction payload.
+ * Extension message carrying a normalized GuardrailAction payload and optional classification.
  */
 export interface GuardrailActionMessage {
   type: 'GUARDRAIL_ACTION';
   action: GuardrailAction;
+  classification?: ActionClassificationResult;
 }

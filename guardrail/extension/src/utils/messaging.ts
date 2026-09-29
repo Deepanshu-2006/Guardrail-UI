@@ -5,16 +5,23 @@
  * and the Background Service Worker, with resilient context-invalidation handling.
  */
 
-import { ActionAcknowledgementResponse, GuardrailAction, GuardrailActionMessage } from '../types/index.js';
+import {
+  ActionAcknowledgementResponse,
+  ActionClassificationResult,
+  GuardrailAction,
+  GuardrailActionMessage,
+} from '../types/index.js';
 
 /**
- * Safely dispatches a GuardrailAction to the background service worker.
+ * Safely dispatches a GuardrailAction and its classification to the background service worker.
  *
  * @param action The normalized GuardrailAction to send
+ * @param classification Optional ActionClassificationResult computed by the classifier
  * @returns A promise resolving to the acknowledgement response or null if failed
  */
 export async function dispatchActionToBackground(
-  action: GuardrailAction
+  action: GuardrailAction,
+  classification?: ActionClassificationResult
 ): Promise<ActionAcknowledgementResponse | null> {
   // Guard against disconnected runtime if extension was reloaded in chrome://extensions
   if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
@@ -25,6 +32,7 @@ export async function dispatchActionToBackground(
   const message: GuardrailActionMessage = {
     type: 'GUARDRAIL_ACTION',
     action,
+    classification,
   };
 
   try {
