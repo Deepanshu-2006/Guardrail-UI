@@ -10,6 +10,7 @@
  * - CLICK: Buttons, links, role="button" elements (excluding form submit buttons)
  * - INPUT: Form control modifications (inputs, textareas, selects - value-free)
  * - SUBMIT: Form submissions (form level)
+ * - NAVIGATION: Page load and client-side route transitions
  *
  * PRIVACY SAFEGUARD: Never captures or transmits user-typed form values or credentials.
  *
@@ -31,6 +32,9 @@ import {
   findInteractiveElement,
   isFormSubmitTrigger,
 } from '../utils/index.js';
+
+// In-memory state tracking URL to avoid duplicate navigation events
+let lastTrackedUrl = '';
 
 /**
  * Safely dispatches an action message to the background service worker.
@@ -75,6 +79,43 @@ function safelyDispatchAction(action: GuardrailAction): void {
       console.warn(`[Guardrail Content] Sync error dispatching ${action.type} action:`, syncError);
     }
   }
+}
+
+/**
+ * Tracks meaningful page navigation events (initial page load and SPA route changes).
+ *
+ * @param explicitPreviousUrl Optional previous URL if known
+ */
+function trackNavigation(explicitPreviousUrl?: string): void {
+  const currentUrl = typeof window !== 'undefined' && window.location ? window.location.href : '';
+
+  // Avoid generating duplicate navigation actions if the URL has not changed
+  if (!currentUrl || currentUrl === lastTrackedUrl) {
+    return;
+  }
+
+  // Resolve previous URL (from memory, referrer, or caller)
+  const previousUrl = explicitPreviousUrl || (lastTrackedUrl ? lastTrackedUrl : (document.referrer || undefined));
+  lastTrackedUrl = currentUrl;
+
+  const pageInfo = extractPageInfo(previousUrl);
+  const metadata = createActionMetadata('act');
+
+  const action: GuardrailAction = {
+    id: metadata.id,
+    type: ActionType.NAVIGATION,
+    page: pageInfo,
+    timestamp: metadata.timestamp,
+  };
+
+  console.log(
+    '%c[Guardrail Content]%c Detected NAVIGATION Action:',
+    'color: #3b82f6; font-weight: bold; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 3px;',
+    'color: inherit; font-weight: normal;',
+    action
+  );
+
+  safelyDispatchAction(action);
 }
 
 /**
@@ -230,13 +271,20 @@ function initializeActionDetection(): void {
     }
   );
 
-  // 1. Generic Click Listener (Buttons, Links, Custom Controls)
+  // 1. Track initial page navigation
+  trackNavigation();
+
+  // 2. Listen for client-side SPA navigation events
+  window.addEventListener('popstate', () => trackNavigation());
+  window.addEventListener('hashchange', () => trackNavigation());
+
+  // 3. Generic Click Listener (Buttons, Links, Custom Controls)
   document.addEventListener('click', handleDocumentClick, true);
 
-  // 2. Generic Input Listener (Form Controls: input, textarea, select)
+  // 4. Generic Input Listener (Form Controls: input, textarea, select)
   document.addEventListener('change', handleDocumentChange, true);
 
-  // 3. Generic Form Submit Listener (Form level submission)
+  // 5. Generic Form Submit Listener (Form level submission)
   document.addEventListener('submit', handleDocumentSubmit, true);
 }
 

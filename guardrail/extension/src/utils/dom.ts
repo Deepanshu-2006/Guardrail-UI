@@ -203,14 +203,24 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
 /**
  * Safely extracts normalized ActionPageInfo from the active browser window/document.
  *
+ * @param previousUrl Optional explicit previous URL or referrer
  * @returns A plain, serializable ActionPageInfo object
  */
-export function extractPageInfo(): ActionPageInfo {
+export function extractPageInfo(previousUrl?: string): ActionPageInfo {
   const url = typeof window !== 'undefined' && window.location ? window.location.href : '';
   const title = typeof document !== 'undefined' && document.title ? document.title.trim() : '';
+  const referrer = typeof document !== 'undefined' && document.referrer ? document.referrer : undefined;
 
-  return {
+  const resolvedPrevious = previousUrl || referrer || undefined;
+
+  const pageInfo: ActionPageInfo = {
     url,
     title,
   };
+
+  if (resolvedPrevious && resolvedPrevious !== url) {
+    pageInfo.previousUrl = resolvedPrevious;
+  }
+
+  return pageInfo;
 }

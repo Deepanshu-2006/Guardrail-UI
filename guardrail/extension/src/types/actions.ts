@@ -55,6 +55,9 @@ export interface ActionPageInfo {
 
   /** Document title of the webpage */
   title: string;
+
+  /** Referrer or previous URL before navigation occurred (if safely available) */
+  previousUrl?: string;
 }
 
 /**
