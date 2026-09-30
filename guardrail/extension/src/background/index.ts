@@ -49,35 +49,41 @@ chrome.runtime.onMessage.addListener(
     sender,
     sendResponse: (response: ActionAcknowledgementResponse) => void
   ) => {
-    // 1. Handle normalized GuardrailAction messages with Classification
+    // 1. Handle normalized GuardrailAction messages with Classification and Risk
     if (message && message.type === 'GUARDRAIL_ACTION') {
-      const { action, classification } = message;
+      const { action, classification, risk } = message;
       const targetSummary = action.element?.visibleText
         ? `"${action.element.visibleText}"`
         : action.element?.tagName
         ? `<${action.element.tagName.toLowerCase()}>`
         : action.page.url;
 
-      const ruleSummary = classification?.matchedRule
-        ? `${classification.matchedRule}${classification.reason ? ` (${classification.reason})` : ''}`
-        : 'none';
+      const ruleSummary = classification?.matchedRule || 'none';
+      const reasonsList = risk?.reasons?.map((r) => `* ${r}`).join('\n') || '* None';
 
       console.log(
-        `%c[Guardrail Pipeline]%c ACTION & CLASSIFICATION RECEIVED\n` +
-        `  ACTION\n` +
-        `  → ${action.type}\n` +
-        `  → ${targetSummary}\n\n` +
-        `  CLASSIFICATION\n` +
-        `  → ${classification?.category || 'UNCLASSIFIED'}\n` +
-        `  → matched rule: ${ruleSummary}`,
+        `%c[Guardrail Pipeline]%c ACTION, CLASSIFICATION & RISK EVALUATED\n\n` +
+        `ACTION\n` +
+        `Type: ${action.type}\n` +
+        `Text: ${targetSummary}\n\n` +
+        `CLASSIFICATION\n` +
+        `Category: ${classification?.category || 'UNCLASSIFIED'}\n` +
+        `Rule: ${ruleSummary}\n\n` +
+        `RISK\n` +
+        `Score: ${risk?.score ?? 0}\n` +
+        `Level: ${risk?.riskLevel ?? 'LOW'}\n` +
+        `Reasons:\n${reasonsList}`,
         'color: #0ea5e9; font-weight: bold; padding: 3px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;',
         'color: inherit; font-weight: normal;',
         {
           actionId: action.id,
           type: action.type,
           category: classification?.category,
+          riskLevel: risk?.riskLevel,
+          riskScore: risk?.score,
           action,
           classification,
+          risk,
           senderTabId: sender.tab?.id,
           receivedAt: new Date().toISOString(),
         }
@@ -85,7 +91,7 @@ chrome.runtime.onMessage.addListener(
 
       sendResponse({
         success: true,
-        message: `Guardrail successfully registered action ${action.id} [${classification?.category || 'GENERAL'}]`,
+        message: `Guardrail registered action ${action.id} [${classification?.category || 'GENERAL'}] (Risk: ${risk?.riskLevel || 'LOW'}, Score: ${risk?.score ?? 0})`,
       });
 
       return false;
