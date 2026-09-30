@@ -47,3 +47,8 @@ export interface ActionClassificationResult {
    */
   confidence?: number;
 }
+
+/**
+ * Convenient alias for ActionClassificationResult.
+ */
+export type ClassificationResult = ActionClassificationResult;
