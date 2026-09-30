@@ -42,6 +42,9 @@
     { id: 'btn-fp-payment', label: 'Learn about payments' },
     { id: 'btn-fp-destructive', label: 'How to delete your account' },
     { id: 'btn-fp-download', label: 'Download our security guide' },
+    { id: 'btn-combined-external-payment', label: 'Pay via External Gateway' },
+    { id: 'btn-combined-destructive-download', label: 'Delete Account and Download Export' },
+    { id: 'btn-combined-exceed-100', label: 'Delete All Data, Cancel Billing, and Export to External Server' },
   ];
 
   buttons.forEach(({ id, label }) => {

@@ -76,6 +76,34 @@ export function clampRiskScore(score: number): number {
 }
 
 /**
+ * Helper to extract non-sensitive searchable tokens from an action.
+ */
+function extractActionTokens(action: GuardrailAction): string[] {
+  const tokens: string[] = [];
+  if (action.element?.visibleText) {
+    tokens.push(action.element.visibleText.toLowerCase().trim());
+  }
+  if (action.element?.id) {
+    tokens.push(action.element.id.toLowerCase().trim());
+  }
+  if (action.element?.className) {
+    tokens.push(action.element.className.toLowerCase().trim());
+  }
+  if (action.page?.url) {
+    try {
+      tokens.push(new URL(action.page.url).pathname.toLowerCase());
+    } catch {
+      // Ignore
+    }
+  }
+  return tokens;
+}
+
+function hasAnyToken(tokens: string[], keywords: string[]): boolean {
+  return keywords.some((kw) => tokens.some((t) => t.includes(kw)));
+}
+
+/**
  * Centralized collection of deterministic risk rules.
  */
 export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
@@ -89,9 +117,11 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     description: 'Triggers PAYMENT_ACTION signal when action targets checkout, payment, or financial flows.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.PAYMENT_ACTION];
+      const tokens = extractActionTokens(context.action);
       const isPayment =
         context.classification?.category === ActionCategory.PAYMENT ||
-        context.action.category === ActionCategory.PAYMENT;
+        context.action.category === ActionCategory.PAYMENT ||
+        hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer']);
 
       if (isPayment) {
         return {
@@ -116,9 +146,11 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     description: 'Triggers DESTRUCTIVE_ACTION signal when action targets deletion, cancellation, or irreversible state changes.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.DESTRUCTIVE_ACTION];
+      const tokens = extractActionTokens(context.action);
       const isDestructive =
         context.classification?.category === ActionCategory.DESTRUCTIVE ||
-        context.action.category === ActionCategory.DESTRUCTIVE;
+        context.action.category === ActionCategory.DESTRUCTIVE ||
+        hasAnyToken(tokens, ['delete', 'remove', 'purge', 'close account', 'terminate']);
 
       if (isDestructive) {
         return {
@@ -143,9 +175,11 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     description: 'Triggers AUTHENTICATION_ACTION signal when action interacts with login, credentials, or session boundaries.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.AUTHENTICATION_ACTION];
+      const tokens = extractActionTokens(context.action);
       const isAuth =
         context.classification?.category === ActionCategory.AUTHENTICATION ||
-        context.action.category === ActionCategory.AUTHENTICATION;
+        context.action.category === ActionCategory.AUTHENTICATION ||
+        hasAnyToken(tokens, ['login', 'log in', 'sign in', 'signin', 'authenticate', 'password', '2fa']);
 
       if (isAuth) {
         return {
@@ -170,9 +204,11 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     description: 'Triggers DOWNLOAD_ACTION signal when action initiates file downloads or document exports.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.DOWNLOAD_ACTION];
+      const tokens = extractActionTokens(context.action);
       const isDownload =
         context.classification?.category === ActionCategory.DOWNLOAD ||
-        context.action.category === ActionCategory.DOWNLOAD;
+        context.action.category === ActionCategory.DOWNLOAD ||
+        hasAnyToken(tokens, ['download', 'export', 'save file']);
 
       if (isDownload) {
         return {
@@ -197,19 +233,19 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     description: 'Triggers EXTERNAL_NAVIGATION signal when action redirects or navigates to an external origin.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.EXTERNAL_NAVIGATION];
+      const tokens = extractActionTokens(context.action);
       let isExternal =
         context.classification?.category === ActionCategory.EXTERNAL_NAVIGATION ||
-        context.action.category === ActionCategory.EXTERNAL_NAVIGATION;
+        context.action.category === ActionCategory.EXTERNAL_NAVIGATION ||
+        hasAnyToken(tokens, ['external', 'third-party', 'redirect', 'leave site']);
 
       // Also evaluate URL boundaries if previousUrl and current url exist
-      if (!isExternal && context.action.type === ActionType.NAVIGATION && context.action.page.url) {
+      if (!isExternal && context.action.page?.url && context.action.page?.previousUrl) {
         try {
           const currentOrigin = new URL(context.action.page.url).origin;
-          if (context.action.page.previousUrl) {
-            const prevOrigin = new URL(context.action.page.previousUrl).origin;
-            if (currentOrigin !== prevOrigin) {
-              isExternal = true;
-            }
+          const prevOrigin = new URL(context.action.page.previousUrl).origin;
+          if (currentOrigin !== prevOrigin && prevOrigin !== 'null' && currentOrigin !== 'null') {
+            isExternal = true;
           }
         } catch {
           // If URL parsing fails, default to false without throwing

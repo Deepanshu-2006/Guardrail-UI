@@ -201,33 +201,46 @@ export const DownloadRule: ClassificationRule = {
 
 /**
  * Rule: EXTERNAL_NAVIGATION
- * Matches navigation or link traversal that departs from the current origin/site context.
+ * Matches navigation or link traversal that departs from the current origin/site context,
+ * or elements explicitly targeting external destinations.
  */
+export const EXTERNAL_KEYWORDS: readonly string[] = [
+  'external',
+  'third-party',
+  'redirect',
+  'leave site',
+];
+
 export const ExternalNavigationRule: ClassificationRule = {
   id: 'RULE_EXTERNAL_NAVIGATION',
   category: ActionCategory.EXTERNAL_NAVIGATION,
-  description: 'Matches navigation events where the target domain differs from the previous site context',
+  description: 'Matches navigation events or links where the target domain or metadata indicates external departure',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
-    if (action.type !== ActionType.NAVIGATION && action.element?.tagName !== 'A') {
-      return { matched: false };
+    // 1. Keyword check in metadata tokens (e.g. id="external-link", text="External Navigation")
+    const tokens = extractSearchableTokens(action);
+    const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...EXTERNAL_KEYWORDS]);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched external navigation keyword "${matchedKeyword}" in action metadata`,
+      };
     }
 
-    if (!action.page.url || !action.page.previousUrl) {
-      return { matched: false };
-    }
+    // 2. Navigation crossing origin boundaries
+    if (action.page.url && action.page.previousUrl) {
+      try {
+        const currentOrigin = new URL(action.page.url).origin;
+        const previousOrigin = new URL(action.page.previousUrl).origin;
 
-    try {
-      const currentOrigin = new URL(action.page.url).origin;
-      const previousOrigin = new URL(action.page.previousUrl).origin;
-
-      if (currentOrigin !== previousOrigin && previousOrigin !== 'null' && currentOrigin !== 'null') {
-        return {
-          matched: true,
-          reason: `Navigation crossed site origin boundary from ${previousOrigin} to ${currentOrigin}`,
-        };
+        if (currentOrigin !== previousOrigin && previousOrigin !== 'null' && currentOrigin !== 'null') {
+          return {
+            matched: true,
+            reason: `Navigation crossed site origin boundary from ${previousOrigin} to ${currentOrigin}`,
+          };
+        }
+      } catch {
+        // Ignore invalid URL parse attempts
       }
-    } catch {
-      // Ignore invalid URL parse attempts
     }
 
     return { matched: false };

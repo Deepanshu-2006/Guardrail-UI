@@ -66,6 +66,22 @@
           </div>
         </div>
 
+        <!-- 3. Compound & Multi-Signal Risk Scenarios -->
+        <div class="field-group" style="margin-top: 16px; padding: 12px; background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px;">
+          <label class="field-label" style="color: #ef4444;">Compound & Multi-Signal Risk Scenarios</label>
+          <div class="button-row" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button id="btn-combined-external-payment" type="button" class="btn btn-secondary" style="border-color: rgba(14, 165, 233, 0.5); font-size: 13px;">
+              🌐 Pay via External Gateway (+40 Pay, +20 Ext = 60 HIGH)
+            </button>
+            <button id="btn-combined-destructive-download" type="button" class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.5); font-size: 13px;">
+              🗑️ Delete Account and Download Export (+50 Dest, +10 Down = 60 HIGH)
+            </button>
+            <button id="btn-combined-exceed-100" type="button" class="btn btn-secondary" style="border-color: #ef4444; font-size: 13px;">
+              ⚠️ Delete All Data, Cancel Billing, and Export to External Server (120 &rarr; Bounded 100 CRITICAL)
+            </button>
+          </div>
+        </div>
+
         <!-- 2. Form with Inputs, Textarea, Select, and Submit -->
         <form id="test-form" class="test-form">
           <!-- Text Input -->

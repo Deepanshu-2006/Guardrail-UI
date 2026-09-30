@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "esbuild src/risk/test-risk-engine.ts --bundle --format=esm --target=es2022 --outfile=dist/test-risk-engine.js && node dist/test-risk-engine.js"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.308",
