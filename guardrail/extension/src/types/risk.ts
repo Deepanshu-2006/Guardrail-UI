@@ -40,6 +40,84 @@ export enum RiskLevel {
 export type RiskLevelString = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 /**
+ * Canonical identifiers for initial risk signals recognized by Guardrail.
+ *
+ * Each identifier represents a discrete, observable risk condition or operational trait
+ * detected during an action's lifecycle.
+ */
+export enum RiskSignalId {
+  /** Action interacts with financial, payment, or checkout operations */
+  PAYMENT_ACTION = 'PAYMENT_ACTION',
+
+  /** Action causes permanent deletion, removal, or irreversible destruction of resources/state */
+  DESTRUCTIVE_ACTION = 'DESTRUCTIVE_ACTION',
+
+  /** Action engages with authentication, credential handling, or security boundaries */
+  AUTHENTICATION_ACTION = 'AUTHENTICATION_ACTION',
+
+  /** Action initiates file downloads, binary exports, or local filesystem writes */
+  DOWNLOAD_ACTION = 'DOWNLOAD_ACTION',
+
+  /** Action navigates away from the trusted origin or application to an external domain */
+  EXTERNAL_NAVIGATION = 'EXTERNAL_NAVIGATION',
+}
+
+/**
+ * String union type representing valid RiskSignalId values.
+ */
+export type RiskSignalIdString =
+  | 'PAYMENT_ACTION'
+  | 'DESTRUCTIVE_ACTION'
+  | 'AUTHENTICATION_ACTION'
+  | 'DOWNLOAD_ACTION'
+  | 'EXTERNAL_NAVIGATION';
+
+/**
+ * Declarative definition and configuration for a risk signal.
+ *
+ * Separates declarative signal metadata and configurable score contributions
+ * from the evaluation engine runtime.
+ */
+export interface RiskSignalDefinition {
+  /** Stable, unique machine-readable identifier for the signal */
+  readonly id: RiskSignalId;
+
+  /** Human-readable display name for the signal */
+  readonly name: string;
+
+  /**
+   * Human-readable explanation of why this signal represents an elevated risk.
+   * STRICT PRIVACY: Must never contain user inputs, passwords, card numbers, or form contents.
+   */
+  readonly reason: string;
+
+  /**
+   * Baseline quantitative score contribution (0 to 100) added or factored
+   * when this signal is triggered. Configurable per environment or policy.
+   */
+  readonly scoreContribution: number;
+
+  /**
+   * High-level architectural description of what constitutes this signal.
+   */
+  readonly description: string;
+}
+
+/**
+ * Represents an active risk signal triggered during evaluation of an action.
+ */
+export interface TriggeredRiskSignal {
+  /** Stable identifier of the triggered signal */
+  readonly id: RiskSignalId;
+
+  /** Quantitative score contributed to the overall risk evaluation */
+  readonly scoreContribution: number;
+
+  /** Human-readable rationale for why this signal fired */
+  readonly reason: string;
+}
+
+/**
  * Result of evaluating an action through the Guardrail Risk Engine.
  *
  * Captures the quantitative score, categorical risk level, and explainable
