@@ -33,11 +33,25 @@
     return div.innerHTML;
   }
 
-  if (testActionBtn) {
-    testActionBtn.addEventListener('click', () => {
-      appendLog('Button clicked: [Test Action]');
-    });
-  }
+  const buttons = [
+    { id: 'btn-payment', label: 'Pay ₹5,000' },
+    { id: 'btn-auth', label: 'Sign In' },
+    { id: 'btn-destructive', label: 'Delete Account' },
+    { id: 'btn-download', label: 'Download Export' },
+    { id: 'test-action-btn', label: 'Generic Action' },
+    { id: 'btn-fp-payment', label: 'Learn about payments' },
+    { id: 'btn-fp-destructive', label: 'How to delete your account' },
+    { id: 'btn-fp-download', label: 'Download our security guide' },
+  ];
+
+  buttons.forEach(({ id, label }) => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        appendLog(`Button clicked: [${label}]`);
+      });
+    }
+  });
 
   if (testInput) {
     testInput.addEventListener('change', () => {

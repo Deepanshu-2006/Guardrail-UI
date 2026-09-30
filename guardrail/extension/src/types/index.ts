@@ -4,6 +4,7 @@
 
 export * from './actions.js';
 export * from './classification.js';
+export * from './risk.js';
 
 export interface ExtensionManifestInfo {
   name: string;

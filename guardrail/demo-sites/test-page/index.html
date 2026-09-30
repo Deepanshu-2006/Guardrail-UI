@@ -22,22 +22,22 @@
         
         <!-- 1. Category Classification Buttons -->
         <div class="field-group">
-          <label class="field-label">Action Classification Fixtures</label>
+          <label class="field-label">Category Verification Actions</label>
           <div class="button-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-            <button id="btn-payment" type="button" class="btn btn-secondary" style="border-color: rgba(16, 185, 129, 0.4);">
-              Pay ₹5,000
+            <button id="btn-payment" type="button" class="btn btn-secondary" style="border-color: rgba(16, 185, 129, 0.5);">
+              💳 Pay ₹5,000
             </button>
-            <button id="btn-auth" type="button" class="btn btn-secondary" style="border-color: rgba(14, 165, 233, 0.4);">
-              Sign In
+            <button id="btn-auth" type="button" class="btn btn-secondary" style="border-color: rgba(14, 165, 233, 0.5);">
+              🔐 Sign In
             </button>
-            <button id="btn-destructive" type="button" class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.4);">
-              Delete Account
+            <button id="btn-destructive" type="button" class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.5);">
+              🗑️ Delete Account
             </button>
-            <button id="btn-download" type="button" class="btn btn-secondary" style="border-color: rgba(245, 158, 11, 0.4);">
-              Download Export
+            <button id="btn-download" type="button" class="btn btn-secondary" style="border-color: rgba(245, 158, 11, 0.5);">
+              📥 Download Export
             </button>
             <button id="test-action-btn" type="button" class="btn btn-secondary">
-              Generic Action
+              ⚡ Generic Action
             </button>
           </div>
           <div class="button-row" style="display: flex; gap: 12px;">
@@ -47,6 +47,22 @@
             <a id="external-link" href="https://example.com" target="_blank" rel="noopener noreferrer" class="test-link" style="color: #f59e0b;">
               External Navigation &nearr;
             </a>
+          </div>
+        </div>
+
+        <!-- 2. Ambiguity & False-Positive Test Cases -->
+        <div class="field-group" style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--border); border-radius: 8px;">
+          <label class="field-label" style="color: #f59e0b;">Heuristic Ambiguity / False-Positive Tests</label>
+          <div class="button-row" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button id="btn-fp-payment" type="button" class="btn btn-secondary" style="font-size: 13px;">
+              Learn about payments
+            </button>
+            <button id="btn-fp-destructive" type="button" class="btn btn-secondary" style="font-size: 13px;">
+              How to delete your account
+            </button>
+            <button id="btn-fp-download" type="button" class="btn btn-secondary" style="font-size: 13px;">
+              Download our security guide
+            </button>
           </div>
         </div>
 
