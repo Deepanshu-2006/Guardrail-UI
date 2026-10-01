@@ -10,21 +10,24 @@ import {
   ActionClassificationResult,
   GuardrailAction,
   GuardrailActionMessage,
+  ResponseDecision,
   RiskAssessment,
 } from '../types/index.js';
 
 /**
- * Safely dispatches a GuardrailAction, its classification, and risk assessment to the background service worker.
+ * Safely dispatches a GuardrailAction, its classification, risk assessment, and response decision to the background service worker.
  *
  * @param action The normalized GuardrailAction to send
  * @param classification Optional ActionClassificationResult computed by the classifier
  * @param risk Optional RiskAssessment computed by the Risk Engine
+ * @param decision Optional ResponseDecision computed by the Response Engine
  * @returns A promise resolving to the acknowledgement response or null if failed
  */
 export async function dispatchActionToBackground(
   action: GuardrailAction,
   classification?: ActionClassificationResult,
-  risk?: RiskAssessment
+  risk?: RiskAssessment,
+  decision?: ResponseDecision
 ): Promise<ActionAcknowledgementResponse | null> {
   // Guard against disconnected runtime if extension was reloaded in chrome://extensions
   if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
@@ -37,6 +40,7 @@ export async function dispatchActionToBackground(
     action,
     classification,
     risk,
+    decision,
   };
 
   try {
