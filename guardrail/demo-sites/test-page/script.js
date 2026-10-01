@@ -36,6 +36,7 @@
   const buttons = [
     { id: 'btn-payment', label: 'Pay ₹5,000' },
     { id: 'btn-auth', label: 'Sign In' },
+    { id: 'btn-auth-sso', label: 'Sign In with External SSO' },
     { id: 'btn-destructive', label: 'Delete Account' },
     { id: 'btn-download', label: 'Download Export' },
     { id: 'test-action-btn', label: 'Generic Action' },
@@ -55,6 +56,70 @@
       });
     }
   });
+
+  // Day 7: Sequential Pipeline Verification Test
+  const seqBtn = document.getElementById('btn-test-sequence');
+  if (seqBtn) {
+    seqBtn.addEventListener('click', () => {
+      appendLog('=== Starting Sequential Pipeline Test ===');
+      appendLog('1. Triggering LOW-risk action (Generic Action -> ALLOW)...');
+      const lowBtn = document.getElementById('test-action-btn');
+      if (lowBtn) lowBtn.click();
+
+      setTimeout(() => {
+        appendLog('2. Triggering HIGH-risk action (Delete Account -> WARN)...');
+        const highBtn = document.getElementById('btn-destructive');
+        if (highBtn) highBtn.click();
+      }, 500);
+
+      setTimeout(() => {
+        appendLog('3. Triggering CRITICAL-risk action (Exceed 100 -> PROTECT)...');
+        const critBtn = document.getElementById('btn-combined-exceed-100');
+        if (critBtn) critBtn.click();
+        appendLog('=== Sequential Pipeline Test Completed ===');
+      }, 1000);
+    });
+  }
+
+  // Day 7: Rapid Repeated Clicks Test
+  const rapidBtn = document.getElementById('btn-test-rapid-clicks');
+  if (rapidBtn) {
+    rapidBtn.addEventListener('click', () => {
+      appendLog('Firing 5 rapid clicks on Payment button...');
+      const payBtn = document.getElementById('btn-payment');
+      if (payBtn) {
+        for (let i = 1; i <= 5; i++) {
+          setTimeout(() => {
+            appendLog(`Rapid click #${i} fired`);
+            payBtn.click();
+          }, i * 30);
+        }
+      }
+    });
+  }
+
+  // Day 7: Dynamically Created Button Test
+  const spawnBtn = document.getElementById('btn-test-spawn-dynamic');
+  const dynContainer = document.getElementById('dynamic-button-container');
+  if (spawnBtn && dynContainer) {
+    let spawnCount = 0;
+    spawnBtn.addEventListener('click', () => {
+      spawnCount++;
+      const dynId = `btn-dynamic-spawned-${spawnCount}`;
+      const dyn = document.createElement('button');
+      dyn.id = dynId;
+      dyn.type = 'button';
+      dyn.className = 'btn btn-secondary';
+      dyn.style.borderColor = '#10b981';
+      dyn.style.fontSize = '13px';
+      dyn.textContent = `💳 Dynamic Payment Trigger #${spawnCount}`;
+      dyn.addEventListener('click', () => {
+        appendLog(`Dynamic Button clicked: [Dynamic Payment Trigger #${spawnCount}]`);
+      });
+      dynContainer.appendChild(dyn);
+      appendLog(`Created dynamic button #${dynId}. Event delegation will automatically catch its click!`);
+    });
+  }
 
   if (testInput) {
     testInput.addEventListener('change', () => {

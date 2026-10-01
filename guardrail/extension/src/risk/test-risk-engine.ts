@@ -4,16 +4,15 @@
  * Validates all required scenarios, risk levels, signal combinations, and edge cases.
  */
 
+declare const process: { exit: (code: number) => void };
+
 import { classifyAction } from '../classifier/index.js';
-import { ActionDetector } from '../detector/action-detector.js';
-import { createGuardrailAction } from '../detector/action-factory.js';
-import { assessRisk, DEFAULT_RISK_THRESHOLDS } from './engine.js';
+import { assessRisk } from './engine.js';
 import {
   ActionCategory,
   ActionType,
   GuardrailAction,
   GuardrailActionMessage,
-  RiskAssessment,
   RiskLevel,
   RiskSignalId,
 } from '../types/index.js';
@@ -203,9 +202,10 @@ for (const tc of testCases) {
     risk,
   });
 
+  const receivedMsg = lastServiceWorkerMessage as GuardrailActionMessage | null;
   assert(
-    lastServiceWorkerMessage?.action.id === tc.action.id &&
-    lastServiceWorkerMessage?.risk?.score === tc.expectedScore,
+    receivedMsg?.action.id === tc.action.id &&
+    receivedMsg?.risk?.score === tc.expectedScore,
     `Service worker received complete pipeline payload with intact actionId and risk score`
   );
 

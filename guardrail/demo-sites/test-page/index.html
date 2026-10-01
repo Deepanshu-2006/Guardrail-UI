@@ -30,6 +30,9 @@
             <button id="btn-auth" type="button" class="btn btn-secondary" style="border-color: rgba(14, 165, 233, 0.5);">
               🔐 Sign In
             </button>
+            <button id="btn-auth-sso" type="button" class="btn btn-secondary" style="border-color: rgba(14, 165, 233, 0.5);">
+              🔑 Sign In with External SSO (+20 Auth, +20 Ext = 40 MEDIUM)
+            </button>
             <button id="btn-destructive" type="button" class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.5);">
               🗑️ Delete Account
             </button>
@@ -80,6 +83,23 @@
               ⚠️ Delete All Data, Cancel Billing, and Export to External Server (120 &rarr; Bounded 100 CRITICAL)
             </button>
           </div>
+        </div>
+
+        <!-- 4. Day 7 Pipeline & Edge Case Verification Controls -->
+        <div class="field-group" style="margin-top: 16px; padding: 12px; background: rgba(14, 165, 233, 0.04); border: 1px solid rgba(14, 165, 233, 0.2); border-radius: 8px;">
+          <label class="field-label" style="color: #38bdf8;">Day 7 Response Engine & Pipeline Verification</label>
+          <div class="button-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+            <button id="btn-test-sequence" type="button" class="btn btn-secondary" style="font-size: 13px;">
+              🔄 Run Sequential Pipeline (ALLOW → WARN → PROTECT)
+            </button>
+            <button id="btn-test-rapid-clicks" type="button" class="btn btn-secondary" style="font-size: 13px;">
+              ⚡ Rapid Clicks (5x on Payment)
+            </button>
+            <button id="btn-test-spawn-dynamic" type="button" class="btn btn-secondary" style="font-size: 13px;">
+              ➕ Spawn Dynamic Button
+            </button>
+          </div>
+          <div id="dynamic-button-container" style="display: flex; gap: 8px; margin-top: 8px;"></div>
         </div>
 
         <!-- 2. Form with Inputs, Textarea, Select, and Submit -->
@@ -141,6 +161,8 @@
     </div>
   </main>
 
+  <!-- Load Guardrail Content Script directly for controlled local test page verification -->
+  <script src="../../extension/dist/content.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

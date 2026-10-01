@@ -60,21 +60,16 @@ chrome.runtime.onMessage.addListener(
 
       const ruleSummary = classification?.matchedRule || 'none';
       const riskReasonsList = risk?.reasons?.map((r) => `* ${r}`).join('\n') || '* None';
-      const decisionSummary = decision ? `\n\nRESPONSE\nAction: ${decision.response}\nReasons:\n${decision.reasons.map((r) => `* ${r}`).join('\n')}` : '';
+      const primaryReason =
+        decision?.reasons?.[0] || risk?.reasons?.[0] || 'Standard action registered';
 
       console.log(
-        `%c[Guardrail Pipeline]%c ACTION, CLASSIFICATION, RISK & RESPONSE EVALUATED\n\n` +
-        `ACTION\n` +
-        `Type: ${action.type}\n` +
-        `Text: ${targetSummary}\n\n` +
-        `CLASSIFICATION\n` +
-        `Category: ${classification?.category || 'UNCLASSIFIED'}\n` +
-        `Rule: ${ruleSummary}\n\n` +
-        `RISK\n` +
-        `Score: ${risk?.score ?? 0}\n` +
-        `Level: ${risk?.riskLevel ?? 'LOW'}\n` +
-        `Reasons:\n${riskReasonsList}` +
-        decisionSummary,
+        `%c[Guardrail Pipeline]%c EVALUATION RECEIVED\n` +
+        `ACTION: ${action.type}${targetSummary ? ` (${targetSummary})` : ''}\n` +
+        `CATEGORY: ${classification?.category || 'UNCLASSIFIED'}\n` +
+        `RISK: ${risk?.riskLevel || 'LOW'} (score: ${risk?.score ?? 0})\n` +
+        `RESPONSE: ${decision?.response || 'ALLOW'}\n` +
+        `REASON: ${primaryReason}`,
         'color: #0ea5e9; font-weight: bold; padding: 3px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;',
         'color: inherit; font-weight: normal;',
         {
@@ -88,6 +83,8 @@ chrome.runtime.onMessage.addListener(
           classification,
           risk,
           decision,
+          ruleSummary,
+          riskReasonsList,
           senderTabId: sender.tab?.id,
           receivedAt: new Date().toISOString(),
         }

@@ -11,7 +11,7 @@
  * 3. BOUNDED SCORING: Output scores must be bounded between 0 and 100.
  */
 
-import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
+import { ActionCategory, GuardrailAction } from '../types/actions.js';
 import { ActionClassificationResult } from '../types/classification.js';
 import { RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
 import { getRiskSignalDefinition, INITIAL_RISK_SIGNALS, RiskSignalOverrides } from './signals.js';

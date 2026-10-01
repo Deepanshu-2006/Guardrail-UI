@@ -14,7 +14,7 @@
  */
 
 import { RiskAssessment } from '../types/risk.js';
-import { ResponseAction, ResponseDecision } from '../types/response.js';
+import { ResponseDecision } from '../types/response.js';
 import { DEFAULT_RESPONSE_POLICY, evaluateResponseAction, ResponsePolicyMapping } from './rules.js';
 
 /**

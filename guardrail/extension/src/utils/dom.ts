@@ -47,6 +47,17 @@ export function findInteractiveElement(target: EventTarget | null): HTMLElement 
     return null;
   }
 
+  // Ignore interactions originating from within Guardrail's internal UI
+  if (
+    target.id === 'guardrail-warning-ui-host' ||
+    target.closest('#guardrail-warning-ui-host') ||
+    (typeof target.getRootNode === 'function' &&
+      target.getRootNode() instanceof ShadowRoot &&
+      (target.getRootNode() as ShadowRoot).host?.id === 'guardrail-warning-ui-host')
+  ) {
+    return null;
+  }
+
   // Locate the nearest interactive element ancestor or the element itself
   return target.closest<HTMLElement>(INTERACTIVE_CLICK_SELECTOR) || null;
 }
@@ -59,6 +70,14 @@ export function findInteractiveElement(target: EventTarget | null): HTMLElement 
  */
 export function findFormInputElement(target: EventTarget | null): HTMLElement | null {
   if (!target || !(target instanceof Element)) {
+    return null;
+  }
+
+  // Ignore form controls originating from within Guardrail's internal UI
+  if (
+    target.id === 'guardrail-warning-ui-host' ||
+    target.closest('#guardrail-warning-ui-host')
+  ) {
     return null;
   }
 

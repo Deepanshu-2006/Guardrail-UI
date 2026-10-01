@@ -5,7 +5,7 @@
  * Guardrail actions into semantic categories based on safe metadata.
  */
 
-import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
+import { ActionCategory, GuardrailAction } from '../types/actions.js';
 
 /**
  * Result returned from evaluating a single classification rule against an action.

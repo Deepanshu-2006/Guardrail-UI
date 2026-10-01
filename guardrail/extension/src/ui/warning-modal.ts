@@ -34,13 +34,26 @@ export interface WarningModalProps {
   onCancel?: () => void;
 }
 
-const HOST_ELEMENT_ID = 'guardrail-warning-ui-host';
+export const HOST_ELEMENT_ID = 'guardrail-warning-ui-host';
+
+let activeEscapeHandler: ((e: KeyboardEvent) => void) | null = null;
+
+/**
+ * Checks whether the Guardrail warning modal is currently present in the DOM.
+ */
+export function isWarningModalActive(): boolean {
+  return typeof document !== 'undefined' && Boolean(document.getElementById(HOST_ELEMENT_ID));
+}
 
 /**
  * Dismisses and cleans up any currently active Guardrail warning modal.
  */
 export function dismissWarningModal(): void {
-  const existingHost = document.getElementById(HOST_ELEMENT_ID);
+  if (activeEscapeHandler && typeof window !== 'undefined') {
+    window.removeEventListener('keydown', activeEscapeHandler);
+    activeEscapeHandler = null;
+  }
+  const existingHost = typeof document !== 'undefined' ? document.getElementById(HOST_ELEMENT_ID) : null;
   if (existingHost) {
     existingHost.remove();
   }
@@ -123,6 +136,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
       justify-content: space-between;
     }
 
+    .gr-header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .gr-brand {
       display: flex;
       align-items: center;
@@ -147,6 +166,28 @@ export function showWarningModal(props: WarningModalProps): () => void {
       border: 1px solid rgba(245, 158, 11, 0.4);
       color: #fcd34d;
       text-transform: uppercase;
+    }
+
+    .gr-btn-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 16px;
+      line-height: 1;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.15s ease;
+    }
+
+    .gr-btn-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
     }
 
     .gr-body {
@@ -292,13 +333,38 @@ export function showWarningModal(props: WarningModalProps): () => void {
   // Header
   const header = document.createElement('div');
   header.className = 'gr-header';
-  header.innerHTML = `
-    <div class="gr-brand">
-      <span class="gr-brand-icon">🛡️</span>
-      <span>Guardrail Security</span>
-    </div>
-    <span class="gr-pill">${props.risk.riskLevel} RISK (${props.risk.score})</span>
+
+  const brand = document.createElement('div');
+  brand.className = 'gr-brand';
+  brand.innerHTML = `
+    <span class="gr-brand-icon">🛡️</span>
+    <span>Guardrail Security</span>
   `;
+
+  const headerRight = document.createElement('div');
+  headerRight.className = 'gr-header-right';
+
+  const pill = document.createElement('span');
+  pill.className = 'gr-pill';
+  pill.textContent = `${props.risk.riskLevel} RISK (${props.risk.score})`;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'gr-btn-close';
+  closeBtn.setAttribute('aria-label', 'Close warning dialog');
+  closeBtn.setAttribute('title', 'Close warning');
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => {
+    dismissWarningModal();
+    if (props.onCancel) {
+      props.onCancel();
+    }
+  });
+
+  headerRight.appendChild(pill);
+  headerRight.appendChild(closeBtn);
+  header.appendChild(brand);
+  header.appendChild(headerRight);
 
   // Body
   const body = document.createElement('div');
@@ -374,10 +440,33 @@ export function showWarningModal(props: WarningModalProps): () => void {
   card.appendChild(footer);
   backdrop.appendChild(card);
 
+  // Dismiss on backdrop click
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) {
+      dismissWarningModal();
+      if (props.onCancel) {
+        props.onCancel();
+      }
+    }
+  });
+
   shadow.appendChild(style);
   shadow.appendChild(backdrop);
 
-  // 7. Mount to DOM
+  // 7. Register Escape key dismissal
+  if (typeof window !== 'undefined') {
+    activeEscapeHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        dismissWarningModal();
+        if (props.onCancel) {
+          props.onCancel();
+        }
+      }
+    };
+    window.addEventListener('keydown', activeEscapeHandler);
+  }
+
+  // 8. Mount to DOM
   document.body.appendChild(host);
 
   // Return programmatic dismiss callback

@@ -42,28 +42,19 @@ function logPipelineResult(
     action.element?.tagName ||
     action.page.url;
 
-  const ruleSummary = classification.matchedRule;
-  const riskReasonsList = risk.reasons.map((r) => `* ${r}`).join('\n');
-  const decisionReasonsList = decision.reasons.map((r) => `* ${r}`).join('\n');
+  const primaryReason = decision.reasons[0] || risk.reasons[0] || 'Standard action evaluation';
 
   console.log(
-    `%c[Guardrail Pipeline]%c COMPLETE EVALUATION\n\n` +
-    `ACTION\n` +
-    `Type: ${action.type}\n` +
-    `Text: ${textSummary}\n\n` +
-    `CLASSIFICATION\n` +
-    `Category: ${classification.category}\n` +
-    `Rule: ${ruleSummary}\n\n` +
-    `RISK\n` +
-    `Score: ${risk.score}\n` +
-    `Level: ${risk.riskLevel}\n` +
-    `Reasons:\n${riskReasonsList}\n\n` +
-    `RESPONSE\n` +
-    `Action: ${decision.response}\n` +
-    `Reasons:\n${decisionReasonsList}`,
+    `%c[Guardrail Pipeline]%c EVALUATION SUMMARY\n` +
+    `ACTION: ${action.type}${textSummary ? ` ("${textSummary}")` : ''}\n` +
+    `CATEGORY: ${classification.category}\n` +
+    `RISK: ${risk.riskLevel} (score: ${risk.score})\n` +
+    `RESPONSE: ${decision.response}\n` +
+    `REASON: ${primaryReason}`,
     'color: #0ea5e9; font-weight: bold; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 3px;',
     'color: inherit; font-weight: normal;',
     {
+      actionId: action.id,
       action,
       classification,
       risk,
@@ -79,7 +70,7 @@ function bootstrap(): void {
   const pageInfo = extractPageInfo();
 
   console.log(
-    '%c[Guardrail Content]%c Full Pipeline (Detector → Classifier → Risk Engine → Response Engine) initialized',
+    '%c[Guardrail Content]%c End-to-End Pipeline (Event → Detector → Classifier → Risk → Response) initialized',
     'color: #0ea5e9; font-weight: bold; padding: 2px 4px; background: rgba(14, 165, 233, 0.1); border-radius: 3px;',
     'color: inherit; font-weight: normal;',
     {
@@ -92,34 +83,61 @@ function bootstrap(): void {
 
   // Instantiate the unified ActionDetector with classification, risk & response pipeline
   const detector = new ActionDetector((action) => {
-    // 1. Pass the unchanged normalized action to the Action Classifier
+    // 1. Action Classifier produces ClassificationResult
     const classification = classifyAction(action);
 
-    // 2. Evaluate with the Risk Engine to produce RiskAssessment
+    // 2. Risk Engine produces RiskAssessment
     const risk = assessRisk(action, classification);
 
-    // 3. Render ResponseDecision via the Response Engine
+    // 3. Response Engine produces ResponseDecision
     const decision = decideResponse(risk);
 
-    // 4. Log the complete result in clean development format
-    logPipelineResult(action, classification, risk, decision);
-
-    // 5. If response is WARN, dynamically mount the Guardrail warning UI
-    if (decision.response === ResponseAction.WARN) {
-      showWarningModal({
-        action,
-        risk,
-        decision,
-        onContinue: () => {
-          console.log(`[Guardrail UI] User clicked Continue on warning for action: ${action.id}`);
-        },
-        onCancel: () => {
-          console.log(`[Guardrail UI] User clicked Cancel on warning for action: ${action.id}`);
-        },
+    // 4. Verify actionId consistency across all pipeline stages
+    if (
+      action.id !== classification.actionId ||
+      action.id !== risk.actionId ||
+      action.id !== decision.actionId
+    ) {
+      console.error('[Guardrail Pipeline] Critical: actionId mismatch detected across pipeline stages!', {
+        actionId: action.id,
+        classificationActionId: classification.actionId,
+        riskActionId: risk.actionId,
+        decisionActionId: decision.actionId,
       });
     }
 
-    // 6. Forward action, classification, risk assessment, and decision to background coordinator
+    // 5. Output standardized development log
+    logPipelineResult(action, classification, risk, decision);
+
+    // 6. Branch on ResponseAction:
+    switch (decision.response) {
+      case ResponseAction.ALLOW:
+        console.log(`[Guardrail Response] ALLOW: Action permitted. Prototype flow continues.`);
+        break;
+
+      case ResponseAction.WARN:
+        console.log(`[Guardrail Response] WARN: Displaying Guardrail warning UI.`);
+        showWarningModal({
+          action,
+          risk,
+          decision,
+          onContinue: () => {
+            console.log(`[Guardrail UI] User clicked Continue on warning for action: ${action.id}`);
+          },
+          onCancel: () => {
+            console.log(`[Guardrail UI] User clicked Cancel on warning for action: ${action.id}`);
+          },
+        });
+        break;
+
+      case ResponseAction.PROTECT:
+        console.warn(
+          `[Guardrail Response] 🛡️ PROTECT response required: Action [${action.id}] flagged for future protective gating. (Not blocking in prototype).`
+        );
+        break;
+    }
+
+    // 7. Forward complete pipeline artifact to background service worker coordinator
     dispatchActionToBackground(action, classification, risk, decision);
   });
 
@@ -127,9 +145,22 @@ function bootstrap(): void {
   detector.start();
 }
 
+/**
+ * Guards against duplicate content script initialization within the same execution context.
+ */
+function init(): void {
+  if (typeof window !== 'undefined') {
+    if ((window as any).__GUARDRAIL_CONTENT_BOOTSTRAPPED__) {
+      return;
+    }
+    (window as any).__GUARDRAIL_CONTENT_BOOTSTRAPPED__ = true;
+  }
+  bootstrap();
+}
+
 // Ensure initialization occurs after the DOM tree is available
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bootstrap);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  bootstrap();
+  init();
 }
