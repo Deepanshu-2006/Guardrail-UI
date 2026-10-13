@@ -125,7 +125,33 @@ class MockDOMElement {
 
   click(): void {
     if (this.disabled) return;
+    this.focus();
     this.dispatchEvent({ type: 'click', target: this });
+  }
+
+  focus(): void {
+    if (typeof (globalThis as any).document !== 'undefined' && (globalThis as any).document._setActiveElement) {
+      (globalThis as any).document._setActiveElement(this);
+    }
+    this.dispatchEvent({ type: 'focus', target: this });
+  }
+
+  blur(): void {
+    if (typeof (globalThis as any).document !== 'undefined' && (globalThis as any).document._setActiveElement) {
+      (globalThis as any).document._setActiveElement(null);
+    }
+    this.dispatchEvent({ type: 'blur', target: this });
+  }
+
+  contains(other: MockDOMElement | null): boolean {
+    if (!other) return false;
+    if (other === this) return true;
+    let curr: MockDOMElement | null = other.parentNode;
+    while (curr) {
+      if (curr === this) return true;
+      curr = curr.parentNode;
+    }
+    return false;
   }
 
   remove(): void {
@@ -161,10 +187,31 @@ class MockDOMElement {
   }
 
   querySelector(selector: string): MockDOMElement | null {
+    if (selector.includes(' ')) {
+      const parts = selector.split(/\s+/).filter(Boolean);
+      let curr: MockDOMElement | null = this;
+      for (const part of parts) {
+        if (!curr) return null;
+        curr = querySelectorInternal(curr, part);
+      }
+      return curr;
+    }
     return querySelectorInternal(this, selector);
   }
 
   querySelectorAll(selector: string): MockDOMElement[] {
+    if (selector.includes(' ')) {
+      const parts = selector.split(/\s+/).filter(Boolean);
+      let currentElements: MockDOMElement[] = [this];
+      for (const part of parts) {
+        const nextElements: MockDOMElement[] = [];
+        for (const el of currentElements) {
+          querySelectorAllInternal(el, part, nextElements);
+        }
+        currentElements = nextElements;
+      }
+      return currentElements;
+    }
     const results: MockDOMElement[] = [];
     querySelectorAllInternal(this, selector, results);
     return results;
@@ -174,9 +221,20 @@ class MockDOMElement {
 class MockShadowRoot extends MockDOMElement {
   public mode: string;
   public host: MockDOMElement | null = null;
+  public activeElement: MockDOMElement | null = null;
   constructor(mode: string) {
     super('#SHADOW-ROOT');
     this.mode = mode;
+  }
+  override contains(other: MockDOMElement | null): boolean {
+    if (!other) return false;
+    if (other === this) return true;
+    let curr: MockDOMElement | null = other;
+    while (curr) {
+      if (curr === this) return true;
+      curr = curr.parentNode;
+    }
+    return false;
   }
 }
 
@@ -201,20 +259,36 @@ function querySelectorAllInternal(root: MockDOMElement, selector: string, acc: M
 }
 
 function matchesSelector(el: MockDOMElement, selector: string): boolean {
-  if (selector.startsWith('#')) {
-    return el.id === selector.slice(1);
+  const trimmed = selector.trim();
+  if (trimmed.startsWith('#')) {
+    return el.id === trimmed.slice(1);
   }
-  if (selector.startsWith('.')) {
-    return el.classList.contains(selector.slice(1));
+  if (trimmed.startsWith('.')) {
+    return el.classList.contains(trimmed.slice(1));
   }
-  return el.tagName.toLowerCase() === selector.toLowerCase();
+  if (trimmed === 'button:not(:disabled)') {
+    return el.tagName.toLowerCase() === 'button' && !el.disabled;
+  }
+  return el.tagName.toLowerCase() === trimmed.toLowerCase();
 }
 
 class MockDocument {
   public body: MockDOMElement;
+  public activeElement: MockDOMElement | null = null;
   public listeners: Record<string, ((e: any) => void)[]> = {};
   constructor() {
     this.body = new MockDOMElement('BODY');
+  }
+  _setActiveElement(el: MockDOMElement | null): void {
+    this.activeElement = el;
+    let curr: MockDOMElement | null = el;
+    while (curr) {
+      if (curr instanceof MockShadowRoot) {
+        curr.activeElement = el;
+        break;
+      }
+      curr = curr.parentNode;
+    }
   }
   createElement(tag: string): MockDOMElement {
     return new MockDOMElement(tag);
@@ -302,6 +376,11 @@ import {
   getRiskLevelPresentation,
   getSafeDisplayHost,
   getStagingModalShadowRoot,
+  getStagingUIState,
+  setStagingUIState,
+  announceStagingState,
+  getFocusableElements,
+  handleModalCancel,
   handleModalRequestApproval,
   isStagingModalActive,
   showStagingModal,
@@ -1670,6 +1749,417 @@ console.log('\n▶ Test 12: Staging Mode Local Approval-Request Intent');
   assert(footerNotice.includes('Backend not connected'), 'Footer notice contains "Backend not connected"');
   assert(footerNotice.includes('State: HELD'), 'Footer notice shows "State: HELD"');
   assertEquals(modePillText, 'Paused (Request Prepared)', 'Mode pill indicates "Paused (Request Prepared)"');
+
+  dismissStagingModal();
+}
+
+// ============================================================
+// TEST 13: Staging Mode Reliability, Clarity & Accessibility
+// ============================================================
+console.log('\n▶ Test 13: Staging Mode Reliability, Clarity & Accessibility');
+
+{
+  const testController = new InterceptionController();
+  const testManager = new ContinuationManager(testController);
+
+  // ------------------------------------------------------------
+  // Subtest 13A: Visually & Programmatically Distinct Interface States
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13A: Visually & Programmatically Distinct Interface States');
+  const actionId13A = 'action-distinct-states-13a';
+  const testAction13A: GuardrailAction = {
+    id: actionId13A,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction13A, 'Registered');
+  testController.holdAction(actionId13A, 'Held for review');
+
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId13A,
+      riskLevel: RiskLevel.MEDIUM,
+      riskScore: 45,
+      interceptionState: InterceptionState.HELD,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+  });
+
+  const shadow13A = getStagingModalShadowRoot()!;
+  assert(Boolean(shadow13A), 'Shadow root exists for distinct states testing');
+
+  // State 1: HELD
+  assertEquals(getStagingUIState(), 'held', 'Initial interface state is "held"');
+  const pillHeld = shadow13A.querySelector('.gs-mode-pill');
+  assertEquals(pillHeld?.textContent, 'Review Mode', 'Mode pill text is "Review Mode" for held state');
+  assert(pillHeld?.classList.contains('gs-badge-held') || false, 'Mode pill has .gs-badge-held');
+  const titleHeld = shadow13A.querySelector('.gs-heading-title');
+  assertEquals(titleHeld?.textContent, 'Action Paused for Your Review', 'Title indicates action paused for review');
+  const cancelBtn13A = shadow13A.querySelector('#gs-btn-cancel-action') as any;
+  const reqBtn13A = shadow13A.querySelector('#gs-btn-request-approval') as any;
+  assertEquals(cancelBtn13A.disabled, false, 'Cancel button is enabled in held state');
+  assertEquals(reqBtn13A.disabled, false, 'Request approval button is enabled in held state');
+  const liveAnnouncer = shadow13A.querySelector('#gs-live-announcer');
+  assert(Boolean(liveAnnouncer), 'Live announcer element (#gs-live-announcer) exists in shadow root');
+  assert(liveAnnouncer?.textContent?.includes('Action paused for review') || false, 'Live announcer announced held state');
+
+  // State 2: CANCELLING (in-progress)
+  setStagingUIState('cancelling');
+  assertEquals(getStagingUIState(), 'cancelling', 'UI state transitioned to "cancelling"');
+  const pillCancelling = shadow13A.querySelector('.gs-mode-pill');
+  assertEquals(pillCancelling?.textContent, 'Cancelling...', 'Mode pill text is "Cancelling..."');
+  assert(pillCancelling?.classList.contains('gs-badge-cancelling') || false, 'Mode pill has .gs-badge-cancelling');
+  assertEquals(cancelBtn13A.textContent, 'Cancelling...', 'Cancel button text is "Cancelling..."');
+  assertEquals(cancelBtn13A.disabled, true, 'Cancel button is disabled during cancellation');
+  assertEquals(cancelBtn13A.getAttribute('aria-busy'), 'true', 'Cancel button has aria-busy="true"');
+  assertEquals(reqBtn13A.disabled, true, 'Request button is disabled during cancellation');
+  assert(liveAnnouncer?.textContent?.includes('Cancelling action') || false, 'Live announcer announced cancelling in progress');
+
+  // State 3: CANCELLED (successful)
+  setStagingUIState('cancelled');
+  assertEquals(getStagingUIState(), 'cancelled', 'UI state transitioned to "cancelled"');
+  const pillCancelled = shadow13A.querySelector('.gs-mode-pill');
+  assertEquals(pillCancelled?.textContent, 'Cancelled', 'Mode pill text is "Cancelled"');
+  assert(pillCancelled?.classList.contains('gs-badge-cancelled') || false, 'Mode pill has .gs-badge-cancelled');
+  const titleCancelled = shadow13A.querySelector('.gs-heading-title');
+  assertEquals(titleCancelled?.textContent, 'Action Cancelled', 'Title updated to "Action Cancelled"');
+  const bannerSuccess = shadow13A.querySelector('.gs-confirmation-success');
+  assert(Boolean(bannerSuccess), 'Confirmation success banner is rendered');
+  assertEquals(cancelBtn13A.textContent, 'Action Cancelled', 'Cancel button displays "Action Cancelled"');
+  assertEquals(cancelBtn13A.disabled, true, 'Cancel button remains disabled in cancelled state');
+  assertEquals(reqBtn13A.style.display, 'none', 'Request button is hidden in cancelled state');
+  assert(liveAnnouncer?.textContent?.includes('Action cancelled. Nothing was changed.') || false, 'Live announcer announced cancellation success');
+
+  // State 4: INTENT_RECORDED (approval request intent recorded locally)
+  setStagingUIState('approval_intent_recorded');
+  assertEquals(getStagingUIState(), 'approval_intent_recorded', 'UI state transitioned to "approval_intent_recorded"');
+  const pillRequested = shadow13A.querySelector('.gs-mode-pill');
+  assertEquals(pillRequested?.textContent, 'Paused (Request Prepared)', 'Mode pill indicates "Paused (Request Prepared)"');
+  assert(pillRequested?.classList.contains('gs-badge-requested') || false, 'Mode pill has .gs-badge-requested');
+  const bannerInfo = shadow13A.querySelector('.gs-confirmation-info');
+  assert(Boolean(bannerInfo), 'Confirmation info banner is rendered');
+  assertEquals(reqBtn13A.textContent, 'Request Prepared (Local)', 'Request button shows "Request Prepared (Local)"');
+  assertEquals(reqBtn13A.disabled, true, 'Request button is disabled');
+  assertEquals(cancelBtn13A.disabled, false, 'Cancel button is re-enabled so user can still cancel held action');
+  assert(liveAnnouncer?.textContent?.includes('Approval request intent recorded locally') || false, 'Live announcer announced approval intent recorded');
+
+  // State 5: STALE_OR_INVALID (operation failed / stale / no longer valid)
+  setStagingUIState('stale_or_invalid', { error: 'Interception record is no longer active.' });
+  assertEquals(getStagingUIState(), 'stale_or_invalid', 'UI state transitioned to "stale_or_invalid"')
+  const pillStale = shadow13A.querySelector('.gs-mode-pill');
+  assertEquals(pillStale?.textContent, 'Operation Unavailable', 'Mode pill indicates "Operation Unavailable"');
+  assert(pillStale?.classList.contains('gs-badge-stale') || false, 'Mode pill has .gs-badge-stale');
+  const titleStale = shadow13A.querySelector('.gs-heading-title');
+  assertEquals(titleStale?.textContent, 'Action No Longer Held', 'Title updated to "Action No Longer Held"');
+  const bannerError = shadow13A.querySelector('.gs-confirmation-error');
+  assert(Boolean(bannerError), 'Confirmation error banner is rendered');
+  assertEquals(cancelBtn13A.disabled, true, 'Cancel button is disabled in stale state');
+  assertEquals(reqBtn13A.disabled, true, 'Request button is disabled in stale state');
+  assertEquals(liveAnnouncer?.getAttribute('role'), 'alert', 'Live announcer role switched to "alert" for stale/error state');
+  assertEquals(liveAnnouncer?.getAttribute('aria-live'), 'assertive', 'Live announcer aria-live switched to "assertive" for stale/error state');
+
+  dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13B: Mutual Operation Locking & Repeated Activation
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13B: Mutual Operation Locking & Repeated Activation');
+  const actionId13B = 'action-mutual-lock-13b';
+  const testAction13B: GuardrailAction = {
+    id: actionId13B,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction13B, 'Registered');
+  testController.holdAction(actionId13B, 'Held');
+
+  let handler13BExecutions = 0;
+  testManager.registerHeldAction(testAction13B, testController.getRecord(actionId13B)!, () => {
+    handler13BExecutions++;
+  });
+
+  let cancelCallbacks = 0;
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId13B,
+      interceptionState: InterceptionState.HELD,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancelSuccess: () => {
+      cancelCallbacks++;
+    },
+  });
+
+  const shadow13B = getStagingModalShadowRoot()!;
+  const cancelBtn13B = shadow13B.querySelector('#gs-btn-cancel-action') as any;
+  const reqBtn13B = shadow13B.querySelector('#gs-btn-request-approval') as any;
+
+  // Click cancel: should lock both buttons and cancel action safely
+  cancelBtn13B.click();
+  // Attempt clicking request approval while cancelled / after cancel:
+  reqBtn13B.click();
+  reqBtn13B.click();
+  // Attempt clicking cancel again:
+  cancelBtn13B.click();
+  cancelBtn13B.click();
+
+  assertEquals(cancelCallbacks, 1, 'Cancellation callback executed exactly once');
+  assertEquals(handler13BExecutions, 0, 'Handler execution strictly 0 during repeated clicks');
+  assertEquals(testController.getRecord(actionId13B)?.state, InterceptionState.CANCELLED, 'Action transitioned to CANCELLED');
+
+  dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13C: Full Keyboard Navigation, Focus Trapping & Restoration
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13C: Full Keyboard Navigation, Focus Trapping & Restoration');
+  // Create an external host page button to test focus restoration
+  const externalPageBtn = (globalThis as any).document.createElement('BUTTON');
+  externalPageBtn.id = 'external-trigger-button';
+  (globalThis as any).document.body.appendChild(externalPageBtn);
+  externalPageBtn.focus();
+
+  assertEquals((globalThis as any).document.activeElement, externalPageBtn, 'External page button has active focus before modal');
+
+  const actionId13C = 'action-keyboard-13c';
+  const testAction13C: GuardrailAction = {
+    id: actionId13C,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction13C, 'Registered');
+  testController.holdAction(actionId13C, 'Held');
+
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId13C,
+      interceptionState: InterceptionState.HELD,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+  });
+
+  const shadow13C = getStagingModalShadowRoot()!;
+  const focusable13C = getFocusableElements(shadow13C);
+  assertEquals(focusable13C.length, 4, 'Four interactive controls identified in active modal (Close, Secondary, Cancel, Request)');
+
+  const closeBtn13C = shadow13C.querySelector('.gs-btn-close') as any;
+  const secondaryBtn13C = shadow13C.querySelector('.gs-btn-secondary') as any;
+  const cancelBtn13C = shadow13C.querySelector('#gs-btn-cancel-action') as any;
+  const reqBtn13C = shadow13C.querySelector('#gs-btn-request-approval') as any;
+
+  // Initial focus check: Cancel Action button or first interactive button has focus
+  const initialActive = (globalThis as any).document.activeElement;
+  assert(initialActive === cancelBtn13C || initialActive === closeBtn13C, 'Initial focus placed on modal interactive control');
+
+  // Test sequential forward Tab cycling through controls
+  closeBtn13C.focus();
+  assertEquals((globalThis as any).document.activeElement, closeBtn13C, 'Focus set to close button');
+
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Tab', shiftKey: false, preventDefault: () => {} });
+  assertEquals((globalThis as any).document.activeElement, secondaryBtn13C, 'Tab moved focus to secondary button');
+
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Tab', shiftKey: false, preventDefault: () => {} });
+  assertEquals((globalThis as any).document.activeElement, cancelBtn13C, 'Tab moved focus to cancel action button');
+
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Tab', shiftKey: false, preventDefault: () => {} });
+  assertEquals((globalThis as any).document.activeElement, reqBtn13C, 'Tab moved focus to request approval button');
+
+  // Forward Tab on last element wraps back to first element (Close button)
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Tab', shiftKey: false, preventDefault: () => {} });
+  assertEquals((globalThis as any).document.activeElement, closeBtn13C, 'Tab wrapped focus back to first control (close button)');
+
+  // Test backward Shift+Tab cycling
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Tab', shiftKey: true, preventDefault: () => {} });
+  assertEquals((globalThis as any).document.activeElement, reqBtn13C, 'Shift+Tab wrapped focus backwards to last control (request button)');
+
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Tab', shiftKey: true, preventDefault: () => {} });
+  assertEquals((globalThis as any).document.activeElement, cancelBtn13C, 'Shift+Tab moved focus backwards to cancel button');
+
+  // Test Escape key dismiss
+  (globalThis as any).window.dispatchEvent({ type: 'keydown', key: 'Escape' });
+  assertEquals(isStagingModalActive(), false, 'Escape key dismisses staging modal');
+
+  // Test Focus Restoration to prior element
+  assertEquals((globalThis as any).document.activeElement, externalPageBtn, 'Focus restored to external trigger button upon modal dismissal');
+  externalPageBtn.remove();
+
+  // ------------------------------------------------------------
+  // Subtest 13D: Visible Focus Indicators, Touch Targets & Mobile Query
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13D: Visible Focus Indicators, Touch Targets & Mobile Query');
+  showStagingModal({
+    context: createSampleContext({ actionId: 'action-styles-13d' }),
+    state: 'active',
+  });
+
+  const shadow13D = getStagingModalShadowRoot()!;
+  const styleEl = shadow13D.querySelector('style')!;
+  const cssContent = styleEl.textContent || '';
+
+  // Focus visible styles
+  assert(cssContent.includes('.gs-btn:focus-visible'), 'CSS defines .gs-btn:focus-visible');
+  assert(cssContent.includes('.gs-btn-close:focus-visible'), 'CSS defines .gs-btn-close:focus-visible');
+  assert(cssContent.includes('outline: 2px solid #38bdf8'), 'Focus indicator uses high-contrast 2px cyan outline');
+  assert(cssContent.includes('outline-offset: 2px'), 'Focus indicator includes 2px offset for visual clarity');
+
+  // Touch targets (min 44x44px for WCAG 2.5.5 / 2.5.8)
+  assert(cssContent.includes('min-height: 44px'), 'Buttons have min-height: 44px');
+  assert(cssContent.includes('min-width: 44px'), 'Buttons have min-width: 44px');
+
+  // Responsive mobile query & reduced motion
+  assert(cssContent.includes('@media (max-width: 640px)'), 'CSS contains responsive breakpoint for viewports <= 640px');
+  assert(cssContent.includes('flex-direction: column-reverse'), 'Mobile footer stacks buttons in reverse column order');
+  assert(cssContent.includes('@media (prefers-reduced-motion: reduce)'), 'CSS accommodates prefers-reduced-motion: reduce');
+
+  dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13E: Non-Color-Alone Risk & Warning Communication
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13E: Non-Color-Alone Risk & Warning Communication');
+  // LOW Risk
+  showStagingModal({
+    context: createSampleContext({
+      actionId: 'action-risk-low',
+      riskLevel: RiskLevel.LOW,
+      riskScore: 15,
+    }),
+    state: 'active',
+  });
+  const shadowLow = getStagingModalShadowRoot()!;
+  const lowHeadline = shadowLow.querySelector('#gs-risk-heading')?.textContent || '';
+  const lowBadge = shadowLow.querySelector('.gs-risk-badge');
+  assert(lowHeadline.includes('Routine Activity'), 'LOW risk headline includes plain text "Routine Activity"');
+  assert(lowBadge?.getAttribute('aria-label')?.includes('LOW risk') || false, 'LOW risk badge has accessible aria-label');
+
+  // HIGH Risk
+  updateStagingModal({
+    context: createSampleContext({
+      actionId: 'action-risk-high',
+      riskLevel: RiskLevel.HIGH,
+      riskScore: 75,
+    }),
+    state: 'active',
+  });
+  const shadowHigh = getStagingModalShadowRoot()!;
+  const highHeadline = shadowHigh.querySelector('#gs-risk-heading')?.textContent || '';
+  const highBadge = shadowHigh.querySelector('.gs-risk-badge');
+  assert(highHeadline.includes('Sensitive Operation'), 'HIGH risk headline includes plain text "Sensitive Operation"');
+  assert(highBadge?.getAttribute('aria-label')?.includes('HIGH risk') || false, 'HIGH risk badge has accessible aria-label');
+
+  // CRITICAL Risk
+  updateStagingModal({
+    context: createSampleContext({
+      actionId: 'action-risk-crit',
+      riskLevel: RiskLevel.CRITICAL,
+      riskScore: 95,
+    }),
+    state: 'active',
+  });
+  const shadowCrit = getStagingModalShadowRoot()!;
+  const critHeadline = shadowCrit.querySelector('#gs-risk-heading')?.textContent || '';
+  const critBadge = shadowCrit.querySelector('.gs-risk-badge');
+  assert(critHeadline.includes('High-Impact Action'), 'CRITICAL risk headline includes plain text "High-Impact Action"');
+  assert(critBadge?.getAttribute('aria-label')?.includes('CRITICAL risk') || false, 'CRITICAL risk badge has accessible aria-label');
+
+  // Check screen-reader text summary exists inside risk header
+  const srSummary = shadowCrit.querySelector('.gs-risk-header .gs-sr-only');
+  assert(Boolean(srSummary), 'Screen reader explicit text summary exists inside risk header');
+  assert(srSummary?.textContent?.includes('Severity Level: CRITICAL') || false, 'Screen reader summary announces "Severity Level: CRITICAL"');
+
+  dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13F: Screen Reader Live Region Announcements
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13F: Screen Reader Live Region Announcements');
+  showStagingModal({
+    context: createSampleContext({ actionId: 'action-sr-13f' }),
+    state: 'active',
+  });
+  const shadow13F = getStagingModalShadowRoot()!;
+  const announcer13F = shadow13F.querySelector('#gs-live-announcer');
+  assert(Boolean(announcer13F), 'Live announcer element #gs-live-announcer exists');
+  assertEquals(announcer13F?.getAttribute('role'), 'status', 'Default announcer role is "status"');
+  assertEquals(announcer13F?.getAttribute('aria-live'), 'polite', 'Default announcer aria-live is "polite"');
+
+  announceStagingState('Custom polite announcement test.');
+  assertEquals(announcer13F?.textContent, 'Custom polite announcement test.', 'Polite message written to live announcer');
+
+  announceStagingState('High priority alert message test.', true);
+  assertEquals(announcer13F?.getAttribute('role'), 'alert', 'Alert message switches role to "alert"');
+  assertEquals(announcer13F?.getAttribute('aria-live'), 'assertive', 'Alert message switches aria-live to "assertive"');
+  assertEquals(announcer13F?.textContent, 'High priority alert message test.', 'Alert message written to live announcer');
+
+  dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13G: Stale Interception Record Handling Without Re-Execution
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13G: Stale Interception Record Handling Without Re-Execution');
+  const actionId13G = 'action-stale-13g';
+  const testAction13G: GuardrailAction = {
+    id: actionId13G,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction13G, 'Registered');
+  testController.holdAction(actionId13G, 'Held');
+
+  let handler13GExecutions = 0;
+  testManager.registerHeldAction(testAction13G, testController.getRecord(actionId13G)!, () => {
+    handler13GExecutions++;
+  });
+
+  testController.continueAction(actionId13G, 'Already continued');
+
+  let cancelErrorTriggered = false;
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId13G,
+      interceptionState: InterceptionState.CONTINUED,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancelError: () => {
+      cancelErrorTriggered = true;
+    },
+  });
+
+  const shadow13G = getStagingModalShadowRoot()!;
+  const cancelBtn13G = shadow13G.querySelector('#gs-btn-cancel-action') as any;
+
+  // Trigger Cancel on already-continued action
+  cancelBtn13G.click();
+
+  assertEquals(cancelErrorTriggered, true, 'Cancellation rejected for already-CONTINUED action');
+  assertEquals(handler13GExecutions, 0, 'Handler was NEVER executed when cancellation rejected');
+  assertEquals(getStagingUIState(), 'stale_or_invalid', 'UI state transitioned to "stale_or_invalid"');
+
+  const pillStale13G = shadow13G.querySelector('.gs-mode-pill');
+  assertEquals(pillStale13G?.textContent, 'Operation Unavailable', 'Mode pill updated to "Operation Unavailable"');
+  assert(pillStale13G?.classList.contains('gs-badge-stale') || false, 'Mode pill has .gs-badge-stale');
+  assertEquals(cancelBtn13G.disabled, true, 'Cancel button permanently disabled after rejection');
+
+  // Direct test of handleModalCancel with undefined actionId
+  const dummyBtn = (globalThis as any).document.createElement('BUTTON');
+  const directCancelResult = handleModalCancel(undefined, {}, {
+    cancelBtn: dummyBtn,
+    body: (globalThis as any).document.createElement('DIV'),
+    header: (globalThis as any).document.createElement('HEADER'),
+  });
+  assertEquals(directCancelResult.success, false, 'handleModalCancel directly rejects undefined actionId');
 
   dismissStagingModal();
 }

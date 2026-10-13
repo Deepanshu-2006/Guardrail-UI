@@ -16,7 +16,8 @@
     "test:verify": "esbuild src/interception/verify-day8-scenarios.ts --bundle --format=esm --target=es2022 --outfile=dist/verify-day8-scenarios.js && node dist/verify-day8-scenarios.js",
     "test:staging": "esbuild src/staging/test-staging-context.ts --bundle --format=esm --target=es2022 --outfile=dist/test-staging-context.js && node dist/test-staging-context.js",
     "test:staging-ui": "esbuild src/staging/test-staging-ui.ts --bundle --format=esm --target=es2022 --outfile=dist/test-staging-ui.js && node dist/test-staging-ui.js",
-    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui"
+    "test:verify-staging": "esbuild src/staging/verify-staging-workflow.ts --bundle --format=esm --target=es2022 --outfile=dist/verify-staging-workflow.js && node dist/verify-staging-workflow.js",
+    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui && npm run test:verify-staging"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.308",

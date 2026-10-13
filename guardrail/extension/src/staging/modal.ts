@@ -45,6 +45,16 @@ export const STAGING_HOST_ELEMENT_ID = 'guardrail-staging-ui-host';
 
 export type StagingDisplayState = 'active' | 'loading' | 'empty';
 
+/**
+ * Explicit, mutually distinct interface states for Staging Mode operations.
+ */
+export type StagingInterceptionUIState =
+  | 'held'
+  | 'cancelling'
+  | 'cancelled'
+  | 'approval_intent_recorded'
+  | 'stale_or_invalid';
+
 export interface StagingModalOptions {
   /** The prepared staging action context (required when state is 'active') */
   context?: StagingActionContext;
@@ -63,6 +73,7 @@ export interface StagingModalOptions {
     actionId: string
   ) =>
     | CancellationResult
+    | Promise<CancellationResult>
     | { success: boolean; actionId: string; error?: string; record?: InterceptionRecord };
 
   /** InterceptionController instance to use (defaults to defaultInterceptionController) */
@@ -92,6 +103,8 @@ export interface StagingModalOptions {
 let activeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 let currentHost: HTMLDivElement | null = null;
 let currentShadow: ShadowRoot | null = null;
+let currentUIState: StagingInterceptionUIState | null = null;
+let previousActiveElement: HTMLElement | null = null;
 
 /**
  * Checks whether the Guardrail Staging Modal is currently mounted in the document.
@@ -109,8 +122,15 @@ export function getStagingModalShadowRoot(): ShadowRoot | null {
 }
 
 /**
+ * Returns the current programmatic UI state of Staging Mode, or null if modal is not open.
+ */
+export function getStagingUIState(): StagingInterceptionUIState | null {
+  return currentUIState;
+}
+
+/**
  * Dismisses and cleans up the active Guardrail Staging Modal.
- * Removes host element and unregisters keyboard event listeners.
+ * Removes host element, unregisters keyboard event listeners, and restores focus to page.
  */
 export function dismissStagingModal(): void {
   if (activeKeyHandler && typeof window !== 'undefined') {
@@ -129,6 +149,17 @@ export function dismissStagingModal(): void {
 
   currentHost = null;
   currentShadow = null;
+  currentUIState = null;
+
+  // Restore focus to previous active element before modal opened
+  if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+    try {
+      previousActiveElement.focus();
+    } catch {
+      // Ignore if element is detached
+    }
+  }
+  previousActiveElement = null;
 }
 
 /**
@@ -506,8 +537,10 @@ function createStagingStyles(): HTMLStyleElement {
       border: none;
       color: #94a3b8;
       font-size: 18px;
-      width: 32px;
-      height: 32px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -515,6 +548,7 @@ function createStagingStyles(): HTMLStyleElement {
       cursor: pointer;
       transition: background 0.15s ease, color 0.15s ease;
       padding: 0;
+      outline: none;
     }
 
     .gs-btn-close:hover {
@@ -769,7 +803,9 @@ function createStagingStyles(): HTMLStyleElement {
       font-family: inherit;
       font-size: 13px;
       font-weight: 600;
-      padding: 9px 18px;
+      padding: 10px 20px;
+      min-height: 44px;
+      min-width: 44px;
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
@@ -778,6 +814,19 @@ function createStagingStyles(): HTMLStyleElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* Visible High-Contrast Focus Indicators (WCAG 2.4.7 / 2.4.11) */
+    .gs-btn:focus-visible,
+    .gs-btn-close:focus-visible {
+      outline: 2px solid #38bdf8 !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25) !important;
+    }
+
+    .gs-btn:focus:not(:focus-visible),
+    .gs-btn-close:focus:not(:focus-visible) {
+      outline: none;
     }
 
     .gs-btn-secondary {
@@ -797,9 +846,16 @@ function createStagingStyles(): HTMLStyleElement {
       box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
     }
 
-    .gs-btn-primary:hover {
+    .gs-btn-primary:hover:not(:disabled) {
       background: #0369a1;
       transform: translateY(-1px);
+    }
+
+    .gs-btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     .gs-btn-cancel {
@@ -819,6 +875,19 @@ function createStagingStyles(): HTMLStyleElement {
       opacity: 0.5;
       cursor: not-allowed;
       transform: none;
+    }
+
+    /* Screen Reader Only Utility */
+    .gs-sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
     }
 
     /* Confirmation & Status Banners */
@@ -883,6 +952,19 @@ function createStagingStyles(): HTMLStyleElement {
       color: #cbd5e1;
     }
 
+    /* Distinct Interface State Badges */
+    .gs-badge-held {
+      background: rgba(56, 189, 248, 0.15) !important;
+      color: #38bdf8 !important;
+      border-color: rgba(56, 189, 248, 0.4) !important;
+    }
+
+    .gs-badge-cancelling {
+      background: rgba(245, 158, 11, 0.18) !important;
+      color: #fbbf24 !important;
+      border-color: rgba(245, 158, 11, 0.45) !important;
+    }
+
     .gs-badge-cancelled {
       background: rgba(148, 163, 184, 0.15) !important;
       color: #94a3b8 !important;
@@ -893,6 +975,12 @@ function createStagingStyles(): HTMLStyleElement {
       background: rgba(14, 165, 233, 0.15) !important;
       color: #38bdf8 !important;
       border-color: rgba(14, 165, 233, 0.35) !important;
+    }
+
+    .gs-badge-stale {
+      background: rgba(239, 68, 68, 0.15) !important;
+      color: #f87171 !important;
+      border-color: rgba(239, 68, 68, 0.4) !important;
     }
 
     /* Empty & Loading States */
@@ -923,7 +1011,7 @@ function createStagingStyles(): HTMLStyleElement {
       line-height: 1.5;
     }
 
-    /* Animations */
+    /* Animations & Reduced Motion */
     @keyframes gsFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -940,21 +1028,52 @@ function createStagingStyles(): HTMLStyleElement {
       }
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+
     @media (max-width: 640px) {
+      .gs-backdrop {
+        padding: 12px;
+        align-items: flex-end;
+      }
       .gs-shell {
         max-width: 100%;
+        border-radius: 16px 16px 0 0;
+        max-height: 92vh;
       }
-      .gs-header, .gs-body, .gs-footer {
-        padding-left: 16px;
-        padding-right: 16px;
+      .gs-header {
+        padding: 14px 16px;
+      }
+      .gs-body {
+        padding: 16px;
+        max-height: calc(92vh - 160px);
+        gap: 16px;
       }
       .gs-footer {
-        flex-direction: column;
+        flex-direction: column-reverse;
         align-items: stretch;
+        gap: 12px;
+        padding: 14px 16px;
       }
       .gs-btn-group {
+        flex-direction: column-reverse;
         width: 100%;
-        justify-content: flex-end;
+        gap: 10px;
+      }
+      .gs-btn {
+        width: 100%;
+        min-height: 48px;
+        font-size: 14px;
+        justify-content: center;
+      }
+      .gs-footer-notice {
+        text-align: center;
+        font-size: 11px;
       }
     }
   `;
@@ -980,7 +1099,7 @@ function renderHeader(onClose: () => void): HTMLElement {
   title.textContent = 'Guardrail Staging';
 
   const pill = document.createElement('span');
-  pill.className = 'gs-mode-pill';
+  pill.className = 'gs-mode-pill gs-badge-held';
   pill.textContent = 'Review Mode';
 
   brandGroup.appendChild(icon);
@@ -1135,9 +1254,22 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
     typeof context.riskScore === 'number' && !isNaN(context.riskScore)
       ? `${context.riskLevel || 'EVALUATED'} (${context.riskScore})`
       : `${context.riskLevel || 'EVALUATED'}`;
+  riskBadge.setAttribute(
+    'aria-label',
+    `Risk assessment: ${context.riskLevel || 'EVALUATED'} risk, score ${
+      typeof context.riskScore === 'number' ? context.riskScore : 'not available'
+    }`
+  );
+
+  const riskSrSummary = document.createElement('span');
+  riskSrSummary.className = 'gs-sr-only';
+  riskSrSummary.textContent = `Severity Level: ${context.riskLevel || 'LOW'}. Risk Score: ${
+    typeof context.riskScore === 'number' ? context.riskScore : 'N/A'
+  } out of 100.`;
 
   riskHeader.appendChild(riskHeadline);
   riskHeader.appendChild(riskBadge);
+  riskHeader.appendChild(riskSrSummary);
   riskCard.appendChild(riskHeader);
 
   // Reassuring explanation of what the risk evaluation means
@@ -1311,6 +1443,213 @@ export function displayConfirmationBanner(
   return banner;
 }
 
+/**
+ * Screen Reader Live Region Announcer helper.
+ * Updates the polite or assertive announcer text within the modal shadow root.
+ */
+export function announceStagingState(message: string, isAlert: boolean = false): void {
+  if (!currentShadow) return;
+  const announcer = currentShadow.querySelector('#gs-live-announcer');
+  if (announcer) {
+    if (isAlert) {
+      announcer.setAttribute('role', 'alert');
+      announcer.setAttribute('aria-live', 'assertive');
+    } else {
+      announcer.setAttribute('role', 'status');
+      announcer.setAttribute('aria-live', 'polite');
+    }
+    announcer.textContent = message;
+  }
+}
+
+/**
+ * Transitions the Staging Mode UI to one of the 5 canonical interface states:
+ * - 'held': Action held for review.
+ * - 'cancelling': Cancellation in progress.
+ * - 'cancelled': Successful cancellation.
+ * - 'approval_intent_recorded': Local approval intent recorded.
+ * - 'stale_or_invalid': Operation failed, stale, or no longer valid.
+ */
+export function setStagingUIState(
+  state: StagingInterceptionUIState,
+  details?: { error?: string; description?: string }
+): void {
+  currentUIState = state;
+  if (!currentShadow) return;
+
+  const pill = currentShadow.querySelector('.gs-mode-pill');
+  const title = currentShadow.querySelector('.gs-heading-title');
+  const subtitle = currentShadow.querySelector('.gs-heading-subtitle');
+  const body = currentShadow.querySelector('.gs-body') as HTMLElement;
+  const notice = currentShadow.querySelector('.gs-footer-notice');
+  const cancelBtn = currentShadow.querySelector('#gs-btn-cancel-action') as HTMLButtonElement | null;
+  const reqBtn = currentShadow.querySelector('#gs-btn-request-approval') as HTMLButtonElement | null;
+
+  switch (state) {
+    case 'held':
+      if (pill) {
+        pill.textContent = 'Review Mode';
+        pill.classList.remove('gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
+        pill.classList.add('gs-badge-held');
+      }
+      if (title) title.textContent = 'Action Paused for Your Review';
+      if (subtitle) {
+        subtitle.textContent =
+          'Guardrail paused this action before it happens so you have a moment to review it. Nothing has been sent or changed yet.';
+      }
+      if (notice) {
+        notice.textContent = 'Staging Mode Shell • Approval workflow active in upcoming milestone';
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+        cancelBtn.removeAttribute('aria-busy');
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Approval';
+        reqBtn.disabled = false;
+        reqBtn.removeAttribute('aria-disabled');
+        reqBtn.removeAttribute('aria-busy');
+        reqBtn.style.display = '';
+      }
+      announceStagingState('Action paused for review.');
+      break;
+
+    case 'cancelling':
+      if (pill) {
+        pill.textContent = 'Cancelling...';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
+        pill.classList.add('gs-badge-cancelling');
+      }
+      if (notice) {
+        notice.textContent = 'Cancelling action safely • Please wait...';
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancelling...';
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
+        cancelBtn.setAttribute('aria-busy', 'true');
+      }
+      if (reqBtn) {
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+      }
+      announceStagingState('Cancelling action. Please wait.');
+      break;
+
+    case 'cancelled':
+      if (pill) {
+        pill.textContent = 'Cancelled';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-requested', 'gs-badge-stale');
+        pill.classList.add('gs-badge-cancelled');
+      }
+      if (title) title.textContent = 'Action Cancelled';
+      if (subtitle) {
+        subtitle.textContent = 'This action was cancelled before it could run. Nothing was changed.';
+      }
+      if (notice) {
+        notice.textContent = 'Action cancelled safely • State: CANCELLED';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'success',
+          'Action cancelled. Nothing was changed.',
+          'The held interaction was aborted safely. No action was executed, no network data was sent, and no page state was modified.'
+        );
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Action Cancelled';
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
+        cancelBtn.removeAttribute('aria-busy');
+      }
+      if (reqBtn) {
+        reqBtn.disabled = true;
+        reqBtn.style.display = 'none';
+      }
+      announceStagingState('Action cancelled. Nothing was changed.');
+      break;
+
+    case 'approval_intent_recorded':
+      if (pill) {
+        pill.textContent = 'Paused (Request Prepared)';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-stale');
+        pill.classList.add('gs-badge-requested');
+      }
+      if (notice) {
+        notice.textContent = 'Approval intent recorded locally • Backend not connected • State: HELD';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'info',
+          'Approval Request Prepared (Local Prototype)',
+          'An approval request intent was recorded locally for this action. Remote caretaker approval and backend services are not connected yet. This action remains safely paused and will not execute.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Prepared (Local)';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState(
+        'Approval request intent recorded locally. Remote caretaker approval and backend services are not connected yet. Action remains paused.'
+      );
+      break;
+
+    case 'stale_or_invalid':
+      if (pill) {
+        pill.textContent = 'Operation Unavailable';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Action No Longer Held';
+      if (subtitle) {
+        subtitle.textContent =
+          'This action has already been resolved or is no longer available in Guardrail.';
+      }
+      if (notice) {
+        notice.textContent = 'Action cannot be modified • Interception is no longer held';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Action Unavailable or Already Resolved',
+          details?.error ||
+            'The action could not be processed because its state has already changed or it is no longer held.'
+        );
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Action Unavailable';
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
+        cancelBtn.removeAttribute('aria-busy');
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Unavailable';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      announceStagingState(
+        `Operation failed: ${
+          details?.error || 'Action is no longer held or could not be processed.'
+        }`,
+        true
+      );
+      break;
+  }
+}
+
 export interface ModalCancelUIElements {
   cancelBtn: HTMLButtonElement;
   primaryBtn?: HTMLButtonElement;
@@ -1340,6 +1679,7 @@ export function handleModalCancel(
   // 1. Immediately disable button to prevent repeated clicks / duplicate requests
   cancelBtn.disabled = true;
   cancelBtn.setAttribute('aria-disabled', 'true');
+  cancelBtn.removeAttribute('aria-busy');
 
   const id = actionId?.trim();
   if (!id) {
@@ -1354,6 +1694,15 @@ export function handleModalCancel(
       'Cancellation Could Not Be Completed',
       errorResult.error!
     );
+    currentUIState = 'stale_or_invalid';
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Operation Unavailable';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-stale');
+    }
+    cancelBtn.textContent = 'Cancellation Failed';
+    announceStagingState('Cancellation could not be completed: ' + errorResult.error, true);
     if (options.onCancelError) {
       options.onCancelError(errorResult);
     }
@@ -1364,7 +1713,7 @@ export function handleModalCancel(
   let result: CancellationResult;
 
   if (options.onCancel) {
-    result = options.onCancel(id);
+    result = options.onCancel(id) as CancellationResult;
   } else if (options.continuationManager) {
     result = options.continuationManager.cancelAction(
       id,
@@ -1398,6 +1747,7 @@ export function handleModalCancel(
 
   // 3. Process outcome
   if (result.success) {
+    currentUIState = 'cancelled';
     // SUCCESS: Display confirmation ONLY after cancellation has succeeded
     displayConfirmationBanner(
       body,
@@ -1410,6 +1760,7 @@ export function handleModalCancel(
     const pill = header.querySelector('.gs-mode-pill');
     if (pill) {
       pill.textContent = 'Cancelled';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-requested', 'gs-badge-stale');
       pill.classList.add('gs-badge-cancelled');
     }
 
@@ -1433,12 +1784,14 @@ export function handleModalCancel(
       notice.textContent = 'Action cancelled safely • State: CANCELLED';
     }
 
+    announceStagingState('Action cancelled. Nothing was changed.');
+
     if (options.onCancelSuccess) {
       options.onCancelSuccess(result);
     }
   } else {
+    currentUIState = 'stale_or_invalid';
     // REJECTION: Interception was already resolved, invalid state, or unknown ID
-    // Show appropriate message rather than claiming success
     displayConfirmationBanner(
       body,
       'error',
@@ -1446,8 +1799,25 @@ export function handleModalCancel(
       result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'
     );
 
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Operation Unavailable';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-stale');
+    }
+
     // Keep button disabled to prevent duplicate attempts on an unresolvable action
     cancelBtn.textContent = 'Cancellation Failed';
+    if (primaryBtn) {
+      primaryBtn.disabled = true;
+      primaryBtn.setAttribute('aria-disabled', 'true');
+    }
+
+    announceStagingState(
+      'Cancellation could not be completed: ' +
+        (result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'),
+      true
+    );
 
     if (options.onCancelError) {
       options.onCancelError(result);
@@ -1491,6 +1861,7 @@ export function handleModalRequestApproval(
   // 1. Immediately disable button to prevent repeated clicks / duplicate requests
   requestBtn.disabled = true;
   requestBtn.setAttribute('aria-disabled', 'true');
+  requestBtn.removeAttribute('aria-busy');
 
   // 2. Validate context and identifier
   const actionId = context?.actionId?.trim();
@@ -1501,13 +1872,21 @@ export function handleModalRequestApproval(
       error: 'Cannot request approval: No valid action context or identifier is available.',
       isBackendConnected: false,
     };
+    currentUIState = 'stale_or_invalid';
     displayConfirmationBanner(
       body,
       'error',
       'Approval Request Could Not Be Prepared',
       errorResult.error!
     );
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Operation Unavailable';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-stale');
+    }
     requestBtn.textContent = 'Request Unavailable';
+    announceStagingState('Approval request could not be prepared: ' + errorResult.error, true);
     if (options.onRequestApprovalError) {
       options.onRequestApprovalError(errorResult);
     }
@@ -1525,13 +1904,25 @@ export function handleModalRequestApproval(
       error: `Cannot request approval: Action "${actionId}" is not actively tracked by Guardrail.`,
       isBackendConnected: false,
     };
+    currentUIState = 'stale_or_invalid';
     displayConfirmationBanner(
       body,
       'error',
       'Approval Request Could Not Be Prepared',
       errorResult.error!
     );
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Operation Unavailable';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-stale');
+    }
     requestBtn.textContent = 'Request Unavailable';
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.setAttribute('aria-disabled', 'true');
+    }
+    announceStagingState('Approval request could not be prepared: ' + errorResult.error, true);
     if (options.onRequestApprovalError) {
       options.onRequestApprovalError(errorResult);
     }
@@ -1545,13 +1936,25 @@ export function handleModalRequestApproval(
       error: `Cannot request approval for action "${actionId}": State is "${record.state}". Only actions in HELD state are eligible for approval requests.`,
       isBackendConnected: false,
     };
+    currentUIState = 'stale_or_invalid';
     displayConfirmationBanner(
       body,
       'error',
       'Approval Request Could Not Be Prepared',
       errorResult.error!
     );
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Operation Unavailable';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-stale');
+    }
     requestBtn.textContent = 'Request Unavailable';
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.setAttribute('aria-disabled', 'true');
+    }
+    announceStagingState('Approval request could not be prepared: ' + errorResult.error, true);
     if (options.onRequestApprovalError) {
       options.onRequestApprovalError(errorResult);
     }
@@ -1570,6 +1973,7 @@ export function handleModalRequestApproval(
       error: errorMsg,
       isBackendConnected: false,
     };
+    currentUIState = 'stale_or_invalid';
     displayConfirmationBanner(
       body,
       'error',
@@ -1577,6 +1981,7 @@ export function handleModalRequestApproval(
       errorMsg
     );
     requestBtn.textContent = 'Request Failed';
+    announceStagingState('Approval request could not be prepared: ' + errorMsg, true);
     if (options.onRequestApprovalError) {
       options.onRequestApprovalError(errorResult);
     }
@@ -1615,8 +2020,7 @@ export function handleModalRequestApproval(
   });
 
   // 8. Update UI Feedback:
-  // PROTOTYPE BOUNDARY: Explicitly communicate that backend services & caretaker delivery are not connected.
-  // Never show "Request sent", "Caretaker notified", or "Approved".
+  currentUIState = 'approval_intent_recorded';
   displayConfirmationBanner(
     body,
     'info',
@@ -1628,6 +2032,7 @@ export function handleModalRequestApproval(
   const pill = header.querySelector('.gs-mode-pill');
   if (pill) {
     pill.textContent = 'Paused (Request Prepared)';
+    pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-stale');
     pill.classList.add('gs-badge-requested');
   }
 
@@ -1640,7 +2045,12 @@ export function handleModalRequestApproval(
   // Ensure cancel button remains enabled so user can still cancel this held action
   if (cancelBtn) {
     cancelBtn.disabled = false;
+    cancelBtn.removeAttribute('aria-disabled');
   }
+
+  announceStagingState(
+    'Approval request intent recorded locally. Remote caretaker approval and backend services are not connected yet. Action remains paused.'
+  );
 
   if (options.onRequestApprovalSuccess) {
     options.onRequestApprovalSuccess(result);
@@ -1683,8 +2093,7 @@ function renderFooter(
     cancelBtn.textContent = 'Cancel Action';
     cancelBtn.setAttribute('title', 'Cancel and abort this action safely');
 
-    let isCancelling = false;
-    let isRequesting = false;
+    let isOperationActive = false;
 
     const requestApprovalBtn = document.createElement('button');
     requestApprovalBtn.type = 'button';
@@ -1694,34 +2103,93 @@ function renderFooter(
     requestApprovalBtn.setAttribute('title', 'Prepare a local approval request intent for this held action');
 
     requestApprovalBtn.addEventListener('click', () => {
-      if (isRequesting || requestApprovalBtn.disabled) {
+      if (isOperationActive || requestApprovalBtn.disabled) {
         return;
       }
-      isRequesting = true;
+      isOperationActive = true;
+      requestApprovalBtn.disabled = true;
+      requestApprovalBtn.setAttribute('aria-disabled', 'true');
+      requestApprovalBtn.setAttribute('aria-busy', 'true');
+      requestApprovalBtn.textContent = 'Preparing Intent...';
+      cancelBtn.disabled = true;
+      cancelBtn.setAttribute('aria-disabled', 'true');
+
+      announceStagingState('Preparing approval request intent. Please wait.');
+
       if (options.onPrimaryAction) {
         options.onPrimaryAction();
       }
-      handleModalRequestApproval(options.context, options, {
+
+      const outcome = handleModalRequestApproval(options.context, options, {
         requestBtn: requestApprovalBtn,
         cancelBtn,
         body: uiRefs.body,
         header: uiRefs.header,
         notice,
       });
+
+      if (outcome && typeof (outcome as any).then === 'function') {
+        (outcome as any)
+          .then((res: ApprovalRequestResult) => {
+            if (res.success) {
+              isOperationActive = false;
+            } else {
+              setStagingUIState('stale_or_invalid', { error: res.error });
+            }
+          })
+          .catch((err: any) => {
+            setStagingUIState('stale_or_invalid', { error: String(err) });
+          });
+      } else {
+        if (outcome.success) {
+          isOperationActive = false;
+        }
+      }
     });
 
     cancelBtn.addEventListener('click', () => {
-      if (isCancelling || cancelBtn.disabled) {
+      if (isOperationActive || cancelBtn.disabled) {
         return;
       }
-      isCancelling = true;
-      handleModalCancel(options.context?.actionId, options, {
+      isOperationActive = true;
+      cancelBtn.disabled = true;
+      cancelBtn.setAttribute('aria-disabled', 'true');
+      cancelBtn.setAttribute('aria-busy', 'true');
+      cancelBtn.textContent = 'Cancelling...';
+      requestApprovalBtn.disabled = true;
+      requestApprovalBtn.setAttribute('aria-disabled', 'true');
+
+      const pill = uiRefs.header.querySelector('.gs-mode-pill');
+      if (pill) {
+        pill.textContent = 'Cancelling...';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
+        pill.classList.add('gs-badge-cancelling');
+      }
+      if (notice) {
+        notice.textContent = 'Cancelling action safely • Please wait...';
+      }
+      currentUIState = 'cancelling';
+      announceStagingState('Cancelling action. Please wait.');
+
+      const cancelOutcome = handleModalCancel(options.context?.actionId, options, {
         cancelBtn,
         primaryBtn: requestApprovalBtn,
         body: uiRefs.body,
         header: uiRefs.header,
         notice,
       });
+
+      if (cancelOutcome && typeof (cancelOutcome as any).then === 'function') {
+        (cancelOutcome as any)
+          .then((res: CancellationResult) => {
+            if (!res.success) {
+              setStagingUIState('stale_or_invalid', { error: res.error });
+            }
+          })
+          .catch((err: any) => {
+            setStagingUIState('stale_or_invalid', { error: String(err) });
+          });
+      }
     });
 
     btnGroup.appendChild(cancelBtn);
@@ -1746,6 +2214,15 @@ function buildModalTree(options: StagingModalOptions): HTMLElement {
   shell.setAttribute('role', 'dialog');
   shell.setAttribute('aria-modal', 'true');
   shell.setAttribute('aria-labelledby', 'gs-title-id');
+
+  // Screen Reader Live Region Announcer
+  const announcer = document.createElement('div');
+  announcer.id = 'gs-live-announcer';
+  announcer.className = 'gs-sr-only';
+  announcer.setAttribute('role', 'status');
+  announcer.setAttribute('aria-live', 'polite');
+  announcer.setAttribute('aria-atomic', 'true');
+  shell.appendChild(announcer);
 
   const handleClose = () => {
     dismissStagingModal();
@@ -1787,6 +2264,59 @@ function buildModalTree(options: StagingModalOptions): HTMLElement {
 }
 
 /**
+ * Returns an array of visible, focusable interactive controls inside the shadow root.
+ */
+export function getFocusableElements(root: ShadowRoot | null): HTMLElement[] {
+  if (!root) return [];
+  const buttons = Array.from(root.querySelectorAll('button')) as HTMLElement[];
+  return buttons.filter((el) => {
+    if ((el as any).disabled) return false;
+    if (el.style.display === 'none' || el.style.visibility === 'hidden') return false;
+    if (el.getAttribute('tabindex') === '-1') return false;
+    return true;
+  });
+}
+
+/**
+ * Keyboard Tab handler enforcing focus trapping inside the modal dialog.
+ */
+function handleTabKey(e: KeyboardEvent, shadow: ShadowRoot): void {
+  const focusable = getFocusableElements(shadow);
+  if (focusable.length === 0) {
+    if (typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    return;
+  }
+
+  const active =
+    (shadow as any).activeElement ||
+    (typeof document !== 'undefined' ? (document.activeElement as HTMLElement) : null);
+
+  const currentIndex = active ? focusable.indexOf(active) : -1;
+
+  if (typeof e.preventDefault === 'function') {
+    e.preventDefault();
+  }
+
+  if (e.shiftKey) {
+    // Backward Tab: wrap to last if currently at beginning or outside
+    if (currentIndex <= 0) {
+      focusable[focusable.length - 1].focus();
+    } else {
+      focusable[currentIndex - 1].focus();
+    }
+  } else {
+    // Forward Tab: wrap to first if currently at end or outside
+    if (currentIndex === -1 || currentIndex >= focusable.length - 1) {
+      focusable[0].focus();
+    } else {
+      focusable[currentIndex + 1].focus();
+    }
+  }
+}
+
+/**
  * Displays the Guardrail Staging Modal visual shell in the webpage DOM.
  *
  * Uses Shadow DOM for CSS isolation from the host page.
@@ -1801,6 +2331,11 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
 
   if (typeof document === 'undefined') {
     return dismissStagingModal;
+  }
+
+  // Capture active element before opening modal for focus restoration
+  if (document.activeElement) {
+    previousActiveElement = document.activeElement as HTMLElement;
   }
 
   // 2. Create host container
@@ -1818,7 +2353,7 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
   shadow.appendChild(createStagingStyles());
   shadow.appendChild(buildModalTree(options));
 
-  // 5. Register Escape key listener
+  // 5. Register Keyboard listener (Escape dismiss & Tab focus trapping)
   if (typeof window !== 'undefined') {
     activeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -1826,6 +2361,11 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
         if (options.onDismiss) {
           options.onDismiss();
         }
+        return;
+      }
+
+      if (e.key === 'Tab' && currentShadow) {
+        handleTabKey(e, currentShadow);
       }
     };
     window.addEventListener('keydown', activeKeyHandler);
@@ -1833,6 +2373,30 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
 
   // 6. Mount to document
   document.body.appendChild(host);
+
+  // 7. Establish initial UI state & accessible live announcements
+  const state = options.state || (options.context ? 'active' : 'empty');
+  if (state === 'active' && options.context) {
+    currentUIState = 'held';
+    announceStagingState(
+      `Action paused for review: ${options.context.description || 'Action held'}. Risk level: ${
+        options.context.riskLevel || 'LOW'
+      }.`
+    );
+  } else if (state === 'loading') {
+    announceStagingState('Loading staging preview. Please wait.');
+  } else {
+    announceStagingState('No action currently paused.');
+  }
+
+  // Focus initial interactive control (prefer Cancel Action or first focusable control)
+  const initialFocusEl =
+    shadow.querySelector('#gs-btn-cancel-action') ||
+    shadow.querySelector('.gs-btn-close') ||
+    shadow.querySelector('button');
+  if (initialFocusEl && typeof (initialFocusEl as any).focus === 'function') {
+    (initialFocusEl as any).focus();
+  }
 
   return dismissStagingModal;
 }

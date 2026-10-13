@@ -51,6 +51,18 @@ import {
 let latestStagingContext: StagingActionContext | null = null;
 
 /**
+ * Sanitizes plain text for safe insertion into HTML strings.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Formats pipeline evaluation results for clean development logging.
  */
 function logPipelineResult(
@@ -227,7 +239,7 @@ function updateControlledTestPageDisplay(
         detailsEl.style.display = 'block';
       }
       if (devMessageEl) {
-        devMessageEl.innerHTML = `<strong>🛡️ Guardrail Development Notice:</strong> Action <code>${action.id}</code> has been intercepted and transitioned to <strong>HELD</strong>. This action is waiting for a protection decision. Use the controls below to Continue or Cancel.`;
+        devMessageEl.innerHTML = `<strong>🛡️ Guardrail Development Notice:</strong> Action <code>${escapeHtml(action.id)}</code> has been intercepted and transitioned to <strong>HELD</strong>. This action is waiting for a protection decision. Use the controls below to Continue or Cancel.`;
         devMessageEl.style.display = 'block';
         devMessageEl.style.background = 'rgba(239, 68, 68, 0.1)';
         devMessageEl.style.borderLeftColor = '#ef4444';
@@ -706,7 +718,7 @@ function initResolutionControls(): void {
       detailsEl.style.display = 'block';
     }
     if (devMessageEl) {
-      devMessageEl.innerHTML = `<strong>✅ Action Continued:</strong> Action <code>${actionId}</code> has been continued and executed exactly once via the controlled continuation handler. Duplicate execution prevented.`;
+      devMessageEl.innerHTML = `<strong>✅ Action Continued:</strong> Action <code>${escapeHtml(actionId)}</code> has been continued and executed exactly once via the controlled continuation handler. Duplicate execution prevented.`;
       devMessageEl.style.display = 'block';
       devMessageEl.style.background = 'rgba(16, 185, 129, 0.1)';
       devMessageEl.style.borderLeftColor = '#10b981';
@@ -780,7 +792,7 @@ function initResolutionControls(): void {
       detailsEl.style.display = 'block';
     }
     if (devMessageEl) {
-      devMessageEl.innerHTML = `<strong>✕ Action Cancelled:</strong> Action <code>${actionId}</code> has been cancelled. Controlled test action was NOT executed. Temporary state cleared.`;
+      devMessageEl.innerHTML = `<strong>✕ Action Cancelled:</strong> Action <code>${escapeHtml(actionId)}</code> has been cancelled. Controlled test action was NOT executed. Temporary state cleared.`;
       devMessageEl.style.display = 'block';
       devMessageEl.style.background = 'rgba(148, 163, 184, 0.1)';
       devMessageEl.style.borderLeftColor = '#94a3b8';
