@@ -122,9 +122,10 @@ export interface GuardrailAction {
 import type { ActionClassificationResult } from './classification.js';
 import type { RiskAssessment } from './risk.js';
 import type { ResponseDecision } from './response.js';
+import type { InterceptionRecord } from './interception.js';
 
 /**
- * Extension message carrying a normalized GuardrailAction payload, optional classification, risk assessment, and response decision.
+ * Extension message carrying a normalized GuardrailAction payload, optional classification, risk assessment, response decision, and interception record.
  */
 export interface GuardrailActionMessage {
   type: 'GUARDRAIL_ACTION';
@@ -132,4 +133,5 @@ export interface GuardrailActionMessage {
   classification?: ActionClassificationResult;
   risk?: RiskAssessment;
   decision?: ResponseDecision;
+  interception?: InterceptionRecord;
 }
