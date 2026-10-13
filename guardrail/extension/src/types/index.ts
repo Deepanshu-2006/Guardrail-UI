@@ -7,6 +7,7 @@ export * from './classification.js';
 export * from './risk.js';
 export * from './response.js';
 export * from './interception.js';
+export * from './staging.js';
 
 export interface ExtensionManifestInfo {
   name: string;

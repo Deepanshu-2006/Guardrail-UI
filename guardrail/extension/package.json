@@ -14,7 +14,9 @@
     "test:proof": "esbuild src/interception/test-action-interception.ts --bundle --format=esm --target=es2022 --outfile=dist/test-action-interception.js && node dist/test-action-interception.js",
     "test:continuation": "esbuild src/interception/test-action-continuation.ts --bundle --format=esm --target=es2022 --outfile=dist/test-action-continuation.js && node dist/test-action-continuation.js",
     "test:verify": "esbuild src/interception/verify-day8-scenarios.ts --bundle --format=esm --target=es2022 --outfile=dist/verify-day8-scenarios.js && node dist/verify-day8-scenarios.js",
-    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify"
+    "test:staging": "esbuild src/staging/test-staging-context.ts --bundle --format=esm --target=es2022 --outfile=dist/test-staging-context.js && node dist/test-staging-context.js",
+    "test:staging-ui": "esbuild src/staging/test-staging-ui.ts --bundle --format=esm --target=es2022 --outfile=dist/test-staging-ui.js && node dist/test-staging-ui.js",
+    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.308",

@@ -32,10 +32,19 @@ import {
   defaultInterceptionController,
 } from '../interception/index.js';
 import {
+  createStagingActionContext,
+  dismissStagingModal,
+  isStagingModalActive,
+  showStagingModal,
+} from '../staging/index.js';
+import { StagingActionContext } from '../types/staging.js';
+import {
   dispatchActionToBackground,
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
 } from '../utils/index.js';
+
+let latestStagingContext: StagingActionContext | null = null;
 
 /**
  * Formats pipeline evaluation results for clean development logging.
@@ -450,6 +459,19 @@ function bootstrap(): void {
             'Action intercepted and held by Guardrail. Normal execution prevented; waiting for a protection decision.'
           );
 
+          // * Build and cache StagingActionContext for Staging Mode preview
+          try {
+            latestStagingContext = createStagingActionContext({
+              action,
+              interception: heldRecord,
+              risk,
+              classification,
+              decision,
+            });
+          } catch (ctxErr) {
+            console.warn('[Guardrail Content] Error creating StagingActionContext:', ctxErr);
+          }
+
           // * Show a development message explaining that the action is waiting for a protection decision.
           console.log(
             `%c[Guardrail Interception]%c 🛡️ ACTION PROTECTED (HELD)\n` +
@@ -537,6 +559,20 @@ function bootstrap(): void {
       },
       getCurrentHeldAction: () => defaultContinuationManager.getCurrentHeldAction(),
     };
+
+    (window as any).__GUARDRAIL_STAGING__ = {
+      open: (ctx?: StagingActionContext) => {
+        const target = ctx || latestStagingContext;
+        if (target) {
+          showStagingModal({ context: target, state: 'active' });
+        } else {
+          showStagingModal({ state: 'empty' });
+        }
+      },
+      dismiss: () => dismissStagingModal(),
+      isActive: () => isStagingModalActive(),
+      getContext: () => latestStagingContext,
+    };
   }
 }
 
@@ -594,6 +630,7 @@ function initResolutionControls(): void {
     }
 
     // Success: Action continued and executed
+    latestStagingContext = null;
     disableControls();
     if (indicatorEl) {
       indicatorEl.textContent = `Resolved: CONTINUED (${actionId})`;
@@ -662,6 +699,7 @@ function initResolutionControls(): void {
     }
 
     // Success: Action cancelled, handler not executed
+    latestStagingContext = null;
     disableControls();
     if (indicatorEl) {
       indicatorEl.textContent = `Resolved: CANCELLED (${actionId})`;
@@ -709,6 +747,17 @@ function initResolutionControls(): void {
     cancelBtn.addEventListener('click', () => handleCancel());
   }
 
+  const stagingBtn = document.getElementById('btn-preview-staging-mode');
+  if (stagingBtn) {
+    stagingBtn.addEventListener('click', () => {
+      if (latestStagingContext) {
+        showStagingModal({ context: latestStagingContext, state: 'active' });
+      } else {
+        showStagingModal({ state: 'empty' });
+      }
+    });
+  }
+
   // Support programmatic custom events for automation/testing
   document.addEventListener('guardrail:trigger-continue', (e: Event) => {
     const custom = e as CustomEvent<{ actionId?: string }>;
@@ -718,6 +767,17 @@ function initResolutionControls(): void {
   document.addEventListener('guardrail:trigger-cancel', (e: Event) => {
     const custom = e as CustomEvent<{ actionId?: string }>;
     handleCancel(custom.detail?.actionId);
+  });
+
+  document.addEventListener('guardrail:open-staging-mode', (e: Event) => {
+    const custom = e as CustomEvent<{ context?: StagingActionContext; state?: 'active' | 'loading' | 'empty' }>;
+    const ctx = custom.detail?.context || latestStagingContext;
+    const state = custom.detail?.state || (ctx ? 'active' : 'empty');
+    showStagingModal({ context: ctx || undefined, state });
+  });
+
+  document.addEventListener('guardrail:dismiss-staging-mode', () => {
+    dismissStagingModal();
   });
 }
 
