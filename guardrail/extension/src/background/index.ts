@@ -51,7 +51,7 @@ chrome.runtime.onMessage.addListener(
   ) => {
     // 1. Handle normalized GuardrailAction messages with Classification, Risk, and Response Decision
     if (message && message.type === 'GUARDRAIL_ACTION') {
-      const { action, classification, risk, decision } = message;
+      const { action, classification, risk, decision, interception } = message;
       const targetSummary = action.element?.visibleText
         ? `"${action.element.visibleText}"`
         : action.element?.tagName
@@ -68,7 +68,8 @@ chrome.runtime.onMessage.addListener(
         `ACTION: ${action.type}${targetSummary ? ` (${targetSummary})` : ''}\n` +
         `CATEGORY: ${classification?.category || 'UNCLASSIFIED'}\n` +
         `RISK: ${risk?.riskLevel || 'LOW'} (score: ${risk?.score ?? 0})\n` +
-        `RESPONSE: ${decision?.response || 'ALLOW'}\n` +
+        `RESPONSE: ${decision?.response || 'ALLOW'}` +
+        `${interception ? `\nINTERCEPTION: ${interception.state} (${interception.reason})` : ''}\n` +
         `REASON: ${primaryReason}`,
         'color: #0ea5e9; font-weight: bold; padding: 3px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;',
         'color: inherit; font-weight: normal;',
@@ -79,6 +80,8 @@ chrome.runtime.onMessage.addListener(
           riskLevel: risk?.riskLevel,
           riskScore: risk?.score,
           responseAction: decision?.response,
+          interceptionState: interception?.state,
+          interception,
           action,
           classification,
           risk,
@@ -92,7 +95,7 @@ chrome.runtime.onMessage.addListener(
 
       sendResponse({
         success: true,
-        message: `Guardrail registered action ${action.id} [${classification?.category || 'GENERAL'}] (Risk: ${risk?.riskLevel || 'LOW'}, Score: ${risk?.score ?? 0}, Response: ${decision?.response || 'ALLOW'})`,
+        message: `Guardrail registered action ${action.id} [${classification?.category || 'GENERAL'}] (Risk: ${risk?.riskLevel || 'LOW'}, Score: ${risk?.score ?? 0}, Response: ${decision?.response || 'ALLOW'}${interception ? `, State: ${interception.state}` : ''})`,
       });
 
       return false;

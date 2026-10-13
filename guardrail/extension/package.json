@@ -11,7 +11,10 @@
     "test:response": "esbuild src/response/test-response-pipeline.ts --bundle --format=esm --target=es2022 --outfile=dist/test-response-pipeline.js && node dist/test-response-pipeline.js",
     "test:interception": "esbuild src/interception/test-interception-model.ts --bundle --format=esm --target=es2022 --outfile=dist/test-interception-model.js && node dist/test-interception-model.js",
     "test:controller": "esbuild src/interception/test-interception-controller.ts --bundle --format=esm --target=es2022 --outfile=dist/test-interception-controller.js && node dist/test-interception-controller.js",
-    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller"
+    "test:proof": "esbuild src/interception/test-action-interception.ts --bundle --format=esm --target=es2022 --outfile=dist/test-action-interception.js && node dist/test-action-interception.js",
+    "test:continuation": "esbuild src/interception/test-action-continuation.ts --bundle --format=esm --target=es2022 --outfile=dist/test-action-continuation.js && node dist/test-action-continuation.js",
+    "test:verify": "esbuild src/interception/verify-day8-scenarios.ts --bundle --format=esm --target=es2022 --outfile=dist/verify-day8-scenarios.js && node dist/verify-day8-scenarios.js",
+    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.308",

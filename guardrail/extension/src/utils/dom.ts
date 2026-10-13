@@ -63,6 +63,37 @@ export function findInteractiveElement(target: EventTarget | null): HTMLElement 
 }
 
 /**
+ * Attribute name identifying controlled test actions targeted for proof-of-interception.
+ */
+export const GUARDRAIL_TEST_ACTION_ATTR = 'data-guardrail-test-action';
+
+/**
+ * Checks if the target element or any ancestor is explicitly marked with the
+ * data-guardrail-test-action attribute on our controlled test website.
+ *
+ * Scoped strictly to explicitly marked controls to prevent interfering with
+ * normal page elements, password managers, or browser UI.
+ *
+ * @param target The event target
+ * @returns The marked HTMLElement, or null if not a marked test action
+ */
+export function findControlledTestAction(target: EventTarget | null): HTMLElement | null {
+  if (!target || !(target instanceof Element)) {
+    return null;
+  }
+
+  // Ignore interactions originating from within Guardrail's internal UI
+  if (
+    target.id === 'guardrail-warning-ui-host' ||
+    target.closest('#guardrail-warning-ui-host')
+  ) {
+    return null;
+  }
+
+  return target.closest<HTMLElement>(`[${GUARDRAIL_TEST_ACTION_ATTR}]`) || null;
+}
+
+/**
  * Checks if the target element is a form input control (input, textarea, select).
  *
  * @param target The event target

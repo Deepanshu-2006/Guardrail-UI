@@ -57,6 +57,83 @@
     }
   });
 
+  // Day 8: Controlled Interception & Response Engine Integration Action Handlers
+  const allowBtn = document.getElementById('btn-intercept-allow');
+  const warnBtn = document.getElementById('btn-intercept-warn');
+  const protectBtn = document.getElementById('btn-intercept-protect');
+  const interceptBtn = document.getElementById('btn-intercept-test');
+  const statusResultEl = document.getElementById('interception-status-result');
+  const detailsEl = document.getElementById('interception-details');
+
+  if (allowBtn) {
+    allowBtn.addEventListener('click', () => {
+      // Normal click handler on the page. For ALLOW, this MUST execute normally.
+      appendLog('✅ NORMAL HANDLER EXECUTED: [Test ALLOW Action] was permitted and executed normally without interception.');
+    });
+  }
+
+  if (warnBtn) {
+    warnBtn.addEventListener('click', () => {
+      // Normal click handler on the page. For WARN, Guardrail displays advisory modal without holding the action.
+      appendLog('⚠️ NORMAL HANDLER EXECUTED: [Test WARN Action] executed (Guardrail advisory warning presented; action was not held).');
+    });
+  }
+
+  const handleProtectExecution = (btnId) => {
+    // Normal click handler on the page.
+    // IF PROTECT INTERCEPTION SUCCEEDS, THIS HANDLER WILL NEVER RUN!
+    if (statusResultEl) {
+      statusResultEl.textContent = '❌ EXECUTED (Normal handler ran!)';
+      statusResultEl.style.background = 'rgba(239, 68, 68, 0.4)';
+      statusResultEl.style.color = '#ffffff';
+      statusResultEl.style.borderColor = '#ef4444';
+    }
+    if (detailsEl) {
+      detailsEl.textContent = 'Normal page handler was NOT intercepted! event.stopImmediatePropagation() failed to stop this listener.';
+      detailsEl.style.display = 'block';
+    }
+    appendLog(`❌ UNEXPECTED: Normal page click handler executed for [${btnId}]! Event was NOT intercepted.`);
+  };
+
+  if (protectBtn) {
+    protectBtn.addEventListener('click', () => handleProtectExecution('btn-intercept-protect'));
+  }
+
+  if (interceptBtn) {
+    interceptBtn.addEventListener('click', () => handleProtectExecution('btn-intercept-test'));
+  }
+
+  // Listen for Guardrail's custom pipeline & interception events
+  document.addEventListener('guardrail:action-allowed', (e) => {
+    const detail = e.detail;
+    appendLog(`🟢 Guardrail ALLOW: Action [${detail.actionId}] allowed without interception (Risk Score: ${detail.risk?.score ?? 0}).`);
+  });
+
+  document.addEventListener('guardrail:action-warned', (e) => {
+    const detail = e.detail;
+    appendLog(`🟡 Guardrail WARN: Action [${detail.actionId}] presented advisory modal. Action NOT held (Risk Score: ${detail.risk?.score ?? 0}).`);
+  });
+
+  document.addEventListener('guardrail:action-intercepted', (e) => {
+    const detail = e.detail;
+    appendLog(`🛑 Guardrail PROTECT: Action [${detail.actionId}] intercepted and HELD! Normal execution halted (Risk Score: ${detail.risk?.score ?? 0}). Waiting for protection decision.`);
+  });
+
+  document.addEventListener('guardrail:action-continued', (e) => {
+    const detail = e.detail;
+    appendLog(`▶ Guardrail CONTINUED: Action [${detail.actionId}] continued via explicit development control (Execution Count: ${detail.executionCount}).`);
+  });
+
+  document.addEventListener('guardrail:action-cancelled', (e) => {
+    const detail = e.detail;
+    appendLog(`✕ Guardrail CANCELLED: Action [${detail.actionId}] cancelled via development control. Action aborted; handler was NOT executed.`);
+  });
+
+  document.addEventListener('guardrail:controlled-handler-executed', (e) => {
+    const detail = e.detail;
+    appendLog(`✅ CONTROLLED TEST HANDLER EXECUTED: Action [${detail.actionId}] executed exactly once via explicit continuation mechanism!`);
+  });
+
   // Day 7: Sequential Pipeline Verification Test
   const seqBtn = document.getElementById('btn-test-sequence');
   if (seqBtn) {

@@ -20,6 +20,99 @@
       <section class="test-section">
         <h2 class="section-title">Interactive Elements</h2>
         
+        <!-- Day 8: Controlled Interception & Response Engine Integration -->
+        <div class="field-group" style="margin-bottom: 20px; padding: 16px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px;">
+          <label class="field-label" style="color: #ef4444; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <span>🛡️ Day 8: Controlled Action Interception & Response Engine Integration</span>
+          </label>
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
+            These controls are explicitly marked with <code>data-guardrail-test-action</code>. Each button maps to a distinct response decision based on existing heuristics:
+            <br>
+            • <strong>ALLOW</strong> (Score 0): Routine action. Guardrail does NOT intercept; normal page click handler executes.
+            <br>
+            • <strong>WARN</strong> (Score 50): Destructive profile action. Guardrail displays advisory modal; action is NOT held and no interception record is created.
+            <br>
+            • <strong>PROTECT</strong> (Score 100): Compound critical action. Guardrail halts event propagation, creates an interception record in <code>HELD</code>, and displays a development message while waiting for a protection decision.
+          </p>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button 
+              id="btn-intercept-allow" 
+              type="button" 
+              class="btn btn-secondary" 
+              data-guardrail-test-action="test-allow"
+              style="border-color: #10b981; color: #34d399; font-weight: 600; background: rgba(16, 185, 129, 0.1); font-size: 13px;"
+            >
+              🟢 Test ALLOW (View Dashboard)
+            </button>
+            <button 
+              id="btn-intercept-warn" 
+              type="button" 
+              class="btn btn-secondary" 
+              data-guardrail-test-action="test-warn"
+              style="border-color: #f59e0b; color: #fbbf24; font-weight: 600; background: rgba(245, 158, 11, 0.1); font-size: 13px;"
+            >
+              🟡 Test WARN (Delete Account Profile)
+            </button>
+            <button 
+              id="btn-intercept-protect" 
+              type="button" 
+              class="btn btn-secondary" 
+              data-guardrail-test-action="test-protect"
+              style="border-color: #ef4444; color: #f87171; font-weight: 700; background: rgba(239, 68, 68, 0.1); font-size: 13px;"
+            >
+              🛑 Test PROTECT (Delete All Data, Cancel Billing, and Export)
+            </button>
+            <!-- Legacy alias for proof testing compatibility -->
+            <button 
+              id="btn-intercept-test" 
+              type="button" 
+              class="btn btn-secondary" 
+              data-guardrail-test-action="test-protect"
+              style="display: none;"
+            >
+              🛑 Legacy Trigger
+            </button>
+          </div>
+          <div id="interception-status-box" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">
+            <span>Last Interception Evaluation:</span>
+            <span 
+              id="interception-status-result" 
+              class="status-badge" 
+              style="padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8; letter-spacing: 0.03em;"
+            >
+              IDLE (Click a marked button above)
+            </span>
+          </div>
+          <div id="held-action-controls" style="margin-top: 10px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--border); border-radius: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+              <span>Resolution Controls (Active when Action is HELD)</span>
+              <span id="held-action-indicator" style="font-size: 11px; color: #64748b; font-weight: normal;">No action held</span>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button 
+                id="btn-continue-test-action" 
+                type="button" 
+                class="btn btn-secondary" 
+                disabled
+                style="border-color: #10b981; color: #34d399; font-weight: 600; opacity: 0.5; cursor: not-allowed; font-size: 13px;"
+              >
+                ▶ Continue Test Action
+              </button>
+              <button 
+                id="btn-cancel-test-action" 
+                type="button" 
+                class="btn btn-secondary" 
+                disabled
+                style="border-color: #ef4444; color: #f87171; font-weight: 600; opacity: 0.5; cursor: not-allowed; font-size: 13px;"
+              >
+                ✕ Cancel Test Action
+              </button>
+            </div>
+          </div>
+          <div id="interception-dev-message" style="display: none; margin-top: 8px; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; border-radius: 4px; font-size: 13px; color: #fca5a5;"></div>
+          <div id="interception-details" style="display: none; margin-top: 8px; padding: 8px 12px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; font-size: 12px; font-family: monospace; color: #cbd5e1; word-break: break-all;"></div>
+        </div>
+
         <!-- 1. Category Classification Buttons -->
         <div class="field-group">
           <label class="field-label">Category Verification Actions</label>
