@@ -22,8 +22,24 @@
  */
 
 import { ActionCategory, ActionType } from '../types/actions.js';
+import { InterceptionRecord, InterceptionState } from '../types/interception.js';
 import { RiskLevel } from '../types/risk.js';
 import { StagingActionContext } from '../types/staging.js';
+import {
+  ApprovalRequestIntent,
+  ApprovalRequestResult,
+} from '../types/approval.js';
+import {
+  CancellationResult,
+  ContinuationManager,
+  defaultContinuationManager,
+} from '../interception/continuation.js';
+import {
+  defaultInterceptionController,
+  type InterceptionController,
+} from '../interception/controller.js';
+import { createApprovalRequestIntent } from './context.js';
+import { dispatchApprovalRequestToBackground } from '../utils/messaging.js';
 
 export const STAGING_HOST_ELEMENT_ID = 'guardrail-staging-ui-host';
 
@@ -41,6 +57,36 @@ export interface StagingModalOptions {
 
   /** Optional callback for primary action click (shell preview) */
   onPrimaryAction?: () => void;
+
+  /** Optional custom or delegated cancel handler */
+  onCancel?: (
+    actionId: string
+  ) =>
+    | CancellationResult
+    | { success: boolean; actionId: string; error?: string; record?: InterceptionRecord };
+
+  /** InterceptionController instance to use (defaults to defaultInterceptionController) */
+  controller?: InterceptionController;
+
+  /** ContinuationManager instance to use (defaults to defaultContinuationManager) */
+  continuationManager?: ContinuationManager;
+
+  /** Optional callback invoked upon successful cancellation */
+  onCancelSuccess?: (result: CancellationResult) => void;
+
+  /** Optional callback invoked upon cancellation error / rejection */
+  onCancelError?: (result: CancellationResult) => void;
+
+  /** Optional custom or delegated approval request handler */
+  onRequestApproval?: (
+    context: StagingActionContext
+  ) => ApprovalRequestResult | Promise<ApprovalRequestResult>;
+
+  /** Optional callback invoked upon successful local approval request intent creation */
+  onRequestApprovalSuccess?: (result: ApprovalRequestResult) => void;
+
+  /** Optional callback invoked upon approval request rejection or error */
+  onRequestApprovalError?: (result: ApprovalRequestResult) => void;
 }
 
 let activeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -756,6 +802,99 @@ function createStagingStyles(): HTMLStyleElement {
       transform: translateY(-1px);
     }
 
+    .gs-btn-cancel {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
+    }
+
+    .gs-btn-cancel:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.22);
+      border-color: rgba(239, 68, 68, 0.6);
+      color: #fca5a5;
+      transform: translateY(-1px);
+    }
+
+    .gs-btn-cancel:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Confirmation & Status Banners */
+    .gs-confirmation-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      animation: gsFadeIn 0.2s ease-out;
+    }
+
+    .gs-confirmation-success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .gs-confirmation-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .gs-confirmation-info {
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(14, 165, 233, 0.35);
+    }
+
+    .gs-confirmation-icon {
+      font-size: 18px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .gs-confirmation-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .gs-confirmation-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .gs-confirmation-success .gs-confirmation-title {
+      color: #34d399;
+    }
+
+    .gs-confirmation-error .gs-confirmation-title {
+      color: #f87171;
+    }
+
+    .gs-confirmation-info .gs-confirmation-title {
+      color: #38bdf8;
+    }
+
+    .gs-confirmation-desc {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #cbd5e1;
+    }
+
+    .gs-badge-cancelled {
+      background: rgba(148, 163, 184, 0.15) !important;
+      color: #94a3b8 !important;
+      border-color: rgba(148, 163, 184, 0.35) !important;
+    }
+
+    .gs-badge-requested {
+      background: rgba(14, 165, 233, 0.15) !important;
+      color: #38bdf8 !important;
+      border-color: rgba(14, 165, 233, 0.35) !important;
+    }
+
     /* Empty & Loading States */
     .gs-state-card {
       padding: 40px 20px;
@@ -1119,11 +1258,404 @@ function renderEmptyBody(): HTMLElement {
 }
 
 /**
+ * Renders an inline confirmation or error banner at the top of the modal body.
+ */
+export function displayConfirmationBanner(
+  body: HTMLElement,
+  type: 'success' | 'error' | 'info',
+  titleText: string,
+  descText: string
+): HTMLElement {
+  const existing = body.querySelector('.gs-confirmation-banner');
+  if (existing) {
+    existing.remove();
+  }
+
+  const banner = document.createElement('div');
+  const typeClass =
+    type === 'success'
+      ? 'gs-confirmation-success'
+      : type === 'error'
+      ? 'gs-confirmation-error'
+      : 'gs-confirmation-info';
+  banner.className = `gs-confirmation-banner ${typeClass}`;
+  banner.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  banner.setAttribute('aria-live', 'polite');
+
+  const icon = document.createElement('span');
+  icon.className = 'gs-confirmation-icon';
+  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '⚠️' : 'ℹ️';
+
+  const content = document.createElement('div');
+  content.className = 'gs-confirmation-content';
+
+  const title = document.createElement('span');
+  title.className = 'gs-confirmation-title';
+  title.textContent = titleText;
+
+  const desc = document.createElement('span');
+  desc.className = 'gs-confirmation-desc';
+  desc.textContent = descText;
+
+  content.appendChild(title);
+  content.appendChild(desc);
+  banner.appendChild(icon);
+  banner.appendChild(content);
+
+  if (body.children && body.children.length > 0 && typeof body.insertBefore === 'function') {
+    body.insertBefore(banner, body.children[0]);
+  } else {
+    body.appendChild(banner);
+  }
+
+  return banner;
+}
+
+export interface ModalCancelUIElements {
+  cancelBtn: HTMLButtonElement;
+  primaryBtn?: HTMLButtonElement;
+  body: HTMLElement;
+  header: HTMLElement;
+  notice?: HTMLElement;
+}
+
+/**
+ * Executes the cancellation workflow for an intercepted action held in Staging Mode.
+ *
+ * Enforces:
+ * 1. Single execution: Disables cancel button and rejects duplicate/concurrent clicks.
+ * 2. Source of Truth: Uses InterceptionController / ContinuationManager lifecycle.
+ * 3. Validation: Confirms action is currently in HELD state.
+ * 4. Zero Handler Invocation: Ensures controlled test handler is not executed.
+ * 5. Accurate Feedback: Displays "Action cancelled. Nothing was changed." only upon true success.
+ *    Displays an appropriate error message if state has changed or cancellation fails.
+ */
+export function handleModalCancel(
+  actionId: string | undefined,
+  options: StagingModalOptions,
+  uiElements: ModalCancelUIElements
+): CancellationResult {
+  const { cancelBtn, primaryBtn, body, header, notice } = uiElements;
+
+  // 1. Immediately disable button to prevent repeated clicks / duplicate requests
+  cancelBtn.disabled = true;
+  cancelBtn.setAttribute('aria-disabled', 'true');
+
+  const id = actionId?.trim();
+  if (!id) {
+    const errorResult: CancellationResult = {
+      success: false,
+      actionId: '',
+      error: 'Cannot cancel action: No valid action identifier is available.',
+    };
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Cancellation Could Not Be Completed',
+      errorResult.error!
+    );
+    if (options.onCancelError) {
+      options.onCancelError(errorResult);
+    }
+    return errorResult;
+  }
+
+  // 2. Request cancellation via the configured source of truth
+  let result: CancellationResult;
+
+  if (options.onCancel) {
+    result = options.onCancel(id);
+  } else if (options.continuationManager) {
+    result = options.continuationManager.cancelAction(
+      id,
+      'Action cancelled by user in Guardrail Staging Mode.'
+    );
+  } else if (options.controller) {
+    try {
+      const record = options.controller.cancelAction(
+        id,
+        'Action cancelled by user in Guardrail Staging Mode.'
+      );
+      result = {
+        success: true,
+        actionId: id,
+        record,
+      };
+    } catch (err: any) {
+      result = {
+        success: false,
+        actionId: id,
+        record: options.controller.getRecord(id),
+        error: err?.message || `Failed to cancel action "${id}".`,
+      };
+    }
+  } else {
+    result = defaultContinuationManager.cancelAction(
+      id,
+      'Action cancelled by user in Guardrail Staging Mode.'
+    );
+  }
+
+  // 3. Process outcome
+  if (result.success) {
+    // SUCCESS: Display confirmation ONLY after cancellation has succeeded
+    displayConfirmationBanner(
+      body,
+      'success',
+      'Action cancelled. Nothing was changed.',
+      'The held interaction was aborted safely. No action was executed, no network data was sent, and no page state was modified.'
+    );
+
+    // Update Header Pill to CANCELLED badge
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Cancelled';
+      pill.classList.add('gs-badge-cancelled');
+    }
+
+    // Update Heading Section
+    const headingTitle = body.querySelector('.gs-heading-title');
+    if (headingTitle) {
+      headingTitle.textContent = 'Action Cancelled';
+    }
+    const headingSubtitle = body.querySelector('.gs-heading-subtitle');
+    if (headingSubtitle) {
+      headingSubtitle.textContent = 'This action was cancelled before it could run. Nothing was changed.';
+    }
+
+    // Update Controls: Permanently disable/remove action buttons, keep close button available
+    cancelBtn.textContent = 'Action Cancelled';
+    if (primaryBtn) {
+      primaryBtn.style.display = 'none';
+      primaryBtn.disabled = true;
+    }
+    if (notice) {
+      notice.textContent = 'Action cancelled safely • State: CANCELLED';
+    }
+
+    if (options.onCancelSuccess) {
+      options.onCancelSuccess(result);
+    }
+  } else {
+    // REJECTION: Interception was already resolved, invalid state, or unknown ID
+    // Show appropriate message rather than claiming success
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Cancellation Could Not Be Completed',
+      result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'
+    );
+
+    // Keep button disabled to prevent duplicate attempts on an unresolvable action
+    cancelBtn.textContent = 'Cancellation Failed';
+
+    if (options.onCancelError) {
+      options.onCancelError(result);
+    }
+  }
+
+  return result;
+}
+
+export interface ModalApprovalRequestUIElements {
+  requestBtn: HTMLButtonElement;
+  cancelBtn?: HTMLButtonElement;
+  body: HTMLElement;
+  header: HTMLElement;
+  notice?: HTMLElement;
+}
+
+/**
+ * Executes the local approval-request workflow for an intercepted action held in Staging Mode.
+ *
+ * PROTOTYPE BOUNDARY & ARCHITECTURAL GUARANTEES:
+ * 1. Single execution: Disables the button immediately and ignores duplicate/rapid clicks.
+ * 2. State Validation: Confirms action is currently in HELD state. Rejects if CONTINUED,
+ *    CANCELLED, or untracked.
+ * 3. Local Intent Only: Synthesizes typed ApprovalRequestIntent marked 'LOCAL_PROTOTYPE_ONLY'
+ *    with minimum safe metadata, strictly excluding sensitive inputs, forms, and credentials.
+ * 4. Transparent Communication: Displays clear confirmation that approval requesting is NOT
+ *    connected yet. Never shows "Request sent", "Caretaker notified", or "Approved".
+ * 5. Action Preserved: Keeps the action held. Never continues or executes the action.
+ *    The user retains full ability to cancel the held action afterwards.
+ * 6. Local Event Dispatch: Dispatches DOM event `guardrail:approval-requested` and sends
+ *    GUARDRAIL_APPROVAL_REQUEST to the background service worker coordinator.
+ */
+export function handleModalRequestApproval(
+  context: StagingActionContext | undefined,
+  options: StagingModalOptions,
+  uiElements: ModalApprovalRequestUIElements
+): ApprovalRequestResult {
+  const { requestBtn, cancelBtn, body, header, notice } = uiElements;
+
+  // 1. Immediately disable button to prevent repeated clicks / duplicate requests
+  requestBtn.disabled = true;
+  requestBtn.setAttribute('aria-disabled', 'true');
+
+  // 2. Validate context and identifier
+  const actionId = context?.actionId?.trim();
+  if (!context || !actionId) {
+    const errorResult: ApprovalRequestResult = {
+      success: false,
+      actionId: '',
+      error: 'Cannot request approval: No valid action context or identifier is available.',
+      isBackendConnected: false,
+    };
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Approval Request Could Not Be Prepared',
+      errorResult.error!
+    );
+    requestBtn.textContent = 'Request Unavailable';
+    if (options.onRequestApprovalError) {
+      options.onRequestApprovalError(errorResult);
+    }
+    return errorResult;
+  }
+
+  // 3. Validate live controller state
+  const controller = options.controller || defaultInterceptionController;
+  const record = controller.getRecord(actionId);
+
+  if (!record) {
+    const errorResult: ApprovalRequestResult = {
+      success: false,
+      actionId,
+      error: `Cannot request approval: Action "${actionId}" is not actively tracked by Guardrail.`,
+      isBackendConnected: false,
+    };
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Approval Request Could Not Be Prepared',
+      errorResult.error!
+    );
+    requestBtn.textContent = 'Request Unavailable';
+    if (options.onRequestApprovalError) {
+      options.onRequestApprovalError(errorResult);
+    }
+    return errorResult;
+  }
+
+  if (record.state !== InterceptionState.HELD) {
+    const errorResult: ApprovalRequestResult = {
+      success: false,
+      actionId,
+      error: `Cannot request approval for action "${actionId}": State is "${record.state}". Only actions in HELD state are eligible for approval requests.`,
+      isBackendConnected: false,
+    };
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Approval Request Could Not Be Prepared',
+      errorResult.error!
+    );
+    requestBtn.textContent = 'Request Unavailable';
+    if (options.onRequestApprovalError) {
+      options.onRequestApprovalError(errorResult);
+    }
+    return errorResult;
+  }
+
+  // 4. Create typed ApprovalRequestIntent
+  let intent: ApprovalRequestIntent;
+  try {
+    intent = createApprovalRequestIntent(context, record);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    const errorResult: ApprovalRequestResult = {
+      success: false,
+      actionId,
+      error: errorMsg,
+      isBackendConnected: false,
+    };
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Approval Request Could Not Be Prepared',
+      errorMsg
+    );
+    requestBtn.textContent = 'Request Failed';
+    if (options.onRequestApprovalError) {
+      options.onRequestApprovalError(errorResult);
+    }
+    return errorResult;
+  }
+
+  // 5. Build result
+  const result: ApprovalRequestResult = {
+    success: true,
+    actionId,
+    intent,
+    isBackendConnected: false,
+  };
+
+  // 6. Dispatch local DOM custom event for automation/testing
+  if (typeof document !== 'undefined') {
+    try {
+      document.dispatchEvent(
+        new CustomEvent('guardrail:approval-requested', {
+          detail: {
+            actionId,
+            intent,
+            isBackendConnected: false,
+          },
+          bubbles: true,
+        })
+      );
+    } catch (eventErr) {
+      console.warn('[Guardrail Staging] Error dispatching custom approval-requested event:', eventErr);
+    }
+  }
+
+  // 7. Dispatch to background service worker (resilient, asynchronous)
+  dispatchApprovalRequestToBackground(intent).catch((err) => {
+    console.warn('[Guardrail Staging] Background approval dispatch notification failed:', err);
+  });
+
+  // 8. Update UI Feedback:
+  // PROTOTYPE BOUNDARY: Explicitly communicate that backend services & caretaker delivery are not connected.
+  // Never show "Request sent", "Caretaker notified", or "Approved".
+  displayConfirmationBanner(
+    body,
+    'info',
+    'Approval Request Prepared (Local Prototype)',
+    'An approval request intent was recorded locally for this action. Remote caretaker approval and backend services are not connected yet. This action remains safely paused and will not execute.'
+  );
+
+  // Update header pill to indicate request prepared while remaining paused
+  const pill = header.querySelector('.gs-mode-pill');
+  if (pill) {
+    pill.textContent = 'Paused (Request Prepared)';
+    pill.classList.add('gs-badge-requested');
+  }
+
+  // Update footer notice and controls
+  requestBtn.textContent = 'Request Prepared (Local)';
+  if (notice) {
+    notice.textContent = 'Approval intent recorded locally • Backend not connected • State: HELD';
+  }
+
+  // Ensure cancel button remains enabled so user can still cancel this held action
+  if (cancelBtn) {
+    cancelBtn.disabled = false;
+  }
+
+  if (options.onRequestApprovalSuccess) {
+    options.onRequestApprovalSuccess(result);
+  }
+
+  return result;
+}
+
+/**
  * Renders the footer and action control space.
  */
 function renderFooter(
   options: StagingModalOptions,
-  onClose: () => void
+  onClose: () => void,
+  uiRefs: { header: HTMLElement; body: HTMLElement }
 ): HTMLElement {
   const footer = document.createElement('footer');
   footer.className = 'gs-footer';
@@ -1144,17 +1676,56 @@ function renderFooter(
   btnGroup.appendChild(secondaryBtn);
 
   if (options.state === 'active' || (options.context && options.state !== 'empty')) {
-    const primaryBtn = document.createElement('button');
-    primaryBtn.type = 'button';
-    primaryBtn.className = 'gs-btn gs-btn-primary';
-    primaryBtn.textContent = 'Staged Review Shell';
-    primaryBtn.setAttribute('title', 'Shell preview only. Approval behavior is implemented separately.');
-    primaryBtn.addEventListener('click', () => {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.id = 'gs-btn-cancel-action';
+    cancelBtn.className = 'gs-btn gs-btn-cancel';
+    cancelBtn.textContent = 'Cancel Action';
+    cancelBtn.setAttribute('title', 'Cancel and abort this action safely');
+
+    let isCancelling = false;
+    let isRequesting = false;
+
+    const requestApprovalBtn = document.createElement('button');
+    requestApprovalBtn.type = 'button';
+    requestApprovalBtn.id = 'gs-btn-request-approval';
+    requestApprovalBtn.className = 'gs-btn gs-btn-primary';
+    requestApprovalBtn.textContent = 'Request Approval';
+    requestApprovalBtn.setAttribute('title', 'Prepare a local approval request intent for this held action');
+
+    requestApprovalBtn.addEventListener('click', () => {
+      if (isRequesting || requestApprovalBtn.disabled) {
+        return;
+      }
+      isRequesting = true;
       if (options.onPrimaryAction) {
         options.onPrimaryAction();
       }
+      handleModalRequestApproval(options.context, options, {
+        requestBtn: requestApprovalBtn,
+        cancelBtn,
+        body: uiRefs.body,
+        header: uiRefs.header,
+        notice,
+      });
     });
-    btnGroup.appendChild(primaryBtn);
+
+    cancelBtn.addEventListener('click', () => {
+      if (isCancelling || cancelBtn.disabled) {
+        return;
+      }
+      isCancelling = true;
+      handleModalCancel(options.context?.actionId, options, {
+        cancelBtn,
+        primaryBtn: requestApprovalBtn,
+        body: uiRefs.body,
+        header: uiRefs.header,
+        notice,
+      });
+    });
+
+    btnGroup.appendChild(cancelBtn);
+    btnGroup.appendChild(requestApprovalBtn);
   }
 
   footer.appendChild(notice);
@@ -1184,20 +1755,24 @@ function buildModalTree(options: StagingModalOptions): HTMLElement {
   };
 
   // 1. Header
-  shell.appendChild(renderHeader(handleClose));
+  const header = renderHeader(handleClose);
+  shell.appendChild(header);
 
   // 2. Body based on state
   const state = options.state || (options.context ? 'active' : 'empty');
+  let body: HTMLElement;
   if (state === 'active' && options.context) {
-    shell.appendChild(renderActiveBody(options.context));
+    body = renderActiveBody(options.context);
   } else if (state === 'loading') {
-    shell.appendChild(renderLoadingBody());
+    body = renderLoadingBody();
   } else {
-    shell.appendChild(renderEmptyBody());
+    body = renderEmptyBody();
   }
+  shell.appendChild(body);
 
   // 3. Footer
-  shell.appendChild(renderFooter(options, handleClose));
+  const footer = renderFooter(options, handleClose, { header, body });
+  shell.appendChild(footer);
 
   backdrop.appendChild(shell);
 

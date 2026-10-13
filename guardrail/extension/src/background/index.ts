@@ -11,7 +11,9 @@
 
 import {
   ActionAcknowledgementResponse,
+  ApprovalRequestResponse,
   GuardrailActionMessage,
+  GuardrailApprovalRequestMessage,
   TestActionMessage,
 } from '../types/index.js';
 
@@ -45,9 +47,9 @@ chrome.runtime.onStartup.addListener(() => {
 // Extension Message Listener: Receives messages from content scripts and returns an acknowledgement
 chrome.runtime.onMessage.addListener(
   (
-    message: GuardrailActionMessage | TestActionMessage,
+    message: GuardrailActionMessage | GuardrailApprovalRequestMessage | TestActionMessage,
     sender,
-    sendResponse: (response: ActionAcknowledgementResponse) => void
+    sendResponse: (response: ActionAcknowledgementResponse | ApprovalRequestResponse) => void
   ) => {
     // 1. Handle normalized GuardrailAction messages with Classification, Risk, and Response Decision
     if (message && message.type === 'GUARDRAIL_ACTION') {
@@ -101,7 +103,39 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    // 2. Backward-compatible handler for legacy TEST_ACTION messages
+    // 2. Handle local GuardrailApprovalRequestMessage (prototype intent)
+    if (message && message.type === 'GUARDRAIL_APPROVAL_REQUEST') {
+      const { intent } = message;
+      console.log(
+        `%c[Guardrail Background]%c LOCAL APPROVAL REQUEST INTENT RECEIVED (PROTOTYPE ONLY)\n` +
+        `ACTION ID: ${intent.actionId}\n` +
+        `DESCRIPTION: ${intent.description}\n` +
+        `CATEGORY: ${intent.category || 'UNCLASSIFIED'}\n` +
+        `RISK: ${intent.riskLevel} (score: ${intent.riskScore ?? 'N/A'})\n` +
+        `STATUS: ${intent.status} (Backend not connected)\n` +
+        `NOTE: Remote caretaker delivery is not yet connected. Action remains held.`,
+        'color: #0ea5e9; font-weight: bold; padding: 3px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;',
+        'color: inherit; font-weight: normal;',
+        {
+          actionId: intent.actionId,
+          intent,
+          senderTabId: sender.tab?.id,
+          receivedAt: new Date().toISOString(),
+          isBackendConnected: false,
+        }
+      );
+
+      sendResponse({
+        success: true,
+        actionId: intent.actionId,
+        message: `Local approval request intent recorded for action ${intent.actionId}. Backend services are not connected yet.`,
+        isBackendConnected: false,
+      });
+
+      return false;
+    }
+
+    // 3. Backward-compatible handler for legacy TEST_ACTION messages
     if (message && message.type === 'TEST_ACTION') {
       console.log(
         '%c[Guardrail Background]%c Received legacy TEST_ACTION:',

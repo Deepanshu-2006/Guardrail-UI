@@ -8,6 +8,7 @@ export * from './risk.js';
 export * from './response.js';
 export * from './interception.js';
 export * from './staging.js';
+export * from './approval.js';
 
 export interface ExtensionManifestInfo {
   name: string;

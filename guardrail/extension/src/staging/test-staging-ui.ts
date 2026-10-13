@@ -46,6 +46,11 @@ class MockDOMElement {
   public listeners: Record<string, ((e: any) => void)[]> = {};
   private _textContent: string = '';
   public classList: MockDOMTokenList;
+  public disabled: boolean = false;
+
+  get firstChild(): MockDOMElement | null {
+    return this.children[0] || null;
+  }
 
   constructor(tagName: string) {
     this.tagName = tagName.toUpperCase();
@@ -100,6 +105,27 @@ class MockDOMElement {
       child.parentNode = null;
     }
     return child;
+  }
+
+  insertBefore<T extends MockDOMElement>(newChild: T, refChild: MockDOMElement | null): T {
+    newChild.remove();
+    newChild.parentNode = this;
+    if (!refChild) {
+      this.children.push(newChild);
+      return newChild;
+    }
+    const idx = this.children.indexOf(refChild);
+    if (idx === -1) {
+      this.children.push(newChild);
+    } else {
+      this.children.splice(idx, 0, newChild);
+    }
+    return newChild;
+  }
+
+  click(): void {
+    if (this.disabled) return;
+    this.dispatchEvent({ type: 'click', target: this });
   }
 
   remove(): void {
@@ -186,6 +212,7 @@ function matchesSelector(el: MockDOMElement, selector: string): boolean {
 
 class MockDocument {
   public body: MockDOMElement;
+  public listeners: Record<string, ((e: any) => void)[]> = {};
   constructor() {
     this.body = new MockDOMElement('BODY');
   }
@@ -194,6 +221,21 @@ class MockDocument {
   }
   getElementById(id: string): MockDOMElement | null {
     return querySelectorInternal(this.body, `#${id}`);
+  }
+  addEventListener(type: string, fn: (e: any) => void): void {
+    if (!this.listeners[type]) this.listeners[type] = [];
+    this.listeners[type].push(fn);
+  }
+  removeEventListener(type: string, fn: (e: any) => void): void {
+    if (!this.listeners[type]) return;
+    this.listeners[type] = this.listeners[type].filter((l) => l !== fn);
+  }
+  dispatchEvent(event: any): void {
+    if (this.listeners[event.type]) {
+      for (const listener of this.listeners[event.type]) {
+        listener(event);
+      }
+    }
   }
 }
 
@@ -216,6 +258,17 @@ class MockWindow {
   }
 }
 
+if (typeof (globalThis as any).CustomEvent === 'undefined') {
+  (globalThis as any).CustomEvent = class CustomEvent {
+    public type: string;
+    public detail: any;
+    constructor(type: string, init?: { detail?: any }) {
+      this.type = type;
+      this.detail = init?.detail;
+    }
+  };
+}
+
 // Install mock environment globally
 const mockDoc = new MockDocument();
 const mockWin = new MockWindow();
@@ -224,12 +277,19 @@ const mockWin = new MockWindow();
 
 import { classifyAction } from '../classifier/index.js';
 import { assessRisk } from '../risk/index.js';
-import { createStagingActionContext } from './context.js';
+import {
+  createApprovalRequestIntent,
+  createStagingActionContext,
+} from './context.js';
 import {
   ActionCategory,
   ActionType,
   GuardrailAction,
 } from '../types/actions.js';
+import {
+  ApprovalRequestIntent,
+  ApprovalRequestResult,
+} from '../types/approval.js';
 import { InterceptionRecord, InterceptionState } from '../types/interception.js';
 import { ResponseAction, ResponseDecision } from '../types/response.js';
 import { RiskLevel } from '../types/risk.js';
@@ -242,11 +302,15 @@ import {
   getRiskLevelPresentation,
   getSafeDisplayHost,
   getStagingModalShadowRoot,
+  handleModalRequestApproval,
   isStagingModalActive,
   showStagingModal,
   translateRiskReason,
   updateStagingModal,
 } from './modal.js';
+import { InterceptionController } from '../interception/controller.js';
+import { ContinuationManager } from '../interception/continuation.js';
+import { InvalidStateTransitionError } from '../interception/transitions.js';
 
 let passed = 0;
 let failed = 0;
@@ -985,6 +1049,627 @@ console.log('\n▶ Test 10: Potentially Hostile Display Strings & Sanitization E
   assertEquals(formatCategoryName(ActionCategory.DESTRUCTIVE), 'Permanent Deletion / Removal', 'Formats DESTRUCTIVE category');
   assertEquals(formatCategoryName(ActionCategory.AUTHENTICATION), 'Authentication & Login', 'Formats AUTHENTICATION category');
   assertEquals(formatCategoryName(undefined), 'General Activity', 'Formats undefined category');
+
+  dismissStagingModal();
+}
+
+// ============================================================
+// TEST 11: Staging Mode Cancel Action & Interception Lifecycle
+// ============================================================
+console.log('\n▶ Test 11: Staging Mode Cancel Action & Interception Lifecycle');
+{
+  // Setup fresh isolated InterceptionController & ContinuationManager
+  const testController = new InterceptionController();
+  const testManager = new ContinuationManager(testController);
+
+  let controlledHandlerExecutions = 0;
+  const mockControlledHandler = () => {
+    controlledHandlerExecutions++;
+  };
+
+  const actionId1 = 'action-cancel-test-11a';
+  const testAction1: GuardrailAction = {
+    id: actionId1,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com/checkout', title: 'Test Checkout' },
+    element: { tagName: 'BUTTON', id: 'pay-btn', visibleText: 'Pay $99.00' },
+  };
+
+  testController.register(testAction1, 'Test action registered');
+  const heldRecord1 = testController.holdAction(actionId1, 'Action paused for review');
+  testManager.registerHeldAction(testAction1, heldRecord1, mockControlledHandler);
+
+  const context1 = createSampleContext({
+    actionId: actionId1,
+    description: 'Payment: Click on "Pay $99.00"',
+    category: ActionCategory.PAYMENT,
+    riskLevel: RiskLevel.HIGH,
+    riskScore: 75,
+    riskReasons: ['Payment action with elevated sensitivity'],
+    responseAction: ResponseAction.PROTECT,
+    interceptionState: InterceptionState.HELD,
+  });
+
+  // 11A: Successful cancellation of a HELD interception
+  console.log('  → Subtest 11A: Successful Cancellation of HELD Action via Cancel Button');
+  let cancelSuccessResult: any = null;
+  showStagingModal({
+    context: context1,
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancelSuccess: (res) => {
+      cancelSuccessResult = res;
+    },
+  });
+
+  const shadow1 = getStagingModalShadowRoot()!;
+  assert(Boolean(shadow1), 'Shadow root is mounted');
+
+  const cancelBtn1 = shadow1.querySelector('#gs-btn-cancel-action') as any;
+  assert(Boolean(cancelBtn1), 'Cancel Action button (#gs-btn-cancel-action) exists in footer');
+  assertEquals(cancelBtn1?.textContent, 'Cancel Action', 'Cancel button displays "Cancel Action"');
+
+  // Trigger Cancel Click
+  cancelBtn1?.click();
+
+  // Validate State in InterceptionController
+  const recordAfterCancel = testController.getRecord(actionId1);
+  assertEquals(recordAfterCancel?.state, InterceptionState.CANCELLED, 'InterceptionController record transitioned to CANCELLED state');
+  assert(Boolean(recordAfterCancel?.resolvedAt), 'Interception record has resolution timestamp (resolvedAt)');
+  assertEquals(cancelSuccessResult?.success, true, 'onCancelSuccess callback received success: true');
+  assertEquals(cancelSuccessResult?.actionId, actionId1, 'onCancelSuccess callback received correct actionId');
+
+  // Validate Zero Test Handler Execution
+  assertEquals(controlledHandlerExecutions, 0, 'Controlled test action handler was NOT executed (execution count is 0)');
+  assertEquals(testManager.getExecutionCount(actionId1), 0, 'ContinuationManager reports 0 executions');
+  assertEquals(testManager.getCurrentHeldAction(), null, 'Temporary held action state in ContinuationManager is cleared');
+
+  // Validate UI Feedback: Confirmation Banner
+  const confirmationBanner = shadow1.querySelector('.gs-confirmation-banner');
+  assert(Boolean(confirmationBanner), 'Confirmation banner is rendered in modal');
+  assert(confirmationBanner?.classList.contains('gs-confirmation-success') || false, 'Banner has .gs-confirmation-success class');
+  const bannerTitle = shadow1.querySelector('.gs-confirmation-title');
+  assertEquals(bannerTitle?.textContent, 'Action cancelled. Nothing was changed.', 'Banner displays exact confirmation: "Action cancelled. Nothing was changed."');
+
+  // Validate UI Feedback: Header badge and controls update
+  const modePill = shadow1.querySelector('.gs-mode-pill');
+  assertEquals(modePill?.textContent, 'Cancelled', 'Header mode pill updated to "Cancelled"');
+  assert(modePill?.classList.contains('gs-badge-cancelled') || false, 'Header mode pill has .gs-badge-cancelled class');
+  assertEquals(cancelBtn1?.disabled, true, 'Cancel button is disabled after cancellation');
+  assertEquals(cancelBtn1?.textContent, 'Action Cancelled', 'Cancel button text updated to "Action Cancelled"');
+
+  dismissStagingModal();
+
+  // 11B: Attempted cancellation of an already-CONTINUED action
+  console.log('  → Subtest 11B: Attempted Cancellation of an Already-CONTINUED Action');
+  const actionId2 = 'action-cancel-test-11b';
+  const testAction2: GuardrailAction = {
+    id: actionId2,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction2, 'Test action registered');
+  testController.holdAction(actionId2, 'Paused');
+  testController.continueAction(actionId2, 'Approved');
+
+  const continuedRecord = testController.getRecord(actionId2)!;
+  assertEquals(continuedRecord.state, InterceptionState.CONTINUED, 'Action 2 is in CONTINUED state');
+
+  const context2 = createSampleContext({
+    actionId: actionId2,
+    category: ActionCategory.GENERAL,
+    riskLevel: RiskLevel.LOW,
+    riskScore: 20,
+    riskReasons: ['Routine'],
+    responseAction: ResponseAction.PROTECT,
+    interceptionState: InterceptionState.CONTINUED,
+  });
+
+  let cancelErrorResult: any = null;
+  showStagingModal({
+    context: context2,
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancelError: (res) => {
+      cancelErrorResult = res;
+    },
+  });
+
+  const shadow2 = getStagingModalShadowRoot()!;
+  const cancelBtn2 = shadow2.querySelector('#gs-btn-cancel-action') as any;
+  cancelBtn2.click();
+
+  assertEquals(cancelErrorResult?.success, false, 'Cancellation rejected because action is already CONTINUED');
+  const errorBanner = shadow2.querySelector('.gs-confirmation-banner');
+  assert(Boolean(errorBanner), 'Error banner is rendered');
+  assert(errorBanner?.classList.contains('gs-confirmation-error') || false, 'Banner has .gs-confirmation-error class');
+  const errorTitle = shadow2.querySelector('.gs-confirmation-title');
+  assertEquals(errorTitle?.textContent, 'Cancellation Could Not Be Completed', 'Error banner displays "Cancellation Could Not Be Completed"');
+
+  const successBannersIn2 = shadow2.querySelectorAll('.gs-confirmation-success');
+  assertEquals(successBannersIn2.length, 0, 'Success confirmation banner is NOT displayed');
+  assertEquals(testController.getRecord(actionId2)?.state, InterceptionState.CONTINUED, 'Record state remains CONTINUED');
+
+  dismissStagingModal();
+
+  // 11C: Attempted cancellation of an already-CANCELLED action
+  console.log('  → Subtest 11C: Attempted Cancellation of an Already-CANCELLED Action');
+  let cancelAlreadyCancelledResult: any = null;
+  showStagingModal({
+    context: { ...context1, actionId: actionId1 },
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancelError: (res) => {
+      cancelAlreadyCancelledResult = res;
+    },
+  });
+
+  const shadow3 = getStagingModalShadowRoot()!;
+  const cancelBtn3 = shadow3.querySelector('#gs-btn-cancel-action') as any;
+  cancelBtn3.click();
+
+  assertEquals(cancelAlreadyCancelledResult?.success, false, 'Cancellation rejected because action is already CANCELLED');
+  const shadow3ErrorBanner = shadow3.querySelector('.gs-confirmation-error');
+  assert(Boolean(shadow3ErrorBanner), 'Error banner displayed for already-cancelled action');
+  const successBannersIn3 = shadow3.querySelectorAll('.gs-confirmation-success');
+  assertEquals(successBannersIn3.length, 0, 'Success confirmation banner is NOT displayed');
+
+  dismissStagingModal();
+
+  // 11D: Attempted cancellation with invalid or missing actionId
+  console.log('  → Subtest 11D: Attempted Cancellation with Missing Action Identifier');
+  let missingIdErrorResult: any = null;
+  showStagingModal({
+    context: { ...context1, actionId: '' },
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancelError: (res) => {
+      missingIdErrorResult = res;
+    },
+  });
+
+  const shadow4 = getStagingModalShadowRoot()!;
+  const cancelBtn4 = shadow4.querySelector('#gs-btn-cancel-action') as any;
+  cancelBtn4.click();
+
+  assertEquals(missingIdErrorResult?.success, false, 'Cancellation rejected due to missing actionId');
+  const shadow4ErrorBanner = shadow4.querySelector('.gs-confirmation-error');
+  assert(Boolean(shadow4ErrorBanner), 'Error banner displayed for missing actionId');
+
+  dismissStagingModal();
+
+  // 11E: Prevention of repeated clicks, duplicate cancellation requests, and duplicate event handlers
+  console.log('  → Subtest 11E: Repeated Clicks & Duplicate Cancellation Prevention');
+  const actionId5 = 'action-cancel-test-11e';
+  const testAction5: GuardrailAction = {
+    id: actionId5,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+
+  testController.register(testAction5, 'Action 5 registered');
+  const heldRecord5 = testController.holdAction(actionId5, 'Action 5 held');
+
+  let test5HandlerExecutions = 0;
+  testManager.registerHeldAction(testAction5, heldRecord5, () => {
+    test5HandlerExecutions++;
+  });
+
+  let cancelCallCount = 0;
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId5,
+      category: ActionCategory.GENERAL,
+      riskLevel: RiskLevel.MEDIUM,
+      riskScore: 50,
+      riskReasons: ['Test reason'],
+      responseAction: ResponseAction.PROTECT,
+      interceptionState: InterceptionState.HELD,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancel: (id) => {
+      cancelCallCount++;
+      return testManager.cancelAction(id, 'Cancelled in test');
+    },
+  });
+
+  const shadow5 = getStagingModalShadowRoot()!;
+  const cancelBtn5 = shadow5.querySelector('#gs-btn-cancel-action') as any;
+
+  // Simulate 5 rapid clicks on the cancel button
+  cancelBtn5.click();
+  cancelBtn5.click();
+  cancelBtn5.click();
+  cancelBtn5.click();
+  cancelBtn5.click();
+
+  assertEquals(cancelCallCount, 1, 'Cancellation logic executed exactly once despite 5 rapid clicks');
+  assertEquals(cancelBtn5.disabled, true, 'Cancel button is disabled after first click');
+  assertEquals(test5HandlerExecutions, 0, 'Test handler was never executed');
+  assertEquals(testController.getRecord(actionId5)?.state, InterceptionState.CANCELLED, 'Action 5 is CANCELLED');
+
+  dismissStagingModal();
+
+  // 11F: Guarantee that a cancelled action CANNOT transition into CONTINUED state
+  console.log('  → Subtest 11F: Terminal State Guarantee - Cancelled Action Cannot Transition to CONTINUED');
+  const continueAttemptResult = testManager.continueAction(actionId1, 'Attempt to continue cancelled action');
+  assertEquals(continueAttemptResult.success, false, 'ContinuationManager rejected continuing a CANCELLED action');
+  assert(Boolean(continueAttemptResult.error?.includes('CANCELLED')), 'Error explicitly notes current state is CANCELLED');
+
+  let directControllerErrorThrown = false;
+  try {
+    testController.continueAction(actionId1, 'Direct controller transition attempt');
+  } catch (err: any) {
+    if (err instanceof InvalidStateTransitionError) {
+      directControllerErrorThrown = true;
+    }
+  }
+  assert(directControllerErrorThrown, 'InterceptionController throws InvalidStateTransitionError when attempting CANCELLED -> CONTINUED');
+  assertEquals(testController.getRecord(actionId1)?.state, InterceptionState.CANCELLED, 'Interception state remains CANCELLED');
+  assertEquals(controlledHandlerExecutions, 0, 'Handler execution count remains 0');
+
+  dismissStagingModal();
+}
+
+// ============================================================
+// TEST 12: Staging Mode Local Approval-Request Intent
+// ============================================================
+console.log('\n▶ Test 12: Staging Mode Local Approval-Request Intent');
+{
+  const testController = new InterceptionController();
+  const testManager = new ContinuationManager(testController);
+
+  let testActionHandlerExecutions = 0;
+  const mockActionHandler = () => {
+    testActionHandlerExecutions++;
+  };
+
+  const actionId12 = 'action-approval-test-12a';
+  const testAction12: GuardrailAction = {
+    id: actionId12,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com/transfer?user=alice&token=secret123#frag', title: 'Funds Transfer' },
+    element: { tagName: 'BUTTON', id: 'transfer-btn', visibleText: 'Transfer $5,000' },
+  };
+
+  testController.register(testAction12, 'Test action 12 registered');
+  const heldRecord12 = testController.holdAction(actionId12, 'Action paused for protective review');
+  testManager.registerHeldAction(testAction12, heldRecord12, mockActionHandler);
+
+  const context12 = createSampleContext({
+    actionId: actionId12,
+    description: 'Payment trigger: Click on "Transfer $5,000"',
+    category: ActionCategory.PAYMENT,
+    riskLevel: RiskLevel.HIGH,
+    riskScore: 70,
+    riskReasons: ['High-value financial transfer triggered'],
+    responseAction: ResponseAction.PROTECT,
+    interceptionState: InterceptionState.HELD,
+    origin: 'https://test.example.com',
+    hostname: 'test.example.com',
+  });
+
+  // 12A: Valid HELD action produces typed ApprovalRequestIntent & DOM event
+  console.log('  → Subtest 12A: Valid HELD Action Produces Typed ApprovalRequestIntent & DOM Event');
+  // Direct test of createApprovalRequestIntent function
+  const directIntent: ApprovalRequestIntent = createApprovalRequestIntent(context12, heldRecord12);
+  assertEquals(directIntent.type, 'GUARDRAIL_APPROVAL_REQUEST_INTENT', 'createApprovalRequestIntent produces typed ApprovalRequestIntent');
+  assertEquals(directIntent.status, 'LOCAL_PROTOTYPE_ONLY', 'Direct intent has LOCAL_PROTOTYPE_ONLY status');
+
+  let directIntentThrowsOnNonHeld = false;
+  try {
+    createApprovalRequestIntent({ ...context12, interceptionState: InterceptionState.CANCELLED });
+  } catch {
+    directIntentThrowsOnNonHeld = true;
+  }
+  assert(directIntentThrowsOnNonHeld, 'createApprovalRequestIntent throws Error if action is not in HELD state');
+
+  // Direct test of handleModalRequestApproval function
+  const mockTestBtn = new MockDOMElement('BUTTON') as any;
+  const mockTestBody = new MockDOMElement('DIV') as any;
+  const mockTestHeader = new MockDOMElement('DIV') as any;
+  const directModalResult: ApprovalRequestResult = handleModalRequestApproval(undefined, {}, {
+    requestBtn: mockTestBtn,
+    body: mockTestBody,
+    header: mockTestHeader,
+  });
+  assertEquals(directModalResult.success, false, 'handleModalRequestApproval directly rejects undefined context');
+  assertEquals(mockTestBtn.disabled, true, 'handleModalRequestApproval disables requestBtn immediately');
+
+  let approvalSuccessResult: any = null;
+  let eventDispatched = false;
+  let dispatchedEventDetail: any = null;
+
+  const approvalEventListener = (e: any) => {
+    eventDispatched = true;
+    dispatchedEventDetail = e.detail;
+  };
+  (globalThis as any).document.addEventListener('guardrail:approval-requested', approvalEventListener);
+
+  showStagingModal({
+    context: context12,
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onRequestApprovalSuccess: (res) => {
+      approvalSuccessResult = res;
+    },
+  });
+
+  const shadow12 = getStagingModalShadowRoot();
+  assert(Boolean(shadow12), 'Staging Modal shadow root is mounted');
+
+  const requestApprovalBtn = shadow12?.querySelector('#gs-btn-request-approval') as any;
+  assert(Boolean(requestApprovalBtn), 'Request Approval button (#gs-btn-request-approval) exists in footer');
+  assertEquals(requestApprovalBtn?.textContent, 'Request Approval', 'Button displays "Request Approval"');
+
+  // Click "Request Approval"
+  requestApprovalBtn.click();
+
+  assertEquals(approvalSuccessResult?.success, true, 'onRequestApprovalSuccess callback reported success: true');
+  assertEquals(approvalSuccessResult?.actionId, actionId12, 'Approval result carries correct actionId');
+  assertEquals(approvalSuccessResult?.isBackendConnected, false, 'Approval result explicitly flags isBackendConnected: false');
+
+  assert(eventDispatched, 'DOM event "guardrail:approval-requested" was dispatched');
+  assertEquals(dispatchedEventDetail?.actionId, actionId12, 'Dispatched event carries matching actionId');
+  assertEquals(dispatchedEventDetail?.isBackendConnected, false, 'Dispatched event flags isBackendConnected: false');
+
+  const intent = approvalSuccessResult?.intent!;
+  assert(Boolean(intent), 'ApprovalRequestIntent object is populated');
+  assertEquals(intent?.type, 'GUARDRAIL_APPROVAL_REQUEST_INTENT', 'Intent type is GUARDRAIL_APPROVAL_REQUEST_INTENT');
+  assertEquals(intent?.status, 'LOCAL_PROTOTYPE_ONLY', 'Intent status is strictly LOCAL_PROTOTYPE_ONLY');
+  assertEquals(intent?.interceptionState, InterceptionState.HELD, 'Intent records interceptionState as HELD');
+  assertEquals(intent?.actionId, actionId12, 'Intent matches actionId');
+  assertEquals(intent?.category, ActionCategory.PAYMENT, 'Intent preserves ActionCategory.PAYMENT');
+  assertEquals(intent?.riskLevel, RiskLevel.HIGH, 'Intent preserves RiskLevel.HIGH');
+  assertEquals(intent?.riskScore, 70, 'Intent preserves riskScore 70');
+  assertEquals(intent?.hostname, 'test.example.com', 'Intent carries sanitized hostname');
+  assertEquals(intent?.origin, 'https://test.example.com', 'Intent carries sanitized origin');
+  assert(Boolean(intent?.requestedAt), 'Intent carries requestedAt timestamp');
+
+  (globalThis as any).document.removeEventListener('guardrail:approval-requested', approvalEventListener);
+
+  // 12B: Sensitive values, passwords, tokens, OTPs, and forms strictly excluded
+  console.log('  → Subtest 12B: Sensitive Values & Form Contents are Strictly Excluded');
+  const intentKeys = Object.keys(intent);
+  const forbiddenSensitiveKeys = [
+    'password', 'pass', 'pwd',
+    'otp', 'pin', 'secret',
+    'card', 'cvv', 'cvc',
+    'token', 'cookie', 'auth',
+    'value', 'inputvalue', 'formcontent', 'body',
+    'element', 'target', 'node', 'elementnode'
+  ];
+  for (const forbidden of forbiddenSensitiveKeys) {
+    const found = intentKeys.some((k) => k.toLowerCase() === forbidden);
+    assert(!found, `Intent excludes forbidden sensitive property "${forbidden}"`);
+  }
+
+  // Ensure origin/hostname do not leak URL query params or auth credentials
+  assert(!intent.origin?.includes('token='), 'Intent origin does not leak URL token parameter');
+  assert(!intent.origin?.includes('secret123'), 'Intent origin does not leak query secrets');
+  assert(!intent.hostname?.includes('token='), 'Intent hostname does not leak query secrets');
+  assert(!intent.description.includes('secret123'), 'Action description does not contain query secrets');
+
+  // 12C: Protected action remains HELD with zero handler execution & cancel remains available
+  console.log('  → Subtest 12C: Protected Action Remains HELD with Zero Handler Execution');
+  assertEquals(testController.getRecord(actionId12)?.state, InterceptionState.HELD, 'InterceptionRecord remains in HELD state');
+  assertEquals(testManager.getExecutionCount(actionId12), 0, 'ContinuationManager reports 0 handler executions');
+  assertEquals(testActionHandlerExecutions, 0, 'Controlled test action handler execution count is strictly 0');
+
+  // Verify that the user can still cancel this held action
+  const cancelBtn12 = shadow12?.querySelector('#gs-btn-cancel-action') as any;
+  assert(Boolean(cancelBtn12), 'Cancel button remains present in DOM');
+  assertEquals(cancelBtn12.disabled, false, 'Cancel button is not disabled after requesting approval');
+
+  cancelBtn12.click();
+  assertEquals(testController.getRecord(actionId12)?.state, InterceptionState.CANCELLED, 'Action transitioned to CANCELLED upon user cancel');
+  assertEquals(testActionHandlerExecutions, 0, 'Handler still NOT executed after cancellation (count: 0)');
+
+  dismissStagingModal();
+
+  // 12D: Attempted request on already CONTINUED or CANCELLED action rejected
+  console.log('  → Subtest 12D: Attempted Request on Already CONTINUED or CANCELLED Action Rejected');
+  // 1) Test on already CANCELLED action (actionId12 was just cancelled)
+  let cancelledRequestError: any = null;
+  showStagingModal({
+    context: { ...context12, interceptionState: InterceptionState.CANCELLED },
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onRequestApprovalError: (res) => {
+      cancelledRequestError = res;
+    },
+  });
+
+  const shadow12D = getStagingModalShadowRoot();
+  const reqBtn12D = shadow12D?.querySelector('#gs-btn-request-approval') as any;
+  reqBtn12D.click();
+
+  assertEquals(cancelledRequestError?.success, false, 'Approval request rejected on CANCELLED action');
+  assert(Boolean(cancelledRequestError?.error?.includes('CANCELLED')), 'Error message explains action is in CANCELLED state');
+  const errorBanner12D = shadow12D?.querySelector('.gs-confirmation-error');
+  assert(Boolean(errorBanner12D), 'Error banner rendered for CANCELLED action request attempt');
+  assertEquals(shadow12D?.querySelector('.gs-confirmation-title')?.textContent, 'Approval Request Could Not Be Prepared', 'Error banner headline displayed');
+  assertEquals(reqBtn12D.textContent, 'Request Unavailable', 'Button text updated to "Request Unavailable"');
+
+  dismissStagingModal();
+
+  // 2) Test on already CONTINUED action
+  const actionIdContinued = 'action-approval-continued-12d';
+  const testActionCont: GuardrailAction = {
+    id: actionIdContinued,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testActionCont, 'Registered');
+  testController.holdAction(actionIdContinued, 'Held');
+  testController.continueAction(actionIdContinued, 'Continued');
+
+  let continuedRequestError: any = null;
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionIdContinued,
+      interceptionState: InterceptionState.CONTINUED,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onRequestApprovalError: (res) => {
+      continuedRequestError = res;
+    },
+  });
+
+  const shadowCont = getStagingModalShadowRoot();
+  const reqBtnCont = shadowCont?.querySelector('#gs-btn-request-approval') as any;
+  reqBtnCont.click();
+
+  assertEquals(continuedRequestError?.success, false, 'Approval request rejected on CONTINUED action');
+  assert(Boolean(continuedRequestError?.error?.includes('CONTINUED')), 'Error message explains action is in CONTINUED state');
+  const errorBannerCont = shadowCont?.querySelector('.gs-confirmation-error');
+  assert(Boolean(errorBannerCont), 'Error banner rendered for CONTINUED action request attempt');
+
+  dismissStagingModal();
+
+  // 3) Test with missing action context
+  let missingCtxError: any = null;
+  showStagingModal({
+    context: createSampleContext({ actionId: '' }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onRequestApprovalError: (res) => {
+      missingCtxError = res;
+    },
+  });
+
+  const shadowMissing = getStagingModalShadowRoot();
+  const reqBtnMissing = shadowMissing?.querySelector('#gs-btn-request-approval') as any;
+  reqBtnMissing.click();
+
+  assertEquals(missingCtxError?.success, false, 'Approval request rejected for missing actionId');
+
+  dismissStagingModal();
+
+  // 12E: Duplicate clicks & rapid repeated requests prevented
+  console.log('  → Subtest 12E: Repeated Clicks & Duplicate Request Prevention');
+  const actionId12E = 'action-approval-test-12e';
+  const testAction12E: GuardrailAction = {
+    id: actionId12E,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction12E, 'Registered');
+  testController.holdAction(actionId12E, 'Held');
+
+  let test12EHandlerExecutions = 0;
+  testManager.registerHeldAction(testAction12E, testController.getRecord(actionId12E)!, () => {
+    test12EHandlerExecutions++;
+  });
+
+  let requestCallCount = 0;
+  let test12EEventsDispatched = 0;
+  const countListener = () => {
+    test12EEventsDispatched++;
+  };
+  (globalThis as any).document.addEventListener('guardrail:approval-requested', countListener);
+
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId12E,
+      category: ActionCategory.GENERAL,
+      riskLevel: RiskLevel.MEDIUM,
+      riskScore: 40,
+      interceptionState: InterceptionState.HELD,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onRequestApprovalSuccess: () => {
+      requestCallCount++;
+    },
+  });
+
+  const shadow12E = getStagingModalShadowRoot();
+  const reqBtn12E = shadow12E?.querySelector('#gs-btn-request-approval') as any;
+
+  // Simulate 5 rapid clicks on the Request Approval button
+  reqBtn12E.click();
+  reqBtn12E.click();
+  reqBtn12E.click();
+  reqBtn12E.click();
+  reqBtn12E.click();
+
+  assertEquals(requestCallCount, 1, 'Approval request logic executed exactly once despite 5 rapid clicks');
+  assertEquals(test12EEventsDispatched, 1, 'Exactly one DOM event dispatched despite 5 rapid clicks');
+  assertEquals(reqBtn12E.disabled, true, 'Request button is disabled after first click');
+  assertEquals(reqBtn12E.textContent, 'Request Prepared (Local)', 'Button text updated to "Request Prepared (Local)"');
+  assertEquals(test12EHandlerExecutions, 0, 'Handler was never executed during repeated clicks');
+  assertEquals(testController.getRecord(actionId12E)?.state, InterceptionState.HELD, 'Action remains HELD');
+
+  (globalThis as any).document.removeEventListener('guardrail:approval-requested', countListener);
+  dismissStagingModal();
+
+  // 12F: UI copy strictly communicates local prototype boundary
+  console.log('  → Subtest 12F: UI Copy Strictly Enforces Prototype Boundary');
+  const actionId12F = 'action-approval-test-12f';
+  const testAction12F: GuardrailAction = {
+    id: actionId12F,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction12F, 'Registered');
+  testController.holdAction(actionId12F, 'Held');
+
+  showStagingModal({
+    context: createSampleContext({
+      actionId: actionId12F,
+      interceptionState: InterceptionState.HELD,
+    }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+  });
+
+  const shadow12F = getStagingModalShadowRoot();
+  const reqBtn12F = shadow12F?.querySelector('#gs-btn-request-approval') as any;
+  reqBtn12F.click();
+
+  const infoBanner = shadow12F?.querySelector('.gs-confirmation-info');
+  assert(Boolean(infoBanner), 'Info confirmation banner rendered with .gs-confirmation-info');
+
+  const bannerTitle = shadow12F?.querySelector('.gs-confirmation-title')?.textContent || '';
+  const bannerDesc = shadow12F?.querySelector('.gs-confirmation-desc')?.textContent || '';
+  const footerNotice = shadow12F?.querySelector('.gs-footer-notice')?.textContent || '';
+  const modePillText = shadow12F?.querySelector('.gs-mode-pill')?.textContent || '';
+
+  assertEquals(bannerTitle, 'Approval Request Prepared (Local Prototype)', 'Banner title is "Approval Request Prepared (Local Prototype)"');
+  assert(bannerDesc.includes('Remote caretaker approval and backend services are not connected yet'), 'Banner description clarifies backend and caretaker are not connected');
+  assert(bannerDesc.includes('This action remains safely paused and will not execute'), 'Banner description confirms action remains safely paused');
+
+  // STRICT REQUIREMENT 8: Must NOT show "Request sent", "Caretaker notified", or "Approved"
+  const allModalText = shadow12F?.textContent || '';
+  assert(!allModalText.includes('Request sent'), 'Modal does NOT claim "Request sent"');
+  assert(!allModalText.includes('Caretaker notified'), 'Modal does NOT claim "Caretaker notified"');
+  assert(!allModalText.includes('Approved'), 'Modal does NOT claim "Approved"');
+
+  // Footer notice explicitly notes backend not connected
+  assert(footerNotice.includes('Backend not connected'), 'Footer notice contains "Backend not connected"');
+  assert(footerNotice.includes('State: HELD'), 'Footer notice shows "State: HELD"');
+  assertEquals(modePillText, 'Paused (Request Prepared)', 'Mode pill indicates "Paused (Request Prepared)"');
 
   dismissStagingModal();
 }

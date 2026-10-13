@@ -19,10 +19,11 @@
 
 import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
 import { ActionClassificationResult } from '../types/classification.js';
-import { InterceptionState } from '../types/interception.js';
+import { InterceptionRecord, InterceptionState } from '../types/interception.js';
 import { ResponseAction } from '../types/response.js';
 import { RiskLevel } from '../types/risk.js';
 import { CreateStagingContextInput, StagingActionContext } from '../types/staging.js';
+import { ApprovalRequestIntent } from '../types/approval.js';
 
 /**
  * Maximum character length allowed for element label extracts in descriptions.
@@ -397,4 +398,49 @@ export function validateStagingActionContext(
     valid: errors.length === 0,
     errors,
   };
+}
+
+/**
+ * Creates a strongly typed ApprovalRequestIntent from a StagingActionContext.
+ *
+ * VALIDATION & BOUNDARY GUARANTEES:
+ * 1. Requires the action to be currently tracked in HELD state.
+ * 2. Emits strictly safe metadata: actionId, description, category, riskLevel,
+ *    riskScore, origin, hostname, interceptionState, requestedAt, and prototype status.
+ * 3. Never includes user inputs, form values, passwords, OTPs, or authentication tokens.
+ * 4. Demarcates status as 'LOCAL_PROTOTYPE_ONLY' without claiming remote delivery.
+ *
+ * @param context The verified StagingActionContext
+ * @param record Optional active InterceptionRecord to verify live controller state
+ * @returns Immutable ApprovalRequestIntent
+ * @throws Error if context is missing or interception state is not HELD
+ */
+export function createApprovalRequestIntent(
+  context: StagingActionContext,
+  record?: InterceptionRecord
+): ApprovalRequestIntent {
+  if (!context || !context.actionId) {
+    throw new Error('[ApprovalRequestIntent] Cannot create approval request without a valid action context.');
+  }
+
+  const effectiveState = record ? record.state : context.interceptionState;
+  if (effectiveState !== InterceptionState.HELD) {
+    throw new Error(
+      `[ApprovalRequestIntent] Cannot request approval for action "${context.actionId}": State is "${effectiveState}". Only actions in HELD state are eligible for approval requests.`
+    );
+  }
+
+  return Object.freeze({
+    type: 'GUARDRAIL_APPROVAL_REQUEST_INTENT',
+    actionId: context.actionId,
+    description: context.description || 'Protected interaction held for review',
+    category: context.category,
+    riskLevel: context.riskLevel,
+    riskScore: context.riskScore,
+    origin: context.origin,
+    hostname: context.hostname,
+    interceptionState: InterceptionState.HELD,
+    requestedAt: new Date().toISOString(),
+    status: 'LOCAL_PROTOTYPE_ONLY',
+  });
 }

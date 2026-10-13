@@ -8,8 +8,11 @@
 import {
   ActionAcknowledgementResponse,
   ActionClassificationResult,
+  ApprovalRequestIntent,
+  ApprovalRequestResponse,
   GuardrailAction,
   GuardrailActionMessage,
+  GuardrailApprovalRequestMessage,
   InterceptionRecord,
   ResponseDecision,
   RiskAssessment,
@@ -69,6 +72,58 @@ export async function dispatchActionToBackground(
       console.info('[Guardrail Messaging] Extension was reloaded. Please refresh this tab to reconnect.');
     } else {
       console.warn(`[Guardrail Messaging] Failed to dispatch ${action.type} action:`, error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Safely dispatches a local ApprovalRequestIntent to the background service worker.
+ *
+ * PROTOTYPE BOUNDARY GUARANTEE:
+ * - Emits GUARDRAIL_APPROVAL_REQUEST to the extension background hub.
+ * - Confirms local delivery to background worker only.
+ * - Does NOT initiate any remote network calls, WebSockets, or caretaker push notifications.
+ *
+ * @param intent The sanitized, typed ApprovalRequestIntent
+ * @returns A promise resolving to the approval response or null if unavailable
+ */
+export async function dispatchApprovalRequestToBackground(
+  intent: ApprovalRequestIntent
+): Promise<ApprovalRequestResponse | null> {
+  // Guard against disconnected runtime if extension was reloaded in chrome://extensions
+  if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+    console.info('[Guardrail Messaging] Extension was reloaded or runtime unavailable. Approval request captured locally.');
+    return null;
+  }
+
+  const message: GuardrailApprovalRequestMessage = {
+    type: 'GUARDRAIL_APPROVAL_REQUEST',
+    intent,
+  };
+
+  try {
+    const response = await chrome.runtime.sendMessage<
+      GuardrailApprovalRequestMessage,
+      ApprovalRequestResponse
+    >(message);
+
+    if (response) {
+      console.log(
+        `%c[Guardrail Messaging]%c Local approval request registered in background:`,
+        'color: #0ea5e9; font-weight: bold;',
+        'color: inherit;',
+        response
+      );
+    }
+
+    return response || null;
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes('Extension context invalidated')) {
+      console.info('[Guardrail Messaging] Extension was reloaded. Please refresh this tab to reconnect.');
+    } else {
+      console.warn('[Guardrail Messaging] Failed to dispatch approval request to background:', error);
     }
     return null;
   }

@@ -20,6 +20,7 @@ import { decideResponse } from '../response/index.js';
 import { showWarningModal } from '../ui/index.js';
 import {
   ActionClassificationResult,
+  ApprovalRequestResult,
   GuardrailAction,
   InterceptionRecord,
   InterceptionState,
@@ -28,10 +29,12 @@ import {
   RiskAssessment,
 } from '../types/index.js';
 import {
+  CancellationResult,
   defaultContinuationManager,
   defaultInterceptionController,
 } from '../interception/index.js';
 import {
+  createApprovalRequestIntent,
   createStagingActionContext,
   dismissStagingModal,
   isStagingModalActive,
@@ -40,6 +43,7 @@ import {
 import { StagingActionContext } from '../types/staging.js';
 import {
   dispatchActionToBackground,
+  dispatchApprovalRequestToBackground,
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
 } from '../utils/index.js';
@@ -564,10 +568,64 @@ function bootstrap(): void {
       open: (ctx?: StagingActionContext) => {
         const target = ctx || latestStagingContext;
         if (target) {
-          showStagingModal({ context: target, state: 'active' });
+          showStagingModal({
+            context: target,
+            state: 'active',
+            controller: defaultInterceptionController,
+            continuationManager: defaultContinuationManager,
+            onCancel: (actionId) => defaultContinuationManager.cancelAction(actionId),
+          });
         } else {
           showStagingModal({ state: 'empty' });
         }
+      },
+      cancel: (actionId?: string) => {
+        const id = actionId || defaultContinuationManager.getCurrentHeldAction()?.action.id;
+        return defaultContinuationManager.cancelAction(id || '');
+      },
+      requestApproval: (context?: StagingActionContext) => {
+        const ctx = context || latestStagingContext;
+        if (!ctx) {
+          return {
+            success: false,
+            actionId: '',
+            error: 'No active staging context available to request approval.',
+            isBackendConnected: false,
+          };
+        }
+        const record = defaultInterceptionController.getRecord(ctx.actionId);
+        if (!record || record.state !== InterceptionState.HELD) {
+          return {
+            success: false,
+            actionId: ctx.actionId,
+            error: `Action "${ctx.actionId}" is in state "${record?.state || 'UNKNOWN'}". Only actions in HELD state are eligible for approval requests.`,
+            isBackendConnected: false,
+          };
+        }
+        const intent = createApprovalRequestIntent(ctx, record);
+        try {
+          document.dispatchEvent(
+            new CustomEvent('guardrail:approval-requested', {
+              detail: {
+                actionId: ctx.actionId,
+                intent,
+                isBackendConnected: false,
+              },
+              bubbles: true,
+            })
+          );
+        } catch (e) {
+          console.warn('[Guardrail Content] Error dispatching custom event:', e);
+        }
+        dispatchApprovalRequestToBackground(intent).catch((err) => {
+          console.warn('[Guardrail Content] Background dispatch failed:', err);
+        });
+        return {
+          success: true,
+          actionId: ctx.actionId,
+          intent,
+          isBackendConnected: false,
+        };
       },
       dismiss: () => dismissStagingModal(),
       isActive: () => isStagingModalActive(),
@@ -671,17 +729,22 @@ function initResolutionControls(): void {
     }
   };
 
-  const handleCancel = (targetActionId?: string) => {
+  const handleCancel = (targetActionId?: string): CancellationResult => {
     const held = defaultContinuationManager.getCurrentHeldAction();
     const actionId = targetActionId || held?.action.id;
 
     if (!actionId) {
       console.warn('[Guardrail Cancellation] Rejecting cancellation: No action is currently tracked or held.');
+      const err = 'No action is currently in HELD state. Cannot cancel.';
       if (detailsEl) {
-        detailsEl.textContent = `[Guardrail Cancellation Rejection] No action is currently in HELD state. Cannot cancel.`;
+        detailsEl.textContent = `[Guardrail Cancellation Rejection] ${err}`;
         detailsEl.style.display = 'block';
       }
-      return;
+      return {
+        success: false,
+        actionId: '',
+        error: err,
+      };
     }
 
     const result = defaultContinuationManager.cancelAction(
@@ -695,7 +758,7 @@ function initResolutionControls(): void {
         detailsEl.textContent = `[Guardrail Cancellation Rejection] ${result.error}`;
         detailsEl.style.display = 'block';
       }
-      return;
+      return result;
     }
 
     // Success: Action cancelled, handler not executed
@@ -737,6 +800,108 @@ function initResolutionControls(): void {
     } catch (err) {
       console.warn('[Guardrail Content] Error dispatching custom action-cancelled event:', err);
     }
+
+    return result;
+  };
+
+  const handleRequestApproval = (targetActionId?: string): ApprovalRequestResult => {
+    const held = defaultContinuationManager.getCurrentHeldAction();
+    const actionId = targetActionId || held?.action.id || latestStagingContext?.actionId;
+
+    if (!actionId) {
+      console.warn('[Guardrail Approval] Rejecting request: No action is currently tracked or held.');
+      const err = 'No action is currently in HELD state. Cannot request approval.';
+      if (detailsEl) {
+        detailsEl.textContent = `[Guardrail Approval Rejection] ${err}`;
+        detailsEl.style.display = 'block';
+      }
+      return {
+        success: false,
+        actionId: '',
+        error: err,
+        isBackendConnected: false,
+      };
+    }
+
+    const record = defaultInterceptionController.getRecord(actionId);
+    if (!record || record.state !== InterceptionState.HELD) {
+      const err = `Action "${actionId}" is in state "${record?.state || 'UNKNOWN'}". Only actions in HELD state are eligible for approval requests.`;
+      console.warn(`[Guardrail Approval] Rejection: ${err}`);
+      if (detailsEl) {
+        detailsEl.textContent = `[Guardrail Approval Rejection] ${err}`;
+        detailsEl.style.display = 'block';
+      }
+      return {
+        success: false,
+        actionId,
+        error: err,
+        isBackendConnected: false,
+      };
+    }
+
+    if (!latestStagingContext || latestStagingContext.actionId !== actionId) {
+      const act = held?.action;
+      if (act) {
+        try {
+          const classification = classifyAction(act);
+          const risk = assessRisk(act, classification);
+          const decision = decideResponse(risk);
+          latestStagingContext = createStagingActionContext({
+            action: act,
+            interception: record,
+            risk,
+            classification,
+            decision,
+          });
+        } catch (ctxErr) {
+          console.warn('[Guardrail Approval] Error creating StagingActionContext:', ctxErr);
+        }
+      }
+    }
+
+    if (!latestStagingContext) {
+      return {
+        success: false,
+        actionId,
+        error: 'Unable to construct staging context for approval request.',
+        isBackendConnected: false,
+      };
+    }
+
+    const intent = createApprovalRequestIntent(latestStagingContext, record);
+
+    // Dispatch DOM custom event
+    try {
+      document.dispatchEvent(
+        new CustomEvent('guardrail:approval-requested', {
+          detail: {
+            actionId,
+            intent,
+            isBackendConnected: false,
+          },
+          bubbles: true,
+        })
+      );
+    } catch (err) {
+      console.warn('[Guardrail Content] Error dispatching custom approval-requested event:', err);
+    }
+
+    // Dispatch to background coordinator
+    dispatchApprovalRequestToBackground(intent).catch((err) => {
+      console.warn('[Guardrail Content] Background dispatch failed:', err);
+    });
+
+    if (detailsEl) {
+      detailsEl.textContent = `[Guardrail Approval Prototype] actionId: ${actionId} | intent created: true | backend connected: false | state: HELD`;
+      detailsEl.style.display = 'block';
+    }
+
+    return {
+      success: true,
+      actionId,
+      intent,
+      isBackendConnected: false,
+    };
   };
 
   if (continueBtn) {
@@ -751,7 +916,13 @@ function initResolutionControls(): void {
   if (stagingBtn) {
     stagingBtn.addEventListener('click', () => {
       if (latestStagingContext) {
-        showStagingModal({ context: latestStagingContext, state: 'active' });
+        showStagingModal({
+          context: latestStagingContext,
+          state: 'active',
+          controller: defaultInterceptionController,
+          continuationManager: defaultContinuationManager,
+          onCancel: (actionId) => handleCancel(actionId),
+        });
       } else {
         showStagingModal({ state: 'empty' });
       }
@@ -769,11 +940,22 @@ function initResolutionControls(): void {
     handleCancel(custom.detail?.actionId);
   });
 
+  document.addEventListener('guardrail:trigger-request-approval', (e: Event) => {
+    const custom = e as CustomEvent<{ actionId?: string }>;
+    handleRequestApproval(custom.detail?.actionId);
+  });
+
   document.addEventListener('guardrail:open-staging-mode', (e: Event) => {
     const custom = e as CustomEvent<{ context?: StagingActionContext; state?: 'active' | 'loading' | 'empty' }>;
     const ctx = custom.detail?.context || latestStagingContext;
     const state = custom.detail?.state || (ctx ? 'active' : 'empty');
-    showStagingModal({ context: ctx || undefined, state });
+    showStagingModal({
+      context: ctx || undefined,
+      state,
+      controller: defaultInterceptionController,
+      continuationManager: defaultContinuationManager,
+      onCancel: (actionId) => handleCancel(actionId),
+    });
   });
 
   document.addEventListener('guardrail:dismiss-staging-mode', () => {
