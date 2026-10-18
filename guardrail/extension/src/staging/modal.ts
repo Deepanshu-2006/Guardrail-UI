@@ -1669,12 +1669,105 @@ export interface ModalCancelUIElements {
  * 5. Accurate Feedback: Displays "Action cancelled. Nothing was changed." only upon true success.
  *    Displays an appropriate error message if state has changed or cancellation fails.
  */
+function applyCancellationOutcome(
+  result: CancellationResult,
+  options: StagingModalOptions,
+  uiElements: ModalCancelUIElements
+): CancellationResult {
+  const { cancelBtn, primaryBtn, body, header, notice } = uiElements;
+
+  if (result.success) {
+    currentUIState = 'cancelled';
+    displayConfirmationBanner(
+      body,
+      'success',
+      'Action cancelled. Nothing was changed.',
+      'The held interaction was aborted safely. No action was executed, no network data was sent, and no page state was modified.'
+    );
+
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Cancelled';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-requested', 'gs-badge-stale');
+      pill.classList.add('gs-badge-cancelled');
+    }
+
+    const headingTitle = body.querySelector('.gs-heading-title');
+    if (headingTitle) {
+      headingTitle.textContent = 'Action Cancelled';
+    }
+    const headingSubtitle = body.querySelector('.gs-heading-subtitle');
+    if (headingSubtitle) {
+      headingSubtitle.textContent = 'This action was cancelled before it could run. Nothing was changed.';
+    }
+
+    cancelBtn.textContent = 'Action Cancelled';
+    if (primaryBtn) {
+      primaryBtn.style.display = 'none';
+      primaryBtn.disabled = true;
+    }
+    if (notice) {
+      notice.textContent = 'Action cancelled safely • State: CANCELLED';
+    }
+
+    announceStagingState('Action cancelled. Nothing was changed.');
+
+    if (options.onCancelSuccess) {
+      options.onCancelSuccess(result);
+    }
+  } else {
+    currentUIState = 'stale_or_invalid';
+    displayConfirmationBanner(
+      body,
+      'error',
+      'Cancellation Could Not Be Completed',
+      result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'
+    );
+
+    const pill = header.querySelector('.gs-mode-pill');
+    if (pill) {
+      pill.textContent = 'Operation Unavailable';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-stale');
+    }
+
+    cancelBtn.textContent = 'Cancellation Failed';
+    if (primaryBtn) {
+      primaryBtn.disabled = true;
+      primaryBtn.setAttribute('aria-disabled', 'true');
+    }
+
+    announceStagingState(
+      'Cancellation could not be completed: ' +
+        (result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'),
+      true
+    );
+
+    if (options.onCancelError) {
+      options.onCancelError(result);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Executes the cancellation workflow for an intercepted action held in Staging Mode.
+ *
+ * Enforces:
+ * 1. Single execution: Disables cancel button and rejects duplicate/concurrent clicks.
+ * 2. Source of Truth: Uses InterceptionController / ContinuationManager lifecycle.
+ * 3. Validation: Confirms action is currently in HELD state.
+ * 4. Zero Handler Invocation: Ensures controlled test handler is not executed.
+ * 5. Accurate Feedback: Displays "Action cancelled. Nothing was changed." only upon true success.
+ *    Displays an appropriate error message if state has changed or cancellation fails.
+ */
 export function handleModalCancel(
   actionId: string | undefined,
   options: StagingModalOptions,
   uiElements: ModalCancelUIElements
 ): CancellationResult {
-  const { cancelBtn, primaryBtn, body, header, notice } = uiElements;
+  const { cancelBtn } = uiElements;
 
   // 1. Immediately disable button to prevent repeated clicks / duplicate requests
   cancelBtn.disabled = true;
@@ -1688,32 +1781,22 @@ export function handleModalCancel(
       actionId: '',
       error: 'Cannot cancel action: No valid action identifier is available.',
     };
-    displayConfirmationBanner(
-      body,
-      'error',
-      'Cancellation Could Not Be Completed',
-      errorResult.error!
-    );
-    currentUIState = 'stale_or_invalid';
-    const pill = header.querySelector('.gs-mode-pill');
-    if (pill) {
-      pill.textContent = 'Operation Unavailable';
-      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
-      pill.classList.add('gs-badge-stale');
-    }
-    cancelBtn.textContent = 'Cancellation Failed';
-    announceStagingState('Cancellation could not be completed: ' + errorResult.error, true);
-    if (options.onCancelError) {
-      options.onCancelError(errorResult);
-    }
-    return errorResult;
+    return applyCancellationOutcome(errorResult, options, uiElements);
   }
 
   // 2. Request cancellation via the configured source of truth
-  let result: CancellationResult;
+  let result: CancellationResult | Promise<CancellationResult>;
 
   if (options.onCancel) {
-    result = options.onCancel(id) as CancellationResult;
+    try {
+      result = options.onCancel(id) as CancellationResult | Promise<CancellationResult>;
+    } catch (err: any) {
+      result = {
+        success: false,
+        actionId: id,
+        error: err?.message || 'Error occurred during action cancellation callback.',
+      };
+    }
   } else if (options.continuationManager) {
     result = options.continuationManager.cancelAction(
       id,
@@ -1745,58 +1828,80 @@ export function handleModalCancel(
     );
   }
 
-  // 3. Process outcome
+  // 3. Process outcome (asynchronous or synchronous)
+  if (result && typeof (result as any).then === 'function') {
+    currentUIState = 'cancelling';
+    (result as any)
+      .then((asyncRes: CancellationResult) => applyCancellationOutcome(asyncRes, options, uiElements))
+      .catch((err: any) => {
+        const errorResult: CancellationResult = {
+          success: false,
+          actionId: id,
+          error: err?.message || String(err),
+        };
+        applyCancellationOutcome(errorResult, options, uiElements);
+      });
+    return result as unknown as CancellationResult;
+  }
+
+  return applyCancellationOutcome(result as CancellationResult, options, uiElements);
+}
+
+export interface ModalApprovalRequestUIElements {
+  requestBtn: HTMLButtonElement;
+  cancelBtn?: HTMLButtonElement;
+  body: HTMLElement;
+  header: HTMLElement;
+  notice?: HTMLElement;
+}
+
+function applyApprovalOutcome(
+  result: ApprovalRequestResult,
+  options: StagingModalOptions,
+  uiElements: ModalApprovalRequestUIElements
+): ApprovalRequestResult {
+  const { requestBtn, cancelBtn, body, header, notice } = uiElements;
+
   if (result.success) {
-    currentUIState = 'cancelled';
-    // SUCCESS: Display confirmation ONLY after cancellation has succeeded
+    currentUIState = 'approval_intent_recorded';
     displayConfirmationBanner(
       body,
-      'success',
-      'Action cancelled. Nothing was changed.',
-      'The held interaction was aborted safely. No action was executed, no network data was sent, and no page state was modified.'
+      'info',
+      'Approval Request Prepared (Local Prototype)',
+      'An approval request intent was recorded locally for this action. Remote caretaker approval and backend services are not connected yet. This action remains safely paused and will not execute.'
     );
 
-    // Update Header Pill to CANCELLED badge
     const pill = header.querySelector('.gs-mode-pill');
     if (pill) {
-      pill.textContent = 'Cancelled';
-      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-requested', 'gs-badge-stale');
-      pill.classList.add('gs-badge-cancelled');
+      pill.textContent = 'Paused (Request Prepared)';
+      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
+      pill.classList.add('gs-badge-requested');
     }
 
-    // Update Heading Section
-    const headingTitle = body.querySelector('.gs-heading-title');
-    if (headingTitle) {
-      headingTitle.textContent = 'Action Cancelled';
-    }
-    const headingSubtitle = body.querySelector('.gs-heading-subtitle');
-    if (headingSubtitle) {
-      headingSubtitle.textContent = 'This action was cancelled before it could run. Nothing was changed.';
-    }
-
-    // Update Controls: Permanently disable/remove action buttons, keep close button available
-    cancelBtn.textContent = 'Action Cancelled';
-    if (primaryBtn) {
-      primaryBtn.style.display = 'none';
-      primaryBtn.disabled = true;
-    }
+    requestBtn.textContent = 'Request Prepared (Local)';
     if (notice) {
-      notice.textContent = 'Action cancelled safely • State: CANCELLED';
+      notice.textContent = 'Approval intent recorded locally • Backend not connected • State: HELD';
     }
 
-    announceStagingState('Action cancelled. Nothing was changed.');
+    if (cancelBtn) {
+      cancelBtn.disabled = false;
+      cancelBtn.removeAttribute('aria-disabled');
+    }
 
-    if (options.onCancelSuccess) {
-      options.onCancelSuccess(result);
+    announceStagingState(
+      'Approval request intent recorded locally. Remote caretaker approval and backend services are not connected yet. Action remains paused.'
+    );
+
+    if (options.onRequestApprovalSuccess) {
+      options.onRequestApprovalSuccess(result);
     }
   } else {
     currentUIState = 'stale_or_invalid';
-    // REJECTION: Interception was already resolved, invalid state, or unknown ID
     displayConfirmationBanner(
       body,
       'error',
-      'Cancellation Could Not Be Completed',
-      result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'
+      'Approval Request Could Not Be Prepared',
+      result.error || 'The approval request could not be prepared.'
     );
 
     const pill = header.querySelector('.gs-mode-pill');
@@ -1806,33 +1911,24 @@ export function handleModalCancel(
       pill.classList.add('gs-badge-stale');
     }
 
-    // Keep button disabled to prevent duplicate attempts on an unresolvable action
-    cancelBtn.textContent = 'Cancellation Failed';
-    if (primaryBtn) {
-      primaryBtn.disabled = true;
-      primaryBtn.setAttribute('aria-disabled', 'true');
+    requestBtn.textContent = 'Request Unavailable';
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.setAttribute('aria-disabled', 'true');
     }
 
     announceStagingState(
-      'Cancellation could not be completed: ' +
-        (result.error || 'The action could not be cancelled because its state has already changed or it is no longer held.'),
+      'Approval request could not be prepared: ' +
+        (result.error || 'The approval request could not be prepared.'),
       true
     );
 
-    if (options.onCancelError) {
-      options.onCancelError(result);
+    if (options.onRequestApprovalError) {
+      options.onRequestApprovalError(result);
     }
   }
 
   return result;
-}
-
-export interface ModalApprovalRequestUIElements {
-  requestBtn: HTMLButtonElement;
-  cancelBtn?: HTMLButtonElement;
-  body: HTMLElement;
-  header: HTMLElement;
-  notice?: HTMLElement;
 }
 
 /**
@@ -1856,7 +1952,7 @@ export function handleModalRequestApproval(
   options: StagingModalOptions,
   uiElements: ModalApprovalRequestUIElements
 ): ApprovalRequestResult {
-  const { requestBtn, cancelBtn, body, header, notice } = uiElements;
+  const { requestBtn } = uiElements;
 
   // 1. Immediately disable button to prevent repeated clicks / duplicate requests
   requestBtn.disabled = true;
@@ -1872,28 +1968,42 @@ export function handleModalRequestApproval(
       error: 'Cannot request approval: No valid action context or identifier is available.',
       isBackendConnected: false,
     };
-    currentUIState = 'stale_or_invalid';
-    displayConfirmationBanner(
-      body,
-      'error',
-      'Approval Request Could Not Be Prepared',
-      errorResult.error!
-    );
-    const pill = header.querySelector('.gs-mode-pill');
-    if (pill) {
-      pill.textContent = 'Operation Unavailable';
-      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
-      pill.classList.add('gs-badge-stale');
-    }
-    requestBtn.textContent = 'Request Unavailable';
-    announceStagingState('Approval request could not be prepared: ' + errorResult.error, true);
-    if (options.onRequestApprovalError) {
-      options.onRequestApprovalError(errorResult);
-    }
-    return errorResult;
+    return applyApprovalOutcome(errorResult, options, uiElements);
   }
 
-  // 3. Validate live controller state
+  // 3. Delegate to custom onRequestApproval if configured
+  if (options.onRequestApproval) {
+    let customOutcome: ApprovalRequestResult | Promise<ApprovalRequestResult>;
+    try {
+      customOutcome = options.onRequestApproval(context);
+    } catch (err: any) {
+      customOutcome = {
+        success: false,
+        actionId,
+        error: err?.message || String(err),
+        isBackendConnected: false,
+      };
+    }
+
+    if (customOutcome && typeof (customOutcome as any).then === 'function') {
+      (customOutcome as any)
+        .then((asyncRes: ApprovalRequestResult) => applyApprovalOutcome(asyncRes, options, uiElements))
+        .catch((err: any) => {
+          const errorRes: ApprovalRequestResult = {
+            success: false,
+            actionId,
+            error: err?.message || String(err),
+            isBackendConnected: false,
+          };
+          applyApprovalOutcome(errorRes, options, uiElements);
+        });
+      return customOutcome as unknown as ApprovalRequestResult;
+    }
+
+    return applyApprovalOutcome(customOutcome as ApprovalRequestResult, options, uiElements);
+  }
+
+  // 4. Validate live controller state
   const controller = options.controller || defaultInterceptionController;
   const record = controller.getRecord(actionId);
 
@@ -1904,29 +2014,7 @@ export function handleModalRequestApproval(
       error: `Cannot request approval: Action "${actionId}" is not actively tracked by Guardrail.`,
       isBackendConnected: false,
     };
-    currentUIState = 'stale_or_invalid';
-    displayConfirmationBanner(
-      body,
-      'error',
-      'Approval Request Could Not Be Prepared',
-      errorResult.error!
-    );
-    const pill = header.querySelector('.gs-mode-pill');
-    if (pill) {
-      pill.textContent = 'Operation Unavailable';
-      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
-      pill.classList.add('gs-badge-stale');
-    }
-    requestBtn.textContent = 'Request Unavailable';
-    if (cancelBtn) {
-      cancelBtn.disabled = true;
-      cancelBtn.setAttribute('aria-disabled', 'true');
-    }
-    announceStagingState('Approval request could not be prepared: ' + errorResult.error, true);
-    if (options.onRequestApprovalError) {
-      options.onRequestApprovalError(errorResult);
-    }
-    return errorResult;
+    return applyApprovalOutcome(errorResult, options, uiElements);
   }
 
   if (record.state !== InterceptionState.HELD) {
@@ -1936,32 +2024,10 @@ export function handleModalRequestApproval(
       error: `Cannot request approval for action "${actionId}": State is "${record.state}". Only actions in HELD state are eligible for approval requests.`,
       isBackendConnected: false,
     };
-    currentUIState = 'stale_or_invalid';
-    displayConfirmationBanner(
-      body,
-      'error',
-      'Approval Request Could Not Be Prepared',
-      errorResult.error!
-    );
-    const pill = header.querySelector('.gs-mode-pill');
-    if (pill) {
-      pill.textContent = 'Operation Unavailable';
-      pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
-      pill.classList.add('gs-badge-stale');
-    }
-    requestBtn.textContent = 'Request Unavailable';
-    if (cancelBtn) {
-      cancelBtn.disabled = true;
-      cancelBtn.setAttribute('aria-disabled', 'true');
-    }
-    announceStagingState('Approval request could not be prepared: ' + errorResult.error, true);
-    if (options.onRequestApprovalError) {
-      options.onRequestApprovalError(errorResult);
-    }
-    return errorResult;
+    return applyApprovalOutcome(errorResult, options, uiElements);
   }
 
-  // 4. Create typed ApprovalRequestIntent
+  // 5. Create typed ApprovalRequestIntent
   let intent: ApprovalRequestIntent;
   try {
     intent = createApprovalRequestIntent(context, record);
@@ -1973,22 +2039,10 @@ export function handleModalRequestApproval(
       error: errorMsg,
       isBackendConnected: false,
     };
-    currentUIState = 'stale_or_invalid';
-    displayConfirmationBanner(
-      body,
-      'error',
-      'Approval Request Could Not Be Prepared',
-      errorMsg
-    );
-    requestBtn.textContent = 'Request Failed';
-    announceStagingState('Approval request could not be prepared: ' + errorMsg, true);
-    if (options.onRequestApprovalError) {
-      options.onRequestApprovalError(errorResult);
-    }
-    return errorResult;
+    return applyApprovalOutcome(errorResult, options, uiElements);
   }
 
-  // 5. Build result
+  // 6. Build result
   const result: ApprovalRequestResult = {
     success: true,
     actionId,
@@ -1996,7 +2050,7 @@ export function handleModalRequestApproval(
     isBackendConnected: false,
   };
 
-  // 6. Dispatch local DOM custom event for automation/testing
+  // 7. Dispatch local DOM custom event for automation/testing
   if (typeof document !== 'undefined') {
     try {
       document.dispatchEvent(
@@ -2014,49 +2068,13 @@ export function handleModalRequestApproval(
     }
   }
 
-  // 7. Dispatch to background service worker (resilient, asynchronous)
+  // 8. Dispatch to background service worker (resilient, asynchronous)
   dispatchApprovalRequestToBackground(intent).catch((err) => {
     console.warn('[Guardrail Staging] Background approval dispatch notification failed:', err);
   });
 
-  // 8. Update UI Feedback:
-  currentUIState = 'approval_intent_recorded';
-  displayConfirmationBanner(
-    body,
-    'info',
-    'Approval Request Prepared (Local Prototype)',
-    'An approval request intent was recorded locally for this action. Remote caretaker approval and backend services are not connected yet. This action remains safely paused and will not execute.'
-  );
-
-  // Update header pill to indicate request prepared while remaining paused
-  const pill = header.querySelector('.gs-mode-pill');
-  if (pill) {
-    pill.textContent = 'Paused (Request Prepared)';
-    pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-stale');
-    pill.classList.add('gs-badge-requested');
-  }
-
-  // Update footer notice and controls
-  requestBtn.textContent = 'Request Prepared (Local)';
-  if (notice) {
-    notice.textContent = 'Approval intent recorded locally • Backend not connected • State: HELD';
-  }
-
-  // Ensure cancel button remains enabled so user can still cancel this held action
-  if (cancelBtn) {
-    cancelBtn.disabled = false;
-    cancelBtn.removeAttribute('aria-disabled');
-  }
-
-  announceStagingState(
-    'Approval request intent recorded locally. Remote caretaker approval and backend services are not connected yet. Action remains paused.'
-  );
-
-  if (options.onRequestApprovalSuccess) {
-    options.onRequestApprovalSuccess(result);
-  }
-
-  return result;
+  // 9. Update UI Feedback
+  return applyApprovalOutcome(result, options, uiElements);
 }
 
 /**
@@ -2130,20 +2148,15 @@ function renderFooter(
 
       if (outcome && typeof (outcome as any).then === 'function') {
         (outcome as any)
-          .then((res: ApprovalRequestResult) => {
-            if (res.success) {
-              isOperationActive = false;
-            } else {
-              setStagingUIState('stale_or_invalid', { error: res.error });
-            }
+          .then(() => {
+            isOperationActive = false;
           })
           .catch((err: any) => {
+            isOperationActive = false;
             setStagingUIState('stale_or_invalid', { error: String(err) });
           });
       } else {
-        if (outcome.success) {
-          isOperationActive = false;
-        }
+        isOperationActive = false;
       }
     });
 
@@ -2181,14 +2194,15 @@ function renderFooter(
 
       if (cancelOutcome && typeof (cancelOutcome as any).then === 'function') {
         (cancelOutcome as any)
-          .then((res: CancellationResult) => {
-            if (!res.success) {
-              setStagingUIState('stale_or_invalid', { error: res.error });
-            }
+          .then(() => {
+            isOperationActive = false;
           })
           .catch((err: any) => {
+            isOperationActive = false;
             setStagingUIState('stale_or_invalid', { error: String(err) });
           });
+      } else {
+        isOperationActive = false;
       }
     });
 
