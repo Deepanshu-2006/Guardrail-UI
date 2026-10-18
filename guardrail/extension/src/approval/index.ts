@@ -10,6 +10,7 @@ export * from './lifecycle.js';
 export * from './authorization.js';
 export * from './repository.js';
 export * from './service.js';
+export * from './api.js';
 export * from '../types/approval.js';
 
 
