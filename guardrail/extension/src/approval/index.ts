@@ -8,5 +8,8 @@
 export * from './model.js';
 export * from './lifecycle.js';
 export * from './authorization.js';
+export * from './repository.js';
+export * from './service.js';
 export * from '../types/approval.js';
+
 
