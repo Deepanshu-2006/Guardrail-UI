@@ -155,6 +155,51 @@ export function isValidApprovalTransition(
 }
 
 // =============================================================================
+// Time Provider & Server Clock Invariants
+// =============================================================================
+
+/**
+ * Reliable time provider function returning an ISO string, epoch milliseconds, or Date.
+ * Allows injecting authoritative server clocks and deterministic test clocks.
+ */
+export type TimeProvider = () => string | number | Date;
+
+/**
+ * Default system time provider returning current ISO 8601 UTC timestamp.
+ */
+export const defaultTimeProvider: TimeProvider = () => new Date().toISOString();
+
+/**
+ * Normalizes a TimeProvider output to a standard ISO 8601 UTC string.
+ */
+export function resolveTimestamp(timeProvider: TimeProvider = defaultTimeProvider): string {
+  const val = timeProvider();
+  if (val instanceof Date) {
+    return val.toISOString();
+  }
+  if (typeof val === 'number') {
+    return new Date(val).toISOString();
+  }
+  return new Date(Date.parse(val)).toISOString();
+}
+
+/**
+ * Checks whether an ApprovalRequest has expired against a reliable time provider.
+ *
+ * @param request The ApprovalRequest to evaluate
+ * @param timeProvider Authoritative time source
+ * @returns True if current time is greater than or equal to request.expiresAt
+ */
+export function isRequestExpired(
+  request: ApprovalRequest,
+  timeProvider: TimeProvider = defaultTimeProvider
+): boolean {
+  const currentEpoch = Date.parse(resolveTimestamp(timeProvider));
+  const expiresEpoch = Date.parse(request.expiresAt);
+  return currentEpoch >= expiresEpoch;
+}
+
+// =============================================================================
 // Custom Domain Errors
 // =============================================================================
 
@@ -189,6 +234,79 @@ export class ApprovalStateTransitionError extends Error {
     this.requestId = requestId;
     this.fromStatus = fromStatus;
     this.toStatus = toStatus;
+  }
+}
+
+/**
+ * Error thrown when attempting a decision, cancellation, or modification on an already resolved request.
+ * Enforces first-responder concurrency and prevents repeated or conflicting decisions.
+ */
+export class ApprovalAlreadyResolvedError extends ApprovalStateTransitionError {
+  constructor(requestId: string, currentStatus: ApprovalStatus, attemptedStatus: ApprovalStatus) {
+    super(requestId, currentStatus, attemptedStatus);
+    this.name = 'ApprovalAlreadyResolvedError';
+    this.message = `[Guardrail Approval] Cannot modify approval request "${requestId}": Request is already in terminal state "${currentStatus}". Repeated decisions and modifications on resolved requests are strictly rejected.`;
+  }
+}
+
+/**
+ * Error thrown when an attempt is made to decide on an expired approval request.
+ * Extends ApprovalValidationError to maintain consistency with validation suites.
+ */
+export class ApprovalExpiredError extends ApprovalValidationError {
+  public readonly requestId: string;
+  public readonly expiresAt: string;
+  public readonly currentTimestamp: string;
+
+  constructor(requestId: string, expiresAt: string, currentTimestamp: string) {
+    const errorMsg = `Cannot submit decision for request "${requestId}": Decision timestamp (${currentTimestamp}) exceeds expiration deadline (${expiresAt}). Late decisions are prohibited.`;
+    super([errorMsg]);
+    this.name = 'ApprovalExpiredError';
+    this.requestId = requestId;
+    this.expiresAt = expiresAt;
+    this.currentTimestamp = currentTimestamp;
+  }
+}
+
+/**
+ * Error thrown when an attempt is made to reopen a resolved request.
+ * Enforces terminal state immutability per architecture specification.
+ */
+export class ApprovalReopenProhibitedError extends ApprovalStateTransitionError {
+  constructor(requestId: string, currentStatus: ApprovalStatus) {
+    super(requestId, currentStatus, ApprovalStatus.PENDING);
+    this.name = 'ApprovalReopenProhibitedError';
+    this.message = `[Guardrail Approval] Reopening resolved request "${requestId}" (status: ${currentStatus}) is prohibited by Guardrail architecture. Resolved states are terminal. Prefer creating a new approval request.`;
+  }
+}
+
+/**
+ * Error thrown when an approval request ID is not found.
+ */
+export class ApprovalRequestNotFoundError extends Error {
+  public readonly requestId: string;
+
+  constructor(requestId: string) {
+    super(`[Guardrail Approval] Approval request with ID "${requestId}" was not found.`);
+    this.name = 'ApprovalRequestNotFoundError';
+    this.requestId = requestId;
+  }
+}
+
+/**
+ * Error thrown when attempting to register a duplicate active approval request for an action.
+ */
+export class DuplicateApprovalRequestError extends Error {
+  public readonly actionId: string;
+  public readonly existingRequestId: string;
+
+  constructor(actionId: string, existingRequestId: string) {
+    super(
+      `[Guardrail Approval] An active approval request ("${existingRequestId}") already exists for action "${actionId}". Duplicate submissions are suppressed.`
+    );
+    this.name = 'DuplicateApprovalRequestError';
+    this.actionId = actionId;
+    this.existingRequestId = existingRequestId;
   }
 }
 
@@ -643,13 +761,19 @@ export function createApprovalRequest(
  * SEPARATION OF DUTIES:
  * - The decision-maker (`decidedBy`) CANNOT be the requesting user (`requesterId`).
  *
+ * EXPIRATION & TERMINAL STATE GUARDS:
+ * - Rejects already-resolved requests (throws ApprovalAlreadyResolvedError).
+ * - Rejects expired requests using reliable time source (throws ApprovalExpiredError).
+ *
  * @param request Existing PENDING ApprovalRequest
  * @param decisionInput Verdict and reviewer details
+ * @param timeProvider Optional authoritative time provider
  * @returns New immutable ApprovalRequest in APPROVED or REJECTED state
  */
 export function resolveApprovalRequest(
   request: ApprovalRequest,
-  decisionInput: SubmitApprovalDecisionInput
+  decisionInput: SubmitApprovalDecisionInput,
+  timeProvider?: TimeProvider
 ): ApprovalRequest {
   if (!request) {
     throw new ApprovalValidationError(['ApprovalRequest is required for resolution.']);
@@ -661,16 +785,25 @@ export function resolveApprovalRequest(
   const targetStatus =
     decisionInput.decision === 'APPROVED' ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;
 
+  // Check if request is already in a terminal state (APPROVED, REJECTED, EXPIRED, CANCELLED)
+  if (isTerminalApprovalStatus(request.status)) {
+    throw new ApprovalAlreadyResolvedError(request.id, request.status, targetStatus);
+  }
+
   if (!isValidApprovalTransition(request.status, targetStatus)) {
     throw new ApprovalStateTransitionError(request.id, request.status, targetStatus);
   }
 
-  const decidedAt = decisionInput.decidedAt ?? generateTimestamp();
+  const decidedAt =
+    decisionInput.decidedAt ??
+    (timeProvider ? resolveTimestamp(timeProvider) : generateTimestamp());
 
-  if (Date.parse(decidedAt) > Date.parse(request.expiresAt)) {
-    throw new ApprovalValidationError([
-      `Cannot submit decision for request "${request.id}": Decision timestamp (${decidedAt}) exceeds expiration deadline (${request.expiresAt}).`,
-    ]);
+  // Check if request has elapsed past expiration deadline using authoritative time source
+  if (
+    Date.parse(decidedAt) > Date.parse(request.expiresAt) ||
+    (timeProvider && isRequestExpired(request, timeProvider))
+  ) {
+    throw new ApprovalExpiredError(request.id, request.expiresAt, decidedAt);
   }
 
   if (decisionInput.decidedBy.trim() === request.requesterId.trim()) {
@@ -703,17 +836,20 @@ export function resolveApprovalRequest(
  * @param request Existing PENDING ApprovalRequest
  * @param authenticatedUserId Identity of user attempting cancellation (must match requesterId)
  * @param reason Optional cancellation explanation
- * @param timestamp Optional cancellation timestamp
+ * @param timeProviderOrTimestamp Optional authoritative TimeProvider or ISO timestamp string
  * @returns New immutable ApprovalRequest in CANCELLED state
  */
 export function cancelApprovalRequest(
   request: ApprovalRequest,
   authenticatedUserId: string,
   reason?: string,
-  timestamp?: string
+  timeProviderOrTimestamp?: TimeProvider | string
 ): ApprovalRequest {
   if (!request) {
     throw new ApprovalValidationError(['ApprovalRequest is required for cancellation.']);
+  }
+  if (isTerminalApprovalStatus(request.status)) {
+    throw new ApprovalAlreadyResolvedError(request.id, request.status, ApprovalStatus.CANCELLED);
   }
   if (!isValidApprovalTransition(request.status, ApprovalStatus.CANCELLED)) {
     throw new ApprovalStateTransitionError(request.id, request.status, ApprovalStatus.CANCELLED);
@@ -724,7 +860,15 @@ export function cancelApprovalRequest(
     ]);
   }
 
-  const resolvedAt = timestamp ?? generateTimestamp();
+  let resolvedAt: string;
+  if (typeof timeProviderOrTimestamp === 'function') {
+    resolvedAt = resolveTimestamp(timeProviderOrTimestamp);
+  } else if (typeof timeProviderOrTimestamp === 'string') {
+    resolvedAt = timeProviderOrTimestamp;
+  } else {
+    resolvedAt = generateTimestamp();
+  }
+
   const cancelled: ApprovalRequest = Object.freeze({
     ...request,
     status: ApprovalStatus.CANCELLED,
@@ -740,21 +884,32 @@ export function cancelApprovalRequest(
  * Expires a PENDING ApprovalRequest when the expiration deadline passes without a decision.
  *
  * @param request Existing PENDING ApprovalRequest
- * @param currentTimestamp Optional timestamp (defaults to request.expiresAt)
+ * @param timeProviderOrTimestamp Optional authoritative TimeProvider or ISO timestamp string
  * @returns New immutable ApprovalRequest in EXPIRED state
  */
 export function expireApprovalRequest(
   request: ApprovalRequest,
-  currentTimestamp?: string
+  timeProviderOrTimestamp?: TimeProvider | string
 ): ApprovalRequest {
   if (!request) {
     throw new ApprovalValidationError(['ApprovalRequest is required for expiration.']);
+  }
+  if (isTerminalApprovalStatus(request.status)) {
+    throw new ApprovalAlreadyResolvedError(request.id, request.status, ApprovalStatus.EXPIRED);
   }
   if (!isValidApprovalTransition(request.status, ApprovalStatus.EXPIRED)) {
     throw new ApprovalStateTransitionError(request.id, request.status, ApprovalStatus.EXPIRED);
   }
 
-  const resolvedAt = currentTimestamp ?? request.expiresAt;
+  let resolvedAt: string;
+  if (typeof timeProviderOrTimestamp === 'function') {
+    resolvedAt = resolveTimestamp(timeProviderOrTimestamp);
+  } else if (typeof timeProviderOrTimestamp === 'string') {
+    resolvedAt = timeProviderOrTimestamp;
+  } else {
+    resolvedAt = request.expiresAt;
+  }
+
   const expired: ApprovalRequest = Object.freeze({
     ...request,
     status: ApprovalStatus.EXPIRED,
@@ -763,6 +918,18 @@ export function expireApprovalRequest(
 
   assertValidApprovalRequest(expired);
   return expired;
+}
+
+/**
+ * Reopening resolved requests is strictly prohibited by Guardrail architecture.
+ * Resolved states (APPROVED, REJECTED, EXPIRED, CANCELLED) are permanent.
+ * Prefer creating a new request.
+ *
+ * @param request Any ApprovalRequest
+ * @throws ApprovalReopenProhibitedError unconditionally
+ */
+export function reopenApprovalRequest(request: ApprovalRequest): never {
+  throw new ApprovalReopenProhibitedError(request.id, request.status);
 }
 
 // =============================================================================

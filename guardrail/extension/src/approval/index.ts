@@ -6,4 +6,5 @@
  */
 
 export * from './model.js';
+export * from './lifecycle.js';
 export * from '../types/approval.js';
