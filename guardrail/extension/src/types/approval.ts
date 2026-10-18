@@ -1,33 +1,286 @@
 /**
- * Guardrail Approval Request Intent & Messaging Contract
+ * Guardrail Approval Request Intent & Domain Models
  *
- * Defines the strongly typed local approval-request intent generated when a user
- * requests approval for a held action in Staging Mode.
+ * Defines the strongly typed approval request data structures, lifecycle states,
+ * and decision contracts for the Guardrail approval workflow.
  *
  * ARCHITECTURAL PRINCIPLES & BOUNDARIES:
- * 1. LOCAL PROTOTYPE BOUNDARY:
- *    - Captures the user's intent to request approval locally.
- *    - Strictly does NOT claim or pretend that a remote backend, WebSocket connection,
- *      push notification, or caretaker review mechanism is active.
- * 2. PRIVACY & LEAST PRIVILEGE:
- *    - Strictly excludes user input values, passwords, OTPs, card numbers, cookies,
- *      authentication tokens, or arbitrary form contents.
- *    - Carries only the minimal safe metadata: actionId, description, category,
- *      riskLevel, riskScore, sanitized origin, sanitized hostname, and timestamps.
- * 3. STATE IMMUTABILITY:
- *    - Keeps the protected action in HELD state.
- *    - Never transitions to CONTINUED or executes the action handler.
- * 4. COMPATIBLE EXTENSION MESSAGING:
- *    - Reuses the extension message format (type: 'GUARDRAIL_APPROVAL_REQUEST')
- *      so that future background-to-backend dispatchers can consume it directly.
+ * 1. PERSISTENCE NOTICE:
+ *    - Currently, no persistent database layer exists in `guardrail/server`.
+ *    - These models serve as the authoritative in-memory contract and serialization format
+ *      for client-to-server messaging and Day 10+ persistent storage.
+ * 2. SEPARATION OF CONCERNS:
+ *    - Client initiates a request; server authenticates and assigns the authoritative requester ID.
+ *    - Trusted contacts review and record decisions.
+ *    - Approval decisions do NOT automatically execute browser actions.
+ * 3. PRIVACY & LEAST PRIVILEGE:
+ *    - Strictly excludes passwords, OTPs, credit cards, cookies, auth tokens, and raw form values.
+ *    - Carries only minimal safe metadata: actionId, description, category, riskLevel,
+ *      sanitized origin, sanitized hostname, and lifecycle timestamps.
+ * 4. IMMUTABILITY & DETERMINISM:
+ *    - All models are immutable with `readonly` fields.
+ *    - Terminal states (APPROVED, REJECTED, EXPIRED, CANCELLED) cannot transition further.
  */
 
-import { ActionCategory } from './actions.js';
+import { ActionCategory, ActionType } from './actions.js';
 import { InterceptionState } from './interception.js';
 import { RiskLevel } from './risk.js';
 
+// =============================================================================
+// Lifecycle States
+// =============================================================================
+
+/**
+ * Canonical lifecycle states for an approval request.
+ */
+export enum ApprovalStatus {
+  /**
+   * Request has been created by an authenticated user and is waiting for review.
+   * Action remains HELD in client browser runtime. Initial state.
+   */
+  PENDING = 'PENDING',
+
+  /**
+   * An authorized trusted contact has explicitly approved the request.
+   * A short-lived cryptographic approval grant token is generated. Terminal state.
+   */
+  APPROVED = 'APPROVED',
+
+  /**
+   * An authorized trusted contact has explicitly rejected the request.
+   * Action cannot proceed. Terminal state.
+   */
+  REJECTED = 'REJECTED',
+
+  /**
+   * Expiration deadline elapsed without a caretaker decision.
+   * Action cannot proceed without a fresh review. Terminal state.
+   */
+  EXPIRED = 'EXPIRED',
+
+  /**
+   * The requesting user cancelled the action from Staging Mode or navigated away.
+   * Review is aborted. Terminal state.
+   */
+  CANCELLED = 'CANCELLED',
+}
+
+/**
+ * String union representing valid ApprovalStatus values.
+ */
+export type ApprovalStatusString = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
+
+// =============================================================================
+// Decision Metadata
+// =============================================================================
+
+/**
+ * Decision metadata recorded when an authorized trusted contact resolves an approval request.
+ * Present if and only if status is APPROVED or REJECTED.
+ */
+export interface ApprovalDecisionMetadata {
+  /**
+   * The authoritative verdict submitted by the reviewer (APPROVED or REJECTED).
+   */
+  readonly decision: 'APPROVED' | 'REJECTED';
+
+  /**
+   * Identifier of the authorized decision-maker (e.g., trusted contact ID 'tc_...').
+   */
+  readonly decidedBy: string;
+
+  /**
+   * ISO 8601 UTC timestamp when the decision was committed.
+   */
+  readonly decidedAt: string;
+
+  /**
+   * Optional non-sensitive reviewer explanation or justification note.
+   */
+  readonly decisionReason?: string;
+}
+
+// =============================================================================
+// Canonical Approval Request Model
+// =============================================================================
+
+/**
+ * Strongly typed approval request model representing an intercepted action submitted for review.
+ *
+ * PERSISTENCE NOTICE:
+ * Represents the server-side entity and exchange contract. Not yet persisted in a database.
+ */
+export interface ApprovalRequest {
+  /**
+   * Unique canonical approval request identifier (e.g., 'apr_01J9X4M5N2...').
+   */
+  readonly id: string;
+
+  /**
+   * Reference to the specific intercepted action identifier being reviewed.
+   * Strictly preserves the original actionId matching GuardrailAction and InterceptionRecord.
+   */
+  readonly actionId: string;
+
+  /**
+   * Authoritative identity of the authenticated user who initiated the request.
+   * Strictly assigned by the server session/auth layer; never trusted from client JSON.
+   */
+  readonly requesterId: string;
+
+  /**
+   * Current lifecycle status in the approval state machine.
+   */
+  readonly status: ApprovalStatus;
+
+  /**
+   * Safe, human-readable summary describing the nature of the held action.
+   * STRICT PRIVACY: Derived from element labels/actions; never user-typed input values.
+   */
+  readonly actionDescription: string;
+
+  /**
+   * Underlying interaction mechanism (CLICK, INPUT, SUBMIT, NAVIGATION).
+   */
+  readonly actionType: ActionType;
+
+  /**
+   * Semantic category classifying the domain intent of the action, if available.
+   */
+  readonly category?: ActionCategory;
+
+  /**
+   * Evaluated qualitative risk level from the Risk Engine (LOW, MEDIUM, HIGH, CRITICAL).
+   */
+  readonly riskLevel: RiskLevel;
+
+  /**
+   * Quantitative risk score on a 0-100 scale, evaluated by the Risk Engine.
+   */
+  readonly riskScore?: number;
+
+  /**
+   * Non-sensitive heuristic explanations justifying the risk assessment score.
+   */
+  readonly riskReasons: readonly string[];
+
+  /**
+   * Sanitized website origin where the action was intercepted (e.g., "https://example.com").
+   * Strips path, query string, auth credentials, and hash.
+   */
+  readonly origin?: string;
+
+  /**
+   * Sanitized hostname of the website (e.g., "example.com").
+   */
+  readonly hostname?: string;
+
+  /**
+   * Safe document title of the webpage at the moment of interaction.
+   */
+  readonly pageTitle?: string;
+
+  /**
+   * ISO 8601 UTC timestamp recording when the approval request was created on the server.
+   */
+  readonly createdAt: string;
+
+  /**
+   * ISO 8601 UTC timestamp recording when this approval request expires and becomes invalid.
+   */
+  readonly expiresAt: string;
+
+  /**
+   * ISO 8601 UTC timestamp recording when this request reached a terminal state
+   * (APPROVED, REJECTED, EXPIRED, CANCELLED). Undefined while in PENDING state.
+   */
+  readonly resolvedAt?: string;
+
+  /**
+   * Decision metadata recorded when an authorized contact resolves the request.
+   * Present IF AND ONLY IF status is APPROVED or REJECTED. Undefined for PENDING, EXPIRED, CANCELLED.
+   */
+  readonly decision?: ApprovalDecisionMetadata;
+
+  /**
+   * Optional human-readable reason provided if the request was cancelled by the user.
+   * Present ONLY when status is CANCELLED.
+   */
+  readonly cancellationReason?: string;
+}
+
+// =============================================================================
+// Client Submission & Decision Input Payloads
+// =============================================================================
+
+/**
+ * Client submission payload when requesting approval for a held action.
+ * Excludes requesterId, status, and decisions to prevent client spoofing.
+ */
+export interface ClientApprovalRequestPayload {
+  /** The intercepted action identifier matching client InterceptionRecord */
+  readonly actionId: string;
+
+  /** Safe, human-readable summary of the action */
+  readonly actionDescription: string;
+
+  /** Interaction mechanism */
+  readonly actionType: ActionType;
+
+  /** Semantic category if classified */
+  readonly category?: ActionCategory;
+
+  /** Evaluated risk level from client pipeline */
+  readonly riskLevel: RiskLevel;
+
+  /** Evaluated risk score from client pipeline */
+  readonly riskScore?: number;
+
+  /** Non-sensitive risk reasons */
+  readonly riskReasons?: readonly string[];
+
+  /** Sanitized website origin (scheme + domain + port) */
+  readonly origin?: string;
+
+  /** Sanitized website hostname */
+  readonly hostname?: string;
+
+  /** Sanitized webpage title */
+  readonly pageTitle?: string;
+}
+
+/**
+ * Input for submitting an approval verdict by an authorized trusted contact.
+ */
+export interface SubmitApprovalDecisionInput {
+  /** Verdict (APPROVED or REJECTED) */
+  readonly decision: 'APPROVED' | 'REJECTED';
+
+  /** Authenticated decision-maker identity (trusted contact ID) */
+  readonly decidedBy: string;
+
+  /** Optional decision timestamp override (defaults to server current time) */
+  readonly decidedAt?: string;
+
+  /** Optional reviewer note or justification */
+  readonly decisionReason?: string;
+}
+
+/**
+ * Validation result returned by the ApprovalRequest validator.
+ */
+export interface ApprovalValidationResult {
+  readonly valid: boolean;
+  readonly errors: readonly string[];
+}
+
+// =============================================================================
+// Day 9 Local Intent Prototype Models (Preserved for Extension Compatibility)
+// =============================================================================
+
 /**
  * Minimal safe metadata carrying a local intent to request approval for a held action.
+ * Used exclusively within the browser extension prototype boundary.
  */
 export interface ApprovalRequestIntent {
   /** Discriminator identifying this intent */
