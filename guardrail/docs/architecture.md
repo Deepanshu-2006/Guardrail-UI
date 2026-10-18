@@ -42,3 +42,24 @@ graph TD
 ### 4. Demo Sites (`demo-sites/`)
 * **Role:** Realistic target environments (e-commerce checkouts, form submissions, admin panels).
 * **Scope:** Providing reproducible test fixtures for testing guardrail policies without risking production sites.
+
+---
+
+## Detailed Architectural Specifications
+
+For comprehensive deep dives into specific subsystems and behavioral contracts, refer to the focused architecture specifications:
+
+1. **[Browser Action Interception Architecture](action-interception.md)**:
+   - Mechanics of DOM capturing-phase event interception.
+   - Normalization into `GuardrailAction` models.
+   - The canonical `InterceptionController` state machine (`DETECTED` $\rightarrow$ `HELD` $\rightarrow$ `CONTINUED` / `CANCELLED`).
+   - Exactly-once continuation execution guarantees via `ContinuationManager`.
+
+2. **[Backend Approval Workflow Contract](approval-workflow-contract.md)**:
+   - End-to-end contract between the browser extension, the backend service, and trusted contacts.
+   - The multi-tenant domain model (`User`, `TrustedContact`, `ApprovalRequest`, `ApprovalDecision`, `ApprovalGrantToken`).
+   - Full lifecycle state machine (`PENDING`, `APPROVED`, `REJECTED`, `EXPIRED`, `CANCELLED`) and atomic transition matrix.
+   - Separation of concerns: Decoupling approval decisions from browser action execution.
+   - Privacy by design: Complete exclusion of credentials, form values, and tokens.
+   - Concurrency control, duplicate suppression, and cryptographic grant scoping.
+
