@@ -12,6 +12,7 @@ export * from './repository.js';
 export * from './service.js';
 export * from './api.js';
 export * from './client.js';
+export * from './submit-operation.js';
 export * from '../types/approval.js';
 
 
