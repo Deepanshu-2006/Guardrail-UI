@@ -10,15 +10,216 @@
  */
 
 import {
-  ActionAcknowledgementResponse,
-  ApprovalRequestResponse,
   GuardrailActionMessage,
   GuardrailApprovalRequestMessage,
+  GuardrailSubmitApprovalRequestResponse,
+  InterceptionState,
+  StagingActionContext,
   TestActionMessage,
 } from '../types/index.js';
+import { InterceptionController } from '../interception/controller.js';
+import {
+  SubmissionOutcome,
+  submitApprovalRequest,
+  SubmitApprovalRequestOptions,
+} from '../approval/submit-operation.js';
+import { checkPayloadForSensitiveFields } from '../approval/client.js';
 
-const manifest = chrome.runtime.getManifest();
+const manifest =
+  typeof chrome !== 'undefined' && chrome.runtime?.getManifest
+    ? chrome.runtime.getManifest()
+    : { name: 'guardrail', version: '0.1.0', version_name: '0.1.0', manifest_version: 3 };
 const startTime = new Date().toISOString();
+
+/**
+ * Shared in-memory InterceptionController instance for the Background Service Worker.
+ * Tracks held actions dispatched from content scripts and validates state before backend dispatch.
+ */
+export const backgroundInterceptionController = new InterceptionController();
+
+/**
+ * Result of validating an incoming approval submission message.
+ */
+export interface ValidatedApprovalMessage {
+  readonly valid: boolean;
+  readonly error?: string;
+  readonly actionId?: string;
+  readonly context?: StagingActionContext;
+}
+
+/**
+ * Validates message type, payload shape, security boundaries, and least-privilege constraints
+ * for an incoming approval submission message from a content script.
+ *
+ * SECURITY INVARIANTS:
+ * 1. Requires type === 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST'.
+ * 2. Strictly rejects privileged decision overrides (decision, status, decidedBy, verdict, etc.).
+ * 3. Strictly rejects auth secrets, tokens, passwords, and arbitrary endpoints.
+ * 4. Ensures actionId matches context.actionId.
+ * 5. Scans context for sensitive properties.
+ */
+export function validateApprovalSubmissionMessage(message: unknown): ValidatedApprovalMessage {
+  if (!message || typeof message !== 'object') {
+    return { valid: false, error: 'Message must be a non-null object.' };
+  }
+
+  const raw = message as Record<string, unknown>;
+
+  // 1. Validate message type
+  if (raw.type !== 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST') {
+    return { valid: false, error: `Unsupported message type: "${String(raw.type)}".` };
+  }
+
+  // 2. Reject privileged instructions or decision overrides (Requirement 4)
+  const privilegedFields = [
+    'decision',
+    'status',
+    'decidedBy',
+    'decidedAt',
+    'decisionReason',
+    'verdict',
+    'approve',
+    'reject',
+    'cancel',
+    'token',
+    'authToken',
+    'jwt',
+    'secret',
+    'password',
+    'otp',
+    'endpoint',
+    'url',
+    'method',
+  ];
+
+  for (const field of privilegedFields) {
+    if (field in raw && raw[field] !== undefined) {
+      return {
+        valid: false,
+        error: `Security violation: Message contains forbidden or privileged instruction "${field}". Untrusted scripts cannot decide approvals or supply arbitrary endpoints/credentials.`,
+      };
+    }
+  }
+
+  // 3. Validate actionId
+  const actionId = typeof raw.actionId === 'string' ? raw.actionId.trim() : '';
+  if (!actionId) {
+    return { valid: false, error: 'Missing or empty actionId in submission message.' };
+  }
+
+  // 4. Validate context
+  const context = raw.context as StagingActionContext | undefined;
+  if (!context || typeof context !== 'object') {
+    return { valid: false, error: 'Missing or invalid StagingActionContext in submission message.' };
+  }
+
+  if (context.actionId !== actionId) {
+    return {
+      valid: false,
+      error: `Action ID mismatch: message actionId "${actionId}" does not match context actionId "${context.actionId}".`,
+    };
+  }
+
+  // 5. Check context for sensitive fields (Requirement 13)
+  const sensitiveFields = checkPayloadForSensitiveFields(context);
+  if (sensitiveFields.length > 0) {
+    return {
+      valid: false,
+      error: `Security violation: Staging context contains sensitive fields (${sensitiveFields.join(', ')}).`,
+    };
+  }
+
+  return {
+    valid: true,
+    actionId,
+    context,
+  };
+}
+
+/**
+ * Processes a validated approval submission request in the background service worker:
+ * 1. Synchronizes / verifies the held action record in the background controller.
+ * 2. Validates that the action is actively in HELD state.
+ * 3. Dispatches the real typed submitApprovalRequest operation to the backend API.
+ * 4. Returns typed GuardrailSubmitApprovalRequestResponse.
+ */
+export async function handleBackgroundApprovalSubmission(
+  message: unknown,
+  controller: InterceptionController = backgroundInterceptionController,
+  options?: SubmitApprovalRequestOptions
+): Promise<GuardrailSubmitApprovalRequestResponse> {
+  const validation = validateApprovalSubmissionMessage(message);
+  if (!validation.valid || !validation.actionId || !validation.context) {
+    return {
+      success: false,
+      actionId: validation.actionId || '',
+      outcome: SubmissionOutcome.INVALID_LOCAL_STATE,
+      isAuthoritative: true,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: validation.error || 'Invalid approval submission message.',
+        statusCode: 400,
+      },
+    };
+  }
+
+  const { actionId, context } = validation;
+
+  // Verify / synchronize interception record in background controller
+  if (!controller.hasRecord(actionId)) {
+    if (context.interceptionState === InterceptionState.HELD) {
+      controller.register(actionId, context.interceptionReason || 'Action held in staging mode.');
+      controller.holdAction(actionId, context.interceptionReason || 'Action held in staging mode.');
+    } else {
+      return {
+        success: false,
+        actionId,
+        outcome: SubmissionOutcome.INVALID_LOCAL_STATE,
+        isAuthoritative: true,
+        error: {
+          code: 'ACTION_NOT_FOUND',
+          message: `Action "${actionId}" is not actively tracked by Guardrail coordinator.`,
+        },
+      };
+    }
+  }
+
+  // Verify state in controller (Requirement 5)
+  const record = controller.getRecord(actionId);
+  if (!record || record.state !== InterceptionState.HELD) {
+    return {
+      success: false,
+      actionId,
+      outcome: SubmissionOutcome.INVALID_LOCAL_STATE,
+      isAuthoritative: true,
+      error: {
+        code: 'ACTION_NOT_HELD',
+        message: `Action "${actionId}" is in state "${record?.state || 'UNKNOWN'}". Only actions in HELD state are eligible for approval requests.`,
+      },
+    };
+  }
+
+  // Trigger the real API submission operation (Requirement 6)
+  const submitResult = await submitApprovalRequest(context, controller, options);
+
+  if (submitResult.success) {
+    return {
+      success: true,
+      actionId: submitResult.actionId,
+      outcome: submitResult.outcome,
+      isAuthoritative: submitResult.isAuthoritative,
+      request: submitResult.request,
+    };
+  } else {
+    return {
+      success: false,
+      actionId: submitResult.actionId,
+      outcome: submitResult.outcome,
+      isAuthoritative: submitResult.isAuthoritative,
+      error: submitResult.error,
+    };
+  }
+}
 
 // Top-level execution log whenever Chrome wakes or starts the service worker
 console.log(
@@ -34,26 +235,93 @@ console.log(
   }
 );
 
-// Lifecycle listener: Extension installed or updated
-chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
-  console.log(`[Guardrail] Extension lifecycle event: onInstalled (reason: ${details.reason})`);
-});
+// Register runtime listeners when running inside browser extension runtime
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+  // Lifecycle listener: Extension installed or updated
+  if (chrome.runtime.onInstalled) {
+    chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
+      console.log(`[Guardrail] Extension lifecycle event: onInstalled (reason: ${details.reason})`);
+    });
+  }
 
-// Lifecycle listener: Browser startup
-chrome.runtime.onStartup.addListener(() => {
-  console.log('[Guardrail] Extension lifecycle event: onStartup');
-});
+  // Lifecycle listener: Browser startup
+  if (chrome.runtime.onStartup) {
+    chrome.runtime.onStartup.addListener(() => {
+      console.log('[Guardrail] Extension lifecycle event: onStartup');
+    });
+  }
 
-// Extension Message Listener: Receives messages from content scripts and returns an acknowledgement
-chrome.runtime.onMessage.addListener(
-  (
-    message: GuardrailActionMessage | GuardrailApprovalRequestMessage | TestActionMessage,
-    sender,
-    sendResponse: (response: ActionAcknowledgementResponse | ApprovalRequestResponse) => void
-  ) => {
-    // 1. Handle normalized GuardrailAction messages with Classification, Risk, and Response Decision
-    if (message && message.type === 'GUARDRAIL_ACTION') {
-      const { action, classification, risk, decision, interception } = message;
+  // Extension Message Listener: Receives messages from content scripts and returns an acknowledgement
+  if (chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener(
+      (
+        message: unknown,
+        sender,
+        sendResponse: (response: unknown) => void
+      ) => {
+    if (!message || typeof message !== 'object') {
+      sendResponse({ success: false, error: 'INVALID_MESSAGE_PAYLOAD' });
+      return false;
+    }
+
+    const raw = message as Record<string, unknown>;
+
+    // 1. Reject unauthorized decision attempts or privileged overrides (Requirement 4)
+    if (
+      raw.type === 'DECIDE_APPROVAL' ||
+      raw.decision !== undefined ||
+      raw.status === 'APPROVED' ||
+      raw.status === 'REJECTED'
+    ) {
+      console.warn('[Guardrail Background] Rejected unauthorized decision attempt from webpage message:', raw);
+      sendResponse({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED_INSTRUCTION',
+          message: 'Approval decisions cannot be issued by content scripts or webpage messages.',
+        },
+        isAuthoritative: true,
+      });
+      return false;
+    }
+
+    // 2. Handle GUARDRAIL_SUBMIT_APPROVAL_REQUEST (Real backend submission)
+    if (raw.type === 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST') {
+      handleBackgroundApprovalSubmission(message, backgroundInterceptionController)
+        .then((response) => {
+          sendResponse(response);
+        })
+        .catch((err) => {
+          sendResponse({
+            success: false,
+            actionId: typeof raw.actionId === 'string' ? raw.actionId : '',
+            outcome: SubmissionOutcome.NETWORK_FAILURE_UNCERTAIN,
+            isAuthoritative: false,
+            error: {
+              code: 'DISPATCH_ERROR',
+              message: err instanceof Error ? err.message : String(err),
+            },
+          });
+        });
+      return true; // Keep message channel open for async sendResponse
+    }
+
+    // 3. Handle normalized GuardrailAction messages with Classification, Risk, and Response Decision
+    if (raw.type === 'GUARDRAIL_ACTION') {
+      const { action, classification, risk, decision, interception } = message as GuardrailActionMessage;
+
+      // Track interception record in background controller if present
+      if (interception && !backgroundInterceptionController.hasRecord(action.id)) {
+        try {
+          backgroundInterceptionController.register(action.id, interception.reason);
+          if (interception.state === InterceptionState.HELD) {
+            backgroundInterceptionController.holdAction(action.id, interception.reason);
+          }
+        } catch {
+          // ignore already registered
+        }
+      }
+
       const targetSummary = action.element?.visibleText
         ? `"${action.element.visibleText}"`
         : action.element?.tagName
@@ -103,9 +371,9 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    // 2. Handle local GuardrailApprovalRequestMessage (prototype intent)
-    if (message && message.type === 'GUARDRAIL_APPROVAL_REQUEST') {
-      const { intent } = message;
+    // 4. Handle local GuardrailApprovalRequestMessage (legacy prototype intent)
+    if (raw.type === 'GUARDRAIL_APPROVAL_REQUEST') {
+      const { intent } = message as GuardrailApprovalRequestMessage;
       console.log(
         `%c[Guardrail Background]%c LOCAL APPROVAL REQUEST INTENT RECEIVED (PROTOTYPE ONLY)\n` +
         `ACTION ID: ${intent.actionId}\n` +
@@ -135,15 +403,16 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    // 3. Backward-compatible handler for legacy TEST_ACTION messages
-    if (message && message.type === 'TEST_ACTION') {
+    // 5. Backward-compatible handler for legacy TEST_ACTION messages
+    if (raw.type === 'TEST_ACTION') {
+      const testMsg = message as TestActionMessage;
       console.log(
         '%c[Guardrail Background]%c Received legacy TEST_ACTION:',
         'color: #10b981; font-weight: bold;',
         'color: inherit;',
         {
-          action: message.action,
-          url: message.url,
+          action: testMsg.action,
+          url: testMsg.url,
           senderTabId: sender.tab?.id,
         }
       );
@@ -156,6 +425,15 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
+    // 6. Unsupported message type
+    sendResponse({
+      success: false,
+      error: `Unsupported message type: "${String(raw.type)}"`,
+    });
+
     return false;
   }
 );
+  }
+}
+

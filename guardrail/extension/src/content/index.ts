@@ -46,6 +46,7 @@ import { StagingActionContext } from '../types/staging.js';
 import {
   dispatchActionToBackground,
   dispatchApprovalRequestToBackground,
+  dispatchSubmitApprovalRequestToBackground,
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
 } from '../utils/index.js';
@@ -573,6 +574,7 @@ function bootstrap(): void {
               state: 'active',
               controller: defaultInterceptionController,
               continuationManager: defaultContinuationManager,
+              useRealBackend: true,
               onCancel: (id) => cancelHeldAction(id),
             });
           }
@@ -613,6 +615,7 @@ function bootstrap(): void {
             state: 'active',
             controller: defaultInterceptionController,
             continuationManager: defaultContinuationManager,
+            useRealBackend: true,
             onCancel: (actionId) => cancelHeldAction(actionId),
           });
         } else {
@@ -622,14 +625,14 @@ function bootstrap(): void {
       cancel: (actionId?: string) => {
         return cancelHeldAction(actionId);
       },
-      requestApproval: (context?: StagingActionContext) => {
+      requestApproval: async (context?: StagingActionContext) => {
         const ctx = context || latestStagingContext;
         if (!ctx) {
           return {
             success: false,
             actionId: '',
             error: 'No active staging context available to request approval.',
-            isBackendConnected: false,
+            isBackendConnected: true,
           };
         }
         const record = defaultInterceptionController.getRecord(ctx.actionId);
@@ -638,33 +641,10 @@ function bootstrap(): void {
             success: false,
             actionId: ctx.actionId,
             error: `Action "${ctx.actionId}" is in state "${record?.state || 'UNKNOWN'}". Only actions in HELD state are eligible for approval requests.`,
-            isBackendConnected: false,
+            isBackendConnected: true,
           };
         }
-        const intent = createApprovalRequestIntent(ctx, record);
-        try {
-          document.dispatchEvent(
-            new CustomEvent('guardrail:approval-requested', {
-              detail: {
-                actionId: ctx.actionId,
-                intent,
-                isBackendConnected: false,
-              },
-              bubbles: true,
-            })
-          );
-        } catch (e) {
-          console.warn('[Guardrail Content] Error dispatching custom event:', e);
-        }
-        dispatchApprovalRequestToBackground(intent).catch((err) => {
-          console.warn('[Guardrail Content] Background dispatch failed:', err);
-        });
-        return {
-          success: true,
-          actionId: ctx.actionId,
-          intent,
-          isBackendConnected: false,
-        };
+        return await dispatchSubmitApprovalRequestToBackground(ctx.actionId, ctx);
       },
       dismiss: () => dismissStagingModal(),
       isActive: () => isStagingModalActive(),
