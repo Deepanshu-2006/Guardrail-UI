@@ -374,6 +374,7 @@ import {
   showStagingModal,
   handleModalCancel,
 } from './modal.js';
+import { GUARDRAIL_TEST_ACTION_ATTR } from '../utils/dom.js';
 
 // =============================================================================
 // Helper: Create Standard Staging Context
@@ -498,6 +499,68 @@ console.log('▶ Scenario 1: Protected Action Interception & Staging Mode Presen
   assertEquals(getStagingUIState(), 'held', 'Initial interface state is "held"');
   assertEquals(controlledHandlerExecutions, 0, 'Controlled handler has not executed');
 
+  dismissStagingModal();
+
+  // Subtest 1B: Controlled button click with data-guardrail-test-action="test-protect"
+  let buttonHandlerCalled = false;
+  let defaultPrevented = false;
+  let propagationStopped = false;
+
+  const btnElement = mockDoc.createElement('BUTTON');
+  btnElement.setAttribute(GUARDRAIL_TEST_ACTION_ATTR, 'test-protect');
+  btnElement.setAttribute('id', 'btn-delete-records');
+  btnElement.textContent = 'Delete All Data, Cancel Billing, and Export to External Server';
+
+  const simulatedClickEvent = {
+    type: 'click',
+    target: btnElement,
+    preventDefault: () => {
+      defaultPrevented = true;
+    },
+    stopImmediatePropagation: () => {
+      propagationStopped = true;
+    },
+  };
+
+  const clickAction: GuardrailAction = {
+    id: 'act-click-intercept-1b',
+    type: ActionType.CLICK,
+    timestamp: new Date().toISOString(),
+    page: { url: 'https://admin.example.com', title: 'Admin' },
+    element: {
+      tagName: 'BUTTON',
+      id: btnElement.id,
+      visibleText: btnElement.textContent,
+    },
+  };
+
+  const clickClassification = classifyAction(clickAction);
+  const clickRisk = assessRisk(clickAction, clickClassification);
+  const clickDecision = decideResponse(clickRisk);
+
+  if (clickDecision.response === ResponseAction.PROTECT) {
+    simulatedClickEvent.preventDefault();
+    simulatedClickEvent.stopImmediatePropagation();
+    controller.register(clickAction, 'Intercepted click');
+    const held = controller.holdAction(clickAction.id, 'Held for user decision');
+    continuationManager.registerHeldAction(clickAction, held, () => {
+      buttonHandlerCalled = true;
+    });
+    const ctx = createStagingActionContext({
+      action: clickAction,
+      interception: held,
+      risk: clickRisk,
+      classification: clickClassification,
+      decision: clickDecision,
+    });
+    showStagingModal({ context: ctx, state: 'active', controller, continuationManager });
+  }
+
+  assertEquals(defaultPrevented, true, 'Subtest 1B: preventDefault called on protected action click');
+  assertEquals(propagationStopped, true, 'Subtest 1B: stopImmediatePropagation called on protected action click');
+  assertEquals(buttonHandlerCalled, false, 'Subtest 1B: Protected button handler was not executed');
+  assert(isStagingModalActive(), 'Subtest 1B: Staging modal appeared upon interception');
+  assertEquals(getStagingUIState(), 'held', 'Subtest 1B: Staging UI state is "held"');
   dismissStagingModal();
 }
 
@@ -653,6 +716,49 @@ console.log('\n▶ Scenario 4: Selecting Cancel Successfully Cancels the Held Ac
   assertEquals(pill?.textContent, 'Cancelled', 'Header mode pill indicates Cancelled');
 
   dismissStagingModal();
+
+  // Subtest 4B: Asynchronous Cancellation via onCancel returning a Promise
+  const asyncActionId = 'workflow-action-scenario-4-async';
+  const asyncAction: GuardrailAction = {
+    id: asyncActionId,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00.000Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  controller.register(asyncAction, 'Registered for async cancel');
+  const asyncHeld = controller.holdAction(asyncActionId, 'Held');
+  let asyncHandlerExecutions = 0;
+  continuationManager.registerHeldAction(asyncAction, asyncHeld, () => {
+    asyncHandlerExecutions++;
+  });
+
+  let asyncCancelCompleted = false;
+  showStagingModal({
+    context: createSampleContext({ actionId: asyncActionId, interceptionState: InterceptionState.HELD }),
+    state: 'active',
+    controller,
+    continuationManager,
+    onCancel: (id) => {
+      return new Promise((resolve) => {
+        const res = continuationManager.cancelAction(id, 'Async cancel test');
+        asyncCancelCompleted = true;
+        resolve(res);
+      });
+    },
+  });
+
+  const asyncShadow = getStagingModalShadowRoot()!;
+  const asyncCancelBtn = asyncShadow.querySelector('#gs-btn-cancel-action') as any;
+
+  asyncCancelBtn.click();
+  // Allow promise tick to settle
+  await Promise.resolve();
+
+  assertEquals(asyncCancelCompleted, true, 'Subtest 4B: Async onCancel promise resolved');
+  assertEquals(controller.getRecord(asyncActionId)?.state, InterceptionState.CANCELLED, 'Subtest 4B: Record state is CANCELLED');
+  assertEquals(asyncHandlerExecutions, 0, 'Subtest 4B: Controlled handler was NOT executed');
+  assertEquals(getStagingUIState(), 'cancelled', 'Subtest 4B: UI state transitioned to "cancelled"');
+  dismissStagingModal();
 }
 
 // =============================================================================
@@ -749,6 +855,51 @@ console.log('\n▶ Scenario 6: Request Approval Produces Only Intended Local Eve
   assertEquals(intent.type, 'GUARDRAIL_APPROVAL_REQUEST_INTENT', 'Intent type is "GUARDRAIL_APPROVAL_REQUEST_INTENT"');
 
   mockDoc.removeEventListener('guardrail:approval-requested', eventListener);
+  dismissStagingModal();
+
+  // Subtest 6B: Asynchronous Custom onRequestApproval Callback via Promise
+  const asyncApprovalActionId = 'workflow-action-scenario-6-async';
+  const asyncApprovalAction: GuardrailAction = {
+    id: asyncApprovalActionId,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00.000Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  controller.register(asyncApprovalAction, 'Registered for async approval');
+  const asyncApprovalHeld = controller.holdAction(asyncApprovalActionId, 'Held');
+  let asyncApprovalHandlerCalls = 0;
+  continuationManager.registerHeldAction(asyncApprovalAction, asyncApprovalHeld, () => {
+    asyncApprovalHandlerCalls++;
+  });
+
+  let customApprovalInvoked = false;
+  showStagingModal({
+    context: createSampleContext({ actionId: asyncApprovalActionId, interceptionState: InterceptionState.HELD }),
+    state: 'active',
+    controller,
+    continuationManager,
+    onRequestApproval: (ctx) => {
+      customApprovalInvoked = true;
+      const intent = createApprovalRequestIntent(ctx!, asyncApprovalHeld);
+      return Promise.resolve({
+        success: true,
+        actionId: ctx?.actionId || '',
+        intent,
+        isBackendConnected: false,
+      });
+    },
+  });
+
+  const asyncApprovalShadow = getStagingModalShadowRoot()!;
+  const asyncReqBtn = asyncApprovalShadow.querySelector('#gs-btn-request-approval') as any;
+
+  asyncReqBtn.click();
+  await Promise.resolve();
+
+  assertEquals(customApprovalInvoked, true, 'Subtest 6B: Custom async onRequestApproval was invoked');
+  assertEquals(asyncApprovalHandlerCalls, 0, 'Subtest 6B: Controlled handler was NOT executed');
+  assertEquals(controller.getRecord(asyncApprovalActionId)?.state, InterceptionState.HELD, 'Subtest 6B: Record remains strictly HELD');
+  assertEquals(getStagingUIState(), 'approval_intent_recorded', 'Subtest 6B: UI state transitioned to "approval_intent_recorded"');
   dismissStagingModal();
 }
 
@@ -905,6 +1056,52 @@ console.log('\n▶ Scenario 9: Repeated Clicks Prevent Duplicate Operations & Ex
   assertEquals(controller.getRecord(testActionId9)?.state, InterceptionState.CANCELLED, 'Action transitioned to CANCELLED');
 
   dismissStagingModal();
+
+  // Subtest 9B: Repeated clicks on Request Approval button
+  const rapidReqActionId = 'workflow-action-scenario-9-rapid-req';
+  const rapidReqAction: GuardrailAction = {
+    id: rapidReqActionId,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00.000Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  controller.register(rapidReqAction, 'Registered');
+  const rapidReqHeld = controller.holdAction(rapidReqActionId, 'Held');
+  let rapidReqHandlerCalls = 0;
+  continuationManager.registerHeldAction(rapidReqAction, rapidReqHeld, () => {
+    rapidReqHandlerCalls++;
+  });
+
+  let customReqCalls = 0;
+  showStagingModal({
+    context: createSampleContext({ actionId: rapidReqActionId, interceptionState: InterceptionState.HELD }),
+    state: 'active',
+    controller,
+    continuationManager,
+    onRequestApproval: () => {
+      customReqCalls++;
+      return {
+        success: true,
+        actionId: rapidReqActionId,
+        isBackendConnected: false,
+      };
+    },
+  });
+
+  const rapidReqShadow = getStagingModalShadowRoot()!;
+  const rapidReqBtn = rapidReqShadow.querySelector('#gs-btn-request-approval') as any;
+
+  // 5 rapid clicks on request approval
+  rapidReqBtn.click();
+  rapidReqBtn.click();
+  rapidReqBtn.click();
+  rapidReqBtn.click();
+  rapidReqBtn.click();
+
+  assertEquals(customReqCalls, 1, 'Subtest 9B: onRequestApproval invoked exactly ONCE despite rapid repeated clicks');
+  assertEquals(rapidReqHandlerCalls, 0, 'Subtest 9B: Controlled handler execution strictly ZERO');
+  assertEquals(controller.getRecord(rapidReqActionId)?.state, InterceptionState.HELD, 'Subtest 9B: Action remains safely HELD');
+  dismissStagingModal();
 }
 
 // =============================================================================
@@ -965,6 +1162,41 @@ console.log('\n▶ Scenario 10: Invalid, Stale, or Resolved Records Handled Safe
   assertEquals(pill?.textContent, 'Operation Unavailable', 'Mode pill displays "Operation Unavailable"');
   assertEquals(cancelBtn.disabled, true, 'Cancel button permanently disabled');
 
+  dismissStagingModal();
+
+  // Subtest 10B: Attempting Cancel on Already-Cancelled Record
+  const cancelledActionId = 'workflow-action-scenario-10-cancelled';
+  const cancelledAction: GuardrailAction = {
+    id: cancelledActionId,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00.000Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  controller.register(cancelledAction, 'Registered');
+  controller.holdAction(cancelledActionId, 'Held');
+  controller.cancelAction(cancelledActionId, 'Pre-cancelled');
+
+  let alreadyCancelledErrorTriggered = false;
+  showStagingModal({
+    context: createSampleContext({
+      actionId: cancelledActionId,
+      interceptionState: InterceptionState.CANCELLED,
+    }),
+    state: 'active',
+    controller,
+    continuationManager,
+    onCancelError: () => {
+      alreadyCancelledErrorTriggered = true;
+    },
+  });
+
+  const cancelShadow10B = getStagingModalShadowRoot()!;
+  const cancelBtn10B = cancelShadow10B.querySelector('#gs-btn-cancel-action') as any;
+
+  cancelBtn10B.click();
+
+  assertEquals(alreadyCancelledErrorTriggered, true, 'Subtest 10B: Cancel on already-CANCELLED action rejected');
+  assertEquals(getStagingUIState(), 'stale_or_invalid', 'Subtest 10B: Staging UI state transitioned to "stale_or_invalid"');
   dismissStagingModal();
 }
 
@@ -1148,6 +1380,47 @@ console.log('\n▶ Scenario 14: Canonical State Machine & Accidental Execution A
 
   assertEquals(duplicateResult.success, false, 'Second cancellation attempt correctly rejected');
   assertEquals(handlerCalls14, 0, 'Protected handler execution remains strictly ZERO');
+
+  // Subtest 14B: State Machine Audit — Verification that only explicit Continue on HELD invokes handler
+  const auditActionId = 'workflow-action-scenario-14-audit';
+  const auditAction: GuardrailAction = {
+    id: auditActionId,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00.000Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  controller.register(auditAction, 'Registered');
+  const auditHeld = controller.holdAction(auditActionId, 'Held');
+  let auditHandlerExecutions = 0;
+  continuationManager.registerHeldAction(auditAction, auditHeld, () => {
+    auditHandlerExecutions++;
+  });
+
+  // Invalid transition: Try to cancel with non-existent ID
+  const badIdResult = continuationManager.cancelAction('non-existent-action-id');
+  assertEquals(badIdResult.success, false, 'Subtest 14B: Bad ID cancel rejected');
+  assertEquals(auditHandlerExecutions, 0, 'Subtest 14B: Handler execution strictly ZERO');
+
+  // Verify that approval intent does not transition state or execute handler
+  const auditContext = createSampleContext({ actionId: auditActionId, interceptionState: InterceptionState.HELD });
+  const approvalIntent = createApprovalRequestIntent(auditContext, auditHeld);
+  assertEquals(approvalIntent.actionId, auditActionId, 'Subtest 14B: Approval intent generated with correct actionId');
+  assertEquals(controller.getRecord(auditActionId)?.state, InterceptionState.HELD, 'Subtest 14B: State remains HELD during approval intent creation');
+  assertEquals(auditHandlerExecutions, 0, 'Subtest 14B: Handler execution strictly ZERO after intent creation');
+
+  // Now explicitly continue the action
+  const continueResult = continuationManager.continueAction(auditActionId, 'User explicitly approved continue');
+  assertEquals(continueResult.success, true, 'Subtest 14B: Continue succeeds on HELD action');
+  assertEquals(continueResult.executed, true, 'Subtest 14B: Continuation executed flag is true');
+  assertEquals(auditHandlerExecutions, 1, 'Subtest 14B: Handler executed EXACTLY ONCE on continue');
+  assertEquals(controller.getRecord(auditActionId)?.state, InterceptionState.CONTINUED, 'Subtest 14B: Record state is CONTINUED');
+
+  // Subsequent attempt to continue or cancel must not re-execute handler
+  const reContinueResult = continuationManager.continueAction(auditActionId, 'Duplicate continue attempt');
+  assertEquals(reContinueResult.success, false, 'Subtest 14B: Re-continue on CONTINUED action rejected');
+  const reCancelResult = continuationManager.cancelAction(auditActionId, 'Cancel on CONTINUED action');
+  assertEquals(reCancelResult.success, false, 'Subtest 14B: Cancel on CONTINUED action rejected');
+  assertEquals(auditHandlerExecutions, 1, 'Subtest 14B: Handler execution count remains strictly 1 (no duplicate execution)');
 }
 
 // =============================================================================

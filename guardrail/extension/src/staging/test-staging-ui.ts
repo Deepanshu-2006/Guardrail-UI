@@ -2162,6 +2162,100 @@ console.log('\n▶ Test 13: Staging Mode Reliability, Clarity & Accessibility');
   assertEquals(directCancelResult.success, false, 'handleModalCancel directly rejects undefined actionId');
 
   dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13H: Asynchronous Cancellation Outcome via Promise
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13H: Asynchronous Cancellation Outcome via Promise');
+  const actionId13H = 'action-async-cancel-13h';
+  const testAction13H: GuardrailAction = {
+    id: actionId13H,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction13H, 'Registered');
+  testController.holdAction(actionId13H, 'Held');
+
+  let handler13HExecutions = 0;
+  testManager.registerHeldAction(testAction13H, testController.getRecord(actionId13H)!, () => {
+    handler13HExecutions++;
+  });
+
+  let asyncCancelResolved = false;
+  showStagingModal({
+    context: createSampleContext({ actionId: actionId13H, interceptionState: InterceptionState.HELD }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onCancel: (id) => {
+      return new Promise((resolve) => {
+        asyncCancelResolved = true;
+        resolve(testManager.cancelAction(id));
+      });
+    },
+  });
+
+  const shadow13H = getStagingModalShadowRoot()!;
+  const cancelBtn13H = shadow13H.querySelector('#gs-btn-cancel-action') as any;
+
+  cancelBtn13H.click();
+  await Promise.resolve();
+
+  assertEquals(asyncCancelResolved, true, 'Async onCancel callback was awaited and resolved');
+  assertEquals(testController.getRecord(actionId13H)?.state, InterceptionState.CANCELLED, 'Interception state is CANCELLED');
+  assertEquals(handler13HExecutions, 0, 'Controlled handler strictly ZERO executions');
+  assertEquals(getStagingUIState(), 'cancelled', 'UI state transitioned to "cancelled"');
+
+  dismissStagingModal();
+
+  // ------------------------------------------------------------
+  // Subtest 13I: Custom onRequestApproval Callback Delegation
+  // ------------------------------------------------------------
+  console.log('  → Subtest 13I: Custom onRequestApproval Callback Delegation');
+  const actionId13I = 'action-approval-delegate-13i';
+  const testAction13I: GuardrailAction = {
+    id: actionId13I,
+    type: ActionType.CLICK,
+    timestamp: '2026-10-13T12:00:00Z',
+    page: { url: 'https://test.example.com', title: 'Test' },
+  };
+  testController.register(testAction13I, 'Registered');
+  testController.holdAction(actionId13I, 'Held');
+
+  let handler13IExecutions = 0;
+  testManager.registerHeldAction(testAction13I, testController.getRecord(actionId13I)!, () => {
+    handler13IExecutions++;
+  });
+
+  let customDelegateCalled = false;
+  showStagingModal({
+    context: createSampleContext({ actionId: actionId13I, interceptionState: InterceptionState.HELD }),
+    state: 'active',
+    controller: testController,
+    continuationManager: testManager,
+    onRequestApproval: (ctx) => {
+      customDelegateCalled = true;
+      return Promise.resolve({
+        success: true,
+        actionId: ctx?.actionId || '',
+        isBackendConnected: false,
+      });
+    },
+  });
+
+  const shadow13I = getStagingModalShadowRoot()!;
+  const reqBtn13I = shadow13I.querySelector('#gs-btn-request-approval') as any;
+
+  reqBtn13I.click();
+  await Promise.resolve();
+
+  assertEquals(customDelegateCalled, true, 'Custom onRequestApproval callback was delegated to');
+  assertEquals(handler13IExecutions, 0, 'Controlled handler strictly ZERO executions');
+  assertEquals(testController.getRecord(actionId13I)?.state, InterceptionState.HELD, 'Action remains safely HELD');
+  assertEquals(getStagingUIState(), 'approval_intent_recorded', 'UI state transitioned to "approval_intent_recorded"');
+
+  dismissStagingModal();
 }
 
 console.log('\n============================================================');
