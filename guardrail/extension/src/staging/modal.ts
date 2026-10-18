@@ -28,6 +28,7 @@ import { StagingActionContext } from '../types/staging.js';
 import {
   ApprovalRequestIntent,
   ApprovalRequestResult,
+  GuardrailSubmitApprovalRequestResponse,
 } from '../types/approval.js';
 import {
   CancellationResult,
@@ -39,7 +40,15 @@ import {
   type InterceptionController,
 } from '../interception/controller.js';
 import { createApprovalRequestIntent } from './context.js';
-import { dispatchApprovalRequestToBackground } from '../utils/messaging.js';
+import {
+  dispatchApprovalRequestToBackground,
+  dispatchSubmitApprovalRequestToBackground,
+} from '../utils/messaging.js';
+import {
+  SubmissionOutcome,
+  submitApprovalRequest,
+} from '../approval/submit-operation.js';
+import { ApprovalApiClient } from '../approval/client.js';
 
 export const STAGING_HOST_ELEMENT_ID = 'guardrail-staging-ui-host';
 
@@ -53,7 +62,11 @@ export type StagingInterceptionUIState =
   | 'cancelling'
   | 'cancelled'
   | 'approval_intent_recorded'
-  | 'stale_or_invalid';
+  | 'stale_or_invalid'
+  | 'submitting_approval'
+  | 'approval_requested'
+  | 'approval_uncertain'
+  | 'approval_failed';
 
 export interface StagingModalOptions {
   /** The prepared staging action context (required when state is 'active') */
@@ -98,6 +111,18 @@ export interface StagingModalOptions {
 
   /** Optional callback invoked upon approval request rejection or error */
   onRequestApprovalError?: (result: ApprovalRequestResult) => void;
+
+  /**
+   * Whether to connect to the real backend approval submission operation.
+   * When true or when live extension runtime is detected, submits through the real API.
+   */
+  useRealBackend?: boolean;
+
+  /** Optional custom ApprovalApiClient instance (useful for dependency injection in tests) */
+  apiClient?: ApprovalApiClient;
+
+  /** Optional direct submit operation function (useful for dependency injection in tests) */
+  submitApprovalRequest?: typeof submitApprovalRequest;
 }
 
 let activeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -1472,7 +1497,7 @@ export function announceStagingState(message: string, isAlert: boolean = false):
  */
 export function setStagingUIState(
   state: StagingInterceptionUIState,
-  details?: { error?: string; description?: string }
+  details?: { error?: string; description?: string; requestId?: string; code?: string }
 ): void {
   currentUIState = state;
   if (!currentShadow) return;
@@ -1644,6 +1669,149 @@ export function setStagingUIState(
         `Operation failed: ${
           details?.error || 'Action is no longer held or could not be processed.'
         }`,
+        true
+      );
+      break;
+
+    case 'submitting_approval':
+      if (pill) {
+        pill.textContent = 'Submitting...';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
+        pill.classList.add('gs-badge-submitting');
+      }
+      if (notice) {
+        notice.textContent = 'Submitting approval request to backend • Please wait...';
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Submitting...';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.setAttribute('aria-busy', 'true');
+      }
+      if (cancelBtn) {
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState('Submitting approval request to backend. Please wait.');
+      break;
+
+    case 'approval_requested':
+      if (pill) {
+        pill.textContent = 'Approval Pending';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-stale', 'gs-badge-submitting');
+        pill.classList.add('gs-badge-requested');
+      }
+      if (title) title.textContent = 'Approval Request Active';
+      if (subtitle) {
+        subtitle.textContent =
+          'This action requires approval from an authorized trusted contact before it can proceed.';
+      }
+      if (notice) {
+        const reqId = details?.requestId || 'active';
+        notice.textContent = `Approval Request Active (${reqId}) • Status: PENDING • Action: HELD`;
+      }
+      if (body) {
+        const reqId = details?.requestId || 'active';
+        displayConfirmationBanner(
+          body,
+          'success',
+          'Approval Request Submitted',
+          `Your approval request (${reqId}) has been registered on the server in PENDING status. This action remains safely paused and will not execute until approved.`
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Approval Requested';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+        cancelBtn.removeAttribute('aria-busy');
+      }
+      announceStagingState(
+        'Approval request submitted to backend. Status: PENDING. Action remains safely paused.'
+      );
+      break;
+
+    case 'approval_uncertain':
+      if (pill) {
+        pill.textContent = 'Outcome Uncertain';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-submitting');
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Submission Outcome Uncertain';
+      if (subtitle) {
+        subtitle.textContent =
+          'A network failure or timeout occurred during submission. The server state is unknown.';
+      }
+      if (notice) {
+        notice.textContent = 'Network Outcome Uncertain • Request Status Unknown • Action: HELD';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'info',
+          'Submission Outcome Uncertain',
+          details?.error ||
+            'The approval submission timed out or the network connection dropped. The backend may or may not have received your request. To protect your safety, this action remains safely paused and will not execute.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Outcome Uncertain';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState(
+        'Approval submission outcome is uncertain. The action remains safely paused.',
+        true
+      );
+      break;
+
+    case 'approval_failed':
+      if (pill) {
+        pill.textContent = 'Request Rejected';
+        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-submitting');
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Approval Request Rejected';
+      if (subtitle) {
+        subtitle.textContent =
+          'The server rejected the approval request. This action remains paused.';
+      }
+      if (notice) {
+        notice.textContent = `Approval Request Failed • ${details?.code || 'REJECTED'} • Action: HELD`;
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Approval Request Rejected',
+          details?.error ||
+            'The approval request could not be processed by the server. The action remains safely held.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Rejected';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState(
+        'Approval request rejected by server: ' + (details?.error || 'Rejection'),
         true
       );
       break;
@@ -1862,6 +2030,45 @@ function applyApprovalOutcome(
 ): ApprovalRequestResult {
   const { requestBtn, cancelBtn, body, header, notice } = uiElements;
 
+  if (result.isBackendConnected) {
+    if (result.success) {
+      const reqId = result.request?.id || result.actionId;
+      setStagingUIState('approval_requested', { requestId: reqId });
+
+      if (options.onRequestApprovalSuccess) {
+        options.onRequestApprovalSuccess(result);
+      }
+    } else if (
+      result.outcome === 'INVALID_LOCAL_STATE' ||
+      result.outcome === SubmissionOutcome.INVALID_LOCAL_STATE ||
+      result.errorDetails?.code === 'ACTION_NOT_FOUND' ||
+      result.errorDetails?.code === 'ACTION_NOT_HELD'
+    ) {
+      setStagingUIState('stale_or_invalid', { error: result.error });
+
+      if (options.onRequestApprovalError) {
+        options.onRequestApprovalError(result);
+      }
+    } else if (result.isAuthoritative === false) {
+      setStagingUIState('approval_uncertain', { error: result.error });
+
+      if (options.onRequestApprovalError) {
+        options.onRequestApprovalError(result);
+      }
+    } else {
+      setStagingUIState('approval_failed', {
+        error: result.error,
+        code: result.errorDetails?.code || result.outcome,
+      });
+
+      if (options.onRequestApprovalError) {
+        options.onRequestApprovalError(result);
+      }
+    }
+    return result;
+  }
+
+  // Legacy prototype mode fallback (Day 9 behavior)
   if (result.success) {
     currentUIState = 'approval_intent_recorded';
     displayConfirmationBanner(
@@ -1932,32 +2139,43 @@ function applyApprovalOutcome(
 }
 
 /**
- * Executes the local approval-request workflow for an intercepted action held in Staging Mode.
+ * Executes the approval-request workflow for an intercepted action held in Staging Mode.
  *
- * PROTOTYPE BOUNDARY & ARCHITECTURAL GUARANTEES:
+ * ARCHITECTURAL GUARANTEES & LIFECYCLE:
  * 1. Single execution: Disables the button immediately and ignores duplicate/rapid clicks.
- * 2. State Validation: Confirms action is currently in HELD state. Rejects if CONTINUED,
- *    CANCELLED, or untracked.
- * 3. Local Intent Only: Synthesizes typed ApprovalRequestIntent marked 'LOCAL_PROTOTYPE_ONLY'
- *    with minimum safe metadata, strictly excluding sensitive inputs, forms, and credentials.
- * 4. Transparent Communication: Displays clear confirmation that approval requesting is NOT
- *    connected yet. Never shows "Request sent", "Caretaker notified", or "Approved".
- * 5. Action Preserved: Keeps the action held. Never continues or executes the action.
- *    The user retains full ability to cancel the held action afterwards.
- * 6. Local Event Dispatch: Dispatches DOM event `guardrail:approval-requested` and sends
- *    GUARDRAIL_APPROVAL_REQUEST to the background service worker coordinator.
+ * 2. State Validation: Confirms action is currently in HELD state in InterceptionController.
+ *    Rejects with INVALID_LOCAL_STATE if CONTINUED, CANCELLED, or untracked.
+ * 3. In-Progress Visual State: Immediately updates UI to 'submitting_approval' with aria-busy.
+ * 4. Real Backend Communication: When useRealBackend is true (or live extension runtime is present),
+ *    dispatches validated extension message to Background Service Worker coordinator.
+ * 5. Authoritative vs Uncertain Outcomes:
+ *    - On 201 Created confirmation: Updates UI to 'approval_requested', displays PENDING status & reqId.
+ *    - On server rejection: Updates UI to 'approval_failed', displays honest server error.
+ *    - On timeout/network drop: Updates UI to 'approval_uncertain', does NOT assume failure on server.
+ * 6. Action Preserved: Keeps the action safely HELD in browser memory across all outcomes.
+ *    Never continues or executes the protected action.
+ * 7. Cancellation Isolation: Cancellation remains fully functional and never triggers an approval submission.
  */
+export function handleModalRequestApproval(
+  context: undefined,
+  options: StagingModalOptions,
+  uiElements: ModalApprovalRequestUIElements
+): ApprovalRequestResult;
 export function handleModalRequestApproval(
   context: StagingActionContext | undefined,
   options: StagingModalOptions,
   uiElements: ModalApprovalRequestUIElements
-): ApprovalRequestResult {
-  const { requestBtn } = uiElements;
+): ApprovalRequestResult | Promise<ApprovalRequestResult>;
+export function handleModalRequestApproval(
+  context: StagingActionContext | undefined,
+  options: StagingModalOptions,
+  uiElements: ModalApprovalRequestUIElements
+): ApprovalRequestResult | Promise<ApprovalRequestResult> {
+  const { requestBtn, notice } = uiElements;
 
-  // 1. Immediately disable button to prevent repeated clicks / duplicate requests
+  // 1. Immediately disable button to prevent repeated clicks / duplicate requests (Requirement 8)
   requestBtn.disabled = true;
   requestBtn.setAttribute('aria-disabled', 'true');
-  requestBtn.removeAttribute('aria-busy');
 
   // 2. Validate context and identifier
   const actionId = context?.actionId?.trim();
@@ -1966,7 +2184,9 @@ export function handleModalRequestApproval(
       success: false,
       actionId: '',
       error: 'Cannot request approval: No valid action context or identifier is available.',
-      isBackendConnected: false,
+      isBackendConnected: Boolean(options.useRealBackend),
+      isAuthoritative: true,
+      outcome: 'INVALID_LOCAL_STATE',
     };
     return applyApprovalOutcome(errorResult, options, uiElements);
   }
@@ -1981,29 +2201,30 @@ export function handleModalRequestApproval(
         success: false,
         actionId,
         error: err?.message || String(err),
-        isBackendConnected: false,
+        isBackendConnected: Boolean(options.useRealBackend),
+        isAuthoritative: true,
       };
     }
 
     if (customOutcome && typeof (customOutcome as any).then === 'function') {
-      (customOutcome as any)
+      return (customOutcome as any)
         .then((asyncRes: ApprovalRequestResult) => applyApprovalOutcome(asyncRes, options, uiElements))
         .catch((err: any) => {
           const errorRes: ApprovalRequestResult = {
             success: false,
             actionId,
             error: err?.message || String(err),
-            isBackendConnected: false,
+            isBackendConnected: Boolean(options.useRealBackend),
+            isAuthoritative: true,
           };
-          applyApprovalOutcome(errorRes, options, uiElements);
+          return applyApprovalOutcome(errorRes, options, uiElements);
         });
-      return customOutcome as unknown as ApprovalRequestResult;
     }
 
     return applyApprovalOutcome(customOutcome as ApprovalRequestResult, options, uiElements);
   }
 
-  // 4. Validate live controller state
+  // 4. Validate live controller state (Requirement 5)
   const controller = options.controller || defaultInterceptionController;
   const record = controller.getRecord(actionId);
 
@@ -2012,7 +2233,9 @@ export function handleModalRequestApproval(
       success: false,
       actionId,
       error: `Cannot request approval: Action "${actionId}" is not actively tracked by Guardrail.`,
-      isBackendConnected: false,
+      isBackendConnected: Boolean(options.useRealBackend),
+      isAuthoritative: true,
+      outcome: 'INVALID_LOCAL_STATE',
     };
     return applyApprovalOutcome(errorResult, options, uiElements);
   }
@@ -2022,12 +2245,105 @@ export function handleModalRequestApproval(
       success: false,
       actionId,
       error: `Cannot request approval for action "${actionId}": State is "${record.state}". Only actions in HELD state are eligible for approval requests.`,
-      isBackendConnected: false,
+      isBackendConnected: Boolean(options.useRealBackend),
+      isAuthoritative: true,
+      outcome: 'INVALID_LOCAL_STATE',
     };
     return applyApprovalOutcome(errorResult, options, uiElements);
   }
 
-  // 5. Create typed ApprovalRequestIntent
+  // 5. Check if real backend should be used (Requirement 6)
+  const shouldUseRealBackend =
+    options.useRealBackend === true ||
+    (options.useRealBackend !== false &&
+      typeof chrome !== 'undefined' &&
+      Boolean(chrome.runtime?.id));
+
+  if (shouldUseRealBackend) {
+    // Show in-progress state immediately (Requirement 7 & 8)
+    setStagingUIState('submitting_approval');
+    requestBtn.disabled = true;
+    requestBtn.setAttribute('aria-disabled', 'true');
+    requestBtn.setAttribute('aria-busy', 'true');
+    requestBtn.textContent = 'Submitting Request...';
+    if (notice) {
+      notice.textContent = 'Submitting approval request to backend • Please wait...';
+    }
+    announceStagingState('Submitting approval request to backend. Please wait.');
+
+    const performSubmission = async (): Promise<ApprovalRequestResult> => {
+      try {
+        let subRes: GuardrailSubmitApprovalRequestResponse;
+
+        // Injected direct apiClient or submitApprovalRequest (for tests)
+        if (options.apiClient || options.submitApprovalRequest) {
+          const directFn = options.submitApprovalRequest || submitApprovalRequest;
+          const directRes = await directFn(context, controller, {
+            apiClient: options.apiClient,
+          });
+          subRes = {
+            success: directRes.success,
+            actionId: directRes.actionId,
+            outcome: directRes.outcome,
+            isAuthoritative: directRes.isAuthoritative,
+            request: directRes.success ? directRes.request : undefined,
+            error: !directRes.success ? directRes.error : undefined,
+          };
+        } else {
+          // Dispatches validated extension message to Background Service Worker coordinator (Requirements 1, 2, 3)
+          subRes = await dispatchSubmitApprovalRequestToBackground(actionId, context);
+        }
+
+        const approvalResult: ApprovalRequestResult = {
+          success: subRes.success,
+          actionId: subRes.actionId,
+          isBackendConnected: true,
+          outcome: subRes.outcome,
+          isAuthoritative: subRes.isAuthoritative,
+          request: subRes.request,
+          error: subRes.error?.message,
+          errorDetails: subRes.error,
+        };
+
+        // Dispatch DOM event for automation/testing
+        if (typeof document !== 'undefined') {
+          try {
+            document.dispatchEvent(
+              new CustomEvent('guardrail:approval-requested', {
+                detail: {
+                  actionId,
+                  isBackendConnected: true,
+                  outcome: subRes.outcome,
+                  isAuthoritative: subRes.isAuthoritative,
+                  request: subRes.request,
+                },
+                bubbles: true,
+              })
+            );
+          } catch (e) {
+            console.warn('[Guardrail Staging] Error dispatching custom event:', e);
+          }
+        }
+
+        return applyApprovalOutcome(approvalResult, options, uiElements);
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const errorResult: ApprovalRequestResult = {
+          success: false,
+          actionId,
+          isBackendConnected: true,
+          outcome: SubmissionOutcome.NETWORK_FAILURE_UNCERTAIN,
+          isAuthoritative: false,
+          error: `Approval submission failed: ${errorMsg}`,
+        };
+        return applyApprovalOutcome(errorResult, options, uiElements);
+      }
+    };
+
+    return performSubmission();
+  }
+
+  // 6. Day 9 Prototype fallback (when not using real backend)
   let intent: ApprovalRequestIntent;
   try {
     intent = createApprovalRequestIntent(context, record);
@@ -2042,7 +2358,6 @@ export function handleModalRequestApproval(
     return applyApprovalOutcome(errorResult, options, uiElements);
   }
 
-  // 6. Build result
   const result: ApprovalRequestResult = {
     success: true,
     actionId,
@@ -2050,7 +2365,6 @@ export function handleModalRequestApproval(
     isBackendConnected: false,
   };
 
-  // 7. Dispatch local DOM custom event for automation/testing
   if (typeof document !== 'undefined') {
     try {
       document.dispatchEvent(
@@ -2068,12 +2382,10 @@ export function handleModalRequestApproval(
     }
   }
 
-  // 8. Dispatch to background service worker (resilient, asynchronous)
   dispatchApprovalRequestToBackground(intent).catch((err) => {
     console.warn('[Guardrail Staging] Background approval dispatch notification failed:', err);
   });
 
-  // 9. Update UI Feedback
   return applyApprovalOutcome(result, options, uiElements);
 }
 
