@@ -26,8 +26,10 @@ import { InterceptionRecord, InterceptionState } from '../types/interception.js'
 import { RiskLevel } from '../types/risk.js';
 import { StagingActionContext } from '../types/staging.js';
 import {
+  ApprovalRequest,
   ApprovalRequestIntent,
   ApprovalRequestResult,
+  ApprovalStatus,
   GuardrailSubmitApprovalRequestResponse,
 } from '../types/approval.js';
 import {
@@ -49,6 +51,10 @@ import {
   submitApprovalRequest,
 } from '../approval/submit-operation.js';
 import { ApprovalApiClient } from '../approval/client.js';
+import {
+  sanitizeApprovalErrorMessage,
+  validateBackendApprovalResponse,
+} from './status.js';
 
 export const STAGING_HOST_ELEMENT_ID = 'guardrail-staging-ui-host';
 
@@ -65,8 +71,13 @@ export type StagingInterceptionUIState =
   | 'stale_or_invalid'
   | 'submitting_approval'
   | 'approval_requested'
+  | 'approval_confirmed_approved'
+  | 'approval_confirmed_rejected'
+  | 'approval_confirmed_expired'
+  | 'approval_confirmed_cancelled'
   | 'approval_uncertain'
-  | 'approval_failed';
+  | 'approval_failed'
+  | 'malformed_response';
 
 export interface StagingModalOptions {
   /** The prepared staging action context (required when state is 'active') */
@@ -130,6 +141,8 @@ let currentHost: HTMLDivElement | null = null;
 let currentShadow: ShadowRoot | null = null;
 let currentUIState: StagingInterceptionUIState | null = null;
 let previousActiveElement: HTMLElement | null = null;
+let currentMountedActionId: string | null = null;
+let currentModalSessionId: number = 0;
 
 /**
  * Checks whether the Guardrail Staging Modal is currently mounted in the document.
@@ -154,6 +167,21 @@ export function getStagingUIState(): StagingInterceptionUIState | null {
 }
 
 /**
+ * Returns the action ID currently mounted in the Staging Modal, or null if unmounted.
+ */
+export function getCurrentMountedActionId(): string | null {
+  return currentMountedActionId;
+}
+
+/**
+ * Returns the monotonic modal session sequence ID. Increments whenever the modal
+ * is mounted, updated, or dismissed to prevent stale async responses from updating the UI.
+ */
+export function getCurrentModalSessionId(): number {
+  return currentModalSessionId;
+}
+
+/**
  * Dismisses and cleans up the active Guardrail Staging Modal.
  * Removes host element, unregisters keyboard event listeners, and restores focus to page.
  */
@@ -175,6 +203,8 @@ export function dismissStagingModal(): void {
   currentHost = null;
   currentShadow = null;
   currentUIState = null;
+  currentMountedActionId = null;
+  currentModalSessionId++;
 
   // Restore focus to previous active element before modal opened
   if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
@@ -1008,6 +1038,18 @@ function createStagingStyles(): HTMLStyleElement {
       border-color: rgba(239, 68, 68, 0.4) !important;
     }
 
+    .gs-badge-submitting {
+      background: rgba(99, 102, 241, 0.18) !important;
+      color: #818cf8 !important;
+      border-color: rgba(99, 102, 241, 0.45) !important;
+    }
+
+    .gs-badge-approved {
+      background: rgba(16, 185, 129, 0.15) !important;
+      color: #34d399 !important;
+      border-color: rgba(16, 185, 129, 0.4) !important;
+    }
+
     /* Empty & Loading States */
     .gs-state-card {
       padding: 40px 20px;
@@ -1497,7 +1539,16 @@ export function announceStagingState(message: string, isAlert: boolean = false):
  */
 export function setStagingUIState(
   state: StagingInterceptionUIState,
-  details?: { error?: string; description?: string; requestId?: string; code?: string }
+  details?: {
+    error?: string;
+    description?: string;
+    requestId?: string;
+    code?: string;
+    decidedBy?: string;
+    decidedAt?: string;
+    statusCode?: number;
+    request?: ApprovalRequest;
+  }
 ): void {
   currentUIState = state;
   if (!currentShadow) return;
@@ -1510,11 +1561,25 @@ export function setStagingUIState(
   const cancelBtn = currentShadow.querySelector('#gs-btn-cancel-action') as HTMLButtonElement | null;
   const reqBtn = currentShadow.querySelector('#gs-btn-request-approval') as HTMLButtonElement | null;
 
+  const resetPillClasses = () => {
+    if (pill) {
+      pill.classList.remove(
+        'gs-badge-held',
+        'gs-badge-cancelling',
+        'gs-badge-cancelled',
+        'gs-badge-requested',
+        'gs-badge-stale',
+        'gs-badge-submitting',
+        'gs-badge-approved'
+      );
+    }
+  };
+
   switch (state) {
     case 'held':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Review Mode';
-        pill.classList.remove('gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
         pill.classList.add('gs-badge-held');
       }
       if (title) title.textContent = 'Action Paused for Your Review';
@@ -1542,9 +1607,9 @@ export function setStagingUIState(
       break;
 
     case 'cancelling':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Cancelling...';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
         pill.classList.add('gs-badge-cancelling');
       }
       if (notice) {
@@ -1564,9 +1629,9 @@ export function setStagingUIState(
       break;
 
     case 'cancelled':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Cancelled';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-requested', 'gs-badge-stale');
         pill.classList.add('gs-badge-cancelled');
       }
       if (title) title.textContent = 'Action Cancelled';
@@ -1598,9 +1663,9 @@ export function setStagingUIState(
       break;
 
     case 'approval_intent_recorded':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Paused (Request Prepared)';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-stale');
         pill.classList.add('gs-badge-requested');
       }
       if (notice) {
@@ -1631,9 +1696,9 @@ export function setStagingUIState(
       break;
 
     case 'stale_or_invalid':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Operation Unavailable';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested');
         pill.classList.add('gs-badge-stale');
       }
       if (title) title.textContent = 'Action No Longer Held';
@@ -1674,9 +1739,9 @@ export function setStagingUIState(
       break;
 
     case 'submitting_approval':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Submitting...';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-stale');
         pill.classList.add('gs-badge-submitting');
       }
       if (notice) {
@@ -1696,9 +1761,9 @@ export function setStagingUIState(
       break;
 
     case 'approval_requested':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Approval Pending';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-stale', 'gs-badge-submitting');
         pill.classList.add('gs-badge-requested');
       }
       if (title) title.textContent = 'Approval Request Active';
@@ -1736,10 +1801,166 @@ export function setStagingUIState(
       );
       break;
 
+    case 'approval_confirmed_approved': {
+      resetPillClasses();
+      const reqId = details?.requestId || 'active';
+      const approver = details?.decidedBy || 'authorized contact';
+      if (pill) {
+        pill.textContent = 'Approval Confirmed';
+        pill.classList.add('gs-badge-approved');
+      }
+      if (title) title.textContent = 'Approval Confirmed by Contact';
+      if (subtitle) {
+        subtitle.textContent =
+          'An authorized trusted contact has approved this action. To protect your safety, the action is still held until you review and confirm.';
+      }
+      if (notice) {
+        notice.textContent = `Approval Confirmed (${reqId}) • Status: APPROVED • Action: HELD`;
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'info',
+          'Action Approved by Trusted Contact',
+          `An authorized contact (${approver}) reviewed and approved this request (${reqId}). Guardrail keeps this action safely paused until you confirm continuation.`
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Approval Confirmed';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+        cancelBtn.removeAttribute('aria-busy');
+      }
+      announceStagingState('Action approved by trusted contact. Review details and confirm execution.');
+      break;
+    }
+
+    case 'approval_confirmed_rejected': {
+      resetPillClasses();
+      const reqId = details?.requestId || 'active';
+      const reviewer = details?.decidedBy || 'authorized contact';
+      if (pill) {
+        pill.textContent = 'Approval Denied';
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Approval Denied by Contact';
+      if (subtitle) {
+        subtitle.textContent =
+          'An authorized trusted contact reviewed and denied this approval request. This action remains paused and cannot proceed.';
+      }
+      if (notice) {
+        notice.textContent = `Approval Denied (${reqId}) • Status: REJECTED • Action: HELD`;
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Approval Denied by Trusted Contact',
+          `An authorized contact (${reviewer}) reviewed and denied this request (${reqId}). The held action remains safely blocked.`
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Denied';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+        cancelBtn.removeAttribute('aria-busy');
+      }
+      announceStagingState('Action rejected by trusted contact. Action cannot proceed.', true);
+      break;
+    }
+
+    case 'approval_confirmed_expired': {
+      resetPillClasses();
+      const reqId = details?.requestId || 'active';
+      if (pill) {
+        pill.textContent = 'Request Expired';
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Approval Request Expired';
+      if (subtitle) {
+        subtitle.textContent =
+          'The review window for this approval request has expired. This action remains safely paused.';
+      }
+      if (notice) {
+        notice.textContent = `Approval Expired (${reqId}) • Status: EXPIRED • Action: HELD`;
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Approval Request Expired',
+          `The review window for request (${reqId}) expired without a decision. To protect your safety, this action remains paused.`
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Expired';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState('Approval request expired. Action remains paused.', true);
+      break;
+    }
+
+    case 'approval_confirmed_cancelled': {
+      resetPillClasses();
+      const reqId = details?.requestId || 'active';
+      if (pill) {
+        pill.textContent = 'Request Cancelled';
+        pill.classList.add('gs-badge-cancelled');
+      }
+      if (title) title.textContent = 'Approval Request Cancelled';
+      if (subtitle) {
+        subtitle.textContent =
+          details?.description || 'This approval request was cancelled on the server. The action remains safely paused.';
+      }
+      if (notice) {
+        notice.textContent = `Approval Cancelled (${reqId}) • Status: CANCELLED • Action: HELD`;
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'info',
+          'Approval Request Cancelled',
+          details?.description || `The approval request (${reqId}) was cancelled on the server. The action remains safely paused.`
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Cancelled';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState('Approval request cancelled on server. Action remains paused.');
+      break;
+    }
+
     case 'approval_uncertain':
+      resetPillClasses();
       if (pill) {
         pill.textContent = 'Outcome Uncertain';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-submitting');
         pill.classList.add('gs-badge-stale');
       }
       if (title) title.textContent = 'Submission Outcome Uncertain';
@@ -1776,10 +1997,11 @@ export function setStagingUIState(
       );
       break;
 
-    case 'approval_failed':
+    case 'approval_failed': {
+      resetPillClasses();
+      const sanitized = sanitizeApprovalErrorMessage(details?.error, details?.statusCode);
       if (pill) {
         pill.textContent = 'Request Rejected';
-        pill.classList.remove('gs-badge-held', 'gs-badge-cancelling', 'gs-badge-cancelled', 'gs-badge-requested', 'gs-badge-submitting');
         pill.classList.add('gs-badge-stale');
       }
       if (title) title.textContent = 'Approval Request Rejected';
@@ -1795,7 +2017,7 @@ export function setStagingUIState(
           body,
           'error',
           'Approval Request Rejected',
-          details?.error ||
+          sanitized ||
             'The approval request could not be processed by the server. The action remains safely held.'
         );
       }
@@ -1811,9 +2033,47 @@ export function setStagingUIState(
         cancelBtn.removeAttribute('aria-disabled');
       }
       announceStagingState(
-        'Approval request rejected by server: ' + (details?.error || 'Rejection'),
+        'Approval request rejected by server: ' + (sanitized || 'Rejection'),
         true
       );
+      break;
+    }
+
+    case 'malformed_response':
+      resetPillClasses();
+      if (pill) {
+        pill.textContent = 'Response Invalid';
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Invalid Server Response';
+      if (subtitle) {
+        subtitle.textContent =
+          'The backend response did not match the expected approval schema. This action remains safely paused.';
+      }
+      if (notice) {
+        notice.textContent = 'Invalid Response Schema • Action: HELD';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Invalid Server Response',
+          details?.error ||
+            'The backend returned an unexpected response format. To ensure your safety, this action remains paused.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.textContent = 'Request Unavailable';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState('Invalid server response schema. Action remains paused.', true);
       break;
   }
 }
@@ -2026,14 +2286,94 @@ export interface ModalApprovalRequestUIElements {
 function applyApprovalOutcome(
   result: ApprovalRequestResult,
   options: StagingModalOptions,
-  uiElements: ModalApprovalRequestUIElements
+  uiElements: ModalApprovalRequestUIElements,
+  sessionInfo?: { sessionToken: number; sessionActionId: string | null }
 ): ApprovalRequestResult {
   const { requestBtn, cancelBtn, body, header, notice } = uiElements;
 
+  // Stale response / component unmounted guard (Requirement 8):
+  // If the modal was closed, reset, or switched to another action while submission was in-flight,
+  // do NOT update the wrong action's UI or touch detached elements.
+  if (
+    sessionInfo &&
+    (!isStagingModalActive() ||
+      currentModalSessionId !== sessionInfo.sessionToken ||
+      (sessionInfo.sessionActionId !== null &&
+        currentMountedActionId !== null &&
+        currentMountedActionId !== sessionInfo.sessionActionId))
+  ) {
+    return result;
+  }
+
   if (result.isBackendConnected) {
     if (result.success) {
-      const reqId = result.request?.id || result.actionId;
-      setStagingUIState('approval_requested', { requestId: reqId });
+      // Validate the backend response schema before displaying any status (Requirements 1, 3, 4, 11)
+      const validation = validateBackendApprovalResponse(result.request, result.actionId);
+      if (!validation.valid) {
+        setStagingUIState('malformed_response', {
+          error: validation.error,
+        });
+
+        const failureResult: ApprovalRequestResult = {
+          ...result,
+          success: false,
+          error: `Malformed backend approval response: ${validation.error}`,
+        };
+
+        if (options.onRequestApprovalError) {
+          options.onRequestApprovalError(failureResult);
+        }
+        return failureResult;
+      }
+
+      const req = validation.request;
+      const reqId = req.id;
+
+      // Authoritative status handling (Requirements 1, 3, 4, 6)
+      // Never show APPROVED merely because request creation succeeded!
+      switch (req.status) {
+        case ApprovalStatus.APPROVED:
+          setStagingUIState('approval_confirmed_approved', {
+            requestId: reqId,
+            decidedBy: req.decision?.decidedBy,
+            decidedAt: req.decision?.decidedAt,
+            request: req,
+          });
+          break;
+
+        case ApprovalStatus.REJECTED:
+          setStagingUIState('approval_confirmed_rejected', {
+            requestId: reqId,
+            decidedBy: req.decision?.decidedBy,
+            decidedAt: req.decision?.decidedAt,
+            request: req,
+          });
+          break;
+
+        case ApprovalStatus.EXPIRED:
+          setStagingUIState('approval_confirmed_expired', {
+            requestId: reqId,
+            request: req,
+          });
+          break;
+
+        case ApprovalStatus.CANCELLED:
+          setStagingUIState('approval_confirmed_cancelled', {
+            requestId: reqId,
+            description: req.cancellationReason,
+            request: req,
+          });
+          break;
+
+        case ApprovalStatus.PENDING:
+        default:
+          // Creation confirmed (or existing pending request)
+          setStagingUIState('approval_requested', {
+            requestId: reqId,
+            request: req,
+          });
+          break;
+      }
 
       if (options.onRequestApprovalSuccess) {
         options.onRequestApprovalSuccess(result);
@@ -2044,21 +2384,34 @@ function applyApprovalOutcome(
       result.errorDetails?.code === 'ACTION_NOT_FOUND' ||
       result.errorDetails?.code === 'ACTION_NOT_HELD'
     ) {
-      setStagingUIState('stale_or_invalid', { error: result.error });
+      const sanitized = sanitizeApprovalErrorMessage(result.error);
+      setStagingUIState('stale_or_invalid', {
+        error: sanitized,
+        code: result.errorDetails?.code,
+      });
 
       if (options.onRequestApprovalError) {
         options.onRequestApprovalError(result);
       }
     } else if (result.isAuthoritative === false) {
-      setStagingUIState('approval_uncertain', { error: result.error });
+      const sanitized = sanitizeApprovalErrorMessage(result.error);
+      setStagingUIState('approval_uncertain', {
+        error: sanitized,
+        code: result.outcome,
+      });
 
       if (options.onRequestApprovalError) {
         options.onRequestApprovalError(result);
       }
     } else {
+      const sanitized = sanitizeApprovalErrorMessage(
+        result.error,
+        result.errorDetails?.statusCode
+      );
       setStagingUIState('approval_failed', {
-        error: result.error,
+        error: sanitized,
         code: result.errorDetails?.code || result.outcome,
+        statusCode: result.errorDetails?.statusCode,
       });
 
       if (options.onRequestApprovalError) {
@@ -2179,6 +2532,10 @@ export function handleModalRequestApproval(
 
   // 2. Validate context and identifier
   const actionId = context?.actionId?.trim();
+  const sessionToken = currentModalSessionId;
+  const sessionActionId = actionId || null;
+  const sessionInfo = { sessionToken, sessionActionId };
+
   if (!context || !actionId) {
     const errorResult: ApprovalRequestResult = {
       success: false,
@@ -2188,7 +2545,7 @@ export function handleModalRequestApproval(
       isAuthoritative: true,
       outcome: 'INVALID_LOCAL_STATE',
     };
-    return applyApprovalOutcome(errorResult, options, uiElements);
+    return applyApprovalOutcome(errorResult, options, uiElements, sessionInfo);
   }
 
   // 3. Delegate to custom onRequestApproval if configured
@@ -2208,7 +2565,7 @@ export function handleModalRequestApproval(
 
     if (customOutcome && typeof (customOutcome as any).then === 'function') {
       return (customOutcome as any)
-        .then((asyncRes: ApprovalRequestResult) => applyApprovalOutcome(asyncRes, options, uiElements))
+        .then((asyncRes: ApprovalRequestResult) => applyApprovalOutcome(asyncRes, options, uiElements, sessionInfo))
         .catch((err: any) => {
           const errorRes: ApprovalRequestResult = {
             success: false,
@@ -2217,11 +2574,11 @@ export function handleModalRequestApproval(
             isBackendConnected: Boolean(options.useRealBackend),
             isAuthoritative: true,
           };
-          return applyApprovalOutcome(errorRes, options, uiElements);
+          return applyApprovalOutcome(errorRes, options, uiElements, sessionInfo);
         });
     }
 
-    return applyApprovalOutcome(customOutcome as ApprovalRequestResult, options, uiElements);
+    return applyApprovalOutcome(customOutcome as ApprovalRequestResult, options, uiElements, sessionInfo);
   }
 
   // 4. Validate live controller state (Requirement 5)
@@ -2237,7 +2594,7 @@ export function handleModalRequestApproval(
       isAuthoritative: true,
       outcome: 'INVALID_LOCAL_STATE',
     };
-    return applyApprovalOutcome(errorResult, options, uiElements);
+    return applyApprovalOutcome(errorResult, options, uiElements, sessionInfo);
   }
 
   if (record.state !== InterceptionState.HELD) {
@@ -2249,7 +2606,7 @@ export function handleModalRequestApproval(
       isAuthoritative: true,
       outcome: 'INVALID_LOCAL_STATE',
     };
-    return applyApprovalOutcome(errorResult, options, uiElements);
+    return applyApprovalOutcome(errorResult, options, uiElements, sessionInfo);
   }
 
   // 5. Check if real backend should be used (Requirement 6)
@@ -2325,7 +2682,18 @@ export function handleModalRequestApproval(
           }
         }
 
-        return applyApprovalOutcome(approvalResult, options, uiElements);
+        // Stale response / component unmounted guard (Requirement 8)
+        if (
+          !isStagingModalActive() ||
+          currentModalSessionId !== sessionToken ||
+          (sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionActionId)
+        ) {
+          return approvalResult;
+        }
+
+        return applyApprovalOutcome(approvalResult, options, uiElements, sessionInfo);
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         const errorResult: ApprovalRequestResult = {
@@ -2336,7 +2704,18 @@ export function handleModalRequestApproval(
           isAuthoritative: false,
           error: `Approval submission failed: ${errorMsg}`,
         };
-        return applyApprovalOutcome(errorResult, options, uiElements);
+
+        if (
+          !isStagingModalActive() ||
+          currentModalSessionId !== sessionToken ||
+          (sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionActionId)
+        ) {
+          return errorResult;
+        }
+
+        return applyApprovalOutcome(errorResult, options, uiElements, sessionInfo);
       }
     };
 
@@ -2659,6 +3038,10 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
     return dismissStagingModal;
   }
 
+  // Set mounted action ID and advance session token for stale response protection
+  currentMountedActionId = options.context?.actionId?.trim() || null;
+  currentModalSessionId++;
+
   // Capture active element before opening modal for focus restoration
   if (document.activeElement) {
     previousActiveElement = document.activeElement as HTMLElement;
@@ -2738,6 +3121,10 @@ export function updateStagingModal(options: StagingModalOptions): void {
     showStagingModal(options);
     return;
   }
+
+  // Update mounted action and advance session sequence
+  currentMountedActionId = options.context?.actionId?.trim() || null;
+  currentModalSessionId++;
 
   // Find existing backdrop
   const existingBackdrop = currentShadow.querySelector('.gs-backdrop');
