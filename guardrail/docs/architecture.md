@@ -63,3 +63,14 @@ For comprehensive deep dives into specific subsystems and behavioral contracts, 
    - Privacy by design: Complete exclusion of credentials, form values, and tokens.
    - Concurrency control, duplicate suppression, and cryptographic grant scoping.
 
+3. **[Extension-to-Backend Integration Contract & Readiness](extension-to-backend-integration-contract.md)**:
+   - Verified technical contract between Manifest V3 extension and the remote backend.
+   - Exact endpoint specifications (`POST /api/v1/approval-requests`, `GET .../:id`, `POST .../cancel`).
+   - Authentication requirements, token verifier, and zero client trust rules.
+   - Action identification and correlation between client `actionId` and server entity.
+   - Authoritative status polling protocol and explicit user execution gate.
+   - Standard error representations (400, 401, 403, 404 anti-enumeration, 409, 410, 413, 415, 429).
+   - Secret isolation architecture and base URL resolution strategy.
+   - Comprehensive repository readiness audit and roadmap prerequisites.
+
+
