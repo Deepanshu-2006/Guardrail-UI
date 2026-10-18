@@ -19,7 +19,8 @@
     "test:verify-staging": "esbuild src/staging/verify-staging-workflow.ts --bundle --format=esm --target=es2022 --outfile=dist/verify-staging-workflow.js && node dist/verify-staging-workflow.js",
     "test:approval": "esbuild src/approval/test-approval-model.ts --bundle --format=esm --target=es2022 --outfile=dist/test-approval-model.js && node dist/test-approval-model.js",
     "test:approval-lifecycle": "esbuild src/approval/test-approval-lifecycle.ts --bundle --format=esm --target=es2022 --outfile=dist/test-approval-lifecycle.js && node dist/test-approval-lifecycle.js",
-    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui && npm run test:verify-staging && npm run test:approval && npm run test:approval-lifecycle"
+    "test:approval-auth": "esbuild src/approval/test-approval-authorization.ts --bundle --format=esm --target=es2022 --outfile=dist/test-approval-authorization.js && node dist/test-approval-authorization.js",
+    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui && npm run test:verify-staging && npm run test:approval && npm run test:approval-lifecycle && npm run test:approval-auth"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.308",

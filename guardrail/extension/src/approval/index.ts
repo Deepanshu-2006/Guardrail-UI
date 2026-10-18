@@ -7,4 +7,6 @@
 
 export * from './model.js';
 export * from './lifecycle.js';
+export * from './authorization.js';
 export * from '../types/approval.js';
+
