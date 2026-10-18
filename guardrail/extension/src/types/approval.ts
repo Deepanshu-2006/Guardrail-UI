@@ -25,6 +25,7 @@
 import { ActionCategory, ActionType } from './actions.js';
 import { InterceptionState } from './interception.js';
 import { RiskLevel } from './risk.js';
+import { StagingActionContext } from './staging.js';
 
 // =============================================================================
 // Lifecycle States
@@ -318,18 +319,31 @@ export interface ApprovalRequestIntent {
 }
 
 /**
- * Result returned by the local approval request workflow.
+ * Result returned by the approval request workflow (both prototype and real backend operations).
  */
 export interface ApprovalRequestResult {
   readonly success: boolean;
   readonly actionId: string;
   readonly intent?: ApprovalRequestIntent;
   readonly error?: string;
-  readonly isBackendConnected: false;
+  readonly isBackendConnected?: boolean;
+  /** Server-created approval request record (when connected to real backend) */
+  readonly request?: ApprovalRequest;
+  /** Granular outcome code (e.g. CREATED_PENDING, ALREADY_PENDING, TIMEOUT_UNCERTAIN) */
+  readonly outcome?: string;
+  /** Whether the server-side outcome is authoritative or uncertain */
+  readonly isAuthoritative?: boolean;
+  /** Structured error details when submission fails */
+  readonly errorDetails?: {
+    readonly code: string;
+    readonly message: string;
+    readonly statusCode?: number;
+    readonly details?: readonly string[];
+  };
 }
 
 /**
- * Extension message sent from Content Script to Background Service Worker.
+ * Extension message sent from Content Script to Background Service Worker (legacy prototype).
  */
 export interface GuardrailApprovalRequestMessage {
   readonly type: 'GUARDRAIL_APPROVAL_REQUEST';
@@ -337,7 +351,7 @@ export interface GuardrailApprovalRequestMessage {
 }
 
 /**
- * Response returned by the Background Service Worker acknowledgement.
+ * Response returned by the Background Service Worker acknowledgement (legacy prototype).
  */
 export interface ApprovalRequestResponse {
   readonly success: boolean;
@@ -345,3 +359,30 @@ export interface ApprovalRequestResponse {
   readonly message: string;
   readonly isBackendConnected: false;
 }
+
+/**
+ * Extension message sent from Content Script to Background Service Worker to trigger real backend submission.
+ */
+export interface GuardrailSubmitApprovalRequestMessage {
+  readonly type: 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST';
+  readonly actionId: string;
+  readonly context: StagingActionContext;
+}
+
+/**
+ * Typed response returned by Background Service Worker for real backend submission.
+ */
+export interface GuardrailSubmitApprovalRequestResponse {
+  readonly success: boolean;
+  readonly actionId: string;
+  readonly outcome: string;
+  readonly isAuthoritative: boolean;
+  readonly request?: ApprovalRequest;
+  readonly error?: {
+    readonly code: string;
+    readonly message: string;
+    readonly statusCode?: number;
+    readonly details?: readonly string[];
+  };
+}
+

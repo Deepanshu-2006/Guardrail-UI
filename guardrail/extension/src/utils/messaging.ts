@@ -13,9 +13,12 @@ import {
   GuardrailAction,
   GuardrailActionMessage,
   GuardrailApprovalRequestMessage,
+  GuardrailSubmitApprovalRequestMessage,
+  GuardrailSubmitApprovalRequestResponse,
   InterceptionRecord,
   ResponseDecision,
   RiskAssessment,
+  StagingActionContext,
 } from '../types/index.js';
 
 /**
@@ -128,3 +131,93 @@ export async function dispatchApprovalRequestToBackground(
     return null;
   }
 }
+
+/**
+ * Safely dispatches a real approval submission request from Content Script / Staging UI
+ * to the Background Service Worker coordinator.
+ *
+ * RESILIENCE & ERROR HANDLING:
+ * - Validates local parameters before dispatch.
+ * - Handles extension context invalidation and network errors without crashing.
+ * - In case of transport failure or runtime disconnect, returns a typed UNCERTAIN failure result
+ *   (isAuthoritative: false) so the UI keeps the action safely HELD and displays an honest status.
+ *
+ * @param actionId Stable identifier of the held action
+ * @param context Minimal StagingActionContext containing action metadata
+ * @returns Strongly typed GuardrailSubmitApprovalRequestResponse
+ */
+export async function dispatchSubmitApprovalRequestToBackground(
+  actionId: string,
+  context: StagingActionContext
+): Promise<GuardrailSubmitApprovalRequestResponse> {
+  if (!actionId || !context) {
+    return {
+      success: false,
+      actionId: actionId || '',
+      outcome: 'INVALID_LOCAL_STATE',
+      isAuthoritative: true,
+      error: {
+        code: 'INVALID_PARAMETERS',
+        message: 'A valid actionId and StagingActionContext are required for approval submission.',
+      },
+    };
+  }
+
+  // Guard against disconnected runtime if extension was reloaded in chrome://extensions
+  if (typeof chrome === 'undefined' || !chrome.runtime?.id || !chrome.runtime?.sendMessage) {
+    console.info('[Guardrail Messaging] Extension runtime is unavailable.');
+    return {
+      success: false,
+      actionId,
+      outcome: 'NETWORK_FAILURE_UNCERTAIN',
+      isAuthoritative: false,
+      error: {
+        code: 'RUNTIME_UNAVAILABLE',
+        message: 'Extension runtime is unavailable or disconnected. The intercepted action remains safely HELD.',
+      },
+    };
+  }
+
+  const message: GuardrailSubmitApprovalRequestMessage = {
+    type: 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST',
+    actionId,
+    context,
+  };
+
+  try {
+    const response = await chrome.runtime.sendMessage<
+      GuardrailSubmitApprovalRequestMessage,
+      GuardrailSubmitApprovalRequestResponse
+    >(message);
+
+    if (response) {
+      return response;
+    }
+
+    return {
+      success: false,
+      actionId,
+      outcome: 'NETWORK_FAILURE_UNCERTAIN',
+      isAuthoritative: false,
+      error: {
+        code: 'EMPTY_RESPONSE',
+        message: 'Background worker returned an empty response. Server state is UNCERTAIN. Action remains safely HELD.',
+      },
+    };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isTimeout = errorMsg.toLowerCase().includes('timeout');
+
+    return {
+      success: false,
+      actionId,
+      outcome: isTimeout ? 'TIMEOUT_UNCERTAIN' : 'NETWORK_FAILURE_UNCERTAIN',
+      isAuthoritative: false,
+      error: {
+        code: isTimeout ? 'TIMEOUT' : 'DISPATCH_ERROR',
+        message: `Failed to dispatch approval request to background: ${errorMsg}. Server state is UNCERTAIN. Action remains safely HELD.`,
+      },
+    };
+  }
+}
+

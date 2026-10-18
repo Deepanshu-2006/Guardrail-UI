@@ -24,8 +24,9 @@
     "test:approval-api": "esbuild src/approval/test-approval-api.ts --bundle --format=esm --target=es2022 --outfile=dist/test-approval-api.js && node dist/test-approval-api.js",
     "test:approval-client": "esbuild src/approval/test-approval-client.ts --bundle --format=esm --target=es2022 --outfile=dist/test-approval-client.js && node dist/test-approval-client.js",
     "test:approval-submit": "esbuild src/approval/test-submit-operation.ts --bundle --format=esm --target=es2022 --outfile=dist/test-submit-operation.js && node dist/test-submit-operation.js",
+    "test:staging-approval-integration": "esbuild src/staging/test-staging-approval-integration.ts --bundle --format=esm --target=es2022 --outfile=dist/test-staging-approval-integration.js && node dist/test-staging-approval-integration.js",
     "test:verify-approval": "esbuild src/approval/verify-day10-approval-workflow.ts --bundle --format=esm --target=es2022 --outfile=dist/verify-day10-approval-workflow.js && node dist/verify-day10-approval-workflow.js",
-    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui && npm run test:verify-staging && npm run test:approval && npm run test:approval-lifecycle && npm run test:approval-auth && npm run test:approval-service && npm run test:approval-api && npm run test:approval-client && npm run test:approval-submit && npm run test:verify-approval"
+    "test": "npm run test:risk && npm run test:response && npm run test:interception && npm run test:controller && npm run test:proof && npm run test:continuation && npm run test:verify && npm run test:staging && npm run test:staging-ui && npm run test:verify-staging && npm run test:approval && npm run test:approval-lifecycle && npm run test:approval-auth && npm run test:approval-service && npm run test:approval-api && npm run test:approval-client && npm run test:approval-submit && npm run test:staging-approval-integration && npm run test:verify-approval"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.308",
