@@ -37,7 +37,9 @@ import {
   createApprovalRequestIntent,
   createStagingActionContext,
   dismissStagingModal,
+  getStagingUIState,
   isStagingModalActive,
+  setStagingUIState,
   showStagingModal,
 } from '../staging/index.js';
 import { StagingActionContext } from '../types/staging.js';
@@ -49,6 +51,21 @@ import {
 } from '../utils/index.js';
 
 let latestStagingContext: StagingActionContext | null = null;
+let cancelHeldAction: (targetActionId?: string) => CancellationResult = (targetActionId) => {
+  const held = defaultContinuationManager.getCurrentHeldAction();
+  const actionId = targetActionId || held?.action.id;
+  if (!actionId) {
+    return {
+      success: false,
+      actionId: '',
+      error: 'No action is currently in HELD state. Cannot cancel.',
+    };
+  }
+  return defaultContinuationManager.cancelAction(
+    actionId,
+    'Action cancelled by user in Guardrail Staging Mode.'
+  );
+};
 
 /**
  * Sanitizes plain text for safe insertion into HTML strings.
@@ -548,6 +565,17 @@ function bootstrap(): void {
 
           // Forward pipeline evaluation to background coordinator WITH the held interception record
           dispatchActionToBackground(action, classification, risk, decision, heldRecord);
+
+          // * Automatically present staging interface for user review and decision
+          if (latestStagingContext) {
+            showStagingModal({
+              context: latestStagingContext,
+              state: 'active',
+              controller: defaultInterceptionController,
+              continuationManager: defaultContinuationManager,
+              onCancel: (id) => cancelHeldAction(id),
+            });
+          }
           break;
         }
       }
@@ -585,15 +613,14 @@ function bootstrap(): void {
             state: 'active',
             controller: defaultInterceptionController,
             continuationManager: defaultContinuationManager,
-            onCancel: (actionId) => defaultContinuationManager.cancelAction(actionId),
+            onCancel: (actionId) => cancelHeldAction(actionId),
           });
         } else {
           showStagingModal({ state: 'empty' });
         }
       },
       cancel: (actionId?: string) => {
-        const id = actionId || defaultContinuationManager.getCurrentHeldAction()?.action.id;
-        return defaultContinuationManager.cancelAction(id || '');
+        return cancelHeldAction(actionId);
       },
       requestApproval: (context?: StagingActionContext) => {
         const ctx = context || latestStagingContext;
@@ -702,6 +729,9 @@ function initResolutionControls(): void {
     // Success: Action continued and executed
     latestStagingContext = null;
     disableControls();
+    if (isStagingModalActive()) {
+      dismissStagingModal();
+    }
     if (indicatorEl) {
       indicatorEl.textContent = `Resolved: CONTINUED (${actionId})`;
       indicatorEl.style.color = '#34d399';
@@ -776,6 +806,9 @@ function initResolutionControls(): void {
     // Success: Action cancelled, handler not executed
     latestStagingContext = null;
     disableControls();
+    if (isStagingModalActive() && getStagingUIState() !== 'cancelled') {
+      setStagingUIState('cancelled');
+    }
     if (indicatorEl) {
       indicatorEl.textContent = `Resolved: CANCELLED (${actionId})`;
       indicatorEl.style.color = '#94a3b8';
@@ -815,6 +848,8 @@ function initResolutionControls(): void {
 
     return result;
   };
+
+  cancelHeldAction = handleCancel;
 
   const handleRequestApproval = (targetActionId?: string): ApprovalRequestResult => {
     const held = defaultContinuationManager.getCurrentHeldAction();
