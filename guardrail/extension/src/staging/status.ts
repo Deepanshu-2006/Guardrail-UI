@@ -163,126 +163,15 @@ export interface ValidatedApprovalState {
 }
 
 // =============================================================================
-// Schema Validation
+// Schema Validation (Re-exported from submit-operation.js)
 // =============================================================================
 
-export interface ValidationSuccess {
-  readonly valid: true;
-  readonly request: ApprovalRequest;
-}
-
-export interface ValidationFailure {
-  readonly valid: false;
-  readonly error: string;
-}
-
-export type BackendResponseValidationResult = ValidationSuccess | ValidationFailure;
-
-const VALID_STATUSES = new Set<string>([
-  ApprovalStatus.PENDING,
-  ApprovalStatus.APPROVED,
-  ApprovalStatus.REJECTED,
-  ApprovalStatus.EXPIRED,
-  ApprovalStatus.CANCELLED,
-]);
-
-/**
- * Validates an incoming object against the canonical ApprovalRequest domain schema.
- *
- * VALIDATION CHECKS:
- * 1. Must be a non-null object.
- * 2. `id`: non-empty string with canonical 'apr_' prefix.
- * 3. `actionId`: matches expectedActionId if supplied.
- * 4. `status`: must be valid ApprovalStatus enum value.
- * 5. `createdAt` & `expiresAt`: valid ISO 8601 timestamps.
- * 6. If `status === APPROVED` or `status === REJECTED`:
- *    - `decision` block MUST be present.
- *    - `decision.decision` must match `status`.
- *    - `decision.decidedBy` must be non-empty string.
- *    - `decision.decidedAt` must be valid ISO timestamp.
- * 7. If `status === PENDING`:
- *    - `decision` block must NOT be present (rejects spoofed or inconsistent payloads).
- */
-export function validateBackendApprovalResponse(
-  data: unknown,
-  expectedActionId?: string
-): BackendResponseValidationResult {
-  if (!data || typeof data !== 'object') {
-    return { valid: false, error: 'Response body is not a valid JSON object.' };
-  }
-
-  const raw = data as Record<string, unknown>;
-
-  // 1. Validate ID
-  if (typeof raw.id !== 'string' || !raw.id.trim()) {
-    return { valid: false, error: 'Missing or empty request "id".' };
-  }
-  const id = raw.id.trim();
-  if (!id.startsWith('apr_') && !id.startsWith('appr_')) {
-    return { valid: false, error: `Invalid request "id" format ("${id}"). Expected "apr_" or "appr_" prefix.` };
-  }
-
-  // 2. Validate actionId
-  if (typeof raw.actionId !== 'string' || !raw.actionId.trim()) {
-    return { valid: false, error: 'Missing or empty "actionId".' };
-  }
-  const actionId = raw.actionId.trim();
-  if (expectedActionId && actionId !== expectedActionId.trim()) {
-    return {
-      valid: false,
-      error: `actionId mismatch: response actionId "${actionId}" does not match expected "${expectedActionId}".`,
-    };
-  }
-
-  // 3. Validate status
-  if (typeof raw.status !== 'string' || !VALID_STATUSES.has(raw.status)) {
-    return { valid: false, error: `Invalid or unknown status "${String(raw.status)}".` };
-  }
-  const status = raw.status as ApprovalStatus;
-
-  // 4. Validate timestamps
-  if (raw.createdAt !== undefined && (typeof raw.createdAt !== 'string' || isNaN(Date.parse(raw.createdAt)))) {
-    return { valid: false, error: 'Invalid "createdAt" ISO timestamp.' };
-  }
-  if (raw.expiresAt !== undefined && (typeof raw.expiresAt !== 'string' || isNaN(Date.parse(raw.expiresAt)))) {
-    return { valid: false, error: 'Invalid "expiresAt" ISO timestamp.' };
-  }
-
-  // 5. Validate decision block consistency
-  if (status === ApprovalStatus.APPROVED || status === ApprovalStatus.REJECTED) {
-    if (!raw.decision || typeof raw.decision !== 'object') {
-      return {
-        valid: false,
-        error: `Request has terminal status "${status}" but is missing required decision metadata.`,
-      };
-    }
-    const dec = raw.decision as Record<string, unknown>;
-    if (dec.decision !== status) {
-      return {
-        valid: false,
-        error: `Decision mismatch: decision.decision is "${String(dec.decision)}" but status is "${status}".`,
-      };
-    }
-    if (typeof dec.decidedBy !== 'string' || !dec.decidedBy.trim()) {
-      return { valid: false, error: 'Missing or empty "decidedBy" in decision metadata.' };
-    }
-    if (typeof dec.decidedAt !== 'string' || isNaN(Date.parse(dec.decidedAt))) {
-      return { valid: false, error: 'Missing or invalid "decidedAt" ISO timestamp in decision metadata.' };
-    }
-  } else if (status === ApprovalStatus.PENDING) {
-    if (raw.decision !== undefined && raw.decision !== null) {
-      return {
-        valid: false,
-        error: 'Inconsistent response: request in PENDING status contains a decision metadata block.',
-      };
-    }
-  }
-
-  return {
-    valid: true,
-    request: raw as unknown as ApprovalRequest,
-  };
-}
+export { validateBackendApprovalResponse } from '../approval/submit-operation.js';
+export type {
+  BackendResponseValidationResult,
+  ValidationSuccess,
+  ValidationFailure,
+} from '../approval/submit-operation.js';
 
 // =============================================================================
 // Error Sanitization

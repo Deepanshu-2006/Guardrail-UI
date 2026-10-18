@@ -49,6 +49,8 @@ import {
 import {
   SubmissionOutcome,
   submitApprovalRequest,
+  isSubmissionInProgress,
+  reconcileApprovalSubmission,
 } from '../approval/submit-operation.js';
 import { ApprovalApiClient } from '../approval/client.js';
 import {
@@ -1754,8 +1756,8 @@ export function setStagingUIState(
         reqBtn.setAttribute('aria-busy', 'true');
       }
       if (cancelBtn) {
-        cancelBtn.disabled = false;
-        cancelBtn.removeAttribute('aria-disabled');
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
       }
       announceStagingState('Submitting approval request to backend. Please wait.');
       break;
@@ -2305,6 +2307,17 @@ function applyApprovalOutcome(
     return result;
   }
 
+  // Race condition & late response guard (Requirements 9 & 10):
+  // If an async submission resolves with success, but the action was cancelled or continued
+  // while in flight, do NOT update the UI to approval requested/confirmed.
+  const activeController = options.controller || defaultInterceptionController;
+  if (result.success && result.actionId && activeController && typeof activeController.getRecord === 'function') {
+    const record = activeController.getRecord(result.actionId);
+    if (!record || record.state !== InterceptionState.HELD) {
+      return result;
+    }
+  }
+
   if (result.isBackendConnected) {
     if (result.success) {
       // Validate the backend response schema before displaying any status (Requirements 1, 3, 4, 11)
@@ -2388,6 +2401,18 @@ function applyApprovalOutcome(
       setStagingUIState('stale_or_invalid', {
         error: sanitized,
         code: result.errorDetails?.code,
+      });
+
+      if (options.onRequestApprovalError) {
+        options.onRequestApprovalError(result);
+      }
+
+    } else if (
+      result.errorDetails?.code === 'MALFORMED_BACKEND_RESPONSE' ||
+      result.outcome === 'MALFORMED_RESPONSE'
+    ) {
+      setStagingUIState('malformed_response', {
+        error: result.error,
       });
 
       if (options.onRequestApprovalError) {
@@ -2535,6 +2560,23 @@ export function handleModalRequestApproval(
   const sessionToken = currentModalSessionId;
   const sessionActionId = actionId || null;
   const sessionInfo = { sessionToken, sessionActionId };
+
+  // 2.1. Concurrency guard: reject repeated submission if already in progress for this held action
+  if (actionId && isSubmissionInProgress(actionId)) {
+    const conflictResult: ApprovalRequestResult = {
+      success: false,
+      actionId,
+      error: `An approval request submission is already in progress for action "${actionId}".`,
+      isBackendConnected: Boolean(options.useRealBackend),
+      isAuthoritative: true,
+      outcome: SubmissionOutcome.SUBMISSION_IN_PROGRESS,
+      errorDetails: {
+        code: 'SUBMISSION_ALREADY_IN_PROGRESS',
+        message: `An approval request submission is already in progress for action "${actionId}".`,
+      },
+    };
+    return applyApprovalOutcome(conflictResult, options, uiElements, sessionInfo);
+  }
 
   if (!context || !actionId) {
     const errorResult: ApprovalRequestResult = {
@@ -2766,6 +2808,50 @@ export function handleModalRequestApproval(
   });
 
   return applyApprovalOutcome(result, options, uiElements);
+}
+
+/**
+ * Triggers status reconciliation for a held action with an ambiguous submission state.
+ * Uses authoritative request ID lookup or backend compound idempotency (userId, actionId).
+ */
+export async function handleModalReconcile(
+  context: StagingActionContext,
+  options: StagingModalOptions,
+  uiElements: ModalApprovalRequestUIElements,
+  reconcileOptions?: { requestId?: string }
+): Promise<ApprovalRequestResult> {
+  const { requestBtn, notice } = uiElements;
+  const actionId = context.actionId;
+  const sessionToken = currentModalSessionId;
+  const sessionActionId = actionId || null;
+  const sessionInfo = { sessionToken, sessionActionId };
+
+  requestBtn.disabled = true;
+  requestBtn.setAttribute('aria-disabled', 'true');
+  requestBtn.setAttribute('aria-busy', 'true');
+  requestBtn.textContent = 'Reconciling Status...';
+  if (notice) {
+    notice.textContent = 'Reconciling approval status with backend • Please wait...';
+  }
+
+  const controller = options.controller || defaultInterceptionController;
+  const result = await reconcileApprovalSubmission(context, controller, {
+    apiClient: options.apiClient,
+    requestId: reconcileOptions?.requestId,
+  });
+
+  const approvalResult: ApprovalRequestResult = {
+    success: result.success,
+    actionId: result.actionId,
+    isBackendConnected: true,
+    outcome: result.outcome,
+    isAuthoritative: result.isAuthoritative,
+    request: result.success ? result.request : undefined,
+    error: !result.success ? result.error.message : undefined,
+    errorDetails: !result.success ? result.error : undefined,
+  };
+
+  return applyApprovalOutcome(approvalResult, options, uiElements, sessionInfo);
 }
 
 /**

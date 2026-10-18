@@ -31,6 +31,7 @@
 
 import {
   ApprovalRequest,
+  ApprovalStatus,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import {
@@ -427,9 +428,16 @@ export class ApprovalApiRouter {
       throw new ApprovalValidationError(['Request body must be a valid JSON object.']);
     }
 
+    const existing = body.actionId
+      ? this.service.getRepository().findByUserAndAction(authContext.actorId, body.actionId)
+      : undefined;
+    const isIdempotentReturn = Boolean(
+      existing && existing.status === ApprovalStatus.PENDING
+    );
+
     const created = this.service.createRequest(body, authContext);
     return {
-      statusCode: 201,
+      statusCode: isIdempotentReturn ? 200 : 201,
       headers,
       body: {
         success: true,
