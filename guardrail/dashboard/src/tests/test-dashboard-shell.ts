@@ -65,6 +65,16 @@ class MockDOMElement {
   public tabIndex: number = 0;
   public href: string = '';
   public type: string = '';
+  public disabled: boolean = false;
+
+  get innerHTML(): string {
+    if (this._textContent) return this._textContent;
+    return this.children.map((c) => `<${c.tagName.toLowerCase()}>${c.innerHTML}</${c.tagName.toLowerCase()}>`).join('');
+  }
+  set innerHTML(val: string) {
+    this.children = [];
+    this._textContent = val;
+  }
 
   constructor(tagName: string) {
     this.tagName = tagName.toUpperCase();
@@ -231,7 +241,14 @@ rootElement.id = 'dashboard-app';
 const testContainer = rootElement as unknown as HTMLElement;
 
 import { DashboardShell } from '../shell.js';
-import { ApprovalRequest, ApprovalStatus, RiskLevel, ActionType, ActionCategory } from '../types.js';
+import {
+  ApprovalApiClient,
+  ApprovalRequest,
+  ApprovalStatus,
+  RiskLevel,
+  ActionType,
+  ActionCategory,
+} from '../types.js';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -256,6 +273,18 @@ function assertEquals<T>(actual: T, expected: T, message: string): void {
     console.error(`  ✗ FAILED: ${message}. Expected "${String(expected)}", received "${String(actual)}"`);
     process.exitCode = 1;
   }
+}
+
+function createMockResponse(status: number, body: unknown, statusText = 'OK'): Response {
+  const jsonString = typeof body === 'string' ? body : JSON.stringify(body);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText,
+    headers: new Map([['content-type', 'application/json']]),
+    text: async () => jsonString,
+    json: async () => JSON.parse(jsonString),
+  } as unknown as Response;
 }
 
 console.log('\n============================================================');
@@ -557,6 +586,499 @@ async function runDashboardTests() {
 
     const scriptTags = rootElement.querySelectorAll('script');
     assertEquals(scriptTags.length, 0, 'Zero script tags injected into DOM tree');
+
+    shell.destroy();
+  }
+
+  // Test Suite 10: Populated Pending Approvals via Real ApprovalApiClient
+  console.log('\n▶ Test Suite 10: Populated Pending Approvals via ApprovalApiClient');
+  {
+    let capturedUrl = '';
+    let capturedMethod = '';
+    let capturedHeaders: Record<string, string> = {};
+
+    const mockFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      capturedUrl = String(input);
+      capturedMethod = init?.method ?? 'GET';
+      capturedHeaders = (init?.headers ?? {}) as Record<string, string>;
+
+      return createMockResponse(200, {
+        success: true,
+        data: [
+          {
+            id: 'apr_wire_001',
+            actionId: 'act_wire_001',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'Send $1,000 wire to Acme Corp',
+            actionType: ActionType.SUBMIT,
+            category: ActionCategory.PAYMENT,
+            riskLevel: RiskLevel.HIGH,
+            riskScore: 85,
+            riskReasons: ['External wire transfer exceeds standard threshold'],
+            origin: 'https://bank.example.com',
+            hostname: 'bank.example.com',
+            pageTitle: 'Wire Transfer Portal',
+            createdAt: '2026-10-20T10:00:00.000Z',
+            expiresAt: '2026-10-20T10:15:00.000Z',
+          },
+          {
+            id: 'apr_delete_002',
+            actionId: 'act_delete_002',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'Delete cloud backup database',
+            actionType: ActionType.CLICK,
+            category: ActionCategory.DESTRUCTIVE,
+            riskLevel: RiskLevel.CRITICAL,
+            riskScore: 100,
+            riskReasons: ['Destructive deletion of critical backup volume'],
+            origin: 'https://cloud.example.com',
+            hostname: 'cloud.example.com',
+            pageTitle: 'Database Settings',
+            createdAt: '2026-10-20T10:05:00.000Z',
+            expiresAt: '2026-10-20T10:20:00.000Z',
+          },
+        ],
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    // Verify wire endpoint
+    assertEquals(capturedUrl, 'http://localhost:3000/api/v1/approvals/pending', 'Verified pending-requests endpoint path called');
+    assertEquals(capturedMethod, 'GET', 'Uses GET method per integration contract');
+    assertEquals(capturedHeaders['Authorization'], 'Bearer carol-token', 'Bearer token passed in Authorization header');
+    assert(!('approverId' in capturedHeaders), 'Frontend-supplied approverId is NOT passed in headers');
+
+    // Verify populated UI
+    const cards = rootElement.querySelectorAll('.gd-request-card');
+    assertEquals(cards.length, 2, 'Renders exactly 2 populated request cards');
+
+    const state = shell.getState();
+    assertEquals(state.pendingRequests.length, 2, 'Shell state contains 2 pending requests');
+    assertEquals(state.pendingStatus, 'idle', 'Status transitioned to idle');
+    assertEquals(state.selectedRequestId, 'apr_wire_001', 'First request selected by default');
+
+    // Verify detail pane displays safe metadata
+    const detailPane = rootElement.querySelector('.gd-detail-pane');
+    assert(detailPane !== null, 'Detail pane is rendered');
+    const titleEl = rootElement.querySelector('.gd-detail-title');
+    assertEquals(titleEl?.textContent, 'Send $1,000 wire to Acme Corp', 'Detail pane displays action description');
+
+    shell.destroy();
+  }
+
+  // Test Suite 11: Empty Results & Intentional Empty State Handling
+  console.log('\n▶ Test Suite 11: Empty Results & Intentional Empty Placeholder');
+  {
+    const mockFetch = async (): Promise<Response> => {
+      return createMockResponse(200, {
+        success: true,
+        data: [],
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    const state = shell.getState();
+    assertEquals(state.pendingRequests.length, 0, 'Zero requests in state');
+    assertEquals(state.pendingStatus, 'empty', 'pendingStatus is empty');
+
+    const emptyPlaceholder = rootElement.querySelector('#view-pending .gd-list-pane .gd-placeholder');
+    assert(emptyPlaceholder !== null, 'Intentional empty placeholder is displayed');
+    const pTitle = emptyPlaceholder?.querySelector('.gd-placeholder-title');
+    assertEquals(pTitle?.textContent, 'No Pending Approval Requests', 'Empty state title matches contract');
+
+    shell.destroy();
+  }
+
+  // Test Suite 12: Loading States & Skeletons
+  console.log('\n▶ Test Suite 12: Loading Skeletons & Refresh State');
+  {
+    let resolvePromise: (value: Response) => void;
+    const pendingPromise = new Promise<Response>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: () => pendingPromise,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    // Start fetch in background
+    const fetchPromise = shell.fetchPendingRequests();
+
+    // Check loading state while in-flight
+    assertEquals(shell.getState().pendingStatus, 'loading', 'Status is loading while request is in-flight');
+    const skeleton = rootElement.querySelector('.gd-skeleton');
+    assert(skeleton !== null, 'Skeleton placeholder rendered while loading');
+
+    const refreshBtn = rootElement.querySelector('.gd-btn-refresh') as any;
+    assert(refreshBtn !== null, 'Refresh button rendered in header');
+    assertEquals(refreshBtn?.disabled, true, 'Refresh button disabled during loading');
+
+    // Resolve response
+    resolvePromise!(createMockResponse(200, { success: true, data: [] }));
+    await fetchPromise;
+
+    assertEquals(shell.getState().pendingStatus, 'empty', 'Status updated to empty after fetch resolves');
+    shell.destroy();
+  }
+
+  // Test Suite 13: Authentication Failure Handling (401 UNAUTHENTICATED)
+  console.log('\n▶ Test Suite 13: Authentication Failure (401 UNAUTHENTICATED)');
+  {
+    const mockFetch = async (): Promise<Response> => {
+      return createMockResponse(401, {
+        success: false,
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Missing or expired Authorization Bearer token.',
+          statusCode: 401,
+        },
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'bad-token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        isAuthenticated: true,
+      },
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    const state = shell.getState();
+    assertEquals(state.pendingStatus, 'error', 'Status set to error on 401');
+    assert(state.contactProfile === null, 'Session profile invalidated on unauthenticated failure');
+
+    const errorBanner = rootElement.querySelector('.gd-error-banner');
+    assert(errorBanner !== null, 'Error banner displayed');
+    assert(
+      errorBanner?.textContent?.includes('Authentication required') ?? false,
+      'Error banner explains authentication is required'
+    );
+
+    const retryBtn = rootElement.querySelector('.gd-btn-retry');
+    assert(retryBtn !== null, 'Retry button rendered in error banner');
+
+    shell.destroy();
+  }
+
+  // Test Suite 14: Multi-Tenant Authorization Failure Handling (404/403 NOT_FOUND_OR_DENIED)
+  console.log('\n▶ Test Suite 14: Multi-Tenant Authorization Failure (404 NOT_FOUND_OR_DENIED)');
+  {
+    const mockFetch = async (): Promise<Response> => {
+      return createMockResponse(404, {
+        success: false,
+        error: {
+          code: 'NOT_FOUND_OR_DENIED',
+          message: 'Access denied: Request not found or insufficient permissions.',
+          statusCode: 404,
+        },
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'stranger-token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    assertEquals(shell.getState().pendingStatus, 'error', 'Status is error');
+    const errorBanner = rootElement.querySelector('.gd-error-banner');
+    assert(
+      errorBanner?.textContent?.includes('Access denied') ?? false,
+      'Error banner indicates access denied without leaking internal tenancy details'
+    );
+
+    shell.destroy();
+  }
+
+  // Test Suite 15: Network Failure & Timeout Resilience
+  console.log('\n▶ Test Suite 15: Network Failure & Timeout Resilience');
+  {
+    // Network Drop (Failed to fetch)
+    const deadFetch = async (): Promise<Response> => {
+      throw new TypeError('Failed to fetch (ECONNREFUSED)');
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: deadFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    assertEquals(shell.getState().pendingStatus, 'error', 'Status is error on network drop');
+    const errorBanner = rootElement.querySelector('.gd-error-banner');
+    assert(
+      errorBanner?.textContent?.includes('Network connection error') ?? false,
+      'Error banner communicates network connectivity failure'
+    );
+
+    shell.destroy();
+  }
+
+  // Test Suite 16: Malformed Response Protection
+  console.log('\n▶ Test Suite 16: Malformed Response Protection');
+  {
+    // Non-array data payload
+    const malformedFetch = async (): Promise<Response> => {
+      return createMockResponse(200, {
+        success: true,
+        data: { unexpected: 'object instead of array' },
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: malformedFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    assertEquals(shell.getState().pendingStatus, 'error', 'Non-array data rejected as error');
+    assert(
+      shell.getState().errorMessage?.includes('invalid, non-array') ?? false,
+      'Protocol error reported for non-array response'
+    );
+
+    shell.destroy();
+  }
+
+  // Test Suite 17: Concurrent Request Deduplication & Coalescing
+  console.log('\n▶ Test Suite 17: Concurrent Request Deduplication & Coalescing');
+  {
+    let fetchCount = 0;
+    const countingFetch = async (): Promise<Response> => {
+      fetchCount++;
+      // Simulate asynchronous delay
+      await new Promise((r) => setTimeout(r, 10));
+      return createMockResponse(200, { success: true, data: [] });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: countingFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    // Trigger 3 concurrent fetch calls
+    const p1 = shell.fetchPendingRequests();
+    const p2 = shell.fetchPendingRequests();
+    const p3 = shell.fetchPendingRequests();
+
+    await Promise.all([p1, p2, p3]);
+
+    assertEquals(fetchCount, 1, 'Exactly ONE network request dispatched for 3 concurrent fetch calls');
+
+    shell.destroy();
+  }
+
+  // Test Suite 18: Manual Refresh and State Invalidation
+  console.log('\n▶ Test Suite 18: Manual Refresh and State Invalidation');
+  {
+    let callNumber = 0;
+    const dynamicFetch = async (): Promise<Response> => {
+      callNumber++;
+      if (callNumber === 1) {
+        return createMockResponse(200, {
+          success: true,
+          data: [
+            {
+              id: 'apr_first',
+              actionId: 'act_1',
+              requesterId: 'usr_alice',
+              status: ApprovalStatus.PENDING,
+              actionDescription: 'First Request',
+              actionType: ActionType.CLICK,
+              riskLevel: RiskLevel.LOW,
+              hostname: 'example.com',
+              createdAt: '2026-10-20T10:00:00.000Z',
+            },
+          ],
+        });
+      }
+      return createMockResponse(200, {
+        success: true,
+        data: [
+          {
+            id: 'apr_first',
+            actionId: 'act_1',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'First Request',
+            actionType: ActionType.CLICK,
+            riskLevel: RiskLevel.LOW,
+            hostname: 'example.com',
+            createdAt: '2026-10-20T10:00:00.000Z',
+          },
+          {
+            id: 'apr_second',
+            actionId: 'act_2',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'Second Request',
+            actionType: ActionType.CLICK,
+            riskLevel: RiskLevel.HIGH,
+            hostname: 'example.com',
+            createdAt: '2026-10-20T10:05:00.000Z',
+          },
+        ],
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: dynamicFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+    assertEquals(shell.getState().pendingRequests.length, 1, 'Initial fetch has 1 request');
+
+    // Trigger refresh
+    await shell.refresh();
+    assertEquals(shell.getState().pendingRequests.length, 2, 'Refreshed fetch updates to 2 requests');
+
+    shell.destroy();
+  }
+
+  // Test Suite 19: Privacy Whitelist & Malicious Sensitive Fields Stripping
+  console.log('\n▶ Test Suite 19: Strict Privacy Whitelist & Sensitive Fields Exclusion');
+  {
+    // A mock server sends an approval request with sensitive keys injected
+    const dirtyServerResponse = {
+      success: true,
+      data: [
+        {
+          id: 'apr_safe_001',
+          actionId: 'act_safe_001',
+          requesterId: 'usr_alice',
+          status: ApprovalStatus.PENDING,
+          actionDescription: 'Checkout cart at ShoppingSite',
+          actionType: ActionType.SUBMIT,
+          category: ActionCategory.PAYMENT,
+          riskLevel: RiskLevel.MEDIUM,
+          hostname: 'shoppingsite.com',
+          createdAt: '2026-10-20T10:00:00.000Z',
+          // Maliciously or accidentally leaked sensitive fields
+          password: 'super_secret_password',
+          otp: '987654',
+          cardNumber: '4111222233334444',
+          cvv: '123',
+          authToken: 'secret_user_token',
+          cookies: 'session=abc',
+        },
+      ],
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: async () => createMockResponse(200, dirtyServerResponse),
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    await shell.fetchPendingRequests();
+
+    const rootHTML = rootElement.innerHTML;
+    assert(!rootHTML.includes('super_secret_password'), 'Password is never rendered in DOM');
+    assert(!rootHTML.includes('987654'), 'OTP is never rendered in DOM');
+    assert(!rootHTML.includes('4111222233334444'), 'Card number is never rendered in DOM');
+    assert(!rootHTML.includes('secret_user_token'), 'Auth token is never rendered in DOM');
 
     shell.destroy();
   }
