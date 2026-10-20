@@ -9,14 +9,19 @@
  */
 
 import { ApprovalRequest, ViewStatus } from '../types.js';
+import { renderRequestDetailView } from './detail.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
   selectedRequestId: string | null;
+  selectedRequestDetail?: ApprovalRequest | null;
+  isDetailLoading?: boolean;
+  detailErrorMessage?: string | null;
   status: ViewStatus;
   errorMessage?: string | null;
   onRequestSelect: (requestId: string) => void;
   onRefresh?: () => void;
+  onRefreshDetail?: () => void;
 }
 
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
@@ -224,140 +229,17 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   layout.appendChild(listPane);
 
   // --- Right Pane: Request Details ---
-  const detailPane = document.createElement('div');
-  detailPane.className = 'gd-detail-pane';
-  detailPane.setAttribute('role', 'region');
-  detailPane.setAttribute('aria-label', 'Selected Request Details');
+  const selectedRequest =
+    props.selectedRequestDetail !== undefined
+      ? props.selectedRequestDetail
+      : (props.requests.find((r) => r.id === props.selectedRequestId) ?? null);
 
-  const selectedRequest = props.requests.find((r) => r.id === props.selectedRequestId);
-
-  if (selectedRequest) {
-    // Header
-    const dHeader = document.createElement('div');
-    dHeader.className = 'gd-detail-header';
-
-    const titleGroup = document.createElement('div');
-    titleGroup.className = 'gd-detail-title-group';
-
-    const idSpan = document.createElement('span');
-    idSpan.className = 'gd-detail-id';
-    idSpan.textContent = `Canonical Request ID: ${selectedRequest.id}`;
-
-    const dTitle = document.createElement('h2');
-    dTitle.className = 'gd-detail-title';
-    dTitle.textContent = selectedRequest.actionDescription;
-
-    titleGroup.appendChild(idSpan);
-    titleGroup.appendChild(dTitle);
-
-    const statusPill = document.createElement('span');
-    statusPill.className = 'gd-detail-status-pill';
-    statusPill.textContent = selectedRequest.status;
-
-    dHeader.appendChild(titleGroup);
-    dHeader.appendChild(statusPill);
-    detailPane.appendChild(dHeader);
-
-    // Meta Grid
-    const grid = document.createElement('div');
-    grid.className = 'gd-detail-grid';
-
-    const items = [
-      { label: 'Origin Website', value: selectedRequest.origin || selectedRequest.hostname || 'Unknown' },
-      { label: 'Interaction Mechanism', value: selectedRequest.actionType || 'Standard Click' },
-      { label: 'Semantic Category', value: selectedRequest.category || 'General' },
-      { label: 'Ward Identity', value: selectedRequest.requesterId },
-      { label: 'Evaluated Risk Level', value: selectedRequest.riskLevel },
-      { label: 'Numeric Risk Score', value: selectedRequest.riskScore !== undefined ? `${selectedRequest.riskScore} / 100` : 'Not Scored' },
-      { label: 'Initiated At', value: selectedRequest.createdAt ? new Date(selectedRequest.createdAt).toLocaleString() : 'Unknown' },
-      { label: 'Expires At', value: selectedRequest.expiresAt ? new Date(selectedRequest.expiresAt).toLocaleString() : 'Not Set' },
-    ];
-
-    for (const item of items) {
-      const field = document.createElement('div');
-      field.className = 'gd-detail-item';
-
-      const label = document.createElement('span');
-      label.className = 'gd-detail-label';
-      label.textContent = item.label;
-
-      const val = document.createElement('span');
-      val.className = 'gd-detail-value';
-      val.textContent = item.value;
-
-      field.appendChild(label);
-      field.appendChild(val);
-      grid.appendChild(field);
-    }
-
-    detailPane.appendChild(grid);
-
-    // Risk Reasons Section
-    if (selectedRequest.riskReasons && selectedRequest.riskReasons.length > 0) {
-      const riskSection = document.createElement('div');
-      riskSection.className = 'gd-detail-item';
-
-      const riskLabel = document.createElement('span');
-      riskLabel.className = 'gd-detail-label';
-      riskLabel.textContent = 'Heuristic Risk Analysis';
-
-      const ul = document.createElement('ul');
-      ul.className = 'gd-risk-reasons-list';
-
-      for (const reason of selectedRequest.riskReasons) {
-        const li = document.createElement('li');
-        li.className = 'gd-risk-reason-item';
-        li.textContent = reason;
-        ul.appendChild(li);
-      }
-
-      riskSection.appendChild(riskLabel);
-      riskSection.appendChild(ul);
-      detailPane.appendChild(riskSection);
-    }
-
-    // Decoupling & Decision Notice
-    const notice = document.createElement('div');
-    notice.className = 'gd-decision-notice';
-    notice.setAttribute('role', 'note');
-
-    const noticeText = document.createElement('p');
-    noticeText.textContent =
-      'Decoupled Execution Architecture: Approving this request records reviewer consent on the Guardrail backend. It does NOT remotely execute the action in the ward’s browser. The user retains sole continuation authority in Staging Mode.';
-
-    const decisionShellNotice = document.createElement('p');
-    decisionShellNotice.style.marginTop = '8px';
-    decisionShellNotice.style.fontWeight = '600';
-    decisionShellNotice.textContent =
-      '🔒 Decision Actions Shell: Approval & Rejection decision submissions will be wired to the REST API in Day 13.';
-
-    notice.appendChild(noticeText);
-    notice.appendChild(decisionShellNotice);
-    detailPane.appendChild(notice);
-  } else {
-    // Nothing Selected Placeholder
-    const noSelectPlaceholder = document.createElement('div');
-    noSelectPlaceholder.className = 'gd-placeholder';
-
-    const icon = document.createElement('div');
-    icon.className = 'gd-placeholder-icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '👆';
-
-    const pTitle = document.createElement('h2');
-    pTitle.className = 'gd-placeholder-title';
-    pTitle.textContent = 'Select an Approval Request';
-
-    const pText = document.createElement('p');
-    pText.className = 'gd-placeholder-text';
-    pText.textContent =
-      'Select any pending request from the list on the left to inspect its security risk assessment, target website origin, and heuristic analysis.';
-
-    noSelectPlaceholder.appendChild(icon);
-    noSelectPlaceholder.appendChild(pTitle);
-    noSelectPlaceholder.appendChild(pText);
-    detailPane.appendChild(noSelectPlaceholder);
-  }
+  const detailPane = renderRequestDetailView({
+    request: selectedRequest,
+    isLoading: props.isDetailLoading,
+    errorMessage: props.detailErrorMessage,
+    onRefresh: props.onRefreshDetail,
+  });
 
   layout.appendChild(detailPane);
   section.appendChild(layout);

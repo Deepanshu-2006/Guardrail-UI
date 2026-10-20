@@ -13,6 +13,7 @@
 import {
   ApprovalRequest,
   ApprovalStatus,
+  ApprovalDecisionMetadata,
 } from '../../extension/src/types/approval.js';
 import { ActionCategory, ActionType } from '../../extension/src/types/actions.js';
 import { RiskLevel } from '../../extension/src/types/risk.js';
@@ -24,7 +25,13 @@ import {
   ApiClientErrorCodes,
 } from '../../extension/src/approval/client.js';
 
-export type { ApprovalRequest, AuthContext, ApiClientResult, ApiClientError };
+export type {
+  ApprovalRequest,
+  ApprovalDecisionMetadata,
+  AuthContext,
+  ApiClientResult,
+  ApiClientError,
+};
 export {
   ApprovalStatus,
   ActionCategory,

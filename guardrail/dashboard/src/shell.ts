@@ -38,6 +38,9 @@ export class DashboardShell {
   private readonly pollIntervalMs?: number;
   private activeFetchPromise: Promise<void> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
+  private isDetailLoading: boolean = false;
+  private detailErrorMessage: string | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -215,13 +218,25 @@ export class DashboardShell {
     this.mainContentEl.appendChild(overviewSection);
 
     // View 2: Pending Approvals
+    const selectedDetail = this.state.selectedRequestId
+      ? (this.detailedRequestsCache.get(this.state.selectedRequestId) ||
+         this.state.pendingRequests.find((r) => r.id === this.state.selectedRequestId) ||
+         null)
+      : null;
+
     const pendingSection = renderPendingApprovals({
       requests: this.state.pendingRequests,
       selectedRequestId: this.state.selectedRequestId,
+      selectedRequestDetail: selectedDetail,
+      isDetailLoading: this.isDetailLoading,
+      detailErrorMessage: this.detailErrorMessage,
       status: this.state.pendingStatus,
       errorMessage: this.state.errorMessage,
       onRequestSelect: (id) => this.selectRequest(id),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
+      onRefreshDetail: this.apiClient && this.state.selectedRequestId
+        ? () => void this.loadRequestDetails(this.state.selectedRequestId!, true)
+        : undefined,
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');
@@ -394,11 +409,71 @@ export class DashboardShell {
   }
 
   /**
-   * Selects an approval request in the pending list for inspection.
+   * Retrieves request details through the verified backend endpoint (GET /api/v1/approvals/:id),
+   * or reuses an already-loaded authoritative record if present in memory.
+   *
+   * @param requestId Canonical approval request identifier
+   * @param forceFetch If true, bypasses in-memory cache and dispatches network request
    */
-  public selectRequest(requestId: string): void {
-    this.state.selectedRequestId = requestId;
+  public async loadRequestDetails(
+    requestId: string,
+    forceFetch: boolean = false
+  ): Promise<ApprovalRequest | null> {
+    if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+      return null;
+    }
+
+    const trimmedId = requestId.trim();
+    const existing =
+      this.detailedRequestsCache.get(trimmedId) ||
+      this.state.pendingRequests.find((r) => r.id === trimmedId) ||
+      null;
+
+    // Reuse already-loaded authoritative record if fresh fetch is not forced
+    if (existing && !forceFetch) {
+      return existing;
+    }
+
+    if (!this.apiClient) {
+      return existing;
+    }
+
+    this.isDetailLoading = true;
+    this.detailErrorMessage = null;
     this.render();
+
+    try {
+      const result = await this.apiClient.getApprovalDetails(trimmedId);
+      if (result.success) {
+        this.detailedRequestsCache.set(trimmedId, result.data);
+        this.detailErrorMessage = null;
+        return result.data;
+      } else {
+        const msg = result.error.message || 'Failed to retrieve approval request details.';
+        this.detailErrorMessage = msg;
+        return existing;
+      }
+    } catch (unhandled) {
+      const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
+      this.detailErrorMessage = `Error retrieving details: ${msg}`;
+      return existing;
+    } finally {
+      this.isDetailLoading = false;
+      this.render();
+    }
+  }
+
+  /**
+   * Selects an approval request in the pending list for inspection.
+   * Can reuse loaded authoritative record or fetch fresh via backend endpoint.
+   */
+  public selectRequest(requestId: string, fetchFresh: boolean = false): void {
+    this.state.selectedRequestId = requestId;
+    if (fetchFresh && this.apiClient) {
+      void this.loadRequestDetails(requestId, true);
+    } else {
+      this.render();
+    }
   }
 
   /**
