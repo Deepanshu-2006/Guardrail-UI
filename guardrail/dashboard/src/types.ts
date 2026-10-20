@@ -23,6 +23,7 @@ import {
   ApiClientResult,
   ApiClientError,
   ApiClientErrorCodes,
+  SubmitDecisionPayload,
 } from '../../extension/src/approval/client.js';
 
 export type {
@@ -31,6 +32,7 @@ export type {
   AuthContext,
   ApiClientResult,
   ApiClientError,
+  SubmitDecisionPayload,
 };
 export {
   ApprovalStatus,
@@ -84,6 +86,12 @@ export interface DashboardShellState {
   pendingStatus: ViewStatus;
   /** Optional error message displayed in the error banner */
   errorMessage: string | null;
+  /** Whether an approval decision is actively being submitted to the backend */
+  isSubmittingDecision?: boolean;
+  /** Optional error message resulting from a failed decision submission */
+  decisionErrorMessage?: string | null;
+  /** Optional success message resulting from a successful decision submission */
+  decisionSuccessMessage?: string | null;
 }
 
 /**

@@ -22,6 +22,14 @@ export interface PendingApprovalsProps {
   onRequestSelect: (requestId: string) => void;
   onRefresh?: () => void;
   onRefreshDetail?: () => void;
+  /** Whether an approval decision is actively being submitted to the backend */
+  isSubmittingDecision?: boolean;
+  /** Error message resulting from a failed decision attempt */
+  decisionErrorMessage?: string | null;
+  /** Success message resulting from a confirmed decision attempt */
+  decisionSuccessMessage?: string | null;
+  /** Callback invoked when the user confirms their decision */
+  onDecisionSubmit?: (decision: 'APPROVED' | 'REJECTED', reason?: string) => void | Promise<unknown>;
 }
 
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
@@ -239,6 +247,10 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     isLoading: props.isDetailLoading,
     errorMessage: props.detailErrorMessage,
     onRefresh: props.onRefreshDetail,
+    isSubmittingDecision: props.isSubmittingDecision,
+    decisionErrorMessage: props.decisionErrorMessage,
+    decisionSuccessMessage: props.decisionSuccessMessage,
+    onDecisionSubmit: props.onDecisionSubmit,
   });
 
   layout.appendChild(detailPane);

@@ -65,11 +65,23 @@ export const ApiClientErrorCodes = Object.freeze({
   NOT_FOUND_OR_DENIED: 'NOT_FOUND_OR_DENIED',
   ALREADY_RESOLVED: 'ALREADY_RESOLVED',
   REQUEST_EXPIRED: 'REQUEST_EXPIRED',
+  SELF_APPROVAL_PROHIBITED: 'SELF_APPROVAL_PROHIBITED',
   RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
   UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const);
+
+/**
+ * Payload sent by an authorized trusted contact to approve or reject a pending request.
+ * Strictly excludes approverId, decidedBy, and status to prevent client-side spoofing.
+ */
+export interface SubmitDecisionPayload {
+  /** The review decision verdict: strictly APPROVED or REJECTED */
+  readonly decision: 'APPROVED' | 'REJECTED';
+  /** Optional non-sensitive reviewer explanation or justification note */
+  readonly decisionReason?: string;
+}
 
 export type ApiClientErrorCode =
   (typeof ApiClientErrorCodes)[keyof typeof ApiClientErrorCodes];
@@ -522,6 +534,109 @@ export class ApprovalApiClient {
       'GET',
       `/api/v1/approvals/${sanitizedId}`,
       undefined,
+      options
+    );
+  }
+
+  /**
+   * Submits an authoritative reviewer decision (APPROVED or REJECTED) on a pending request.
+   *
+   * Adheres strictly to Section 5.3 of guardrail/docs/trusted-contact-dashboard-contract.md:
+   * POST /api/v1/approvals/:id/decide
+   *
+   * ARCHITECTURAL INVARIANTS:
+   * 1. Decoupled Action Execution:
+   *    - Recording an approval registers reviewer consent on the server.
+   *    - Under NO circumstances does it execute, release, or replay the protected browser action.
+   *    - The browser action remains safely HELD in the ward's client tab until explicit confirmation in Staging Mode.
+   * 2. Zero-Trust Client Binding:
+   *    - Reviewer identity is bound authoritatively by the server auth session (Bearer token).
+   *    - Client-supplied approverId, decidedBy, or status values are strictly prohibited and rejected.
+   *
+   * @param requestId Canonical approval request identifier ('apr_...')
+   * @param payload Decision payload containing decision ('APPROVED' | 'REJECTED') and optional decisionReason
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with updated resolved ApprovalRequest or error
+   */
+  public async submitDecision(
+    requestId: string,
+    payload: SubmitDecisionPayload,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<ApprovalRequest>> {
+    if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'requestId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+
+    if (!payload || typeof payload !== 'object') {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'Decision payload must be a non-null object.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+
+    if (payload.decision !== 'APPROVED' && payload.decision !== 'REJECTED') {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'Field "decision" is required and must be either "APPROVED" or "REJECTED".',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+
+    // Zero-trust client validation: prevent spoofed client-supplied approverId or status
+    const raw = payload as unknown as Record<string, unknown>;
+    if (raw.decidedBy !== undefined || raw.approverId !== undefined) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message:
+            'Client cannot specify "decidedBy" or "approverId". Reviewer identity is bound authoritatively by session.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    if (raw.status !== undefined) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'Client cannot specify "status". Server manages lifecycle transitions.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(requestId.trim());
+    const body: Record<string, unknown> = {
+      decision: payload.decision,
+    };
+    if (payload.decisionReason !== undefined && typeof payload.decisionReason === 'string') {
+      body.decisionReason = payload.decisionReason.trim();
+    }
+
+    return this.dispatchRequest<ApprovalRequest>(
+      'POST',
+      `/api/v1/approvals/${sanitizedId}/decide`,
+      body,
       options
     );
   }
