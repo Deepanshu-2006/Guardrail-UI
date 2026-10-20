@@ -665,6 +665,192 @@ button:focus-visible,
   color: var(--gd-text-secondary);
 }
 
+.gd-detail-status-pill.pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.gd-detail-status-pill.approved {
+  background-color: var(--gd-green-bg);
+  color: var(--gd-green-text);
+}
+
+.gd-detail-status-pill.rejected {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.gd-detail-status-pill.cancelled,
+.gd-detail-status-pill.expired {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+/* Status Banner */
+.gd-status-banner {
+  border-radius: 6px;
+  padding: 14px 18px;
+  border: 1px solid var(--gd-border-hairline);
+  background-color: #f8fafc;
+}
+
+.gd-status-banner.pending {
+  background-color: #fffbeb;
+  border-color: #fef3c7;
+  color: #92400e;
+}
+
+.gd-status-banner.approved {
+  background-color: var(--gd-green-bg);
+  border-color: var(--gd-green-border);
+  color: #064e3b;
+}
+
+.gd-status-banner.rejected {
+  background-color: #fef2f2;
+  border-color: #fee2e2;
+  color: #991b1b;
+}
+
+.gd-status-banner.cancelled,
+.gd-status-banner.expired {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.gd-status-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gd-status-banner-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gd-status-banner-desc {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Detail Cards */
+.gd-detail-card {
+  background-color: var(--gd-bg-surface);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gd-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--gd-border-hairline);
+  padding-bottom: 12px;
+}
+
+.gd-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gd-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.gd-card-subtitle {
+  font-size: 12px;
+  color: var(--gd-text-muted);
+}
+
+.gd-action-decoupling-note {
+  background-color: #f8fafc;
+  border-left: 3px solid var(--gd-green-primary);
+  border-radius: 0 4px 4px 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--gd-text-secondary);
+  line-height: 1.45;
+}
+
+.gd-risk-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gd-risk-explanation {
+  font-size: 13px;
+  color: var(--gd-text-secondary);
+  line-height: 1.4;
+  flex: 1;
+  min-width: 220px;
+}
+
+.gd-risk-score-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gd-risk-score-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+  font-family: var(--gd-font-mono);
+}
+
+.gd-risk-reasons-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-risk-empty-text {
+  font-size: 13px;
+  color: var(--gd-text-muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.gd-risk-disclaimer {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.45;
+}
+
+.gd-disclaimer-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.gd-disclaimer-text {
+  margin: 0;
+}
+
+.gd-resolved-details-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.gd-resolved-details-title {
+  font-size: 13px;
+  color: var(--gd-text-primary);
+}
+
 .gd-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
