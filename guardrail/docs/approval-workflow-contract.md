@@ -415,3 +415,6 @@ Before `ContinuationManager.continueAction()` can execute:
 | **Day 12** | **Extension-to-Backend Transport** | Replace prototype stubs in service worker with authenticated HTTPS calls, token storage, and grant listeners. | `guardrail/extension` |
 | **Day 13** | **Caretaker Review Interface** | Implement responsive web dashboard for trusted contacts to review and decide requests on mobile and desktop. | `guardrail/dashboard` |
 | **Day 14** | **End-to-End System Integration** | Full multi-client test: Intercept on demo site $\rightarrow$ Staging Mode $\rightarrow$ Caretaker approval $\rightarrow$ Safe client release. | Whole Repository |
+
+> [!NOTE]
+> For the complete audit of existing real-time infrastructure, authoritative backend status endpoints, and the recommended adaptive polling synchronization design, see **[Approval Status Synchronization Specification](approval-status-synchronization.md)**.

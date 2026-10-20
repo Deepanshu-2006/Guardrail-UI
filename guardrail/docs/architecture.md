@@ -79,8 +79,13 @@ For comprehensive deep dives into specific subsystems and behavioral contracts, 
    - Exact REST endpoints (`GET /api/v1/approvals/pending`, `GET /api/v1/approvals/:id`, `POST /api/v1/approvals/:id/decide`).
    - Multi-tenant tenancy isolation, anti-enumeration (opaque 404), and strict self-approval prohibition.
    - Lifecycle state machine handling, atomic CAS first-responder concurrency (`409 ALREADY_RESOLVED`), and expiration (`410 REQUEST_EXPIRED`).
-   - Separation of concerns: Decoupling approval decisions from browser action execution.
-   - Strict privacy whitelist and sensitive credential exclusion rules.
+5. **[Approval Status Synchronization Specification](approval-status-synchronization.md)**:
+   - Reliable, low-overhead status synchronization architecture between Browser Extension and Dashboard.
+   - Comprehensive audit of current end-to-end flow, authority boundaries, and persistence model.
+   - Analysis of real-time infrastructure (confirming absence of WebSockets and SSE).
+   - Recommended strategy: Adaptive short polling over `GET /api/v1/approval-requests/:id` with page visibility sensitivity.
+   - Deterministic state machine behavior across all lifecycle states (`PENDING`, `APPROVED`, `REJECTED`, `EXPIRED`, `CANCELLED`).
+   - Inviolable decoupled execution architecture: Approvals grant reviewer consent but never trigger remote action execution.
 
 
 
