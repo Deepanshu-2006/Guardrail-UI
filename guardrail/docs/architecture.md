@@ -73,4 +73,14 @@ For comprehensive deep dives into specific subsystems and behavioral contracts, 
    - Secret isolation architecture and base URL resolution strategy.
    - Comprehensive repository readiness audit and roadmap prerequisites.
 
+4. **[Trusted-Contact Dashboard Integration Contract & Readiness](trusted-contact-dashboard-contract.md)**:
+   - Comprehensive integration specification for the caretaker management web interface.
+   - Authentication mechanism and authoritative identity derivation for trusted contacts (`Authorization: Bearer <token>`).
+   - Exact REST endpoints (`GET /api/v1/approvals/pending`, `GET /api/v1/approvals/:id`, `POST /api/v1/approvals/:id/decide`).
+   - Multi-tenant tenancy isolation, anti-enumeration (opaque 404), and strict self-approval prohibition.
+   - Lifecycle state machine handling, atomic CAS first-responder concurrency (`409 ALREADY_RESOLVED`), and expiration (`410 REQUEST_EXPIRED`).
+   - Separation of concerns: Decoupling approval decisions from browser action execution.
+   - Strict privacy whitelist and sensitive credential exclusion rules.
+
+
 
