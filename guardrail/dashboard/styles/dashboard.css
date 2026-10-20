@@ -1050,6 +1050,235 @@ button:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
+   Decision Controls & Confirmation Flow
+   ----------------------------------------------------------------------------- */
+
+.gd-decision-actions-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gd-decision-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--gd-risk-crit-bg);
+  border: 1px solid var(--gd-risk-crit-border);
+  color: var(--gd-risk-crit-text);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.gd-decision-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--gd-green-bg);
+  border: 1px solid var(--gd-green-border);
+  color: var(--gd-green-text);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.gd-decision-resolved-notice {
+  background-color: var(--gd-bg-subtle);
+  border: 1px solid var(--gd-border-hairline);
+  color: var(--gd-text-secondary);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.gd-decision-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gd-btn-decision {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.gd-btn-approve {
+  background-color: var(--gd-green-primary);
+  color: #ffffff;
+  border: 1px solid var(--gd-green-primary);
+  box-shadow: var(--gd-shadow-sm);
+}
+
+.gd-btn-approve:hover:not(:disabled) {
+  background-color: var(--gd-green-hover);
+  border-color: var(--gd-green-hover);
+}
+
+.gd-btn-reject {
+  background-color: #ffffff;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  box-shadow: var(--gd-shadow-sm);
+}
+
+.gd-btn-reject:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #f87171;
+}
+
+.gd-btn-decision:disabled,
+.gd-btn-confirm-submit:disabled,
+.gd-btn-cancel-confirm:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.gd-decision-confirm-box {
+  background-color: var(--gd-bg-canvas);
+  border: 1px solid var(--gd-border-strong);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: gd-fade-in 0.2s ease-out;
+}
+
+.gd-confirm-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gd-text-primary);
+}
+
+.gd-confirm-desc {
+  font-size: 13px;
+  color: var(--gd-text-secondary);
+  line-height: 1.45;
+}
+
+.gd-high-impact-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background-color: var(--gd-risk-med-bg);
+  border: 1px solid var(--gd-risk-med-border);
+  color: var(--gd-risk-med-text);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.gd-high-impact-warning strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.gd-confirm-note-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-decision-reason-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  border: 1px solid var(--gd-border-strong);
+  border-radius: 6px;
+  background-color: var(--gd-bg-surface);
+  color: var(--gd-text-primary);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.gd-decision-reason-input:focus {
+  outline: none;
+  border-color: var(--gd-green-primary);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+.gd-confirm-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gd-btn-confirm-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease-in-out;
+}
+
+.gd-btn-approve-confirm {
+  background-color: var(--gd-green-primary);
+  color: #ffffff;
+}
+
+.gd-btn-approve-confirm:hover:not(:disabled) {
+  background-color: var(--gd-green-hover);
+}
+
+.gd-btn-reject-confirm {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.gd-btn-reject-confirm:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.gd-btn-cancel-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: #ffffff;
+  color: var(--gd-text-secondary);
+  border: 1px solid var(--gd-border-strong);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.gd-btn-cancel-confirm:hover:not(:disabled) {
+  background-color: var(--gd-bg-subtle);
+  color: var(--gd-text-primary);
+}
+
+@keyframes gd-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* -----------------------------------------------------------------------------
    Responsive Breakpoints
    ----------------------------------------------------------------------------- */
 
