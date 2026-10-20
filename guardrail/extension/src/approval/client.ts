@@ -30,6 +30,8 @@
  *      without throwing unhandled exceptions or crashing the extension runtime.
  */
 
+declare const chrome: any;
+
 import {
   ApprovalRequest,
   ApprovalStatus,
@@ -192,6 +194,16 @@ export async function resolveApiBaseUrl(customBaseUrl?: string): Promise<string>
   if (customBaseUrl && typeof customBaseUrl === 'string' && customBaseUrl.trim()) {
     return customBaseUrl.trim().replace(/\/+$/, '');
   }
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem('guardrailApiBaseUrl');
+      if (stored && typeof stored === 'string' && stored.trim()) {
+        return stored.trim().replace(/\/+$/, '');
+      }
+    } catch {
+      // Storage unavailable or permission issue
+    }
+  }
   if (typeof chrome !== 'undefined' && chrome.storage?.local?.get) {
     try {
       const res = await chrome.storage.local.get('guardrailApiBaseUrl');
@@ -208,14 +220,23 @@ export async function resolveApiBaseUrl(customBaseUrl?: string): Promise<string>
 /**
  * Resolves the active user authentication token using the established hierarchy:
  * 1. Provided TokenProvider callback.
- * 2. 'guardrailAuthToken' stored in chrome.storage.local (if available).
- * 3. Undefined (caller must be prompted to authenticate).
+ * 2. 'guardrailAuthToken' stored in sessionStorage (if available).
+ * 3. 'guardrailAuthToken' stored in chrome.storage.local (if available).
+ * 4. Undefined (caller must be prompted to authenticate).
  */
 export async function resolveAuthToken(tokenProvider?: TokenProvider): Promise<string | undefined> {
   if (tokenProvider) {
     const token = await tokenProvider();
     if (token && typeof token === 'string' && token.trim()) {
       return token.trim();
+    }
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      const token = sessionStorage.getItem('guardrailAuthToken');
+      if (token && token.trim()) return token.trim();
+    } catch {
+      // Storage unavailable or permission issue
     }
   }
   if (typeof chrome !== 'undefined' && chrome.storage?.local?.get) {
@@ -445,6 +466,62 @@ export class ApprovalApiClient {
       'POST',
       `/api/v1/approval-requests/${sanitizedId}/cancel`,
       body,
+      options
+    );
+  }
+
+  /**
+   * Retrieves all active PENDING approval requests that the authenticated trusted contact
+   * is authorized to review.
+   *
+   * Adheres strictly to Section 5.1 of guardrail/docs/trusted-contact-dashboard-contract.md:
+   * GET /api/v1/approvals/pending
+   *
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with readonly array of ApprovalRequest or error
+   */
+  public async listPendingApprovals(
+    options?: RequestOptions
+  ): Promise<ApiClientResult<readonly ApprovalRequest[]>> {
+    return this.dispatchRequest<readonly ApprovalRequest[]>(
+      'GET',
+      '/api/v1/approvals/pending',
+      undefined,
+      options
+    );
+  }
+
+  /**
+   * Retrieves full details for a specific approval request for a trusted contact.
+   *
+   * Adheres strictly to Section 5.2 of guardrail/docs/trusted-contact-dashboard-contract.md:
+   * GET /api/v1/approvals/:id
+   *
+   * @param requestId Canonical approval request identifier ('apr_...')
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with ApprovalRequest or error
+   */
+  public async getApprovalDetails(
+    requestId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<ApprovalRequest>> {
+    if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'requestId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(requestId.trim());
+    return this.dispatchRequest<ApprovalRequest>(
+      'GET',
+      `/api/v1/approvals/${sanitizedId}`,
+      undefined,
       options
     );
   }

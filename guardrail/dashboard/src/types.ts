@@ -17,9 +17,23 @@ import {
 import { ActionCategory, ActionType } from '../../extension/src/types/actions.js';
 import { RiskLevel } from '../../extension/src/types/risk.js';
 import { ActorRole, AuthContext } from '../../extension/src/approval/authorization.js';
+import {
+  ApprovalApiClient,
+  ApiClientResult,
+  ApiClientError,
+  ApiClientErrorCodes,
+} from '../../extension/src/approval/client.js';
 
-export type { ApprovalRequest, AuthContext };
-export { ApprovalStatus, ActionCategory, ActionType, RiskLevel, ActorRole };
+export type { ApprovalRequest, AuthContext, ApiClientResult, ApiClientError };
+export {
+  ApprovalStatus,
+  ActionCategory,
+  ActionType,
+  RiskLevel,
+  ActorRole,
+  ApprovalApiClient,
+  ApiClientErrorCodes,
+};
 
 /**
  * Top-level navigation views available in the dashboard shell.
@@ -77,4 +91,10 @@ export interface DashboardShellOptions {
   initialProfile?: TrustedContactProfile | null;
   /** Initial pending requests list (if preloaded) */
   initialRequests?: readonly ApprovalRequest[];
+  /** API client instance for remote backend requests */
+  apiClient?: ApprovalApiClient;
+  /** Automatically fetch pending requests upon mounting or view switch (defaults to false) */
+  autoFetch?: boolean;
+  /** Optional background polling interval in milliseconds (0 or undefined disables polling) */
+  pollIntervalMs?: number;
 }

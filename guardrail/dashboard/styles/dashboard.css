@@ -802,6 +802,65 @@ button:focus-visible,
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 12px;
+}
+
+.gd-error-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gd-btn-retry {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: #fee2e2;
+  border: 1px solid #f87171;
+  color: #991b1b;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.gd-btn-retry:hover {
+  background-color: #fecaca;
+}
+
+.gd-btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--gd-border-hairline);
+  background-color: var(--gd-bg-surface);
+  color: var(--gd-text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.gd-btn-refresh:hover:not(:disabled) {
+  border-color: var(--gd-border-strong);
+  background-color: var(--gd-bg-muted);
+}
+
+.gd-btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes gd-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.gd-spin {
+  animation: gd-spin 1s linear infinite;
 }
 
 /* -----------------------------------------------------------------------------
