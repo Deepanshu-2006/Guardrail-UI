@@ -71,6 +71,20 @@ export interface TrustedContactProfile {
 }
 
 /**
+ * Filter settings for filtering and searching requests in list panes.
+ */
+export interface RequestFilters {
+  /** Status filter: 'ALL' or specific ApprovalStatus */
+  status?: 'ALL' | ApprovalStatus | string;
+  /** Risk level filter: 'ALL' or specific RiskLevel */
+  riskLevel?: 'ALL' | RiskLevel | string;
+  /** Date range filter: 'ALL' | 'TODAY' | '7_DAYS' | '30_DAYS' */
+  dateRange?: 'ALL' | 'TODAY' | '7_DAYS' | '30_DAYS';
+  /** Safe text search query matching non-sensitive fields */
+  searchQuery?: string;
+}
+
+/**
  * Overall programmatic state of the dashboard shell.
  */
 export interface DashboardShellState {
@@ -92,6 +106,14 @@ export interface DashboardShellState {
   decisionErrorMessage?: string | null;
   /** Optional success message resulting from a successful decision submission */
   decisionSuccessMessage?: string | null;
+  /** Historical/resolved approval requests archive */
+  historyRequests: readonly ApprovalRequest[];
+  /** Selected request ID in the decision history view */
+  selectedHistoryRequestId: string | null;
+  /** Filter criteria applied to the pending approvals list */
+  pendingFilters: RequestFilters;
+  /** Filter criteria applied to the decision history list */
+  historyFilters: RequestFilters;
 }
 
 /**
@@ -106,6 +128,8 @@ export interface DashboardShellOptions {
   initialProfile?: TrustedContactProfile | null;
   /** Initial pending requests list (if preloaded) */
   initialRequests?: readonly ApprovalRequest[];
+  /** Initial historical/resolved requests list (if preloaded) */
+  initialHistoryRequests?: readonly ApprovalRequest[];
   /** API client instance for remote backend requests */
   apiClient?: ApprovalApiClient;
   /** Automatically fetch pending requests upon mounting or view switch (defaults to false) */

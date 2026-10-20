@@ -8,8 +8,9 @@
  * Note: Approval decision submission is intentionally deferred to Day 13+.
  */
 
-import { ApprovalRequest, ViewStatus } from '../types.js';
+import { ApprovalRequest, RequestFilters, ViewStatus } from '../types.js';
 import { renderRequestDetailView } from './detail.js';
+import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
@@ -30,6 +31,10 @@ export interface PendingApprovalsProps {
   decisionSuccessMessage?: string | null;
   /** Callback invoked when the user confirms their decision */
   onDecisionSubmit?: (decision: 'APPROVED' | 'REJECTED', reason?: string) => void | Promise<unknown>;
+  /** Current filter settings */
+  filters?: RequestFilters;
+  /** Callback when user changes filter settings */
+  onFiltersChange?: (filters: RequestFilters) => void;
 }
 
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
@@ -129,6 +134,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   listPane.setAttribute('role', 'region');
   listPane.setAttribute('aria-label', 'Pending Requests List');
 
+  const activeFilters: RequestFilters = props.filters ?? {
+    status: 'ALL',
+    riskLevel: 'ALL',
+    dateRange: 'ALL',
+    searchQuery: '',
+  };
+
   if (props.status === 'loading') {
     // Skeleton Loading State
     const skeletonCard = document.createElement('div');
@@ -172,65 +184,100 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     emptyPlaceholder.appendChild(pText);
     listPane.appendChild(emptyPlaceholder);
   } else {
-    // Render Request Cards
-    for (const req of props.requests) {
-      const isSelected = req.id === props.selectedRequestId;
-      const card = document.createElement('article');
-      card.className = `gd-request-card ${isSelected ? 'selected' : ''}`;
-      card.setAttribute('role', 'button');
-      card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-      card.setAttribute('aria-label', `Review request ${req.id}: ${req.actionDescription}`);
+    // Apply filters
+    const filteredRequests = filterRequests(props.requests, activeFilters);
 
-      // Card Header: ID and Risk Badge
-      const cardHeader = document.createElement('div');
-      cardHeader.className = 'gd-request-card-header';
+    // Filter Bar
+    const filterBar = renderFilterBar({
+      filters: activeFilters,
+      totalCount: props.requests.length,
+      filteredCount: filteredRequests.length,
+      showStatusFilter: false,
+      showRiskFilter: true,
+      showDateFilter: true,
+      searchPlaceholder: 'Search pending requests by description, website, or ID...',
+      onFiltersChange: (newFilters) => {
+        props.onFiltersChange?.(newFilters);
+      },
+    });
+    listPane.appendChild(filterBar);
 
-      const idSpan = document.createElement('span');
-      idSpan.className = 'gd-request-id';
-      idSpan.textContent = req.id.slice(0, 16) + '...';
-
-      const riskBadge = document.createElement('span');
-      const riskClass = (req.riskLevel || 'LOW').toLowerCase();
-      riskBadge.className = `gd-risk-badge ${riskClass}`;
-      riskBadge.textContent = req.riskLevel || 'LOW';
-
-      cardHeader.appendChild(idSpan);
-      cardHeader.appendChild(riskBadge);
-
-      // Card Description
-      const desc = document.createElement('h2');
-      desc.className = 'gd-request-description';
-      desc.textContent = req.actionDescription;
-
-      // Card Meta
-      const meta = document.createElement('div');
-      meta.className = 'gd-request-meta';
-
-      const originSpan = document.createElement('span');
-      originSpan.textContent = req.hostname || 'Local Interaction';
-
-      const timeSpan = document.createElement('span');
-      timeSpan.textContent = req.createdAt ? new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending';
-
-      meta.appendChild(originSpan);
-      meta.appendChild(timeSpan);
-
-      card.appendChild(cardHeader);
-      card.appendChild(desc);
-      card.appendChild(meta);
-
-      // Event handlers
-      const selectAction = () => props.onRequestSelect(req.id);
-      card.addEventListener('click', selectAction);
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          selectAction();
-        }
+    if (filteredRequests.length === 0) {
+      // Filter Empty State
+      const emptyFilter = renderFilterEmptyState({
+        title: 'No Matching Pending Requests',
+        description: 'No pending requests match the current filter and search criteria. Try adjusting your filters or search query.',
+        onClearFilters: () => {
+          props.onFiltersChange?.({
+            status: 'ALL',
+            riskLevel: 'ALL',
+            dateRange: 'ALL',
+            searchQuery: '',
+          });
+        },
       });
+      listPane.appendChild(emptyFilter);
+    } else {
+      // Render Request Cards
+      for (const req of filteredRequests) {
+        const isSelected = req.id === props.selectedRequestId;
+        const card = document.createElement('article');
+        card.className = `gd-request-card ${isSelected ? 'selected' : ''}`;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        card.setAttribute('aria-label', `Review request ${req.id}: ${req.actionDescription}`);
 
-      listPane.appendChild(card);
+        // Card Header: ID and Risk Badge
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'gd-request-card-header';
+
+        const idSpan = document.createElement('span');
+        idSpan.className = 'gd-request-id';
+        idSpan.textContent = req.id.slice(0, 16) + '...';
+
+        const riskBadge = document.createElement('span');
+        const riskClass = (req.riskLevel || 'LOW').toLowerCase();
+        riskBadge.className = `gd-risk-badge ${riskClass}`;
+        riskBadge.textContent = req.riskLevel || 'LOW';
+
+        cardHeader.appendChild(idSpan);
+        cardHeader.appendChild(riskBadge);
+
+        // Card Description
+        const desc = document.createElement('h2');
+        desc.className = 'gd-request-description';
+        desc.textContent = req.actionDescription;
+
+        // Card Meta
+        const meta = document.createElement('div');
+        meta.className = 'gd-request-meta';
+
+        const originSpan = document.createElement('span');
+        originSpan.textContent = req.hostname || 'Local Interaction';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.textContent = req.createdAt ? new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending';
+
+        meta.appendChild(originSpan);
+        meta.appendChild(timeSpan);
+
+        card.appendChild(cardHeader);
+        card.appendChild(desc);
+        card.appendChild(meta);
+
+        // Event handlers
+        const selectAction = () => props.onRequestSelect(req.id);
+        card.addEventListener('click', selectAction);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectAction();
+          }
+        });
+
+        listPane.appendChild(card);
+      }
     }
   }
 

@@ -5,11 +5,13 @@
  * and an intentional activity placeholder without fake counts or simulated users.
  */
 
-import { TrustedContactProfile } from '../types.js';
+import { ApprovalRequest, ApprovalStatus, TrustedContactProfile } from '../types.js';
 
 export interface OverviewProps {
   profile: TrustedContactProfile | null;
   pendingCount: number;
+  recentActivity?: readonly ApprovalRequest[];
+  onViewHistory?: () => void;
 }
 
 export function renderOverview(props: OverviewProps): HTMLElement {
@@ -161,7 +163,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   section.appendChild(grid);
 
-  // Recent Activity Card (Intentional Empty Placeholder)
+  // Recent Activity Section
   const activitySection = document.createElement('div');
   activitySection.className = 'gd-card';
 
@@ -169,29 +171,84 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   activityTitle.className = 'gd-section-title';
   activityTitle.textContent = 'Recent Activity Audit';
 
-  const placeholder = document.createElement('div');
-  placeholder.className = 'gd-placeholder';
+  const recentList = props.recentActivity ?? [];
 
-  const icon = document.createElement('div');
-  icon.className = 'gd-placeholder-icon';
-  icon.setAttribute('aria-hidden', 'true');
-  icon.textContent = '📋';
+  if (recentList.length === 0) {
+    // Intentional Empty Placeholder
+    const placeholder = document.createElement('div');
+    placeholder.className = 'gd-placeholder';
 
-  const pTitle = document.createElement('h3');
-  pTitle.className = 'gd-placeholder-title';
-  pTitle.textContent = 'No Recent Activity Recorded';
+    const icon = document.createElement('div');
+    icon.className = 'gd-placeholder-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '📋';
 
-  const pText = document.createElement('p');
-  pText.className = 'gd-placeholder-text';
-  pText.textContent =
-    'When approval requests are evaluated and decisions are committed by trusted contacts, the audit log will record them here.';
+    const pTitle = document.createElement('h3');
+    pTitle.className = 'gd-placeholder-title';
+    pTitle.textContent = 'No Recent Activity Recorded';
 
-  placeholder.appendChild(icon);
-  placeholder.appendChild(pTitle);
-  placeholder.appendChild(pText);
+    const pText = document.createElement('p');
+    pText.className = 'gd-placeholder-text';
+    pText.textContent =
+      'When approval requests are evaluated and decisions are committed by trusted contacts, the audit log will record them here.';
 
-  activitySection.appendChild(activityTitle);
-  activitySection.appendChild(placeholder);
+    placeholder.appendChild(icon);
+    placeholder.appendChild(pTitle);
+    placeholder.appendChild(pText);
+
+    activitySection.appendChild(activityTitle);
+    activitySection.appendChild(placeholder);
+  } else {
+    // Authoritative Recent Decisions List (Top 5)
+    activitySection.appendChild(activityTitle);
+
+    const listContainer = document.createElement('div');
+    listContainer.className = 'gd-recent-activity-list';
+
+    for (const req of recentList.slice(0, 5)) {
+      const item = document.createElement('div');
+      item.className = 'gd-recent-activity-item';
+
+      const itemLeft = document.createElement('div');
+      itemLeft.className = 'gd-recent-activity-left';
+
+      const desc = document.createElement('div');
+      desc.className = 'gd-recent-activity-desc';
+      desc.textContent = req.actionDescription;
+
+      const meta = document.createElement('div');
+      meta.className = 'gd-recent-activity-meta';
+      const host = req.hostname || 'Local Interaction';
+      const timeStr = req.resolvedAt ? new Date(req.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Resolved';
+      meta.textContent = `${host} • ${timeStr}`;
+
+      itemLeft.appendChild(desc);
+      itemLeft.appendChild(meta);
+
+      const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
+      const statusPill = document.createElement('span');
+      statusPill.className = `gd-detail-status-pill ${statusClass}`;
+      statusPill.textContent = req.status || 'RESOLVED';
+
+      item.appendChild(itemLeft);
+      item.appendChild(statusPill);
+      listContainer.appendChild(item);
+    }
+
+    activitySection.appendChild(listContainer);
+
+    if (props.onViewHistory) {
+      const viewAllBtn = document.createElement('button');
+      viewAllBtn.type = 'button';
+      viewAllBtn.className = 'gd-btn-view-all-history';
+      viewAllBtn.textContent = 'View Full Decision History & Audit Log →';
+      viewAllBtn.addEventListener('click', () => {
+        props.onViewHistory?.();
+      });
+      activitySection.appendChild(viewAllBtn);
+    }
+  }
+
   section.appendChild(activitySection);
 
   return section;

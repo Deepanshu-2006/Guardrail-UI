@@ -16,6 +16,7 @@ import {
   DashboardShellOptions,
   DashboardShellState,
   DashboardView,
+  RequestFilters,
   TrustedContactProfile,
 } from './types.js';
 import { renderNavigation } from './components/navigation.js';
@@ -59,6 +60,20 @@ export class DashboardShell {
     this.pollIntervalMs = options.pollIntervalMs;
 
     const initialRequests = options.initialRequests ?? [];
+    const initialHistory = options.initialHistoryRequests ?? [];
+    const defaultPendingFilters: RequestFilters = {
+      status: 'ALL',
+      riskLevel: 'ALL',
+      dateRange: 'ALL',
+      searchQuery: '',
+    };
+    const defaultHistoryFilters: RequestFilters = {
+      status: 'ALL',
+      riskLevel: 'ALL',
+      dateRange: 'ALL',
+      searchQuery: '',
+    };
+
     this.state = {
       activeView: options.initialView ?? this.getViewFromHash() ?? 'overview',
       contactProfile: options.initialProfile ?? null,
@@ -69,7 +84,19 @@ export class DashboardShell {
       isSubmittingDecision: false,
       decisionErrorMessage: null,
       decisionSuccessMessage: null,
+      historyRequests: initialHistory,
+      selectedHistoryRequestId: initialHistory[0]?.id ?? null,
+      pendingFilters: defaultPendingFilters,
+      historyFilters: defaultHistoryFilters,
     };
+
+    // Pre-seed in-memory detail cache with authoritative initial records
+    for (const req of initialRequests) {
+      this.detailedRequestsCache.set(req.id, req);
+    }
+    for (const req of initialHistory) {
+      this.detailedRequestsCache.set(req.id, req);
+    }
 
     this.init();
   }
@@ -213,6 +240,8 @@ export class DashboardShell {
     const overviewSection = renderOverview({
       profile: this.state.contactProfile,
       pendingCount: this.state.pendingRequests.length,
+      recentActivity: this.state.historyRequests,
+      onViewHistory: () => this.setActiveView('history'),
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
@@ -236,6 +265,8 @@ export class DashboardShell {
       detailErrorMessage: this.detailErrorMessage,
       status: this.state.pendingStatus,
       errorMessage: this.state.errorMessage,
+      filters: this.state.pendingFilters,
+      onFiltersChange: (newFilters) => this.setPendingFilters(newFilters),
       onRequestSelect: (id) => this.selectRequest(id),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onRefreshDetail: this.apiClient && this.state.selectedRequestId
@@ -258,7 +289,26 @@ export class DashboardShell {
     this.mainContentEl.appendChild(pendingSection);
 
     // View 3: Decision History
-    const historySection = renderDecisionHistory({});
+    const selectedHistoryDetail = this.state.selectedHistoryRequestId
+      ? (this.detailedRequestsCache.get(this.state.selectedHistoryRequestId) ||
+         this.state.historyRequests.find((r) => r.id === this.state.selectedHistoryRequestId) ||
+         null)
+      : null;
+
+    const historySection = renderDecisionHistory({
+      requests: this.state.historyRequests,
+      selectedRequestId: this.state.selectedHistoryRequestId,
+      selectedRequestDetail: selectedHistoryDetail,
+      isDetailLoading: this.isDetailLoading,
+      detailErrorMessage: this.detailErrorMessage,
+      filters: this.state.historyFilters,
+      onRequestSelect: (id) => this.selectHistoryRequest(id),
+      onFiltersChange: (newFilters) => this.setHistoryFilters(newFilters),
+      onRefresh: this.apiClient ? () => void this.refresh() : undefined,
+      onRefreshDetail: this.apiClient && this.state.selectedHistoryRequestId
+        ? () => void this.loadRequestDetails(this.state.selectedHistoryRequestId!, true)
+        : undefined,
+    });
     if (this.state.activeView === 'history') {
       historySection.classList.add('active');
     } else {
@@ -567,6 +617,13 @@ export class DashboardShell {
         // Update detailed cache with authoritative updated record
         this.detailedRequestsCache.set(trimmedId, updatedRecord);
 
+        // Prepend to authoritative history archive
+        this.state.historyRequests = [
+          updatedRecord,
+          ...this.state.historyRequests.filter((r) => r.id !== trimmedId),
+        ];
+        this.state.selectedHistoryRequestId = trimmedId;
+
         // Prune resolved request from pending list
         this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
         this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
@@ -600,14 +657,22 @@ export class DashboardShell {
           case ApiClientErrorCodes.ALREADY_RESOLVED:
             userMessage = 'Conflict: This request has already been resolved by another reviewer or cancelled by the user.';
             // Authoritative state update: fetch latest record and prune from pending list
-            void this.loadRequestDetails(trimmedId, true);
+            void this.loadRequestDetails(trimmedId, true).then((refreshed) => {
+              if (refreshed && refreshed.status !== 'PENDING') {
+                this.addHistoryRequest(refreshed);
+              }
+            });
             this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
             this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
             break;
           case ApiClientErrorCodes.REQUEST_EXPIRED:
             userMessage = 'Request expired: The review deadline for this request has elapsed. The held action cannot proceed.';
             // Authoritative state update: fetch latest record and prune from pending list
-            void this.loadRequestDetails(trimmedId, true);
+            void this.loadRequestDetails(trimmedId, true).then((refreshed) => {
+              if (refreshed && refreshed.status !== 'PENDING') {
+                this.addHistoryRequest(refreshed);
+              }
+            });
             this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
             this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
             break;
@@ -678,6 +743,51 @@ export class DashboardShell {
    */
   public setProfile(profile: TrustedContactProfile | null): void {
     this.state.contactProfile = profile;
+    this.render();
+  }
+
+  /**
+   * Updates pending approvals filters and re-renders.
+   */
+  public setPendingFilters(filters: Partial<RequestFilters>): void {
+    this.state.pendingFilters = {
+      ...this.state.pendingFilters,
+      ...filters,
+    };
+    this.render();
+  }
+
+  /**
+   * Updates decision history filters and re-renders.
+   */
+  public setHistoryFilters(filters: Partial<RequestFilters>): void {
+    this.state.historyFilters = {
+      ...this.state.historyFilters,
+      ...filters,
+    };
+    this.render();
+  }
+
+  /**
+   * Selects a request in the decision history view for inspection.
+   */
+  public selectHistoryRequest(requestId: string): void {
+    this.state.selectedHistoryRequestId = requestId;
+    this.render();
+  }
+
+  /**
+   * Adds an authoritative resolved request to decision history.
+   */
+  public addHistoryRequest(request: ApprovalRequest): void {
+    this.detailedRequestsCache.set(request.id, request);
+    this.state.historyRequests = [
+      request,
+      ...this.state.historyRequests.filter((r) => r.id !== request.id),
+    ];
+    if (!this.state.selectedHistoryRequestId) {
+      this.state.selectedHistoryRequestId = request.id;
+    }
     this.render();
   }
 
