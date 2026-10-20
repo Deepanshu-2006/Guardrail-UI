@@ -38,6 +38,14 @@ export interface RequestDetailViewProps {
   errorMessage?: string | null;
   /** Optional callback to refresh or retry fetching request details */
   onRefresh?: () => void;
+  /** Whether an approval decision is actively being submitted to the backend */
+  isSubmittingDecision?: boolean;
+  /** Error message resulting from a failed decision attempt */
+  decisionErrorMessage?: string | null;
+  /** Success message resulting from a confirmed decision attempt */
+  decisionSuccessMessage?: string | null;
+  /** Callback invoked when the user confirms their decision */
+  onDecisionSubmit?: (decision: 'APPROVED' | 'REJECTED', reason?: string) => void | Promise<unknown>;
 }
 
 /**
@@ -596,15 +604,266 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   noticeText.textContent =
     'Decoupled Execution Architecture: Approving this request records reviewer consent on the Guardrail backend. It does NOT remotely execute the action in the ward’s browser. The user retains sole continuation authority in Staging Mode.';
 
-  const decisionShellNotice = document.createElement('p');
-  decisionShellNotice.style.marginTop = '8px';
-  decisionShellNotice.style.fontWeight = '600';
-  decisionShellNotice.textContent =
-    '🔒 Decision Actions Shell: Approval & Rejection decision submissions will be wired to the REST API in Day 13.';
-
   notice.appendChild(noticeText);
-  notice.appendChild(decisionShellNotice);
   container.appendChild(notice);
+
+  // 10. Section E: Decision Controls (Connected to backend decision operations)
+  const decisionCard = document.createElement('section');
+  decisionCard.className = 'gd-detail-card gd-decision-actions-card';
+  decisionCard.setAttribute('aria-labelledby', 'detail-decision-heading');
+
+  const dCardHeader = document.createElement('div');
+  dCardHeader.className = 'gd-card-header';
+
+  const dCardTitle = document.createElement('h3');
+  dCardTitle.id = 'detail-decision-heading';
+  dCardTitle.className = 'gd-card-title';
+  dCardTitle.textContent = 'Reviewer Decision';
+
+  const dCardSubtitle = document.createElement('p');
+  dCardSubtitle.className = 'gd-card-subtitle';
+  dCardSubtitle.textContent =
+    'Record an authoritative approval or rejection decision. Decisions are immutable once committed to the server.';
+
+  dCardHeader.appendChild(dCardTitle);
+  dCardHeader.appendChild(dCardSubtitle);
+  decisionCard.appendChild(dCardHeader);
+
+  // Decision Error Banner
+  if (props.decisionErrorMessage) {
+    const dErrBanner = document.createElement('div');
+    dErrBanner.className = 'gd-decision-error-banner';
+    dErrBanner.setAttribute('role', 'alert');
+
+    const dErrIcon = document.createElement('span');
+    dErrIcon.className = 'gd-error-icon';
+    dErrIcon.setAttribute('aria-hidden', 'true');
+    dErrIcon.textContent = '⚠️';
+
+    const dErrText = document.createElement('span');
+    dErrText.className = 'gd-decision-error-text';
+    dErrText.textContent = props.decisionErrorMessage;
+
+    dErrBanner.appendChild(dErrIcon);
+    dErrBanner.appendChild(dErrText);
+    decisionCard.appendChild(dErrBanner);
+  }
+
+  // Decision Success Banner
+  if (props.decisionSuccessMessage) {
+    const dSuccBanner = document.createElement('div');
+    dSuccBanner.className = 'gd-decision-success-banner';
+    dSuccBanner.setAttribute('role', 'status');
+
+    const dSuccIcon = document.createElement('span');
+    dSuccIcon.className = 'gd-success-icon';
+    dSuccIcon.setAttribute('aria-hidden', 'true');
+    dSuccIcon.textContent = '✅';
+
+    const dSuccText = document.createElement('span');
+    dSuccText.className = 'gd-decision-success-text';
+    dSuccText.textContent = props.decisionSuccessMessage;
+
+    dSuccBanner.appendChild(dSuccIcon);
+    dSuccBanner.appendChild(dSuccText);
+    decisionCard.appendChild(dSuccBanner);
+  }
+
+  // Lifecycle check: Decisions are allowed ONLY when request is PENDING
+  if (req.status !== ApprovalStatus.PENDING) {
+    const resolvedNotice = document.createElement('div');
+    resolvedNotice.className = 'gd-decision-resolved-notice';
+    resolvedNotice.setAttribute('role', 'note');
+
+    const p = document.createElement('p');
+    const statusLabel = (req.status || 'resolved').toLowerCase();
+    p.textContent = `This request has already been ${statusLabel} and is no longer eligible for decisions.`;
+    resolvedNotice.appendChild(p);
+    decisionCard.appendChild(resolvedNotice);
+    container.appendChild(decisionCard);
+    return container;
+  }
+
+  // Interactive Decision Submission Flow (Two-Step Deliberate Confirmation)
+  const decisionControlsContainer = document.createElement('div');
+  decisionControlsContainer.className = 'gd-decision-controls-container';
+  decisionCard.appendChild(decisionControlsContainer);
+
+  let activeConfirmation: 'APPROVED' | 'REJECTED' | null = null;
+
+  const updateDecisionControls = () => {
+    while (decisionControlsContainer.firstChild) {
+      decisionControlsContainer.removeChild(decisionControlsContainer.firstChild);
+    }
+
+    if (!activeConfirmation) {
+      // Step 1: Initial Action Choice Row
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'gd-decision-actions-row';
+
+      const approveBtn = document.createElement('button');
+      approveBtn.type = 'button';
+      approveBtn.className = 'gd-btn-decision gd-btn-approve';
+      approveBtn.textContent = 'Approve Action';
+      approveBtn.setAttribute('aria-haspopup', 'dialog');
+      if (props.isSubmittingDecision) {
+        approveBtn.disabled = true;
+        approveBtn.setAttribute('aria-busy', 'true');
+      }
+      approveBtn.addEventListener('click', () => {
+        if (props.isSubmittingDecision) return;
+        activeConfirmation = 'APPROVED';
+        updateDecisionControls();
+      });
+
+      const rejectBtn = document.createElement('button');
+      rejectBtn.type = 'button';
+      rejectBtn.className = 'gd-btn-decision gd-btn-reject';
+      rejectBtn.textContent = 'Reject Action';
+      rejectBtn.setAttribute('aria-haspopup', 'dialog');
+      if (props.isSubmittingDecision) {
+        rejectBtn.disabled = true;
+        rejectBtn.setAttribute('aria-busy', 'true');
+      }
+      rejectBtn.addEventListener('click', () => {
+        if (props.isSubmittingDecision) return;
+        activeConfirmation = 'REJECTED';
+        updateDecisionControls();
+      });
+
+      actionsRow.appendChild(approveBtn);
+      actionsRow.appendChild(rejectBtn);
+      decisionControlsContainer.appendChild(actionsRow);
+    } else {
+      // Step 2: Confirmation Box with High-Impact Warning and Note Input
+      const isApprove = activeConfirmation === 'APPROVED';
+      const confirmBox = document.createElement('div');
+      confirmBox.className = `gd-decision-confirm-box ${isApprove ? 'confirm-approve' : 'confirm-reject'}`;
+      confirmBox.setAttribute('role', 'dialog');
+      confirmBox.setAttribute('aria-modal', 'false');
+      confirmBox.setAttribute('aria-label', isApprove ? 'Confirm Approval' : 'Confirm Rejection');
+
+      const confirmTitle = document.createElement('h4');
+      confirmTitle.className = 'gd-confirm-title';
+      confirmTitle.textContent = isApprove ? 'Confirm Approval Decision' : 'Confirm Rejection Decision';
+      confirmBox.appendChild(confirmTitle);
+
+      // High-Impact Decision Warning for Critical/High Risk
+      const isHighImpact =
+        req.riskLevel === RiskLevel.CRITICAL ||
+        req.riskLevel === RiskLevel.HIGH ||
+        (typeof req.riskScore === 'number' && req.riskScore >= 50);
+
+      if (isHighImpact) {
+        const warningBox = document.createElement('div');
+        warningBox.className = 'gd-high-impact-warning';
+        warningBox.setAttribute('role', 'alert');
+
+        const warnIcon = document.createElement('span');
+        warnIcon.className = 'gd-warning-icon';
+        warnIcon.setAttribute('aria-hidden', 'true');
+        warnIcon.textContent = '⚠️';
+
+        const warnContent = document.createElement('div');
+        warnContent.className = 'gd-warning-content';
+
+        const warnHeading = document.createElement('strong');
+        warnHeading.textContent = `High-Impact Decision Warning (${req.riskLevel || 'High'} Risk)`;
+
+        const warnText = document.createElement('p');
+        warnText.textContent = isApprove
+          ? 'Approving this request grants reviewer consent for an elevated-risk operation. Verify that you recognize this interaction and intend for the user to proceed.'
+          : 'Rejecting this request will permanently deny reviewer consent for this elevated-risk operation.';
+
+        warnContent.appendChild(warnHeading);
+        warnContent.appendChild(warnText);
+        warningBox.appendChild(warnIcon);
+        warningBox.appendChild(warnContent);
+        confirmBox.appendChild(warningBox);
+      } else {
+        const infoText = document.createElement('p');
+        infoText.className = 'gd-confirm-desc';
+        infoText.textContent = isApprove
+          ? 'Recording reviewer consent will allow the user to proceed with this action in Staging Mode.'
+          : 'Rejecting this request will permanently prevent the held browser action from executing.';
+        confirmBox.appendChild(infoText);
+      }
+
+      // Reviewer Note Textarea (Optional)
+      const noteGroup = document.createElement('div');
+      noteGroup.className = 'gd-confirm-note-group';
+
+      const noteLabel = document.createElement('label');
+      noteLabel.className = 'gd-detail-label';
+      noteLabel.htmlFor = 'decision-reason-input';
+      noteLabel.textContent = 'Reviewer Note (Optional)';
+
+      const noteInput = document.createElement('textarea');
+      noteInput.id = 'decision-reason-input';
+      noteInput.className = 'gd-decision-reason-input';
+      noteInput.placeholder = isApprove
+        ? 'Optional: Add an audit note (e.g., "Verified with user verbally")...'
+        : 'Optional: Add an explanation for the rejection...';
+      noteInput.rows = 2;
+      if (props.isSubmittingDecision) {
+        noteInput.disabled = true;
+      }
+
+      noteGroup.appendChild(noteLabel);
+      noteGroup.appendChild(noteInput);
+      confirmBox.appendChild(noteGroup);
+
+      // Actions Row (Confirm Submit + Cancel)
+      const confirmActions = document.createElement('div');
+      confirmActions.className = 'gd-confirm-actions-row';
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'button';
+      submitBtn.className = `gd-btn-confirm-submit ${isApprove ? 'gd-btn-approve-confirm' : 'gd-btn-reject-confirm'}`;
+      submitBtn.textContent = props.isSubmittingDecision
+        ? 'Submitting decision...'
+        : `Confirm ${isApprove ? 'Approval' : 'Rejection'}`;
+
+      if (props.isSubmittingDecision) {
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+      }
+
+      // Concurrency guard: prevent duplicate clicks while submitting
+      let alreadyClicked = false;
+      submitBtn.addEventListener('click', () => {
+        if (props.isSubmittingDecision || alreadyClicked) return;
+        alreadyClicked = true;
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.textContent = 'Submitting decision...';
+        const reason = noteInput.value.trim() || undefined;
+        void props.onDecisionSubmit?.(activeConfirmation!, reason);
+      });
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'gd-btn-cancel-confirm';
+      cancelBtn.textContent = 'Cancel';
+      if (props.isSubmittingDecision) {
+        cancelBtn.disabled = true;
+      }
+      cancelBtn.addEventListener('click', () => {
+        if (props.isSubmittingDecision) return;
+        activeConfirmation = null;
+        updateDecisionControls();
+      });
+
+      confirmActions.appendChild(submitBtn);
+      confirmActions.appendChild(cancelBtn);
+      confirmBox.appendChild(confirmActions);
+
+      decisionControlsContainer.appendChild(confirmBox);
+    }
+  };
+
+  updateDecisionControls();
+  container.appendChild(decisionCard);
 
   return container;
 }
