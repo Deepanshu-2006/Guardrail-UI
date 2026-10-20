@@ -41,6 +41,7 @@ export class DashboardShell {
   private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
   private isDetailLoading: boolean = false;
   private detailErrorMessage: string | null = null;
+  private isSubmittingDecision: boolean = false;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -65,6 +66,9 @@ export class DashboardShell {
       selectedRequestId: initialRequests[0]?.id ?? null,
       pendingStatus: initialRequests.length === 0 ? 'empty' : 'idle',
       errorMessage: null,
+      isSubmittingDecision: false,
+      decisionErrorMessage: null,
+      decisionSuccessMessage: null,
     };
 
     this.init();
@@ -237,6 +241,14 @@ export class DashboardShell {
       onRefreshDetail: this.apiClient && this.state.selectedRequestId
         ? () => void this.loadRequestDetails(this.state.selectedRequestId!, true)
         : undefined,
+      isSubmittingDecision: this.isSubmittingDecision,
+      decisionErrorMessage: this.state.decisionErrorMessage,
+      decisionSuccessMessage: this.state.decisionSuccessMessage,
+      onDecisionSubmit: async (decision, reason) => {
+        if (this.state.selectedRequestId) {
+          await this.submitDecision(this.state.selectedRequestId, decision, reason);
+        }
+      },
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');
@@ -468,10 +480,166 @@ export class DashboardShell {
    * Can reuse loaded authoritative record or fetch fresh via backend endpoint.
    */
   public selectRequest(requestId: string, fetchFresh: boolean = false): void {
+    if (this.state.selectedRequestId !== requestId) {
+      this.state.decisionErrorMessage = null;
+      this.state.decisionSuccessMessage = null;
+    }
     this.state.selectedRequestId = requestId;
     if (fetchFresh && this.apiClient) {
       void this.loadRequestDetails(requestId, true);
     } else {
+      this.render();
+    }
+  }
+
+  /**
+   * Submits an authoritative reviewer approval or rejection decision to the backend.
+   *
+   * ARCHITECTURAL & SECURITY REQUIREMENTS:
+   * 1. Uses verified decision endpoint: POST /api/v1/approvals/:id/decide.
+   * 2. Uses existing authentication mechanism (Bearer token from session/TokenProvider).
+   * 3. Zero-trust client: Never sends approverId, decidedBy, or status in request body.
+   * 4. Treats backend as authoritative: Does NOT optimistically update local status.
+   * 5. Prevents duplicate clicks/submissions via in-flight locking (isSubmittingDecision).
+   * 6. Prunes resolved requests from pending list only upon confirmed 200 OK backend response.
+   * 7. Concurrency: On 409 (ALREADY_RESOLVED) or 410 (REQUEST_EXPIRED), fetches authoritative state
+   *    and prunes from pending without falsely reporting success.
+   * 8. Decoupled Execution: Approving or rejecting strictly NEVER triggers, executes, or replays
+   *    the held browser action in the user's browser.
+   * 9. Missing Backend: Reports missing API client prerequisite without simulating decisions.
+   */
+  public async submitDecision(
+    requestId: string,
+    decision: 'APPROVED' | 'REJECTED',
+    reason?: string
+  ): Promise<ApprovalRequest | null> {
+    if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+      return null;
+    }
+
+    const trimmedId = requestId.trim();
+
+    // 1. Concurrency guard: prevent duplicate submissions / re-entrance
+    if (this.isSubmittingDecision) {
+      return null;
+    }
+
+    // 2. UI Boundary: Check for real backend API client prerequisite
+    if (!this.apiClient || typeof this.apiClient.submitDecision !== 'function') {
+      this.state.decisionErrorMessage =
+        'Backend decision service is unavailable: Approval API client is not configured. Real decision operations cannot be performed.';
+      this.state.decisionSuccessMessage = null;
+      this.render();
+      return null;
+    }
+
+    // 3. Verify that the request is currently in pending state in memory
+    const existingReq =
+      this.detailedRequestsCache.get(trimmedId) ||
+      this.state.pendingRequests.find((r) => r.id === trimmedId);
+
+    if (existingReq && existingReq.status !== 'PENDING') {
+      this.state.decisionErrorMessage = `This request is already ${existingReq.status.toLowerCase()} and cannot accept new decisions.`;
+      this.state.decisionSuccessMessage = null;
+      this.render();
+      return null;
+    }
+
+    // 4. Lock submission state (prevent duplicate clicks, disable buttons, set aria-busy)
+    this.isSubmittingDecision = true;
+    this.state.isSubmittingDecision = true;
+    this.state.decisionErrorMessage = null;
+    this.state.decisionSuccessMessage = null;
+    this.render();
+
+    try {
+      // 5. Submit decision to authoritative backend endpoint
+      // Zero-trust client: payload contains ONLY decision and optional decisionReason
+      const result = await this.apiClient.submitDecision(trimmedId, {
+        decision,
+        decisionReason: reason,
+      });
+
+      if (result.success) {
+        // Backend confirmed decision with authoritative updated ApprovalRequest record
+        const updatedRecord = result.data;
+
+        // Update detailed cache with authoritative updated record
+        this.detailedRequestsCache.set(trimmedId, updatedRecord);
+
+        // Prune resolved request from pending list
+        this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
+        this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+
+        // Keep selectedRequestId pointing to the resolved request so the user views the updated record
+        this.state.selectedRequestId = trimmedId;
+
+        // Set authoritative success message
+        this.state.decisionSuccessMessage = `Decision successfully recorded: ${decision}. Reviewer consent is committed on the server.`;
+        this.state.decisionErrorMessage = null;
+
+        return updatedRecord;
+      } else {
+        // Backend returned an error
+        const err = result.error;
+        let userMessage = err.message;
+
+        switch (err.code) {
+          case ApiClientErrorCodes.UNAUTHENTICATED:
+            userMessage = 'Authentication required: You must be signed in as a trusted contact to record a decision.';
+            if (this.state.contactProfile) {
+              this.state.contactProfile = null;
+            }
+            break;
+          case ApiClientErrorCodes.SELF_APPROVAL_PROHIBITED:
+            userMessage = 'Authorization failure: Self-approval is strictly prohibited. You cannot review your own browser action.';
+            break;
+          case ApiClientErrorCodes.NOT_FOUND_OR_DENIED:
+            userMessage = 'Access denied: You are not authorized to decide on this request, or the request does not exist.';
+            break;
+          case ApiClientErrorCodes.ALREADY_RESOLVED:
+            userMessage = 'Conflict: This request has already been resolved by another reviewer or cancelled by the user.';
+            // Authoritative state update: fetch latest record and prune from pending list
+            void this.loadRequestDetails(trimmedId, true);
+            this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
+            this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+            break;
+          case ApiClientErrorCodes.REQUEST_EXPIRED:
+            userMessage = 'Request expired: The review deadline for this request has elapsed. The held action cannot proceed.';
+            // Authoritative state update: fetch latest record and prune from pending list
+            void this.loadRequestDetails(trimmedId, true);
+            this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
+            this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+            break;
+          case ApiClientErrorCodes.NETWORK_FAILURE:
+            userMessage = 'Network connection error: Unable to reach the Guardrail approval backend. Please verify your connection and retry.';
+            break;
+          case ApiClientErrorCodes.TIMEOUT:
+            userMessage = 'Request timed out: The approval backend took too long to respond. Please retry.';
+            break;
+          case ApiClientErrorCodes.MALFORMED_JSON_RESPONSE:
+            userMessage = 'Protocol error: Received malformed response syntax from approval backend.';
+            break;
+          case ApiClientErrorCodes.SERVER_ERROR:
+            userMessage = 'Internal server error: The approval backend encountered an unexpected error.';
+            break;
+          default:
+            userMessage = err.message || 'An unexpected error occurred while submitting decision.';
+            break;
+        }
+
+        this.state.decisionErrorMessage = userMessage;
+        this.state.decisionSuccessMessage = null;
+        return null;
+      }
+    } catch (unhandled) {
+      const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
+      this.state.decisionErrorMessage = `Client error while submitting decision: ${msg}`;
+      this.state.decisionSuccessMessage = null;
+      return null;
+    } finally {
+      this.isSubmittingDecision = false;
+      this.state.isSubmittingDecision = false;
       this.render();
     }
   }
