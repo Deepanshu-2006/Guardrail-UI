@@ -13,6 +13,8 @@ import {
   GuardrailAction,
   GuardrailActionMessage,
   GuardrailApprovalRequestMessage,
+  GuardrailGetApprovalStatusMessage,
+  GuardrailGetApprovalStatusResponse,
   GuardrailSubmitApprovalRequestMessage,
   GuardrailSubmitApprovalRequestResponse,
   InterceptionRecord,
@@ -220,4 +222,83 @@ export async function dispatchSubmitApprovalRequestToBackground(
     };
   }
 }
+
+/**
+ * Safely queries the authoritative approval status from the Background Service Worker.
+ *
+ * @param requestId Canonical approval request identifier ('apr_...')
+ * @param actionId Optional identifier of the held action
+ * @returns Strongly typed GuardrailGetApprovalStatusResponse
+ */
+export async function dispatchGetApprovalStatusToBackground(
+  requestId: string,
+  actionId?: string
+): Promise<GuardrailGetApprovalStatusResponse> {
+  if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+    return {
+      success: false,
+      requestId: requestId || '',
+      isAuthoritative: true,
+      error: {
+        code: 'INVALID_PARAMETERS',
+        message: 'A valid requestId is required for approval status lookup.',
+        statusCode: 400,
+      },
+    };
+  }
+
+  // Guard against disconnected runtime if extension was reloaded in chrome://extensions
+  if (typeof chrome === 'undefined' || !chrome.runtime?.id || !chrome.runtime?.sendMessage) {
+    return {
+      success: false,
+      requestId: requestId.trim(),
+      isAuthoritative: false,
+      error: {
+        code: 'RUNTIME_UNAVAILABLE',
+        message: 'Extension runtime is unavailable or disconnected. The intercepted action remains safely HELD.',
+      },
+    };
+  }
+
+  const message: GuardrailGetApprovalStatusMessage = {
+    type: 'GUARDRAIL_GET_APPROVAL_STATUS',
+    requestId: requestId.trim(),
+    actionId,
+  };
+
+  try {
+    const response = await chrome.runtime.sendMessage<
+      GuardrailGetApprovalStatusMessage,
+      GuardrailGetApprovalStatusResponse
+    >(message);
+
+    if (response) {
+      return response;
+    }
+
+    return {
+      success: false,
+      requestId: requestId.trim(),
+      isAuthoritative: false,
+      error: {
+        code: 'EMPTY_RESPONSE',
+        message: 'Background worker returned an empty response. Server state is UNCERTAIN.',
+      },
+    };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isTimeout = errorMsg.toLowerCase().includes('timeout');
+
+    return {
+      success: false,
+      requestId: requestId.trim(),
+      isAuthoritative: false,
+      error: {
+        code: isTimeout ? 'TIMEOUT' : 'DISPATCH_ERROR',
+        message: `Failed to dispatch status lookup to background: ${errorMsg}. Server state is UNCERTAIN.`,
+      },
+    };
+  }
+}
+
 

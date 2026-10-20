@@ -39,6 +39,7 @@ import {
   ApprovalExpiredError,
   ApprovalValidationError,
   DuplicateApprovalRequestError,
+  validateApprovalRequestId,
 } from './model.js';
 import {
   ApprovalAccessDeniedError,
@@ -320,16 +321,16 @@ export class ApprovalApiRouter {
       }
 
       // Route 2: GET /api/v1/approval-requests/:id
-      const getRequesterMatch = path.match(/^\/api\/v1\/approval-requests\/([a-zA-Z0-9_-]+)$/);
+      const getRequesterMatch = path.match(/^\/api\/v1\/approval-requests\/(.+)$/);
       if (method === 'GET' && getRequesterMatch) {
-        const requestId = getRequesterMatch[1];
+        const requestId = decodeURIComponent(getRequesterMatch[1]);
         return await this.handleGetRequest(request, requestId, headers);
       }
 
       // Route 3: POST /api/v1/approval-requests/:id/cancel
-      const cancelMatch = path.match(/^\/api\/v1\/approval-requests\/([a-zA-Z0-9_-]+)\/cancel$/);
+      const cancelMatch = path.match(/^\/api\/v1\/approval-requests\/(.+)\/cancel$/);
       if (method === 'POST' && cancelMatch) {
-        const requestId = cancelMatch[1];
+        const requestId = decodeURIComponent(cancelMatch[1]);
         return await this.handleCancelRequest(request, requestId, headers);
       }
 
@@ -339,16 +340,16 @@ export class ApprovalApiRouter {
       }
 
       // Route 5: GET /api/v1/approvals/:id
-      const getContactMatch = path.match(/^\/api\/v1\/approvals\/([a-zA-Z0-9_-]+)$/);
-      if (method === 'GET' && getContactMatch) {
-        const requestId = getContactMatch[1];
+      const getContactMatch = path.match(/^\/api\/v1\/approvals\/(.+)$/);
+      if (method === 'GET' && getContactMatch && path !== '/api/v1/approvals/pending') {
+        const requestId = decodeURIComponent(getContactMatch[1]);
         return await this.handleGetRequest(request, requestId, headers);
       }
 
       // Route 6: POST /api/v1/approvals/:id/decide
-      const decideMatch = path.match(/^\/api\/v1\/approvals\/([a-zA-Z0-9_-]+)\/decide$/);
+      const decideMatch = path.match(/^\/api\/v1\/approvals\/(.+)\/decide$/);
       if (method === 'POST' && decideMatch) {
-        const requestId = decideMatch[1];
+        const requestId = decodeURIComponent(decideMatch[1]);
         return await this.handleDecideRequest(request, requestId, headers);
       }
 
@@ -454,7 +455,16 @@ export class ApprovalApiRouter {
     requestId: string,
     headers: Record<string, string>
   ): Promise<ApiResponse<ApprovalRequest>> {
+    // 1. Safe identifier validation (Requirement 7)
+    const idValidation = validateApprovalRequestId(requestId);
+    if (!idValidation.valid) {
+      throw new ApprovalValidationError(idValidation.errors);
+    }
+
+    // 2. Authentication check
     const authContext = await this.authenticate(request.headers);
+
+    // 3. Authoritative retrieval with multi-tenant authorization & lazy expiration
     const result = this.service.getRequest(requestId, authContext);
 
     return {

@@ -47,6 +47,7 @@ import {
   resolveApprovalRequest,
   resolveTimestamp,
   TimeProvider,
+  validateApprovalRequestId,
 } from './model.js';
 import {
   ApprovalRequestRepository,
@@ -364,6 +365,11 @@ export class ApprovalService {
   public getRequest(requestId: string, authContext: AuthContext): ApprovalRequest {
     this.assertAuthenticated(authContext);
 
+    const validation = validateApprovalRequestId(requestId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
+
     let request = this.repository.findById(requestId);
     if (!request) {
       throw new ApprovalAccessDeniedError();
@@ -487,6 +493,11 @@ export class ApprovalService {
   ): ApprovalRequest {
     this.assertAuthenticated(authContext);
 
+    const validation = validateApprovalRequestId(requestId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
+
     const request = this.repository.findById(requestId);
     if (!request) {
       throw new ApprovalAccessDeniedError();
@@ -598,6 +609,11 @@ export class ApprovalService {
     authContext: AuthContext
   ): ApprovalRequest {
     this.assertAuthenticated(authContext);
+
+    const validation = validateApprovalRequestId(requestId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
 
     const request = this.repository.findById(requestId);
     if (!request) {

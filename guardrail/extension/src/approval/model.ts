@@ -368,6 +368,54 @@ function findForbiddenProperties(obj: Record<string, unknown>, path: string = ''
 // =============================================================================
 
 /**
+ * Validates a canonical approval request identifier ('apr_...').
+ *
+ * VALIDATION RULES:
+ * 1. Must be a non-empty string.
+ * 2. Must start with the canonical 'apr_' prefix.
+ * 3. Must contain only alphanumeric characters, underscores, and hyphens (preventing path traversal and injections).
+ * 4. Maximum length is 128 characters, minimum length is 5 characters ('apr_' + at least 1 char).
+ *
+ * @param id Any value to validate as an approval request identifier
+ * @returns ApprovalValidationResult with `valid` boolean and array of `errors`
+ */
+export function validateApprovalRequestId(id: unknown): ApprovalValidationResult {
+  const errors: string[] = [];
+
+  if (typeof id !== 'string' || !id.trim()) {
+    errors.push('Approval request ID is required and must be a non-empty string.');
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  const trimmed = id.trim();
+
+  if (!trimmed.startsWith('apr_')) {
+    errors.push(`Field "id" must be prefixed with "apr_" (received "${trimmed}").`);
+  }
+
+  if (!/^apr_[a-zA-Z0-9_-]{1,124}$/.test(trimmed)) {
+    errors.push(
+      `Field "id" format is invalid ("${trimmed}"). Expected canonical format: "apr_" followed by alphanumeric characters, underscores, or hyphens (up to 128 characters total).`
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: Object.freeze(errors),
+  };
+}
+
+/**
+ * Asserts that a value is a valid canonical approval request ID, throwing ApprovalValidationError if not.
+ */
+export function assertValidApprovalRequestId(id: unknown): asserts id is string {
+  const result = validateApprovalRequestId(id);
+  if (!result.valid) {
+    throw new ApprovalValidationError(result.errors);
+  }
+}
+
+/**
  * Validates an unknown data payload against the complete ApprovalRequest data contract,
  * ensuring required fields, type safety, timestamp consistency, lifecycle invariants,
  * and strict privacy exclusions.

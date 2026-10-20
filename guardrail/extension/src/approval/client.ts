@@ -38,7 +38,7 @@ import {
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import { ApiResponseEnvelope } from './api.js';
-import { FORBIDDEN_PROPERTY_PATTERNS } from './model.js';
+import { FORBIDDEN_PROPERTY_PATTERNS, validateApprovalRequestId } from './model.js';
 
 // =============================================================================
 // Configuration Constants
@@ -425,13 +425,15 @@ export class ApprovalApiClient {
     requestId: string,
     options?: RequestOptions
   ): Promise<ApiClientResult<ApprovalRequest>> {
-    if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
+    const idValidation = validateApprovalRequestId(requestId);
+    if (!idValidation.valid) {
       return {
         success: false,
         error: {
           code: ApiClientErrorCodes.VALIDATION_ERROR,
-          message: 'requestId is required and must be a non-empty string.',
+          message: idValidation.errors[0] || 'Invalid requestId format.',
           statusCode: 400,
+          details: idValidation.errors,
         },
         statusCode: 400,
       };
@@ -444,6 +446,48 @@ export class ApprovalApiClient {
       undefined,
       options
     );
+  }
+
+  /**
+   * Retrieves the authoritative status and metadata for an approval request.
+   *
+   * ARCHITECTURAL INVARIANT:
+   * Even if this call returns `status: "APPROVED"`, the client must NOT automatically
+   * execute the browser action. The action remains HELD until the user reviews and confirms.
+   *
+   * @param requestId Canonical approval request identifier ('apr_...')
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with current ApprovalRequest or error
+   */
+  public async getApprovalStatus(
+    requestId: string,
+    options?: RequestOptions
+  ): Promise<
+    ApiClientResult<{
+      readonly id: string;
+      readonly status: ApprovalStatus;
+      readonly request: ApprovalRequest;
+    }>
+  > {
+    const result = await this.getApprovalRequest(requestId, options);
+    if (!result.success || !result.data) {
+      return {
+        success: false,
+        error: result.error,
+        statusCode: result.statusCode,
+        isNetworkError: result.isNetworkError,
+        isTimeout: result.isTimeout,
+      };
+    }
+    return {
+      success: true,
+      statusCode: result.statusCode,
+      data: {
+        id: result.data.id,
+        status: result.data.status,
+        request: result.data,
+      },
+    };
   }
 
   /**

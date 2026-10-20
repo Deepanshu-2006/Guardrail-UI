@@ -386,3 +386,31 @@ export interface GuardrailSubmitApprovalRequestResponse {
   };
 }
 
+/**
+ * Extension message sent from Content Script / Staging UI to Background Service Worker
+ * to query the current status of an approval request.
+ */
+export interface GuardrailGetApprovalStatusMessage {
+  readonly type: 'GUARDRAIL_GET_APPROVAL_STATUS';
+  readonly requestId: string;
+  readonly actionId?: string;
+}
+
+/**
+ * Typed response returned by Background Service Worker for approval status lookup.
+ */
+export interface GuardrailGetApprovalStatusResponse {
+  readonly success: boolean;
+  readonly requestId: string;
+  readonly status?: ApprovalStatusString;
+  readonly isAuthoritative: boolean;
+  readonly request?: ApprovalRequest;
+  readonly error?: {
+    readonly code: string;
+    readonly message: string;
+    readonly statusCode?: number;
+    readonly details?: readonly string[];
+  };
+}
+
+
