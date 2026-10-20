@@ -1279,11 +1279,259 @@ button:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
+   Filter & Search Controls
+   ----------------------------------------------------------------------------- */
+
+.gd-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: var(--gd-bg-surface);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: var(--gd-shadow-sm);
+}
+
+.gd-search-input-wrap {
+  width: 100%;
+}
+
+.gd-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--gd-text-primary);
+  background-color: var(--gd-bg-canvas);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gd-search-input:focus {
+  outline: none;
+  border-color: var(--gd-green-primary);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+  background-color: #ffffff;
+}
+
+.gd-filter-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gd-filter-select {
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gd-text-secondary);
+  background-color: var(--gd-bg-canvas);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.gd-filter-select:focus {
+  outline: none;
+  border-color: var(--gd-green-primary);
+}
+
+.gd-btn-reset-filters {
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #b91c1c;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.gd-btn-reset-filters:hover {
+  background-color: #fee2e2;
+}
+
+.gd-btn-reset-primary {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.gd-filter-results-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gd-text-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   Decision History & Architectural Capability Documentation
+   ----------------------------------------------------------------------------- */
+
+.gd-history-notice {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gd-history-notice-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #166534;
+}
+
+.gd-notice-icon {
+  font-size: 14px;
+}
+
+.gd-notice-text {
+  font-size: 12px;
+  color: #15803d;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gd-history-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  min-height: 520px;
+}
+
+/* History Cards & Visual Distinction */
+.gd-history-card {
+  position: relative;
+  border-left-width: 4px;
+}
+
+.gd-history-card.status-approved {
+  border-left-color: var(--gd-green-primary);
+}
+
+.gd-history-card.status-rejected {
+  border-left-color: #ef4444;
+}
+
+.gd-history-card.status-cancelled {
+  border-left-color: #94a3b8;
+}
+
+.gd-history-card.status-expired {
+  border-left-color: #f59e0b;
+}
+
+.gd-history-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gd-history-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gd-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gd-history-reviewer-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: #047857;
+  background-color: #ecfdf5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #a7f3d0;
+}
+
+/* -----------------------------------------------------------------------------
+   Recent Activity Section in Overview
+   ----------------------------------------------------------------------------- */
+
+.gd-recent-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.gd-recent-activity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--gd-bg-canvas);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
+}
+
+.gd-recent-activity-item:hover {
+  border-color: var(--gd-border-strong);
+}
+
+.gd-recent-activity-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gd-recent-activity-desc {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+}
+
+.gd-recent-activity-meta {
+  font-size: 11px;
+  color: var(--gd-text-muted);
+}
+
+.gd-btn-view-all-history {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 14px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-green-primary);
+  background-color: transparent;
+  border: 1px solid var(--gd-green-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gd-btn-view-all-history:hover {
+  background-color: var(--gd-green-bg);
+}
+
+/* -----------------------------------------------------------------------------
    Responsive Breakpoints
    ----------------------------------------------------------------------------- */
 
 @media (max-width: 1023px) {
-  .gd-approvals-layout {
+  .gd-approvals-layout,
+  .gd-history-layout {
     grid-template-columns: 1fr;
   }
 }
@@ -1320,5 +1568,15 @@ button:focus-visible,
 
   .gd-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .gd-filter-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .gd-filter-results-count {
+    margin-left: 0;
+    text-align: right;
   }
 }
