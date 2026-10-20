@@ -23,7 +23,14 @@ import {
   submitApprovalRequest,
   SubmitApprovalRequestOptions,
 } from '../approval/submit-operation.js';
-import { checkPayloadForSensitiveFields } from '../approval/client.js';
+import { checkPayloadForSensitiveFields, ApprovalApiClient } from '../approval/client.js';
+import { validateApprovalRequestId } from '../approval/model.js';
+import {
+  ApprovalRequest,
+  ApprovalStatusString,
+  GuardrailGetApprovalStatusMessage,
+  GuardrailGetApprovalStatusResponse,
+} from '../types/approval.js';
 
 const manifest =
   typeof chrome !== 'undefined' && chrome.runtime?.getManifest
@@ -221,6 +228,185 @@ export async function handleBackgroundApprovalSubmission(
   }
 }
 
+/**
+ * Result of validating an incoming approval status lookup message.
+ */
+export interface ValidatedStatusLookupMessage {
+  readonly valid: boolean;
+  readonly error?: string;
+  readonly requestId?: string;
+  readonly actionId?: string;
+}
+
+/**
+ * Validates message type, payload shape, security boundaries, and least-privilege constraints
+ * for an incoming approval status lookup message.
+ *
+ * SECURITY INVARIANTS:
+ * 1. Requires type === 'GUARDRAIL_GET_APPROVAL_STATUS'.
+ * 2. Strictly rejects privileged decision overrides (decision, status, decidedBy, verdict, etc.).
+ * 3. Strictly rejects auth secrets, tokens, passwords, and arbitrary endpoints.
+ * 4. Validates canonical requestId format ('apr_...').
+ */
+export function validateApprovalStatusLookupMessage(message: unknown): ValidatedStatusLookupMessage {
+  if (!message || typeof message !== 'object') {
+    return { valid: false, error: 'Message must be a non-null object.' };
+  }
+
+  const raw = message as Record<string, unknown>;
+
+  // 1. Validate message type
+  if (raw.type !== 'GUARDRAIL_GET_APPROVAL_STATUS') {
+    return { valid: false, error: `Unsupported message type: "${String(raw.type)}".` };
+  }
+
+  // 2. Reject privileged instructions or decision overrides
+  const privilegedFields = [
+    'decision',
+    'status',
+    'decidedBy',
+    'decidedAt',
+    'decisionReason',
+    'verdict',
+    'approve',
+    'reject',
+    'cancel',
+    'token',
+    'authToken',
+    'jwt',
+    'secret',
+    'password',
+    'otp',
+    'endpoint',
+    'url',
+    'method',
+  ];
+
+  for (const field of privilegedFields) {
+    if (field in raw && raw[field] !== undefined) {
+      return {
+        valid: false,
+        error: `Security violation: Message contains forbidden or privileged instruction "${field}". Untrusted callers cannot decide approvals or inject privileged states.`,
+      };
+    }
+  }
+
+  // 3. Validate requestId format
+  const rawId = typeof raw.requestId === 'string' ? raw.requestId.trim() : '';
+  const idValidation = validateApprovalRequestId(rawId);
+  if (!idValidation.valid) {
+    return {
+      valid: false,
+      error: idValidation.errors[0] || 'Invalid requestId format.',
+    };
+  }
+
+  const actionId = typeof raw.actionId === 'string' && raw.actionId.trim() ? raw.actionId.trim() : undefined;
+
+  return {
+    valid: true,
+    requestId: rawId,
+    actionId,
+  };
+}
+
+export interface HandleStatusLookupOptions {
+  readonly apiClient?: ApprovalApiClient;
+  readonly token?: string;
+}
+
+/**
+ * Handles an approval status query in the background service worker:
+ * 1. Validates the incoming message shape and security boundaries.
+ * 2. If actionId is supplied, verifies that the action is actively tracked in the controller.
+ * 3. Dispatches the status query to the authoritative backend via ApprovalApiClient.
+ * 4. Returns typed GuardrailGetApprovalStatusResponse.
+ *
+ * CRITICAL SAFETY INVARIANT:
+ * Receiving an APPROVED status NEVER executes or releases the held action.
+ * The action remains safely HELD in the controller until explicit user review.
+ */
+export async function handleBackgroundApprovalStatusLookup(
+  message: unknown,
+  controller: InterceptionController = backgroundInterceptionController,
+  options?: HandleStatusLookupOptions
+): Promise<GuardrailGetApprovalStatusResponse> {
+  const validation = validateApprovalStatusLookupMessage(message);
+  if (!validation.valid || !validation.requestId) {
+    return {
+      success: false,
+      requestId: validation.requestId || '',
+      isAuthoritative: true,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: validation.error || 'Invalid approval status lookup message.',
+        statusCode: 400,
+      },
+    };
+  }
+
+  const { requestId, actionId } = validation;
+
+  // If actionId is supplied, verify it is tracked in the controller
+  if (actionId) {
+    const record = controller.getRecord(actionId);
+    if (!record) {
+      return {
+        success: false,
+        requestId,
+        isAuthoritative: true,
+        error: {
+          code: 'ACTION_NOT_FOUND',
+          message: `Action "${actionId}" is not actively tracked by Guardrail coordinator.`,
+          statusCode: 404,
+        },
+      };
+    }
+  }
+
+  const client = options?.apiClient ?? new ApprovalApiClient();
+
+  try {
+    const result = await client.getApprovalRequest(requestId, {
+      token: options?.token,
+    });
+
+    if (result.success && result.data) {
+      return {
+        success: true,
+        requestId,
+        status: result.data.status,
+        request: result.data,
+        isAuthoritative: true,
+      };
+    } else {
+      return {
+        success: false,
+        requestId,
+        isAuthoritative: result.statusCode !== undefined && result.statusCode < 500,
+        error: {
+          code: result.error?.code || 'STATUS_LOOKUP_FAILED',
+          message: result.error?.message || 'Failed to retrieve approval request status.',
+          statusCode: result.statusCode,
+          details: result.error?.details,
+        },
+      };
+    }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      requestId,
+      isAuthoritative: false,
+      error: {
+        code: 'DISPATCH_ERROR',
+        message: `Status lookup dispatch failed: ${errorMsg}`,
+        statusCode: 500,
+      },
+    };
+  }
+}
+
 // Top-level execution log whenever Chrome wakes or starts the service worker
 console.log(
   '%c[Guardrail Background]%c Service worker initialized',
@@ -296,6 +482,26 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
             success: false,
             actionId: typeof raw.actionId === 'string' ? raw.actionId : '',
             outcome: SubmissionOutcome.NETWORK_FAILURE_UNCERTAIN,
+            isAuthoritative: false,
+            error: {
+              code: 'DISPATCH_ERROR',
+              message: err instanceof Error ? err.message : String(err),
+            },
+          });
+        });
+      return true; // Keep message channel open for async sendResponse
+    }
+
+    // 3. Handle GUARDRAIL_GET_APPROVAL_STATUS (Authoritative status lookup)
+    if (raw.type === 'GUARDRAIL_GET_APPROVAL_STATUS') {
+      handleBackgroundApprovalStatusLookup(message, backgroundInterceptionController)
+        .then((response) => {
+          sendResponse(response);
+        })
+        .catch((err) => {
+          sendResponse({
+            success: false,
+            requestId: typeof raw.requestId === 'string' ? raw.requestId : '',
             isAuthoritative: false,
             error: {
               code: 'DISPATCH_ERROR',
