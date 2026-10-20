@@ -142,7 +142,12 @@ class MockDOMElement {
     this.listeners[event] = this.listeners[event].filter((h) => h !== handler);
   }
 
-  dispatchEvent(event: { type: string; defaultPrevented?: boolean }): boolean {
+  dispatchEvent(event: { type: string; defaultPrevented?: boolean; preventDefault?: () => void; [key: string]: any }): boolean {
+    if (typeof event.preventDefault !== 'function') {
+      event.preventDefault = () => {
+        event.defaultPrevented = true;
+      };
+    }
     const handlers = this.listeners[event.type] || [];
     for (const h of handlers) {
       h(event);
@@ -2207,6 +2212,473 @@ async function runDashboardTests() {
 
     // Request is NOT faked or marked approved
     assertEquals(shell.getState().pendingRequests[0]?.status, ApprovalStatus.PENDING, 'Request remains PENDING');
+
+    shell.destroy();
+  }
+
+  // Test Suite 36: Status Filtering in Decision History
+  console.log('\n▶ Test Suite 36: Status Filtering in Decision History');
+  {
+    const historyItems: ApprovalRequest[] = [
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_app_01',
+        status: ApprovalStatus.APPROVED,
+        actionDescription: 'Approved Wire Transfer to Alice Savings',
+        resolvedAt: '2026-10-20T11:00:00.000Z',
+        decision: {
+          decision: ApprovalStatus.APPROVED,
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T11:00:00.000Z',
+          decisionReason: 'Verified with Alice',
+        },
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_rej_02',
+        status: ApprovalStatus.REJECTED,
+        actionDescription: 'Rejected Unknown Wire Transfer',
+        resolvedAt: '2026-10-20T11:30:00.000Z',
+        decision: {
+          decision: ApprovalStatus.REJECTED,
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T11:30:00.000Z',
+          decisionReason: 'Unrecognized recipient',
+        },
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_can_03',
+        status: ApprovalStatus.CANCELLED,
+        actionDescription: 'Cancelled Staging Mode Transfer',
+        resolvedAt: '2026-10-20T12:00:00.000Z',
+        cancellationReason: 'Ward dismissed prompt in browser',
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_exp_04',
+        status: ApprovalStatus.EXPIRED,
+        actionDescription: 'Expired Transfer Order',
+        resolvedAt: '2026-10-20T12:30:00.000Z',
+      },
+    ];
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: historyItems,
+    });
+
+    // All items initially displayed
+    const cardsInitial = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(cardsInitial.length, 4, 'All 4 historical decisions rendered initially');
+
+    // Filter by APPROVED
+    shell.setHistoryFilters({ status: ApprovalStatus.APPROVED });
+    const approvedCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(approvedCards.length, 1, 'Only APPROVED decisions rendered when filtered by APPROVED');
+    assert(approvedCards[0]?.textContent.includes('Approved Wire Transfer') ?? false, 'Approved card title matches');
+
+    // Filter by REJECTED
+    shell.setHistoryFilters({ status: ApprovalStatus.REJECTED });
+    const rejectedCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(rejectedCards.length, 1, 'Only REJECTED decisions rendered when filtered by REJECTED');
+    assert(rejectedCards[0]?.textContent.includes('Rejected Unknown Wire Transfer') ?? false, 'Rejected card matches');
+
+    // Filter by CANCELLED
+    shell.setHistoryFilters({ status: ApprovalStatus.CANCELLED });
+    const cancelledCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(cancelledCards.length, 1, 'Only CANCELLED decisions rendered when filtered by CANCELLED');
+
+    // Filter by EXPIRED
+    shell.setHistoryFilters({ status: ApprovalStatus.EXPIRED });
+    const expiredCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(expiredCards.length, 1, 'Only EXPIRED decisions rendered when filtered by EXPIRED');
+
+    // Reset to ALL
+    shell.setHistoryFilters({ status: 'ALL' });
+    const allCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(allCards.length, 4, 'All 4 decisions restored when status filter reset to ALL');
+
+    shell.destroy();
+  }
+
+  // Test Suite 37: Risk Level Filtering in Pending and History
+  console.log('\n▶ Test Suite 37: Risk Level Filtering in Pending and History');
+  {
+    const pendingItems: ApprovalRequest[] = [
+      { ...SAMPLE_REQUEST, id: 'apr_risk_crit', riskLevel: RiskLevel.CRITICAL, actionDescription: 'Critical Transfer' },
+      { ...SAMPLE_REQUEST, id: 'apr_risk_high', riskLevel: RiskLevel.HIGH, actionDescription: 'High Risk Transfer' },
+      { ...SAMPLE_REQUEST, id: 'apr_risk_med', riskLevel: RiskLevel.MEDIUM, actionDescription: 'Medium Risk Form' },
+      { ...SAMPLE_REQUEST, id: 'apr_risk_low', riskLevel: RiskLevel.LOW, actionDescription: 'Low Risk Nav' },
+    ];
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: pendingItems,
+    });
+
+    const initialPendingCards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(initialPendingCards.length, 4, 'All 4 pending requests displayed initially');
+
+    // Filter by CRITICAL
+    shell.setPendingFilters({ riskLevel: RiskLevel.CRITICAL });
+    const critCards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(critCards.length, 1, 'Only 1 request rendered when filtered by CRITICAL risk');
+    assert(critCards[0]?.textContent.includes('Critical Transfer') ?? false, 'Rendered card is Critical Transfer');
+
+    // Filter by LOW
+    shell.setPendingFilters({ riskLevel: RiskLevel.LOW });
+    const lowCards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(lowCards.length, 1, 'Only 1 request rendered when filtered by LOW risk');
+    assert(lowCards[0]?.textContent.includes('Low Risk Nav') ?? false, 'Rendered card is Low Risk Nav');
+
+    // Reset risk filter
+    shell.setPendingFilters({ riskLevel: 'ALL' });
+    const resetPendingCards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(resetPendingCards.length, 4, 'All 4 requests restored when risk level reset to ALL');
+
+    shell.destroy();
+  }
+
+  // Test Suite 38: Date Range Filtering (TODAY, 7_DAYS, 30_DAYS)
+  console.log('\n▶ Test Suite 38: Date Range Filtering');
+  {
+    const now = Date.now();
+    const dateItems: ApprovalRequest[] = [
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_date_today',
+        actionDescription: 'Action From 2 Hours Ago',
+        resolvedAt: new Date(now - 2 * 3600 * 1000).toISOString(),
+        status: ApprovalStatus.APPROVED,
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_date_3days',
+        actionDescription: 'Action From 3 Days Ago',
+        resolvedAt: new Date(now - 3 * 86400 * 1000).toISOString(),
+        status: ApprovalStatus.APPROVED,
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_date_45days',
+        actionDescription: 'Action From 45 Days Ago',
+        resolvedAt: new Date(now - 45 * 86400 * 1000).toISOString(),
+        status: ApprovalStatus.APPROVED,
+      },
+    ];
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: dateItems,
+    });
+
+    // TODAY (within 24h)
+    shell.setHistoryFilters({ dateRange: 'TODAY' });
+    const todayCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(todayCards.length, 1, 'Only 1 decision within last 24h matched for TODAY filter');
+    assert(todayCards[0]?.textContent.includes('2 Hours Ago') ?? false, 'Matches 2 Hours Ago record');
+
+    // 7_DAYS
+    shell.setHistoryFilters({ dateRange: '7_DAYS' });
+    const weekCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(weekCards.length, 2, '2 decisions within last 7 days matched for 7_DAYS filter');
+
+    // 30_DAYS
+    shell.setHistoryFilters({ dateRange: '30_DAYS' });
+    const monthCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(monthCards.length, 2, '2 decisions within last 30 days matched for 30_DAYS filter');
+
+    // ALL
+    shell.setHistoryFilters({ dateRange: 'ALL' });
+    const allCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(allCards.length, 3, 'All 3 decisions matched for ALL date range');
+
+    shell.destroy();
+  }
+
+  // Test Suite 39: Safe Keyword Search & Non-Sensitive Field Restriction
+  console.log('\n▶ Test Suite 39: Safe Keyword Search & Non-Sensitive Field Restriction');
+  {
+    const searchItems: ApprovalRequest[] = [
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_srch_wire_001',
+        actionDescription: 'Wire Transfer Authorization',
+        hostname: 'banking.safe.org',
+        category: ActionCategory.PAYMENT,
+        status: ApprovalStatus.APPROVED,
+        decision: {
+          decision: ApprovalStatus.APPROVED,
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T10:00:00.000Z',
+          decisionReason: 'Authorized verified invoice',
+        },
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_srch_auth_002',
+        actionDescription: 'Federated OAuth Delegation',
+        hostname: 'login.identity.io',
+        category: ActionCategory.AUTHENTICATION,
+        status: ApprovalStatus.REJECTED,
+      },
+    ];
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: searchItems,
+    });
+
+    // Search by description
+    shell.setHistoryFilters({ searchQuery: 'wire transfer' });
+    let matches = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(matches.length, 1, 'Matches description query "wire transfer"');
+    assert(matches[0]?.textContent.includes('Wire Transfer Authorization') ?? false, 'Matched record title');
+
+    // Search by hostname
+    shell.setHistoryFilters({ searchQuery: 'identity.io' });
+    matches = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(matches.length, 1, 'Matches hostname query "identity.io"');
+    assert(matches[0]?.textContent.includes('Federated OAuth Delegation') ?? false, 'Matched OAuth record');
+
+    // Search by canonical ID
+    shell.setHistoryFilters({ searchQuery: 'apr_srch_wire_001' });
+    matches = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(matches.length, 1, 'Matches canonical ID query');
+
+    // Search by audit reason
+    shell.setHistoryFilters({ searchQuery: 'verified invoice' });
+    matches = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(matches.length, 1, 'Matches audit reason query');
+
+    // Verify search does NOT index or match sensitive fields like passwords, OTPs, or cards
+    shell.setHistoryFilters({ searchQuery: 'password' });
+    matches = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(matches.length, 0, 'Sensitive term "password" matches 0 records');
+
+    shell.setHistoryFilters({ searchQuery: 'otp_secret' });
+    matches = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(matches.length, 0, 'Sensitive term "otp_secret" matches 0 records');
+
+    shell.destroy();
+  }
+
+  // Test Suite 40: Filter Empty States & Clear Filters Action
+  console.log('\n▶ Test Suite 40: Filter Empty States & Clear Filters Action');
+  {
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [SAMPLE_REQUEST],
+    });
+
+    // Apply an impossible search
+    shell.setPendingFilters({ searchQuery: 'non_existent_unmatched_query_xyz' });
+
+    const emptyFilter = rootElement.querySelector('#view-pending .gd-filter-empty-state');
+    assert(emptyFilter !== null, 'Renders filter empty state when query matches 0 requests');
+    assertEquals(
+      emptyFilter?.querySelector('.gd-placeholder-title')?.textContent,
+      'No Matching Pending Requests',
+      'Filter empty state title communicates no matching pending requests'
+    );
+
+    // Clear filters button in empty state
+    const clearBtn = emptyFilter?.querySelector('.gd-btn-reset-filters');
+    assert(clearBtn !== null, 'Clear All Filters button rendered in empty state');
+
+    clearBtn?.click();
+
+    // After clearing, pending request is restored
+    const restoredCards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(restoredCards.length, 1, 'Original pending request restored after clicking Clear Filters');
+    assertEquals(shell.getState().pendingFilters.searchQuery, '', 'searchQuery reset to empty string');
+
+    shell.destroy();
+  }
+
+  // Test Suite 41: Decision History View with Authoritative Resolved Records
+  console.log('\n▶ Test Suite 41: Decision History View with Authoritative Resolved Records');
+  {
+    const resolvedRecord: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_hist_detail_001',
+      status: ApprovalStatus.APPROVED,
+      actionDescription: 'Approved Wire Transfer Transaction',
+      resolvedAt: '2026-10-20T14:30:00.000Z',
+      decision: {
+        decision: ApprovalStatus.APPROVED,
+        decidedBy: 'tc_carol',
+        decidedAt: '2026-10-20T14:30:00.000Z',
+        decisionReason: 'Confirmed phone verification with ward Alice',
+      },
+    };
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [resolvedRecord],
+    });
+
+    const historyCard = rootElement.querySelector('.gd-history-card');
+    assert(historyCard !== null, 'Historical request card rendered');
+    assert(historyCard?.classList.contains('status-approved') ?? false, 'Card has .status-approved class for visual distinction');
+
+    const statusPill = historyCard?.querySelector('.gd-detail-status-pill');
+    assert(statusPill !== null, 'Status pill rendered on history card');
+    assertEquals(statusPill?.textContent, 'APPROVED', 'Status pill displays APPROVED');
+    assert(statusPill?.classList.contains('approved') ?? false, 'Status pill has .approved class');
+
+    const reviewerTag = historyCard?.querySelector('.gd-history-reviewer-tag');
+    assert(reviewerTag !== null, 'Reviewer attribution tag rendered');
+    assertEquals(reviewerTag?.textContent, 'Reviewer: tc_carol', 'Reviewer attribution matches authoritative record');
+
+    // Detail inspector in right pane
+    const detailPane = rootElement.querySelector('#view-history .gd-detail-pane');
+    assert(detailPane !== null, 'Detail pane rendered in history view');
+    assert(
+      detailPane?.textContent.includes('Confirmed phone verification with ward Alice') ?? false,
+      'Reviewer reason rendered in detail audit trail'
+    );
+
+    shell.destroy();
+  }
+
+  // Test Suite 42: Post-Decision Feedback & Automatic Addition to History
+  console.log('\n▶ Test Suite 42: Post-Decision Feedback & Automatic Addition to History');
+  {
+    let decideCalled = false;
+    const mockClient = {
+      listPendingApprovals: async () => ({ success: true, data: [SAMPLE_REQUEST] }),
+      getApprovalDetails: async (_id: string) => ({ success: true, data: SAMPLE_REQUEST }),
+      submitDecision: async (_id: string, _payload: any) => {
+        decideCalled = true;
+        const resolved: ApprovalRequest = {
+          ...SAMPLE_REQUEST,
+          status: ApprovalStatus.APPROVED,
+          resolvedAt: '2026-10-20T15:00:00.000Z',
+          decision: {
+            decision: ApprovalStatus.APPROVED,
+            decidedBy: 'tc_carol',
+            decidedAt: '2026-10-20T15:00:00.000Z',
+            decisionReason: 'Verified post-decision addition',
+          },
+        };
+        return { success: true, data: resolved };
+      },
+    } as unknown as ApprovalApiClient;
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [SAMPLE_REQUEST],
+      apiClient: mockClient,
+      autoFetch: false,
+    });
+
+    // Submit approval
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    const confirmSubmitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    confirmSubmitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    assert(decideCalled, 'Decision submitted to backend client');
+
+    // Success banner displayed
+    const successBanner = rootElement.querySelector('.gd-decision-success-banner');
+    assert(successBanner !== null, 'Success banner displayed after decision confirmed');
+
+    // Pending requests list is now empty
+    assertEquals(shell.getState().pendingRequests.length, 0, 'Pending requests pruned to 0');
+
+    // Authoritative history contains the resolved request
+    assertEquals(shell.getState().historyRequests.length, 1, 'Resolved request added to historyRequests');
+    assertEquals(shell.getState().historyRequests[0]?.status, ApprovalStatus.APPROVED, 'History record is APPROVED');
+
+    // Switch to history view
+    shell.setActiveView('history', false);
+
+    const histCards = rootElement.querySelectorAll('.gd-history-card');
+    assertEquals(histCards.length, 1, 'Newly decided request rendered in Decision History list');
+
+    shell.destroy();
+  }
+
+  // Test Suite 43: Architectural Capability Notice Documenting Backend Endpoint Gap
+  console.log('\n▶ Test Suite 43: Architectural Notice Documenting Missing Backend History Endpoint');
+  {
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [{ ...SAMPLE_REQUEST, id: 'apr_hist_notice_01', status: ApprovalStatus.APPROVED }],
+    });
+
+    const noticeBox = rootElement.querySelector('.gd-history-notice');
+    assert(noticeBox !== null, 'Architectural backend notice rendered in Decision History');
+
+    const noticeText = noticeBox?.textContent || '';
+    assert(
+      noticeText.includes('Authoritative Decision History'),
+      'Notice identifies authoritative session records'
+    );
+    assert(
+      noticeText.includes('GET /api/v1/approvals/history'),
+      'Notice explicitly cites GET /api/v1/approvals/history on backend roadmap without fabricating fake data'
+    );
+
+    shell.destroy();
+  }
+
+  // Test Suite 44: Responsive Layout & Keyboard Accessibility
+  console.log('\n▶ Test Suite 44: Responsive Layout & Keyboard Accessibility');
+  {
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        { ...SAMPLE_REQUEST, id: 'apr_kb_01', actionDescription: 'First Action' },
+        { ...SAMPLE_REQUEST, id: 'apr_kb_02', actionDescription: 'Second Action' },
+      ],
+    });
+
+    const cards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(cards.length, 2, '2 cards rendered for keyboard accessibility test');
+
+    // Role and tabindex attributes
+    assertEquals(cards[0]?.getAttribute('role'), 'button', 'Request card has role="button"');
+    assertEquals(cards[0]?.getAttribute('tabindex'), '0', 'Request card has tabindex="0"');
+    assert(cards[0]?.getAttribute('aria-label')?.includes('apr_kb_01') ?? false, 'Accessible aria-label set');
+
+    // Enter key triggers selection
+    let selectedId = shell.getState().selectedRequestId;
+    assertEquals(selectedId, 'apr_kb_01', 'First card selected initially');
+
+    cards[1]?.dispatchEvent({ type: 'keydown', key: 'Enter', defaultPrevented: false });
+    assertEquals(shell.getState().selectedRequestId, 'apr_kb_02', 'Enter key selected second card');
+
+    // Space key triggers selection
+    cards[0]?.dispatchEvent({ type: 'keydown', key: ' ', defaultPrevented: false });
+    assertEquals(shell.getState().selectedRequestId, 'apr_kb_01', 'Space key selected first card');
+
+    // Mobile sidebar toggle
+    const mobileBtn = rootElement.querySelector('.gd-mobile-toggle');
+    assert(mobileBtn !== null, 'Mobile toggle button rendered');
+    assertEquals(mobileBtn?.getAttribute('aria-label'), 'Toggle Navigation Menu', 'Accessible mobile toggle label');
+
+    shell.toggleMobileSidebar();
+    const sidebar = rootElement.querySelector('.gd-sidebar');
+    assert(sidebar?.classList.contains('open') ?? false, 'Sidebar has .open class after toggle');
+
+    shell.toggleMobileSidebar();
+    assert(!(sidebar?.classList.contains('open') ?? false), 'Sidebar removes .open class after second toggle');
 
     shell.destroy();
   }
