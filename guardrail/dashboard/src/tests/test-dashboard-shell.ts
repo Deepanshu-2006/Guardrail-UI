@@ -159,7 +159,13 @@ class MockDOMElement {
       if (part.startsWith('#')) {
         isMatch = node.id === part.slice(1);
       } else if (part.startsWith('.')) {
-        isMatch = node.classList.contains(part.slice(1));
+        const classes = part.split('.').filter(Boolean);
+        isMatch = classes.every((c) => node.classList.contains(c));
+      } else if (part.includes('.')) {
+        const [tag, ...classes] = part.split('.');
+        isMatch =
+          node.tagName.toLowerCase() === tag.toLowerCase() &&
+          classes.every((c) => node.classList.contains(c));
       } else {
         isMatch = node.tagName.toLowerCase() === part.toLowerCase();
       }
@@ -249,6 +255,9 @@ import {
   ActionType,
   ActionCategory,
 } from '../types.js';
+import {
+  renderRequestDetailView,
+} from '../components/detail.js';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -1079,6 +1088,461 @@ async function runDashboardTests() {
     assert(!rootHTML.includes('987654'), 'OTP is never rendered in DOM');
     assert(!rootHTML.includes('4111222233334444'), 'Card number is never rendered in DOM');
     assert(!rootHTML.includes('secret_user_token'), 'Auth token is never rendered in DOM');
+
+    shell.destroy();
+  }
+
+  // Test Suite 20: Comprehensive Risk Level Explanations & Score Range Semantics
+  console.log('\n▶ Test Suite 20: Risk Level Plain-Language Explanations & Non-Malice Disclaimer');
+  {
+    const riskLevels = [
+      {
+        level: RiskLevel.LOW,
+        score: 10,
+        expectedClass: 'low',
+        expectedKeyword: 'Low operational impact',
+      },
+      {
+        level: RiskLevel.MEDIUM,
+        score: 42,
+        expectedClass: 'medium',
+        expectedKeyword: 'Moderate operational impact',
+      },
+      {
+        level: RiskLevel.HIGH,
+        score: 71,
+        expectedClass: 'high',
+        expectedKeyword: 'Elevated operational impact',
+      },
+      {
+        level: RiskLevel.CRITICAL,
+        score: 98,
+        expectedClass: 'critical',
+        expectedKeyword: 'High operational impact',
+      },
+    ];
+
+    for (const item of riskLevels) {
+      const testReq: ApprovalRequest = {
+        id: `apr_risk_${item.expectedClass}`,
+        actionId: `act_${item.expectedClass}`,
+        requesterId: 'usr_alice',
+        status: ApprovalStatus.PENDING,
+        actionDescription: `Test Action for ${item.level}`,
+        actionType: ActionType.CLICK,
+        riskLevel: item.level,
+        riskScore: item.score,
+        riskReasons: [`Evaluated as ${item.level} operational impact`],
+        hostname: 'example.com',
+        createdAt: '2026-10-20T10:00:00.000Z',
+        expiresAt: '2026-10-20T10:15:00.000Z',
+      };
+
+      const view = renderRequestDetailView({ request: testReq });
+
+      const badge = view.querySelector('.gd-risk-badge');
+      assertEquals(badge?.textContent, item.level, `Risk badge displays ${item.level}`);
+      assert(badge?.classList.contains(item.expectedClass) ?? false, `Risk badge has .${item.expectedClass} class`);
+
+      const explanation = view.querySelector('.gd-risk-explanation');
+      assert(
+        explanation?.textContent.includes(item.expectedKeyword) ?? false,
+        `Risk explanation for ${item.level} contains "${item.expectedKeyword}"`
+      );
+
+      const scoreEl = view.querySelector('.gd-risk-score-value');
+      assert(
+        scoreEl?.textContent.includes(`${item.score} / 100`) ?? false,
+        `Displays formatted score ${item.score} / 100`
+      );
+
+      // Verify non-malicious disclaimer (Requirement 10)
+      const disclaimer = view.querySelector('.gd-risk-disclaimer');
+      assert(disclaimer !== null, 'Non-malicious risk disclaimer is rendered');
+      assert(
+        disclaimer?.textContent.includes('NOT that the website or action is confirmed to be malicious') ?? false,
+        'Disclaimer explicitly states high risk score does not mean action is malicious'
+      );
+    }
+  }
+
+  // Test Suite 21: Graceful Degradation on Missing & Malformed Metadata
+  console.log('\n▶ Test Suite 21: Graceful Handling of Missing Metadata & Fallbacks');
+  {
+    // Minimal request missing optional fields
+    const minimalReq: ApprovalRequest = {
+      id: 'apr_minimal_001',
+      actionId: 'act_min_001',
+      requesterId: 'usr_alice',
+      status: ApprovalStatus.PENDING,
+      actionDescription: 'Minimal action without optional metadata',
+      actionType: undefined as any,
+      riskLevel: RiskLevel.LOW,
+      riskReasons: [], // Empty heuristics
+      createdAt: '2026-10-20T10:00:00.000Z',
+      expiresAt: '', // Missing expiration
+    };
+
+    const view = renderRequestDetailView({ request: minimalReq });
+    const text = view.textContent;
+
+    // Missing hostname & origin fallback
+    assert(text.includes('Not reported'), 'Missing hostname/origin displays "Not reported"');
+
+    // Missing category fallback
+    assert(text.includes('General'), 'Missing semantic category defaults to "General"');
+
+    // Missing actionType fallback
+    assert(text.includes('Standard interaction'), 'Missing actionType defaults to "Standard interaction"');
+
+    // Missing riskScore fallback
+    assert(text.includes('Not Scored'), 'Missing riskScore displays "Not Scored"');
+
+    // Empty riskReasons fallback (DO NOT invent new reasons)
+    const emptyReasonsNotice = view.querySelector('.gd-risk-empty-text');
+    assert(emptyReasonsNotice !== null, 'Displays empty heuristics placeholder when riskReasons is empty');
+    assertEquals(
+      emptyReasonsNotice?.textContent,
+      'No specific risk heuristics reported by the evaluation engine.',
+      'Heuristic empty text does not invent reasons'
+    );
+
+    // Missing expiresAt fallback
+    assert(text.includes('No expiration deadline'), 'Missing expiresAt displays "No expiration deadline"');
+
+    // Missing pageTitle fallback
+    assert(text.includes('Untitled webpage'), 'Missing pageTitle displays "Untitled webpage"');
+
+    // Hostname inferred from origin URL
+    const originOnlyReq: ApprovalRequest = {
+      ...minimalReq,
+      id: 'apr_origin_only',
+      origin: 'https://subdomain.company.com:8080/path',
+      hostname: undefined,
+    };
+    const originView = renderRequestDetailView({ request: originOnlyReq });
+    assert(
+      originView.textContent.includes('subdomain.company.com'),
+      'Safely parses hostname from origin URL when hostname field is missing'
+    );
+
+    // Null/undefined request placeholder
+    const nullView = renderRequestDetailView({ request: null });
+    const nullPlaceholder = nullView.querySelector('.gd-placeholder-title');
+    assertEquals(
+      nullPlaceholder?.textContent,
+      'Select an Approval Request',
+      'Renders placeholder when request is null'
+    );
+
+    // Loading state
+    const loadingView = renderRequestDetailView({ request: null, isLoading: true });
+    const loadingWrap = loadingView.querySelector('.gd-detail-loading-wrap');
+    assertEquals(loadingWrap?.getAttribute('aria-busy'), 'true', 'Loading state has aria-busy="true"');
+
+    // Error state
+    let retryCalled = false;
+    const errorView = renderRequestDetailView({
+      request: null,
+      errorMessage: 'Failed to retrieve approval request details.',
+      onRefresh: () => {
+        retryCalled = true;
+      },
+    });
+    const errBanner = errorView.querySelector('.gd-error-banner');
+    assert(errBanner !== null, 'Error banner rendered when errorMessage provided');
+    assert(
+      errBanner?.textContent.includes('Failed to retrieve approval request details') ?? false,
+      'Error banner displays error message'
+    );
+    const retryBtn = errorView.querySelector('.gd-btn-retry') as unknown as HTMLButtonElement;
+    retryBtn?.click();
+    assert(retryCalled, 'Retry button triggers onRefresh callback');
+  }
+
+  // Test Suite 22: Distinction Between Browser Action and Approval Governance Record
+  console.log('\n▶ Test Suite 22: Distinction Between Browser Action and Governance Record');
+  {
+    const req: ApprovalRequest = {
+      id: 'apr_distinct_001',
+      actionId: 'act_delete_db',
+      requesterId: 'usr_alice',
+      status: ApprovalStatus.PENDING,
+      actionDescription: 'Purge Production Database Tables',
+      actionType: ActionType.CLICK,
+      category: ActionCategory.DESTRUCTIVE,
+      riskLevel: RiskLevel.CRITICAL,
+      riskScore: 100,
+      riskReasons: ['Irreversible data destruction'],
+      origin: 'https://cloud.provider.com',
+      hostname: 'cloud.provider.com',
+      pageTitle: 'Database Admin Console',
+      createdAt: '2026-10-20T10:00:00.000Z',
+      expiresAt: '2026-10-20T10:15:00.000Z',
+    };
+
+    const view = renderRequestDetailView({ request: req });
+
+    // Section 1: Browser Action Card
+    const actionCard = view.querySelector('.gd-action-card');
+    assert(actionCard !== null, 'Action Under Review card is rendered');
+    const actionHeading = actionCard?.querySelector('.gd-card-title');
+    assertEquals(
+      actionHeading?.textContent,
+      'Browser Action Under Review',
+      'Action heading correctly identifies browser action'
+    );
+    assert(
+      actionCard?.querySelector('.gd-card-subtitle')?.textContent.includes('held in the ward’s local tab') ?? false,
+      'Action card clarifies action is held in local tab'
+    );
+    const decouplingNote = actionCard?.querySelector('.gd-action-decoupling-note');
+    assert(decouplingNote !== null, 'Action card contains decoupled execution note');
+    assert(
+      decouplingNote?.textContent.includes('does NOT remotely execute or trigger the action') ?? false,
+      'Reiterates that approval does not execute the action remotely'
+    );
+
+    // Section 2: Governance Record Card
+    const govCard = view.querySelector('.gd-governance-card');
+    assert(govCard !== null, 'Governance Record card is rendered');
+    const govHeading = govCard?.querySelector('.gd-card-title');
+    assertEquals(
+      govHeading?.textContent,
+      'Approval Request Governance',
+      'Governance heading identifies server record'
+    );
+    assert(
+      govCard?.querySelector('.gd-card-subtitle')?.textContent.includes('Authoritative server-side audit trail') ?? false,
+      'Governance card clarifies server-side audit trail'
+    );
+
+    // Verify both IDs are present and attributed to their respective roles
+    assert(actionCard?.textContent.includes('act_delete_db') ?? false, 'Action ID in action card');
+    assert(govCard?.textContent.includes('apr_distinct_001') ?? false, 'Canonical Request ID in governance card');
+  }
+
+  // Test Suite 23: Complete Lifecycle States & Resolution Metadata
+  console.log('\n▶ Test Suite 23: Complete Lifecycle States (APPROVED, REJECTED, CANCELLED, EXPIRED)');
+  {
+    // 23.1 APPROVED
+    const approvedReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_state_approved',
+      status: ApprovalStatus.APPROVED,
+      resolvedAt: '2026-10-20T10:05:00.000Z',
+      decision: {
+        decision: 'APPROVED',
+        decidedBy: 'tc_carol',
+        decidedAt: '2026-10-20T10:05:00.000Z',
+        decisionReason: 'Verified account transfer verbally with user.',
+      },
+    };
+    const approvedView = renderRequestDetailView({ request: approvedReq });
+    const appPill = approvedView.querySelector('.gd-detail-status-pill');
+    assertEquals(appPill?.textContent, 'APPROVED', 'Pill text is APPROVED');
+    assert(appPill?.classList.contains('approved') ?? false, 'Pill has .approved class');
+    const appBanner = approvedView.querySelector('.gd-status-banner.approved');
+    assert(appBanner !== null, 'Approved banner rendered');
+    assert(appBanner?.textContent.includes('tc_carol') ?? false, 'Banner mentions reviewer');
+    assert(
+      approvedView.textContent.includes('Verified account transfer verbally with user'),
+      'Reviewer note displayed in resolution box'
+    );
+
+    // 23.2 REJECTED
+    const rejectedReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_state_rejected',
+      status: ApprovalStatus.REJECTED,
+      resolvedAt: '2026-10-20T10:06:00.000Z',
+      decision: {
+        decision: 'REJECTED',
+        decidedBy: 'tc_carol',
+        decidedAt: '2026-10-20T10:06:00.000Z',
+        decisionReason: 'User did not authorize this wire transfer.',
+      },
+    };
+    const rejectedView = renderRequestDetailView({ request: rejectedReq });
+    const rejPill = rejectedView.querySelector('.gd-detail-status-pill');
+    assertEquals(rejPill?.textContent, 'REJECTED', 'Pill text is REJECTED');
+    assert(rejPill?.classList.contains('rejected') ?? false, 'Pill has .rejected class');
+    const rejBanner = rejectedView.querySelector('.gd-status-banner.rejected');
+    assert(rejBanner !== null, 'Rejected banner rendered');
+    assert(
+      rejectedView.textContent.includes('User did not authorize this wire transfer'),
+      'Rejection explanation displayed'
+    );
+
+    // 23.3 CANCELLED
+    const cancelledReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_state_cancelled',
+      status: ApprovalStatus.CANCELLED,
+      resolvedAt: '2026-10-20T10:04:00.000Z',
+      cancellationReason: 'User clicked Back to Safety in Staging Mode.',
+    };
+    const cancelledView = renderRequestDetailView({ request: cancelledReq });
+    const canPill = cancelledView.querySelector('.gd-detail-status-pill');
+    assertEquals(canPill?.textContent, 'CANCELLED', 'Pill text is CANCELLED');
+    assert(canPill?.classList.contains('cancelled') ?? false, 'Pill has .cancelled class');
+    const canBanner = cancelledView.querySelector('.gd-status-banner.cancelled');
+    assert(canBanner !== null, 'Cancelled banner rendered');
+    assert(
+      canBanner?.textContent.includes('User clicked Back to Safety in Staging Mode') ?? false,
+      'Cancellation reason displayed in banner'
+    );
+
+    // 23.4 EXPIRED
+    const expiredReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_state_expired',
+      status: ApprovalStatus.EXPIRED,
+      resolvedAt: '2026-10-20T10:15:00.000Z',
+    };
+    const expiredView = renderRequestDetailView({ request: expiredReq });
+    const expPill = expiredView.querySelector('.gd-detail-status-pill');
+    assertEquals(expPill?.textContent, 'EXPIRED', 'Pill text is EXPIRED');
+    assert(expPill?.classList.contains('expired') ?? false, 'Pill has .expired class');
+    const expBanner = expiredView.querySelector('.gd-status-banner.expired');
+    assert(expBanner !== null, 'Expired banner rendered');
+    assert(
+      expBanner?.textContent.includes('review deadline elapsed') ?? false,
+      'Expired banner notes deadline passed'
+    );
+  }
+
+  // Test Suite 24: Hostile Display Strings & Injection Resistance
+  console.log('\n▶ Test Suite 24: Hostile Strings & Anti-XSS Injection Resistance');
+  {
+    const hostileReq: ApprovalRequest = {
+      id: 'apr_<script>alert("id")</script>',
+      actionId: 'act_<img src=x onerror=alert("actionId")>',
+      requesterId: 'usr_<iframe src="javascript:alert(1)"></iframe>',
+      status: ApprovalStatus.PENDING,
+      actionDescription: '<script>alert("actionDescription")</script><img src=x onerror=alert(2)> Transfer All Funds',
+      actionType: ActionType.CLICK,
+      category: ActionCategory.PAYMENT,
+      riskLevel: RiskLevel.CRITICAL,
+      riskScore: 99,
+      riskReasons: [
+        '<script>alert("reason1")</script>',
+        '<b onmouseover="alert(\'hover\')">Hostile Reason</b>',
+      ],
+      origin: 'https://evil.com/path?foo=<script>alert("url")</script>',
+      hostname: 'evil.com<script>alert("host")</script>',
+      pageTitle: '<title>Fake Title</title><script>alert("pageTitle")</script>',
+      createdAt: '2026-10-20T10:00:00.000Z',
+      expiresAt: '2026-10-20T10:15:00.000Z',
+      cancellationReason: '<img src=x onerror=alert("cancel")>',
+    };
+
+    const view = renderRequestDetailView({ request: hostileReq });
+
+    // Assert zero dangerous element nodes exist in the rendered DOM tree
+    const scripts = view.querySelectorAll('script');
+    assertEquals(scripts.length, 0, 'Zero <script> elements injected into DOM tree');
+
+    const iframes = view.querySelectorAll('iframe');
+    assertEquals(iframes.length, 0, 'Zero <iframe> elements injected into DOM tree');
+
+    const images = view.querySelectorAll('img');
+    assertEquals(images.length, 0, 'Zero <img> elements injected into DOM tree');
+
+    // Verify hostile strings are safely escaped and visible only as inert text
+    const titleEl = view.querySelector('.gd-detail-title');
+    assert(
+      titleEl?.textContent.includes('<script>alert("actionDescription")</script>') ?? false,
+      'Script tag in actionDescription rendered safely as inert textContent'
+    );
+
+    const reasons = view.querySelectorAll('.gd-risk-reason-item');
+    assert(
+      reasons[0]?.textContent.includes('<script>alert("reason1")</script>') ?? false,
+      'Script tag in riskReason rendered safely as inert textContent'
+    );
+  }
+
+  // Test Suite 25: Verified Backend Endpoint (GET /api/v1/approvals/:id) & Cache Reuse
+  console.log('\n▶ Test Suite 25: Verified Backend Endpoint (GET /api/v1/approvals/:id) & Cache Reuse');
+  {
+    let getCallCount = 0;
+    let capturedUrl = '';
+    let capturedMethod = '';
+    let capturedAuthHeader = '';
+
+    const detailedMockRequest: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_remote_001',
+      actionDescription: 'Authoritative Remote Detail Record',
+      riskScore: 99,
+      pageTitle: 'Remote Bank Page Title',
+    };
+
+    const mockFetch = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/v1/approvals/pending')) {
+        return createMockResponse(200, {
+          success: true,
+          data: [SAMPLE_REQUEST],
+        });
+      }
+      if (urlStr.includes('/api/v1/approvals/apr_remote_001')) {
+        getCallCount++;
+        capturedUrl = urlStr;
+        capturedMethod = init?.method || 'GET';
+        capturedAuthHeader = (init?.headers as any)?.['Authorization'] || '';
+        return createMockResponse(200, {
+          success: true,
+          data: detailedMockRequest,
+        });
+      }
+      return createMockResponse(404, {
+        success: false,
+        error: { code: 'NOT_FOUND_OR_DENIED', message: 'Request not found' },
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: mockFetch as any,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [SAMPLE_REQUEST],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    // 25.1 Reuse already-loaded authoritative record (zero network requests)
+    const existing = await shell.loadRequestDetails(SAMPLE_REQUEST.id, false);
+    assertEquals(existing?.id, SAMPLE_REQUEST.id, 'Returns loaded record from in-memory cache');
+    assertEquals(getCallCount, 0, 'Zero network calls made when reusing loaded authoritative record');
+
+    // 25.2 Fetch fresh details via verified endpoint (GET /api/v1/approvals/:id)
+    const remoteRecord = await shell.loadRequestDetails('apr_remote_001', true);
+    assertEquals(remoteRecord?.id, 'apr_remote_001', 'Retrieved record via backend endpoint');
+    assertEquals(getCallCount, 1, 'Exactly one GET /api/v1/approvals/:id call dispatched');
+    assertEquals(capturedUrl, 'http://localhost:3000/api/v1/approvals/apr_remote_001', 'Correct endpoint URL called');
+    assertEquals(capturedMethod, 'GET', 'Uses GET method per integration contract');
+    assertEquals(capturedAuthHeader, 'Bearer carol-token', 'Sends Bearer token');
+
+    // 25.3 Cache reuse after first fetch
+    const cachedRecord = await shell.loadRequestDetails('apr_remote_001', false);
+    assertEquals(cachedRecord?.id, 'apr_remote_001', 'Returned from detailedRequestsCache');
+    assertEquals(getCallCount, 1, 'Still only 1 call made; cache hit avoided duplicate request');
+
+    // 25.4 Selection with fresh fetch
+    shell.selectRequest('apr_remote_001', false);
+    const detailTitle = rootElement.querySelector('.gd-detail-title');
+    assertEquals(
+      detailTitle?.textContent,
+      'Authoritative Remote Detail Record',
+      'Detail pane displays freshly loaded remote record'
+    );
 
     shell.destroy();
   }
