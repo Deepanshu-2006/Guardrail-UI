@@ -66,6 +66,10 @@ class MockDOMElement {
   public href: string = '';
   public type: string = '';
   public disabled: boolean = false;
+  public value: string = '';
+  public rows: number = 0;
+  public placeholder: string = '';
+  public htmlFor: string = '';
 
   get innerHTML(): string {
     if (this._textContent) return this._textContent;
@@ -1543,6 +1547,666 @@ async function runDashboardTests() {
       'Authoritative Remote Detail Record',
       'Detail pane displays freshly loaded remote record'
     );
+    shell.destroy();
+  }
+
+  // Test Suite 26: Authoritative Approve Decision Operation
+  console.log('\n▶ Test Suite 26: Authoritative Approve Decision Operation');
+  {
+    let capturedUrl = '';
+    let capturedMethod = '';
+    let capturedHeaders: Record<string, string> = {};
+    let capturedBody: any = null;
+
+    const mockFetch = async (input: any, init?: RequestInit): Promise<Response> => {
+      const url = String(input);
+      capturedUrl = url;
+      capturedMethod = init?.method || 'GET';
+      capturedHeaders = (init?.headers as Record<string, string>) || {};
+      capturedBody = init?.body ? JSON.parse(init.body as string) : null;
+
+      const approvedRecord: ApprovalRequest = {
+        ...SAMPLE_REQUEST,
+        id: 'apr_decide_approve_001',
+        status: ApprovalStatus.APPROVED,
+        decision: {
+          decision: 'APPROVED',
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T10:10:00.000Z',
+          decisionReason: 'Verbally verified by phone with user',
+        },
+        resolvedAt: '2026-10-20T10:10:00.000Z',
+      };
+
+      return createMockResponse(200, {
+        success: true,
+        data: approvedRecord,
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: mockFetch,
+    });
+
+    const pendingReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_decide_approve_001',
+      status: ApprovalStatus.PENDING,
+    };
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [pendingReq],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    // Initial state: pending request rendered with decision controls
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    assert(approveBtn !== null, 'Approve Action button rendered for pending request');
+
+    // Deliberate interaction: click Approve reveals confirmation dialog
+    approveBtn?.click();
+
+    const confirmBox = rootElement.querySelector('.gd-decision-confirm-box.confirm-approve');
+    assert(confirmBox !== null, 'Deliberate confirmation box rendered upon clicking Approve');
+
+    const confirmTitle = rootElement.querySelector('.gd-confirm-title');
+    assertEquals(confirmTitle?.textContent, 'Confirm Approval Decision', 'Confirmation title is accurate');
+
+    // Enter optional reviewer note
+    const reasonInput = rootElement.querySelector('#decision-reason-input') as any;
+    assert(reasonInput !== null, 'Reviewer note input rendered in confirmation step');
+    if (reasonInput) {
+      reasonInput.value = 'Verbally verified by phone with user';
+    }
+
+    // Submit decision
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    assert(submitBtn !== null, 'Confirm submit button rendered');
+    submitBtn?.click();
+
+    // Allow promise resolution
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Verify wire protocol
+    assertEquals(capturedUrl, 'http://localhost:3000/api/v1/approvals/apr_decide_approve_001/decide', 'POST to verified decision endpoint');
+    assertEquals(capturedMethod, 'POST', 'HTTP method is POST');
+    assertEquals(capturedHeaders['Authorization'], 'Bearer carol-token', 'Bearer token passed');
+    assertEquals(capturedBody?.decision, 'APPROVED', 'Payload contains decision: APPROVED');
+    assertEquals(capturedBody?.decisionReason, 'Verbally verified by phone with user', 'Payload contains reviewer reason');
+    assert(!('approverId' in (capturedBody || {})), 'Client-supplied approverId strictly excluded from payload');
+    assert(!('decidedBy' in (capturedBody || {})), 'Client-supplied decidedBy strictly excluded from payload');
+    assert(!('status' in (capturedBody || {})), 'Client-supplied status strictly excluded from payload');
+
+    // Verify authoritative UI state update
+    const successBanner = rootElement.querySelector('.gd-decision-success-banner');
+    assert(successBanner !== null, 'Decision success banner rendered on 200 OK');
+    assert(
+      successBanner?.textContent.includes('Decision successfully recorded: APPROVED') ?? false,
+      'Success banner confirms server recorded decision'
+    );
+
+    // Pruned from pending requests list
+    assertEquals(shell.getState().pendingRequests.length, 0, 'Resolved request pruned from pending list');
+    assertEquals(shell.getState().pendingStatus, 'empty', 'Pending status updated to empty');
+
+    // Detail view displays authoritative record
+    const statusPill = rootElement.querySelector('.gd-detail-status-pill');
+    assertEquals(statusPill?.textContent, 'APPROVED', 'Detail status pill updated to APPROVED');
+
+    const resolvedNotice = rootElement.querySelector('.gd-decision-resolved-notice');
+    assert(resolvedNotice !== null, 'Resolved notice displayed now that request is resolved');
+
+    shell.destroy();
+  }
+
+  // Test Suite 27: Authoritative Reject Decision Operation
+  console.log('\n▶ Test Suite 27: Authoritative Reject Decision Operation');
+  {
+    let capturedUrl = '';
+    let capturedBody: any = null;
+
+    const mockFetch = async (input: any, init?: RequestInit): Promise<Response> => {
+      const url = String(input);
+      capturedUrl = url;
+      capturedBody = init?.body ? JSON.parse(init.body as string) : null;
+
+      const rejectedRecord: ApprovalRequest = {
+        ...SAMPLE_REQUEST,
+        id: 'apr_decide_reject_001',
+        status: ApprovalStatus.REJECTED,
+        decision: {
+          decision: 'REJECTED',
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T10:12:00.000Z',
+          decisionReason: 'Unrecognized external recipient account',
+        },
+        resolvedAt: '2026-10-20T10:12:00.000Z',
+      };
+
+      return createMockResponse(200, {
+        success: true,
+        data: rejectedRecord,
+      });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: mockFetch,
+    });
+
+    const pendingReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_decide_reject_001',
+      status: ApprovalStatus.PENDING,
+    };
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [pendingReq],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    const rejectBtn = rootElement.querySelector('.gd-btn-reject');
+    assert(rejectBtn !== null, 'Reject Action button rendered');
+    rejectBtn?.click();
+
+    const confirmBox = rootElement.querySelector('.gd-decision-confirm-box.confirm-reject');
+    assert(confirmBox !== null, 'Confirmation box for rejection rendered');
+
+    const reasonInput = rootElement.querySelector('#decision-reason-input') as any;
+    if (reasonInput) {
+      reasonInput.value = 'Unrecognized external recipient account';
+    }
+
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    submitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    assertEquals(capturedUrl, 'http://localhost:3000/api/v1/approvals/apr_decide_reject_001/decide', 'POST to reject decision endpoint');
+    assertEquals(capturedBody?.decision, 'REJECTED', 'Payload contains decision: REJECTED');
+    assertEquals(capturedBody?.decisionReason, 'Unrecognized external recipient account', 'Payload contains rejection reason');
+
+    const successBanner = rootElement.querySelector('.gd-decision-success-banner');
+    assert(successBanner !== null, 'Success banner rendered for rejection');
+
+    const statusPill = rootElement.querySelector('.gd-detail-status-pill');
+    assertEquals(statusPill?.textContent, 'REJECTED', 'Detail pill is REJECTED');
+
+    shell.destroy();
+  }
+
+  // Test Suite 28: High-Impact Decision Warning & Deliberate Confirmation Step
+  console.log('\n▶ Test Suite 28: High-Impact Decision Warning & Deliberate Confirmation Step');
+  {
+    let networkCallCount = 0;
+    const mockFetch = async (): Promise<Response> => {
+      networkCallCount++;
+      return createMockResponse(200, { success: true, data: SAMPLE_REQUEST });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetch,
+    });
+
+    const highImpactReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_high_impact_001',
+      riskLevel: RiskLevel.CRITICAL,
+      riskScore: 98,
+      status: ApprovalStatus.PENDING,
+    };
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [highImpactReq],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    // High impact warning rendered
+    const warning = rootElement.querySelector('.gd-high-impact-warning');
+    assert(warning !== null, 'High-impact decision warning rendered for CRITICAL risk request');
+    assert(
+      warning?.textContent.includes('High-Impact Decision Warning') ?? false,
+      'Warning heading informs reviewer of elevated risk'
+    );
+
+    // Cancel interaction
+    const cancelBtn = rootElement.querySelector('.gd-btn-cancel-confirm');
+    assert(cancelBtn !== null, 'Cancel confirmation button rendered');
+    cancelBtn?.click();
+
+    // Confirmation box dismissed and initial buttons restored
+    const confirmBoxAfterCancel = rootElement.querySelector('.gd-decision-confirm-box');
+    assert(confirmBoxAfterCancel === null, 'Confirmation box dismissed on Cancel');
+
+    const restoredApproveBtn = rootElement.querySelector('.gd-btn-approve');
+    assert(restoredApproveBtn !== null, 'Initial Approve Action button restored');
+    assertEquals(networkCallCount, 0, 'Zero network calls dispatched when decision is cancelled');
+
+    shell.destroy();
+  }
+
+  // Test Suite 29: In-Flight Locking & Repeated Clicks Prevention
+  console.log('\n▶ Test Suite 29: In-Flight Locking & Repeated Clicks Prevention');
+  {
+    let networkCallCount = 0;
+    let resolveNetwork: (res: Response) => void;
+    const deferredPromise = new Promise<Response>((resolve) => {
+      resolveNetwork = resolve;
+    });
+
+    const mockFetch = async (): Promise<Response> => {
+      networkCallCount++;
+      return deferredPromise;
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_inflight_001', status: ApprovalStatus.PENDING }],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    // Start submission
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    submitBtn?.click();
+
+    // In-flight state assertions
+    assertEquals(shell.getState().isSubmittingDecision, true, 'isSubmittingDecision is true while request in flight');
+    assertEquals(submitBtn?.disabled, true, 'Submit button disabled during submission');
+    assertEquals(submitBtn?.getAttribute('aria-busy'), 'true', 'aria-busy is true during submission');
+
+    // Repeated clicks while in flight
+    submitBtn?.click();
+    submitBtn?.click();
+
+    // Allow token resolution and dispatch of fetch
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Concurrent programmatic submission call
+    const concurrentResult = await shell.submitDecision('apr_inflight_001', 'APPROVED');
+    assertEquals(concurrentResult, null, 'Concurrent submitDecision returns null while in flight');
+
+    assertEquals(networkCallCount, 1, 'Exactly ONE network call dispatched despite repeated clicks');
+
+    // Resolve in-flight call
+    resolveNetwork!(
+      createMockResponse(200, {
+        success: true,
+        data: { ...SAMPLE_REQUEST, id: 'apr_inflight_001', status: ApprovalStatus.APPROVED },
+      })
+    );
+    await new Promise((r) => setTimeout(r, 10));
+
+    assertEquals(shell.getState().isSubmittingDecision, false, 'isSubmittingDecision reset to false after resolution');
+
+    shell.destroy();
+  }
+
+  // Test Suite 30: Conflict & Concurrent Resolution (409 ALREADY_RESOLVED)
+  console.log('\n▶ Test Suite 30: Conflict & Concurrent Resolution (409 ALREADY_RESOLVED)');
+  {
+    let detailFetchDispatched = false;
+    const mockFetch = async (input: any): Promise<Response> => {
+      const url = String(input);
+      if (url.includes('/decide')) {
+        return createMockResponse(409, {
+          success: false,
+          error: {
+            code: 'ALREADY_RESOLVED',
+            message: 'Approval request has already been decided or cancelled.',
+          },
+        });
+      }
+      if (url.includes('/approvals/apr_conflict_001')) {
+        detailFetchDispatched = true;
+        return createMockResponse(200, {
+          success: true,
+          data: {
+            ...SAMPLE_REQUEST,
+            id: 'apr_conflict_001',
+            status: ApprovalStatus.APPROVED,
+            decision: {
+              decision: 'APPROVED',
+              decidedBy: 'tc_bob_competing_reviewer',
+              decidedAt: '2026-10-20T10:14:00.000Z',
+            },
+          },
+        });
+      }
+      return createMockResponse(404, {});
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_conflict_001', status: ApprovalStatus.PENDING }],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    submitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Asserts: does NOT pretend decision succeeded
+    const successBanner = rootElement.querySelector('.gd-decision-success-banner');
+    assert(successBanner === null, 'No success banner displayed on 409 Conflict');
+
+    const errorBanner = rootElement.querySelector('.gd-decision-error-banner');
+    assert(errorBanner !== null, 'Conflict error banner displayed on 409 ALREADY_RESOLVED');
+    assert(
+      errorBanner?.textContent.includes('already been resolved by another reviewer') ?? false,
+      'Error banner explains race condition conflict'
+    );
+
+    assert(detailFetchDispatched, 'Dispatched fresh detail fetch to load authoritative resolved state');
+    assertEquals(shell.getState().pendingRequests.length, 0, 'Pruned resolved request from pending list');
+
+    shell.destroy();
+  }
+
+  // Test Suite 31: Expired Request Handling (410 REQUEST_EXPIRED)
+  console.log('\n▶ Test Suite 31: Expired Request Handling (410 REQUEST_EXPIRED)');
+  {
+    const mockFetch = async (input: any): Promise<Response> => {
+      const url = String(input);
+      if (url.includes('/decide')) {
+        return createMockResponse(410, {
+          success: false,
+          error: {
+            code: 'REQUEST_EXPIRED',
+            message: 'Approval request has expired and can no longer be decided.',
+          },
+        });
+      }
+      if (url.includes('/approvals/apr_expired_001')) {
+        return createMockResponse(200, {
+          success: true,
+          data: {
+            ...SAMPLE_REQUEST,
+            id: 'apr_expired_001',
+            status: ApprovalStatus.EXPIRED,
+          },
+        });
+      }
+      return createMockResponse(404, {});
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_expired_001', status: ApprovalStatus.PENDING }],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    submitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    const successBanner = rootElement.querySelector('.gd-decision-success-banner');
+    assert(successBanner === null, 'No success banner displayed on 410 Expired');
+
+    const errorBanner = rootElement.querySelector('.gd-decision-error-banner');
+    assert(errorBanner !== null, 'Expired error banner displayed on 410 REQUEST_EXPIRED');
+    assert(
+      errorBanner?.textContent.includes('The review deadline for this request has elapsed') ?? false,
+      'Error banner informs user that deadline elapsed'
+    );
+
+    assertEquals(shell.getState().pendingRequests.length, 0, 'Pruned expired request from pending list');
+
+    shell.destroy();
+  }
+
+  // Test Suite 32: Authorization Failures (401, 403, 404)
+  console.log('\n▶ Test Suite 32: Authorization Failures (401, 403, 404)');
+  {
+    // 32.1: 401 UNAUTHENTICATED
+    const mockFetch401 = async (): Promise<Response> => {
+      return createMockResponse(401, {
+        success: false,
+        error: { code: 'UNAUTHENTICATED', message: 'Authentication required' },
+      });
+    };
+    const client401 = new ApprovalApiClient({ baseUrl: 'http://localhost:3000', fetchFn: mockFetch401 });
+    const shell401 = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_auth_001', status: ApprovalStatus.PENDING }],
+      initialProfile: { actorId: 'tc_carol', role: 'TRUSTED_CONTACT', isAuthenticated: true },
+      apiClient: client401,
+      autoFetch: false,
+    });
+    await shell401.submitDecision('apr_auth_001', 'APPROVED');
+    const err401 = rootElement.querySelector('.gd-decision-error-banner');
+    assert(err401?.textContent.includes('Authentication required') ?? false, '401 communicates auth required');
+    assertEquals(shell401.getState().contactProfile, null, 'Profile invalidated on 401 unauthenticated');
+    shell401.destroy();
+
+    // 32.2: 403 SELF_APPROVAL_PROHIBITED
+    const mockFetch403 = async (): Promise<Response> => {
+      return createMockResponse(403, {
+        success: false,
+        error: { code: 'SELF_APPROVAL_PROHIBITED', message: 'Self-approval is strictly prohibited' },
+      });
+    };
+    const client403 = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetch403,
+    });
+    const shell403 = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_self_001', status: ApprovalStatus.PENDING }],
+      apiClient: client403,
+      autoFetch: false,
+    });
+    await shell403.submitDecision('apr_self_001', 'APPROVED');
+    const err403 = rootElement.querySelector('.gd-decision-error-banner');
+    assert(err403?.textContent.includes('Self-approval is strictly prohibited') ?? false, '403 explains self-approval is forbidden');
+    shell403.destroy();
+
+    // 32.3: 404 NOT_FOUND_OR_DENIED
+    const mockFetch404 = async (): Promise<Response> => {
+      return createMockResponse(404, {
+        success: false,
+        error: { code: 'NOT_FOUND_OR_DENIED', message: 'Request not found or access denied' },
+      });
+    };
+    const client404 = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetch404,
+    });
+    const shell404 = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_denied_001', status: ApprovalStatus.PENDING }],
+      apiClient: client404,
+      autoFetch: false,
+    });
+    await shell404.submitDecision('apr_denied_001', 'APPROVED');
+    const err404 = rootElement.querySelector('.gd-decision-error-banner');
+    assert(err404?.textContent.includes('Access denied') ?? false, '404 communicates access denied');
+    shell404.destroy();
+  }
+
+  // Test Suite 33: Network Failure & Timeout Resilience (No Optimistic Resolution)
+  console.log('\n▶ Test Suite 33: Network Failure & Timeout Resilience (No Optimistic Resolution)');
+  {
+    const mockFetchNetworkError = async (): Promise<Response> => {
+      throw new Error('Connection refused at localhost:3000');
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: mockFetchNetworkError,
+    });
+
+    const pendingReq: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_net_fail_001',
+      status: ApprovalStatus.PENDING,
+    };
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [pendingReq],
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    submitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Verifies: NO optimistic status transition occurred!
+    const state = shell.getState();
+    assertEquals(state.pendingRequests.length, 1, 'Request remains in pending list');
+    assertEquals(state.pendingRequests[0]?.status, ApprovalStatus.PENDING, 'Request remains PENDING without optimistic transition');
+
+    const errBanner = rootElement.querySelector('.gd-decision-error-banner');
+    assert(errBanner !== null, 'Network error banner displayed');
+    assert(
+      errBanner?.textContent.includes('Network connection error') ?? false,
+      'Error banner describes network connectivity issue'
+    );
+    assertEquals(state.isSubmittingDecision, false, 'isSubmittingDecision reset to false');
+
+    shell.destroy();
+  }
+
+  // Test Suite 34: Zero-Trust Client-Side Spoofing Prevention
+  console.log('\n▶ Test Suite 34: Zero-Trust Client-Side Spoofing Prevention');
+  {
+    let fetchDispatched = false;
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'token',
+      fetchFn: async () => {
+        fetchDispatched = true;
+        return createMockResponse(200, {});
+      },
+    });
+
+    // 34.1: Attempting to pass decidedBy
+    const result1 = await client.submitDecision('apr_001', {
+      decision: 'APPROVED',
+      decidedBy: 'tc_malicious_spoof',
+    } as any);
+    assertEquals(result1.success, false, 'Client-side spoofed decidedBy rejected');
+    if (!result1.success) {
+      assertEquals(result1.error.code, 'VALIDATION_ERROR', 'Rejection code is VALIDATION_ERROR');
+      assert(result1.error.message.includes('decidedBy'), 'Error message identifies decidedBy');
+    }
+
+    // 34.2: Attempting to pass approverId
+    const result2 = await client.submitDecision('apr_001', {
+      decision: 'APPROVED',
+      approverId: 'tc_malicious_spoof',
+    } as any);
+    assertEquals(result2.success, false, 'Client-side spoofed approverId rejected');
+
+    // 34.3: Attempting to pass status
+    const result3 = await client.submitDecision('apr_001', {
+      decision: 'APPROVED',
+      status: 'APPROVED',
+    } as any);
+    assertEquals(result3.success, false, 'Client-side spoofed status rejected');
+    if (!result3.success) {
+      assert(result3.error.message.includes('status'), 'Error message identifies status');
+    }
+
+    assertEquals(fetchDispatched, false, 'Zero network calls dispatched for spoofed payloads');
+  }
+
+  // Test Suite 35: Missing Backend Prerequisite UI Boundary
+  console.log('\n▶ Test Suite 35: Missing Backend Prerequisite UI Boundary');
+  {
+    // Shell initialized without apiClient
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_no_api_001', status: ApprovalStatus.PENDING }],
+      autoFetch: false,
+    });
+
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    approveBtn?.click();
+
+    const submitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    submitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    const errBanner = rootElement.querySelector('.gd-decision-error-banner');
+    assert(errBanner !== null, 'Decision error banner displayed when apiClient is missing');
+    assert(
+      errBanner?.textContent.includes('Backend decision service is unavailable') ?? false,
+      'Error banner accurately explains missing backend prerequisite'
+    );
+    assert(
+      errBanner?.textContent.includes('Approval API client is not configured') ?? false,
+      'Error message identifies missing client rather than simulating a fake decision'
+    );
+
+    // Request is NOT faked or marked approved
+    assertEquals(shell.getState().pendingRequests[0]?.status, ApprovalStatus.PENDING, 'Request remains PENDING');
 
     shell.destroy();
   }
