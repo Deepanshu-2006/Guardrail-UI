@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Guardrail Trusted Contact Portal for reviewing, evaluating, and monitoring high-risk browser interactions on behalf of designated wards.">
+  <title>Guardrail — Trusted Contact Portal</title>
+  
+  <!-- Modern Clean Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Dashboard Design System -->
+  <link rel="stylesheet" href="styles/dashboard.css">
+</head>
+<body>
+  <!-- Dashboard Mount Container -->
+  <div id="dashboard-app" role="application" aria-label="Guardrail Trusted Contact Portal">
+    <!-- Initial fallback state while script loads -->
+    <noscript>
+      <div style="padding: 40px; text-align: center; font-family: sans-serif; color: #334155;">
+        <h2>JavaScript Required</h2>
+        <p>The Guardrail Trusted Contact Portal requires JavaScript to securely inspect and review approval requests.</p>
+      </div>
+    </noscript>
+  </div>
+
+  <!-- Dashboard Shell Script -->
+  <script type="module" src="dist/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "guardrail-dashboard",
+  "version": "0.1.0",
+  "description": "Guardrail UI - Trusted Contact Reviewer Portal & Dashboard Shell",
+  "type": "module",
+  "scripts": {
+    "build": "../extension/node_modules/.bin/esbuild src/index.ts --bundle --format=esm --target=es2022 --outfile=dist/dashboard.js",
+    "type-check": "../extension/node_modules/.bin/tsc --noEmit",
+    "test": "../extension/node_modules/.bin/esbuild src/tests/test-dashboard-shell.ts --bundle --format=esm --target=es2022 --outfile=dist/test-dashboard-shell.js && node dist/test-dashboard-shell.js"
+  }
+}
