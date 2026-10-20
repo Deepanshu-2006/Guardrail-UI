@@ -6,6 +6,8 @@
   "scripts": {
     "build": "../extension/node_modules/.bin/esbuild src/index.ts --bundle --format=esm --target=es2022 --outfile=dist/dashboard.js",
     "type-check": "../extension/node_modules/.bin/tsc --noEmit",
-    "test": "../extension/node_modules/.bin/esbuild src/tests/test-dashboard-shell.ts --bundle --format=esm --target=es2022 --outfile=dist/test-dashboard-shell.js && node dist/test-dashboard-shell.js"
+    "test:shell": "../extension/node_modules/.bin/esbuild src/tests/test-dashboard-shell.ts --bundle --format=esm --target=es2022 --outfile=dist/test-dashboard-shell.js && node dist/test-dashboard-shell.js",
+    "test:verify-day12": "../extension/node_modules/.bin/esbuild src/tests/verify-day12-workflow.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/verify-day12-workflow.js && node dist/verify-day12-workflow.js",
+    "test": "npm run test:shell && npm run test:verify-day12"
   }
 }

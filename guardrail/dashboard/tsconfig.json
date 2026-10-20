@@ -10,7 +10,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "isolatedModules": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "typeRoots": ["../extension/node_modules/@types"],
+    "types": ["chrome"]
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*",
+    "../extension/src/types/**/*.ts",
+    "../extension/src/approval/**/*.ts",
+    "../extension/src/interception/**/*.ts"
+  ]
 }
