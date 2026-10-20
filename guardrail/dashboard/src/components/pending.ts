@@ -16,6 +16,7 @@ export interface PendingApprovalsProps {
   status: ViewStatus;
   errorMessage?: string | null;
   onRequestSelect: (requestId: string) => void;
+  onRefresh?: () => void;
 }
 
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
@@ -28,6 +29,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const header = document.createElement('header');
   header.className = 'gd-section-header';
 
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'gd-section-title-group';
+
   const title = document.createElement('h1');
   title.id = 'pending-title';
   title.className = 'gd-section-title';
@@ -38,8 +42,32 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   subtitle.textContent =
     'Inspect held browser actions requiring trusted contact review before the user may proceed in Staging Mode.';
 
-  header.appendChild(title);
-  header.appendChild(subtitle);
+  titleGroup.appendChild(title);
+  titleGroup.appendChild(subtitle);
+  header.appendChild(titleGroup);
+
+  // Refresh Action Button
+  if (props.onRefresh) {
+    const refreshBtn = document.createElement('button');
+    refreshBtn.type = 'button';
+    refreshBtn.className = 'gd-btn-refresh';
+    refreshBtn.setAttribute('aria-label', 'Refresh pending approval requests');
+    if (props.status === 'loading') {
+      refreshBtn.disabled = true;
+      refreshBtn.setAttribute('aria-busy', 'true');
+    }
+    refreshBtn.innerHTML = `
+      <svg class="gd-icon ${props.status === 'loading' ? 'gd-spin' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+      </svg>
+      <span>${props.status === 'loading' ? 'Refreshing...' : 'Refresh'}</span>
+    `;
+    refreshBtn.addEventListener('click', () => {
+      props.onRefresh?.();
+    });
+    header.appendChild(refreshBtn);
+  }
+
   section.appendChild(header);
 
   // Error Banner (if error state)
@@ -48,10 +76,33 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     errorBanner.className = 'gd-error-banner';
     errorBanner.setAttribute('role', 'alert');
 
+    const errorContent = document.createElement('div');
+    errorContent.className = 'gd-error-content';
+
+    const icon = document.createElement('span');
+    icon.className = 'gd-error-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '⚠️';
+
     const errorText = document.createElement('span');
+    errorText.className = 'gd-error-text';
     errorText.textContent = props.errorMessage;
 
-    errorBanner.appendChild(errorText);
+    errorContent.appendChild(icon);
+    errorContent.appendChild(errorText);
+    errorBanner.appendChild(errorContent);
+
+    if (props.onRefresh) {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'gd-btn-retry';
+      retryBtn.textContent = 'Retry';
+      retryBtn.addEventListener('click', () => {
+        props.onRefresh?.();
+      });
+      errorBanner.appendChild(retryBtn);
+    }
+
     section.appendChild(errorBanner);
   }
 
@@ -218,6 +269,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       { label: 'Ward Identity', value: selectedRequest.requesterId },
       { label: 'Evaluated Risk Level', value: selectedRequest.riskLevel },
       { label: 'Numeric Risk Score', value: selectedRequest.riskScore !== undefined ? `${selectedRequest.riskScore} / 100` : 'Not Scored' },
+      { label: 'Initiated At', value: selectedRequest.createdAt ? new Date(selectedRequest.createdAt).toLocaleString() : 'Unknown' },
+      { label: 'Expires At', value: selectedRequest.expiresAt ? new Date(selectedRequest.expiresAt).toLocaleString() : 'Not Set' },
     ];
 
     for (const item of items) {

@@ -10,7 +10,9 @@
  */
 
 import {
+  ApprovalApiClient,
   ApprovalRequest,
+  ApiClientErrorCodes,
   DashboardShellOptions,
   DashboardShellState,
   DashboardView,
@@ -31,6 +33,11 @@ export class DashboardShell {
   private mainContentEl: HTMLElement | null = null;
   private isMobileSidebarOpen: boolean = false;
   private hashChangeHandler: (() => void) | null = null;
+  private readonly apiClient?: ApprovalApiClient;
+  private readonly autoFetch: boolean;
+  private readonly pollIntervalMs?: number;
+  private activeFetchPromise: Promise<void> | null = null;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -42,6 +49,10 @@ export class DashboardShell {
     } else {
       this.rootContainer = options.container;
     }
+
+    this.apiClient = options.apiClient;
+    this.autoFetch = options.autoFetch ?? Boolean(options.apiClient);
+    this.pollIntervalMs = options.pollIntervalMs;
 
     const initialRequests = options.initialRequests ?? [];
     this.state = {
@@ -62,6 +73,14 @@ export class DashboardShell {
   private init(): void {
     this.render();
     this.setupListeners();
+    if (this.autoFetch && this.apiClient) {
+      void this.fetchPendingRequests();
+    }
+    if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
+      this.pollTimer = setInterval(() => {
+        void this.fetchPendingRequests();
+      }, this.pollIntervalMs);
+    }
   }
 
   /**
@@ -202,6 +221,7 @@ export class DashboardShell {
       status: this.state.pendingStatus,
       errorMessage: this.state.errorMessage,
       onRequestSelect: (id) => this.selectRequest(id),
+      onRefresh: this.apiClient ? () => void this.refresh() : undefined,
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');
@@ -241,6 +261,11 @@ export class DashboardShell {
       this.toggleMobileSidebar(false);
     }
 
+    // When switching to pending view, refresh pending requests if autoFetch is enabled
+    if (view === 'pending' && this.autoFetch && this.apiClient && this.state.pendingStatus !== 'loading') {
+      void this.fetchPendingRequests();
+    }
+
     // Full re-render guarantees accessibility attributes and view DOM sync
     this.render();
 
@@ -252,6 +277,120 @@ export class DashboardShell {
         // Ignore in headless test environments
       }
     }
+  }
+
+  /**
+   * Fetches real pending approval requests from the remote backend.
+   *
+   * ARCHITECTURAL REQUIREMENTS & CONCURRENCY:
+   * 1. Uses the verified pending-requests endpoint from integration contract (GET /api/v1/approvals/pending).
+   * 2. Backend determines authorized requests; frontend sends NO approver ID as proof of authority.
+   * 3. Avoids duplicate concurrent requests by returning the active in-flight Promise.
+   * 4. Accurately reflects empty, loading, error, and populated states without fabricating data.
+   */
+  public async fetchPendingRequests(): Promise<void> {
+    if (this.activeFetchPromise) {
+      return this.activeFetchPromise;
+    }
+
+    this.activeFetchPromise = (async () => {
+      try {
+        await this.doFetchPendingRequests();
+      } finally {
+        this.activeFetchPromise = null;
+      }
+    })();
+
+    return this.activeFetchPromise;
+  }
+
+  private async doFetchPendingRequests(): Promise<void> {
+    if (!this.apiClient) {
+      this.setError('No approval API client configured. Unable to fetch pending requests.');
+      return;
+    }
+
+    this.setLoading(true);
+
+    try {
+      const result = await this.apiClient.listPendingApprovals();
+
+      if (result.success) {
+        // Validate payload integrity: must be an array
+        if (!Array.isArray(result.data)) {
+          this.setError('Protocol error: Backend returned an invalid, non-array response payload.');
+          return;
+        }
+
+        // Validate that items are valid objects with canonical ids
+        const safeRequests: ApprovalRequest[] = [];
+        for (const req of result.data) {
+          if (!req || typeof req !== 'object' || typeof req.id !== 'string') {
+            this.setError('Protocol error: Malformed approval request item received from backend.');
+            return;
+          }
+          safeRequests.push(req);
+        }
+
+        this.state.errorMessage = null;
+        this.setPendingRequests(safeRequests);
+      } else {
+        const err = result.error;
+        let userMessage = err.message;
+
+        switch (err.code) {
+          case ApiClientErrorCodes.UNAUTHENTICATED:
+            userMessage = 'Authentication required: Please sign in with an authorized trusted contact session.';
+            // Invalidate profile since session is unauthenticated
+            if (this.state.contactProfile) {
+              this.state.contactProfile = null;
+            }
+            break;
+          case ApiClientErrorCodes.NOT_FOUND_OR_DENIED:
+            userMessage = 'Access denied: You are not authorized to view pending approval requests for this ward.';
+            break;
+          case ApiClientErrorCodes.NETWORK_FAILURE:
+            userMessage = 'Network connection error: Unable to reach the Guardrail approval backend. Please verify your connection and retry.';
+            break;
+          case ApiClientErrorCodes.TIMEOUT:
+            userMessage = 'Request timed out: The approval backend took too long to respond. Please retry.';
+            break;
+          case ApiClientErrorCodes.MALFORMED_JSON_RESPONSE:
+            userMessage = 'Protocol error: Received malformed response syntax from approval backend.';
+            break;
+          case ApiClientErrorCodes.RATE_LIMIT_EXCEEDED:
+            userMessage = 'Too many requests: Please wait a few moments before retrying.';
+            break;
+          case ApiClientErrorCodes.SERVER_ERROR:
+            userMessage = 'Internal server error: The approval backend encountered an unexpected error.';
+            break;
+          default:
+            userMessage = err.message || 'An unexpected error occurred while fetching pending approvals.';
+            break;
+        }
+
+        this.setError(userMessage);
+      }
+    } catch (unhandled) {
+      const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
+      this.setError(`Client error while retrieving pending approvals: ${msg}`);
+    }
+  }
+
+  /**
+   * Refreshes the pending approvals list from the backend.
+   */
+  public async refresh(): Promise<void> {
+    return this.fetchPendingRequests();
+  }
+
+  /**
+   * Invalidates current data and requests fresh data from the backend.
+   */
+  public async invalidate(): Promise<void> {
+    this.state.pendingRequests = [];
+    this.state.selectedRequestId = null;
+    return this.fetchPendingRequests();
   }
 
   /**
@@ -340,6 +479,10 @@ export class DashboardShell {
    * Cleans up event listeners and removes DOM nodes.
    */
   public destroy(): void {
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
     if (this.hashChangeHandler && typeof window !== 'undefined') {
       window.removeEventListener('hashchange', this.hashChangeHandler);
       this.hashChangeHandler = null;
