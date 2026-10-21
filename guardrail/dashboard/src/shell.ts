@@ -34,15 +34,26 @@ export class DashboardShell {
   private mainContentEl: HTMLElement | null = null;
   private isMobileSidebarOpen: boolean = false;
   private hashChangeHandler: (() => void) | null = null;
+  private visibilityChangeHandler: (() => void) | null = null;
   private readonly apiClient?: ApprovalApiClient;
   private readonly autoFetch: boolean;
-  private readonly pollIntervalMs?: number;
+  private pollIntervalMs?: number;
   private activeFetchPromise: Promise<void> | null = null;
+  private readonly activeDetailFetchPromises: Map<string, Promise<ApprovalRequest | null>> = new Map();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
   private isDetailLoading: boolean = false;
   private detailErrorMessage: string | null = null;
   private isSubmittingDecision: boolean = false;
+  private isDestroyed: boolean = false;
+  private isPollingHaltedDueToAuth: boolean = false;
+  private lastSynchronizedAt: Date | null = null;
+
+  // Monotonic sequence tracking for stale-response protection
+  private nextPendingFetchSeq: number = 0;
+  private lastAppliedPendingSeq: number = 0;
+  private readonly nextDetailFetchSeqByRequestId: Map<string, number> = new Map();
+  private readonly lastAppliedDetailSeqByRequestId: Map<string, number> = new Map();
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -111,26 +122,118 @@ export class DashboardShell {
       void this.fetchPendingRequests();
     }
     if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
-      this.pollTimer = setInterval(() => {
-        void this.fetchPendingRequests();
-      }, this.pollIntervalMs);
+      this.startPolling();
     }
   }
 
   /**
-   * Sets up URL hash and window event listeners.
+   * Sets up URL hash, window, and tab visibility event listeners.
    */
   private setupListeners(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window !== 'undefined') {
+      this.hashChangeHandler = () => {
+        const view = this.getViewFromHash();
+        if (view && view !== this.state.activeView) {
+          this.setActiveView(view, false);
+        }
+      };
 
-    this.hashChangeHandler = () => {
-      const view = this.getViewFromHash();
-      if (view && view !== this.state.activeView) {
-        this.setActiveView(view, false);
+      window.addEventListener('hashchange', this.hashChangeHandler);
+    }
+
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      this.visibilityChangeHandler = () => {
+        this.handleVisibilityChange();
+      };
+      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+    }
+  }
+
+  /**
+   * Handles tab visibility changes (document.visibilitychange).
+   * Automatically pauses polling when the tab is hidden to save background resources.
+   * Resumes polling and immediately queries an authoritative sync probe when returning to visible.
+   */
+  public handleVisibilityChange(): void {
+    if (this.isDestroyed || typeof document === 'undefined') return;
+
+    const isHidden = document.visibilityState === 'hidden';
+    if (isHidden) {
+      this.stopPolling();
+    } else {
+      this.startPolling();
+      // Immediately refresh visible dashboard state upon returning to the tab
+      if (this.apiClient && !this.isPollingHaltedDueToAuth) {
+        void this.fetchPendingRequests({ isBackground: true });
       }
-    };
+    }
+  }
 
-    window.addEventListener('hashchange', this.hashChangeHandler);
+  /**
+   * Starts background polling timer if configured and not already running.
+   */
+  public startPolling(): void {
+    if (this.isDestroyed) return;
+    if (this.pollTimer !== null) return;
+    if (!this.pollIntervalMs || this.pollIntervalMs <= 0 || !this.apiClient) return;
+    if (this.isPollingHaltedDueToAuth) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+
+    this.pollTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      void this.fetchPendingRequests({ isBackground: true });
+    }, this.pollIntervalMs);
+  }
+
+  /**
+   * Stops background polling timer.
+   */
+  public stopPolling(): void {
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  /**
+   * Configures background polling interval at runtime.
+   */
+  public setPollInterval(intervalMs: number | undefined): void {
+    this.pollIntervalMs = intervalMs;
+    this.stopPolling();
+    if (intervalMs && intervalMs > 0 && !this.isDestroyed) {
+      this.startPolling();
+    }
+  }
+
+  /**
+   * Returns configured polling interval in milliseconds.
+   */
+  public getPollIntervalMs(): number | undefined {
+    return this.pollIntervalMs;
+  }
+
+  /**
+   * Returns true if background polling timer is actively running.
+   */
+  public isPolling(): boolean {
+    return this.pollTimer !== null;
+  }
+
+  /**
+   * Returns timestamp of last successful background/foreground synchronization.
+   */
+  public getLastSynchronizedAt(): Date | null {
+    return this.lastSynchronizedAt;
+  }
+
+  /**
+   * Returns last applied monotonic sequence number for pending approvals list.
+   */
+  public getLastAppliedSequence(): number {
+    return this.lastAppliedPendingSeq;
   }
 
   /**
@@ -364,15 +467,19 @@ export class DashboardShell {
    * 2. Backend determines authorized requests; frontend sends NO approver ID as proof of authority.
    * 3. Avoids duplicate concurrent requests by returning the active in-flight Promise.
    * 4. Accurately reflects empty, loading, error, and populated states without fabricating data.
+   * 5. Protects against stale out-of-order responses via monotonic sequence numbers.
+   * 6. Automatically refreshes visible request details if selected request state changes.
    */
-  public async fetchPendingRequests(): Promise<void> {
+  public async fetchPendingRequests(options?: { isBackground?: boolean }): Promise<void> {
+    if (this.isDestroyed) return;
+
     if (this.activeFetchPromise) {
       return this.activeFetchPromise;
     }
 
     this.activeFetchPromise = (async () => {
       try {
-        await this.doFetchPendingRequests();
+        await this.doFetchPendingRequests(options?.isBackground ?? false);
       } finally {
         this.activeFetchPromise = null;
       }
@@ -381,16 +488,32 @@ export class DashboardShell {
     return this.activeFetchPromise;
   }
 
-  private async doFetchPendingRequests(): Promise<void> {
+  private async doFetchPendingRequests(isBackground: boolean = false): Promise<void> {
+    if (this.isDestroyed) return;
+
     if (!this.apiClient) {
       this.setError('No approval API client configured. Unable to fetch pending requests.');
       return;
     }
 
-    this.setLoading(true);
+    const seq = ++this.nextPendingFetchSeq;
+
+    // Only transition to full loading state if not a silent background sync
+    if (!isBackground) {
+      this.setLoading(true);
+    }
 
     try {
       const result = await this.apiClient.listPendingApprovals();
+
+      if (this.isDestroyed) return;
+
+      // Discard stale response if a newer response has already been applied
+      if (seq < this.lastAppliedPendingSeq) {
+        return;
+      }
+      this.lastAppliedPendingSeq = seq;
+      this.lastSynchronizedAt = new Date();
 
       if (result.success) {
         // Validate payload integrity: must be an array
@@ -409,8 +532,30 @@ export class DashboardShell {
           safeRequests.push(req);
         }
 
+        // Authoritatively update in-memory cache for all retrieved records
+        for (const req of safeRequests) {
+          this.detailedRequestsCache.set(req.id, req);
+        }
+
         this.state.errorMessage = null;
         this.setPendingRequests(safeRequests);
+
+        // Synchronize visible request details if a request is currently selected
+        if (this.state.selectedRequestId) {
+          const selectedId = this.state.selectedRequestId;
+          const stillPending = safeRequests.some((r) => r.id === selectedId);
+          if (!stillPending) {
+            const cached = this.detailedRequestsCache.get(selectedId);
+            // Only fetch remote details if record is missing or still PENDING in memory
+            if (!cached || cached.status === 'PENDING') {
+              void this.loadRequestDetails(selectedId, true).then((refreshed) => {
+                if (refreshed && typeof refreshed === 'object' && typeof refreshed.id === 'string' && refreshed.status !== 'PENDING') {
+                  this.addHistoryRequest(refreshed);
+                }
+              });
+            }
+          }
+        }
       } else {
         const err = result.error;
         let userMessage = err.message;
@@ -422,6 +567,8 @@ export class DashboardShell {
             if (this.state.contactProfile) {
               this.state.contactProfile = null;
             }
+            this.stopPolling();
+            this.isPollingHaltedDueToAuth = true;
             break;
           case ApiClientErrorCodes.NOT_FOUND_OR_DENIED:
             userMessage = 'Access denied: You are not authorized to view pending approval requests for this ward.';
@@ -449,6 +596,9 @@ export class DashboardShell {
         this.setError(userMessage);
       }
     } catch (unhandled) {
+      if (this.isDestroyed) return;
+      if (seq < this.lastAppliedPendingSeq) return;
+      this.lastAppliedPendingSeq = seq;
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
       this.setError(`Client error while retrieving pending approvals: ${msg}`);
     }
@@ -481,6 +631,7 @@ export class DashboardShell {
     requestId: string,
     forceFetch: boolean = false
   ): Promise<ApprovalRequest | null> {
+    if (this.isDestroyed) return null;
     if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
       return null;
     }
@@ -500,12 +651,49 @@ export class DashboardShell {
       return existing;
     }
 
+    // Collapse concurrent requests for the exact same requestId
+    const inFlight = this.activeDetailFetchPromises.get(trimmedId);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        return await this.doLoadRequestDetails(trimmedId, existing);
+      } finally {
+        this.activeDetailFetchPromises.delete(trimmedId);
+      }
+    })();
+
+    this.activeDetailFetchPromises.set(trimmedId, fetchPromise);
+    return fetchPromise;
+  }
+
+  private async doLoadRequestDetails(
+    trimmedId: string,
+    existing: ApprovalRequest | null
+  ): Promise<ApprovalRequest | null> {
+    if (this.isDestroyed || !this.apiClient) return existing;
+
+    const seq = (this.nextDetailFetchSeqByRequestId.get(trimmedId) || 0) + 1;
+    this.nextDetailFetchSeqByRequestId.set(trimmedId, seq);
+
     this.isDetailLoading = true;
     this.detailErrorMessage = null;
     this.render();
 
     try {
       const result = await this.apiClient.getApprovalDetails(trimmedId);
+
+      if (this.isDestroyed) return existing;
+
+      // Stale-response guard for this specific request ID
+      const lastApplied = this.lastAppliedDetailSeqByRequestId.get(trimmedId) || 0;
+      if (seq < lastApplied) {
+        return existing;
+      }
+      this.lastAppliedDetailSeqByRequestId.set(trimmedId, seq);
+
       if (result.success) {
         this.detailedRequestsCache.set(trimmedId, result.data);
         this.detailErrorMessage = null;
@@ -516,14 +704,22 @@ export class DashboardShell {
         return existing;
       }
     } catch (unhandled) {
+      if (this.isDestroyed) return existing;
+      const lastApplied = this.lastAppliedDetailSeqByRequestId.get(trimmedId) || 0;
+      if (seq < lastApplied) return existing;
+      this.lastAppliedDetailSeqByRequestId.set(trimmedId, seq);
+
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
       this.detailErrorMessage = `Error retrieving details: ${msg}`;
       return existing;
     } finally {
       this.isDetailLoading = false;
-      this.render();
+      if (!this.isDestroyed) {
+        this.render();
+      }
     }
   }
+
 
   /**
    * Selects an approval request in the pending list for inspection.
@@ -635,6 +831,9 @@ export class DashboardShell {
         this.state.decisionSuccessMessage = `Decision successfully recorded: ${decision}. Reviewer consent is committed on the server.`;
         this.state.decisionErrorMessage = null;
 
+        // Immediate background refresh so dashboard does not depend exclusively on periodic polling
+        void this.fetchPendingRequests({ isBackground: true });
+
         return updatedRecord;
       } else {
         // Backend returned an error
@@ -647,6 +846,8 @@ export class DashboardShell {
             if (this.state.contactProfile) {
               this.state.contactProfile = null;
             }
+            this.stopPolling();
+            this.isPollingHaltedDueToAuth = true;
             break;
           case ApiClientErrorCodes.SELF_APPROVAL_PROHIBITED:
             userMessage = 'Authorization failure: Self-approval is strictly prohibited. You cannot review your own browser action.';
@@ -664,6 +865,7 @@ export class DashboardShell {
             });
             this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
             this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+            void this.fetchPendingRequests({ isBackground: true });
             break;
           case ApiClientErrorCodes.REQUEST_EXPIRED:
             userMessage = 'Request expired: The review deadline for this request has elapsed. The held action cannot proceed.';
@@ -675,6 +877,7 @@ export class DashboardShell {
             });
             this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
             this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+            void this.fetchPendingRequests({ isBackground: true });
             break;
           case ApiClientErrorCodes.NETWORK_FAILURE:
             userMessage = 'Network connection error: Unable to reach the Guardrail approval backend. Please verify your connection and retry.';
@@ -715,7 +918,12 @@ export class DashboardShell {
   public setPendingRequests(requests: readonly ApprovalRequest[]): void {
     this.state.pendingRequests = requests;
     this.state.pendingStatus = requests.length === 0 ? 'empty' : 'idle';
-    if (!this.state.selectedRequestId || !requests.some((r) => r.id === this.state.selectedRequestId)) {
+    if (!this.state.selectedRequestId) {
+      this.state.selectedRequestId = requests[0]?.id ?? null;
+    } else if (
+      !requests.some((r) => r.id === this.state.selectedRequestId) &&
+      !this.detailedRequestsCache.has(this.state.selectedRequestId)
+    ) {
       this.state.selectedRequestId = requests[0]?.id ?? null;
     }
     this.render();
@@ -743,6 +951,12 @@ export class DashboardShell {
    */
   public setProfile(profile: TrustedContactProfile | null): void {
     this.state.contactProfile = profile;
+    if (profile?.isAuthenticated) {
+      this.isPollingHaltedDueToAuth = false;
+      if (this.pollIntervalMs && this.pollIntervalMs > 0 && !this.pollTimer) {
+        this.startPolling();
+      }
+    }
     this.render();
   }
 
@@ -780,6 +994,9 @@ export class DashboardShell {
    * Adds an authoritative resolved request to decision history.
    */
   public addHistoryRequest(request: ApprovalRequest): void {
+    if (!request || typeof request !== 'object' || typeof request.id !== 'string') {
+      return;
+    }
     this.detailedRequestsCache.set(request.id, request);
     this.state.historyRequests = [
       request,
@@ -829,17 +1046,24 @@ export class DashboardShell {
   }
 
   /**
-   * Cleans up event listeners and removes DOM nodes.
+   * Cleans up timers, event subscriptions, and in-flight operations, and removes DOM nodes.
    */
   public destroy(): void {
-    if (this.pollTimer !== null) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
+    this.isDestroyed = true;
+    this.stopPolling();
+
     if (this.hashChangeHandler && typeof window !== 'undefined') {
       window.removeEventListener('hashchange', this.hashChangeHandler);
       this.hashChangeHandler = null;
     }
+
+    if (this.visibilityChangeHandler && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
+
+    this.activeFetchPromise = null;
+    this.activeDetailFetchPromises.clear();
 
     while (this.rootContainer.firstChild) {
       this.rootContainer.removeChild(this.rootContainer.firstChild);

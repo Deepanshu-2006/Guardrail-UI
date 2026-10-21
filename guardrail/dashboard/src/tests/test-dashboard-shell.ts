@@ -1565,27 +1565,34 @@ async function runDashboardTests() {
 
     const mockFetch = async (input: any, init?: RequestInit): Promise<Response> => {
       const url = String(input);
-      capturedUrl = url;
-      capturedMethod = init?.method || 'GET';
-      capturedHeaders = (init?.headers as Record<string, string>) || {};
-      capturedBody = init?.body ? JSON.parse(init.body as string) : null;
+      if (url.includes('/decide')) {
+        capturedUrl = url;
+        capturedMethod = init?.method || 'GET';
+        capturedHeaders = (init?.headers as Record<string, string>) || {};
+        capturedBody = init?.body ? JSON.parse(init.body as string) : null;
 
-      const approvedRecord: ApprovalRequest = {
-        ...SAMPLE_REQUEST,
-        id: 'apr_decide_approve_001',
-        status: ApprovalStatus.APPROVED,
-        decision: {
-          decision: 'APPROVED',
-          decidedBy: 'tc_carol',
-          decidedAt: '2026-10-20T10:10:00.000Z',
-          decisionReason: 'Verbally verified by phone with user',
-        },
-        resolvedAt: '2026-10-20T10:10:00.000Z',
-      };
+        const approvedRecord: ApprovalRequest = {
+          ...SAMPLE_REQUEST,
+          id: 'apr_decide_approve_001',
+          status: ApprovalStatus.APPROVED,
+          decision: {
+            decision: 'APPROVED',
+            decidedBy: 'tc_carol',
+            decidedAt: '2026-10-20T10:10:00.000Z',
+            decisionReason: 'Verbally verified by phone with user',
+          },
+          resolvedAt: '2026-10-20T10:10:00.000Z',
+        };
+
+        return createMockResponse(200, {
+          success: true,
+          data: approvedRecord,
+        });
+      }
 
       return createMockResponse(200, {
         success: true,
-        data: approvedRecord,
+        data: [],
       });
     };
 
@@ -1677,25 +1684,32 @@ async function runDashboardTests() {
 
     const mockFetch = async (input: any, init?: RequestInit): Promise<Response> => {
       const url = String(input);
-      capturedUrl = url;
-      capturedBody = init?.body ? JSON.parse(init.body as string) : null;
+      if (url.includes('/decide')) {
+        capturedUrl = url;
+        capturedBody = init?.body ? JSON.parse(init.body as string) : null;
 
-      const rejectedRecord: ApprovalRequest = {
-        ...SAMPLE_REQUEST,
-        id: 'apr_decide_reject_001',
-        status: ApprovalStatus.REJECTED,
-        decision: {
-          decision: 'REJECTED',
-          decidedBy: 'tc_carol',
-          decidedAt: '2026-10-20T10:12:00.000Z',
-          decisionReason: 'Unrecognized external recipient account',
-        },
-        resolvedAt: '2026-10-20T10:12:00.000Z',
-      };
+        const rejectedRecord: ApprovalRequest = {
+          ...SAMPLE_REQUEST,
+          id: 'apr_decide_reject_001',
+          status: ApprovalStatus.REJECTED,
+          decision: {
+            decision: 'REJECTED',
+            decidedBy: 'tc_carol',
+            decidedAt: '2026-10-20T10:12:00.000Z',
+            decisionReason: 'Unrecognized external recipient account',
+          },
+          resolvedAt: '2026-10-20T10:12:00.000Z',
+        };
+
+        return createMockResponse(200, {
+          success: true,
+          data: rejectedRecord,
+        });
+      }
 
       return createMockResponse(200, {
         success: true,
-        data: rejectedRecord,
+        data: [],
       });
     };
 
@@ -2554,7 +2568,7 @@ async function runDashboardTests() {
   {
     let decideCalled = false;
     const mockClient = {
-      listPendingApprovals: async () => ({ success: true, data: [SAMPLE_REQUEST] }),
+      listPendingApprovals: async () => ({ success: true, data: decideCalled ? [] : [SAMPLE_REQUEST] }),
       getApprovalDetails: async (_id: string) => ({ success: true, data: SAMPLE_REQUEST }),
       submitDecision: async (_id: string, _payload: any) => {
         decideCalled = true;

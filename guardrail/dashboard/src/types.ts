@@ -57,6 +57,12 @@ export {
 };
 
 /**
+ * Standard background polling interval for the trusted-contact dashboard (10 seconds).
+ * Configurable via DashboardShellOptions.pollIntervalMs.
+ */
+export const DEFAULT_DASHBOARD_POLL_INTERVAL_MS = 10000;
+
+/**
  * Top-level navigation views available in the dashboard shell.
  */
 export type DashboardView = 'overview' | 'pending' | 'history';

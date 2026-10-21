@@ -177,7 +177,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'All protected actions have been evaluated or resolved. Incoming requests initiated from your wards’ Staging Mode will appear here in real time.';
+      'All protected actions have been evaluated or resolved. Incoming requests initiated from your wards’ Staging Mode will appear here as the dashboard synchronizes.';
 
     emptyPlaceholder.appendChild(icon);
     emptyPlaceholder.appendChild(pTitle);

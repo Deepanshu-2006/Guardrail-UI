@@ -227,7 +227,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
       const idSpan = document.createElement('span');
       idSpan.className = 'gd-request-id';
-      idSpan.textContent = req.id.slice(0, 16) + '...';
+      idSpan.textContent = req.id ? (req.id.slice(0, 16) + '...') : 'Unknown ID';
 
       const headerBadges = document.createElement('div');
       headerBadges.className = 'gd-history-header-badges';
