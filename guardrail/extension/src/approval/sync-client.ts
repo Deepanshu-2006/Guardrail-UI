@@ -120,6 +120,10 @@ export interface ApprovalStatusResult {
   readonly isAuthoritative: boolean;
 }
 
+export const DEFAULT_MAX_CONSECUTIVE_ERRORS = 5;
+export const DEFAULT_ERROR_BACKOFF_MULTIPLIER = 1.5;
+export const DEFAULT_MAX_BACKOFF_INTERVAL_MS = 30000;
+
 /**
  * Options supported when synchronizing an approval status over time.
  */
@@ -141,6 +145,22 @@ export interface StatusSyncOptions extends RequestOptions {
 
   /** Polling interval when tab is hidden in milliseconds (default: 30000) */
   readonly hiddenIntervalMs?: number;
+
+  /**
+   * Maximum consecutive transient errors (500, network offline, timeouts) allowed
+   * before terminating status polling. Default: 5.
+   */
+  readonly maxConsecutiveErrors?: number;
+
+  /**
+   * Backoff multiplier for consecutive transient errors. Default: 1.5.
+   */
+  readonly errorBackoffMultiplier?: number;
+
+  /**
+   * Maximum backoff delay for consecutive errors in ms. Default: 30000 (30s).
+   */
+  readonly maxBackoffIntervalMs?: number;
 }
 
 /**
@@ -160,8 +180,23 @@ export interface StatusSyncListener {
   /** Called when the request reaches a terminal state (APPROVED, REJECTED, EXPIRED, CANCELLED) */
   readonly onTerminal?: (terminalStatus: ApprovalStatus, result: ApprovalStatusResult) => void;
 
-  /** Called when a network error, timeout, or server rejection occurs */
+  /** Called when a network error, timeout, server rejection, or retry limit exhaustion occurs */
   readonly onError?: (error: ApiClientError, result: ApprovalStatusResult) => void;
+
+  /**
+   * Called when consecutive transient errors occur, entering backoff / reconnection mode.
+   * Enables UI to distinguish temporary unavailability while keeping protected action HELD.
+   */
+  readonly onReconnecting?: (
+    attempt: number,
+    maxAttempts: number,
+    error: ApiClientError
+  ) => void;
+
+  /**
+   * Called when communication is successfully restored after one or more transient failures.
+   */
+  readonly onReconnected?: (result: ApprovalStatusResult) => void;
 }
 
 /**
@@ -176,6 +211,12 @@ export interface StatusSyncSubscription {
 
   /** Returns true if the synchronization loop is currently running */
   isActive(): boolean;
+
+  /** Returns number of consecutive transient errors encountered in current loop */
+  getConsecutiveErrors(): number;
+
+  /** Returns true if subscription is currently experiencing transient connection loss */
+  isReconnecting(): boolean;
 
   /** Stops and cancels the polling loop, releasing all timers and event listeners */
   stop(): void;
@@ -199,8 +240,38 @@ export interface ApprovalStatusSyncClientConfig extends ApprovalApiClientConfig 
 }
 
 // =============================================================================
-// Helper Functions: Status Classification
+// Helper Functions: Status Classification & Non-Retryable Error Check
 // =============================================================================
+
+/**
+ * Checks whether an error is definitive (non-retryable client error).
+ * Non-retryable errors must immediately halt synchronization without retrying:
+ * - 400: VALIDATION_ERROR / invalid request format
+ * - 401: UNAUTHENTICATED / expired credentials
+ * - 403: FORBIDDEN / insufficient permissions
+ * - 404: NOT_FOUND / request missing or access denied
+ */
+export function isDefinitiveApprovalError(
+  statusCode?: number,
+  errorCode?: string
+): boolean {
+  if (
+    statusCode === 400 ||
+    statusCode === 401 ||
+    statusCode === 403 ||
+    statusCode === 404
+  ) {
+    return true;
+  }
+  if (
+    errorCode === ApiClientErrorCodes.UNAUTHENTICATED ||
+    errorCode === ApiClientErrorCodes.NOT_FOUND_OR_DENIED ||
+    errorCode === ApiClientErrorCodes.VALIDATION_ERROR
+  ) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Checks whether an unknown status value is specifically APPROVED.
@@ -551,6 +622,19 @@ class InternalSyncSubscription implements StatusSyncSubscription {
   private lastKnownStatus?: ApprovalStatus;
   private startTimeMs: number = 0;
   private visibilityHandler: (() => void) | null = null;
+  private unloadHandler: (() => void) | null = null;
+
+  // Hardening: Consecutive error tracking & bounded retry with backoff (Requirements 1 & 2)
+  private consecutiveErrors: number = 0;
+  private readonly maxConsecutiveErrors: number;
+  private readonly errorBackoffMultiplier: number;
+  private readonly maxBackoffIntervalMs: number;
+  private wasReconnecting: boolean = false;
+
+  // Hardening: Monotonic sequence tracking to drop stale out-of-order responses (Requirement 6)
+  private nextPollSeq: number = 0;
+  private lastAppliedPollSeq: number = 0;
+  private lastResolvedAt?: string;
 
   constructor(
     id: string,
@@ -566,10 +650,24 @@ class InternalSyncSubscription implements StatusSyncSubscription {
     this.listener = listener;
     this.options = options;
     this.onDispose = onDispose;
+
+    this.maxConsecutiveErrors = options?.maxConsecutiveErrors ?? DEFAULT_MAX_CONSECUTIVE_ERRORS;
+    this.errorBackoffMultiplier =
+      options?.errorBackoffMultiplier ?? DEFAULT_ERROR_BACKOFF_MULTIPLIER;
+    this.maxBackoffIntervalMs =
+      options?.maxBackoffIntervalMs ?? DEFAULT_MAX_BACKOFF_INTERVAL_MS;
   }
 
   public isActive(): boolean {
     return this.active;
+  }
+
+  public getConsecutiveErrors(): number {
+    return this.consecutiveErrors;
+  }
+
+  public isReconnecting(): boolean {
+    return this.wasReconnecting && this.active;
   }
 
   public start(): void {
@@ -593,6 +691,15 @@ class InternalSyncSubscription implements StatusSyncSubscription {
       document.addEventListener('visibilitychange', this.visibilityHandler);
     }
 
+    // Hook window navigation / unload handlers to clean up resources cleanly (Requirement 7)
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      this.unloadHandler = () => {
+        this.stop();
+      };
+      window.addEventListener('pagehide', this.unloadHandler);
+      window.addEventListener('beforeunload', this.unloadHandler);
+    }
+
     // Trigger initial poll immediately
     this.scheduleNextPoll(0);
   }
@@ -609,6 +716,12 @@ class InternalSyncSubscription implements StatusSyncSubscription {
     if (this.visibilityHandler && typeof document !== 'undefined' && document.removeEventListener) {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.visibilityHandler = null;
+    }
+
+    if (this.unloadHandler && typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('pagehide', this.unloadHandler);
+      window.removeEventListener('beforeunload', this.unloadHandler);
+      this.unloadHandler = null;
     }
 
     this.onDispose();
@@ -641,12 +754,36 @@ class InternalSyncSubscription implements StatusSyncSubscription {
       };
     }
 
+    const seq = ++this.nextPollSeq;
     this.pollInProgress = true;
     try {
       const result = await this.client.getStatus(this.requestId, this.options);
 
       if (!this.active) {
         return result;
+      }
+
+      // Requirement 6: Discard out-of-order poll responses
+      if (seq < this.lastAppliedPollSeq) {
+        return result;
+      }
+      this.lastAppliedPollSeq = seq;
+
+      // Requirement 6: Terminal state monotonicity - a terminal decision cannot revert to non-terminal
+      if (
+        this.lastKnownStatus &&
+        isTerminalApprovalStatus(this.lastKnownStatus) &&
+        result.status &&
+        !isTerminalApprovalStatus(result.status)
+      ) {
+        return result;
+      }
+
+      // Requirement 6: Dropping stale timestamped responses
+      if (result.request?.resolvedAt && this.lastResolvedAt) {
+        if (new Date(result.request.resolvedAt).getTime() < new Date(this.lastResolvedAt).getTime()) {
+          return result;
+        }
       }
 
       // Notify onPoll
@@ -657,7 +794,22 @@ class InternalSyncSubscription implements StatusSyncSubscription {
       }
 
       if (result.success && result.status) {
-        // Detect status transition
+        // Successful response - reset consecutive errors and trigger reconnection if recovering
+        if (this.consecutiveErrors > 0 || this.wasReconnecting) {
+          this.wasReconnecting = false;
+          try {
+            this.listener.onReconnected?.(result);
+          } catch {
+            // Listener exception handled safely
+          }
+        }
+        this.consecutiveErrors = 0;
+
+        if (result.request?.resolvedAt) {
+          this.lastResolvedAt = result.request.resolvedAt;
+        }
+
+        // Detect status transition (Requirement 5: de-duplicate status change events)
         if (result.status !== this.lastKnownStatus) {
           const previousStatus = this.lastKnownStatus;
           this.lastKnownStatus = result.status;
@@ -679,12 +831,60 @@ class InternalSyncSubscription implements StatusSyncSubscription {
           this.stop();
           return result;
         }
-      } else if (!result.success && result.error) {
-        // Notify onError
-        try {
-          this.listener.onError?.(result.error, result);
-        } catch {
-          // Listener exception handled safely
+      } else if (!result.success) {
+        const error = result.error ?? {
+          code: 'UNKNOWN_ERROR',
+          message: 'An unknown error occurred during approval status query.',
+        };
+
+        // Requirement 3: Do not retry indefinitely on definitive/unauthorized/not-found/invalid errors
+        if (isDefinitiveApprovalError(result.statusCode, error.code)) {
+          this.stop();
+          try {
+            this.listener.onError?.(error, result);
+          } catch {
+            // Listener exception handled safely
+          }
+          return result;
+        }
+
+        // Transient failure handling: bounded retries with backoff (Requirements 1 & 2)
+        this.consecutiveErrors++;
+
+        if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+          // Bounded retry limit exceeded - halt polling
+          this.stop();
+          const retryLimitErr: ApiClientError = {
+            code: 'RETRY_LIMIT_EXCEEDED',
+            message: `Approval status synchronization halted: exceeded maximum consecutive retry attempts (${this.maxConsecutiveErrors}).`,
+            statusCode: result.statusCode,
+          };
+          const limitResult: ApprovalStatusResult = {
+            ...result,
+            error: retryLimitErr,
+          };
+          try {
+            this.listener.onError?.(retryLimitErr, limitResult);
+          } catch {
+            // Listener exception handled safely
+          }
+          return limitResult;
+        } else {
+          this.wasReconnecting = true;
+          try {
+            this.listener.onReconnecting?.(
+              this.consecutiveErrors,
+              this.maxConsecutiveErrors,
+              error
+            );
+          } catch {
+            // Listener exception handled safely
+          }
+          try {
+            this.listener.onError?.(error, result);
+          } catch {
+            // Listener exception handled safely
+          }
         }
       }
 
@@ -695,7 +895,7 @@ class InternalSyncSubscription implements StatusSyncSubscription {
         return result;
       }
 
-      // Schedule next poll interval
+      // Schedule next poll interval with backoff
       if (this.active) {
         const nextDelayMs = this.calculateNextInterval();
         this.scheduleNextPoll(nextDelayMs);
@@ -723,9 +923,18 @@ class InternalSyncSubscription implements StatusSyncSubscription {
   }
 
   /**
-   * Calculates next interval based on elapsed duration and tab visibility state.
+   * Calculates next interval based on error count, elapsed duration, and tab visibility state.
    */
   private calculateNextInterval(): number {
+    // If consecutive transient errors occurred, apply progressive backoff (Requirements 1 & 2)
+    if (this.consecutiveErrors > 0) {
+      const baseDelay = this.options?.initialIntervalMs ?? this.client.getDefaultIntervalMs();
+      const backoffDelay = Math.round(
+        baseDelay * Math.pow(this.errorBackoffMultiplier, this.consecutiveErrors)
+      );
+      return Math.min(backoffDelay, this.maxBackoffIntervalMs);
+    }
+
     // If tab is hidden in browser DOM, use relaxed hidden interval
     if (
       this.options?.pauseWhenHidden !== false &&

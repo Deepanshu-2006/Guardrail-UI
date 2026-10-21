@@ -163,6 +163,12 @@ export interface StagingModalOptions {
   /** Optional callback invoked on synchronization error */
   onSyncError?: (error: ApiClientError, result: ApprovalStatusResult) => void;
 
+  /** Optional callback invoked when background status sync enters reconnection backoff */
+  onReconnecting?: (attempt: number, maxAttempts: number, error: ApiClientError) => void;
+
+  /** Optional callback invoked when background status sync recovers connection */
+  onReconnected?: (result: ApprovalStatusResult) => void;
+
   /** Configuration options for status synchronization polling */
   syncOptions?: StatusSyncOptions;
 
@@ -179,6 +185,7 @@ let currentMountedActionId: string | null = null;
 let currentModalSessionId: number = 0;
 let currentSyncSubscription: StatusSyncSubscription | null = null;
 let currentPendingRequestId: string | null = null;
+const lastDiscoveredStatusByRequestId = new Map<string, ApprovalStatus>();
 
 /**
  * Checks whether the Guardrail Staging Modal is currently mounted in the document.
@@ -221,6 +228,9 @@ export function getCurrentModalSessionId(): number {
  * Returns the currently active status sync subscription, if any.
  */
 export function getActiveSyncSubscription(): StatusSyncSubscription | null {
+  if (currentSyncSubscription && !currentSyncSubscription.isActive()) {
+    currentSyncSubscription = null;
+  }
   return currentSyncSubscription;
 }
 
@@ -240,6 +250,7 @@ export function stopModalStatusSync(): void {
     currentSyncSubscription = null;
   }
   currentPendingRequestId = null;
+  lastDiscoveredStatusByRequestId.clear();
 }
 
 /**
@@ -2385,6 +2396,12 @@ function handleDiscoveredApprovalStatus(
     return;
   }
 
+  // Deduplication guard (Requirement 5): Avoid duplicate UI updates and redundant side effects
+  if (lastDiscoveredStatusByRequestId.get(reqId) === status) {
+    return;
+  }
+  lastDiscoveredStatusByRequestId.set(reqId, status);
+
   switch (status) {
     case ApprovalStatus.APPROVED: {
       if (!req) {
@@ -2531,6 +2548,16 @@ function handleDiscoveredApprovalStatus(
 
     case ApprovalStatus.PENDING:
     default:
+      // Monotonic guard (Requirement 6): Never allow a late or out-of-order PENDING response to downgrade
+      // an already confirmed terminal state (APPROVED, REJECTED, EXPIRED, CANCELLED)
+      if (
+        currentUIState === 'approval_confirmed_approved' ||
+        currentUIState === 'approval_confirmed_rejected' ||
+        currentUIState === 'approval_confirmed_expired' ||
+        currentUIState === 'approval_confirmed_cancelled'
+      ) {
+        return;
+      }
       setStagingUIState('approval_requested', {
         requestId: reqId,
         request: req,
@@ -2657,7 +2684,95 @@ export function startModalStatusSync(
       },
 
       onError: (error, result) => {
+        // Session / unmounted guard
+        if (
+          !isStagingModalActive() ||
+          (sessionInfo && currentModalSessionId !== sessionInfo.sessionToken) ||
+          (sessionInfo &&
+            sessionInfo.sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionInfo.sessionActionId)
+        ) {
+          return;
+        }
+
+        // Definitive failure handling (Requirements 3 & 4):
+        if (result.statusCode === 401 || error.code === 'UNAUTHENTICATED') {
+          setStagingUIState('approval_failed', {
+            requestId: trimmedReqId,
+            code: 'UNAUTHENTICATED',
+            error:
+              'Authentication session expired or invalid. Please sign in or refresh your session to view approval updates.',
+            statusCode: 401,
+          });
+        } else if (result.statusCode === 404 || error.code === 'NOT_FOUND_OR_DENIED') {
+          setStagingUIState('approval_failed', {
+            requestId: trimmedReqId,
+            code: 'NOT_FOUND',
+            error: 'Approval request not found on server or access was denied.',
+            statusCode: 404,
+          });
+        } else if (error.code === 'RETRY_LIMIT_EXCEEDED') {
+          setStagingUIState('approval_failed', {
+            requestId: trimmedReqId,
+            code: 'RETRY_LIMIT_EXCEEDED',
+            error:
+              error.message ||
+              'Exceeded retry limit while attempting to contact approval backend. Action remains safely held.',
+            statusCode: result.statusCode,
+          });
+        }
+
         options.onSyncError?.(error, result);
+      },
+
+      onReconnecting: (attempt, maxAttempts, error) => {
+        // Session / unmounted guard
+        if (
+          !isStagingModalActive() ||
+          (sessionInfo && currentModalSessionId !== sessionInfo.sessionToken) ||
+          (sessionInfo &&
+            sessionInfo.sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionInfo.sessionActionId)
+        ) {
+          return;
+        }
+
+        // Distinguish confirmed status from temporarily unavailable status (Requirement 9)
+        // Keep current state as approval_requested so action remains safely HELD, but update notice and indicators
+        if (currentShadow) {
+          const notice = currentShadow.querySelector('.gs-footer-notice');
+          if (notice) {
+            notice.textContent = `Approval Request Active (${trimmedReqId}) • Temporarily unavailable (Reconnecting attempt ${attempt}/${maxAttempts})... • Action: HELD`;
+          }
+        }
+
+        options.onReconnecting?.(attempt, maxAttempts, error);
+      },
+
+      onReconnected: (result) => {
+        // Session / unmounted guard
+        if (
+          !isStagingModalActive() ||
+          (sessionInfo && currentModalSessionId !== sessionInfo.sessionToken) ||
+          (sessionInfo &&
+            sessionInfo.sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionInfo.sessionActionId)
+        ) {
+          return;
+        }
+
+        // Connection restored: update notice back to confirmed backend status
+        if (currentShadow && currentUIState === 'approval_requested') {
+          const notice = currentShadow.querySelector('.gs-footer-notice');
+          if (notice) {
+            notice.textContent = `Approval Request Active (${trimmedReqId}) • Status: PENDING • Action: HELD`;
+          }
+        }
+
+        options.onReconnected?.(result);
       },
     },
     options.syncOptions

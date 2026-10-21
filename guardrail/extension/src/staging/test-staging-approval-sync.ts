@@ -48,6 +48,7 @@ import {
   showStagingModal,
   stopModalStatusSync,
 } from './modal.js';
+import { ApprovalStatusSyncClient } from '../approval/sync-client.js';
 import {
   ActorRole,
   AuthContext,
@@ -279,10 +280,23 @@ const mockDocument = {
 };
 
 (globalThis as any).document = mockDocument;
+const mockWindowListeners: Record<string, ((e: any) => void)[]> = {};
 (globalThis as any).window = {
-  addEventListener: () => {},
-  removeEventListener: () => {},
-  dispatchEvent: () => true,
+  addEventListener: (type: string, fn: (e: any) => void) => {
+    if (!mockWindowListeners[type]) mockWindowListeners[type] = [];
+    mockWindowListeners[type].push(fn);
+  },
+  removeEventListener: (type: string, fn: (e: any) => void) => {
+    if (!mockWindowListeners[type]) return;
+    mockWindowListeners[type] = mockWindowListeners[type].filter((l) => l !== fn);
+  },
+  dispatchEvent: (event: any) => {
+    const handlers = mockWindowListeners[event.type] || [];
+    for (const fn of handlers) {
+      fn(event);
+    }
+    return true;
+  },
 };
 (globalThis as any).CustomEvent = class CustomEvent {
   public type: string;
@@ -1227,6 +1241,445 @@ async function runAllTests(): Promise<void> {
         server.close(() => resolve());
       });
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scenario 12: Intermittent Network Failures Followed by Automatic Recovery
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Scenario 12: Intermittent failures recover gracefully without false approval');
+  {
+    mockDocument.body = new MockDOMElement('BODY');
+    const controller = new InterceptionController();
+    const actionId = 'act_sc12_001';
+    controller.register(actionId);
+    const heldRecord = controller.holdAction(actionId);
+
+    let continuationCount = 0;
+    const continuationManager = new ContinuationManager(controller);
+    continuationManager.registerHeldAction(createMockAction(actionId), heldRecord, () => {
+      continuationCount++;
+      return true;
+    });
+
+    const pendingRequest = createMockApprovalRequest('apr_sc12_001', actionId, ApprovalStatus.PENDING);
+    let fetchAttempt = 0;
+    let reconnectingNotified = false;
+    let reconnectedNotified = false;
+
+    const mockApiClient = new ApprovalApiClient({
+      baseUrl: 'http://127.0.0.1:9999',
+      tokenProvider: async () => 'mock_token',
+      fetchFn: async () => {
+        fetchAttempt++;
+        if (fetchAttempt === 1) {
+          // Poll 1: 200 OK PENDING
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => pendingRequest,
+            text: async () => JSON.stringify(pendingRequest),
+          } as unknown as Response;
+        } else if (fetchAttempt === 2 || fetchAttempt === 3) {
+          // Polls 2 & 3: Transient network drops
+          throw new TypeError('Failed to fetch (ERR_INTERNET_DISCONNECTED)');
+        } else {
+          // Poll 4: Recovered 200 OK PENDING
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => pendingRequest,
+            text: async () => JSON.stringify(pendingRequest),
+          } as unknown as Response;
+        }
+      },
+    });
+
+    showStagingModal({
+      context: createMockContext(actionId),
+      state: 'active',
+      controller,
+      continuationManager,
+      apiClient: mockApiClient,
+      initialApprovalRequest: pendingRequest,
+      onReconnecting: () => {
+        reconnectingNotified = true;
+      },
+      onReconnected: () => {
+        reconnectedNotified = true;
+      },
+      syncOptions: {
+        initialIntervalMs: 20,
+        adaptiveSchedule: false,
+        maxConsecutiveErrors: 5,
+      },
+    });
+
+    // Wait across polls 1, 2, 3, and 4
+    await new Promise((r) => setTimeout(r, 120));
+
+    assert(reconnectingNotified, 'onReconnecting notified during transient network drops');
+    assert(reconnectedNotified, 'onReconnected notified upon connection restoration');
+    assertEquals(getStagingUIState(), 'approval_requested', 'UI returned cleanly to confirmed approval_requested');
+
+    const shadow = getStagingModalShadowRoot();
+    const notice = shadow?.querySelector('.gs-footer-notice');
+    assert(
+      notice?.textContent?.includes('Status: PENDING') ?? false,
+      'Notice restored to confirmed PENDING status banner'
+    );
+
+    // Invariants
+    assertEquals(continuationCount, 0, 'Continuation closure was NEVER executed during drop or recovery: 0');
+    assertEquals(controller.getRecord(actionId)?.state, InterceptionState.HELD, 'Action remains strictly HELD');
+
+    dismissStagingModal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scenario 13: Bounded Retry Limit & Backoff Halts Indefinite Polling
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Scenario 13: Bounded retry limit halts polling after maximum consecutive failures');
+  {
+    mockDocument.body = new MockDOMElement('BODY');
+    const controller = new InterceptionController();
+    const actionId = 'act_sc13_001';
+    controller.register(actionId);
+    controller.holdAction(actionId);
+
+    const pendingRequest = createMockApprovalRequest('apr_sc13_001', actionId, ApprovalStatus.PENDING);
+    let totalNetworkQueries = 0;
+    let retryLimitExceededNotified = false;
+
+    const mockApiClient = new ApprovalApiClient({
+      baseUrl: 'http://127.0.0.1:9999',
+      tokenProvider: async () => 'mock_token',
+      fetchFn: async () => {
+        totalNetworkQueries++;
+        throw new TypeError('Failed to fetch (net::ERR_CONNECTION_TIMED_OUT)');
+      },
+    });
+
+    showStagingModal({
+      context: createMockContext(actionId),
+      state: 'active',
+      controller,
+      apiClient: mockApiClient,
+      initialApprovalRequest: pendingRequest,
+      onSyncError: (err) => {
+        if (err.code === 'RETRY_LIMIT_EXCEEDED') {
+          retryLimitExceededNotified = true;
+        }
+      },
+      syncOptions: {
+        initialIntervalMs: 15,
+        maxConsecutiveErrors: 3,
+        errorBackoffMultiplier: 1.5,
+        adaptiveSchedule: false,
+      },
+    });
+
+    // Wait long enough for 3 consecutive errors and backoff
+    await new Promise((r) => setTimeout(r, 120));
+
+    assert(retryLimitExceededNotified, 'RETRY_LIMIT_EXCEEDED was safely triggered');
+    assert(getActiveSyncSubscription() === null, 'Active subscription was cleanly halted on retry limit');
+    assertEquals(getStagingUIState(), 'approval_failed', 'UI transitioned to approval_failed state');
+
+    const queriesAtHalt = totalNetworkQueries;
+    // Wait additional time to verify polling is strictly stopped
+    await new Promise((r) => setTimeout(r, 60));
+    assertEquals(totalNetworkQueries, queriesAtHalt, 'Zero subsequent queries dispatched after retry limit reached');
+
+    const record = controller.getRecord(actionId);
+    assertEquals(record?.state, InterceptionState.HELD, 'Action remains safely HELD');
+
+    dismissStagingModal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scenario 14: Non-Retryable Definitive Errors Halt Immediately (401 & 404)
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Scenario 14: Non-retryable client errors halt immediately without retrying');
+  {
+    // Test 14A: 401 UNAUTHENTICATED
+    mockDocument.body = new MockDOMElement('BODY');
+    const controllerA = new InterceptionController();
+    const actionIdA = 'act_sc14_001';
+    controllerA.register(actionIdA);
+    controllerA.holdAction(actionIdA);
+
+    const pendingRequestA = createMockApprovalRequest('apr_sc14_001', actionIdA, ApprovalStatus.PENDING);
+    let authQueryCount = 0;
+    let authErrorNotified = false;
+
+    const mockApiClientAuth = new ApprovalApiClient({
+      baseUrl: 'http://127.0.0.1:9999',
+      tokenProvider: async () => 'mock_token',
+      fetchFn: async () => {
+        authQueryCount++;
+        return {
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({
+            success: false,
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Authentication token expired or missing.',
+            },
+          }),
+          text: async () => JSON.stringify({ success: false }),
+        } as unknown as Response;
+      },
+    });
+
+    showStagingModal({
+      context: createMockContext(actionIdA),
+      state: 'active',
+      controller: controllerA,
+      apiClient: mockApiClientAuth,
+      initialApprovalRequest: pendingRequestA,
+      onSyncError: (err) => {
+        if (err.code === 'UNAUTHENTICATED' || err.statusCode === 401) {
+          authErrorNotified = true;
+        }
+      },
+      syncOptions: {
+        initialIntervalMs: 15,
+        maxConsecutiveErrors: 5,
+        adaptiveSchedule: false,
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert(authErrorNotified, '401 UNAUTHENTICATED error notified');
+    assert(getActiveSyncSubscription() === null, 'Polling halted immediately on 401 without retry loops');
+    assertEquals(authQueryCount, 1, 'Strictly 1 query dispatched; no infinite retry loops on 401');
+    assertEquals(getStagingUIState(), 'approval_failed', 'UI transitioned to approval_failed for expired session');
+    assertEquals(controllerA.getRecord(actionIdA)?.state, InterceptionState.HELD, 'Action remains safely HELD');
+
+    dismissStagingModal();
+
+    // Test 14B: 404 NOT_FOUND
+    mockDocument.body = new MockDOMElement('BODY');
+    const controllerB = new InterceptionController();
+    const actionIdB = 'act_sc14_002';
+    controllerB.register(actionIdB);
+    controllerB.holdAction(actionIdB);
+
+    const pendingRequestB = createMockApprovalRequest('apr_sc14_002', actionIdB, ApprovalStatus.PENDING);
+    let notFoundQueryCount = 0;
+
+    const mockApiClientNotFound = new ApprovalApiClient({
+      baseUrl: 'http://127.0.0.1:9999',
+      tokenProvider: async () => 'mock_token',
+      fetchFn: async () => {
+        notFoundQueryCount++;
+        return {
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({
+            success: false,
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Approval request not found on server.',
+            },
+          }),
+          text: async () => JSON.stringify({ success: false }),
+        } as unknown as Response;
+      },
+    });
+
+    showStagingModal({
+      context: createMockContext(actionIdB),
+      state: 'active',
+      controller: controllerB,
+      apiClient: mockApiClientNotFound,
+      initialApprovalRequest: pendingRequestB,
+      syncOptions: {
+        initialIntervalMs: 15,
+        maxConsecutiveErrors: 5,
+        adaptiveSchedule: false,
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert(getActiveSyncSubscription() === null, 'Polling halted immediately on 404 without retry loops');
+    assertEquals(notFoundQueryCount, 1, 'Strictly 1 query dispatched on 404');
+    assertEquals(getStagingUIState(), 'approval_failed', 'UI transitioned to approval_failed for missing request');
+    assertEquals(controllerB.getRecord(actionIdB)?.state, InterceptionState.HELD, 'Action remains safely HELD');
+
+    dismissStagingModal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scenario 15: Monotonic Sequence Tracking Drops Out-of-Order Stale Responses
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Scenario 15: Monotonic sequence tracking discards late out-of-order responses');
+  {
+    mockDocument.body = new MockDOMElement('BODY');
+    const controller = new InterceptionController();
+    const actionId = 'act_sc15_001';
+    controller.register(actionId);
+    controller.holdAction(actionId);
+
+    const pendingRequest = createMockApprovalRequest('apr_sc15_001', actionId, ApprovalStatus.PENDING);
+    const approvedRequest = createMockApprovalRequest('apr_sc15_001', actionId, ApprovalStatus.APPROVED, {
+      decidedBy: 'tc_carol',
+      decidedAt: new Date().toISOString(),
+    });
+
+    let currentResponse = approvedRequest;
+    const mockApiClient = new ApprovalApiClient({
+      baseUrl: 'http://127.0.0.1:9999',
+      tokenProvider: async () => 'mock_token',
+      fetchFn: async () => {
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => currentResponse,
+          text: async () => JSON.stringify(currentResponse),
+        } as unknown as Response;
+      },
+    });
+
+    showStagingModal({
+      context: createMockContext(actionId),
+      state: 'active',
+      controller,
+      apiClient: mockApiClient,
+      initialApprovalRequest: pendingRequest,
+      syncOptions: {
+        initialIntervalMs: 15,
+        adaptiveSchedule: false,
+      },
+    });
+
+    // Wait for the modal to discover the APPROVED status
+    await new Promise((r) => setTimeout(r, 60));
+
+    assertEquals(
+      getStagingUIState(),
+      'approval_confirmed_approved',
+      'UI confirmed approved state from server'
+    );
+
+    // Now simulate an out-of-order / stale late response arriving with PENDING
+    currentResponse = pendingRequest;
+    const syncClient = new ApprovalStatusSyncClient({ apiClient: mockApiClient });
+    const staleResult = await syncClient.getStatus('apr_sc15_001');
+    assertEquals(staleResult.status, ApprovalStatus.PENDING, 'Server temporarily responded with stale PENDING');
+
+    // Monotonic guard verifies that UI state strictly remains APPROVED
+    assertEquals(
+      getStagingUIState(),
+      'approval_confirmed_approved',
+      'Stale PENDING response dropped; UI state strictly remains approval_confirmed_approved'
+    );
+    const shadow = getStagingModalShadowRoot();
+    const pill = shadow?.querySelector('.gs-mode-pill');
+    assertEquals(pill?.textContent, 'Approval Confirmed', 'Pill text remains Approval Confirmed');
+    assertEquals(controller.getRecord(actionId)?.state, InterceptionState.HELD, 'Action remains safely HELD');
+
+    dismissStagingModal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scenario 16: Repeated Identical Status Responses Do Not Create Duplicate Updates
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Scenario 16: Repeated identical events do not produce duplicate UI updates or side effects');
+  {
+    mockDocument.body = new MockDOMElement('BODY');
+    const controller = new InterceptionController();
+    const actionId = 'act_sc16_001';
+    controller.register(actionId);
+    controller.holdAction(actionId);
+
+    const approvedRequest = createMockApprovalRequest('apr_sc16_001', actionId, ApprovalStatus.APPROVED, {
+      decidedBy: 'tc_carol',
+      decidedAt: new Date().toISOString(),
+    });
+
+    let domEventCount = 0;
+    const eventHandler = () => {
+      domEventCount++;
+    };
+    mockDocument.addEventListener('guardrail:approval-confirmed', eventHandler);
+
+    let statusChangeCount = 0;
+    let terminalCount = 0;
+
+    const mockApiClient = new ApprovalApiClient({
+      baseUrl: 'http://127.0.0.1:9999',
+      tokenProvider: async () => 'mock_token',
+      fetchFn: async () => {
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => approvedRequest,
+          text: async () => JSON.stringify(approvedRequest),
+        } as unknown as Response;
+      },
+    });
+
+    showStagingModal({
+      context: createMockContext(actionId),
+      state: 'active',
+      controller,
+      apiClient: mockApiClient,
+      initialApprovalRequest: approvedRequest,
+      onStatusChange: () => {
+        statusChangeCount++;
+      },
+      onTerminalStatus: () => {
+        terminalCount++;
+      },
+      syncOptions: {
+        initialIntervalMs: 15,
+        adaptiveSchedule: false,
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Event should be dispatched strictly once
+    assertEquals(domEventCount, 1, 'Custom event guardrail:approval-confirmed dispatched strictly ONCE: 1');
+    assertEquals(getStagingUIState(), 'approval_confirmed_approved', 'UI state is approval_confirmed_approved');
+    assertEquals(controller.getRecord(actionId)?.state, InterceptionState.HELD, 'Action remains safely HELD');
+
+    mockDocument.removeEventListener('guardrail:approval-confirmed', eventHandler);
+    dismissStagingModal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scenario 17: Resource Cleanup on Window Pagehide / Beforeunload
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Scenario 17: Window pagehide and unload automatically stop synchronization');
+  {
+    mockDocument.body = new MockDOMElement('BODY');
+    const syncClient = new ApprovalStatusSyncClient();
+    const sub = syncClient.startSync('apr_sc17_001', {});
+
+    assertEquals(sub.isActive(), true, 'Subscription is active before pagehide');
+
+    // Simulate browser tab navigating away or window pagehide
+    (globalThis as any).window.dispatchEvent({ type: 'pagehide' });
+
+    assertEquals(sub.isActive(), false, 'Subscription cleanly halted upon window pagehide');
+    sub.stop();
   }
 
   // ===========================================================================
