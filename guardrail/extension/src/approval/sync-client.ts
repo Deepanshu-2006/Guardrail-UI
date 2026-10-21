@@ -309,8 +309,38 @@ export class ApprovalStatusSyncClient {
       const data = clientResult.data;
       const request = data.request;
 
-      // 3. Double-check authoritative status domain consistency
-      if (!request || !Object.values(ApprovalStatus).includes(data.status)) {
+      // 3. Double-check authoritative request presence and requestId matching (Requirements 1 & 2)
+      if (!request) {
+        return this.buildFailureResult(
+          rawId,
+          {
+            code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+            message: 'Server response did not include a valid request object.',
+            statusCode: clientResult.statusCode,
+          },
+          clientResult.statusCode,
+          /* isNetworkError */ false,
+          /* isTimeout */ false,
+          /* isAuthoritative */ true
+        );
+      }
+
+      if (request.id !== rawId) {
+        return this.buildFailureResult(
+          rawId,
+          {
+            code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+            message: `Mismatched approval request identifier: expected "${rawId}", received "${request.id}".`,
+            statusCode: clientResult.statusCode,
+          },
+          clientResult.statusCode,
+          /* isNetworkError */ false,
+          /* isTimeout */ false,
+          /* isAuthoritative */ true
+        );
+      }
+
+      if (!Object.values(ApprovalStatus).includes(data.status)) {
         return this.buildFailureResult(
           rawId,
           {
@@ -325,8 +355,57 @@ export class ApprovalStatusSyncClient {
         );
       }
 
+      // 4. Decision metadata consistency enforcement (Requirement 5)
+      // APPROVED and REJECTED must have valid decision metadata with decidedBy and decidedAt.
+      // PENDING must never have decision metadata.
+      if (data.status === ApprovalStatus.APPROVED || data.status === ApprovalStatus.REJECTED) {
+        if (!request.decision || typeof request.decision !== 'object') {
+          return this.buildFailureResult(
+            rawId,
+            {
+              code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+              message: `Approval request in ${data.status} status is missing required decision metadata.`,
+              statusCode: clientResult.statusCode,
+            },
+            clientResult.statusCode,
+            /* isNetworkError */ false,
+            /* isTimeout */ false,
+            /* isAuthoritative */ true
+          );
+        }
+        if (!request.decision.decidedBy || !request.decision.decidedAt) {
+          return this.buildFailureResult(
+            rawId,
+            {
+              code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+              message: `Decision metadata for ${data.status} request is incomplete (missing decidedBy or decidedAt).`,
+              statusCode: clientResult.statusCode,
+            },
+            clientResult.statusCode,
+            /* isNetworkError */ false,
+            /* isTimeout */ false,
+            /* isAuthoritative */ true
+          );
+        }
+      } else if (data.status === ApprovalStatus.PENDING) {
+        if (request.decision !== undefined && request.decision !== null) {
+          return this.buildFailureResult(
+            rawId,
+            {
+              code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+              message: 'Inconsistent response: request in PENDING status contains premature decision metadata.',
+              statusCode: clientResult.statusCode,
+            },
+            clientResult.statusCode,
+            /* isNetworkError */ false,
+            /* isTimeout */ false,
+            /* isAuthoritative */ true
+          );
+        }
+      }
+
       const status = data.status;
-      const isApproved = status === ApprovalStatus.APPROVED;
+      const isApproved = status === ApprovalStatus.APPROVED && Boolean(request.decision?.decidedBy);
       const isPending = status === ApprovalStatus.PENDING;
       const isRejected = status === ApprovalStatus.REJECTED;
       const isExpired = status === ApprovalStatus.EXPIRED;

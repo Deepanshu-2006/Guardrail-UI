@@ -52,7 +52,14 @@ import {
   isSubmissionInProgress,
   reconcileApprovalSubmission,
 } from '../approval/submit-operation.js';
-import { ApprovalApiClient } from '../approval/client.js';
+import { ApprovalApiClient, ApiClientError } from '../approval/client.js';
+import {
+  ApprovalStatusSyncClient,
+  ApprovalStatusResult,
+  StatusSyncOptions,
+  StatusSyncSubscription,
+} from '../approval/sync-client.js';
+import { isTerminalApprovalStatus } from '../approval/model.js';
 import {
   sanitizeApprovalErrorMessage,
   validateBackendApprovalResponse,
@@ -136,6 +143,31 @@ export interface StagingModalOptions {
 
   /** Optional direct submit operation function (useful for dependency injection in tests) */
   submitApprovalRequest?: typeof submitApprovalRequest;
+
+  /** Optional custom ApprovalStatusSyncClient instance */
+  syncClient?: ApprovalStatusSyncClient;
+
+  /** Optional callback invoked on status polling tick */
+  onPoll?: (result: ApprovalStatusResult) => void;
+
+  /** Optional callback invoked when approval status changes during synchronization */
+  onStatusChange?: (
+    status: ApprovalStatus,
+    result: ApprovalStatusResult,
+    previousStatus?: ApprovalStatus
+  ) => void;
+
+  /** Optional callback invoked when approval status reaches a terminal state */
+  onTerminalStatus?: (status: ApprovalStatus, result: ApprovalStatusResult) => void;
+
+  /** Optional callback invoked on synchronization error */
+  onSyncError?: (error: ApiClientError, result: ApprovalStatusResult) => void;
+
+  /** Configuration options for status synchronization polling */
+  syncOptions?: StatusSyncOptions;
+
+  /** Optional initial ApprovalRequest (if mounting modal with existing approval state) */
+  initialApprovalRequest?: ApprovalRequest;
 }
 
 let activeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -145,6 +177,8 @@ let currentUIState: StagingInterceptionUIState | null = null;
 let previousActiveElement: HTMLElement | null = null;
 let currentMountedActionId: string | null = null;
 let currentModalSessionId: number = 0;
+let currentSyncSubscription: StatusSyncSubscription | null = null;
+let currentPendingRequestId: string | null = null;
 
 /**
  * Checks whether the Guardrail Staging Modal is currently mounted in the document.
@@ -184,10 +218,37 @@ export function getCurrentModalSessionId(): number {
 }
 
 /**
+ * Returns the currently active status sync subscription, if any.
+ */
+export function getActiveSyncSubscription(): StatusSyncSubscription | null {
+  return currentSyncSubscription;
+}
+
+/**
+ * Returns the canonical request ID currently being polled/synchronized, if any.
+ */
+export function getPendingRequestId(): string | null {
+  return currentPendingRequestId;
+}
+
+/**
+ * Stops and disposes the active approval status sync subscription.
+ */
+export function stopModalStatusSync(): void {
+  if (currentSyncSubscription) {
+    currentSyncSubscription.stop();
+    currentSyncSubscription = null;
+  }
+  currentPendingRequestId = null;
+}
+
+/**
  * Dismisses and cleans up the active Guardrail Staging Modal.
  * Removes host element, unregisters keyboard event listeners, and restores focus to page.
  */
 export function dismissStagingModal(): void {
+  stopModalStatusSync();
+
   if (activeKeyHandler && typeof window !== 'undefined') {
     window.removeEventListener('keydown', activeKeyHandler);
     activeKeyHandler = null;
@@ -2107,6 +2168,7 @@ function applyCancellationOutcome(
   const { cancelBtn, primaryBtn, body, header, notice } = uiElements;
 
   if (result.success) {
+    stopModalStatusSync();
     currentUIState = 'cancelled';
     displayConfirmationBanner(
       body,
@@ -2285,6 +2347,326 @@ export interface ModalApprovalRequestUIElements {
   notice?: HTMLElement;
 }
 
+/**
+ * Processes an authoritative approval status transition discovered via polling or initial state.
+ *
+ * CRITICAL ARCHITECTURAL INVARIANTS:
+ * 1. Matching request identifier: Discards mismatched responses.
+ * 2. Action remains HELD: Even when status === APPROVED, the held browser action is NEVER
+ *    automatically continued, replayed, or executed.
+ * 3. Strict schema validation: Rejects malformed decisions or missing metadata.
+ */
+function handleDiscoveredApprovalStatus(
+  status: ApprovalStatus,
+  result: ApprovalStatusResult,
+  actionId: string,
+  options: StagingModalOptions,
+  sessionInfo?: { sessionToken: number; sessionActionId: string | null }
+): void {
+  const req = result.request;
+  const reqId = result.requestId;
+
+  // Stale response / component unmounted guard
+  if (
+    sessionInfo &&
+    (!isStagingModalActive() ||
+      currentModalSessionId !== sessionInfo.sessionToken ||
+      (sessionInfo.sessionActionId !== null &&
+        currentMountedActionId !== null &&
+        currentMountedActionId !== sessionInfo.sessionActionId))
+  ) {
+    return;
+  }
+
+  // Pre-condition: action must still be tracked and in HELD state
+  const controller = options.controller || defaultInterceptionController;
+  const record = controller.getRecord(actionId);
+  if (!record || record.state !== InterceptionState.HELD) {
+    return;
+  }
+
+  switch (status) {
+    case ApprovalStatus.APPROVED: {
+      if (!req) {
+        setStagingUIState('malformed_response', {
+          error: 'Missing approval request object in response.',
+        });
+        return;
+      }
+
+      // Validate backend approval response schema (Requirement 5)
+      const validation = validateBackendApprovalResponse(req, actionId);
+      if (!validation.valid) {
+        setStagingUIState('malformed_response', {
+          error: validation.error || 'Missing or invalid decision in approval response.',
+        });
+        return;
+      }
+
+      setStagingUIState('approval_confirmed_approved', {
+        requestId: reqId,
+        decidedBy: req.decision?.decidedBy,
+        decidedAt: req.decision?.decidedAt,
+        request: req,
+      });
+
+      if (typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(
+            new CustomEvent('guardrail:approval-confirmed', {
+              detail: {
+                actionId,
+                requestId: reqId,
+                status: ApprovalStatus.APPROVED,
+                decidedBy: req.decision?.decidedBy,
+                decidedAt: req.decision?.decidedAt,
+                request: req,
+              },
+              bubbles: true,
+            })
+          );
+        } catch {
+          // Ignore event dispatch errors
+        }
+      }
+
+      // CRITICAL INVARIANT: The protected action remains in HELD state.
+      // Continuation is NEVER automatically executed or released.
+      break;
+    }
+
+    case ApprovalStatus.REJECTED: {
+      if (!req) {
+        setStagingUIState('malformed_response', {
+          error: 'Missing approval request object in response.',
+        });
+        return;
+      }
+
+      const validation = validateBackendApprovalResponse(req, actionId);
+      if (!validation.valid) {
+        setStagingUIState('malformed_response', {
+          error: validation.error || 'Missing or invalid decision in rejection response.',
+        });
+        return;
+      }
+
+      setStagingUIState('approval_confirmed_rejected', {
+        requestId: reqId,
+        decidedBy: req.decision?.decidedBy,
+        decidedAt: req.decision?.decidedAt,
+        request: req,
+      });
+
+      if (typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(
+            new CustomEvent('guardrail:approval-denied', {
+              detail: {
+                actionId,
+                requestId: reqId,
+                status: ApprovalStatus.REJECTED,
+                decidedBy: req.decision?.decidedBy,
+                decidedAt: req.decision?.decidedAt,
+                request: req,
+              },
+              bubbles: true,
+            })
+          );
+        } catch {
+          // Ignore event dispatch errors
+        }
+      }
+      break;
+    }
+
+    case ApprovalStatus.EXPIRED:
+      setStagingUIState('approval_confirmed_expired', {
+        requestId: reqId,
+        request: req,
+      });
+
+      if (typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(
+            new CustomEvent('guardrail:approval-expired', {
+              detail: {
+                actionId,
+                requestId: reqId,
+                status: ApprovalStatus.EXPIRED,
+              },
+              bubbles: true,
+            })
+          );
+        } catch {
+          // Ignore event dispatch errors
+        }
+      }
+      break;
+
+    case ApprovalStatus.CANCELLED:
+      setStagingUIState('approval_confirmed_cancelled', {
+        requestId: reqId,
+        description: req?.cancellationReason,
+        request: req,
+      });
+
+      if (typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(
+            new CustomEvent('guardrail:approval-cancelled', {
+              detail: {
+                actionId,
+                requestId: reqId,
+                status: ApprovalStatus.CANCELLED,
+              },
+              bubbles: true,
+            })
+          );
+        } catch {
+          // Ignore event dispatch errors
+        }
+      }
+      break;
+
+    case ApprovalStatus.PENDING:
+    default:
+      setStagingUIState('approval_requested', {
+        requestId: reqId,
+        request: req,
+      });
+      break;
+  }
+}
+
+/**
+ * Starts an automated status synchronization loop for a pending approval request.
+ *
+ * ARCHITECTURAL CONSTRAINTS:
+ * - Checks only while request is in PENDING state.
+ * - Stops immediately upon reaching terminal state (APPROVED, REJECTED, EXPIRED, CANCELLED).
+ * - Pauses/relaxes polling when tab is hidden, immediate probe upon visible.
+ * - Guards against overlapping requests, unmounted modal, and out-of-order responses.
+ */
+export function startModalStatusSync(
+  requestId: string,
+  actionId: string,
+  options: StagingModalOptions,
+  sessionInfo?: { sessionToken: number; sessionActionId: string | null }
+): StatusSyncSubscription | null {
+  stopModalStatusSync();
+
+  const trimmedReqId = typeof requestId === 'string' ? requestId.trim() : '';
+  if (!trimmedReqId) return null;
+
+  currentPendingRequestId = trimmedReqId;
+
+  const syncClient =
+    options.syncClient ??
+    new ApprovalStatusSyncClient({
+      apiClient: options.apiClient,
+      defaultIntervalMs: options.syncOptions?.initialIntervalMs ?? 2000,
+    });
+
+  const subscription = syncClient.startSync(
+    trimmedReqId,
+    {
+      onPoll: (result) => {
+        // Session / unmounted guard
+        if (
+          !isStagingModalActive() ||
+          (sessionInfo && currentModalSessionId !== sessionInfo.sessionToken) ||
+          (sessionInfo &&
+            sessionInfo.sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionInfo.sessionActionId) ||
+          result.requestId !== currentPendingRequestId
+        ) {
+          subscription.stop();
+          return;
+        }
+
+        // Action held guard
+        const controller = options.controller || defaultInterceptionController;
+        const record = controller.getRecord(actionId);
+        if (!record || record.state !== InterceptionState.HELD) {
+          subscription.stop();
+          return;
+        }
+
+        options.onPoll?.(result);
+      },
+
+      onStatusChange: (newStatus, result, previousStatus) => {
+        // Session / unmounted guard
+        if (
+          !isStagingModalActive() ||
+          (sessionInfo && currentModalSessionId !== sessionInfo.sessionToken) ||
+          (sessionInfo &&
+            sessionInfo.sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionInfo.sessionActionId) ||
+          result.requestId !== currentPendingRequestId
+        ) {
+          subscription.stop();
+          return;
+        }
+
+        // Action held guard
+        const controller = options.controller || defaultInterceptionController;
+        const record = controller.getRecord(actionId);
+        if (!record || record.state !== InterceptionState.HELD) {
+          subscription.stop();
+          return;
+        }
+
+        // Request identifier matching (Requirements 1 & 2)
+        if (result.request && result.request.id !== trimmedReqId) {
+          return;
+        }
+
+        handleDiscoveredApprovalStatus(newStatus, result, actionId, options, sessionInfo);
+        options.onStatusChange?.(newStatus, result, previousStatus);
+      },
+
+      onTerminal: (terminalStatus, result) => {
+        // Session / unmounted guard
+        if (
+          !isStagingModalActive() ||
+          (sessionInfo && currentModalSessionId !== sessionInfo.sessionToken) ||
+          (sessionInfo &&
+            sessionInfo.sessionActionId !== null &&
+            currentMountedActionId !== null &&
+            currentMountedActionId !== sessionInfo.sessionActionId) ||
+          result.requestId !== currentPendingRequestId
+        ) {
+          return;
+        }
+
+        // Request identifier matching (Requirements 1 & 2)
+        if (result.request && result.request.id !== trimmedReqId) {
+          return;
+        }
+
+        handleDiscoveredApprovalStatus(terminalStatus, result, actionId, options, sessionInfo);
+        options.onTerminalStatus?.(terminalStatus, result);
+
+        if (currentSyncSubscription === subscription) {
+          currentSyncSubscription = null;
+        }
+      },
+
+      onError: (error, result) => {
+        options.onSyncError?.(error, result);
+      },
+    },
+    options.syncOptions
+  );
+
+  currentSyncSubscription = subscription;
+  return subscription;
+}
+
 function applyApprovalOutcome(
   result: ApprovalRequestResult,
   options: StagingModalOptions,
@@ -2385,6 +2767,11 @@ function applyApprovalOutcome(
             requestId: reqId,
             request: req,
           });
+
+          // Start status synchronization loop to discover changes
+          if (result.actionId) {
+            startModalStatusSync(reqId, result.actionId, options, sessionInfo);
+          }
           break;
       }
 
@@ -2654,6 +3041,8 @@ export function handleModalRequestApproval(
   // 5. Check if real backend should be used (Requirement 6)
   const shouldUseRealBackend =
     options.useRealBackend === true ||
+    Boolean(options.apiClient) ||
+    Boolean(options.submitApprovalRequest) ||
     (options.useRealBackend !== false &&
       typeof chrome !== 'undefined' &&
       Boolean(chrome.runtime?.id));
@@ -3178,6 +3567,46 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
         options.context.riskLevel || 'LOW'
       }.`
     );
+
+    // If an initial approval request was provided (e.g. restored state)
+    if (options.initialApprovalRequest) {
+      const initReq = options.initialApprovalRequest;
+      const sessionInfo = {
+        sessionToken: currentModalSessionId,
+        sessionActionId: currentMountedActionId,
+      };
+      if (initReq.status === ApprovalStatus.PENDING) {
+        setStagingUIState('approval_requested', {
+          requestId: initReq.id,
+          request: initReq,
+        });
+        startModalStatusSync(initReq.id, options.context.actionId, options, sessionInfo);
+      } else {
+        handleDiscoveredApprovalStatus(
+          initReq.status,
+          {
+            success: true,
+            requestId: initReq.id,
+            status: initReq.status,
+            isTerminal: isTerminalApprovalStatus(initReq.status),
+            isApproved:
+              initReq.status === ApprovalStatus.APPROVED &&
+              Boolean(initReq.decision?.decidedBy),
+            isPending: false,
+            isRejected: initReq.status === ApprovalStatus.REJECTED,
+            isExpired: initReq.status === ApprovalStatus.EXPIRED,
+            isCancelled: initReq.status === ApprovalStatus.CANCELLED,
+            request: initReq,
+            isNetworkError: false,
+            isTimeout: false,
+            isAuthoritative: true,
+          },
+          options.context.actionId,
+          options,
+          sessionInfo
+        );
+      }
+    }
   } else if (state === 'loading') {
     announceStagingState('Loading staging preview. Please wait.');
   } else {
