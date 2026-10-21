@@ -22,6 +22,8 @@
  * 10. Background Service Worker Coordination: Validates messages, enforces boundaries, dispatches securely.
  */
 
+declare const process: any;
+
 import { ActionCategory, ActionType } from '../types/actions.js';
 import { RiskLevel } from '../types/risk.js';
 import {
@@ -29,15 +31,12 @@ import {
   ApprovalStatus,
   ClientApprovalRequestPayload,
   GuardrailGetApprovalStatusMessage,
-  GuardrailGetApprovalStatusResponse,
 } from '../types/approval.js';
 import {
-  assertValidApprovalRequestId,
   validateApprovalRequestId,
 } from './model.js';
 import {
   ActorRole,
-  AuthContext,
   InMemoryActionOwnershipRegistry,
   InMemoryTrustedContactRegistry,
   TrustedContactStatus,
@@ -130,7 +129,6 @@ function setupTestEnvironment(): TestSetup {
     contactRegistry,
     actionOwnershipRegistry,
     timeProvider: clock.getTime,
-    approvalTtlMinutes: 15,
   });
 
   const router = new ApprovalApiRouter(service, tokenVerifier, {
@@ -140,12 +138,12 @@ function setupTestEnvironment(): TestSetup {
   // Setup tokens
   tokenVerifier.registerToken('alice-token', {
     actorId: 'usr_alice',
-    role: ActorRole.WARD,
+    role: ActorRole.USER,
     isAuthenticated: true,
   });
   tokenVerifier.registerToken('bob-token', {
     actorId: 'usr_bob',
-    role: ActorRole.WARD,
+    role: ActorRole.USER,
     isAuthenticated: true,
   });
   tokenVerifier.registerToken('carol-contact-token', {
@@ -196,7 +194,7 @@ function setupTestEnvironment(): TestSetup {
         }
       }
       const apiRes = await router.dispatch({
-        method: init?.method || 'GET',
+        method: (init?.method as any) || 'GET',
         url: parsedUrl.pathname + parsedUrl.search,
         headers,
         body,
@@ -211,7 +209,7 @@ function setupTestEnvironment(): TestSetup {
         },
         json: async () => apiRes.body,
         text: async () => JSON.stringify(apiRes.body),
-      };
+      } as unknown as Response;
     },
   });
 
@@ -285,7 +283,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_alice_01', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_alice_01'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 
@@ -316,7 +314,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_alice_02', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_alice_02'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 
@@ -349,7 +347,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_alice_03', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_alice_03'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 
@@ -395,7 +393,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_alice_04', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_alice_04'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 
@@ -460,7 +458,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_wire_approved', 'usr_alice');
     const reqApproved = env.service.createRequest(makeSamplePayload('act_wire_approved'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
     env.service.approveRequest(
@@ -484,7 +482,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_wire_rejected', 'usr_alice');
     const reqRejected = env.service.createRequest(makeSamplePayload('act_wire_rejected'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
     env.service.rejectRequest(
@@ -506,7 +504,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_wire_expired', 'usr_alice');
     const reqExpired = env.service.createRequest(makeSamplePayload('act_wire_expired'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
     // Advance clock past 15-minute TTL
@@ -525,13 +523,13 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_wire_cancelled', 'usr_alice');
     const reqCancelled = env.service.createRequest(makeSamplePayload('act_wire_cancelled'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
     env.service.cancelRequest(
       reqCancelled.id,
       'User decided not to proceed',
-      { actorId: 'usr_alice', role: ActorRole.WARD, isAuthenticated: true }
+      { actorId: 'usr_alice', role: ActorRole.USER, isAuthenticated: true }
     );
     const cancelledRes = await env.router.dispatch({
       method: 'GET',
@@ -554,7 +552,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_client_01', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_client_01'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 
@@ -571,7 +569,9 @@ async function runApprovalStatusTests(): Promise<void> {
     const malformedClientRes = await env.client.getApprovalStatus('not_apr_id');
     assert(!malformedClientRes.success, 'Malformed ID rejected client-side');
     assertEquals(malformedClientRes.statusCode, 400, 'Client status code is 400');
-    assertEquals(malformedClientRes.error?.code, 'VALIDATION_ERROR', 'Error code is VALIDATION_ERROR');
+    if (!malformedClientRes.success) {
+      assertEquals(malformedClientRes.error?.code, 'VALIDATION_ERROR', 'Error code is VALIDATION_ERROR');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -589,7 +589,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_bg_01', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_bg_01'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 
@@ -700,7 +700,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership(actionId, 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload(actionId), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
     env.service.approveRequest(
@@ -738,7 +738,7 @@ async function runApprovalStatusTests(): Promise<void> {
     env.actionOwnershipRegistry.registerActionOwnership('act_privacy_01', 'usr_alice');
     const createdReq = env.service.createRequest(makeSamplePayload('act_privacy_01'), {
       actorId: 'usr_alice',
-      role: ActorRole.WARD,
+      role: ActorRole.USER,
       isAuthenticated: true,
     });
 

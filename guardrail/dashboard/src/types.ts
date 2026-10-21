@@ -25,6 +25,13 @@ import {
   ApiClientErrorCodes,
   SubmitDecisionPayload,
 } from '../../extension/src/approval/client.js';
+import {
+  ApprovalStatusSyncClient,
+  ApprovalStatusResult,
+  StatusSyncOptions,
+  StatusSyncListener,
+  StatusSyncSubscription,
+} from '../../extension/src/approval/sync-client.js';
 
 export type {
   ApprovalRequest,
@@ -33,6 +40,10 @@ export type {
   ApiClientResult,
   ApiClientError,
   SubmitDecisionPayload,
+  ApprovalStatusResult,
+  StatusSyncOptions,
+  StatusSyncListener,
+  StatusSyncSubscription,
 };
 export {
   ApprovalStatus,
@@ -41,6 +52,7 @@ export {
   RiskLevel,
   ActorRole,
   ApprovalApiClient,
+  ApprovalStatusSyncClient,
   ApiClientErrorCodes,
 };
 

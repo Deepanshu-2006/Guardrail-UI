@@ -38,7 +38,11 @@ import {
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import { ApiResponseEnvelope } from './api.js';
-import { FORBIDDEN_PROPERTY_PATTERNS, validateApprovalRequestId } from './model.js';
+import {
+  FORBIDDEN_PROPERTY_PATTERNS,
+  validateApprovalRequestId,
+  validateApprovalRequest,
+} from './model.js';
 
 // =============================================================================
 // Configuration Constants
@@ -103,6 +107,8 @@ export interface ApiClientSuccess<T> {
   readonly success: true;
   readonly data: T;
   readonly statusCode: number;
+  readonly isNetworkError?: false;
+  readonly isTimeout?: false;
 }
 
 /**
@@ -112,6 +118,8 @@ export interface ApiClientFailure {
   readonly success: false;
   readonly error: ApiClientError;
   readonly statusCode?: number;
+  readonly isNetworkError?: boolean;
+  readonly isTimeout?: boolean;
 }
 
 /**
@@ -440,12 +448,37 @@ export class ApprovalApiClient {
     }
 
     const sanitizedId = encodeURIComponent(requestId.trim());
-    return this.dispatchRequest<ApprovalRequest>(
+    const result = await this.dispatchRequest<ApprovalRequest>(
       'GET',
       `/api/v1/approval-requests/${sanitizedId}`,
       undefined,
       options
     );
+
+    if (result.success) {
+      // Authoritatively validate that the returned data satisfies the complete ApprovalRequest contract
+      const validation = validateApprovalRequest(result.data);
+      if (!validation.valid) {
+        this.logger.warn('Server returned invalid ApprovalRequest data', {
+          requestId,
+          errors: validation.errors,
+        });
+        return {
+          success: false,
+          error: {
+            code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+            message: `Server returned invalid ApprovalRequest data: ${validation.errors[0]}`,
+            statusCode: result.statusCode,
+            details: validation.errors,
+          },
+          statusCode: result.statusCode,
+          isNetworkError: false,
+          isTimeout: false,
+        };
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -466,11 +499,14 @@ export class ApprovalApiClient {
     ApiClientResult<{
       readonly id: string;
       readonly status: ApprovalStatus;
+      readonly isApproved: boolean;
+      readonly isPending: boolean;
+      readonly isTerminal: boolean;
       readonly request: ApprovalRequest;
     }>
   > {
     const result = await this.getApprovalRequest(requestId, options);
-    if (!result.success || !result.data) {
+    if (!result.success) {
       return {
         success: false,
         error: result.error,
@@ -479,14 +515,29 @@ export class ApprovalApiClient {
         isTimeout: result.isTimeout,
       };
     }
+
+    const request = result.data;
+    const isApproved = request.status === ApprovalStatus.APPROVED;
+    const isPending = request.status === ApprovalStatus.PENDING;
+    const isTerminal =
+      isApproved ||
+      request.status === ApprovalStatus.REJECTED ||
+      request.status === ApprovalStatus.EXPIRED ||
+      request.status === ApprovalStatus.CANCELLED;
+
     return {
       success: true,
       statusCode: result.statusCode,
       data: {
-        id: result.data.id,
-        status: result.data.status,
-        request: result.data,
+        id: request.id,
+        status: request.status,
+        isApproved,
+        isPending,
+        isTerminal,
+        request,
       },
+      isNetworkError: false,
+      isTimeout: false,
     };
   }
 
@@ -751,6 +802,8 @@ export class ApprovalApiClient {
           statusCode: 401,
         },
         statusCode: 401,
+        isNetworkError: false,
+        isTimeout: false,
       };
     }
 
@@ -774,6 +827,8 @@ export class ApprovalApiClient {
             statusCode: 400,
           },
           statusCode: 400,
+          isNetworkError: false,
+          isTimeout: false,
         };
       }
     }
@@ -802,6 +857,8 @@ export class ApprovalApiClient {
             statusCode: 408,
           },
           statusCode: 408,
+          isTimeout: true,
+          isNetworkError: false,
         };
       }
       externalAbortHandler = () => {
@@ -832,6 +889,8 @@ export class ApprovalApiClient {
             statusCode: response.status,
           },
           statusCode: response.status,
+          isNetworkError: true,
+          isTimeout: false,
         };
       }
 
@@ -858,6 +917,8 @@ export class ApprovalApiClient {
               statusCode: response.status,
             },
             statusCode: response.status,
+            isNetworkError: false,
+            isTimeout: false,
           };
         }
       }
@@ -877,6 +938,8 @@ export class ApprovalApiClient {
             success: true,
             data: envelope.data as T,
             statusCode: response.status,
+            isNetworkError: false,
+            isTimeout: false,
           };
         }
 
@@ -900,6 +963,8 @@ export class ApprovalApiClient {
               details: envelope.error.details,
             },
             statusCode: response.status,
+            isNetworkError: false,
+            isTimeout: false,
           };
         }
       }
@@ -910,6 +975,8 @@ export class ApprovalApiClient {
           success: true,
           data: (parsed ?? {}) as T,
           statusCode: response.status,
+          isNetworkError: false,
+          isTimeout: false,
         };
       }
 
@@ -921,6 +988,8 @@ export class ApprovalApiClient {
           statusCode: response.status,
         },
         statusCode: response.status,
+        isNetworkError: false,
+        isTimeout: false,
       };
     } catch (networkErr: unknown) {
       // 9. Handle timeout vs network failure
@@ -942,6 +1011,8 @@ export class ApprovalApiClient {
             statusCode: 408,
           },
           statusCode: 408,
+          isTimeout: true,
+          isNetworkError: false,
         };
       }
 
@@ -960,6 +1031,8 @@ export class ApprovalApiClient {
           statusCode: 0,
         },
         statusCode: 0,
+        isNetworkError: true,
+        isTimeout: false,
       };
     } finally {
       if (timeoutId !== undefined) {

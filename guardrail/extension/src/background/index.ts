@@ -24,11 +24,9 @@ import {
   SubmitApprovalRequestOptions,
 } from '../approval/submit-operation.js';
 import { checkPayloadForSensitiveFields, ApprovalApiClient } from '../approval/client.js';
+import { ApprovalStatusSyncClient } from '../approval/sync-client.js';
 import { validateApprovalRequestId } from '../approval/model.js';
 import {
-  ApprovalRequest,
-  ApprovalStatusString,
-  GuardrailGetApprovalStatusMessage,
   GuardrailGetApprovalStatusResponse,
 } from '../types/approval.js';
 
@@ -312,6 +310,7 @@ export function validateApprovalStatusLookupMessage(message: unknown): Validated
 
 export interface HandleStatusLookupOptions {
   readonly apiClient?: ApprovalApiClient;
+  readonly syncClient?: ApprovalStatusSyncClient;
   readonly token?: string;
 }
 
@@ -319,7 +318,7 @@ export interface HandleStatusLookupOptions {
  * Handles an approval status query in the background service worker:
  * 1. Validates the incoming message shape and security boundaries.
  * 2. If actionId is supplied, verifies that the action is actively tracked in the controller.
- * 3. Dispatches the status query to the authoritative backend via ApprovalApiClient.
+ * 3. Dispatches the status query to the authoritative backend via ApprovalStatusSyncClient.
  * 4. Returns typed GuardrailGetApprovalStatusResponse.
  *
  * CRITICAL SAFETY INVARIANT:
@@ -364,26 +363,28 @@ export async function handleBackgroundApprovalStatusLookup(
     }
   }
 
-  const client = options?.apiClient ?? new ApprovalApiClient();
+  const syncClient =
+    options?.syncClient ??
+    new ApprovalStatusSyncClient({ apiClient: options?.apiClient });
 
   try {
-    const result = await client.getApprovalRequest(requestId, {
+    const result = await syncClient.getStatus(requestId, {
       token: options?.token,
     });
 
-    if (result.success && result.data) {
+    if (result.success && result.request) {
       return {
         success: true,
         requestId,
-        status: result.data.status,
-        request: result.data,
+        status: result.status,
+        request: result.request,
         isAuthoritative: true,
       };
     } else {
       return {
         success: false,
         requestId,
-        isAuthoritative: result.statusCode !== undefined && result.statusCode < 500,
+        isAuthoritative: result.isAuthoritative,
         error: {
           code: result.error?.code || 'STATUS_LOOKUP_FAILED',
           message: result.error?.message || 'Failed to retrieve approval request status.',
