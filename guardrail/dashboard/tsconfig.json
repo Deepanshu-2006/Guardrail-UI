@@ -18,6 +18,7 @@
     "src/**/*",
     "../extension/src/types/**/*.ts",
     "../extension/src/approval/**/*.ts",
-    "../extension/src/interception/**/*.ts"
+    "../extension/src/interception/**/*.ts",
+    "../extension/src/staging/**/*.ts"
   ]
 }

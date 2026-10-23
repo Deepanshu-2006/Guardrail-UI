@@ -9,6 +9,7 @@
     "test:shell": "../extension/node_modules/.bin/esbuild src/tests/test-dashboard-shell.ts --bundle --format=esm --target=es2022 --outfile=dist/test-dashboard-shell.js && node dist/test-dashboard-shell.js",
     "test:verify-day12": "../extension/node_modules/.bin/esbuild src/tests/verify-day12-workflow.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/verify-day12-workflow.js && node dist/verify-day12-workflow.js",
     "test:sync": "../extension/node_modules/.bin/esbuild src/tests/test-dashboard-sync.ts --bundle --format=esm --target=es2022 --outfile=dist/test-dashboard-sync.js && node dist/test-dashboard-sync.js",
-    "test": "npm run test:shell && npm run test:verify-day12 && npm run test:sync"
+    "test:verify-complete-sync": "../extension/node_modules/.bin/esbuild src/tests/verify-complete-sync-flow.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/verify-complete-sync-flow.js && node dist/verify-complete-sync-flow.js",
+    "test": "npm run test:shell && npm run test:verify-day12 && npm run test:sync && npm run test:verify-complete-sync"
   }
 }
