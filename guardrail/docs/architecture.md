@@ -87,5 +87,11 @@ For comprehensive deep dives into specific subsystems and behavioral contracts, 
    - Deterministic state machine behavior across all lifecycle states (`PENDING`, `APPROVED`, `REJECTED`, `EXPIRED`, `CANCELLED`).
    - Inviolable decoupled execution architecture: Approvals grant reviewer consent but never trigger remote action execution.
 
+6. **[Action-Approval Binding & Security Gap Audit](action-approval-binding-audit.md)**:
+   - Comprehensive audit of the current relationship between intercepted browser actions and approval requests.
+   - Analysis of action identification, 1:1 binding cardinality, lifecycle survival, and replay vulnerabilities.
+   - Documentation of critical security gaps (unauthenticated action IDs, semantic substitution, closure destruction on reload).
+   - Minimal secure design: Canonical Action Fingerprint / Digest (`actionDigest`), Approval Grant Token, and Continuation Gate.
+
 
 
