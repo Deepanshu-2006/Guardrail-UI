@@ -23,7 +23,17 @@
  * `guardrail/docs/approval-workflow-contract.md` (Section 8.1).
  */
 
-import { ApprovalRequest, ApprovalStatus } from '../types/approval.js';
+import {
+  ApprovalActionBinding,
+  ApprovalActionBindingState,
+  ApprovalRequest,
+  ApprovalStatus,
+} from '../types/approval.js';
+import {
+  ApprovalBindingConflictError,
+  ApprovalBindingReassignmentError,
+  assertValidApprovalActionBinding,
+} from './binding.js';
 
 /**
  * Persistence classification identifying storage maturity.
@@ -61,6 +71,7 @@ export interface ApprovalRequestRepository {
 
   /**
    * Persists a new or modified ApprovalRequest.
+   * Throws ApprovalBindingReassignmentError if attempting to change actionId for an existing request.
    *
    * @param request The immutable ApprovalRequest record to save
    */
@@ -113,6 +124,46 @@ export interface ApprovalRequestRepository {
   count(): number;
 
   /**
+   * Persists an ApprovalActionBinding, enforcing 1:1 uniqueness and anti-reassignment invariants.
+   */
+  saveBinding(binding: ApprovalActionBinding): void;
+
+  /**
+   * Retrieves an ApprovalActionBinding by its canonical binding ID ('bnd_...').
+   */
+  findBindingById(id: string): ApprovalActionBinding | undefined;
+
+  /**
+   * Retrieves the ApprovalActionBinding associated with a specific approval request ID ('apr_...').
+   */
+  findBindingByRequestId(requestId: string): ApprovalActionBinding | undefined;
+
+  /**
+   * Retrieves the active or latest ApprovalActionBinding for an intercepted action ID ('act_...').
+   */
+  findBindingByActionId(actionId: string): ApprovalActionBinding | undefined;
+
+  /**
+   * Performs an atomic conditional update on an ApprovalActionBinding.
+   * Ensures the binding is currently in `expectedCurrentState` before committing updates.
+   */
+  atomicTransitionBinding(
+    bindingId: string,
+    expectedCurrentState: ApprovalActionBindingState,
+    updatedBinding: ApprovalActionBinding
+  ): boolean;
+
+  /**
+   * Retrieves all approval action bindings in the repository.
+   */
+  findAllBindings(): readonly ApprovalActionBinding[];
+
+  /**
+   * Returns total count of bindings currently held in the repository.
+   */
+  countBindings(): number;
+
+  /**
    * Clears all stored records (for test isolation).
    */
   clear(): void;
@@ -135,6 +186,13 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
   // Optimistic version counter: requestId -> number
   private readonly versionMap: Map<string, number> = new Map();
 
+  // Action-Approval Binding storage
+  private readonly bindings: Map<string, ApprovalActionBinding> = new Map();
+  // requestId -> bindingId (1:1 relationship)
+  private readonly bindingByRequestId: Map<string, string> = new Map();
+  // actionId -> bindingId (1:1 relationship for active actions)
+  private readonly bindingByActionId: Map<string, string> = new Map();
+
   /**
    * Retrieves an ApprovalRequest by ID.
    */
@@ -156,8 +214,24 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
 
   /**
    * Persists an ApprovalRequest.
+   * Strictly enforces that an existing request ID cannot be reassigned to a different actionId.
    */
   public save(request: ApprovalRequest): void {
+    // Anti-reassignment check 1: existing request
+    const existing = this.requests.get(request.id);
+    if (existing && existing.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(request.id, existing.actionId, request.actionId);
+    }
+
+    // Anti-reassignment check 2: existing binding for this request
+    const existingBindingId = this.bindingByRequestId.get(request.id);
+    if (existingBindingId) {
+      const binding = this.bindings.get(existingBindingId);
+      if (binding && binding.actionId !== request.actionId) {
+        throw new ApprovalBindingReassignmentError(request.id, binding.actionId, request.actionId);
+      }
+    }
+
     const frozen = Object.freeze({ ...request });
     this.requests.set(frozen.id, frozen);
 
@@ -196,6 +270,15 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
     // Conditional check: must match expectedCurrentStatus
     if (existing.status !== expectedCurrentStatus) {
       return false;
+    }
+
+    // Anti-reassignment check on transition
+    if (existing.actionId !== updatedRequest.actionId) {
+      throw new ApprovalBindingReassignmentError(
+        requestId,
+        existing.actionId,
+        updatedRequest.actionId
+      );
     }
 
     // Commit atomic update and bump version
@@ -265,6 +348,136 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
     return this.requests.size;
   }
 
+  // ===========================================================================
+  // Binding Storage & Concurrency
+  // ===========================================================================
+
+  /**
+   * Persists an ApprovalActionBinding, enforcing 1:1 relationship invariants and preventing reassignment.
+   */
+  public saveBinding(binding: ApprovalActionBinding): void {
+    assertValidApprovalActionBinding(binding);
+
+    // Reassignment check 1: Request already bound to a different action
+    const existingBindingIdForReq = this.bindingByRequestId.get(binding.requestId);
+    if (existingBindingIdForReq) {
+      const existingBinding = this.bindings.get(existingBindingIdForReq);
+      if (existingBinding && existingBinding.actionId !== binding.actionId) {
+        throw new ApprovalBindingReassignmentError(
+          binding.requestId,
+          existingBinding.actionId,
+          binding.actionId
+        );
+      }
+    }
+
+    // Reassignment check 2: Stored request entity with same ID has a different actionId
+    const storedRequest = this.requests.get(binding.requestId);
+    if (storedRequest && storedRequest.actionId !== binding.actionId) {
+      throw new ApprovalBindingReassignmentError(
+        binding.requestId,
+        storedRequest.actionId,
+        binding.actionId
+      );
+    }
+
+    // Conflict check 3: Action already bound to an active request with a different requestId
+    const existingBindingIdForAction = this.bindingByActionId.get(binding.actionId);
+    if (existingBindingIdForAction && existingBindingIdForAction !== binding.id) {
+      const existingBinding = this.bindings.get(existingBindingIdForAction);
+      if (
+        existingBinding &&
+        existingBinding.requestId !== binding.requestId &&
+        existingBinding.state === ApprovalActionBindingState.BOUND
+      ) {
+        throw new ApprovalBindingConflictError(
+          binding.actionId,
+          existingBinding.requestId,
+          binding.requestId
+        );
+      }
+    }
+
+    const frozen = Object.freeze({ ...binding });
+    this.bindings.set(frozen.id, frozen);
+    this.bindingByRequestId.set(frozen.requestId, frozen.id);
+    this.bindingByActionId.set(frozen.actionId, frozen.id);
+  }
+
+  /**
+   * Retrieves an ApprovalActionBinding by binding ID ('bnd_...').
+   */
+  public findBindingById(id: string): ApprovalActionBinding | undefined {
+    return this.bindings.get(id);
+  }
+
+  /**
+   * Retrieves an ApprovalActionBinding by approval request ID ('apr_...').
+   */
+  public findBindingByRequestId(requestId: string): ApprovalActionBinding | undefined {
+    const bindingId = this.bindingByRequestId.get(requestId);
+    return bindingId ? this.bindings.get(bindingId) : undefined;
+  }
+
+  /**
+   * Retrieves an ApprovalActionBinding by intercepted action ID ('act_...').
+   */
+  public findBindingByActionId(actionId: string): ApprovalActionBinding | undefined {
+    const bindingId = this.bindingByActionId.get(actionId);
+    return bindingId ? this.bindings.get(bindingId) : undefined;
+  }
+
+  /**
+   * Performs an atomic conditional update on an ApprovalActionBinding.
+   */
+  public atomicTransitionBinding(
+    bindingId: string,
+    expectedCurrentState: ApprovalActionBindingState,
+    updatedBinding: ApprovalActionBinding
+  ): boolean {
+    const existing = this.bindings.get(bindingId);
+    if (!existing) {
+      return false;
+    }
+
+    if (existing.state !== expectedCurrentState) {
+      return false;
+    }
+
+    // Anti-reassignment check on transition
+    if (existing.actionId !== updatedBinding.actionId) {
+      throw new ApprovalBindingReassignmentError(
+        updatedBinding.requestId,
+        existing.actionId,
+        updatedBinding.actionId
+      );
+    }
+    if (existing.requestId !== updatedBinding.requestId) {
+      throw new ApprovalBindingReassignmentError(
+        existing.requestId,
+        existing.actionId,
+        updatedBinding.actionId
+      );
+    }
+
+    this.saveBinding(updatedBinding);
+    return true;
+  }
+
+  /**
+   * Retrieves all bindings.
+   */
+  public findAllBindings(): readonly ApprovalActionBinding[] {
+    return Object.freeze(Array.from(this.bindings.values()));
+  }
+
+  /**
+   * Returns current count of stored bindings.
+   */
+  public countBindings(): number {
+    return this.bindings.size;
+  }
+
   /**
    * Clears all storage.
    */
@@ -273,6 +486,9 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
     this.userActionIndex.clear();
     this.requesterIndex.clear();
     this.versionMap.clear();
+    this.bindings.clear();
+    this.bindingByRequestId.clear();
+    this.bindingByActionId.clear();
   }
 
   private buildUserActionKey(requesterId: string, actionId: string): string {
