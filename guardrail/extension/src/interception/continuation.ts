@@ -27,6 +27,18 @@
 import { GuardrailAction } from '../types/actions.js';
 import { InterceptionRecord, InterceptionState } from '../types/interception.js';
 import { defaultInterceptionController, InterceptionController } from './controller.js';
+import {
+  ApprovalActionBinding,
+  ApprovalActionBindingState,
+  ApprovalRequest,
+  ApprovalStatus,
+} from '../types/approval.js';
+import {
+  defaultTimeProvider,
+  isRequestExpired,
+  TimeProvider,
+} from '../approval/model.js';
+import { isBindingExpired } from '../approval/binding.js';
 
 export type ControlledActionCallback = (action: GuardrailAction) => void;
 
@@ -51,6 +63,228 @@ export interface CancellationResult {
   readonly actionId: string;
   readonly record?: InterceptionRecord;
   readonly error?: string;
+}
+
+export type ContinuationAuthorizationErrorCode =
+  | 'ACTION_ID_MISMATCH'
+  | 'REQUEST_NOT_FOUND'
+  | 'BINDING_NOT_FOUND'
+  | 'REQUEST_NOT_APPROVED'
+  | 'BINDING_NOT_APPROVED'
+  | 'REQUEST_EXPIRED'
+  | 'BINDING_EXPIRED'
+  | 'BINDING_INVALIDATED'
+  | 'BINDING_CANCELLED'
+  | 'REQUEST_CANCELLED'
+  | 'REQUEST_REJECTED'
+  | 'BACKEND_STATE_UNKNOWN';
+
+export interface ContinuationAuthorizationInput {
+  /** Target action ID to be authorized */
+  readonly actionId: string;
+  /** Authoritative ApprovalRequest from backend, if available */
+  readonly request?: ApprovalRequest | null;
+  /** Authoritative ApprovalActionBinding from backend, if available */
+  readonly binding?: ApprovalActionBinding | null;
+  /** Reliable time provider for validating expiration deadlines */
+  readonly timeProvider?: TimeProvider;
+  /** If true, permits continuing actions that have no approval request/binding (e.g. standalone test mocks) */
+  readonly allowUnboundAction?: boolean;
+}
+
+export interface ContinuationAuthorizationResult {
+  readonly authorized: boolean;
+  readonly actionId: string;
+  readonly error?: string;
+  readonly errorCode?: ContinuationAuthorizationErrorCode;
+}
+
+/**
+ * Pure evaluation function validating whether continuation is authorized for a held action.
+ * Enforces:
+ * 1. Identifier matching (request.actionId === actionId, binding.actionId === actionId).
+ * 2. Status verification (strictly APPROVED).
+ * 3. Rejection of terminal non-approved states (REJECTED, EXPIRED, CANCELLED, INVALIDATED).
+ * 4. Trusted clock expiration checks.
+ * 5. Fail-closed on missing, unauthenticated, or unknown backend state.
+ */
+export function verifyContinuationAuthorization(
+  input: ContinuationAuthorizationInput
+): ContinuationAuthorizationResult {
+  const actionId = input.actionId?.trim();
+  if (!actionId) {
+    return {
+      authorized: false,
+      actionId: '',
+      error: 'Cannot authorize continuation without a valid actionId.',
+      errorCode: 'ACTION_ID_MISMATCH',
+    };
+  }
+
+  const timeProvider = input.timeProvider ?? defaultTimeProvider;
+  const { request, binding, allowUnboundAction } = input;
+
+  // If neither request nor binding is provided:
+  if (!request && !binding) {
+    if (allowUnboundAction) {
+      return { authorized: true, actionId };
+    }
+    return {
+      authorized: false,
+      actionId,
+      error: 'Continuation rejected: No backend approval request or action binding provided (state is unknown).',
+      errorCode: 'BACKEND_STATE_UNKNOWN',
+    };
+  }
+
+  // 1. Verify ApprovalRequest if provided
+  if (request) {
+    if (request.actionId !== actionId) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Action ID mismatch: Approval request is bound to "${request.actionId}", cannot authorize action "${actionId}".`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    if (isRequestExpired(request, timeProvider)) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Approval request "${request.id}" has expired.`,
+        errorCode: 'REQUEST_EXPIRED',
+      };
+    }
+
+    if (request.status === ApprovalStatus.REJECTED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Approval request "${request.id}" was REJECTED by trusted contact.`,
+        errorCode: 'REQUEST_REJECTED',
+      };
+    }
+
+    if (request.status === ApprovalStatus.CANCELLED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Approval request "${request.id}" was CANCELLED.`,
+        errorCode: 'REQUEST_CANCELLED',
+      };
+    }
+
+    if (request.status === ApprovalStatus.EXPIRED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Approval request "${request.id}" has EXPIRED.`,
+        errorCode: 'REQUEST_EXPIRED',
+      };
+    }
+
+    if (request.status === ApprovalStatus.PENDING) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Approval request "${request.id}" is still PENDING.`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    if (request.status !== ApprovalStatus.APPROVED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Unknown or invalid approval request status "${request.status}".`,
+        errorCode: 'BACKEND_STATE_UNKNOWN',
+      };
+    }
+  }
+
+  // 2. Verify ApprovalActionBinding if provided
+  if (binding) {
+    if (binding.actionId !== actionId) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Action ID mismatch: Action binding is bound to "${binding.actionId}", cannot authorize action "${actionId}".`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    if (isBindingExpired(binding, timeProvider)) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Action binding "${binding.id}" has expired.`,
+        errorCode: 'BINDING_EXPIRED',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.INVALIDATED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Action binding "${binding.id}" has been INVALIDATED.`,
+        errorCode: 'BINDING_INVALIDATED',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.CANCELLED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Action binding "${binding.id}" was CANCELLED.`,
+        errorCode: 'BINDING_CANCELLED',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.EXPIRED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Action binding "${binding.id}" has EXPIRED.`,
+        errorCode: 'BINDING_EXPIRED',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.REJECTED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Action binding "${binding.id}" was REJECTED.`,
+        errorCode: 'REQUEST_REJECTED',
+      };
+    }
+
+    if (binding.state !== ApprovalActionBindingState.APPROVED) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Continuation rejected: Action binding state is "${binding.state}" (expected APPROVED).`,
+        errorCode: 'BINDING_NOT_APPROVED',
+      };
+    }
+  }
+
+  // 3. Consistency check between request and binding if both present
+  if (request && binding) {
+    if (request.id !== binding.requestId) {
+      return {
+        authorized: false,
+        actionId,
+        error: `Relationship mismatch: Request ID "${request.id}" does not match binding.requestId "${binding.requestId}".`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+  }
+
+  return {
+    authorized: true,
+    actionId,
+  };
 }
 
 export class ContinuationManager {
@@ -104,14 +338,16 @@ export class ContinuationManager {
 
   /**
    * Continues a held action:
-   * 1. Validates that the action is currently in HELD state.
-   * 2. Transition its interception record to CONTINUED.
-   * 3. Executes the controlled handler exactly once.
-   * 4. Prevents recursive interception and rejects duplicate executions.
+   * 1. If authInput is provided, verifies continuation authorization (request/binding status, timestamps, ID match).
+   * 2. Validates that the action is currently in HELD state.
+   * 3. Transitions its interception record to CONTINUED.
+   * 4. Executes the controlled handler exactly once.
+   * 5. Prevents recursive interception and rejects duplicate executions.
    */
   public continueAction(
     actionId: string,
-    reason: string = 'Action continued via explicit development control.'
+    reason: string = 'Action continued via explicit development control.',
+    authInput?: ContinuationAuthorizationInput
   ): ContinuationResult {
     const id = actionId?.trim();
     if (!id) {
@@ -122,6 +358,20 @@ export class ContinuationManager {
         executionCount: 0,
         error: 'Cannot continue action without a valid actionId.',
       };
+    }
+
+    // Verify continuation authorization if provided
+    if (authInput) {
+      const authResult = verifyContinuationAuthorization(authInput);
+      if (!authResult.authorized) {
+        return {
+          success: false,
+          actionId: id,
+          executed: false,
+          executionCount: this.getExecutionCount(id),
+          error: authResult.error,
+        };
+      }
     }
 
     // Guard against concurrent resolution attempts for the same action
@@ -290,6 +540,84 @@ export class ContinuationManager {
       };
     } finally {
       this.isResolving.delete(id);
+    }
+  }
+
+  /**
+   * Explicitly invalidates and detaches a held action.
+   *
+   * IDEMPOTENT: If the action is already CANCELLED, returns success without error.
+   * Immediately clears local held action references and handler closures.
+   */
+  public invalidateHeldAction(
+    actionId: string,
+    reason: string = 'Held action invalidated and detached.'
+  ): CancellationResult {
+    const id = actionId?.trim();
+    if (!id) {
+      return {
+        success: false,
+        actionId: '',
+        error: 'Cannot invalidate action without a valid actionId.',
+      };
+    }
+
+    // Detach local held entry immediately regardless of controller state
+    if (this.currentHeldAction && this.currentHeldAction.action.id === id) {
+      this.currentHeldAction = null;
+    }
+
+    const record = this.controller.getRecord(id);
+    if (!record) {
+      return {
+        success: true,
+        actionId: id,
+      };
+    }
+
+    // Idempotent: If already in CANCELLED state, return success
+    if (record.state === InterceptionState.CANCELLED) {
+      return {
+        success: true,
+        actionId: id,
+        record,
+      };
+    }
+
+    // Cannot invalidate an already continued action
+    if (record.state === InterceptionState.CONTINUED) {
+      return {
+        success: false,
+        actionId: id,
+        record,
+        error: `Cannot invalidate action "${id}": Current state is "${record.state}". Action was already continued.`,
+      };
+    }
+
+    try {
+      const cancelledRecord = this.controller.cancelAction(id, reason);
+      return {
+        success: true,
+        actionId: id,
+        record: cancelledRecord,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        actionId: id,
+        record: this.controller.getRecord(id),
+        error: err?.message || 'Error occurred during action invalidation.',
+      };
+    }
+  }
+
+  /**
+   * Detaches the held action without running any handlers or altering controller records.
+   * Useful when a tab unloads or navigates away.
+   */
+  public detachHeldAction(actionId?: string): void {
+    if (!actionId || (this.currentHeldAction && this.currentHeldAction.action.id === actionId)) {
+      this.currentHeldAction = null;
     }
   }
 
