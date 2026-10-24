@@ -336,6 +336,13 @@ export class ApprovalApiRouter {
         return await this.handleGetRequestBinding(request, requestId, headers);
       }
 
+      // Route 2b: POST /api/v1/approval-requests/:id/invalidate
+      const invalidateRequestMatch = path.match(/^\/api\/v1\/approval-requests\/([^/]+)\/invalidate$/);
+      if (method === 'POST' && invalidateRequestMatch) {
+        const requestId = decodeURIComponent(invalidateRequestMatch[1]);
+        return await this.handleInvalidateRequestBinding(request, requestId, headers);
+      }
+
       // Route 3: POST /api/v1/approval-requests/:id/cancel
       const cancelMatch = path.match(/^\/api\/v1\/approval-requests\/([^/]+)\/cancel$/);
       if (method === 'POST' && cancelMatch) {
@@ -355,6 +362,13 @@ export class ApprovalApiRouter {
       if (method === 'GET' && getActionBindingMatch) {
         const actionId = decodeURIComponent(getActionBindingMatch[1]);
         return await this.handleGetActionBinding(request, actionId, headers);
+      }
+
+      // Route 5b: POST /api/v1/actions/:actionId/invalidate
+      const invalidateActionMatch = path.match(/^\/api\/v1\/actions\/([^/]+)\/invalidate$/);
+      if (method === 'POST' && invalidateActionMatch) {
+        const actionId = decodeURIComponent(invalidateActionMatch[1]);
+        return await this.handleInvalidateActionBinding(request, actionId, headers);
       }
 
       // Route 6: GET /api/v1/approvals/pending
@@ -644,6 +658,60 @@ export class ApprovalApiRouter {
     if (!binding) {
       throw new ApprovalAccessDeniedError();
     }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: binding,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/actions/:actionId/invalidate
+   */
+  private async handleInvalidateActionBinding(
+    request: ApiRequest,
+    actionId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<ApprovalActionBinding>> {
+    const authContext = await this.authenticate(request.headers);
+    const body = (request.body as { reason?: string } | undefined) ?? {};
+    const reason =
+      typeof body.reason === 'string'
+        ? body.reason
+        : 'Action binding invalidated by client';
+
+    const binding = this.service.invalidateBinding(actionId, reason, authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: binding,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/approval-requests/:id/invalidate
+   */
+  private async handleInvalidateRequestBinding(
+    request: ApiRequest,
+    requestId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<ApprovalActionBinding>> {
+    const authContext = await this.authenticate(request.headers);
+    const body = (request.body as { reason?: string } | undefined) ?? {};
+    const reason =
+      typeof body.reason === 'string'
+        ? body.reason
+        : 'Action binding invalidated by client';
+
+    const binding = this.service.invalidateBindingByRequestId(requestId, reason, authContext);
 
     return {
       statusCode: 200,

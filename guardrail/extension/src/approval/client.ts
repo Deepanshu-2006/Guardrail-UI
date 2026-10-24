@@ -604,6 +604,68 @@ export class ApprovalApiClient {
   }
 
   /**
+   * Invalidates an ApprovalActionBinding associated with an intercepted browser action.
+   *
+   * @param actionId Canonical intercepted action identifier ('act_...')
+   * @param reason Optional human-readable invalidation explanation
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with updated ApprovalActionBinding in INVALIDATED state or error
+   */
+  public async invalidateActionBinding(
+    actionId: string,
+    reason?: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<ApprovalActionBinding>> {
+    const idValidation = validateActionId(actionId);
+    if (!idValidation.valid) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: idValidation.errors[0] || 'Invalid actionId format.',
+          statusCode: 400,
+          details: idValidation.errors,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(actionId.trim());
+    const body = reason !== undefined ? { reason: String(reason) } : {};
+
+    const result = await this.dispatchRequest<ApprovalActionBinding>(
+      'POST',
+      `/api/v1/actions/${sanitizedId}/invalidate`,
+      body,
+      options
+    );
+
+    if (result.success) {
+      const validation = validateApprovalActionBinding(result.data);
+      if (!validation.valid) {
+        this.logger.warn('Server returned invalid ApprovalActionBinding data', {
+          actionId,
+          errors: validation.errors,
+        });
+        return {
+          success: false,
+          error: {
+            code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+            message: `Server returned invalid ApprovalActionBinding data: ${validation.errors[0]}`,
+            statusCode: result.statusCode,
+            details: validation.errors,
+          },
+          statusCode: result.statusCode,
+          isNetworkError: false,
+          isTimeout: false,
+        };
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Retrieves the authoritative status and metadata for an approval request.
    *
    * ARCHITECTURAL INVARIANT:
