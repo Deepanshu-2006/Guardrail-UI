@@ -33,6 +33,7 @@
 declare const chrome: any;
 
 import {
+  ApprovalActionBinding,
   ApprovalRequest,
   ApprovalStatus,
   ClientApprovalRequestPayload,
@@ -40,9 +41,11 @@ import {
 import { ApiResponseEnvelope } from './api.js';
 import {
   FORBIDDEN_PROPERTY_PATTERNS,
+  validateActionId,
   validateApprovalRequestId,
   validateApprovalRequest,
 } from './model.js';
+import { validateApprovalActionBinding } from './binding.js';
 
 // =============================================================================
 // Configuration Constants
@@ -325,6 +328,9 @@ export function validateClientPayloadIntegrity(payload: ClientApprovalRequestPay
   if (raw.id !== undefined) {
     violations.push('Client payload cannot specify "id" (canonical requestId is assigned by server).');
   }
+  if (raw.bindingId !== undefined) {
+    violations.push('Client payload cannot specify "bindingId" (binding identifiers are assigned authoritatively by server).');
+  }
 
   const sensitive = checkPayloadForSensitiveFields(payload);
   for (const s of sensitive) {
@@ -468,6 +474,122 @@ export class ApprovalApiClient {
           error: {
             code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
             message: `Server returned invalid ApprovalRequest data: ${validation.errors[0]}`,
+            statusCode: result.statusCode,
+            details: validation.errors,
+          },
+          statusCode: result.statusCode,
+          isNetworkError: false,
+          isTimeout: false,
+        };
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Retrieves the authoritative ApprovalActionBinding for an approval request.
+   *
+   * @param requestId Canonical approval request identifier ('apr_...')
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with current ApprovalActionBinding or error
+   */
+  public async getApprovalActionBinding(
+    requestId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<ApprovalActionBinding>> {
+    const idValidation = validateApprovalRequestId(requestId);
+    if (!idValidation.valid) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: idValidation.errors[0] || 'Invalid requestId format.',
+          statusCode: 400,
+          details: idValidation.errors,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(requestId.trim());
+    const result = await this.dispatchRequest<ApprovalActionBinding>(
+      'GET',
+      `/api/v1/approval-requests/${sanitizedId}/binding`,
+      undefined,
+      options
+    );
+
+    if (result.success) {
+      const validation = validateApprovalActionBinding(result.data);
+      if (!validation.valid) {
+        this.logger.warn('Server returned invalid ApprovalActionBinding data', {
+          requestId,
+          errors: validation.errors,
+        });
+        return {
+          success: false,
+          error: {
+            code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+            message: `Server returned invalid ApprovalActionBinding data: ${validation.errors[0]}`,
+            statusCode: result.statusCode,
+            details: validation.errors,
+          },
+          statusCode: result.statusCode,
+          isNetworkError: false,
+          isTimeout: false,
+        };
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Retrieves the authoritative ApprovalActionBinding for an intercepted action ID.
+   *
+   * @param actionId Canonical intercepted action identifier ('act_...')
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with current ApprovalActionBinding or error
+   */
+  public async getActionBinding(
+    actionId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<ApprovalActionBinding>> {
+    const idValidation = validateActionId(actionId);
+    if (!idValidation.valid) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: idValidation.errors[0] || 'Invalid actionId format.',
+          statusCode: 400,
+          details: idValidation.errors,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(actionId.trim());
+    const result = await this.dispatchRequest<ApprovalActionBinding>(
+      'GET',
+      `/api/v1/actions/${sanitizedId}/binding`,
+      undefined,
+      options
+    );
+
+    if (result.success) {
+      const validation = validateApprovalActionBinding(result.data);
+      if (!validation.valid) {
+        this.logger.warn('Server returned invalid ApprovalActionBinding data', {
+          actionId,
+          errors: validation.errors,
+        });
+        return {
+          success: false,
+          error: {
+            code: ApiClientErrorCodes.MALFORMED_JSON_RESPONSE,
+            message: `Server returned invalid ApprovalActionBinding data: ${validation.errors[0]}`,
             statusCode: result.statusCode,
             details: validation.errors,
           },
