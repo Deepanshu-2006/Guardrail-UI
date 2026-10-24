@@ -30,6 +30,7 @@
  */
 
 import {
+  ApprovalActionBinding,
   ApprovalRequest,
   ApprovalStatus,
   ClientApprovalRequestPayload,
@@ -39,8 +40,16 @@ import {
   ApprovalExpiredError,
   ApprovalValidationError,
   DuplicateApprovalRequestError,
+  validateActionId,
   validateApprovalRequestId,
 } from './model.js';
+import {
+  ApprovalBindingConflictError,
+  ApprovalBindingNotFoundError,
+  ApprovalBindingReassignmentError,
+  ApprovalBindingStateTransitionError,
+  ApprovalBindingValidationError,
+} from './binding.js';
 import {
   ApprovalAccessDeniedError,
   AuthContext,
@@ -320,37 +329,51 @@ export class ApprovalApiRouter {
         return await this.handleCreateRequest(request, headers);
       }
 
-      // Route 2: GET /api/v1/approval-requests/:id
-      const getRequesterMatch = path.match(/^\/api\/v1\/approval-requests\/(.+)$/);
-      if (method === 'GET' && getRequesterMatch) {
-        const requestId = decodeURIComponent(getRequesterMatch[1]);
-        return await this.handleGetRequest(request, requestId, headers);
+      // Route 2: GET /api/v1/approval-requests/:id/binding
+      const getBindingMatch = path.match(/^\/api\/v1\/approval-requests\/([^/]+)\/binding$/);
+      if (method === 'GET' && getBindingMatch) {
+        const requestId = decodeURIComponent(getBindingMatch[1]);
+        return await this.handleGetRequestBinding(request, requestId, headers);
       }
 
       // Route 3: POST /api/v1/approval-requests/:id/cancel
-      const cancelMatch = path.match(/^\/api\/v1\/approval-requests\/(.+)\/cancel$/);
+      const cancelMatch = path.match(/^\/api\/v1\/approval-requests\/([^/]+)\/cancel$/);
       if (method === 'POST' && cancelMatch) {
         const requestId = decodeURIComponent(cancelMatch[1]);
         return await this.handleCancelRequest(request, requestId, headers);
       }
 
-      // Route 4: GET /api/v1/approvals/pending
+      // Route 4: GET /api/v1/approval-requests/:id
+      const getRequesterMatch = path.match(/^\/api\/v1\/approval-requests\/([^/]+)$/);
+      if (method === 'GET' && getRequesterMatch) {
+        const requestId = decodeURIComponent(getRequesterMatch[1]);
+        return await this.handleGetRequest(request, requestId, headers);
+      }
+
+      // Route 5: GET /api/v1/actions/:actionId/binding
+      const getActionBindingMatch = path.match(/^\/api\/v1\/actions\/([^/]+)\/binding$/);
+      if (method === 'GET' && getActionBindingMatch) {
+        const actionId = decodeURIComponent(getActionBindingMatch[1]);
+        return await this.handleGetActionBinding(request, actionId, headers);
+      }
+
+      // Route 6: GET /api/v1/approvals/pending
       if (method === 'GET' && path === '/api/v1/approvals/pending') {
         return await this.handleListPending(request, headers);
       }
 
-      // Route 5: GET /api/v1/approvals/:id
-      const getContactMatch = path.match(/^\/api\/v1\/approvals\/(.+)$/);
-      if (method === 'GET' && getContactMatch && path !== '/api/v1/approvals/pending') {
-        const requestId = decodeURIComponent(getContactMatch[1]);
-        return await this.handleGetRequest(request, requestId, headers);
-      }
-
-      // Route 6: POST /api/v1/approvals/:id/decide
-      const decideMatch = path.match(/^\/api\/v1\/approvals\/(.+)\/decide$/);
+      // Route 7: POST /api/v1/approvals/:id/decide
+      const decideMatch = path.match(/^\/api\/v1\/approvals\/([^/]+)\/decide$/);
       if (method === 'POST' && decideMatch) {
         const requestId = decodeURIComponent(decideMatch[1]);
         return await this.handleDecideRequest(request, requestId, headers);
+      }
+
+      // Route 8: GET /api/v1/approvals/:id
+      const getContactMatch = path.match(/^\/api\/v1\/approvals\/([^/]+)$/);
+      if (method === 'GET' && getContactMatch && path !== '/api/v1/approvals/pending') {
+        const requestId = decodeURIComponent(getContactMatch[1]);
+        return await this.handleGetRequest(request, requestId, headers);
       }
 
       // Route Not Found
@@ -427,6 +450,18 @@ export class ApprovalApiRouter {
     const body = request.body as ClientApprovalRequestPayload;
     if (!body || typeof body !== 'object') {
       throw new ApprovalValidationError(['Request body must be a valid JSON object.']);
+    }
+
+    const raw = body as unknown as Record<string, unknown>;
+    if (raw.bindingId !== undefined) {
+      throw new ApprovalValidationError([
+        'Client payload cannot specify "bindingId". Binding identifiers are assigned authoritatively by the server.',
+      ]);
+    }
+
+    const actionIdValidation = validateActionId(body.actionId);
+    if (!actionIdValidation.valid) {
+      throw new ApprovalValidationError(actionIdValidation.errors);
     }
 
     const existing = body.actionId
@@ -571,6 +606,51 @@ export class ApprovalApiRouter {
       body: {
         success: true,
         data: result,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/approval-requests/:id/binding
+   */
+  private async handleGetRequestBinding(
+    request: ApiRequest,
+    requestId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<ApprovalActionBinding>> {
+    const authContext = await this.authenticate(request.headers);
+    const binding = this.service.getBindingByRequestId(requestId, authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: binding,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/actions/:actionId/binding
+   */
+  private async handleGetActionBinding(
+    request: ApiRequest,
+    actionId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<ApprovalActionBinding>> {
+    const authContext = await this.authenticate(request.headers);
+    const binding = this.service.getBindingByActionId(actionId, authContext);
+    if (!binding) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: binding,
       },
     };
   }
@@ -811,6 +891,82 @@ export class ApprovalApiRouter {
             code: 'DUPLICATE_ACTIVE_REQUEST',
             message: err.message,
             statusCode: 409,
+          },
+        },
+      };
+    }
+
+    if (err instanceof ApprovalBindingReassignmentError) {
+      return {
+        statusCode: 409,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'BINDING_REASSIGNMENT_PROHIBITED',
+            message: err.message,
+            statusCode: 409,
+          },
+        },
+      };
+    }
+
+    if (err instanceof ApprovalBindingConflictError) {
+      return {
+        statusCode: 409,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'BINDING_CONFLICT',
+            message: err.message,
+            statusCode: 409,
+          },
+        },
+      };
+    }
+
+    if (err instanceof ApprovalBindingStateTransitionError) {
+      return {
+        statusCode: 409,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'INVALID_BINDING_TRANSITION',
+            message: err.message,
+            statusCode: 409,
+          },
+        },
+      };
+    }
+
+    if (err instanceof ApprovalBindingNotFoundError) {
+      return {
+        statusCode: 404,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'NOT_FOUND_OR_DENIED',
+            message: err.message,
+            statusCode: 404,
+          },
+        },
+      };
+    }
+
+    if (err instanceof ApprovalBindingValidationError) {
+      return {
+        statusCode: 400,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'BINDING_VALIDATION_ERROR',
+            message: err.message,
+            statusCode: 400,
+            details: err.errors,
           },
         },
       };
