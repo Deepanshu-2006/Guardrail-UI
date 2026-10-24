@@ -14,6 +14,7 @@ export * from './api.js';
 export * from './client.js';
 export * from './sync-client.js';
 export * from './submit-operation.js';
+export * from './binding.js';
 export * from '../types/approval.js';
 
 

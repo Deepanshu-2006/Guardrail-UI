@@ -42,6 +42,8 @@ export const PERMITTED_APPROVAL_REQUEST_FIELDS: ReadonlySet<string> = new Set([
   'id',
   'actionId',
   'requesterId',
+  'bindingId',
+  'actionDigest',
   'status',
   'actionDescription',
   'actionType',
@@ -343,9 +345,20 @@ export function isValidSanitizedOrigin(origin: string): boolean {
 }
 
 /**
+ * Checks whether a value is a valid ISO 8601 UTC timestamp string.
+ */
+export function isIso8601Timestamp(str: unknown): boolean {
+  if (typeof str !== 'string' || !str.trim()) {
+    return false;
+  }
+  const parsed = Date.parse(str);
+  return !isNaN(parsed);
+}
+
+/**
  * Recursively scans an object for keys that match forbidden sensitive patterns.
  */
-function findForbiddenProperties(obj: Record<string, unknown>, path: string = ''): string[] {
+export function findForbiddenProperties(obj: Record<string, unknown>, path: string = ''): string[] {
   const violations: string[] = [];
   for (const key of Object.keys(obj)) {
     const fullPath = path ? `${path}.${key}` : key;
@@ -675,6 +688,27 @@ export function validateApprovalRequest(data: unknown): ApprovalValidationResult
     }
   }
 
+  // 10. Action Binding & Digest Validation
+  if (rec.bindingId !== undefined) {
+    if (
+      typeof rec.bindingId !== 'string' ||
+      !rec.bindingId.startsWith('bnd_') ||
+      !/^bnd_[a-zA-Z0-9_-]{1,124}$/.test(rec.bindingId)
+    ) {
+      errors.push(
+        `Field "bindingId" must be a valid canonical binding identifier prefixed with "bnd_" (received "${String(rec.bindingId)}").`
+      );
+    }
+  }
+
+  if (rec.actionDigest !== undefined) {
+    if (typeof rec.actionDigest !== 'string' || !/^[a-f0-9]{64}$/i.test(rec.actionDigest)) {
+      errors.push(
+        `Field "actionDigest" must be a 64-character hexadecimal SHA-256 string (received "${String(rec.actionDigest)}").`
+      );
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors: Object.freeze(errors),
@@ -708,6 +742,10 @@ export interface CreateApprovalRequestOptions {
   readonly expiresAt?: string;
   /** Optional TTL in milliseconds (defaults to 15 minutes = 900,000 ms) */
   readonly ttlMs?: number;
+  /** Optional canonical action binding identifier ('bnd_...') */
+  readonly bindingId?: string;
+  /** Optional canonical action structural digest (SHA-256 hex string) */
+  readonly actionDigest?: string;
 }
 
 /**
@@ -776,6 +814,8 @@ export function createApprovalRequest(
   const ttlMs = options?.ttlMs ?? 15 * 60 * 1000; // 15-minute default TTL
   const expiresAt =
     options?.expiresAt ?? new Date(Date.parse(createdAt) + ttlMs).toISOString();
+  const bindingId = options?.bindingId;
+  const actionDigest = options?.actionDigest ?? payload.actionDigest;
 
   const request: ApprovalRequest = Object.freeze({
     id,
@@ -793,6 +833,8 @@ export function createApprovalRequest(
     pageTitle: payload.pageTitle,
     createdAt,
     expiresAt,
+    ...(bindingId ? { bindingId } : {}),
+    ...(actionDigest ? { actionDigest } : {}),
   });
 
   assertValidApprovalRequest(request);

@@ -72,6 +72,123 @@ export enum ApprovalStatus {
 export type ApprovalStatusString = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
 
 // =============================================================================
+// Approval Action Binding Models
+// =============================================================================
+
+/**
+ * Explicit lifecycle states for the immutable 1:1 binding between a protected action and its approval request.
+ */
+export enum ApprovalActionBindingState {
+  /**
+   * Binding is active and approval request is pending review for the held action.
+   */
+  BOUND = 'BOUND',
+
+  /**
+   * The bound approval request was explicitly approved by an authorized contact.
+   */
+  APPROVED = 'APPROVED',
+
+  /**
+   * The bound approval request was explicitly rejected by an authorized contact.
+   */
+  REJECTED = 'REJECTED',
+
+  /**
+   * The binding expired due to expiration deadline elapsed without decision.
+   */
+  EXPIRED = 'EXPIRED',
+
+  /**
+   * The binding was explicitly cancelled by the requesting user.
+   */
+  CANCELLED = 'CANCELLED',
+
+  /**
+   * The binding was invalidated (e.g., page reload, navigation, or DOM context drift).
+   */
+  INVALIDATED = 'INVALIDATED',
+}
+
+/**
+ * String union representing valid ApprovalActionBindingState values.
+ */
+export type ApprovalActionBindingStateString =
+  | 'BOUND'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | 'INVALIDATED';
+
+/**
+ * Canonical Action Fingerprint Descriptor capturing non-sensitive structural attributes of an action.
+ * Strictly excludes form values, passwords, card numbers, OTPs, query parameters, and auth tokens.
+ */
+export interface ActionFingerprintDescriptor {
+  readonly origin: string;
+  readonly pathname: string;
+  readonly actionType: ActionType;
+  readonly targetTagName?: string;
+  readonly targetId?: string;
+  readonly targetName?: string;
+  readonly formAction?: string;
+  readonly formMethod?: string;
+  readonly formFieldKeys?: readonly string[];
+  readonly actionLabel?: string;
+}
+
+/**
+ * Strongly typed domain entity representing the immutable 1:1 relationship between an
+ * intercepted browser action and its corresponding backend approval request.
+ */
+export interface ApprovalActionBinding {
+  /** Unique canonical identifier for the binding entity (prefixed with 'bnd_') */
+  readonly id: string;
+
+  /** Unique intercepted action identifier ('act_...') */
+  readonly actionId: string;
+
+  /** Unique canonical approval request identifier ('apr_...') */
+  readonly requestId: string;
+
+  /** Authoritative user ID who initiated the action and owns the request ('usr_...') */
+  readonly requesterId: string;
+
+  /** Current explicit lifecycle state of the binding */
+  readonly state: ApprovalActionBindingState;
+
+  /** Non-sensitive action structural fingerprint digest (SHA-256 hex string) */
+  readonly actionDigest?: string;
+
+  /** ISO 8601 UTC timestamp recording when this binding was created */
+  readonly createdAt: string;
+
+  /** ISO 8601 UTC timestamp recording when this binding expires */
+  readonly expiresAt: string;
+
+  /** Optional ISO 8601 UTC timestamp recording when the binding reached terminal state */
+  readonly resolvedAt?: string;
+
+  /** Optional non-sensitive explanation or reason */
+  readonly reason?: string;
+}
+
+/**
+ * Input descriptor for creating an ApprovalActionBinding.
+ */
+export interface CreateApprovalActionBindingInput {
+  readonly actionId: string;
+  readonly requestId: string;
+  readonly requesterId: string;
+  readonly actionDigest?: string;
+  readonly createdAt?: string;
+  readonly expiresAt: string;
+  readonly state?: ApprovalActionBindingState;
+  readonly reason?: string;
+}
+
+// =============================================================================
 // Decision Metadata
 // =============================================================================
 
@@ -208,6 +325,17 @@ export interface ApprovalRequest {
    * Present ONLY when status is CANCELLED.
    */
   readonly cancellationReason?: string;
+
+  /**
+   * Reference to the unique binding entity associating this request with the action ('bnd_...').
+   */
+  readonly bindingId?: string;
+
+  /**
+   * Cryptographic / structural digest of the action's canonical non-sensitive attributes.
+   * Proves structural action identity without exposing passwords, OTPs, cards, or form values.
+   */
+  readonly actionDigest?: string;
 }
 
 // =============================================================================
@@ -248,6 +376,9 @@ export interface ClientApprovalRequestPayload {
 
   /** Sanitized webpage title */
   readonly pageTitle?: string;
+
+  /** Optional action structural fingerprint digest computed at interception time */
+  readonly actionDigest?: string;
 }
 
 /**
