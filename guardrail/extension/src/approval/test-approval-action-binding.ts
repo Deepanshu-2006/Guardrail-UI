@@ -23,14 +23,9 @@ import {
   ApprovalActionBindingState,
   ApprovalRequest,
   ApprovalStatus,
-  ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import {
   ActionFingerprintDescriptor,
-  ApprovalBindingConflictError,
-  ApprovalBindingReassignmentError,
-  ApprovalBindingStateTransitionError,
-  ApprovalBindingValidationError,
   assertNoBindingReassignment,
   assertValidActionId,
   assertValidApprovalActionBinding,
@@ -38,7 +33,6 @@ import {
   computeActionDigest,
   computeSha256,
   createApprovalActionBinding,
-  generateActionBindingId,
   isBindingExpired,
   isTerminalBindingState,
   isValidBindingTransition,
@@ -50,7 +44,6 @@ import {
 } from './binding.js';
 import {
   createApprovalRequest,
-  resolveTimestamp,
   TimeProvider,
   validateApprovalRequestId,
 } from './model.js';
@@ -60,12 +53,10 @@ import {
 } from './repository.js';
 import {
   ActorRole,
-  ApprovalAccessDeniedError,
   AuthContext,
   InMemoryActionOwnershipRegistry,
   InMemoryTrustedContactRegistry,
   TrustedContactStatus,
-  UnauthorizedActionRequesterError,
 } from './authorization.js';
 import { ApprovalService } from './service.js';
 
@@ -646,7 +637,7 @@ console.log('\n▶ Suite 8: Zero Client Trust & ApprovalService Integration');
 
   const wardUser: AuthContext = {
     actorId: 'usr_ward_alice',
-    role: ActorRole.WARD,
+    role: ActorRole.USER,
     isAuthenticated: true,
   };
 
@@ -658,13 +649,13 @@ console.log('\n▶ Suite 8: Zero Client Trust & ApprovalService Integration');
 
   const unauthenticatedCaller: AuthContext = {
     actorId: '',
-    role: ActorRole.WARD,
+    role: ActorRole.USER,
     isAuthenticated: false,
   };
 
   const unrelatedUser: AuthContext = {
     actorId: 'usr_charlie',
-    role: ActorRole.WARD,
+    role: ActorRole.USER,
     isAuthenticated: true,
   };
 
@@ -672,6 +663,7 @@ console.log('\n▶ Suite 8: Zero Client Trust & ApprovalService Integration');
     id: 'tc_bob',
     userId: 'usr_ward_alice',
     status: TrustedContactStatus.ACTIVE,
+    createdAt: '2026-10-24T10:00:00.000Z',
   });
   actionOwnershipRegistry.registerActionOwnership('act_checkout_123', 'usr_ward_alice');
 
@@ -821,6 +813,7 @@ console.log('\n▶ Suite 8: Zero Client Trust & ApprovalService Integration');
     },
     wardUser
   );
+  assert(Boolean(invalReq.id), 'Request created before invalidation');
 
   const invalidatedBinding = service.invalidateBinding(
     'act_inval_test',

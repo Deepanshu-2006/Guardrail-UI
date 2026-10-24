@@ -429,6 +429,45 @@ export function assertValidApprovalRequestId(id: unknown): asserts id is string 
 }
 
 /**
+ * Validates a canonical action identifier format ('act_...' or legacy 'act-...').
+ *
+ * VALIDATION RULES:
+ * 1. Must be a non-empty string.
+ * 2. Must start with the canonical 'act_' prefix (or legacy 'act-').
+ * 3. Must contain only alphanumeric characters, underscores, and hyphens.
+ * 4. Maximum length is 128 characters total.
+ *
+ * @param id Any value to validate as an action identifier
+ * @returns ApprovalValidationResult with `valid` boolean and array of `errors`
+ */
+export function validateActionId(id: unknown): ApprovalValidationResult {
+  const errors: string[] = [];
+
+  if (typeof id !== 'string' || !id.trim()) {
+    errors.push('Action ID is required and must be a non-empty string.');
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  const trimmed = id.trim();
+
+  // Project standard prefix: act_ (or act-)
+  if (!trimmed.startsWith('act_') && !trimmed.startsWith('act-')) {
+    errors.push(`Field "actionId" must be prefixed with "act_" or "act-" (received "${trimmed}").`);
+  }
+
+  if (!/^(act[_-])[a-zA-Z0-9_-]{1,124}$/.test(trimmed)) {
+    errors.push(
+      `Field "actionId" format is invalid ("${trimmed}"). Expected canonical format: "act_" or "act-" followed by alphanumeric characters, underscores, or hyphens (up to 128 characters total).`
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: Object.freeze(errors),
+  };
+}
+
+/**
  * Validates an unknown data payload against the complete ApprovalRequest data contract,
  * ensuring required fields, type safety, timestamp consistency, lifecycle invariants,
  * and strict privacy exclusions.
@@ -472,8 +511,9 @@ export function validateApprovalRequest(data: unknown): ApprovalValidationResult
     errors.push(`Field "id" must be prefixed with "apr_" (received "${rec.id}").`);
   }
 
-  if (typeof rec.actionId !== 'string' || !rec.actionId.trim()) {
-    errors.push('Field "actionId" is required and must be a non-empty string.');
+  const actionIdValidation = validateActionId(rec.actionId);
+  if (!actionIdValidation.valid) {
+    errors.push(...actionIdValidation.errors);
   }
 
   if (typeof rec.requesterId !== 'string' || !rec.requesterId.trim()) {
@@ -803,6 +843,15 @@ export function createApprovalRequest(
     clientViolations.push(
       'Client payload cannot specify "resolvedAt". Initial requests are unresolved.'
     );
+  }
+  if (rawPayload.bindingId !== undefined) {
+    clientViolations.push(
+      'Client payload cannot specify "bindingId". Binding identifiers are assigned authoritatively by the server.'
+    );
+  }
+  const actionIdValidation = validateActionId(payload.actionId);
+  if (!actionIdValidation.valid) {
+    clientViolations.push(...actionIdValidation.errors);
   }
 
   if (clientViolations.length > 0) {

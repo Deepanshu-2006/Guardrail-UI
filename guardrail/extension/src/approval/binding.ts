@@ -40,11 +40,12 @@ import {
   isIso8601Timestamp,
   resolveTimestamp,
   TimeProvider,
+  validateActionId,
   validateApprovalRequestId,
 } from './model.js';
 
 // Re-export core types for single-point import
-export { ApprovalActionBindingState };
+export { ApprovalActionBindingState, validateActionId };
 export type {
   ActionFingerprintDescriptor,
   ApprovalActionBinding,
@@ -250,35 +251,7 @@ export function generateActionBindingId(prefix: string = 'bnd'): string {
   return generateActionId(prefix);
 }
 
-/**
- * Validates a canonical action identifier format ('act_...' or legacy 'act-...').
- */
-export function validateActionId(id: unknown): ApprovalValidationResult {
-  const errors: string[] = [];
-
-  if (typeof id !== 'string' || !id.trim()) {
-    errors.push('Action ID is required and must be a non-empty string.');
-    return { valid: false, errors: Object.freeze(errors) };
-  }
-
-  const trimmed = id.trim();
-
-  // Project standard prefix: act_ (or act-)
-  if (!trimmed.startsWith('act_') && !trimmed.startsWith('act-')) {
-    errors.push(`Field "actionId" must be prefixed with "act_" or "act-" (received "${trimmed}").`);
-  }
-
-  if (!/^(act[_-])[a-zA-Z0-9_-]{1,124}$/.test(trimmed)) {
-    errors.push(
-      `Field "actionId" format is invalid ("${trimmed}"). Expected canonical format: "act_" or "act-" followed by alphanumeric characters, underscores, or hyphens (up to 128 characters total).`
-    );
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors: Object.freeze(errors),
-  };
-}
+// validateActionId is canonically defined in model.ts and re-exported above.
 
 /**
  * Asserts that a value is a valid canonical action ID, throwing ApprovalBindingValidationError if not.

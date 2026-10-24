@@ -52,6 +52,10 @@ import {
   validateApprovalRequestId,
 } from './model.js';
 import {
+  ApprovalBindingConflictError,
+  ApprovalBindingNotFoundError,
+  ApprovalBindingReassignmentError,
+  ApprovalBindingStateTransitionError,
   createApprovalActionBinding,
   generateActionBindingId,
   isBindingExpired,
@@ -292,8 +296,27 @@ export class ApprovalService {
         'Client payload cannot specify "resolvedAt". Initial requests are unresolved.',
       ]);
     }
+    if (rawPayload.bindingId !== undefined) {
+      throw new ApprovalValidationError([
+        'Client payload cannot specify "bindingId". Binding identifiers are assigned authoritatively by the server.',
+      ]);
+    }
     if (rawPayload.userId !== undefined && rawPayload.userId !== authContext.actorId) {
       throw new UnauthorizedActionRequesterError(authContext.actorId, payload.actionId);
+    }
+
+    // Independently validate action identifier format
+    const actionIdValidation = validateActionId(payload.actionId);
+    if (!actionIdValidation.valid) {
+      throw new ApprovalValidationError(actionIdValidation.errors);
+    }
+
+    // Independently validate options.id if specified
+    if (options?.id !== undefined) {
+      const idValidation = validateApprovalRequestId(options.id);
+      if (!idValidation.valid) {
+        throw new ApprovalValidationError(idValidation.errors);
+      }
     }
 
     // 3. Verify action ownership & binding assignment
@@ -326,6 +349,20 @@ export class ApprovalService {
         });
         return existing;
       }
+    }
+
+    // Check for conflicting active binding with another request ID
+    if (
+      existingBindingForAction &&
+      existingBindingForAction.state === ApprovalActionBindingState.BOUND &&
+      !isBindingExpired(existingBindingForAction, this.timeProvider) &&
+      (!existing || existing.id !== existingBindingForAction.requestId)
+    ) {
+      throw new ApprovalBindingConflictError(
+        payload.actionId,
+        existingBindingForAction.requestId,
+        options?.id ?? 'new-request'
+      );
     }
 
     // 5. Authoritative requester binding & 1:1 Action-Approval Binding
@@ -439,6 +476,12 @@ export class ApprovalService {
     if (!isOwner && !isAuthorizedContact && !isAdmin) {
       // Safe opaque error: identical for missing and unauthorized IDs
       throw new ApprovalAccessDeniedError();
+    }
+
+    // Validate relationship between request and binding
+    const binding = this.repository.findBindingByRequestId(request.id);
+    if (binding && binding.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(request.id, binding.actionId, request.actionId);
     }
 
     return request;
@@ -558,6 +601,12 @@ export class ApprovalService {
     // Lifecycle check: terminal states cannot be cancelled
     if (isTerminalApprovalStatus(request.status)) {
       throw new ApprovalAlreadyResolvedError(requestId, request.status, ApprovalStatus.CANCELLED);
+    }
+
+    // Verify associated action binding relationship
+    const existingBinding = this.repository.findBindingByRequestId(requestId);
+    if (existingBinding && existingBinding.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(requestId, existingBinding.actionId, request.actionId);
     }
 
     const cancelled = cancelApprovalRequest(
@@ -749,6 +798,33 @@ export class ApprovalService {
       throw new ApprovalExpiredError(requestId, request.expiresAt, now);
     }
 
+    // Verify associated action binding relationship & state
+    const binding = this.repository.findBindingByRequestId(requestId);
+    if (request.bindingId && !binding) {
+      throw new ApprovalBindingNotFoundError(requestId);
+    }
+
+    if (binding) {
+      if (binding.actionId !== request.actionId) {
+        throw new ApprovalBindingReassignmentError(requestId, binding.actionId, request.actionId);
+      }
+
+      if (binding.state === ApprovalActionBindingState.INVALIDATED) {
+        throw new ApprovalBindingStateTransitionError(
+          binding.id,
+          binding.state,
+          decision === 'APPROVED'
+            ? ApprovalActionBindingState.APPROVED
+            : ApprovalActionBindingState.REJECTED
+        );
+      }
+
+      if (isBindingExpired(binding, this.timeProvider)) {
+        const now = resolveTimestamp(this.timeProvider);
+        throw new ApprovalExpiredError(requestId, binding.expiresAt, now);
+      }
+    }
+
     // 4. Authoritative decision record (overwrite client-supplied IDs)
     const decidedAt = resolveTimestamp(this.timeProvider);
     const decidedBy = authContext.actorId;
@@ -779,7 +855,6 @@ export class ApprovalService {
     }
 
     // Synchronize associated binding
-    const binding = this.repository.findBindingByRequestId(requestId);
     if (binding && binding.state === ApprovalActionBindingState.BOUND) {
       const bindingTargetState =
         decision === 'APPROVED'
@@ -860,6 +935,11 @@ export class ApprovalService {
       throw new ApprovalAccessDeniedError();
     }
 
+    const request = this.repository.findById(requestId);
+    if (request && activeBinding.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(requestId, activeBinding.actionId, request.actionId);
+    }
+
     return activeBinding;
   }
 
@@ -909,6 +989,11 @@ export class ApprovalService {
 
     if (!isOwner && !isAuthorizedContact && !isAdmin) {
       throw new ApprovalAccessDeniedError();
+    }
+
+    const request = this.repository.findById(activeBinding.requestId);
+    if (request && activeBinding.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(activeBinding.requestId, activeBinding.actionId, request.actionId);
     }
 
     return activeBinding;
