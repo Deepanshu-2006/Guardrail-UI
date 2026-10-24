@@ -28,6 +28,8 @@
  */
 
 import {
+  ApprovalActionBinding,
+  ApprovalActionBindingState,
   ApprovalRequest,
   ApprovalStatus,
   ClientApprovalRequestPayload,
@@ -49,6 +51,13 @@ import {
   TimeProvider,
   validateApprovalRequestId,
 } from './model.js';
+import {
+  createApprovalActionBinding,
+  generateActionBindingId,
+  isBindingExpired,
+  transitionBindingState,
+  validateActionId,
+} from './binding.js';
 import {
   ApprovalRequestRepository,
   DevelopmentInMemoryApprovalRequestRepository,
@@ -287,12 +296,17 @@ export class ApprovalService {
       throw new UnauthorizedActionRequesterError(authContext.actorId, payload.actionId);
     }
 
-    // 3. Verify action ownership
+    // 3. Verify action ownership & binding assignment
     const isActionOwner = this.actionOwnershipRegistry.isActionOwnedByUser(
       payload.actionId,
       authContext.actorId
     );
     if (!isActionOwner) {
+      throw new UnauthorizedActionRequesterError(authContext.actorId, payload.actionId);
+    }
+
+    const existingBindingForAction = this.repository.findBindingByActionId(payload.actionId);
+    if (existingBindingForAction && existingBindingForAction.requesterId !== authContext.actorId) {
       throw new UnauthorizedActionRequesterError(authContext.actorId, payload.actionId);
     }
 
@@ -314,22 +328,41 @@ export class ApprovalService {
       }
     }
 
-    // 5. Authoritative requester binding
+    // 5. Authoritative requester binding & 1:1 Action-Approval Binding
     const requesterId = authContext.actorId;
     const createdAt = options?.createdAt ?? resolveTimestamp(this.timeProvider);
     const ttlMs = options?.ttlMs ?? 15 * 60 * 1000;
     const expiresAt =
       options?.expiresAt ?? new Date(Date.parse(createdAt) + ttlMs).toISOString();
 
+    const bindingId = generateActionBindingId();
+    const actionDigest = options?.actionDigest ?? payload.actionDigest;
+
     const request = createApprovalRequest(payload, requesterId, {
       id: options?.id,
       createdAt,
       expiresAt,
       ttlMs,
+      bindingId,
+      actionDigest,
     });
 
-    // 6. Save to repository
+    const binding = createApprovalActionBinding(
+      {
+        actionId: request.actionId,
+        requestId: request.id,
+        requesterId: request.requesterId,
+        actionDigest: request.actionDigest,
+        createdAt: request.createdAt,
+        expiresAt: request.expiresAt,
+        state: ApprovalActionBindingState.BOUND,
+      },
+      { id: bindingId, timeProvider: this.timeProvider }
+    );
+
+    // 6. Save to repository (atomic 1:1 action-approval relationship)
     this.repository.save(request);
+    this.repository.saveBinding(binding);
 
     // 7. Register action ownership in development registry
     if (this.actionOwnershipRegistry instanceof InMemoryActionOwnershipRegistry) {
@@ -337,9 +370,10 @@ export class ApprovalService {
     }
 
     // 8. Safe non-sensitive logging
-    this.logger.info('Created approval request', {
+    this.logger.info('Created approval request with action binding', {
       requestId: request.id,
       actionId: request.actionId,
+      bindingId: binding.id,
       requesterId: request.requesterId,
       riskLevel: request.riskLevel,
       category: request.category,
@@ -379,6 +413,18 @@ export class ApprovalService {
     if (request.status === ApprovalStatus.PENDING && isRequestExpired(request, this.timeProvider)) {
       const expired = expireApprovalRequest(request, this.timeProvider);
       this.repository.save(expired);
+      const bnd = this.repository.findBindingByRequestId(request.id);
+      if (bnd && bnd.state === ApprovalActionBindingState.BOUND) {
+        const updatedBnd = transitionBindingState(bnd, ApprovalActionBindingState.EXPIRED, {
+          resolvedAt: expired.resolvedAt,
+          timeProvider: this.timeProvider,
+        });
+        this.repository.atomicTransitionBinding(
+          bnd.id,
+          ApprovalActionBindingState.BOUND,
+          updatedBnd
+        );
+      }
       request = expired;
     }
 
@@ -534,6 +580,25 @@ export class ApprovalService {
       throw new ApprovalAlreadyResolvedError(requestId, currStatus, ApprovalStatus.CANCELLED);
     }
 
+    // Synchronize associated binding
+    const binding = this.repository.findBindingByRequestId(requestId);
+    if (binding && binding.state === ApprovalActionBindingState.BOUND) {
+      const updatedBinding = transitionBindingState(
+        binding,
+        ApprovalActionBindingState.CANCELLED,
+        {
+          resolvedAt: cancelled.resolvedAt,
+          reason,
+          timeProvider: this.timeProvider,
+        }
+      );
+      this.repository.atomicTransitionBinding(
+        binding.id,
+        ApprovalActionBindingState.BOUND,
+        updatedBinding
+      );
+    }
+
     this.logger.info('Cancelled approval request', {
       requestId,
       requesterId: authContext.actorId,
@@ -567,6 +632,24 @@ export class ApprovalService {
       throw new ApprovalAlreadyResolvedError(requestId, currStatus, ApprovalStatus.EXPIRED);
     }
 
+    // Synchronize associated binding
+    const binding = this.repository.findBindingByRequestId(requestId);
+    if (binding && binding.state === ApprovalActionBindingState.BOUND) {
+      const updatedBinding = transitionBindingState(
+        binding,
+        ApprovalActionBindingState.EXPIRED,
+        {
+          resolvedAt: expired.resolvedAt,
+          timeProvider: this.timeProvider,
+        }
+      );
+      this.repository.atomicTransitionBinding(
+        binding.id,
+        ApprovalActionBindingState.BOUND,
+        updatedBinding
+      );
+    }
+
     return expired;
   }
 
@@ -584,6 +667,22 @@ export class ApprovalService {
         const success = this.repository.atomicTransition(req.id, ApprovalStatus.PENDING, expired);
         if (success) {
           count++;
+          const bnd = this.repository.findBindingByRequestId(req.id);
+          if (bnd && bnd.state === ApprovalActionBindingState.BOUND) {
+            const updatedBnd = transitionBindingState(
+              bnd,
+              ApprovalActionBindingState.EXPIRED,
+              {
+                resolvedAt: expired.resolvedAt,
+                timeProvider: this.timeProvider,
+              }
+            );
+            this.repository.atomicTransitionBinding(
+              bnd.id,
+              ApprovalActionBindingState.BOUND,
+              updatedBnd
+            );
+          }
         }
       }
     }
@@ -679,6 +778,25 @@ export class ApprovalService {
       throw new ApprovalAlreadyResolvedError(requestId, currStatus, targetStatus);
     }
 
+    // Synchronize associated binding
+    const binding = this.repository.findBindingByRequestId(requestId);
+    if (binding && binding.state === ApprovalActionBindingState.BOUND) {
+      const bindingTargetState =
+        decision === 'APPROVED'
+          ? ApprovalActionBindingState.APPROVED
+          : ApprovalActionBindingState.REJECTED;
+      const updatedBinding = transitionBindingState(binding, bindingTargetState, {
+        resolvedAt: decidedAt,
+        reason: decisionInput?.decisionReason,
+        timeProvider: this.timeProvider,
+      });
+      this.repository.atomicTransitionBinding(
+        binding.id,
+        ApprovalActionBindingState.BOUND,
+        updatedBinding
+      );
+    }
+
     // 6. Safe logging
     this.logger.info(`Recorded decision: ${decision}`, {
       requestId,
@@ -688,6 +806,164 @@ export class ApprovalService {
     });
 
     return resolved;
+  }
+
+  // ===========================================================================
+  // Action Binding Query & Invalidation Operations
+  // ===========================================================================
+
+  /**
+   * Retrieves the ApprovalActionBinding associated with a specific approval request.
+   * Enforces multi-tenant authorization (requester, designated trusted contact, or admin).
+   */
+  public getBindingByRequestId(
+    requestId: string,
+    authContext: AuthContext
+  ): ApprovalActionBinding {
+    this.assertAuthenticated(authContext);
+
+    const validation = validateApprovalRequestId(requestId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
+
+    const binding = this.repository.findBindingByRequestId(requestId);
+    if (!binding) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    // Lazy expiration
+    let activeBinding = binding;
+    if (
+      activeBinding.state === ApprovalActionBindingState.BOUND &&
+      isBindingExpired(activeBinding, this.timeProvider)
+    ) {
+      const expired = transitionBindingState(activeBinding, ApprovalActionBindingState.EXPIRED, {
+        timeProvider: this.timeProvider,
+      });
+      this.repository.atomicTransitionBinding(
+        activeBinding.id,
+        ApprovalActionBindingState.BOUND,
+        expired
+      );
+      activeBinding = expired;
+    }
+
+    const isOwner = activeBinding.requesterId === authContext.actorId;
+    const isAuthorizedContact = this.contactRegistry.isTrustedContactForUser(
+      authContext.actorId,
+      activeBinding.requesterId
+    );
+    const isAdmin = authContext.role === ActorRole.ADMIN;
+
+    if (!isOwner && !isAuthorizedContact && !isAdmin) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return activeBinding;
+  }
+
+  /**
+   * Retrieves the ApprovalActionBinding associated with an intercepted browser action.
+   * Enforces multi-tenant authorization (requester, designated trusted contact, or admin).
+   */
+  public getBindingByActionId(
+    actionId: string,
+    authContext: AuthContext
+  ): ApprovalActionBinding | undefined {
+    this.assertAuthenticated(authContext);
+
+    const validation = validateActionId(actionId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
+
+    const binding = this.repository.findBindingByActionId(actionId);
+    if (!binding) {
+      return undefined;
+    }
+
+    // Lazy expiration
+    let activeBinding = binding;
+    if (
+      activeBinding.state === ApprovalActionBindingState.BOUND &&
+      isBindingExpired(activeBinding, this.timeProvider)
+    ) {
+      const expired = transitionBindingState(activeBinding, ApprovalActionBindingState.EXPIRED, {
+        timeProvider: this.timeProvider,
+      });
+      this.repository.atomicTransitionBinding(
+        activeBinding.id,
+        ApprovalActionBindingState.BOUND,
+        expired
+      );
+      activeBinding = expired;
+    }
+
+    const isOwner = activeBinding.requesterId === authContext.actorId;
+    const isAuthorizedContact = this.contactRegistry.isTrustedContactForUser(
+      authContext.actorId,
+      activeBinding.requesterId
+    );
+    const isAdmin = authContext.role === ActorRole.ADMIN;
+
+    if (!isOwner && !isAuthorizedContact && !isAdmin) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return activeBinding;
+  }
+
+  /**
+   * Invalidates an action binding (e.g., due to page navigation, refresh, or DOM drift).
+   * Only the requesting user or admin may invalidate a binding.
+   */
+  public invalidateBinding(
+    actionId: string,
+    reason: string,
+    authContext: AuthContext
+  ): ApprovalActionBinding {
+    this.assertAuthenticated(authContext);
+
+    const validation = validateActionId(actionId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
+
+    const binding = this.repository.findBindingByActionId(actionId);
+    if (!binding) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    const isOwner = binding.requesterId === authContext.actorId;
+    const isAdmin = authContext.role === ActorRole.ADMIN;
+    if (!isOwner && !isAdmin) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    if (binding.state !== ApprovalActionBindingState.BOUND) {
+      return binding;
+    }
+
+    const invalidated = transitionBindingState(binding, ApprovalActionBindingState.INVALIDATED, {
+      reason,
+      timeProvider: this.timeProvider,
+    });
+
+    this.repository.atomicTransitionBinding(
+      binding.id,
+      ApprovalActionBindingState.BOUND,
+      invalidated
+    );
+
+    this.logger.info('Invalidated approval action binding', {
+      actionId,
+      bindingId: binding.id,
+      requesterId: authContext.actorId,
+      status: ApprovalActionBindingState.INVALIDATED,
+    });
+
+    return invalidated;
   }
 
   /**
