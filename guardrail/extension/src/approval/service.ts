@@ -809,7 +809,7 @@ export class ApprovalService {
         throw new ApprovalBindingReassignmentError(requestId, binding.actionId, request.actionId);
       }
 
-      if (binding.state === ApprovalActionBindingState.INVALIDATED) {
+      if (binding.state !== ApprovalActionBindingState.BOUND) {
         throw new ApprovalBindingStateTransitionError(
           binding.id,
           binding.state,
@@ -1049,6 +1049,30 @@ export class ApprovalService {
     });
 
     return invalidated;
+  }
+
+  /**
+   * Invalidates an action binding by its associated approval request ID.
+   * Only the requesting user or admin may invalidate a binding.
+   */
+  public invalidateBindingByRequestId(
+    requestId: string,
+    reason: string,
+    authContext: AuthContext
+  ): ApprovalActionBinding {
+    this.assertAuthenticated(authContext);
+
+    const validation = validateApprovalRequestId(requestId);
+    if (!validation.valid) {
+      throw new ApprovalValidationError(validation.errors);
+    }
+
+    const binding = this.repository.findBindingByRequestId(requestId);
+    if (!binding) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return this.invalidateBinding(binding.actionId, reason, authContext);
   }
 
   /**

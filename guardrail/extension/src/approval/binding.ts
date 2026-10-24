@@ -767,3 +767,17 @@ export function assertNoBindingReassignment(
     );
   }
 }
+
+/**
+ * Checks whether an ApprovalActionBinding is valid for continuing an action.
+ * Returns true strictly if state is APPROVED and expiration deadline has not elapsed.
+ */
+export function isBindingValidForContinuation(
+  binding: ApprovalActionBinding,
+  timeProvider: TimeProvider = defaultTimeProvider
+): boolean {
+  if (binding.state !== ApprovalActionBindingState.APPROVED) {
+    return false;
+  }
+  return !isBindingExpired(binding, timeProvider);
+}

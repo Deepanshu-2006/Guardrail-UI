@@ -988,6 +988,37 @@ function initResolutionControls(): void {
   document.addEventListener('guardrail:dismiss-staging-mode', () => {
     dismissStagingModal();
   });
+
+  // Page lifecycle & navigation invalidation policy (Requirements 6 & 7)
+  const handlePageDepartureOrNavigation = (reason: string) => {
+    const held = defaultContinuationManager.getCurrentHeldAction();
+    if (held?.action?.id) {
+      defaultContinuationManager.invalidateHeldAction(
+        held.action.id,
+        `Held action invalidated: ${reason}`
+      );
+    }
+    latestStagingContext = null;
+    dismissStagingModal();
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      handlePageDepartureOrNavigation('Page unloaded / beforeunload');
+    });
+
+    window.addEventListener('pagehide', () => {
+      handlePageDepartureOrNavigation('Page hidden / pagehide');
+    });
+
+    window.addEventListener('popstate', () => {
+      handlePageDepartureOrNavigation('History popstate navigation');
+    });
+
+    window.addEventListener('hashchange', () => {
+      handlePageDepartureOrNavigation('URL hashchange navigation');
+    });
+  }
 }
 
 /**

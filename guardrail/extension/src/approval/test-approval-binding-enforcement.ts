@@ -20,6 +20,8 @@
  * 12. Persistence Classification Audit (EPHEMERAL_DEVELOPMENT_ONLY_IN_MEMORY).
  */
 
+declare const process: any;
+
 import { ActionType } from '../types/actions.js';
 import { RiskLevel } from '../types/risk.js';
 import {
@@ -31,23 +33,11 @@ import {
 } from '../types/approval.js';
 import {
   ApprovalBindingConflictError,
-  ApprovalBindingNotFoundError,
-  ApprovalBindingReassignmentError,
-  ApprovalBindingStateTransitionError,
-  ApprovalBindingValidationError,
   assertNoBindingReassignment,
-  assertValidActionId,
   createApprovalActionBinding,
-  isBindingExpired,
-  transitionBindingState,
   validateActionId,
 } from './binding.js';
 import {
-  ApprovalAlreadyResolvedError,
-  ApprovalExpiredError,
-  ApprovalValidationError,
-  createApprovalRequest,
-  DuplicateApprovalRequestError,
   TimeProvider,
   validateApprovalRequest,
   validateApprovalRequestId,
@@ -58,14 +48,10 @@ import {
 } from './repository.js';
 import {
   ActorRole,
-  ApprovalAccessDeniedError,
   AuthContext,
   InMemoryActionOwnershipRegistry,
   InMemoryTrustedContactRegistry,
-  SelfApprovalProhibitedError,
   TrustedContactStatus,
-  UnauthenticatedError,
-  UnauthorizedActionRequesterError,
 } from './authorization.js';
 import { ApprovalService } from './service.js';
 import {
@@ -115,27 +101,6 @@ function assertThrows(fn: () => unknown, expectedErrorName: string, message: str
   }
 }
 
-async function assertAsyncThrows(
-  fn: () => Promise<unknown>,
-  expectedErrorName: string,
-  message: string
-): Promise<void> {
-  totalTests++;
-  try {
-    await fn();
-    throw new Error(`[EXPECTED ERROR NOT THROWN]: Expected ${expectedErrorName} but nothing was thrown.`);
-  } catch (err: unknown) {
-    const errorName = (err as Error)?.name || (err as { constructor?: { name?: string } })?.constructor?.name;
-    if (errorName === expectedErrorName || String(err).includes(expectedErrorName)) {
-      passedTests++;
-      console.log(`  ✓ ${message} (caught ${expectedErrorName})`);
-    } else {
-      throw new Error(
-        `[WRONG ERROR TYPE]: Expected ${expectedErrorName}, but caught ${(err as Error)?.message || String(err)} (${errorName})`
-      );
-    }
-  }
-}
 
 // =============================================================================
 // Test Environment Fixture

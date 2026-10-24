@@ -2411,6 +2411,24 @@ function handleDiscoveredApprovalStatus(
         return;
       }
 
+      // Monotonic guard: If the local action was already cancelled, expired, or invalidated,
+      // discard late-arriving APPROVED responses
+      if (
+        currentUIState === 'cancelled' ||
+        currentUIState === 'approval_confirmed_cancelled' ||
+        currentUIState === 'approval_confirmed_expired' ||
+        currentUIState === 'approval_confirmed_rejected' ||
+        currentUIState === 'stale_or_invalid'
+      ) {
+        return;
+      }
+
+      const activeController = options.controller || defaultInterceptionController;
+      const localRec = activeController.getRecord(actionId);
+      if (localRec && localRec.state === InterceptionState.CANCELLED) {
+        return;
+      }
+
       // Validate backend approval response schema (Requirement 5)
       const validation = validateBackendApprovalResponse(req, actionId);
       if (!validation.valid) {
