@@ -32,6 +32,8 @@ import {
   ApprovalActionBindingState,
   ApprovalRequest,
   ApprovalStatus,
+  BackendContinuationValidationInput,
+  BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import {
@@ -1073,6 +1075,276 @@ export class ApprovalService {
     }
 
     return this.invalidateBinding(binding.actionId, reason, authContext);
+  }
+
+  /**
+   * Validates whether a protected action continuation is authoritatively authorized by the backend.
+   *
+   * ENFORCES:
+   * 1. Requires valid authenticated session (`assertAuthenticated`).
+   * 2. Validates action identifier format.
+   * 3. Validates action ownership (requester or admin).
+   * 4. Ensures the approval request exists, is bound 1:1 to the action, and is not reassigned.
+   * 5. Confirms the backend decision status is strictly APPROVED.
+   * 6. Ensures the approval request and binding have not expired (validated with server clock).
+   * 7. Ensures the binding is not CANCELLED or INVALIDATED.
+   * 8. Ensures decision reviewer is an authorized trusted contact (separation of duties).
+   * 9. Validates page context (origin matching) if provided.
+   * 10. Does NOT execute the protected action.
+   */
+  public validateContinuationAuthorization(
+    input: BackendContinuationValidationInput,
+    authContext: AuthContext
+  ): BackendContinuationValidationResult {
+    this.assertAuthenticated(authContext);
+
+    if (!input || !input.actionId) {
+      throw new ApprovalValidationError(['Continuation validation requires a valid actionId.']);
+    }
+
+    const actionValidation = validateActionId(input.actionId);
+    if (!actionValidation.valid) {
+      throw new ApprovalValidationError(actionValidation.errors);
+    }
+
+    const actionId = input.actionId.trim();
+    const serverTime = resolveTimestamp(this.timeProvider);
+
+    // Verify ownership
+    const isActionOwner =
+      authContext.role === ActorRole.ADMIN ||
+      this.actionOwnershipRegistry.isActionOwnedByUser(actionId, authContext.actorId);
+    if (!isActionOwner) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    const binding = this.repository.findBindingByActionId(actionId);
+    if (!binding) {
+      return {
+        authorized: false,
+        actionId,
+        serverTime,
+        error: `No approval action binding found for action "${actionId}".`,
+        errorCode: 'BINDING_NOT_FOUND',
+      };
+    }
+
+    if (binding.requesterId !== authContext.actorId && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    if (input.requestId && input.requestId.trim() !== binding.requestId) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: binding.requestId,
+        bindingId: binding.id,
+        serverTime,
+        error: `Request ID mismatch: Expected "${binding.requestId}", but received "${input.requestId}".`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    const request = this.repository.findById(binding.requestId);
+    if (!request) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: binding.requestId,
+        bindingId: binding.id,
+        serverTime,
+        error: `Approval request record "${binding.requestId}" not found.`,
+        errorCode: 'REQUEST_NOT_FOUND',
+      };
+    }
+
+    if (binding.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(request.id, binding.actionId, request.actionId);
+    }
+
+    // Expiration check via trusted server clock
+    if (isRequestExpired(request, this.timeProvider) || isBindingExpired(binding, this.timeProvider)) {
+      if (binding.state === ApprovalActionBindingState.BOUND) {
+        const expiredBinding = transitionBindingState(binding, ApprovalActionBindingState.EXPIRED, {
+          timeProvider: this.timeProvider,
+        });
+        this.repository.atomicTransitionBinding(binding.id, ApprovalActionBindingState.BOUND, expiredBinding);
+      }
+      if (request.status === ApprovalStatus.PENDING) {
+        const expiredReq = expireApprovalRequest(request, this.timeProvider);
+        this.repository.atomicTransition(request.id, ApprovalStatus.PENDING, expiredReq);
+      }
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        expiresAt: request.expiresAt,
+        serverTime,
+        error: `Approval request "${request.id}" has expired.`,
+        errorCode: 'REQUEST_EXPIRED',
+      };
+    }
+
+    // Binding state validation
+    if (binding.state === ApprovalActionBindingState.INVALIDATED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Action binding "${binding.id}" has been INVALIDATED.`,
+        errorCode: 'BINDING_INVALIDATED',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.CANCELLED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Action binding "${binding.id}" was CANCELLED.`,
+        errorCode: 'BINDING_CANCELLED',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.REJECTED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Action binding "${binding.id}" was REJECTED.`,
+        errorCode: 'REQUEST_REJECTED',
+      };
+    }
+
+    // Request status validation
+    if (request.status === ApprovalStatus.REJECTED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Approval request "${request.id}" was REJECTED by trusted contact.`,
+        errorCode: 'REQUEST_REJECTED',
+      };
+    }
+
+    if (request.status === ApprovalStatus.CANCELLED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Approval request "${request.id}" was CANCELLED.`,
+        errorCode: 'REQUEST_CANCELLED',
+      };
+    }
+
+    if (request.status === ApprovalStatus.PENDING) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Approval request "${request.id}" is still PENDING review.`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    if (request.status !== ApprovalStatus.APPROVED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Approval request "${request.id}" is in unexpected status "${request.status}".`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    if (binding.state !== ApprovalActionBindingState.APPROVED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Action binding "${binding.id}" is in state "${binding.state}" (expected APPROVED).`,
+        errorCode: 'BINDING_NOT_APPROVED',
+      };
+    }
+
+    // Confirmed decision check
+    if (!request.decision || request.decision.decision !== 'APPROVED') {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Approval request "${request.id}" does not have a confirmed approval decision.`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    // Separation of duties: Reviewer cannot be the requester
+    if (request.decision.decidedBy === request.requesterId) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Separation of duties violation: Request was self-approved by "${request.requesterId}".`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    // Page context verification (if provided)
+    if (input.pageContext?.origin || input.pageContext?.url) {
+      let candidateOrigin = input.pageContext.origin;
+      if (!candidateOrigin && input.pageContext.url) {
+        try {
+          candidateOrigin = new URL(input.pageContext.url).origin;
+        } catch {
+          candidateOrigin = undefined;
+        }
+      }
+
+      if (request.origin && candidateOrigin && request.origin !== candidateOrigin) {
+        return {
+          authorized: false,
+          actionId,
+          requestId: request.id,
+          bindingId: binding.id,
+          serverTime,
+          error: `Page context mismatch: Interaction origin "${candidateOrigin}" does not match original intercepted origin "${request.origin}".`,
+          errorCode: 'PAGE_CONTEXT_MISMATCH',
+        };
+      }
+    }
+
+    return {
+      authorized: true,
+      actionId,
+      requestId: request.id,
+      bindingId: binding.id,
+      requesterId: request.requesterId,
+      reviewedBy: request.decision.decidedBy,
+      approvedAt: request.decision.decidedAt,
+      expiresAt: request.expiresAt,
+      serverTime,
+    };
   }
 
   /**
