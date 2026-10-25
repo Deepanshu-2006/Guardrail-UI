@@ -26,7 +26,12 @@
  */
 
 /**
- * Canonical lifecycle states for an intercepted browser action.
+ * Canonical lifecycle states for an intercepted browser action and controlled action continuation.
+ *
+ * Defines a strict distinction between:
+ * - Approval Status (ApprovalStatus on ApprovalRequest: PENDING, APPROVED, REJECTED, EXPIRED, CANCELLED)
+ * - Approval-Action Binding State (ApprovalActionBindingState: BOUND, APPROVED, REJECTED, EXPIRED, CANCELLED, INVALIDATED)
+ * - Controlled Action Continuation Status (InterceptionState / ControlledActionState on InterceptionRecord)
  */
 export enum InterceptionState {
   /**
@@ -37,27 +42,71 @@ export enum InterceptionState {
 
   /**
    * Action has been paused and suppressed from host page execution.
-   * Held pending user review (e.g. Warning Modal) or future protective gating.
+   * Held pending user review, warning modal, or approval request submission.
    */
   HELD = 'HELD',
 
   /**
-   * Action has been approved to continue and re-dispatched to the host page
-   * with a bypass token. Terminal state.
+   * An approval request has been associated with the held action; a valid approval decision
+   * has not yet been received from the authoritative backend.
+   */
+  AWAITING_APPROVAL = 'AWAITING_APPROVAL',
+
+  /**
+   * The authoritative backend has confirmed approval, and all required local and
+   * remote validation checks (1:1 binding, non-expiration, origin/path context, and DOM
+   * element attachment) have passed. The action is safely awaiting explicit user confirmation.
+   *
+   * CRITICAL INVARIANT: The action is NEVER automatically executed upon entering this state.
+   */
+  READY_FOR_USER_CONFIRMATION = 'READY_FOR_USER_CONFIRMATION',
+
+  /**
+   * Action has been approved to continue and controlled continuation has completed successfully.
+   * Exactly-once execution finished. Terminal state.
    */
   CONTINUED = 'CONTINUED',
 
   /**
-   * Action has been permanently cancelled, aborted, or rejected.
+   * Action has been permanently cancelled, aborted, or rejected by user or policy.
    * No side-effects or handlers will execute on the host page. Terminal state.
    */
   CANCELLED = 'CANCELLED',
+
+  /**
+   * The action, its approval request, or its binding authorization has expired (TTL exceeded).
+   * Terminal state.
+   */
+  EXPIRED = 'EXPIRED',
+
+  /**
+   * The original action context is no longer safe to use (e.g. page navigation away from target,
+   * DOM element detached from document, approval rejected, or anti-tamper digest mismatch).
+   * Terminal state.
+   */
+  INVALIDATED = 'INVALIDATED',
 }
 
 /**
- * String union type representing valid InterceptionState values.
+ * Type alias representing the controlled action continuation lifecycle states.
+ * Reuses InterceptionState directly to prevent duplicate or conflicting state machines.
  */
-export type InterceptionStateString = 'DETECTED' | 'HELD' | 'CONTINUED' | 'CANCELLED';
+export const ControlledActionState = InterceptionState;
+export type ControlledActionState = InterceptionState;
+
+/**
+ * String union type representing valid InterceptionState / ControlledActionState values.
+ */
+export type InterceptionStateString =
+  | 'DETECTED'
+  | 'HELD'
+  | 'AWAITING_APPROVAL'
+  | 'READY_FOR_USER_CONFIRMATION'
+  | 'CONTINUED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'INVALIDATED';
+export type ControlledActionStateString = InterceptionStateString;
 
 /**
  * Strongly typed interception record capturing the lifecycle status of an action.
