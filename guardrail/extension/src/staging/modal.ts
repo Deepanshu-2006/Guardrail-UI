@@ -69,6 +69,8 @@ import {
   StatusSyncSubscription,
 } from '../approval/sync-client.js';
 import { isTerminalApprovalStatus } from '../approval/model.js';
+import type { ApprovalService } from '../approval/service.js';
+import { ActorRole, type AuthContext } from '../approval/authorization.js';
 import {
   sanitizeApprovalErrorMessage,
   validateBackendApprovalResponse,
@@ -187,6 +189,9 @@ export interface StagingModalOptions {
 
   /** Optional initial ApprovalRequest (if mounting modal with existing approval state) */
   initialApprovalRequest?: ApprovalRequest;
+
+  /** Optional direct ApprovalService instance (useful for server integration and tests) */
+  approvalService?: ApprovalService;
 
   /** Dedicated validation service instance to determine continuation eligibility */
   validationService?: ContinuationValidationService;
@@ -1709,6 +1714,77 @@ export function setStagingUIState(
     validationResult?: ContinuationValidationResult;
   }
 ): void {
+  // Terminal CONTINUED State Monotonic Protection (Requirements 2, 4, 6)
+  // An action that has been continued and executed can NEVER transition back to held, approved, or cancelled.
+  if (currentUIState === 'continued') {
+    return;
+  }
+
+  // 1. Terminal State Monotonic Protection for Approval Responses (Requirements 2, 3, 6):
+  // Once the UI or action reaches a terminal state, late/delayed/stale APPROVED updates must NEVER overwrite it.
+  if (state === 'approval_confirmed_approved') {
+    const isCurrentTerminal =
+      currentUIState === 'cancelled' ||
+      currentUIState === 'approval_confirmed_cancelled' ||
+      currentUIState === 'approval_confirmed_expired' ||
+      currentUIState === 'approval_confirmed_rejected' ||
+      currentUIState === 'action_invalidated' ||
+      currentUIState === 'continued' ||
+      currentUIState === 'continuing' ||
+      currentUIState === 'cancelling';
+
+    if (isCurrentTerminal) {
+      return;
+    }
+
+    if (currentMountedActionId) {
+      const activeController = currentModalOptions?.controller || defaultInterceptionController;
+      const localRecord = activeController.getRecord(currentMountedActionId);
+      if (
+        localRecord &&
+        (localRecord.state === InterceptionState.CANCELLED ||
+          localRecord.state === InterceptionState.CONTINUED ||
+          localRecord.state === InterceptionState.EXPIRED ||
+          localRecord.state === InterceptionState.INVALIDATED)
+      ) {
+        return;
+      }
+    }
+  }
+
+  // 2. Active In-flight Resolution Protection (Requirements 4, 6):
+  if (currentUIState === 'continuing') {
+    if (
+      state !== 'continued' &&
+      state !== 'approval_confirmed_expired' &&
+      state !== 'approval_confirmed_cancelled' &&
+      state !== 'action_invalidated' &&
+      state !== 'stale_or_invalid' &&
+      state !== 'temporarily_unavailable'
+    ) {
+      return;
+    }
+  }
+
+  if (currentUIState === 'cancelling') {
+    if (state !== 'cancelled' && state !== 'stale_or_invalid') {
+      return;
+    }
+  }
+
+  // 4. Resource Disposal upon Terminal State (Requirement 7):
+  const isNextTerminal =
+    state === 'cancelled' ||
+    state === 'approval_confirmed_cancelled' ||
+    state === 'approval_confirmed_expired' ||
+    state === 'approval_confirmed_rejected' ||
+    state === 'action_invalidated' ||
+    state === 'continued';
+
+  if (isNextTerminal) {
+    stopModalStatusSync();
+  }
+
   currentUIState = state;
   if (!currentShadow) return;
 
@@ -2458,12 +2534,54 @@ export async function checkAndApplyContinuationEligibility(
     return missingResult;
   }
 
+  // Monotonic guard: If modal is already cancelled, continuing, or in a terminal state, do not apply approved eligibility
+  if (
+    currentUIState === 'cancelled' ||
+    currentUIState === 'cancelling' ||
+    currentUIState === 'approval_confirmed_cancelled' ||
+    currentUIState === 'approval_confirmed_expired' ||
+    currentUIState === 'approval_confirmed_rejected' ||
+    currentUIState === 'action_invalidated' ||
+    currentUIState === 'continued' ||
+    currentUIState === 'continuing'
+  ) {
+    return {
+      eligible: false,
+      status: ContinuationEligibilityStatus.CANCELLED,
+      actionId: id,
+      reason: `Modal is currently in state "${currentUIState}". Cannot apply continuation eligibility.`,
+      verifiedAt: new Date().toISOString(),
+      limitations: [],
+    };
+  }
+
+  const activeController = options.controller || defaultInterceptionController;
+  const currentRecord = activeController.getRecord(id);
+  if (
+    currentRecord &&
+    (currentRecord.state === InterceptionState.CANCELLED ||
+      currentRecord.state === InterceptionState.CONTINUED ||
+      currentRecord.state === InterceptionState.EXPIRED ||
+      currentRecord.state === InterceptionState.INVALIDATED)
+  ) {
+    return {
+      eligible: false,
+      status: ContinuationEligibilityStatus.CANCELLED,
+      actionId: id,
+      reason: `Action "${id}" is already in terminal state "${currentRecord.state}".`,
+      verifiedAt: new Date().toISOString(),
+      limitations: [],
+    };
+  }
+
   const validationService =
     options.validationService ??
-    (options.controller || options.continuationManager
+    (options.controller || options.continuationManager || options.approvalService || options.apiClient
       ? new ContinuationValidationService({
           controller: options.controller,
           continuationManager: options.continuationManager,
+          approvalService: options.approvalService,
+          approvalClient: options.apiClient,
         })
       : defaultContinuationValidationService);
 
@@ -2484,6 +2602,31 @@ export async function checkAndApplyContinuationEligibility(
       verifiedAt: new Date().toISOString(),
       limitations: [],
     };
+  }
+
+  // Re-verify that modal did not transition to terminal state while validation was running
+  if (
+    currentUIState === 'cancelled' ||
+    currentUIState === 'cancelling' ||
+    currentUIState === 'approval_confirmed_cancelled' ||
+    currentUIState === 'approval_confirmed_expired' ||
+    currentUIState === 'approval_confirmed_rejected' ||
+    currentUIState === 'action_invalidated' ||
+    currentUIState === 'continued' ||
+    currentUIState === 'continuing'
+  ) {
+    return result;
+  }
+
+  const recheckRecord = activeController.getRecord(id);
+  if (
+    recheckRecord &&
+    (recheckRecord.state === InterceptionState.CANCELLED ||
+      recheckRecord.state === InterceptionState.CONTINUED ||
+      recheckRecord.state === InterceptionState.EXPIRED ||
+      recheckRecord.state === InterceptionState.INVALIDATED)
+  ) {
+    return result;
   }
 
   if (result.eligible) {
@@ -2608,10 +2751,12 @@ export async function handleModalContinue(
   // NEVER bypass validation service!
   const validationService =
     options.validationService ??
-    (options.controller || options.continuationManager
+    (options.controller || options.continuationManager || options.approvalService || options.apiClient
       ? new ContinuationValidationService({
           controller: options.controller,
           continuationManager: options.continuationManager,
+          approvalService: options.approvalService,
+          approvalClient: options.apiClient,
         })
       : defaultContinuationValidationService);
 
@@ -2705,7 +2850,42 @@ export async function handleModalContinue(
     return failureResult;
   }
 
-  // 4. Delegation to ContinuationManager (or options.onContinue)
+  // 4. Atomic Server-Side Consumption Guard (Requirement 11)
+  if (options.approvalService) {
+    const authContext: AuthContext = options.validationOptions?.authContext || {
+      actorId: latestApprovedRequest?.requesterId || options.initialApprovalRequest?.requesterId || 'usr_alice',
+      role: ActorRole.USER,
+      isAuthenticated: true,
+    };
+    const consumeRes = options.approvalService.consumeContinuationAuthorization(
+      {
+        actionId: id,
+        requestId: validationResult.requestId,
+        pageContext: options.validationOptions?.pageContext,
+      },
+      authContext
+    );
+    if (!consumeRes.authorized) {
+      isContinuationInFlight = false;
+      const failureResult: ContinuationResult = {
+        success: false,
+        actionId: id,
+        executed: false,
+        executionCount: manager.getExecutionCount(id),
+        error: consumeRes.error || 'Continuation authorization could not be consumed.',
+      };
+      setStagingUIState('stale_or_invalid', {
+        error: failureResult.error,
+        description: 'This approval authorization was already consumed or is no longer valid.',
+      });
+      if (options.onContinueError) {
+        options.onContinueError(failureResult);
+      }
+      return failureResult;
+    }
+  }
+
+  // 5. Delegation to ContinuationManager (or options.onContinue)
   let continuationResult: ContinuationResult;
   try {
     if (options.onContinue) {
@@ -2886,6 +3066,9 @@ export function handleModalCancel(
   uiElements: ModalCancelUIElements
 ): CancellationResult {
   const { cancelBtn } = uiElements;
+
+  // Immediately stop background status sync and polling subscriptions (Requirement 7)
+  stopModalStatusSync();
 
   // 1. Immediately disable button to prevent repeated clicks / duplicate requests
   cancelBtn.disabled = true;
@@ -4070,13 +4253,21 @@ function renderFooter(
         if (isOperationActive || isContinuationInFlight || requestApprovalBtn.disabled) {
           return;
         }
-        void handleModalContinue(options.context?.actionId, options, {
+        isOperationActive = true;
+        const continueOutcome = handleModalContinue(options.context?.actionId, options, {
           continueBtn: requestApprovalBtn,
           cancelBtn,
           body: uiRefs.body,
           header: uiRefs.header,
           notice,
         });
+        if (continueOutcome && typeof (continueOutcome as any).finally === 'function') {
+          (continueOutcome as any).finally(() => {
+            isOperationActive = false;
+          });
+        } else {
+          isOperationActive = false;
+        }
         return;
       }
 
