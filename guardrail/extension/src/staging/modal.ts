@@ -498,7 +498,10 @@ export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
   if (
     trimmed.includes('financial transactions') ||
     trimmed.includes('billing elements') ||
-    trimmed.includes('checkout flows')
+    trimmed.includes('checkout flows') ||
+    trimmed.includes('POLICY_WARN_PAYMENT') ||
+    trimmed.includes('POLICY_PROTECT_PAYMENT_COMPOUND') ||
+    trimmed.includes('RULE_PAYMENT')
   ) {
     return {
       headline: 'Payment or Billing Activity',
@@ -510,7 +513,10 @@ export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
   if (
     trimmed.includes('permanent resource deletion') ||
     trimmed.includes('irreversible state destruction') ||
-    trimmed.includes('cancellation')
+    trimmed.includes('cancellation') ||
+    trimmed.includes('POLICY_PROTECT_DESTRUCTIVE') ||
+    trimmed.includes('RULE_CONTROLLED_DESTRUCTIVE') ||
+    trimmed.includes('Irreversible destructive action detected')
   ) {
     return {
       headline: 'Permanent Removal or Deletion',
@@ -522,7 +528,9 @@ export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
   if (
     trimmed.includes('authentication boundaries') ||
     trimmed.includes('credential inputs') ||
-    trimmed.includes('login sessions')
+    trimmed.includes('login sessions') ||
+    trimmed.includes('POLICY_WARN_AUTH_BOUNDARY') ||
+    trimmed.includes('RULE_AUTHENTICATION_BOUNDARY')
   ) {
     return {
       headline: 'Sign-in or Account Credentials',
@@ -546,7 +554,9 @@ export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
   if (
     trimmed.includes('external destination') ||
     trimmed.includes('navigates away') ||
-    trimmed.includes('untrusted or third-party origin')
+    trimmed.includes('untrusted or third-party origin') ||
+    trimmed.includes('POLICY_WARN_EXTERNAL_NAVIGATION') ||
+    trimmed.includes('RULE_EXTERNAL_NAVIGATION')
   ) {
     return {
       headline: 'External Website Destination',
@@ -554,10 +564,27 @@ export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
     };
   }
 
-  // 6. Baseline Routine signal reason
+  // 6. Evaluation failure / fail-closed safety precaution
+  if (
+    trimmed.includes('fail-closed') ||
+    trimmed.includes('FAIL_CLOSED') ||
+    trimmed.includes('PIPELINE_EVALUATION_EXCEPTION') ||
+    trimmed.includes('PIPELINE_ACTION_ID_MISMATCH') ||
+    trimmed.includes('INVALID_ASSESSMENT_PAYLOAD') ||
+    trimmed.includes('UPSTREAM_EVALUATION_FAILED')
+  ) {
+    return {
+      headline: 'Safety Precaution: Verification Incomplete',
+      detail: 'Safety verification could not be completed for this action. Fail-closed protection applied.',
+    };
+  }
+
+  // 7. Baseline Routine signal reason
   if (
     trimmed.includes('No elevated risk signals') ||
-    trimmed.includes('Routine interaction')
+    trimmed.includes('Routine interaction') ||
+    trimmed.includes('POLICY_ALLOW_ROUTINE') ||
+    trimmed.includes('RULE_ROUTINE_ALLOW')
   ) {
     return {
       headline: 'Routine Interaction',
@@ -565,7 +592,7 @@ export function translateRiskReason(rawReason?: string): TranslatedRiskReason {
     };
   }
 
-  // 7. General / Custom risk reasons from extensions or policy overrides
+  // 8. General / Custom risk reasons from extensions or policy overrides
   return {
     headline: 'Safety Review Signal',
     detail: trimmed,

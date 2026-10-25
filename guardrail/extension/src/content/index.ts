@@ -13,10 +13,8 @@
  * communication are intentionally omitted at this stage.
  */
 
-import { classifyAction } from '../classifier/index.js';
 import { ActionDetector } from '../detector/index.js';
-import { assessRisk } from '../risk/index.js';
-import { decideResponse, evaluateActionPipeline } from '../response/index.js';
+import { evaluateActionPipeline, explainRiskDecision } from '../response/index.js';
 import { showWarningModal } from '../ui/index.js';
 import {
   ActionClassificationResult,
@@ -49,6 +47,8 @@ import {
   dispatchSubmitApprovalRequestToBackground,
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
+  sanitizeForDiagnostics,
+  sanitizeUrlForDiagnostics,
 } from '../utils/index.js';
 
 let latestStagingContext: StagingActionContext | null = null;
@@ -89,30 +89,33 @@ function logPipelineResult(
   risk: RiskAssessment,
   decision: ResponseDecision
 ): void {
+  const explanation = explainRiskDecision(decision, risk, action);
+  const sanitizedUrl = sanitizeUrlForDiagnostics(action.page?.url);
   const textSummary =
     action.element?.visibleText ||
     action.element?.id ||
     action.element?.tagName ||
-    action.page.url;
+    sanitizedUrl;
 
-  const primaryReason = decision.reasons[0] || risk.reasons[0] || 'Standard action evaluation';
+  const primaryReason = explanation.userSummary || decision.reasons[0] || 'Standard action evaluation';
 
   console.log(
     `%c[Guardrail Pipeline]%c EVALUATION SUMMARY\n` +
     `ACTION: ${action.type}${textSummary ? ` ("${textSummary}")` : ''}\n` +
     `CATEGORY: ${classification.category}\n` +
     `RISK: ${risk.riskLevel} (score: ${risk.score})\n` +
-    `RESPONSE: ${decision.response}\n` +
-    `REASON: ${primaryReason}`,
+    `RESPONSE: ${decision.response} [${explanation.categoryBadge}]\n` +
+    `EXPLANATION: ${explanation.headline} - ${primaryReason}`,
     'color: #0ea5e9; font-weight: bold; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 3px;',
     'color: inherit; font-weight: normal;',
-    {
+    sanitizeForDiagnostics({
       actionId: action.id,
       action,
       classification,
       risk,
       decision,
-    }
+      explanation,
+    })
   );
 }
 
