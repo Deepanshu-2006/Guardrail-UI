@@ -342,6 +342,7 @@ export function evaluateActionPipeline(
     const policyResults = evaluatePolicies(action, risk);
     const protectPolicy = policyResults.find((p) => p.decision === ResponseAction.PROTECT);
     const warnPolicy = policyResults.find((p) => p.decision === ResponseAction.WARN);
+    const allowPolicy = policyResults.find((p) => p.decision === ResponseAction.ALLOW);
 
     if (protectPolicy && decision.response !== ResponseAction.PROTECT) {
       const reasons = [
@@ -360,11 +361,11 @@ export function evaluateActionPipeline(
       decision = {
         ...decision,
         response: ResponseAction.PROTECT,
-        policyRuleId: protectPolicy.ruleId,
+        policyRuleId: protectPolicy.ruleId || decision.policyRuleId,
         reasons,
         structuredReasons,
       };
-    } else if (warnPolicy && decision.response === ResponseAction.ALLOW) {
+    } else if (warnPolicy && decision.response !== ResponseAction.PROTECT) {
       const reasons = [
         warnPolicy.explanation || 'Advisory warning policy requirement satisfied.',
         ...decision.reasons,
@@ -381,9 +382,14 @@ export function evaluateActionPipeline(
       decision = {
         ...decision,
         response: ResponseAction.WARN,
-        policyRuleId: warnPolicy.ruleId,
+        policyRuleId: warnPolicy.ruleId || decision.policyRuleId,
         reasons,
         structuredReasons,
+      };
+    } else if (allowPolicy && decision.response === ResponseAction.ALLOW) {
+      decision = {
+        ...decision,
+        policyRuleId: allowPolicy.ruleId || decision.policyRuleId,
       };
     }
 
