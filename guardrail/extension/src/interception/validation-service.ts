@@ -71,6 +71,8 @@ import {
 } from './continuation.js';
 import { StagingActionContext } from '../types/staging.js';
 import { transitionInterceptionRecord } from './transitions.js';
+import { ResponseAction } from '../types/response.js';
+import { evaluatePolicies } from '../response/policies.js';
 
 // =============================================================================
 // Validation Status Enum & Result Models
@@ -133,6 +135,15 @@ export interface ContinuationValidationResult {
   /** Machine-readable error or resolution code */
   readonly errorCode?: ContinuationAuthorizationErrorCode | string;
 
+  /** Resulting policy decision recorded during validation */
+  readonly policyDecision?: ResponseAction;
+
+  /** Canonical matched rule or policy identifier */
+  readonly policyRuleId?: string;
+
+  /** Machine-readable policy reason code */
+  readonly policyReasonCode?: string;
+
   /** ISO 8601 UTC timestamp when validation was completed */
   readonly verifiedAt: string;
 
@@ -170,6 +181,12 @@ export interface ContinuationValidationOptions {
 
   /** Explicit action object overriding held closure if running outside browser content script */
   readonly originalAction?: GuardrailAction;
+
+  /** Whether to revalidate the applicable canonical risk policies on the held action (defaults to true) */
+  readonly revalidatePolicy?: boolean;
+
+  /** Expected canonical policy rule ID that must remain satisfied for continuation */
+  readonly expectedPolicyId?: string;
 }
 
 /**
@@ -614,6 +631,21 @@ export class ContinuationValidationService {
           limitations: CONTINUATION_VALIDATION_LIMITATIONS,
         };
       }
+      if (
+        options.stagingContext.responseAction &&
+        options.stagingContext.responseAction !== ResponseAction.PROTECT
+      ) {
+        return {
+          eligible: false,
+          status: ContinuationEligibilityStatus.REJECTED,
+          actionId: id,
+          targetState: InterceptionState.INVALIDATED,
+          reason: `Policy downgrade rejected: Action with decision "${options.stagingContext.responseAction}" cannot be continued through the protective approval pipeline. Only PROTECT decisions are eligible.`,
+          errorCode: 'POLICY_REQUIREMENTS_NOT_MET',
+          verifiedAt,
+          limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+        };
+      }
     }
 
     // =========================================================================
@@ -744,6 +776,107 @@ export class ContinuationValidationService {
     }
 
     // =========================================================================
+    // CONDITION 7: Revalidate applicable canonical risk policies before action proceeds
+    // =========================================================================
+    let revalidatedPolicyRuleId: string | undefined;
+    let revalidatedReasonCode: string | undefined;
+    let revalidatedDecision: ResponseAction = ResponseAction.PROTECT;
+
+    if (options?.revalidatePolicy !== false && actionObj) {
+      const pageInfo = actionObj.page || (actionObj as any).context?.page;
+      const elementInfo = actionObj.element || (actionObj as any).target;
+
+      const normalizedActionForPolicy: GuardrailAction = {
+        ...actionObj,
+        page: pageInfo,
+        element: elementInfo,
+      };
+
+      if (
+        typeof normalizedActionForPolicy !== 'object' ||
+        typeof normalizedActionForPolicy.id !== 'string' ||
+        !normalizedActionForPolicy.id.trim() ||
+        !normalizedActionForPolicy.type ||
+        !normalizedActionForPolicy.page ||
+        typeof normalizedActionForPolicy.page.url !== 'string'
+      ) {
+        return {
+          eligible: false,
+          status: ContinuationEligibilityStatus.UNAVAILABLE,
+          actionId: id,
+          targetState: InterceptionState.INVALIDATED,
+          reason: 'Action structural corruption detected during policy revalidation (fail closed).',
+          errorCode: 'AUTHORIZATION_UNAVAILABLE',
+          verifiedAt,
+          limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+        };
+      }
+
+      const matchedPolicies = evaluatePolicies(normalizedActionForPolicy);
+      const corruptGuardMatch = matchedPolicies.find(
+        (p) =>
+          p.ruleId === 'RULE_FAIL_CLOSED_FALLBACK' ||
+          p.reasonCode === 'POLICY_FAIL_CLOSED_CORRUPT_PAYLOAD'
+      );
+      if (corruptGuardMatch) {
+        return {
+          eligible: false,
+          status: ContinuationEligibilityStatus.UNAVAILABLE,
+          actionId: id,
+          targetState: InterceptionState.INVALIDATED,
+          reason: 'Policy revalidation rejected action: Action triggered fail-closed corruption guard.',
+          errorCode: 'AUTHORIZATION_UNAVAILABLE',
+          policyDecision: ResponseAction.PROTECT,
+          policyRuleId: corruptGuardMatch.ruleId,
+          policyReasonCode: corruptGuardMatch.reasonCode,
+          verifiedAt,
+          limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+        };
+      }
+
+      const onlyRoutine =
+        matchedPolicies.length > 0 &&
+        matchedPolicies.every((p) => p.decision === ResponseAction.ALLOW);
+      if (onlyRoutine) {
+        return {
+          eligible: false,
+          status: ContinuationEligibilityStatus.MISMATCHED,
+          actionId: id,
+          targetState: InterceptionState.INVALIDATED,
+          reason: 'Policy revalidation failure: Action evaluates to routine ALLOW and does not satisfy protective staging policy requirements.',
+          errorCode: 'POLICY_REQUIREMENTS_NOT_MET',
+          policyDecision: ResponseAction.ALLOW,
+          verifiedAt,
+          limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+        };
+      }
+
+      if (options?.expectedPolicyId) {
+        const matchesExpected = matchedPolicies.some((p) => p.ruleId === options.expectedPolicyId);
+        if (!matchesExpected) {
+          return {
+            eligible: false,
+            status: ContinuationEligibilityStatus.MISMATCHED,
+            actionId: id,
+            targetState: InterceptionState.INVALIDATED,
+            reason: `Policy revalidation mismatch: Expected policy "${options.expectedPolicyId}" was not satisfied.`,
+            errorCode: 'POLICY_REQUIREMENTS_NOT_MET',
+            verifiedAt,
+            limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+          };
+        }
+      }
+
+      const primaryPolicy =
+        matchedPolicies.find((p) => p.decision === ResponseAction.PROTECT) || matchedPolicies[0];
+      if (primaryPolicy) {
+        revalidatedPolicyRuleId = primaryPolicy.ruleId;
+        revalidatedReasonCode = primaryPolicy.reasonCode;
+        revalidatedDecision = primaryPolicy.decision || ResponseAction.PROTECT;
+      }
+    }
+
+    // =========================================================================
     // ALL 10 CONDITIONS SATISFIED: Action is ELIGIBLE for User Confirmation
     // =========================================================================
     return {
@@ -755,6 +888,9 @@ export class ContinuationValidationService {
       requesterId: backendResult.requesterId,
       targetState: InterceptionState.READY_FOR_USER_CONFIRMATION,
       reason: 'All 10 continuation validation conditions satisfied: Backend confirmed approval, 1:1 binding intact, context verified, action held and unconsumed.',
+      policyDecision: revalidatedDecision,
+      policyRuleId: revalidatedPolicyRuleId,
+      policyReasonCode: revalidatedReasonCode,
       verifiedAt,
       limitations: CONTINUATION_VALIDATION_LIMITATIONS,
     };
@@ -1000,6 +1136,7 @@ export class ContinuationValidationService {
         return ContinuationEligibilityStatus.PENDING;
       case 'REQUEST_REJECTED':
       case 'BINDING_INVALIDATED':
+      case 'POLICY_REQUIREMENTS_NOT_MET':
         return ContinuationEligibilityStatus.REJECTED;
       case 'REQUEST_EXPIRED':
       case 'BINDING_EXPIRED':
