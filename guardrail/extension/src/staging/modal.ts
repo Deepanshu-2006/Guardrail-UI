@@ -35,8 +35,16 @@ import {
 import {
   CancellationResult,
   ContinuationManager,
+  ContinuationResult,
   defaultContinuationManager,
 } from '../interception/continuation.js';
+import {
+  ContinuationValidationService,
+  ContinuationEligibilityStatus,
+  defaultContinuationValidationService,
+  type ContinuationValidationResult,
+  type ContinuationValidationOptions,
+} from '../interception/validation-service.js';
 import {
   defaultInterceptionController,
   type InterceptionController,
@@ -86,7 +94,11 @@ export type StagingInterceptionUIState =
   | 'approval_confirmed_cancelled'
   | 'approval_uncertain'
   | 'approval_failed'
-  | 'malformed_response';
+  | 'malformed_response'
+  | 'continuing'
+  | 'continued'
+  | 'action_invalidated'
+  | 'temporarily_unavailable';
 
 export interface StagingModalOptions {
   /** The prepared staging action context (required when state is 'active') */
@@ -174,12 +186,35 @@ export interface StagingModalOptions {
 
   /** Optional initial ApprovalRequest (if mounting modal with existing approval state) */
   initialApprovalRequest?: ApprovalRequest;
+
+  /** Dedicated validation service instance to determine continuation eligibility */
+  validationService?: ContinuationValidationService;
+
+  /** Options passed to ContinuationValidationService.validateEligibility */
+  validationOptions?: ContinuationValidationOptions;
+
+  /** Optional custom or delegated continuation execution handler */
+  onContinue?: (
+    actionId: string
+  ) => ContinuationResult | Promise<ContinuationResult>;
+
+  /** Optional callback invoked upon successful action continuation */
+  onContinueSuccess?: (result: ContinuationResult) => void;
+
+  /** Optional callback invoked upon action continuation rejection or failure */
+  onContinueError?: (result: ContinuationResult) => void;
 }
 
 let activeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 let currentHost: HTMLDivElement | null = null;
 let currentShadow: ShadowRoot | null = null;
 let currentUIState: StagingInterceptionUIState | null = null;
+let currentModalOptions: StagingModalOptions | null = null;
+let isContinuationInFlight: boolean = false;
+
+export function getCurrentModalOptions(): StagingModalOptions | null {
+  return currentModalOptions;
+}
 let previousActiveElement: HTMLElement | null = null;
 let currentMountedActionId: string | null = null;
 let currentModalSessionId: number = 0;
@@ -277,6 +312,8 @@ export function dismissStagingModal(): void {
   currentHost = null;
   currentShadow = null;
   currentUIState = null;
+  currentModalOptions = null;
+  isContinuationInFlight = false;
   currentMountedActionId = null;
   currentModalSessionId++;
 
@@ -987,6 +1024,26 @@ function createStagingStyles(): HTMLStyleElement {
       box-shadow: none;
     }
 
+    .gs-btn-continue {
+      background: #059669 !important;
+      border-color: #059669 !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35) !important;
+    }
+
+    .gs-btn-continue:hover:not(:disabled) {
+      background: #047857 !important;
+      border-color: #047857 !important;
+      transform: translateY(-1px) !important;
+    }
+
+    .gs-btn-continue:disabled {
+      opacity: 0.55 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
     .gs-btn-cancel {
       background: rgba(239, 68, 68, 0.12);
       border-color: rgba(239, 68, 68, 0.35);
@@ -1045,6 +1102,11 @@ function createStagingStyles(): HTMLStyleElement {
       border: 1px solid rgba(14, 165, 233, 0.35);
     }
 
+    .gs-confirmation-warning {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
     .gs-confirmation-icon {
       font-size: 18px;
       line-height: 1;
@@ -1073,6 +1135,10 @@ function createStagingStyles(): HTMLStyleElement {
 
     .gs-confirmation-info .gs-confirmation-title {
       color: #38bdf8;
+    }
+
+    .gs-confirmation-warning .gs-confirmation-title {
+      color: #fbbf24;
     }
 
     .gs-confirmation-desc {
@@ -1122,6 +1188,12 @@ function createStagingStyles(): HTMLStyleElement {
       background: rgba(16, 185, 129, 0.15) !important;
       color: #34d399 !important;
       border-color: rgba(16, 185, 129, 0.4) !important;
+    }
+
+    .gs-badge-continued {
+      background: rgba(16, 185, 129, 0.18) !important;
+      color: #34d399 !important;
+      border-color: rgba(16, 185, 129, 0.45) !important;
     }
 
     /* Empty & Loading States */
@@ -1535,7 +1607,7 @@ function renderEmptyBody(): HTMLElement {
  */
 export function displayConfirmationBanner(
   body: HTMLElement,
-  type: 'success' | 'error' | 'info',
+  type: 'success' | 'error' | 'info' | 'warning',
   titleText: string,
   descText: string
 ): HTMLElement {
@@ -1550,6 +1622,8 @@ export function displayConfirmationBanner(
       ? 'gs-confirmation-success'
       : type === 'error'
       ? 'gs-confirmation-error'
+      : type === 'warning'
+      ? 'gs-confirmation-warning'
       : 'gs-confirmation-info';
   banner.className = `gs-confirmation-banner ${typeClass}`;
   banner.setAttribute('role', type === 'error' ? 'alert' : 'status');
@@ -1557,7 +1631,8 @@ export function displayConfirmationBanner(
 
   const icon = document.createElement('span');
   icon.className = 'gs-confirmation-icon';
-  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '⚠️' : 'ℹ️';
+  icon.textContent =
+    type === 'success' ? '✓' : type === 'error' ? '⚠️' : type === 'warning' ? '⚠️' : 'ℹ️';
 
   const content = document.createElement('div');
   content.className = 'gs-confirmation-content';
@@ -1622,6 +1697,9 @@ export function setStagingUIState(
     decidedAt?: string;
     statusCode?: number;
     request?: ApprovalRequest;
+    isEligible?: boolean;
+    ineligibleReason?: string;
+    validationResult?: ContinuationValidationResult;
   }
 ): void {
   currentUIState = state;
@@ -1633,7 +1711,8 @@ export function setStagingUIState(
   const body = currentShadow.querySelector('.gs-body') as HTMLElement;
   const notice = currentShadow.querySelector('.gs-footer-notice');
   const cancelBtn = currentShadow.querySelector('#gs-btn-cancel-action') as HTMLButtonElement | null;
-  const reqBtn = currentShadow.querySelector('#gs-btn-request-approval') as HTMLButtonElement | null;
+  const reqBtn = (currentShadow.querySelector('#gs-btn-request-approval') ||
+    currentShadow.querySelector('#gs-btn-continue-action')) as HTMLButtonElement | null;
 
   const resetPillClasses = () => {
     if (pill) {
@@ -1644,7 +1723,8 @@ export function setStagingUIState(
         'gs-badge-requested',
         'gs-badge-stale',
         'gs-badge-submitting',
-        'gs-badge-approved'
+        'gs-badge-approved',
+        'gs-badge-continued'
       );
     }
   };
@@ -1886,24 +1966,42 @@ export function setStagingUIState(
       if (title) title.textContent = 'Approval Confirmed by Contact';
       if (subtitle) {
         subtitle.textContent =
-          'An authorized trusted contact has approved this action. To protect your safety, the action is still held until you review and confirm.';
+          'An authorized trusted contact has approved this action. To protect your safety, the action is held until you review and confirm.';
       }
       if (notice) {
-        notice.textContent = `Approval Confirmed (${reqId}) • Status: APPROVED • Action: HELD`;
+        notice.textContent = `Approval Confirmed (${reqId}) • Status: APPROVED • Action: READY FOR CONFIRMATION`;
       }
       if (body) {
         displayConfirmationBanner(
           body,
           'info',
           'Action Approved by Trusted Contact',
-          `An authorized contact (${approver}) reviewed and approved this request (${reqId}). Guardrail keeps this action safely paused until you confirm continuation.`
+          `An authorized contact (${approver}) reviewed and approved this request (${reqId}). Guardrail keeps this action safely paused until you confirm continuation.\n\nNotice: Trusted contact approval authorizes continuation, but does not guarantee the action is safe, correct, or free of risk. You must explicitly review and confirm to proceed.`
         );
       }
       if (reqBtn) {
-        reqBtn.textContent = 'Approval Confirmed';
-        reqBtn.disabled = true;
-        reqBtn.setAttribute('aria-disabled', 'true');
-        reqBtn.removeAttribute('aria-busy');
+        reqBtn.id = 'gs-btn-continue-action';
+        reqBtn.classList.remove('gs-btn-primary');
+        reqBtn.classList.add('gs-btn-continue');
+        if (details?.isEligible === true) {
+          reqBtn.textContent = 'Continue Action';
+          reqBtn.disabled = false;
+          reqBtn.removeAttribute('aria-disabled');
+          reqBtn.removeAttribute('aria-busy');
+          reqBtn.setAttribute('title', 'Confirm and resume execution of this held action');
+          if (typeof reqBtn.focus === 'function') {
+            try {
+              reqBtn.focus();
+            } catch {
+              // Ignore focus error
+            }
+          }
+        } else {
+          reqBtn.textContent = details?.ineligibleReason ? 'Continuation Unavailable' : 'Approval Confirmed';
+          reqBtn.disabled = true;
+          reqBtn.setAttribute('aria-disabled', 'true');
+          reqBtn.removeAttribute('aria-busy');
+        }
       }
       if (cancelBtn) {
         cancelBtn.textContent = 'Cancel Action';
@@ -1926,7 +2024,7 @@ export function setStagingUIState(
       if (title) title.textContent = 'Approval Denied by Contact';
       if (subtitle) {
         subtitle.textContent =
-          'An authorized trusted contact reviewed and denied this approval request. This action remains paused and cannot proceed.';
+          details?.description || 'An authorized trusted contact reviewed and denied this approval request. This action remains paused and cannot proceed.';
       }
       if (notice) {
         notice.textContent = `Approval Denied (${reqId}) • Status: REJECTED • Action: HELD`;
@@ -1936,7 +2034,8 @@ export function setStagingUIState(
           body,
           'error',
           'Approval Denied by Trusted Contact',
-          `An authorized contact (${reviewer}) reviewed and denied this request (${reqId}). The held action remains safely blocked.`
+          details?.description ||
+            `An authorized contact (${reviewer}) reviewed and denied this request (${reqId}). The held action remains safely blocked and will not be executed.`
         );
       }
       if (reqBtn) {
@@ -1965,7 +2064,7 @@ export function setStagingUIState(
       if (title) title.textContent = 'Approval Request Expired';
       if (subtitle) {
         subtitle.textContent =
-          'The review window for this approval request has expired. This action remains safely paused.';
+          details?.description || 'The review window for this approval request has expired. This action remains safely paused.';
       }
       if (notice) {
         notice.textContent = `Approval Expired (${reqId}) • Status: EXPIRED • Action: HELD`;
@@ -1975,7 +2074,9 @@ export function setStagingUIState(
           body,
           'error',
           'Approval Request Expired',
-          `The review window for request (${reqId}) expired without a decision. To protect your safety, this action remains paused.`
+          details?.description ||
+            details?.error ||
+            `The review window for request (${reqId}) expired without a decision. To protect your safety, this action cannot safely be resumed and must be initiated again.`
         );
       }
       if (reqBtn) {
@@ -1989,7 +2090,7 @@ export function setStagingUIState(
         cancelBtn.disabled = false;
         cancelBtn.removeAttribute('aria-disabled');
       }
-      announceStagingState('Approval request expired. Action remains paused.', true);
+      announceStagingState('Approval request expired. Action cannot safely be resumed and must be initiated again.', true);
       break;
     }
 
@@ -2013,7 +2114,8 @@ export function setStagingUIState(
           body,
           'info',
           'Approval Request Cancelled',
-          details?.description || `The approval request (${reqId}) was cancelled on the server. The action remains safely paused.`
+          details?.description ||
+            `The approval request (${reqId}) was cancelled. It cannot be resumed. If you still want to perform this action, please initiate it again on the website.`
         );
       }
       if (reqBtn) {
@@ -2028,6 +2130,158 @@ export function setStagingUIState(
         cancelBtn.removeAttribute('aria-disabled');
       }
       announceStagingState('Approval request cancelled on server. Action remains paused.');
+      break;
+    }
+
+    case 'continuing':
+      resetPillClasses();
+      if (pill) {
+        pill.textContent = 'Continuing...';
+        pill.classList.add('gs-badge-submitting');
+      }
+      if (notice) {
+        notice.textContent = 'Resuming action safely under supervision • Please wait...';
+      }
+      if (reqBtn) {
+        reqBtn.id = 'gs-btn-continue-action';
+        reqBtn.classList.remove('gs-btn-primary');
+        reqBtn.classList.add('gs-btn-continue');
+        reqBtn.textContent = 'Continuing Action...';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.setAttribute('aria-busy', 'true');
+      }
+      if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
+      }
+      announceStagingState('Continuing action under controlled supervision. Please wait.');
+      break;
+
+    case 'continued': {
+      resetPillClasses();
+      if (pill) {
+        pill.textContent = 'Action Continued';
+        pill.classList.add('gs-badge-approved');
+      }
+      if (title) title.textContent = 'Action Continued';
+      if (subtitle) {
+        subtitle.textContent =
+          details?.description || 'The held action has been executed safely under controlled supervision.';
+      }
+      if (notice) {
+        notice.textContent = 'Action continued safely • State: CONTINUED';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'success',
+          'Action Continued Successfully',
+          details?.description ||
+            'The held action was resumed and executed safely according to your confirmation.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.style.display = 'none';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Action Completed';
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
+      }
+      announceStagingState('Action continued successfully.');
+      break;
+    }
+
+    case 'action_invalidated': {
+      resetPillClasses();
+      if (pill) {
+        pill.textContent = 'Context Changed';
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Action Cannot Be Resumed';
+      if (subtitle) {
+        subtitle.textContent =
+          'The webpage or target element changed while this action was held. To protect your safety, this authorization is no longer valid.';
+      }
+      if (notice) {
+        notice.textContent = 'Action Invalidated • Context Changed • Action: HELD';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Action Cannot Be Resumed',
+          details?.description ||
+            details?.error ||
+            'The webpage or target element changed while this action was held. The authorization is no longer safe to use. Please initiate the action again from the current page.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.id = 'gs-btn-continue-action';
+        reqBtn.classList.remove('gs-btn-primary');
+        reqBtn.classList.add('gs-btn-continue');
+        reqBtn.textContent = 'Action Invalidated';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Action Unavailable';
+        cancelBtn.disabled = true;
+        cancelBtn.setAttribute('aria-disabled', 'true');
+      }
+      announceStagingState(
+        'Action cannot be resumed. Page context has changed. Please initiate the action again.',
+        true
+      );
+      break;
+    }
+
+    case 'temporarily_unavailable': {
+      resetPillClasses();
+      if (pill) {
+        pill.textContent = 'Validation Unavailable';
+        pill.classList.add('gs-badge-stale');
+      }
+      if (title) title.textContent = 'Continuation Temporarily Unavailable';
+      if (subtitle) {
+        subtitle.textContent =
+          'Guardrail cannot verify authorization status with the backend at this time. To protect your security, this action remains safely paused.';
+      }
+      if (notice) {
+        notice.textContent = 'Status: UNAVAILABLE • Verification Paused • Action: HELD';
+      }
+      if (body) {
+        displayConfirmationBanner(
+          body,
+          'error',
+          'Continuation Temporarily Unavailable',
+          details?.description ||
+            details?.error ||
+            'Guardrail cannot verify authorization status with the backend at this time. To protect your security, this action remains safely paused. Please try again or re-initiate the interaction.'
+        );
+      }
+      if (reqBtn) {
+        reqBtn.id = 'gs-btn-continue-action';
+        reqBtn.classList.remove('gs-btn-primary');
+        reqBtn.classList.add('gs-btn-continue');
+        reqBtn.textContent = 'Temporarily Unavailable';
+        reqBtn.disabled = true;
+        reqBtn.setAttribute('aria-disabled', 'true');
+        reqBtn.removeAttribute('aria-busy');
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = 'Cancel Action';
+        cancelBtn.disabled = false;
+        cancelBtn.removeAttribute('aria-disabled');
+      }
+      announceStagingState(
+        'Continuation temporarily unavailable. Action remains safely paused.',
+        true
+      );
       break;
     }
 
@@ -2150,6 +2404,322 @@ export function setStagingUIState(
       announceStagingState('Invalid server response schema. Action remains paused.', true);
       break;
   }
+}
+
+export interface ModalContinueUIElements {
+  continueBtn: HTMLButtonElement;
+  cancelBtn: HTMLButtonElement;
+  body: HTMLElement;
+  header: HTMLElement;
+  notice?: HTMLElement;
+}
+
+/**
+ * Evaluates whether a backend-approved action is eligible for controlled continuation,
+ * and updates the Staging Modal UI accordingly.
+ *
+ * CRITICAL SAFETY REQUIREMENTS:
+ * - NEVER executes the action. Pure validation & UI projection.
+ * - FAILS CLOSED if validation cannot authoritatively verify all 10 conditions.
+ * - Non-color-alone accessible status and banner explanations.
+ */
+export async function checkAndApplyContinuationEligibility(
+  actionId: string | undefined,
+  options: StagingModalOptions,
+  details?: {
+    requestId?: string;
+    decidedBy?: string;
+    decidedAt?: string;
+    request?: ApprovalRequest;
+    error?: string;
+  }
+): Promise<ContinuationValidationResult> {
+  const id = actionId?.trim();
+  if (!id) {
+    const missingResult: ContinuationValidationResult = {
+      eligible: false,
+      status: ContinuationEligibilityStatus.MISMATCHED,
+      actionId: '',
+      reason: 'No valid action identifier available for continuation validation.',
+      verifiedAt: new Date().toISOString(),
+      limitations: [],
+    };
+    setStagingUIState('stale_or_invalid', { error: missingResult.reason });
+    return missingResult;
+  }
+
+  const validationService =
+    options.validationService ??
+    (options.controller || options.continuationManager
+      ? new ContinuationValidationService({
+          controller: options.controller,
+          continuationManager: options.continuationManager,
+        })
+      : defaultContinuationValidationService);
+
+  const validationOpts: ContinuationValidationOptions = {
+    ...options.validationOptions,
+    request: details?.request ?? options.initialApprovalRequest,
+  };
+
+  let result: ContinuationValidationResult;
+  try {
+    result = await validationService.validateEligibility(id, validationOpts);
+  } catch (err: any) {
+    result = {
+      eligible: false,
+      status: ContinuationEligibilityStatus.UNAVAILABLE,
+      actionId: id,
+      reason: `Continuation validation failed unexpectedly: ${err?.message || err}`,
+      verifiedAt: new Date().toISOString(),
+      limitations: [],
+    };
+  }
+
+  if (result.eligible) {
+    setStagingUIState('approval_confirmed_approved', {
+      ...details,
+      isEligible: true,
+      validationResult: result,
+    });
+  } else {
+    if (result.status === ContinuationEligibilityStatus.EXPIRED) {
+      setStagingUIState('approval_confirmed_expired', {
+        ...details,
+        error: result.reason,
+        description: 'The authorization window expired. This action cannot safely be resumed and must be initiated again.',
+      });
+    } else if (result.status === ContinuationEligibilityStatus.CANCELLED) {
+      setStagingUIState('approval_confirmed_cancelled', {
+        ...details,
+        error: result.reason,
+        description: 'This action was cancelled. It cannot safely be resumed and must be initiated again.',
+      });
+    } else if (result.status === ContinuationEligibilityStatus.REJECTED) {
+      setStagingUIState('approval_confirmed_rejected', {
+        ...details,
+        error: result.reason,
+      });
+    } else if (
+      currentUIState === 'approval_confirmed_approved' ||
+      details?.request?.status === ApprovalStatus.APPROVED
+    ) {
+      setStagingUIState('approval_confirmed_approved', {
+        ...details,
+        isEligible: false,
+        validationResult: result,
+      });
+    } else if (result.status === ContinuationEligibilityStatus.MISMATCHED) {
+      setStagingUIState('action_invalidated', {
+        ...details,
+        error: result.reason,
+        description:
+          'The webpage or target element changed while this action was held. The authorization is no longer safe to use. Please initiate the action again from the current page.',
+      });
+    } else if (result.status === ContinuationEligibilityStatus.UNAVAILABLE) {
+      setStagingUIState('temporarily_unavailable', {
+        ...details,
+        error: result.reason,
+        description:
+          'Guardrail cannot verify authorization status with the backend at this time. To protect your security, this action remains safely paused. Please try again or re-initiate the interaction.',
+      });
+    } else {
+      setStagingUIState('stale_or_invalid', {
+        ...details,
+        error: result.reason,
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Handles explicit user confirmation of an approved action in Staging Mode.
+ *
+ * ARCHITECTURAL REQUIREMENTS & CONSTRAINTS:
+ * 1. ZERO DIRECT DOM DISPATCH: Never dispatches synthetic `.click()` or events directly.
+ * 2. MANDATORY VALIDATION: Must not bypass the validation service under any circumstances.
+ * 3. MONOTONIC EXACTLY-ONCE EXECUTION: Relies on ContinuationManager monotonic execution counter.
+ * 4. IN-FLIGHT CONCURRENCY GUARD: Locks buttons and sets aria-busy="true" during resolution.
+ * 5. SAFE TERMINAL SUCCESS STATE: Transitions UI to 'continued' and notifies listener callbacks.
+ */
+export async function handleModalContinue(
+  actionId: string | undefined,
+  options: StagingModalOptions,
+  uiElements: ModalContinueUIElements
+): Promise<ContinuationResult> {
+  const id = actionId?.trim();
+  if (!id) {
+    const errorResult: ContinuationResult = {
+      success: false,
+      actionId: '',
+      executed: false,
+      executionCount: 0,
+      error: 'Cannot continue action: No valid action identifier is available.',
+    };
+    setStagingUIState('stale_or_invalid', { error: errorResult.error });
+    if (options.onContinueError) {
+      options.onContinueError(errorResult);
+    }
+    return errorResult;
+  }
+
+  // 1. In-flight concurrency guard (Requirement 11)
+  if (
+    isContinuationInFlight ||
+    uiElements.continueBtn.disabled ||
+    uiElements.continueBtn.getAttribute('aria-busy') === 'true'
+  ) {
+    return {
+      success: false,
+      actionId: id,
+      executed: false,
+      executionCount: (options.continuationManager ?? defaultContinuationManager).getExecutionCount(id),
+      error: 'Action continuation is already in progress.',
+    };
+  }
+
+  isContinuationInFlight = true;
+
+  // Immediate UI locking (Requirement 11)
+  uiElements.continueBtn.disabled = true;
+  uiElements.continueBtn.setAttribute('aria-disabled', 'true');
+  uiElements.continueBtn.setAttribute('aria-busy', 'true');
+  uiElements.continueBtn.textContent = 'Continuing Action...';
+
+  uiElements.cancelBtn.disabled = true;
+  uiElements.cancelBtn.setAttribute('aria-disabled', 'true');
+
+  setStagingUIState('continuing');
+  announceStagingState('Continuing action under controlled supervision. Please wait.');
+
+  // 2. Authoritative Validation Check (Requirements 3 & 12)
+  // NEVER bypass validation service!
+  const validationService = options.validationService ?? defaultContinuationValidationService;
+  let validationResult: ContinuationValidationResult;
+  try {
+    validationResult = await validationService.validateEligibility(id, options.validationOptions);
+  } catch (err: any) {
+    validationResult = {
+      eligible: false,
+      status: ContinuationEligibilityStatus.UNAVAILABLE,
+      actionId: id,
+      reason: `Validation service threw an unexpected error: ${err?.message || err}`,
+      verifiedAt: new Date().toISOString(),
+      limitations: [],
+    };
+  }
+
+  if (!validationResult.eligible) {
+    isContinuationInFlight = false;
+    const failureResult: ContinuationResult = {
+      success: false,
+      actionId: id,
+      executed: false,
+      executionCount: (options.continuationManager ?? defaultContinuationManager).getExecutionCount(id),
+      error: validationResult.reason,
+    };
+
+    if (validationResult.status === ContinuationEligibilityStatus.EXPIRED) {
+      setStagingUIState('approval_confirmed_expired', {
+        error: validationResult.reason,
+        description: 'The authorization window expired. This action cannot safely be resumed and must be initiated again.',
+      });
+    } else if (validationResult.status === ContinuationEligibilityStatus.CANCELLED) {
+      setStagingUIState('approval_confirmed_cancelled', {
+        error: validationResult.reason,
+        description: 'This action was cancelled. It cannot safely be resumed and must be initiated again.',
+      });
+    } else if (validationResult.status === ContinuationEligibilityStatus.REJECTED) {
+      setStagingUIState('approval_confirmed_rejected', {
+        error: validationResult.reason,
+      });
+    } else if (validationResult.status === ContinuationEligibilityStatus.MISMATCHED) {
+      setStagingUIState('action_invalidated', {
+        error: validationResult.reason,
+        description:
+          'The webpage or target element changed while this action was held. The authorization is no longer safe to use. Please initiate the action again from the current page.',
+      });
+    } else if (validationResult.status === ContinuationEligibilityStatus.UNAVAILABLE) {
+      setStagingUIState('temporarily_unavailable', {
+        error: validationResult.reason,
+        description:
+          'Guardrail cannot verify authorization status with the backend at this time. To protect your security, this action remains safely paused. Please try again or re-initiate the interaction.',
+      });
+    } else {
+      setStagingUIState('stale_or_invalid', {
+        error: validationResult.reason,
+      });
+    }
+
+    if (options.onContinueError) {
+      options.onContinueError(failureResult);
+    }
+    return failureResult;
+  }
+
+  // 3. Delegation to ContinuationManager (or options.onContinue)
+  let continuationResult: ContinuationResult;
+  try {
+    if (options.onContinue) {
+      continuationResult = await options.onContinue(id);
+    } else {
+      const manager = options.continuationManager ?? defaultContinuationManager;
+      continuationResult = manager.continueAction(
+        id,
+        'User confirmed continuation after trusted contact approval'
+      );
+    }
+  } catch (err: any) {
+    continuationResult = {
+      success: false,
+      actionId: id,
+      executed: false,
+      executionCount: (options.continuationManager ?? defaultContinuationManager).getExecutionCount(id),
+      error: err?.message || 'Error occurred during action continuation.',
+    };
+  } finally {
+    isContinuationInFlight = false;
+  }
+
+  // 4. Apply Continuation Outcome
+  if (continuationResult.success) {
+    stopModalStatusSync();
+    setStagingUIState('continued', {
+      description: 'The held action has been executed safely under controlled supervision.',
+    });
+
+    if (typeof document !== 'undefined') {
+      try {
+        document.dispatchEvent(
+          new CustomEvent('guardrail:action-continued', {
+            detail: {
+              actionId: id,
+              result: continuationResult,
+            },
+            bubbles: true,
+          })
+        );
+      } catch {
+        // Ignore dispatch errors
+      }
+    }
+
+    if (options.onContinueSuccess) {
+      options.onContinueSuccess(continuationResult);
+    }
+  } else {
+    setStagingUIState('stale_or_invalid', {
+      error: continuationResult.error || 'Action continuation could not be completed.',
+    });
+
+    if (options.onContinueError) {
+      options.onContinueError(continuationResult);
+    }
+  }
+
+  return continuationResult;
 }
 
 export interface ModalCancelUIElements {
@@ -2418,14 +2988,22 @@ function handleDiscoveredApprovalStatus(
         currentUIState === 'approval_confirmed_cancelled' ||
         currentUIState === 'approval_confirmed_expired' ||
         currentUIState === 'approval_confirmed_rejected' ||
-        currentUIState === 'stale_or_invalid'
+        currentUIState === 'stale_or_invalid' ||
+        currentUIState === 'continuing' ||
+        currentUIState === 'continued' ||
+        currentUIState === 'action_invalidated'
       ) {
         return;
       }
 
       const activeController = options.controller || defaultInterceptionController;
       const localRec = activeController.getRecord(actionId);
-      if (localRec && localRec.state === InterceptionState.CANCELLED) {
+      if (
+        localRec &&
+        (localRec.state === InterceptionState.CANCELLED ||
+          localRec.state === InterceptionState.CONTINUED ||
+          localRec.state === InterceptionState.INVALIDATED)
+      ) {
         return;
       }
 
@@ -2438,7 +3016,16 @@ function handleDiscoveredApprovalStatus(
         return;
       }
 
+      // Immediately project confirmed approval visually
       setStagingUIState('approval_confirmed_approved', {
+        requestId: reqId,
+        decidedBy: req.decision?.decidedBy,
+        decidedAt: req.decision?.decidedAt,
+        request: req,
+      });
+
+      // Authoritatively evaluate continuation eligibility and enable Continue Action strictly if verified
+      void checkAndApplyContinuationEligibility(actionId, options, {
         requestId: reqId,
         decidedBy: req.decision?.decidedBy,
         decidedAt: req.decision?.decidedAt,
@@ -2572,7 +3159,10 @@ function handleDiscoveredApprovalStatus(
         currentUIState === 'approval_confirmed_approved' ||
         currentUIState === 'approval_confirmed_rejected' ||
         currentUIState === 'approval_confirmed_expired' ||
-        currentUIState === 'approval_confirmed_cancelled'
+        currentUIState === 'approval_confirmed_cancelled' ||
+        currentUIState === 'continuing' ||
+        currentUIState === 'continued' ||
+        currentUIState === 'action_invalidated'
       ) {
         return;
       }
@@ -2862,6 +3452,13 @@ function applyApprovalOutcome(
       switch (req.status) {
         case ApprovalStatus.APPROVED:
           setStagingUIState('approval_confirmed_approved', {
+            requestId: reqId,
+            decidedBy: req.decision?.decidedBy,
+            decidedAt: req.decision?.decidedAt,
+            request: req,
+          });
+          const targetActionId = options.context?.actionId || result.actionId;
+          void checkAndApplyContinuationEligibility(targetActionId, options, {
             requestId: reqId,
             decidedBy: req.decision?.decidedBy,
             decidedAt: req.decision?.decidedAt,
@@ -3420,6 +4017,24 @@ function renderFooter(
     requestApprovalBtn.setAttribute('title', 'Prepare a local approval request intent for this held action');
 
     requestApprovalBtn.addEventListener('click', () => {
+      if (
+        currentUIState === 'approval_confirmed_approved' ||
+        requestApprovalBtn.id === 'gs-btn-continue-action' ||
+        requestApprovalBtn.classList.contains('gs-btn-continue')
+      ) {
+        if (isOperationActive || isContinuationInFlight || requestApprovalBtn.disabled) {
+          return;
+        }
+        void handleModalContinue(options.context?.actionId, options, {
+          continueBtn: requestApprovalBtn,
+          cancelBtn,
+          body: uiRefs.body,
+          header: uiRefs.header,
+          notice,
+        });
+        return;
+      }
+
       if (isOperationActive || requestApprovalBtn.disabled) {
         return;
       }
@@ -3648,6 +4263,7 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
 
   // Set mounted action ID and advance session token for stale response protection
   currentMountedActionId = options.context?.actionId?.trim() || null;
+  currentModalOptions = options;
   currentModalSessionId++;
 
   // Capture active element before opening modal for focus restoration
@@ -3772,6 +4388,7 @@ export function updateStagingModal(options: StagingModalOptions): void {
 
   // Update mounted action and advance session sequence
   currentMountedActionId = options.context?.actionId?.trim() || null;
+  currentModalOptions = options;
   currentModalSessionId++;
 
   // Find existing backdrop

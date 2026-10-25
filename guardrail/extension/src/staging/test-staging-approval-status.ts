@@ -789,8 +789,8 @@ async function runApprovalStatusTests(): Promise<void> {
               actionId: 'act_existing_status_1',
               requesterId: 'usr_alice',
               status: ApprovalStatus.APPROVED,
-              createdAt: '2026-10-19T03:00:00.000Z',
-              expiresAt: '2026-10-19T03:30:00.000Z',
+              createdAt: new Date().toISOString(),
+              expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
               decision: {
                 decision: 'APPROVED',
                 decidedBy: 'tc_carol',
