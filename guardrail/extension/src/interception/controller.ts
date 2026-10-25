@@ -163,6 +163,63 @@ export class InterceptionController {
   }
 
   /**
+   * Transitions a tracked action from HELD to AWAITING_APPROVAL.
+   *
+   * @param actionId Unique identifier of the action
+   * @param reason Explanation for awaiting approval
+   * @returns Updated immutable InterceptionRecord in AWAITING_APPROVAL state
+   */
+  public awaitApproval(
+    actionId: string,
+    reason: string = 'Approval request associated; awaiting trusted contact decision.'
+  ): InterceptionRecord {
+    return this.transition(actionId, InterceptionState.AWAITING_APPROVAL, reason);
+  }
+
+  /**
+   * Transitions a tracked action to READY_FOR_USER_CONFIRMATION after backend approval
+   * and all required validation checks pass.
+   *
+   * @param actionId Unique identifier of the action
+   * @param reason Explanation justifying readiness for user confirmation
+   * @returns Updated immutable InterceptionRecord in READY_FOR_USER_CONFIRMATION state
+   */
+  public markReadyForConfirmation(
+    actionId: string,
+    reason: string = 'Approval confirmed and validation passed; ready for user confirmation.'
+  ): InterceptionRecord {
+    return this.transition(actionId, InterceptionState.READY_FOR_USER_CONFIRMATION, reason);
+  }
+
+  /**
+   * Transitions a tracked action to EXPIRED when TTL expires.
+   *
+   * @param actionId Unique identifier of the action
+   * @param reason Explanation for action expiration
+   * @returns Updated immutable InterceptionRecord in EXPIRED terminal state
+   */
+  public expireAction(
+    actionId: string,
+    reason: string = 'Action authorization or TTL expired.'
+  ): InterceptionRecord {
+    return this.transition(actionId, InterceptionState.EXPIRED, reason);
+  }
+
+  /**
+   * Transitions a tracked action to INVALIDATED when context, attachment, or validation fails.
+   *
+   * @param actionId Unique identifier of the action
+   * @param reason Explanation for invalidating the action
+   * @returns Updated immutable InterceptionRecord in INVALIDATED terminal state
+   */
+  public invalidateAction(
+    actionId: string,
+    reason: string = 'Action context, DOM attachment, or authorization invalidated.'
+  ): InterceptionRecord {
+    return this.transition(actionId, InterceptionState.INVALIDATED, reason);
+  }
+
+  /**
    * Generic transition method advancing a tracked action to a valid target state.
    *
    * @param actionId Unique identifier of the action

@@ -494,14 +494,17 @@ export class ContinuationManager {
         };
       }
 
-      if (record.state !== InterceptionState.HELD) {
+      if (
+        record.state !== InterceptionState.HELD &&
+        record.state !== InterceptionState.READY_FOR_USER_CONFIRMATION
+      ) {
         return {
           success: false,
           actionId: id,
           record,
           executed: false,
           executionCount: this.getExecutionCount(id),
-          error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD state can be continued.`,
+          error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD state (or READY_FOR_USER_CONFIRMATION) can be continued.`,
         };
       }
 
@@ -600,12 +603,16 @@ export class ContinuationManager {
       };
     }
 
-    if (record.state !== InterceptionState.HELD) {
+    if (
+      record.state !== InterceptionState.HELD &&
+      record.state !== InterceptionState.AWAITING_APPROVAL &&
+      record.state !== InterceptionState.READY_FOR_USER_CONFIRMATION
+    ) {
       return {
         success: false,
         actionId: id,
         record,
-        error: `Cannot cancel action "${id}": Current state is "${record.state}". Only actions in HELD state can be cancelled.`,
+        error: `Cannot cancel action "${id}": Current state is "${record.state}". Only actions in HELD state (or non-terminal states) can be cancelled.`,
       };
     }
 
@@ -854,11 +861,15 @@ export class ContinuationAuthorizationBoundary {
       };
     }
 
-    if (record.state !== InterceptionState.HELD) {
+    if (
+      record.state !== InterceptionState.HELD &&
+      record.state !== InterceptionState.AWAITING_APPROVAL &&
+      record.state !== InterceptionState.READY_FOR_USER_CONFIRMATION
+    ) {
       return {
         authorized: false,
         actionId: id,
-        error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD state can be continued.`,
+        error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD, AWAITING_APPROVAL, or READY_FOR_USER_CONFIRMATION state can be continued.`,
         errorCode: 'REQUEST_NOT_APPROVED',
       };
     }

@@ -176,15 +176,23 @@ assert(caughtCancelledExitError, 'Prevented transition out of terminal CANCELLED
 // TEST 7: DECLARATIVE TRANSITION MATRIX VERIFICATION
 // ------------------------------------------------------------
 console.log('\n▶ Test 7: Declarative Transition Matrix & Helper Verification');
-assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.DETECTED].length, 3, 'DETECTED has exactly 3 valid transitions (HELD, CONTINUED, CANCELLED)');
-assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.HELD].length, 2, 'HELD has exactly 2 valid transitions (CONTINUED, CANCELLED)');
+assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.DETECTED].length, 4, 'DETECTED has exactly 4 valid transitions (HELD, CONTINUED, CANCELLED, INVALIDATED)');
+assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.HELD].length, 6, 'HELD has exactly 6 valid transitions (AWAITING_APPROVAL, READY_FOR_USER_CONFIRMATION, CONTINUED, CANCELLED, EXPIRED, INVALIDATED)');
+assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.AWAITING_APPROVAL].length, 4, 'AWAITING_APPROVAL has 4 valid transitions (READY_FOR_USER_CONFIRMATION, CANCELLED, EXPIRED, INVALIDATED)');
+assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.READY_FOR_USER_CONFIRMATION].length, 4, 'READY_FOR_USER_CONFIRMATION has 4 valid transitions (CONTINUED, CANCELLED, EXPIRED, INVALIDATED)');
 assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.CONTINUED].length, 0, 'CONTINUED has 0 valid transitions (Terminal)');
 assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.CANCELLED].length, 0, 'CANCELLED has 0 valid transitions (Terminal)');
+assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.EXPIRED].length, 0, 'EXPIRED has 0 valid transitions (Terminal)');
+assertEquals(VALID_INTERCEPTION_TRANSITIONS[InterceptionState.INVALIDATED].length, 0, 'INVALIDATED has 0 valid transitions (Terminal)');
 
 assert(isValidInterceptionTransition(InterceptionState.DETECTED, InterceptionState.HELD), 'isValidInterceptionTransition confirms DETECTED -> HELD is valid');
-assert(isValidInterceptionTransition(InterceptionState.HELD, InterceptionState.CONTINUED), 'isValidInterceptionTransition confirms HELD -> CONTINUED is valid');
+assert(isValidInterceptionTransition(InterceptionState.HELD, InterceptionState.AWAITING_APPROVAL), 'isValidInterceptionTransition confirms HELD -> AWAITING_APPROVAL is valid');
+assert(isValidInterceptionTransition(InterceptionState.AWAITING_APPROVAL, InterceptionState.READY_FOR_USER_CONFIRMATION), 'isValidInterceptionTransition confirms AWAITING_APPROVAL -> READY_FOR_USER_CONFIRMATION is valid');
+assert(isValidInterceptionTransition(InterceptionState.READY_FOR_USER_CONFIRMATION, InterceptionState.CONTINUED), 'isValidInterceptionTransition confirms READY_FOR_USER_CONFIRMATION -> CONTINUED is valid');
+assert(!isValidInterceptionTransition(InterceptionState.AWAITING_APPROVAL, InterceptionState.CONTINUED), 'isValidInterceptionTransition confirms AWAITING_APPROVAL cannot transition directly to CONTINUED');
 assert(!isValidInterceptionTransition(InterceptionState.CONTINUED, InterceptionState.HELD), 'isValidInterceptionTransition confirms CONTINUED -> HELD is invalid');
 assert(!isValidInterceptionTransition(InterceptionState.CANCELLED, InterceptionState.CONTINUED), 'isValidInterceptionTransition confirms CANCELLED -> CONTINUED is invalid');
+assert(!isValidInterceptionTransition(InterceptionState.EXPIRED, InterceptionState.READY_FOR_USER_CONFIRMATION), 'isValidInterceptionTransition confirms EXPIRED -> READY_FOR_USER_CONFIRMATION is invalid');
 
 // ------------------------------------------------------------
 // TEST 8: STRICT PRIVACY & ZERO DOM LEAKAGE
