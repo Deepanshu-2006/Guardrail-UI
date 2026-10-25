@@ -43,6 +43,13 @@ export const PERSISTENCE_METADATA = Object.freeze({
   IS_PRODUCTION: false,
   TARGET_DATABASE: 'PostgreSQL / SQLite (Day 10+ Roadmap)',
   SPECIFICATION_DOCUMENT: 'guardrail/docs/approval-workflow-contract.md',
+  CONCURRENCY_MODEL: 'Single-thread synchronous Compare-And-Swap (CAS) in-memory state machine',
+  LIMITATIONS: Object.freeze([
+    'In-memory persistence does not survive process, browser, or server restarts.',
+    'Multi-process clustering (multiple Node.js instances or web workers) requires database-level row locking.',
+    'ACID crash-recovery requires WAL / journaling in PostgreSQL or SQLite.',
+    'Client-side optimistic locking does not replace backend atomic transactions.',
+  ]),
 });
 
 /**
@@ -78,6 +85,15 @@ export interface ApprovalRequestRepository {
   save(request: ApprovalRequest): void;
 
   /**
+   * Atomically commits a new ApprovalRequest and its 1:1 ApprovalActionBinding in a single transaction.
+   * If any uniqueness, anti-reassignment, or conflict check fails, neither entity is persisted (all-or-nothing rollback).
+   *
+   * @throws ApprovalBindingReassignmentError if requestId or actionId is already bound to a conflicting entity
+   * @throws ApprovalBindingConflictError if actionId is already bound to an active or conflicting request
+   */
+  saveRequestWithBinding(request: ApprovalRequest, binding: ApprovalActionBinding): void;
+
+  /**
    * Performs an atomic conditional update on an ApprovalRequest.
    *
    * Verifies that the record currently exists and matches `expectedCurrentStatus`
@@ -96,6 +112,22 @@ export interface ApprovalRequestRepository {
     requestId: string,
     expectedCurrentStatus: ApprovalStatus,
     updatedRequest: ApprovalRequest
+  ): boolean;
+
+  /**
+   * Atomically commits a synchronized lifecycle resolution on both an ApprovalRequest and its associated binding.
+   * Ensures that request is currently in `expectedRequestStatus` AND binding is in `expectedBindingState` before committing.
+   * If either condition is not met, the transaction aborts and returns false without modifying either record.
+   *
+   * @returns True if both entities were atomically updated; false if aborted due to conflict
+   */
+  atomicTransitionRequestAndBinding(
+    requestId: string,
+    expectedRequestStatus: ApprovalStatus,
+    updatedRequest: ApprovalRequest,
+    bindingId: string,
+    expectedBindingState: ApprovalActionBindingState,
+    updatedBinding: ApprovalActionBinding
   ): boolean;
 
   /**
@@ -405,6 +437,90 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
   }
 
   /**
+   * Atomically commits a new ApprovalRequest and its 1:1 ApprovalActionBinding in a single transaction.
+   * If any uniqueness, anti-reassignment, or conflict check fails, neither entity is persisted (all-or-nothing rollback).
+   */
+  public saveRequestWithBinding(request: ApprovalRequest, binding: ApprovalActionBinding): void {
+    assertValidApprovalActionBinding(binding);
+
+    if (request.id !== binding.requestId) {
+      throw new ApprovalBindingReassignmentError(
+        request.id,
+        binding.actionId,
+        request.actionId
+      );
+    }
+    if (request.actionId !== binding.actionId) {
+      throw new ApprovalBindingReassignmentError(
+        request.id,
+        binding.actionId,
+        request.actionId
+      );
+    }
+
+    // 1. Check existing request for requestId
+    const existingReq = this.requests.get(request.id);
+    if (existingReq && existingReq.actionId !== request.actionId) {
+      throw new ApprovalBindingReassignmentError(
+        request.id,
+        existingReq.actionId,
+        request.actionId
+      );
+    }
+
+    // 2. Check existing binding for requestId
+    const existingBindingIdForReq = this.bindingByRequestId.get(binding.requestId);
+    if (existingBindingIdForReq) {
+      const existingBnd = this.bindings.get(existingBindingIdForReq);
+      if (existingBnd && existingBnd.actionId !== binding.actionId) {
+        throw new ApprovalBindingReassignmentError(
+          binding.requestId,
+          existingBnd.actionId,
+          binding.actionId
+        );
+      }
+    }
+
+    // 3. Check existing binding for actionId (Conflict check on actively BOUND binding)
+    const existingBindingIdForAction = this.bindingByActionId.get(binding.actionId);
+    if (existingBindingIdForAction && existingBindingIdForAction !== binding.id) {
+      const existingBnd = this.bindings.get(existingBindingIdForAction);
+      if (
+        existingBnd &&
+        existingBnd.requestId !== binding.requestId &&
+        existingBnd.state === ApprovalActionBindingState.BOUND
+      ) {
+        throw new ApprovalBindingConflictError(
+          binding.actionId,
+          existingBnd.requestId,
+          binding.requestId
+        );
+      }
+    }
+
+    // 4. Check existing user-action index (Compound idempotency check)
+    const userActionKey = this.buildUserActionKey(request.requesterId, request.actionId);
+    const existingUserReqId = this.userActionIndex.get(userActionKey);
+    if (existingUserReqId && existingUserReqId !== request.id) {
+      const existingUserReq = this.requests.get(existingUserReqId);
+      if (
+        existingUserReq &&
+        existingUserReq.status === ApprovalStatus.PENDING
+      ) {
+        throw new ApprovalBindingConflictError(
+          request.actionId,
+          existingUserReqId,
+          request.id
+        );
+      }
+    }
+
+    // Atomically commit both
+    this.save(request);
+    this.saveBinding(binding);
+  }
+
+  /**
    * Retrieves an ApprovalActionBinding by binding ID ('bnd_...').
    */
   public findBindingById(id: string): ApprovalActionBinding | undefined {
@@ -425,6 +541,65 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
   public findBindingByActionId(actionId: string): ApprovalActionBinding | undefined {
     const bindingId = this.bindingByActionId.get(actionId);
     return bindingId ? this.bindings.get(bindingId) : undefined;
+  }
+
+  /**
+   * Atomically commits a synchronized lifecycle resolution on both an ApprovalRequest and its associated binding.
+   * Ensures that request is currently in `expectedRequestStatus` AND binding is in `expectedBindingState` before committing.
+   * If either condition is not met, the transaction aborts and returns false without modifying either record.
+   */
+  public atomicTransitionRequestAndBinding(
+    requestId: string,
+    expectedRequestStatus: ApprovalStatus,
+    updatedRequest: ApprovalRequest,
+    bindingId: string,
+    expectedBindingState: ApprovalActionBindingState,
+    updatedBinding: ApprovalActionBinding
+  ): boolean {
+    const existingReq = this.requests.get(requestId);
+    const existingBnd = this.bindings.get(bindingId);
+
+    if (!existingReq || !existingBnd) {
+      return false;
+    }
+
+    // Conditional atomic check on both entities
+    if (existingReq.status !== expectedRequestStatus) {
+      return false;
+    }
+    if (existingBnd.state !== expectedBindingState) {
+      return false;
+    }
+
+    // Invariant check: binding must correspond to request
+    if (
+      existingBnd.requestId !== requestId ||
+      existingReq.actionId !== updatedRequest.actionId ||
+      existingBnd.actionId !== updatedBinding.actionId ||
+      existingBnd.requestId !== updatedBinding.requestId
+    ) {
+      throw new ApprovalBindingReassignmentError(
+        requestId,
+        existingReq.actionId,
+        updatedRequest.actionId
+      );
+    }
+
+    // Atomic commitment of both entities
+    const nextVersion = (this.versionMap.get(requestId) ?? 1) + 1;
+    this.versionMap.set(requestId, nextVersion);
+
+    const frozenReq = Object.freeze({ ...updatedRequest });
+    this.requests.set(requestId, frozenReq);
+    const key = this.buildUserActionKey(frozenReq.requesterId, frozenReq.actionId);
+    this.userActionIndex.set(key, frozenReq.id);
+
+    const frozenBnd = Object.freeze({ ...updatedBinding });
+    this.bindings.set(bindingId, frozenBnd);
+    this.bindingByRequestId.set(frozenBnd.requestId, frozenBnd.id);
+    this.bindingByActionId.set(frozenBnd.actionId, frozenBnd.id);
+
+    return true;
   }
 
   /**
