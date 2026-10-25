@@ -479,45 +479,45 @@ export class ContinuationManager {
       };
     }
 
-    // 1. Validate that the record exists and is in HELD state
-    const record = this.controller.getRecord(id);
-    if (!record) {
-      return {
-        success: false,
-        actionId: id,
-        executed: false,
-        executionCount: this.getExecutionCount(id),
-        error: `Action "${id}" was not found in InterceptionController.`,
-      };
-    }
-
-    if (record.state !== InterceptionState.HELD) {
-      return {
-        success: false,
-        actionId: id,
-        record,
-        executed: false,
-        executionCount: this.getExecutionCount(id),
-        error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD state can be continued.`,
-      };
-    }
-
-    // 2. Exactly-once execution check: Ensure it has not been executed yet
-    const priorExecutions = this.getExecutionCount(id);
-    if (priorExecutions > 0) {
-      return {
-        success: false,
-        actionId: id,
-        record,
-        executed: false,
-        executionCount: priorExecutions,
-        error: `Action "${id}" has already executed ${priorExecutions} time(s). Duplicate execution prevented.`,
-      };
-    }
-
     this.isResolving.add(id);
 
     try {
+      // 1. Validate that the record exists and is in HELD state
+      const record = this.controller.getRecord(id);
+      if (!record) {
+        return {
+          success: false,
+          actionId: id,
+          executed: false,
+          executionCount: this.getExecutionCount(id),
+          error: `Action "${id}" was not found in InterceptionController.`,
+        };
+      }
+
+      if (record.state !== InterceptionState.HELD) {
+        return {
+          success: false,
+          actionId: id,
+          record,
+          executed: false,
+          executionCount: this.getExecutionCount(id),
+          error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD state can be continued.`,
+        };
+      }
+
+      // 2. Exactly-once execution check: Ensure it has not been executed yet
+      const priorExecutions = this.getExecutionCount(id);
+      if (priorExecutions > 0) {
+        return {
+          success: false,
+          actionId: id,
+          record,
+          executed: false,
+          executionCount: priorExecutions,
+          error: `Action "${id}" has already executed ${priorExecutions} time(s). Duplicate execution prevented.`,
+        };
+      }
+
       // 3. Transition interception record from HELD -> CONTINUED
       const continuedRecord = this.controller.continueAction(id, reason);
 
@@ -778,6 +778,7 @@ export class ContinuationAuthorizationBoundary {
   private readonly timeProvider: TimeProvider;
   private readonly getCurrentPageContext?: () => ContinuationPageContext;
   private readonly isElementAttached?: (elementId?: string) => boolean;
+  private readonly activeContinuations: Set<string> = new Set();
 
   constructor(options?: ContinuationBoundaryOptions) {
     this.continuationManager = options?.continuationManager ?? defaultContinuationManager;
@@ -998,21 +999,59 @@ export class ContinuationAuthorizationBoundary {
     reason: string = 'Action continued via authorized boundary.',
     options?: ContinuationBoundaryValidationOptions
   ): Promise<ContinuationResult> {
-    const authResult = await this.validateContinuation(actionId, options);
-    if (!authResult.authorized) {
+    const id = actionId?.trim();
+    if (!id) {
       return {
         success: false,
-        actionId,
+        actionId: '',
         executed: false,
-        executionCount: this.continuationManager.getExecutionCount(actionId),
-        error: authResult.error,
+        executionCount: 0,
+        error: 'Cannot continue action without a valid actionId.',
       };
     }
 
-    return this.continuationManager.continueAction(actionId, reason, {
-      actionId,
-      allowUnboundAction: true,
-    });
+    // In-flight concurrency guard: Prevent concurrent or racing continuation attempts
+    if (this.activeContinuations.has(id)) {
+      return {
+        success: false,
+        actionId: id,
+        executed: false,
+        executionCount: this.continuationManager.getExecutionCount(id),
+        error: `Cannot continue action "${id}": A continuation operation is already actively in progress for this action. Duplicate continuation rejected.`,
+      };
+    }
+
+    if (this.continuationManager.getExecutionCount(id) > 0) {
+      return {
+        success: false,
+        actionId: id,
+        executed: false,
+        executionCount: this.continuationManager.getExecutionCount(id),
+        error: `Cannot continue action "${id}": Action has already executed. Duplicate execution prohibited.`,
+      };
+    }
+
+    this.activeContinuations.add(id);
+
+    try {
+      const authResult = await this.validateContinuation(id, options);
+      if (!authResult.authorized) {
+        return {
+          success: false,
+          actionId: id,
+          executed: false,
+          executionCount: this.continuationManager.getExecutionCount(id),
+          error: authResult.error,
+        };
+      }
+
+      return this.continuationManager.continueAction(id, reason, {
+        actionId: id,
+        allowUnboundAction: true,
+      });
+    } finally {
+      this.activeContinuations.delete(id);
+    }
   }
 }
 

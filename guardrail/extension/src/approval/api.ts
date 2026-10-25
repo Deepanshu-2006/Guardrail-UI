@@ -546,6 +546,7 @@ export class ApprovalApiRouter {
     const authContext = await this.authenticate(request.headers);
 
     let reason: string | undefined;
+    let idempotent: boolean | undefined;
     if (request.body && typeof request.body === 'object') {
       const rawBody = request.body as Record<string, unknown>;
       if (rawBody.reason !== undefined) {
@@ -554,9 +555,16 @@ export class ApprovalApiRouter {
         }
         reason = rawBody.reason;
       }
+      if (typeof rawBody.idempotent === 'boolean') {
+        idempotent = rawBody.idempotent;
+      }
     }
 
-    const cancelled = this.service.cancelRequest(requestId, reason, authContext);
+    if (request.url && request.url.includes('idempotent=true')) {
+      idempotent = true;
+    }
+
+    const cancelled = this.service.cancelRequest(requestId, reason, authContext, { idempotent });
     return {
       statusCode: 200,
       headers,

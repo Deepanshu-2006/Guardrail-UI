@@ -204,6 +204,17 @@ export interface RequestOptions {
   readonly signal?: AbortSignal;
 }
 
+/**
+ * Options supported when cancelling an approval request.
+ */
+export interface CancelRequestOptions extends RequestOptions {
+  /**
+   * If true, requesting cancellation on an already cancelled request will succeed
+   * idempotently with 200 OK and return the cancelled record instead of returning 409 Conflict.
+   */
+  readonly idempotent?: boolean;
+}
+
 // =============================================================================
 // Helper Functions: URL & Token Resolution
 // =============================================================================
@@ -776,13 +787,13 @@ export class ApprovalApiClient {
    *
    * @param requestId Canonical approval request identifier ('apr_...')
    * @param reason Optional human-readable cancellation explanation
-   * @param options Optional request overrides (token, timeout, signal)
+   * @param options Optional request overrides (token, timeout, signal, idempotent)
    * @returns Typed ApiClientResult with cancelled ApprovalRequest or error
    */
   public async cancelApprovalRequest(
     requestId: string,
     reason?: string,
-    options?: RequestOptions
+    options?: CancelRequestOptions
   ): Promise<ApiClientResult<ApprovalRequest>> {
     if (!requestId || typeof requestId !== 'string' || !requestId.trim()) {
       return {
@@ -797,7 +808,13 @@ export class ApprovalApiClient {
     }
 
     const sanitizedId = encodeURIComponent(requestId.trim());
-    const body = reason !== undefined ? { reason: String(reason) } : {};
+    const body: Record<string, unknown> = {};
+    if (reason !== undefined) {
+      body.reason = String(reason);
+    }
+    if (options?.idempotent !== undefined) {
+      body.idempotent = Boolean(options.idempotent);
+    }
 
     return this.dispatchRequest<ApprovalRequest>(
       'POST',

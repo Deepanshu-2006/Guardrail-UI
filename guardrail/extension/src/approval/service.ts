@@ -400,8 +400,7 @@ export class ApprovalService {
     );
 
     // 6. Save to repository (atomic 1:1 action-approval relationship)
-    this.repository.save(request);
-    this.repository.saveBinding(binding);
+    this.repository.saveRequestWithBinding(request, binding);
 
     // 7. Register action ownership in development registry
     if (this.actionOwnershipRegistry instanceof InMemoryActionOwnershipRegistry) {
@@ -580,7 +579,8 @@ export class ApprovalService {
   public cancelRequest(
     requestId: string,
     reason: string | undefined,
-    authContext: AuthContext
+    authContext: AuthContext,
+    options?: { idempotent?: boolean }
   ): ApprovalRequest {
     this.assertAuthenticated(authContext);
 
@@ -600,7 +600,14 @@ export class ApprovalService {
       throw new ApprovalAccessDeniedError();
     }
 
-    // Lifecycle check: terminal states cannot be cancelled
+    // Lifecycle check: if already cancelled and idempotent requested, return existing request safely
+    if (request.status === ApprovalStatus.CANCELLED) {
+      if (options?.idempotent) {
+        return request;
+      }
+      throw new ApprovalAlreadyResolvedError(requestId, request.status, ApprovalStatus.CANCELLED);
+    }
+
     if (isTerminalApprovalStatus(request.status)) {
       throw new ApprovalAlreadyResolvedError(requestId, request.status, ApprovalStatus.CANCELLED);
     }
@@ -618,24 +625,11 @@ export class ApprovalService {
       this.timeProvider
     );
 
-    // Atomic conditional update
-    const success = this.repository.atomicTransition(
-      requestId,
-      ApprovalStatus.PENDING,
-      cancelled
-    );
-
-    if (!success) {
-      const current = this.repository.findById(requestId);
-      const currStatus = current ? current.status : ApprovalStatus.CANCELLED;
-      throw new ApprovalAlreadyResolvedError(requestId, currStatus, ApprovalStatus.CANCELLED);
-    }
-
-    // Synchronize associated binding
-    const binding = this.repository.findBindingByRequestId(requestId);
-    if (binding && binding.state === ApprovalActionBindingState.BOUND) {
+    // Atomic conditional update (transactional with binding where active)
+    let success = false;
+    if (existingBinding && existingBinding.state === ApprovalActionBindingState.BOUND) {
       const updatedBinding = transitionBindingState(
-        binding,
+        existingBinding,
         ApprovalActionBindingState.CANCELLED,
         {
           resolvedAt: cancelled.resolvedAt,
@@ -643,11 +637,30 @@ export class ApprovalService {
           timeProvider: this.timeProvider,
         }
       );
-      this.repository.atomicTransitionBinding(
-        binding.id,
+      success = this.repository.atomicTransitionRequestAndBinding(
+        requestId,
+        ApprovalStatus.PENDING,
+        cancelled,
+        existingBinding.id,
         ApprovalActionBindingState.BOUND,
         updatedBinding
       );
+    } else {
+      success = this.repository.atomicTransition(
+        requestId,
+        ApprovalStatus.PENDING,
+        cancelled
+      );
+    }
+
+    if (!success) {
+      const current = this.repository.findById(requestId);
+      if (current && current.status === ApprovalStatus.CANCELLED && options?.idempotent) {
+        // Concurrent cancellation succeeded first - safe idempotent return
+        return current;
+      }
+      const currStatus = current ? current.status : ApprovalStatus.CANCELLED;
+      throw new ApprovalAlreadyResolvedError(requestId, currStatus, ApprovalStatus.CANCELLED);
     }
 
     this.logger.info('Cancelled approval request', {
@@ -842,21 +855,8 @@ export class ApprovalService {
       this.timeProvider
     );
 
-    // 5. Atomic conditional update (First-responder concurrency)
-    const success = this.repository.atomicTransition(
-      requestId,
-      ApprovalStatus.PENDING,
-      resolved
-    );
-
-    if (!success) {
-      // Race condition lost: Another reviewer or cancellation committed first
-      const current = this.repository.findById(requestId);
-      const currStatus = current ? current.status : targetStatus;
-      throw new ApprovalAlreadyResolvedError(requestId, currStatus, targetStatus);
-    }
-
-    // Synchronize associated binding
+    // 5. Atomic conditional update (First-responder concurrency & transactional binding commitment)
+    let success = false;
     if (binding && binding.state === ApprovalActionBindingState.BOUND) {
       const bindingTargetState =
         decision === 'APPROVED'
@@ -867,11 +867,28 @@ export class ApprovalService {
         reason: decisionInput?.decisionReason,
         timeProvider: this.timeProvider,
       });
-      this.repository.atomicTransitionBinding(
+
+      success = this.repository.atomicTransitionRequestAndBinding(
+        requestId,
+        ApprovalStatus.PENDING,
+        resolved,
         binding.id,
         ApprovalActionBindingState.BOUND,
         updatedBinding
       );
+    } else {
+      success = this.repository.atomicTransition(
+        requestId,
+        ApprovalStatus.PENDING,
+        resolved
+      );
+    }
+
+    if (!success) {
+      // Race condition lost: Another reviewer or cancellation/invalidation committed first
+      const current = this.repository.findById(requestId);
+      const currStatus = current ? current.status : targetStatus;
+      throw new ApprovalAlreadyResolvedError(requestId, currStatus, targetStatus);
     }
 
     // 6. Safe logging
