@@ -32,6 +32,7 @@ import {
   ApprovalActionBindingState,
   ApprovalRequest,
   ApprovalStatus,
+  BackendContinuationValidationResult,
 } from '../types/approval.js';
 import {
   defaultTimeProvider,
@@ -39,6 +40,9 @@ import {
   TimeProvider,
 } from '../approval/model.js';
 import { isBindingExpired } from '../approval/binding.js';
+import { ActorRole, AuthContext } from '../approval/authorization.js';
+import type { ApprovalService } from '../approval/service.js';
+import type { ApprovalApiClient } from '../approval/client.js';
 
 export type ControlledActionCallback = (action: GuardrailAction) => void;
 
@@ -77,7 +81,16 @@ export type ContinuationAuthorizationErrorCode =
   | 'BINDING_CANCELLED'
   | 'REQUEST_CANCELLED'
   | 'REQUEST_REJECTED'
-  | 'BACKEND_STATE_UNKNOWN';
+  | 'BACKEND_STATE_UNKNOWN'
+  | 'PAGE_CONTEXT_MISMATCH'
+  | 'ELEMENT_DETACHED'
+  | 'ALREADY_CONTINUED'
+  | 'AUTHORIZATION_UNAVAILABLE';
+
+export interface ContinuationPageContext {
+  readonly url?: string;
+  readonly origin?: string;
+}
 
 export interface ContinuationAuthorizationInput {
   /** Target action ID to be authorized */
@@ -86,6 +99,12 @@ export interface ContinuationAuthorizationInput {
   readonly request?: ApprovalRequest | null;
   /** Authoritative ApprovalActionBinding from backend, if available */
   readonly binding?: ApprovalActionBinding | null;
+  /** Original intercepted GuardrailAction (for local context & element checking) */
+  readonly originalAction?: GuardrailAction | null;
+  /** Current active page context (URL, origin) to verify against original action */
+  readonly currentPageContext?: ContinuationPageContext | null;
+  /** Custom element presence checker (or checks DOM if window/document available) */
+  readonly isElementAttached?: (elementId?: string) => boolean;
   /** Reliable time provider for validating expiration deadlines */
   readonly timeProvider?: TimeProvider;
   /** If true, permits continuing actions that have no approval request/binding (e.g. standalone test mocks) */
@@ -123,6 +142,81 @@ export function verifyContinuationAuthorization(
 
   const timeProvider = input.timeProvider ?? defaultTimeProvider;
   const { request, binding, allowUnboundAction } = input;
+
+  // 1. Verify original action and page context if provided
+  if (input.originalAction && input.currentPageContext) {
+    const origUrl = input.originalAction.page?.url;
+    const currentOrigin = input.currentPageContext.origin;
+    const currentUrl = input.currentPageContext.url;
+
+    if (origUrl && currentOrigin) {
+      try {
+        const origOrigin = new URL(origUrl).origin;
+        if (origOrigin !== currentOrigin) {
+          return {
+            authorized: false,
+            actionId,
+            error: `Page context mismatch: Interaction origin "${currentOrigin}" does not match original intercepted origin "${origOrigin}".`,
+            errorCode: 'PAGE_CONTEXT_MISMATCH',
+          };
+        }
+      } catch {
+        return {
+          authorized: false,
+          actionId,
+          error: `Page context mismatch: Invalid original URL "${origUrl}".`,
+          errorCode: 'PAGE_CONTEXT_MISMATCH',
+        };
+      }
+    }
+
+    if (origUrl && currentUrl) {
+      try {
+        const origParsed = new URL(origUrl);
+        const currParsed = new URL(currentUrl);
+        if (origParsed.origin !== currParsed.origin || origParsed.pathname !== currParsed.pathname) {
+          return {
+            authorized: false,
+            actionId,
+            error: `Page context mismatch: Target path "${currParsed.pathname}" does not match intercepted path "${origParsed.pathname}".`,
+            errorCode: 'PAGE_CONTEXT_MISMATCH',
+          };
+        }
+      } catch {
+        return {
+          authorized: false,
+          actionId,
+          error: `Page context mismatch: Failed to compare page URLs.`,
+          errorCode: 'PAGE_CONTEXT_MISMATCH',
+        };
+      }
+    }
+  }
+
+  // 2. Verify DOM element attachment if element is targeted
+  if (input.originalAction?.element?.id) {
+    const elemId = input.originalAction.element.id;
+    if (input.isElementAttached) {
+      if (!input.isElementAttached(elemId)) {
+        return {
+          authorized: false,
+          actionId,
+          error: `Element context mismatch: Target element "#${elemId}" is no longer attached to the document.`,
+          errorCode: 'ELEMENT_DETACHED',
+        };
+      }
+    } else if (typeof document !== 'undefined') {
+      const el = document.getElementById(elemId);
+      if (!el) {
+        return {
+          authorized: false,
+          actionId,
+          error: `Element context mismatch: Target element "#${elemId}" was removed from the active DOM.`,
+          errorCode: 'ELEMENT_DETACHED',
+        };
+      }
+    }
+  }
 
   // If neither request nor binding is provided:
   if (!request && !binding) {
@@ -639,3 +733,287 @@ export class ContinuationManager {
 }
 
 export const defaultContinuationManager = new ContinuationManager();
+
+export interface ContinuationBoundaryOptions {
+  readonly continuationManager?: ContinuationManager;
+  readonly controller?: InterceptionController;
+  readonly approvalClient?: ApprovalApiClient;
+  readonly approvalService?: ApprovalService;
+  readonly timeProvider?: TimeProvider;
+  readonly getCurrentPageContext?: () => ContinuationPageContext;
+  readonly isElementAttached?: (elementId?: string) => boolean;
+}
+
+export interface ContinuationBoundaryValidationOptions {
+  readonly authContext?: AuthContext;
+  readonly expectedRequesterId?: string;
+  readonly pageContext?: ContinuationPageContext;
+  readonly isElementAttached?: (elementId?: string) => boolean;
+}
+
+/**
+ * Focused Authorization-Validation Boundary for Protected Action Continuation.
+ *
+ * Enforces all 8 core conditions before any action continuation is permitted:
+ * 1. The approval request exists and belongs to the expected user/workflow.
+ * 2. The approval request is bound 1:1 to the exact protected action.
+ * 3. The backend has confirmed the approval decision.
+ * 4. The approval has not expired, been cancelled, or become invalid.
+ * 5. The binding has not been reassigned or invalidated.
+ * 6. The local interception record corresponds to the same action in HELD state.
+ * 7. The relevant page or action context has not changed (origin, URL path, element attached).
+ * 8. State transitions are permitted and duplicate continuation attempts are rejected.
+ *
+ * SAFETY INVARIANTS:
+ * - Does NOT execute action automatically when status is APPROVED.
+ * - Does NOT store or inspect sensitive form values (passwords, OTPs, card numbers).
+ * - Fails closed on missing or unconfirmed backend authorization.
+ * - Fails closed if page navigation, reload, or DOM detachment occurred.
+ */
+export class ContinuationAuthorizationBoundary {
+  private readonly continuationManager: ContinuationManager;
+  private readonly controller: InterceptionController;
+  private readonly approvalClient?: ApprovalApiClient;
+  private readonly approvalService?: ApprovalService;
+  private readonly timeProvider: TimeProvider;
+  private readonly getCurrentPageContext?: () => ContinuationPageContext;
+  private readonly isElementAttached?: (elementId?: string) => boolean;
+
+  constructor(options?: ContinuationBoundaryOptions) {
+    this.continuationManager = options?.continuationManager ?? defaultContinuationManager;
+    this.controller = options?.controller ?? defaultInterceptionController;
+    this.approvalClient = options?.approvalClient;
+    this.approvalService = options?.approvalService;
+    this.timeProvider = options?.timeProvider ?? defaultTimeProvider;
+    this.getCurrentPageContext = options?.getCurrentPageContext;
+    this.isElementAttached = options?.isElementAttached;
+  }
+
+  public getContinuationManager(): ContinuationManager {
+    return this.continuationManager;
+  }
+
+  public getController(): InterceptionController {
+    return this.controller;
+  }
+
+  /**
+   * Validates all 8 conditions before any action continuation can be authorized.
+   */
+  public async validateContinuation(
+    actionId: string,
+    options?: ContinuationBoundaryValidationOptions
+  ): Promise<ContinuationAuthorizationResult> {
+    const id = actionId?.trim();
+    if (!id) {
+      return {
+        authorized: false,
+        actionId: '',
+        error: 'Cannot authorize continuation without a valid actionId.',
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    // Condition 6: Local interception record validation
+    const record = this.controller.getRecord(id);
+    if (!record) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Action "${id}" was not found in InterceptionController.`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    if (record.actionId !== id) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Local record actionId mismatch: "${record.actionId}" !== "${id}".`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    // Condition 8: Exactly-once / Duplicate continuation attempt rejection
+    if (record.state === InterceptionState.CONTINUED) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Cannot continue action "${id}": Action was already continued. Duplicate execution prohibited.`,
+        errorCode: 'ALREADY_CONTINUED',
+      };
+    }
+
+    if (record.state === InterceptionState.CANCELLED) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Cannot continue action "${id}": Action was cancelled. Cancelled actions cannot be resumed.`,
+        errorCode: 'REQUEST_CANCELLED',
+      };
+    }
+
+    if (record.state !== InterceptionState.HELD) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Cannot continue action "${id}": Current state is "${record.state}". Only actions in HELD state can be continued.`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    // Condition 8: Duplicate execution check on continuation manager
+    const executions = this.continuationManager.getExecutionCount(id);
+    if (executions > 0) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Action "${id}" has already executed ${executions} time(s). Duplicate execution prohibited.`,
+        errorCode: 'ALREADY_CONTINUED',
+      };
+    }
+
+    // Condition 6 & In-memory closure check
+    const heldEntry = this.continuationManager.getCurrentHeldAction();
+    if (!heldEntry || heldEntry.action.id !== id) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Held action closure for "${id}" is missing or detached (page may have navigated or reloaded). Cannot safely resume.`,
+        errorCode: 'AUTHORIZATION_UNAVAILABLE',
+      };
+    }
+
+    // Condition 7: Relevant page or action context has not changed
+    const pageContext =
+      options?.pageContext ??
+      (this.getCurrentPageContext
+        ? this.getCurrentPageContext()
+        : typeof window !== 'undefined'
+        ? { url: window.location?.href, origin: window.location?.origin }
+        : undefined);
+
+    const isAttached = options?.isElementAttached ?? this.isElementAttached;
+
+    const contextCheck = verifyContinuationAuthorization({
+      actionId: id,
+      originalAction: heldEntry.action,
+      currentPageContext: pageContext,
+      isElementAttached: isAttached,
+      allowUnboundAction: true,
+      timeProvider: this.timeProvider,
+    });
+
+    if (!contextCheck.authorized) {
+      return contextCheck;
+    }
+
+    // Conditions 1, 2, 3, 4, 5: Authoritative Backend Validation
+    let backendResult: BackendContinuationValidationResult | undefined;
+
+    if (this.approvalService) {
+      try {
+        const authContext = options?.authContext || {
+          actorId: heldEntry.action.id,
+          role: ActorRole.USER,
+          isAuthenticated: true,
+        };
+        backendResult = this.approvalService.validateContinuationAuthorization(
+          {
+            actionId: id,
+            pageContext,
+          },
+          authContext
+        );
+      } catch (err: any) {
+        return {
+          authorized: false,
+          actionId: id,
+          error: err?.message || 'Backend continuation validation threw an error.',
+          errorCode: 'AUTHORIZATION_UNAVAILABLE',
+        };
+      }
+    } else if (this.approvalClient) {
+      const clientRes = await this.approvalClient.validateContinuationAuthorization(
+        id,
+        pageContext
+      );
+      if (!clientRes.success) {
+        return {
+          authorized: false,
+          actionId: id,
+          error: clientRes.error?.message || 'Remote backend validation failed or is unreachable.',
+          errorCode: 'AUTHORIZATION_UNAVAILABLE',
+        };
+      }
+      backendResult = clientRes.data;
+    } else {
+      // Fail closed: Missing backend confirmation
+      return {
+        authorized: false,
+        actionId: id,
+        error: 'Authoritative backend confirmation unavailable. Cannot continue action without backend validation.',
+        errorCode: 'BACKEND_STATE_UNKNOWN',
+      };
+    }
+
+    if (!backendResult || !backendResult.authorized) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: backendResult?.error || 'Continuation refused by authoritative backend.',
+        errorCode: (backendResult?.errorCode as ContinuationAuthorizationErrorCode) || 'REQUEST_NOT_APPROVED',
+      };
+    }
+
+    // Verify expected requester if specified
+    if (
+      options?.expectedRequesterId &&
+      backendResult.requesterId &&
+      backendResult.requesterId !== options.expectedRequesterId
+    ) {
+      return {
+        authorized: false,
+        actionId: id,
+        error: `Requester ID mismatch: Approval was granted for user "${backendResult.requesterId}", expected "${options.expectedRequesterId}".`,
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
+    }
+
+    return {
+      authorized: true,
+      actionId: id,
+    };
+  }
+
+  /**
+   * Authorizes and continues a held action.
+   *
+   * IMPORTANT SAFETY INVARIANT:
+   * This method is only invoked upon explicit continuation instruction.
+   * Under no circumstances is it invoked automatically when status is APPROVED.
+   */
+  public async authorizeAndContinue(
+    actionId: string,
+    reason: string = 'Action continued via authorized boundary.',
+    options?: ContinuationBoundaryValidationOptions
+  ): Promise<ContinuationResult> {
+    const authResult = await this.validateContinuation(actionId, options);
+    if (!authResult.authorized) {
+      return {
+        success: false,
+        actionId,
+        executed: false,
+        executionCount: this.continuationManager.getExecutionCount(actionId),
+        error: authResult.error,
+      };
+    }
+
+    return this.continuationManager.continueAction(actionId, reason, {
+      actionId,
+      allowUnboundAction: true,
+    });
+  }
+}
+
+export const defaultContinuationAuthorizationBoundary = new ContinuationAuthorizationBoundary();
