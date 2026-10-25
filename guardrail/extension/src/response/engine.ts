@@ -28,8 +28,15 @@ import {
   ResponseDecision,
   validateResponseAction,
 } from '../types/response.js';
+import { classifyAction } from '../classifier/index.js';
 import { assessRisk, RiskEngineOptions } from '../risk/engine.js';
-import { DEFAULT_RESPONSE_POLICY, evaluateResponseAction, ResponsePolicyMapping } from './rules.js';
+import {
+  DEFAULT_RESPONSE_POLICY,
+  DEFAULT_RESPONSE_RULES,
+  evaluateAllResponseRules,
+  ResponsePolicyMapping,
+  ResponseRule,
+} from './rules.js';
 
 /**
  * Creates a strongly typed, fail-closed ResponseDecision for an evaluation failure.
@@ -82,6 +89,9 @@ export function createFailedResponseDecision(
 export interface ResponseEngineOptions {
   /** Custom mapping from RiskLevel to ResponseAction */
   policy?: ResponsePolicyMapping;
+
+  /** Configured response rules evaluated in deterministic precedence order */
+  rules?: readonly ResponseRule[];
 }
 
 /**
@@ -89,9 +99,11 @@ export interface ResponseEngineOptions {
  */
 export class ResponseEngine {
   private readonly policy: ResponsePolicyMapping;
+  private readonly rules: readonly ResponseRule[];
 
   constructor(options?: ResponseEngineOptions) {
     this.policy = options?.policy ?? DEFAULT_RESPONSE_POLICY;
+    this.rules = options?.rules ?? DEFAULT_RESPONSE_RULES;
   }
 
   /**
@@ -128,11 +140,26 @@ export class ResponseEngine {
       );
     }
 
-    // 3. Apply configured response policy rules
-    const { action, reason: policyReason, ruleId: policyRuleId } = evaluateResponseAction(assessment, this.policy);
+    // 3. Apply configured response policy rules with deterministic precedence resolution
+    const resolved = evaluateAllResponseRules(
+      { assessment },
+      this.rules,
+      this.policy
+    );
+
+    const action = resolved.action;
+    const policyReason = resolved.reason;
+    const policyRuleId = resolved.ruleId;
 
     // 4. Compile comprehensive, explainable reasons
     const reasons: string[] = [policyReason];
+    if (resolved.allReasons) {
+      for (const r of resolved.allReasons) {
+        if (!reasons.includes(r)) {
+          reasons.push(r);
+        }
+      }
+    }
     if (assessment.reasons && assessment.reasons.length > 0) {
       for (const r of assessment.reasons) {
         if (!reasons.includes(r)) {
@@ -150,6 +177,20 @@ export class ResponseEngine {
         severity: assessment.riskLevel,
       },
     ];
+
+    if (resolved.matchedOutcomes) {
+      for (const mo of resolved.matchedOutcomes) {
+        if (mo.ruleId && mo.ruleId !== policyRuleId) {
+          structuredReasons.push({
+            code: `POLICY_RULE_${mo.action}`,
+            message: mo.reason,
+            ruleId: mo.ruleId,
+            severity: assessment.riskLevel,
+          });
+        }
+      }
+    }
+
     if (assessment.structuredReasons && assessment.structuredReasons.length > 0) {
       for (const sr of assessment.structuredReasons) {
         structuredReasons.push(sr);
@@ -256,6 +297,69 @@ export function evaluateRiskAndDecision(
   const assessment = assessRisk(action, classification, riskOptions);
   const decision = decideResponse(assessment, responseOptions);
   return createRiskEvaluationResult(assessment, decision);
+}
+
+/**
+ * Result of the consolidated evaluation pipeline.
+ * Contains both the discrete intermediate artifacts and the unified RiskEvaluationResult contract.
+ */
+export interface ConsolidatedEvaluationPipelineResult {
+  readonly action: GuardrailAction;
+  readonly classification: ActionClassificationResult;
+  readonly risk: RiskAssessment;
+  readonly decision: ResponseDecision;
+  readonly evaluationResult: RiskEvaluationResult;
+}
+
+/**
+ * Centralized evaluator consolidating action classification, prioritized risk rule evaluation,
+ * and deterministic response policy resolution into a single canonical path.
+ *
+ * Guarantees:
+ * 1. Consistent evaluation order across all callers.
+ * 2. Action ID correlation validation.
+ * 3. Fail-closed error handling (failures resolve to PROTECT).
+ * 4. Deterministic conflict resolution (PROTECT > WARN > ALLOW).
+ * 5. Monotonic protection preservation (warning cannot downgrade protection).
+ *
+ * @param action Normalized interaction event
+ * @param classification Optional pre-computed classification
+ * @param riskOptions Optional risk engine configuration
+ * @param responseOptions Optional response engine configuration
+ * @returns Complete consolidated pipeline evaluation result
+ */
+export function evaluateActionPipeline(
+  action: GuardrailAction,
+  classification?: ActionClassificationResult,
+  riskOptions?: RiskEngineOptions,
+  responseOptions?: ResponseEngineOptions
+): ConsolidatedEvaluationPipelineResult {
+  const resolvedClassification = classification ?? classifyAction(action);
+  const risk = assessRisk(action, resolvedClassification, riskOptions);
+  const decision = decideResponse(risk, responseOptions);
+  const evaluationResult = createRiskEvaluationResult(risk, decision);
+
+  // Validate actionId consistency across all pipeline stages
+  if (
+    action.id !== resolvedClassification.actionId ||
+    action.id !== risk.actionId ||
+    action.id !== decision.actionId
+  ) {
+    console.error('[Guardrail Pipeline] Critical: actionId mismatch detected across pipeline stages!', {
+      actionId: action.id,
+      classificationActionId: resolvedClassification.actionId,
+      riskActionId: risk.actionId,
+      decisionActionId: decision.actionId,
+    });
+  }
+
+  return {
+    action,
+    classification: resolvedClassification,
+    risk,
+    decision,
+    evaluationResult,
+  };
 }
 
 /**

@@ -16,7 +16,7 @@
 import { classifyAction } from '../classifier/index.js';
 import { ActionDetector } from '../detector/index.js';
 import { assessRisk } from '../risk/index.js';
-import { decideResponse } from '../response/index.js';
+import { decideResponse, evaluateActionPipeline } from '../response/index.js';
 import { showWarningModal } from '../ui/index.js';
 import {
   ActionClassificationResult,
@@ -323,33 +323,13 @@ function bootstrap(): void {
   const detector = new ActionDetector(
     // 1. Passive / ambient handler for standard page interactions
     (action) => {
-      // 1. Action Classifier produces ClassificationResult
-      const classification = classifyAction(action);
+      // 1. Centralized pipeline evaluation (classification -> prioritized risk rules -> deterministic response precedence)
+      const { classification, risk, decision } = evaluateActionPipeline(action);
 
-      // 2. Risk Engine produces RiskAssessment
-      const risk = assessRisk(action, classification);
-
-      // 3. Response Engine produces ResponseDecision
-      const decision = decideResponse(risk);
-
-      // 4. Verify actionId consistency across all pipeline stages
-      if (
-        action.id !== classification.actionId ||
-        action.id !== risk.actionId ||
-        action.id !== decision.actionId
-      ) {
-        console.error('[Guardrail Pipeline] Critical: actionId mismatch detected across pipeline stages!', {
-          actionId: action.id,
-          classificationActionId: classification.actionId,
-          riskActionId: risk.actionId,
-          decisionActionId: decision.actionId,
-        });
-      }
-
-      // 5. Output standardized development log
+      // 2. Output standardized development log
       logPipelineResult(action, classification, risk, decision);
 
-      // 6. Branch on ResponseAction:
+      // 3. Branch on ResponseAction:
       switch (decision.response) {
         case ResponseAction.ALLOW:
           console.log(`[Guardrail Response] ALLOW: Action permitted. Prototype flow continues.`);
@@ -377,32 +357,15 @@ function bootstrap(): void {
           break;
       }
 
-      // 7. Forward complete pipeline artifact to background service worker coordinator
+      // 4. Forward complete pipeline artifact to background service worker coordinator
       dispatchActionToBackground(action, classification, risk, decision);
     },
     // 2. Active Interception Handler for explicitly marked controlled test actions
     (action, element, event) => {
       const testAttr = element.getAttribute(GUARDRAIL_TEST_ACTION_ATTR) || 'controlled-test-action';
 
-      // 1. Run the existing synchronous pipeline:
-      // Action -> Classifier -> Risk Engine -> Response Engine
-      const classification = classifyAction(action);
-      const risk = assessRisk(action, classification);
-      const decision = decideResponse(risk);
-
-      // Verify actionId consistency across all stages
-      if (
-        action.id !== classification.actionId ||
-        action.id !== risk.actionId ||
-        action.id !== decision.actionId
-      ) {
-        console.error('[Guardrail Pipeline] Critical: actionId mismatch detected across pipeline stages!', {
-          actionId: action.id,
-          classificationActionId: classification.actionId,
-          riskActionId: risk.actionId,
-          decisionActionId: decision.actionId,
-        });
-      }
+      // 1. Centralized pipeline evaluation (classification -> prioritized risk rules -> deterministic response precedence)
+      const { classification, risk, decision } = evaluateActionPipeline(action);
 
       // Log pipeline result for development visibility
       logPipelineResult(action, classification, risk, decision);
@@ -870,9 +833,7 @@ function initResolutionControls(): void {
       const act = held?.action;
       if (act) {
         try {
-          const classification = classifyAction(act);
-          const risk = assessRisk(act, classification);
-          const decision = decideResponse(risk);
+          const { classification, risk, decision } = evaluateActionPipeline(act);
           latestStagingContext = createStagingActionContext({
             action: act,
             interception: record,

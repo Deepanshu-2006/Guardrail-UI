@@ -208,8 +208,9 @@ export class RiskEngine {
       { scoreContribution: number; reason: string; ruleId: string }
     >();
 
-    // 2. Evaluate applicable risk rules safely
-    for (const rule of this.rules) {
+    // 2. Evaluate applicable risk rules safely in deterministic priority order
+    const orderedRules = [...this.rules].sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
+    for (const rule of orderedRules) {
       const signalConfig = getRiskSignalDefinition(rule.signalId, this.signalOverrides);
       let result;
       try {
@@ -219,13 +220,17 @@ export class RiskEngine {
         continue;
       }
 
-      if (result && result.matched && result.signalId) {
-        const scoreContribution = result.scoreContribution ?? signalConfig.scoreContribution;
+      if (result && typeof result === 'object' && result.matched === true && result.signalId) {
+        const rawScore = result.scoreContribution ?? signalConfig.scoreContribution;
+        const scoreContribution =
+          typeof rawScore === 'number' && !isNaN(rawScore)
+            ? clampRiskScore(rawScore)
+            : signalConfig.scoreContribution;
         const reason = result.reason ?? signalConfig.reason;
 
         // Record rule attribution
         matchedRules.push({
-          ruleId: rule.id,
+          ruleId: result.ruleId ?? rule.id,
           signalId: result.signalId,
           scoreContribution,
           reason,
@@ -238,7 +243,7 @@ export class RiskEngine {
           triggeredSignals.set(result.signalId, {
             scoreContribution,
             reason,
-            ruleId: rule.id,
+            ruleId: result.ruleId ?? rule.id,
           });
         }
       }
