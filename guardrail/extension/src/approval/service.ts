@@ -199,6 +199,10 @@ export class ApprovalService {
   private readonly actionOwnershipRegistry: ActionOwnershipRegistry;
   private timeProvider: TimeProvider;
   private readonly logger: ApprovalServiceLogger;
+  private readonly consumedContinuations: Map<
+    string,
+    { actionId: string; requestId: string; consumedAt: string; consumedBy: string }
+  > = new Map();
 
   constructor(dependencies?: ApprovalServiceDependencies) {
     this.repository = dependencies?.repository ?? new DevelopmentInMemoryApprovalRequestRepository();
@@ -1127,6 +1131,19 @@ export class ApprovalService {
     const actionId = input.actionId.trim();
     const serverTime = resolveTimestamp(this.timeProvider);
 
+    // Check if continuation authorization has already been consumed
+    if (this.consumedContinuations.has(actionId)) {
+      const existing = this.consumedContinuations.get(actionId)!;
+      return {
+        authorized: false,
+        actionId,
+        requestId: input.requestId,
+        serverTime,
+        error: `Continuation authorization for action "${actionId}" was already consumed at "${existing.consumedAt}". Duplicate reuse rejected.`,
+        errorCode: 'ALREADY_CONSUMED',
+      };
+    }
+
     // Verify ownership
     const isActionOwner =
       authContext.role === ActorRole.ADMIN ||
@@ -1362,6 +1379,81 @@ export class ApprovalService {
       expiresAt: request.expiresAt,
       serverTime,
     };
+  }
+
+  /**
+   * Authoritatively and atomically consumes an approved continuation authorization exactly once.
+   *
+   * CONCURRENCY & LIFECYCLE (Requirements 11 & 12):
+   * 1. Revalidates all authorization conditions immediately before consumption.
+   * 2. Uses Compare-And-Swap (CAS) to atomically transition authorization to CONSUMED.
+   * 3. Prevents duplicate continuation across concurrent or repeated callers.
+   *
+   * ARCHITECTURAL LIMITATION (Requirement 12):
+   * The current development repository (`DevelopmentInMemoryApprovalRequestRepository`)
+   * enforces single-threaded Check-And-Set (CAS) within the active Node.js / browser process.
+   * It cannot guarantee distributed race-free concurrency across multi-instance clusters or
+   * worker processes without transactional database locking (e.g. PostgreSQL row locks or Redis tokens).
+   */
+  public consumeContinuationAuthorization(
+    input: BackendContinuationValidationInput,
+    authContext: AuthContext
+  ): BackendContinuationValidationResult {
+    const validation = this.validateContinuationAuthorization(input, authContext);
+    if (!validation.authorized) {
+      return validation;
+    }
+
+    const actionId = input.actionId.trim();
+    const serverTime = resolveTimestamp(this.timeProvider);
+
+    // Atomic CAS check
+    if (this.consumedContinuations.has(actionId)) {
+      const existing = this.consumedContinuations.get(actionId)!;
+      return {
+        authorized: false,
+        actionId,
+        requestId: validation.requestId,
+        bindingId: validation.bindingId,
+        serverTime,
+        error: `Continuation authorization for action "${actionId}" was already consumed at "${existing.consumedAt}". Duplicate reuse rejected.`,
+        errorCode: 'ALREADY_CONSUMED',
+      };
+    }
+
+    // Atomic write
+    this.consumedContinuations.set(actionId, {
+      actionId,
+      requestId: validation.requestId || '',
+      consumedAt: serverTime,
+      consumedBy: authContext.actorId,
+    });
+
+    this.logger.info('Consumed continuation authorization', {
+      actionId,
+      requestId: validation.requestId,
+      requesterId: authContext.actorId,
+      status: 'CONSUMED',
+    });
+
+    return {
+      ...validation,
+      serverTime,
+    };
+  }
+
+  /**
+   * Checks whether a continuation authorization has already been consumed.
+   */
+  public isContinuationConsumed(actionId: string): boolean {
+    return this.consumedContinuations.has(actionId?.trim());
+  }
+
+  /**
+   * Resets consumed continuations (for test suites).
+   */
+  public resetConsumedContinuations(): void {
+    this.consumedContinuations.clear();
   }
 
   /**

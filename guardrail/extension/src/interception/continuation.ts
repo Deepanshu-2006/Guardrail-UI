@@ -39,7 +39,7 @@ import {
   TimeProvider,
 } from '../approval/model.js';
 import { isBindingExpired } from '../approval/binding.js';
-import { AuthContext } from '../approval/authorization.js';
+import { ActorRole, AuthContext } from '../approval/authorization.js';
 import type { ApprovalService } from '../approval/service.js';
 import type { ApprovalApiClient } from '../approval/client.js';
 import {
@@ -105,6 +105,7 @@ export type ContinuationAuthorizationErrorCode =
   | 'PAGE_CONTEXT_MISMATCH'
   | 'ELEMENT_DETACHED'
   | 'ALREADY_CONTINUED'
+  | 'ALREADY_CONSUMED'
   | 'AUTHORIZATION_UNAVAILABLE';
 
 export interface ContinuationPageContext {
@@ -924,6 +925,31 @@ export class ContinuationAuthorizationBoundary {
           executionCount: this.continuationManager.getExecutionCount(id),
           error: authResult.error,
         };
+      }
+
+      // If approvalService is available, consume authorization token atomically (Requirement 11)
+      if (this.approvalService) {
+        const authContext: AuthContext = options?.authContext || {
+          actorId: options?.expectedRequesterId || id,
+          role: ActorRole.USER,
+          isAuthenticated: true,
+        };
+        const consumeResult = this.approvalService.consumeContinuationAuthorization(
+          {
+            actionId: id,
+            pageContext: options?.pageContext,
+          },
+          authContext
+        );
+        if (!consumeResult.authorized) {
+          return {
+            success: false,
+            actionId: id,
+            executed: false,
+            executionCount: this.continuationManager.getExecutionCount(id),
+            error: consumeResult.error || 'Backend continuation authorization consumption failed.',
+          };
+        }
       }
 
       return this.continuationManager.continueAction(id, reason, {

@@ -626,7 +626,7 @@ export class ContinuationValidationService {
     if (this.approvalService) {
       try {
         const authContext: AuthContext = options?.authContext || {
-          actorId: actionObj.id,
+          actorId: options?.expectedRequesterId || options?.request?.requesterId || 'usr_alice',
           role: ActorRole.USER,
           isAuthenticated: true,
         };
@@ -1012,6 +1012,7 @@ export class ContinuationValidationService {
       case 'ELEMENT_DETACHED':
         return ContinuationEligibilityStatus.MISMATCHED;
       case 'ALREADY_CONTINUED':
+      case 'ALREADY_CONSUMED':
       case 'REQUEST_NOT_FOUND':
       case 'BINDING_NOT_FOUND':
       case 'BACKEND_STATE_UNKNOWN':
