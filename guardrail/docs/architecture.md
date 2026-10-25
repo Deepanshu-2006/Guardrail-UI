@@ -93,5 +93,13 @@ For comprehensive deep dives into specific subsystems and behavioral contracts, 
    - Documentation of critical security gaps (unauthenticated action IDs, semantic substitution, closure destruction on reload).
    - Minimal secure design: Canonical Action Fingerprint / Digest (`actionDigest`), Approval Grant Token, and Continuation Gate.
 
+7. **[Controlled Action Continuation Architecture & Safety Contract](controlled-action-continuation-contract.md)**:
+   - Comprehensive audit of verified action continuation capabilities across the extension runtime and backend.
+   - Analysis of capturing-phase event suppression, DOM isolation, and the unavailability of arbitrary application closures.
+   - Exact-once execution guarantees and multi-layer validation via `ContinuationAuthorizationBoundary`.
+   - Handling of expiration, cancellation, page context departure (`PAGE_CONTEXT_MISMATCH`), and element detachment (`ELEMENT_DETACHED`).
+   - Detailed enumeration of browser limitations (isTrusted user gestures, SPA virtual DOM mutations, session timeouts).
+   - The supported continuation contract and recommended implementation roadmap.
+
 
 
