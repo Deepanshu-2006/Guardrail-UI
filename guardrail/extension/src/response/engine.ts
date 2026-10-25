@@ -37,6 +37,7 @@ import {
   ResponsePolicyMapping,
   ResponseRule,
 } from './rules.js';
+import { evaluatePolicies } from './policies.js';
 
 /**
  * Creates a strongly typed, fail-closed ResponseDecision for an evaluation failure.
@@ -294,9 +295,7 @@ export function evaluateRiskAndDecision(
   riskOptions?: RiskEngineOptions,
   responseOptions?: ResponseEngineOptions
 ): RiskEvaluationResult {
-  const assessment = assessRisk(action, classification, riskOptions);
-  const decision = decideResponse(assessment, responseOptions);
-  return createRiskEvaluationResult(assessment, decision);
+  return evaluateActionPipeline(action, classification, riskOptions, responseOptions).evaluationResult;
 }
 
 /**
@@ -334,32 +333,125 @@ export function evaluateActionPipeline(
   riskOptions?: RiskEngineOptions,
   responseOptions?: ResponseEngineOptions
 ): ConsolidatedEvaluationPipelineResult {
-  const resolvedClassification = classification ?? classifyAction(action);
-  const risk = assessRisk(action, resolvedClassification, riskOptions);
-  const decision = decideResponse(risk, responseOptions);
-  const evaluationResult = createRiskEvaluationResult(risk, decision);
+  try {
+    const resolvedClassification = classification ?? classifyAction(action);
+    const risk = assessRisk(action, resolvedClassification, riskOptions);
+    let decision = decideResponse(risk, responseOptions);
 
-  // Validate actionId consistency across all pipeline stages
-  if (
-    action.id !== resolvedClassification.actionId ||
-    action.id !== risk.actionId ||
-    action.id !== decision.actionId
-  ) {
-    console.error('[Guardrail Pipeline] Critical: actionId mismatch detected across pipeline stages!', {
-      actionId: action.id,
-      classificationActionId: resolvedClassification.actionId,
-      riskActionId: risk.actionId,
-      decisionActionId: decision.actionId,
-    });
+    // Apply canonical risk policies and preserve monotonic precedence
+    const policyResults = evaluatePolicies(action, risk);
+    const protectPolicy = policyResults.find((p) => p.decision === ResponseAction.PROTECT);
+    const warnPolicy = policyResults.find((p) => p.decision === ResponseAction.WARN);
+
+    if (protectPolicy && decision.response !== ResponseAction.PROTECT) {
+      const reasons = [
+        protectPolicy.explanation || 'Protective policy requirement satisfied.',
+        ...decision.reasons,
+      ];
+      const structuredReasons = [
+        {
+          code: protectPolicy.reasonCode || 'POLICY_PROTECT',
+          message: protectPolicy.explanation || 'Protective policy requirement satisfied.',
+          ruleId: protectPolicy.ruleId,
+          severity: RiskLevel.CRITICAL,
+        },
+        ...(decision.structuredReasons || []),
+      ];
+      decision = {
+        ...decision,
+        response: ResponseAction.PROTECT,
+        policyRuleId: protectPolicy.ruleId,
+        reasons,
+        structuredReasons,
+      };
+    } else if (warnPolicy && decision.response === ResponseAction.ALLOW) {
+      const reasons = [
+        warnPolicy.explanation || 'Advisory warning policy requirement satisfied.',
+        ...decision.reasons,
+      ];
+      const structuredReasons = [
+        {
+          code: warnPolicy.reasonCode || 'POLICY_WARN',
+          message: warnPolicy.explanation || 'Advisory warning policy requirement satisfied.',
+          ruleId: warnPolicy.ruleId,
+          severity: RiskLevel.MEDIUM,
+        },
+        ...(decision.structuredReasons || []),
+      ];
+      decision = {
+        ...decision,
+        response: ResponseAction.WARN,
+        policyRuleId: warnPolicy.ruleId,
+        reasons,
+        structuredReasons,
+      };
+    }
+
+    // Validate actionId consistency across all pipeline stages
+    if (
+      action.id !== resolvedClassification.actionId ||
+      action.id !== risk.actionId ||
+      action.id !== decision.actionId
+    ) {
+      console.error('[Guardrail Pipeline] Critical: actionId mismatch detected across pipeline stages!', {
+        actionId: action.id,
+        classificationActionId: resolvedClassification.actionId,
+        riskActionId: risk.actionId,
+        decisionActionId: decision.actionId,
+      });
+      decision = createFailedResponseDecision(
+        action?.id || 'mismatched-action',
+        {
+          code: 'PIPELINE_ACTION_ID_MISMATCH',
+          message: 'Action ID mismatch detected across pipeline evaluation stages (fail-closed).',
+        },
+        risk
+      );
+    }
+
+    const evaluationResult = createRiskEvaluationResult(risk, decision);
+
+    return {
+      action,
+      classification: resolvedClassification,
+      risk,
+      decision,
+      evaluationResult,
+    };
+  } catch (err: any) {
+    const actionId = action?.id || 'unknown-action';
+    const error: EvaluationError = {
+      code: 'PIPELINE_EVALUATION_EXCEPTION',
+      message: err?.message || 'Unexpected exception during pipeline evaluation (fail-closed).',
+    };
+    const failedDecision = createFailedResponseDecision(actionId, error);
+    const fallbackRisk: RiskAssessment = {
+      actionId,
+      riskLevel: RiskLevel.CRITICAL,
+      score: 100,
+      reasons: [failedDecision.reasons[0]],
+      evaluatedAt: new Date().toISOString(),
+      status: RiskEvaluationStatus.FAILED,
+      success: false,
+      error,
+    };
+    const fallbackClassification: ActionClassificationResult = classification ?? {
+      actionId,
+      category: action?.category || ('GENERAL' as any),
+      confidence: 0,
+      reasons: ['Pipeline evaluation exception'],
+      classifiedAt: new Date().toISOString(),
+    };
+    const evaluationResult = createRiskEvaluationResult(fallbackRisk, failedDecision);
+
+    return {
+      action,
+      classification: fallbackClassification,
+      risk: fallbackRisk,
+      decision: failedDecision,
+      evaluationResult,
+    };
   }
-
-  return {
-    action,
-    classification: resolvedClassification,
-    risk,
-    decision,
-    evaluationResult,
-  };
 }
 
 /**

@@ -106,7 +106,8 @@ export type ContinuationAuthorizationErrorCode =
   | 'ELEMENT_DETACHED'
   | 'ALREADY_CONTINUED'
   | 'ALREADY_CONSUMED'
-  | 'AUTHORIZATION_UNAVAILABLE';
+  | 'AUTHORIZATION_UNAVAILABLE'
+  | 'POLICY_REQUIREMENTS_NOT_MET';
 
 export interface ContinuationPageContext {
   readonly url?: string;

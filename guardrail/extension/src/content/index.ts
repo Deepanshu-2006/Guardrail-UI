@@ -352,7 +352,7 @@ function bootstrap(): void {
 
         case ResponseAction.PROTECT:
           console.warn(
-            `[Guardrail Response] 🛡️ PROTECT response required: Action [${action.id}] flagged for future protective gating. (Not blocking in prototype).`
+            `[Guardrail Sensor Limitation] 🛡️ PROTECT decision rendered for ambient action [${action.id}], but ambient page interactions cannot be synchronously intercepted or held without controlled test hooks ([${GUARDRAIL_TEST_ACTION_ATTR}]). Reporting architectural limitation: action was NOT held.`
           );
           break;
       }
