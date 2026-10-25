@@ -38,10 +38,73 @@ export enum ResponseAction {
   PROTECT = 'PROTECT',
 }
 
+import { EvaluationError, EvaluationReason, RiskEvaluationStatus } from './risk.js';
+
 /**
  * String union type representing valid ResponseAction values.
  */
 export type ResponseActionString = 'ALLOW' | 'WARN' | 'PROTECT';
+
+/**
+ * Validates whether an arbitrary value is a canonical ResponseAction.
+ *
+ * @param value Candidate value to validate
+ * @returns Validation outcome with typed action or descriptive error
+ */
+export function validateResponseAction(value: unknown): {
+  valid: boolean;
+  action?: ResponseAction;
+  error?: string;
+} {
+  if (
+    value === ResponseAction.ALLOW ||
+    value === ResponseAction.WARN ||
+    value === ResponseAction.PROTECT
+  ) {
+    return { valid: true, action: value };
+  }
+  return {
+    valid: false,
+    error: `Invalid ResponseAction "${String(value)}". Must be strictly one of: ALLOW, WARN, PROTECT.`,
+  };
+}
+
+/**
+ * Resolves an unknown or candidate decision value fail-closed.
+ *
+ * CRITICAL SECURITY INVARIANT:
+ * Malformed, null, undefined, or unrecognized decision values must NEVER silently downgrade to ALLOW.
+ * If candidate is invalid, strictly returns ResponseAction.PROTECT.
+ *
+ * @param candidate Unknown input value
+ * @param fallbackReason Optional custom explanation of why fallback was invoked
+ */
+export function resolveFailClosedDecision(
+  candidate: unknown,
+  fallbackReason?: string
+): { decision: ResponseAction; isFallback: boolean; reason: string } {
+  if (
+    candidate === ResponseAction.ALLOW ||
+    candidate === ResponseAction.WARN ||
+    candidate === ResponseAction.PROTECT
+  ) {
+    return {
+      decision: candidate,
+      isFallback: false,
+      reason: `Valid decision "${candidate}" confirmed.`,
+    };
+  }
+
+  const msg =
+    fallbackReason ||
+    `Security safeguard: Malformed, unknown, or missing decision value "${String(candidate)}" resolved fail-closed to PROTECT.`;
+
+  return {
+    decision: ResponseAction.PROTECT,
+    isFallback: true,
+    reason: msg,
+  };
+}
 
 /**
  * Decision rendered by the Guardrail Risk Response layer.
@@ -75,4 +138,29 @@ export interface ResponseDecision {
    * ISO 8601 timestamp recording exactly when the response decision was made.
    */
   createdAt: string;
+
+  /**
+   * Lifecycle status of the policy evaluation (EVALUATED vs FAILED).
+   */
+  status?: RiskEvaluationStatus;
+
+  /**
+   * True if policy evaluation succeeded; false if failed.
+   */
+  success?: boolean;
+
+  /**
+   * Identifier of the policy rule that rendered this response decision (e.g. 'RULE_CORE_RISK_LEVEL_RESPONSE').
+   */
+  policyRuleId?: string;
+
+  /**
+   * Strongly typed structured reasons explaining this decision.
+   */
+  structuredReasons?: readonly EvaluationReason[];
+
+  /**
+   * Diagnostic error details if status is FAILED.
+   */
+  error?: EvaluationError;
 }

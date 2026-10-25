@@ -52,6 +52,9 @@ export interface ResponseRuleResult {
 
   /** Human-readable explanation justifying the response decision */
   readonly reason: string;
+
+  /** Identifier of the response rule that rendered this decision */
+  readonly ruleId?: string;
 }
 
 /**
@@ -100,13 +103,23 @@ export const CoreRiskLevelResponseRule: ResponseRule = Object.freeze({
     context: ResponseRuleContext,
     policy: ResponsePolicyMapping = DEFAULT_RESPONSE_POLICY
   ): ResponseRuleResult => {
-    const riskLevel = context.assessment.riskLevel;
-    const responseAction = policy[riskLevel] ?? ResponseAction.ALLOW;
-    const reason = generateResponseReason(responseAction, context.assessment);
+    const riskLevel = context.assessment?.riskLevel;
+    const mapped = riskLevel && riskLevel in policy ? policy[riskLevel] : undefined;
+
+    // FAIL-CLOSED INVARIANT:
+    // If risk level is missing, invalid, or unmapped in policy, NEVER silently default to ALLOW.
+    // Strictly fail closed to PROTECT.
+    const isFailClosed = mapped === undefined;
+    const responseAction = mapped ?? ResponseAction.PROTECT;
+
+    const reason = isFailClosed
+      ? `Protective mechanism required: Unrecognized or unmapped risk level "${String(riskLevel)}" resolved fail-closed to PROTECT.`
+      : generateResponseReason(responseAction, context.assessment);
 
     return {
       action: responseAction,
       reason,
+      ruleId: isFailClosed ? 'RULE_FAIL_CLOSED_FALLBACK' : 'RULE_CORE_RISK_LEVEL_RESPONSE',
     };
   },
 });
