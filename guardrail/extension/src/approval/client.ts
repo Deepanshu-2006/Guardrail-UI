@@ -36,6 +36,7 @@ import {
   ApprovalActionBinding,
   ApprovalRequest,
   ApprovalStatus,
+  BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import { ApiResponseEnvelope } from './api.js';
@@ -663,6 +664,51 @@ export class ApprovalApiClient {
     }
 
     return result;
+  }
+
+  /**
+   * Authoritatively queries the backend to validate whether a held action continuation is permitted.
+   *
+   * ARCHITECTURAL INVARIANT:
+   * Even if this call returns `authorized: true`, the client MUST NOT automatically execute
+   * the action. Continuation is governed exclusively by user confirmation and local boundary checks.
+   *
+   * @param actionId Canonical action identifier
+   * @param pageContext Optional active page context (URL, origin)
+   * @param options Request options
+   * @returns Typed ApiClientResult with BackendContinuationValidationResult
+   */
+  public async validateContinuationAuthorization(
+    actionId: string,
+    pageContext?: { url?: string; origin?: string },
+    options?: RequestOptions
+  ): Promise<ApiClientResult<BackendContinuationValidationResult>> {
+    const idValidation = validateActionId(actionId);
+    if (!idValidation.valid) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: idValidation.errors[0] || 'Invalid actionId format.',
+          statusCode: 400,
+          details: idValidation.errors,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(actionId.trim());
+    const body: Record<string, unknown> = {};
+    if (pageContext) {
+      body.pageContext = pageContext;
+    }
+
+    return await this.dispatchRequest<BackendContinuationValidationResult>(
+      'POST',
+      `/api/v1/actions/${sanitizedId}/validate-continuation`,
+      body,
+      options
+    );
   }
 
   /**

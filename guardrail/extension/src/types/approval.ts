@@ -544,4 +544,33 @@ export interface GuardrailGetApprovalStatusResponse {
   };
 }
 
+/**
+ * Input for validating whether an action continuation is authorized by the backend.
+ */
+export interface BackendContinuationValidationInput {
+  readonly actionId: string;
+  readonly requestId?: string;
+  readonly pageContext?: {
+    readonly url?: string;
+    readonly origin?: string;
+  };
+}
+
+/**
+ * Result returned by backend continuation authorization validation.
+ */
+export interface BackendContinuationValidationResult {
+  readonly authorized: boolean;
+  readonly actionId: string;
+  readonly requestId?: string;
+  readonly bindingId?: string;
+  readonly requesterId?: string;
+  readonly reviewedBy?: string;
+  readonly approvedAt?: string;
+  readonly expiresAt?: string;
+  readonly serverTime: string;
+  readonly error?: string;
+  readonly errorCode?: string;
+}
+
 

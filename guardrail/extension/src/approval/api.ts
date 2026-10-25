@@ -33,6 +33,7 @@ import {
   ApprovalActionBinding,
   ApprovalRequest,
   ApprovalStatus,
+  BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import {
@@ -371,6 +372,13 @@ export class ApprovalApiRouter {
         return await this.handleInvalidateActionBinding(request, actionId, headers);
       }
 
+      // Route 5c: POST /api/v1/actions/:actionId/validate-continuation
+      const validateContinuationMatch = path.match(/^\/api\/v1\/actions\/([^/]+)\/validate-continuation$/);
+      if (method === 'POST' && validateContinuationMatch) {
+        const actionId = decodeURIComponent(validateContinuationMatch[1]);
+        return await this.handleValidateContinuation(request, actionId, headers);
+      }
+
       // Route 6: GET /api/v1/approvals/pending
       if (method === 'GET' && path === '/api/v1/approvals/pending') {
         return await this.handleListPending(request, headers);
@@ -692,6 +700,39 @@ export class ApprovalApiRouter {
       body: {
         success: true,
         data: binding,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/actions/:actionId/validate-continuation
+   */
+  private async handleValidateContinuation(
+    request: ApiRequest,
+    actionId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<BackendContinuationValidationResult>> {
+    const authContext = await this.authenticate(request.headers);
+    const body = (request.body as {
+      requestId?: string;
+      pageContext?: { url?: string; origin?: string };
+    } | undefined) ?? {};
+
+    const result = this.service.validateContinuationAuthorization(
+      {
+        actionId,
+        requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
+        pageContext: body.pageContext && typeof body.pageContext === 'object' ? body.pageContext : undefined,
+      },
+      authContext
+    );
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: result,
       },
     };
   }
