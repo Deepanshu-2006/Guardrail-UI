@@ -117,6 +117,90 @@ export interface TriggeredRiskSignal {
   readonly reason: string;
 }
 
+import type { ResponseAction } from './response.js';
+
+/**
+ * Canonical lifecycle status for risk evaluation execution.
+ */
+export enum RiskEvaluationStatus {
+  /**
+   * The evaluation completed successfully and deterministically assessed the action.
+   */
+  EVALUATED = 'EVALUATED',
+
+  /**
+   * The evaluation failed due to malformed input, missing action identity,
+   * unhandled rule execution error, or invalid evaluation context.
+   */
+  FAILED = 'FAILED',
+}
+
+/**
+ * String union type representing valid RiskEvaluationStatus values.
+ */
+export type RiskEvaluationStatusString = 'EVALUATED' | 'FAILED';
+
+/**
+ * Standard error details provided when risk evaluation fails.
+ */
+export interface EvaluationError {
+  /** Machine-readable error code (e.g. 'INVALID_ACTION_PAYLOAD', 'EVALUATION_EXCEPTION') */
+  readonly code: string;
+
+  /** Human-readable explanatory message */
+  readonly message: string;
+
+  /** Optional non-sensitive diagnostic details */
+  readonly details?: unknown;
+}
+
+/**
+ * Structured, machine-readable reason explaining a risk or policy decision.
+ *
+ * PRIVACY GUARANTEE:
+ * Structured reasons explain contextual and heuristic risk characteristics only.
+ * They strictly never store or log user input values, passwords, card numbers, or OTPs.
+ */
+export interface EvaluationReason {
+  /** Stable machine-readable reason code (e.g. 'SIGNAL_PAYMENT', 'POLICY_THRESHOLD_PROTECT', 'EVALUATION_ERROR') */
+  readonly code: string;
+
+  /** Human-readable message explaining the reason */
+  readonly message: string;
+
+  /** Identifier of the rule that produced this reason, if applicable */
+  readonly ruleId?: string;
+
+  /** Associated risk signal, if applicable */
+  readonly signalId?: RiskSignalId;
+
+  /** Severity level associated with this reason */
+  readonly severity?: RiskLevel;
+
+  /** Quantitative score contribution from this reason, if applicable */
+  readonly scoreContribution?: number;
+}
+
+/**
+ * Information describing a matched rule during risk evaluation.
+ */
+export interface MatchedRuleInfo {
+  /** Machine-readable identifier of the matching rule (e.g. 'RISK_RULE_PAYMENT') */
+  readonly ruleId: string;
+
+  /** Associated risk signal identifier */
+  readonly signalId: RiskSignalId;
+
+  /** Quantitative score contributed by this rule */
+  readonly scoreContribution: number;
+
+  /** Human-readable explanation from the rule */
+  readonly reason: string;
+
+  /** High-level description of what this rule inspects */
+  readonly description?: string;
+}
+
 /**
  * Result of evaluating an action through the Guardrail Risk Engine.
  *
@@ -134,10 +218,14 @@ export interface RiskAssessment {
    * Quantitative risk score assigned to the action on a normalized scale of 0 to 100.
    *
    * Scale semantics:
-   * - 0 to 25: Low operational or security impact (routine read/navigation).
-   * - 26 to 50: Moderate impact (reversible state modifications, low-stakes input).
-   * - 51 to 75: High impact (sensitive data, payment triggers, authentication changes).
-   * - 76 to 100: Critical impact (irreversible deletions, privilege escalation, destructive purges).
+   * - 0 to 24: Low operational or security impact (routine read/navigation).
+   * - 25 to 49: Moderate impact (reversible state modifications, low-stakes input).
+   * - 50 to 74: High impact (sensitive data, payment triggers, authentication changes).
+   * - 75 to 100: Critical impact (irreversible deletions, privilege escalation, destructive purges).
+   *
+   * NOTE: The score is a heuristic measure of sensitivity under Guardrail policy.
+   * It is NOT a statistical probability of malice or fraud.
+   * In evaluation failures, score reflects fail-closed maximum sensitivity (100).
    */
   score: number;
 
@@ -160,4 +248,76 @@ export interface RiskAssessment {
    * ISO 8601 timestamp string representing the exact time the risk evaluation was performed.
    */
   evaluatedAt: string;
+
+  /**
+   * Lifecycle status of the evaluation: EVALUATED or FAILED.
+   * Defaults to EVALUATED for standard successful assessments.
+   */
+  status?: RiskEvaluationStatus;
+
+  /**
+   * True if evaluation completed normally; false if evaluation failed.
+   */
+  success?: boolean;
+
+  /**
+   * Strongly typed, structured reasons providing machine-readable codes and rule attribution.
+   */
+  structuredReasons?: readonly EvaluationReason[];
+
+  /**
+   * Identifiers and descriptions of all discrete rules that fired during evaluation.
+   */
+  matchedRules?: readonly MatchedRuleInfo[];
+
+  /**
+   * Diagnostic error details if status is FAILED.
+   */
+  error?: EvaluationError;
+}
+
+/**
+ * Canonical contract for a complete risk-evaluation and policy-decision result.
+ * Unifies the sensitivity assessment (score, riskLevel, matchedRules) and governance decision (ALLOW, WARN, PROTECT).
+ */
+export interface RiskEvaluationResult {
+  /** Unique action identifier correlating the evaluation to the captured action */
+  readonly actionId: string;
+
+  /** Explicit operational decision: ALLOW, WARN, or PROTECT */
+  readonly decision: ResponseAction;
+
+  /** Evaluation lifecycle status: EVALUATED vs FAILED */
+  readonly status: RiskEvaluationStatus;
+
+  /** Boolean indicating whether evaluation completed without errors */
+  readonly success: boolean;
+
+  /** Categorical risk sensitivity level */
+  readonly riskLevel: RiskLevel;
+
+  /**
+   * Quantitative score bounded to [0, 100].
+   * Meaning: Heuristic indicator of sensitivity and blast radius under Guardrail policies.
+   * It is NOT a statistical probability of malice or fraud.
+   */
+  readonly score: number;
+
+  /** Backward-compatible array of human-readable explanation strings */
+  readonly reasons: readonly string[];
+
+  /** Strongly typed structured reasons with stable codes and attribution */
+  readonly structuredReasons: readonly EvaluationReason[];
+
+  /** Discrete risk rules that matched during evaluation */
+  readonly matchedRules: readonly MatchedRuleInfo[];
+
+  /** Identifier of the response policy rule applied */
+  readonly policyRuleId?: string;
+
+  /** ISO 8601 evaluation timestamp */
+  readonly evaluatedAt: string;
+
+  /** Populated with error details when status === RiskEvaluationStatus.FAILED */
+  readonly error?: EvaluationError;
 }
