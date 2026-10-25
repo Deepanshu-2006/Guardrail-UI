@@ -541,28 +541,34 @@ export class ContinuationManager {
         };
       }
 
-      // 3. Transition interception record from HELD -> CONTINUED
+      // 3. Verified Controlled Test Action Check
+      // Continuation is strictly restricted to verified test actions with registered callbacks.
+      const heldEntry =
+        this.currentHeldAction && this.currentHeldAction.action.id === id
+          ? this.currentHeldAction
+          : null;
+
+      if (!heldEntry || typeof heldEntry.handler !== 'function') {
+        return {
+          success: false,
+          actionId: id,
+          record,
+          executed: false,
+          executionCount: priorExecutions,
+          error: `Cannot continue action "${id}": No verified controlled continuation handler is registered. Resumption is strictly restricted to verified test actions; arbitrary website continuation is not supported.`,
+        };
+      }
+
+      // 4. Transition interception record from HELD -> CONTINUED
       const continuedRecord = this.controller.continueAction(id, reason);
 
-      // 4. Execute the controlled test handler
-      let executed = false;
-      const heldEntry = this.currentHeldAction && this.currentHeldAction.action.id === id
-        ? this.currentHeldAction
-        : null;
+      // 5. Execute the controlled test handler exactly once
+      this.executionCounts.set(id, 1);
+      heldEntry.handler(heldEntry.action);
+      const executed = true;
 
-      if (heldEntry && heldEntry.handler) {
-        this.executionCounts.set(id, 1);
-        heldEntry.handler(heldEntry.action);
-        executed = true;
-      } else {
-        this.executionCounts.set(id, 1);
-        executed = true;
-      }
-
-      // 5. Clear temporary held action state if it matches this action
-      if (this.currentHeldAction && this.currentHeldAction.action.id === id) {
-        this.currentHeldAction = null;
-      }
+      // 6. Clear temporary held action state if it matches this action
+      this.currentHeldAction = null;
 
       return {
         success: true,

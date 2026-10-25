@@ -42,6 +42,7 @@ import {
   ContinuationValidationService,
   ContinuationEligibilityStatus,
   defaultContinuationValidationService,
+  CONTINUATION_VALIDATION_LIMITATIONS,
   type ContinuationValidationResult,
   type ContinuationValidationOptions,
 } from '../interception/validation-service.js';
@@ -211,9 +212,14 @@ let currentShadow: ShadowRoot | null = null;
 let currentUIState: StagingInterceptionUIState | null = null;
 let currentModalOptions: StagingModalOptions | null = null;
 let isContinuationInFlight: boolean = false;
+let latestApprovedRequest: ApprovalRequest | null = null;
 
 export function getCurrentModalOptions(): StagingModalOptions | null {
   return currentModalOptions;
+}
+
+export function getLatestApprovedRequest(): ApprovalRequest | null {
+  return latestApprovedRequest;
 }
 let previousActiveElement: HTMLElement | null = null;
 let currentMountedActionId: string | null = null;
@@ -314,6 +320,7 @@ export function dismissStagingModal(): void {
   currentUIState = null;
   currentModalOptions = null;
   isContinuationInFlight = false;
+  latestApprovedRequest = null;
   currentMountedActionId = null;
   currentModalSessionId++;
 
@@ -1956,6 +1963,9 @@ export function setStagingUIState(
       break;
 
     case 'approval_confirmed_approved': {
+      if (details?.request) {
+        latestApprovedRequest = details.request;
+      }
       resetPillClasses();
       const reqId = details?.requestId || 'active';
       const approver = details?.decidedBy || 'authorized contact';
@@ -2596,10 +2606,23 @@ export async function handleModalContinue(
 
   // 2. Authoritative Validation Check (Requirements 3 & 12)
   // NEVER bypass validation service!
-  const validationService = options.validationService ?? defaultContinuationValidationService;
+  const validationService =
+    options.validationService ??
+    (options.controller || options.continuationManager
+      ? new ContinuationValidationService({
+          controller: options.controller,
+          continuationManager: options.continuationManager,
+        })
+      : defaultContinuationValidationService);
+
+  const validationOpts: ContinuationValidationOptions = {
+    ...options.validationOptions,
+    request: options.validationOptions?.request ?? latestApprovedRequest ?? options.initialApprovalRequest,
+  };
+
   let validationResult: ContinuationValidationResult;
   try {
-    validationResult = await validationService.validateEligibility(id, options.validationOptions);
+    validationResult = await validationService.validateEligibility(id, validationOpts);
   } catch (err: any) {
     validationResult = {
       eligible: false,
@@ -2607,7 +2630,7 @@ export async function handleModalContinue(
       actionId: id,
       reason: `Validation service threw an unexpected error: ${err?.message || err}`,
       verifiedAt: new Date().toISOString(),
-      limitations: [],
+      limitations: CONTINUATION_VALIDATION_LIMITATIONS,
     };
   }
 
@@ -2659,13 +2682,35 @@ export async function handleModalContinue(
     return failureResult;
   }
 
-  // 3. Delegation to ContinuationManager (or options.onContinue)
+  // 3. Verified Controlled Test Action Resumption Guard (Requirement 4)
+  const manager = options.continuationManager ?? defaultContinuationManager;
+  const heldEntry = manager.getCurrentHeldAction();
+
+  if (!heldEntry || heldEntry.action.id !== id || typeof heldEntry.handler !== 'function') {
+    isContinuationInFlight = false;
+    const failureResult: ContinuationResult = {
+      success: false,
+      actionId: id,
+      executed: false,
+      executionCount: manager.getExecutionCount(id),
+      error: `Cannot continue action "${id}": No verified controlled continuation handler is registered. Resumption is strictly restricted to verified test actions; arbitrary website continuation is not supported.`,
+    };
+    setStagingUIState('action_invalidated', {
+      error: failureResult.error,
+      description: 'This action cannot safely be resumed because arbitrary website continuation is not supported. Please initiate the action again.',
+    });
+    if (options.onContinueError) {
+      options.onContinueError(failureResult);
+    }
+    return failureResult;
+  }
+
+  // 4. Delegation to ContinuationManager (or options.onContinue)
   let continuationResult: ContinuationResult;
   try {
     if (options.onContinue) {
       continuationResult = await options.onContinue(id);
     } else {
-      const manager = options.continuationManager ?? defaultContinuationManager;
       continuationResult = manager.continueAction(
         id,
         'User confirmed continuation after trusted contact approval'
@@ -2676,7 +2721,7 @@ export async function handleModalContinue(
       success: false,
       actionId: id,
       executed: false,
-      executionCount: (options.continuationManager ?? defaultContinuationManager).getExecutionCount(id),
+      executionCount: manager.getExecutionCount(id),
       error: err?.message || 'Error occurred during action continuation.',
     };
   } finally {
@@ -4264,6 +4309,7 @@ export function showStagingModal(options: StagingModalOptions = {}): () => void 
   // Set mounted action ID and advance session token for stale response protection
   currentMountedActionId = options.context?.actionId?.trim() || null;
   currentModalOptions = options;
+  latestApprovedRequest = options.initialApprovalRequest ?? null;
   currentModalSessionId++;
 
   // Capture active element before opening modal for focus restoration

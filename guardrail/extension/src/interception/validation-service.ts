@@ -197,9 +197,11 @@ export const CONTINUATION_VALIDATION_LIMITATIONS: readonly string[] = Object.fre
   'LIMITATION_BROWSER_ISOLATION: Content scripts run in an isolated JavaScript execution realm and cannot inspect or preserve host page event listeners. Only registered test callbacks or explicitly supported actions can be safely continued.',
   'LIMITATION_DOM_IDENTITY: Verifying element ID, tagName, and active document connectivity does not guarantee the element was not mutated or re-rendered by dynamic client frameworks (e.g. Virtual DOM replacement).',
   'LIMITATION_PAGE_LIFECYCLE: Action closures and held records are strictly ephemeral in-memory references tied to the active document realm. Page reloads, tab navigation, or crashes permanently wipe held closures, causing continuation to fail closed.',
-  'LIMITATION_SYNTHETIC_EVENTS: Re-dispatching synthetic DOM events produces `isTrusted: false`, which may be rejected by host application anti-fraud or security mechanisms.',
+  'LIMITATION_SYNTHETIC_EVENTS: Re-dispatching synthetic DOM events produces `isTrusted: false`, which may be rejected by host application anti-fraud or security mechanisms. Guardrail strictly avoids synthetic DOM event replay.',
   'LIMITATION_EPHEMERAL_PERSISTENCE: Development backend storage operates in-memory; restarting backend services clears active bindings and approval records.',
   'LIMITATION_PAGE_STATE_DRIFT: While origin, pathname, element tag, and structural digest are verified, form input fields or server-side application state on the host page may have mutated while the action was held.',
+  'LIMITATION_ATOMIC_SERVER_CONSUMPTION: Current development backend architecture lacks atomic server-side continuation state transitions or single-use consumption tokens once an approval reaches the terminal APPROVED state. While client-side state machines enforce monotonic single-execution and reject concurrent in-flight attempts, client checks alone cannot provide complete server-side concurrency guarantees against external re-use.',
+  'LIMITATION_VERIFIED_ACTIONS_ONLY: Continuation is strictly restricted to explicitly registered controlled test actions with verified resumption handlers. Universal continuation for arbitrary websites or unverified DOM operations is not supported.',
 ]);
 
 // =============================================================================
@@ -419,6 +421,20 @@ export class ContinuationValidationService {
         actionId: id,
         targetState: InterceptionState.INVALIDATED,
         reason: `Held action closure for "${id}" is missing or detached from memory (page may have navigated or reloaded). Cannot safely resume.`,
+        errorCode: 'AUTHORIZATION_UNAVAILABLE',
+        verifiedAt,
+        limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+      };
+    }
+
+    // Condition 6b: Verified Controlled Action Resumption Check
+    if (heldEntry && heldEntry.action.id === id && typeof heldEntry.handler !== 'function') {
+      return {
+        eligible: false,
+        status: ContinuationEligibilityStatus.UNAVAILABLE,
+        actionId: id,
+        targetState: InterceptionState.INVALIDATED,
+        reason: `Held action "${id}" does not possess a verified controlled test handler. Resumption is strictly restricted to explicitly registered test actions; arbitrary website continuation is not supported.`,
         errorCode: 'AUTHORIZATION_UNAVAILABLE',
         verifiedAt,
         limitations: CONTINUATION_VALIDATION_LIMITATIONS,

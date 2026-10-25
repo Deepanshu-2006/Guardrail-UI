@@ -989,6 +989,38 @@ function initResolutionControls(): void {
     dismissStagingModal();
   });
 
+  // Listen for action continuation from Staging Mode explicit confirmation
+  document.addEventListener('guardrail:action-continued', (e: Event) => {
+    const custom = e as CustomEvent<{ actionId?: string; executionCount?: number; result?: any }>;
+    const actionId = custom.detail?.actionId;
+    if (actionId) {
+      latestStagingContext = null;
+      disableControls();
+      if (indicatorEl) {
+        indicatorEl.textContent = `Resolved: CONTINUED (${actionId})`;
+        indicatorEl.style.color = '#34d399';
+      }
+      if (statusEl) {
+        statusEl.textContent = `CONTINUED (Executed via Controlled Continuation)`;
+        statusEl.setAttribute('data-interception-state', InterceptionState.CONTINUED);
+        statusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+        statusEl.style.color = '#34d399';
+        statusEl.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      }
+      if (detailsEl) {
+        detailsEl.textContent = `[Guardrail Resolution] actionId: ${actionId} | state: CONTINUED | controlled handler executed | duplicate execution prevented: true`;
+        detailsEl.style.display = 'block';
+      }
+      if (devMessageEl) {
+        devMessageEl.innerHTML = `<strong>✅ Action Continued:</strong> Action <code>${escapeHtml(actionId)}</code> has been continued and executed exactly once via the controlled continuation handler following explicit user confirmation.`;
+        devMessageEl.style.display = 'block';
+        devMessageEl.style.background = 'rgba(16, 185, 129, 0.1)';
+        devMessageEl.style.borderLeftColor = '#10b981';
+        devMessageEl.style.color = '#6ee7b7';
+      }
+    }
+  });
+
   // Page lifecycle & navigation invalidation policy (Requirements 6 & 7)
   const handlePageDepartureOrNavigation = (reason: string) => {
     const held = defaultContinuationManager.getCurrentHeldAction();

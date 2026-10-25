@@ -219,8 +219,9 @@ async function runContinuationValidationServiceTestSuite(): Promise<void> {
     assertEquals(result.requestId, req.id, 'Request ID matches');
     assertEquals(result.requesterId, 'usr_alice', 'Requester ID matches');
     assertEquals(result.targetState, InterceptionState.READY_FOR_USER_CONFIRMATION, 'Target state is READY_FOR_USER_CONFIRMATION');
-    assertEquals(result.limitations.length, 6, 'Contains all 6 documented architectural limitations');
+    assertEquals(result.limitations.length, 8, 'Contains all 8 documented architectural limitations');
     assert(result.limitations.includes(CONTINUATION_VALIDATION_LIMITATIONS[0]), 'Contains browser isolation limitation');
+    assert(result.limitations.some(l => l.includes('LIMITATION_ATOMIC_SERVER_CONSUMPTION')), 'Contains atomic server consumption limitation');
 
     // Inviolable non-execution check: Validation MUST NOT execute the action callback!
     assertEquals(handlerExecuted, false, 'Action callback handler was NOT executed during validation');
@@ -752,14 +753,16 @@ async function runContinuationValidationServiceTestSuite(): Promise<void> {
 
     const res = await h.validationService.validateEligibility('act_priv_001');
 
-    // 11a. Verify all 6 limitations are present
-    assertEquals(res.limitations.length, 6, 'Exactly 6 limitations documented');
+    // 11a. Verify all 8 limitations are present
+    assertEquals(res.limitations.length, 8, 'Exactly 8 limitations documented');
     assert(res.limitations.some(l => l.includes('LIMITATION_BROWSER_ISOLATION')), 'Has browser isolation limitation');
     assert(res.limitations.some(l => l.includes('LIMITATION_DOM_IDENTITY')), 'Has DOM identity limitation');
     assert(res.limitations.some(l => l.includes('LIMITATION_PAGE_LIFECYCLE')), 'Has page lifecycle limitation');
     assert(res.limitations.some(l => l.includes('LIMITATION_SYNTHETIC_EVENTS')), 'Has synthetic events limitation');
     assert(res.limitations.some(l => l.includes('LIMITATION_EPHEMERAL_PERSISTENCE')), 'Has ephemeral persistence limitation');
     assert(res.limitations.some(l => l.includes('LIMITATION_PAGE_STATE_DRIFT')), 'Has page state drift limitation');
+    assert(res.limitations.some(l => l.includes('LIMITATION_ATOMIC_SERVER_CONSUMPTION')), 'Has atomic server consumption limitation');
+    assert(res.limitations.some(l => l.includes('LIMITATION_VERIFIED_ACTIONS_ONLY')), 'Has verified actions only limitation');
 
     // 11b. Verify no sensitive fields are present or leaked in result
     const serialized = JSON.stringify(res);
