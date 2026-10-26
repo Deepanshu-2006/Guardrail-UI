@@ -38,6 +38,8 @@ import {
   ResponseRule,
 } from './rules.js';
 import { evaluatePolicies } from './policies.js';
+import { GuardrailPolicyConfig } from '../types/config.js';
+import { getActivePolicyConfig } from '../config/registry.js';
 
 /**
  * Creates a strongly typed, fail-closed ResponseDecision for an evaluation failure.
@@ -93,6 +95,9 @@ export interface ResponseEngineOptions {
 
   /** Configured response rules evaluated in deterministic precedence order */
   rules?: readonly ResponseRule[];
+
+  /** Centralized guardrail policy configuration */
+  config?: GuardrailPolicyConfig;
 }
 
 /**
@@ -334,12 +339,14 @@ export function evaluateActionPipeline(
   responseOptions?: ResponseEngineOptions
 ): ConsolidatedEvaluationPipelineResult {
   try {
+    const config = responseOptions?.config ?? riskOptions?.config ?? getActivePolicyConfig();
+    const resolvedRiskOptions: RiskEngineOptions = { ...riskOptions, config };
     const resolvedClassification = classification ?? classifyAction(action);
-    const risk = assessRisk(action, resolvedClassification, riskOptions);
+    const risk = assessRisk(action, resolvedClassification, resolvedRiskOptions);
     let decision = decideResponse(risk, responseOptions);
 
     // Apply canonical risk policies and preserve monotonic precedence
-    const policyResults = evaluatePolicies(action, risk);
+    const policyResults = evaluatePolicies(action, risk, config);
     const protectPolicy = policyResults.find((p) => p.decision === ResponseAction.PROTECT);
     const warnPolicy = policyResults.find((p) => p.decision === ResponseAction.WARN);
     const allowPolicy = policyResults.find((p) => p.decision === ResponseAction.ALLOW);

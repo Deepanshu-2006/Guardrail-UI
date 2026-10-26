@@ -264,15 +264,6 @@ export function verifyContinuationAuthorization(
       };
     }
 
-    if (isRequestExpired(request, timeProvider)) {
-      return {
-        authorized: false,
-        actionId,
-        error: `Continuation rejected: Approval request "${request.id}" has expired.`,
-        errorCode: 'REQUEST_EXPIRED',
-      };
-    }
-
     if (request.status === ApprovalStatus.REJECTED) {
       return {
         authorized: false,
@@ -291,11 +282,11 @@ export function verifyContinuationAuthorization(
       };
     }
 
-    if (request.status === ApprovalStatus.EXPIRED) {
+    if (request.status === ApprovalStatus.EXPIRED || isRequestExpired(request, timeProvider)) {
       return {
         authorized: false,
         actionId,
-        error: `Continuation rejected: Approval request "${request.id}" has EXPIRED.`,
+        error: `Continuation rejected: Approval request "${request.id}" has expired.`,
         errorCode: 'REQUEST_EXPIRED',
       };
     }
@@ -813,7 +804,7 @@ export class ContinuationAuthorizationBoundary {
   private readonly timeProvider: TimeProvider;
   private readonly getCurrentPageContext?: () => ContinuationPageContext;
   private readonly isElementAttached?: (elementId?: string) => boolean;
-  private readonly validationService: ContinuationValidationService;
+  private _validationService?: ContinuationValidationService;
   private readonly activeContinuations: Set<string> = new Set();
 
   constructor(options?: ContinuationBoundaryOptions) {
@@ -824,15 +815,6 @@ export class ContinuationAuthorizationBoundary {
     this.timeProvider = options?.timeProvider ?? defaultTimeProvider;
     this.getCurrentPageContext = options?.getCurrentPageContext;
     this.isElementAttached = options?.isElementAttached;
-    this.validationService = new ContinuationValidationService({
-      controller: this.controller,
-      continuationManager: this.continuationManager,
-      approvalClient: this.approvalClient,
-      approvalService: this.approvalService,
-      timeProvider: this.timeProvider,
-      getCurrentPageContext: this.getCurrentPageContext,
-      isElementAttached: this.isElementAttached,
-    });
   }
 
   public getContinuationManager(): ContinuationManager {
@@ -844,7 +826,18 @@ export class ContinuationAuthorizationBoundary {
   }
 
   public getValidationService(): ContinuationValidationService {
-    return this.validationService;
+    if (!this._validationService) {
+      this._validationService = new ContinuationValidationService({
+        controller: this.controller,
+        continuationManager: this.continuationManager,
+        approvalClient: this.approvalClient,
+        approvalService: this.approvalService,
+        timeProvider: this.timeProvider,
+        getCurrentPageContext: this.getCurrentPageContext,
+        isElementAttached: this.isElementAttached,
+      });
+    }
+    return this._validationService;
   }
 
   /**
@@ -855,7 +848,7 @@ export class ContinuationAuthorizationBoundary {
     actionId: string,
     options?: ContinuationBoundaryValidationOptions
   ): Promise<ContinuationAuthorizationResult> {
-    const res = await this.validationService.validateEligibility(actionId, {
+    const res = await this.getValidationService().validateEligibility(actionId, {
       authContext: options?.authContext,
       expectedRequesterId: options?.expectedRequesterId,
       pageContext: options?.pageContext,

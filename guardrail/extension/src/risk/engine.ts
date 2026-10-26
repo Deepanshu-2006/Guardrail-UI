@@ -30,6 +30,13 @@ import {
 } from '../types/risk.js';
 import { clampRiskScore, INITIAL_RISK_RULES, RiskRule } from './rules.js';
 import { getRiskSignalDefinition, RiskSignalOverrides } from './signals.js';
+import {
+  DEFAULT_GUARDRAIL_POLICY_CONFIG,
+  getActivePolicyConfig,
+  getRiskThresholds,
+  GuardrailPolicyConfig,
+  RiskThresholdSettings,
+} from '../config/index.js';
 
 /**
  * Determines baseline severity tier for a given RiskSignalId.
@@ -87,53 +94,38 @@ export function createFailedRiskAssessment(
 
 /**
  * Threshold configuration defining the boundaries for each categorical RiskLevel.
- *
- * Development Thresholds:
- * - 0 to 24: LOW (Routine interaction with negligible operational or security risk)
- * - 25 to 49: MEDIUM (Moderate operational impact or reversible changes)
- * - 50 to 74: HIGH (Sensitive operations like financial triggers or authentication)
- * - 75 to 100: CRITICAL (Severe impact like irreversible deletions or compounded high-risk signals)
+ * Backward-compatible alias to centralized RiskThresholdSettings.
  */
-export interface RiskThresholdConfig {
-  /** Maximum score (inclusive) for LOW risk tier. Defaults to 24. */
-  lowMax: number;
-
-  /** Maximum score (inclusive) for MEDIUM risk tier. Defaults to 49. */
-  mediumMax: number;
-
-  /** Maximum score (inclusive) for HIGH risk tier. Defaults to 74. */
-  highMax: number;
-}
+export type RiskThresholdConfig = RiskThresholdSettings;
 
 /**
- * Default centralized threshold configuration.
- * Easy to inspect, tune, or override across environments.
+ * Default centralized threshold configuration sourced directly from the centralized schema.
+ * Preserves the canonical 0-24 (LOW), 25-49 (MEDIUM), 50-74 (HIGH), 75-100 (CRITICAL) boundaries.
  */
-export const DEFAULT_RISK_THRESHOLDS: Readonly<RiskThresholdConfig> = Object.freeze({
-  lowMax: 24,
-  mediumMax: 49,
-  highMax: 74,
-});
+export const DEFAULT_RISK_THRESHOLDS: Readonly<RiskThresholdConfig> =
+  DEFAULT_GUARDRAIL_POLICY_CONFIG.thresholds;
 
 /**
  * Maps a numeric score (0–100) to its corresponding RiskLevel based on threshold configuration.
+ * Automatically consumes the active centralized thresholds if none are explicitly provided.
  *
  * @param score Clamped numerical score between 0 and 100.
- * @param thresholds Threshold configurations to apply.
+ * @param thresholds Optional threshold configuration (defaults to active centralized thresholds).
  */
 export function determineRiskLevel(
   score: number,
-  thresholds: RiskThresholdConfig = DEFAULT_RISK_THRESHOLDS
+  thresholds?: RiskThresholdConfig
 ): RiskLevel {
+  const effectiveThresholds = thresholds ?? getRiskThresholds();
   const boundedScore = clampRiskScore(score);
 
-  if (boundedScore <= thresholds.lowMax) {
+  if (boundedScore <= effectiveThresholds.lowMax) {
     return RiskLevel.LOW;
   }
-  if (boundedScore <= thresholds.mediumMax) {
+  if (boundedScore <= effectiveThresholds.mediumMax) {
     return RiskLevel.MEDIUM;
   }
-  if (boundedScore <= thresholds.highMax) {
+  if (boundedScore <= effectiveThresholds.highMax) {
     return RiskLevel.HIGH;
   }
   return RiskLevel.CRITICAL;
@@ -146,11 +138,14 @@ export interface RiskEngineOptions {
   /** Custom rules to evaluate. Defaults to INITIAL_RISK_RULES. */
   rules?: readonly RiskRule[];
 
-  /** Custom threshold boundaries. Defaults to DEFAULT_RISK_THRESHOLDS. */
+  /** Custom threshold boundaries. Defaults to active centralized thresholds. */
   thresholds?: RiskThresholdConfig;
 
   /** Optional score contribution overrides for specific signals. */
   signalOverrides?: RiskSignalOverrides;
+
+  /** Centralized policy configuration to consume. */
+  config?: GuardrailPolicyConfig;
 }
 
 /**
@@ -158,13 +153,43 @@ export interface RiskEngineOptions {
  */
 export class RiskEngine {
   private readonly rules: readonly RiskRule[];
-  private readonly thresholds: RiskThresholdConfig;
-  private readonly signalOverrides?: RiskSignalOverrides;
+  private readonly explicitThresholds?: RiskThresholdConfig;
+  private readonly explicitSignalOverrides?: RiskSignalOverrides;
+  private readonly explicitConfig?: GuardrailPolicyConfig;
 
   constructor(options?: RiskEngineOptions) {
     this.rules = options?.rules ?? INITIAL_RISK_RULES;
-    this.thresholds = options?.thresholds ?? DEFAULT_RISK_THRESHOLDS;
-    this.signalOverrides = options?.signalOverrides;
+    this.explicitThresholds = options?.thresholds;
+    this.explicitSignalOverrides = options?.signalOverrides;
+    this.explicitConfig = options?.config;
+  }
+
+  /**
+   * Resolves effective thresholds dynamically from explicit options or central registry.
+   */
+  public get thresholds(): RiskThresholdConfig {
+    if (this.explicitThresholds) return this.explicitThresholds;
+    if (this.explicitConfig) return this.explicitConfig.thresholds;
+    return getRiskThresholds();
+  }
+
+  /**
+   * Resolves effective signal score overrides dynamically from explicit options or central config.
+   */
+  public get signalOverrides(): RiskSignalOverrides | undefined {
+    if (this.explicitSignalOverrides) return this.explicitSignalOverrides;
+    const config = this.explicitConfig ?? getActivePolicyConfig();
+    if (!config?.signals) return undefined;
+
+    const overrides: RiskSignalOverrides = {};
+    for (const [sigId, setting] of Object.entries(config.signals)) {
+      if (setting && typeof setting.scoreContribution === 'number') {
+        overrides[sigId as RiskSignalId] = {
+          scoreContribution: setting.enabled ? setting.scoreContribution : 0,
+        };
+      }
+    }
+    return overrides;
   }
 
   /**

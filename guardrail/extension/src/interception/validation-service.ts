@@ -73,6 +73,7 @@ import { StagingActionContext } from '../types/staging.js';
 import { transitionInterceptionRecord } from './transitions.js';
 import { ResponseAction } from '../types/response.js';
 import { evaluatePolicies } from '../response/policies.js';
+import { GuardrailPolicyConfig } from '../types/config.js';
 
 // =============================================================================
 // Validation Status Enum & Result Models
@@ -187,6 +188,9 @@ export interface ContinuationValidationOptions {
 
   /** Expected canonical policy rule ID that must remain satisfied for continuation */
   readonly expectedPolicyId?: string;
+
+  /** Optional centralized risk-policy configuration override */
+  readonly policyConfig?: GuardrailPolicyConfig;
 }
 
 /**
@@ -200,6 +204,7 @@ export interface ContinuationValidationServiceOptions {
   readonly timeProvider?: TimeProvider;
   readonly getCurrentPageContext?: () => ContinuationPageContext;
   readonly isElementAttached?: (elementId?: string) => boolean;
+  readonly policyConfig?: GuardrailPolicyConfig;
 }
 
 // =============================================================================
@@ -236,6 +241,7 @@ export class ContinuationValidationService {
   private readonly timeProvider: TimeProvider;
   private readonly getCurrentPageContext?: () => ContinuationPageContext;
   private readonly isElementAttached?: (elementId?: string) => boolean;
+  private readonly policyConfig?: GuardrailPolicyConfig;
 
   constructor(options?: ContinuationValidationServiceOptions) {
     this.controller = options?.controller ?? defaultInterceptionController;
@@ -245,6 +251,7 @@ export class ContinuationValidationService {
     this.timeProvider = options?.timeProvider ?? defaultTimeProvider;
     this.getCurrentPageContext = options?.getCurrentPageContext;
     this.isElementAttached = options?.isElementAttached;
+    this.policyConfig = options?.policyConfig;
   }
 
   public getController(): InterceptionController {
@@ -812,7 +819,8 @@ export class ContinuationValidationService {
         };
       }
 
-      const matchedPolicies = evaluatePolicies(normalizedActionForPolicy);
+      const policyConfig = options?.policyConfig ?? this.policyConfig;
+      const matchedPolicies = evaluatePolicies(normalizedActionForPolicy, undefined, policyConfig);
       const corruptGuardMatch = matchedPolicies.find(
         (p) =>
           p.ruleId === 'RULE_FAIL_CLOSED_FALLBACK' ||

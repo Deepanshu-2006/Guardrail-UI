@@ -19,6 +19,7 @@
 
 import { RiskAssessment, RiskLevel } from '../types/risk.js';
 import { ResponseAction } from '../types/response.js';
+import { getCriticalThresholdScore } from '../config/registry.js';
 
 /**
  * Mapping configuration associating each RiskLevel with a canonical ResponseAction.
@@ -162,7 +163,8 @@ export const CriticalRiskProtectionRule: ResponseRule = Object.freeze({
   priority: 200,
   evaluate: (context: ResponseRuleContext): ResponseRuleResult | null => {
     const assessment = context.assessment;
-    if (assessment?.riskLevel === RiskLevel.CRITICAL || (typeof assessment?.score === 'number' && assessment.score >= 75)) {
+    const criticalScore = getCriticalThresholdScore();
+    if (assessment?.riskLevel === RiskLevel.CRITICAL || (typeof assessment?.score === 'number' && assessment.score >= criticalScore)) {
       return {
         action: ResponseAction.PROTECT,
         reason: `Protective mechanism required: Action evaluated at critical severity (level: ${assessment.riskLevel}, score: ${assessment.score}).`,

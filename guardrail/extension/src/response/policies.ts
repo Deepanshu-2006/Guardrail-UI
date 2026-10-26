@@ -23,6 +23,13 @@ import {
 } from '../types/policy.js';
 import { ResponseAction } from '../types/response.js';
 import { RiskAssessment, RiskLevel } from '../types/risk.js';
+import {
+  getCriticalThresholdScore,
+  getRoutineThresholdMax,
+  isTrustedDomain,
+  getActivePolicyConfig,
+} from '../config/registry.js';
+import { GuardrailPolicyConfig } from '../types/config.js';
 
 /**
  * Extracts searchable text tokens from an action safely (without inspecting input values).
@@ -158,8 +165,10 @@ export const CONTROLLED_PAYMENT_POLICY: RiskPolicyDefinition = Object.freeze({
     }
 
     // Compound check: If payment is compounded with critical severity, escalate to PROTECT
+    const criticalScore = getCriticalThresholdScore();
     const isCritical =
-      assessment?.riskLevel === RiskLevel.CRITICAL || (typeof assessment?.score === 'number' && assessment.score >= 75);
+      assessment?.riskLevel === RiskLevel.CRITICAL ||
+      (typeof assessment?.score === 'number' && assessment.score >= criticalScore);
     const decision = isCritical ? ResponseAction.PROTECT : ResponseAction.WARN;
     const ruleId = isCritical ? 'RULE_PAYMENT_COMPOUND_PROTECT' : 'RULE_PAYMENT_INTERACTION_POLICY';
     const explanation = isCritical
@@ -219,6 +228,10 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
         const curOrigin = new URL(action.page.url).origin;
         const prevOrigin = new URL(action.page.previousUrl).origin;
         if (curOrigin !== prevOrigin && curOrigin !== 'null' && prevOrigin !== 'null') {
+          // If destination origin is explicitly configured as trusted, exempt it from external warning
+          if (isTrustedDomain(curOrigin)) {
+            return false;
+          }
           return true;
         }
       } catch {
@@ -333,6 +346,12 @@ export const ROUTINE_INTERACTION_POLICY: RiskPolicyDefinition = Object.freeze({
       return false;
     }
 
+    // Dynamic threshold boundary: score must not exceed configured lowMax
+    const routineMax = getRoutineThresholdMax();
+    if (assessment && typeof assessment.score === 'number' && assessment.score > routineMax) {
+      return false;
+    }
+
     // Check that none of the elevated policies match
     if (CONTROLLED_DESTRUCTIVE_POLICY.appliesTo(action, assessment)) return false;
     if (CONTROLLED_PAYMENT_POLICY.appliesTo(action, assessment)) return false;
@@ -429,16 +448,58 @@ export function getPolicyById(id: string | RiskPolicyId): RiskPolicyDefinition |
 
 /**
  * Evaluates an action across all supported policies and returns all matching results.
+ * Respects active or provided GuardrailPolicyConfig while enforcing immutable security invariants.
+ *
+ * @param action Normalized interaction event
+ * @param assessment Optional risk assessment
+ * @param config Optional policy configuration override (defaults to active central configuration)
  */
 export function evaluatePolicies(
   action: GuardrailAction,
-  assessment?: Readonly<RiskAssessment>
+  assessment?: Readonly<RiskAssessment>,
+  config?: GuardrailPolicyConfig
 ): PolicyEvaluationResult[] {
+  const activeCfg = config ?? getActivePolicyConfig();
   const results: PolicyEvaluationResult[] = [];
+
   for (const policy of ALL_GUARDRAIL_POLICIES) {
+    const configuredRule = activeCfg.policies.find((p) => p.id === policy.id);
+
+    // SAFETY INVARIANT: Immutable security invariants cannot be disabled or downgraded
+    const isImmutable =
+      configuredRule?.isImmutableSecurityInvariant ||
+      policy.id === RiskPolicyId.UNSUPPORTED_BOUNDARY_GUARD ||
+      policy.id === RiskPolicyId.CONTROLLED_DESTRUCTIVE;
+
+    if (!isImmutable && configuredRule && configuredRule.enabled === false) {
+      continue;
+    }
+
     const res = policy.evaluate(action, assessment);
     if (res.matched) {
-      results.push(res);
+      let effectiveDecision = res.decision;
+      let effectiveExplanation = res.explanation;
+      let effectiveRuleId = res.ruleId;
+      let effectiveReasonCode = res.reasonCode;
+
+      // Configured decision handling respecting monotonic protection precedence:
+      // A configured PROTECT decision elevates WARN to PROTECT.
+      // But a configured WARN decision CANNOT downgrade a dynamic PROTECT evaluation.
+      if (configuredRule && !isImmutable) {
+        if (configuredRule.decision === ResponseAction.PROTECT && res.decision !== ResponseAction.PROTECT) {
+          effectiveDecision = ResponseAction.PROTECT;
+          effectiveReasonCode = configuredRule.reasonCode || res.reasonCode;
+          effectiveExplanation = configuredRule.userExplanation || res.explanation;
+        }
+      }
+
+      results.push({
+        ...res,
+        decision: effectiveDecision,
+        ruleId: effectiveRuleId,
+        reasonCode: effectiveReasonCode,
+        explanation: effectiveExplanation,
+      });
     }
   }
   return results;

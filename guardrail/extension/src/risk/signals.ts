@@ -12,15 +12,16 @@
  */
 
 import { RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
+import {
+  DEFAULT_GUARDRAIL_POLICY_CONFIG,
+  getSignalContribution,
+} from '../config/index.js';
 
 /**
  * Baseline default definitions for all initial Guardrail risk signals.
  *
- * NOTE: These score contributions are initial development heuristics only.
- * They must NOT be presented as statistically validated probabilities
- * or guarantees of malicious or fraudulent behavior.
- *
- * Initial development score contributions:
+ * NOTE: These baseline score contributions are sourced directly from the centralized
+ * configuration schema (DEFAULT_GUARDRAIL_POLICY_CONFIG.signals), avoiding duplicated definitions:
  * - PAYMENT_ACTION: +40
  * - DESTRUCTIVE_ACTION: +50
  * - AUTHENTICATION_ACTION: +20
@@ -31,7 +32,7 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
   [RiskSignalId.PAYMENT_ACTION]: {
     id: RiskSignalId.PAYMENT_ACTION,
     name: 'Payment Action',
-    scoreContribution: 40,
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.PAYMENT_ACTION].scoreContribution,
     reason: 'Action interacts with financial transactions, checkout flows, or billing elements.',
     description: 'Triggered when an interaction targets payment buttons, checkout forms, or financial workflows.',
   },
@@ -39,7 +40,7 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
   [RiskSignalId.DESTRUCTIVE_ACTION]: {
     id: RiskSignalId.DESTRUCTIVE_ACTION,
     name: 'Destructive Action',
-    scoreContribution: 50,
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.DESTRUCTIVE_ACTION].scoreContribution,
     reason: 'Action initiates permanent resource deletion, cancellation, or irreversible state destruction.',
     description: 'Triggered when an interaction targets deletion controls, account termination, or destructive purge buttons.',
   },
@@ -47,7 +48,7 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
   [RiskSignalId.AUTHENTICATION_ACTION]: {
     id: RiskSignalId.AUTHENTICATION_ACTION,
     name: 'Authentication Action',
-    scoreContribution: 20,
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.AUTHENTICATION_ACTION].scoreContribution,
     reason: 'Action interacts with authentication boundaries, credential inputs, or login sessions.',
     description: 'Triggered when an interaction targets sign-in, login, password, or security token controls.',
   },
@@ -55,7 +56,7 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
   [RiskSignalId.DOWNLOAD_ACTION]: {
     id: RiskSignalId.DOWNLOAD_ACTION,
     name: 'Download Action',
-    scoreContribution: 10,
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.DOWNLOAD_ACTION].scoreContribution,
     reason: 'Action triggers a file download, software installation, or document export.',
     description: 'Triggered when an interaction initiates downloading files, binary assets, or data exports to disk.',
   },
@@ -63,7 +64,7 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
   [RiskSignalId.EXTERNAL_NAVIGATION]: {
     id: RiskSignalId.EXTERNAL_NAVIGATION,
     name: 'External Navigation',
-    scoreContribution: 20,
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.EXTERNAL_NAVIGATION].scoreContribution,
     reason: 'Action navigates away from the current trusted domain to an external destination.',
     description: 'Triggered when a link or form submission redirects to an untrusted or third-party origin.',
   },
@@ -85,6 +86,7 @@ export type RiskSignalOverrides = Partial<
 
 /**
  * Retrieves a risk signal definition, optionally applying custom score or reason overrides.
+ * Sourced dynamically from the active centralized policy configuration if no override is provided.
  *
  * @param id The stable identifier of the risk signal.
  * @param overrides Optional environment/policy score overrides.
@@ -98,6 +100,13 @@ export function getRiskSignalDefinition(
   const override = overrides?.[id];
 
   if (!override) {
+    const centralContribution = getSignalContribution(id);
+    if (centralContribution !== base.scoreContribution) {
+      return {
+        ...base,
+        scoreContribution: centralContribution,
+      };
+    }
     return base;
   }
 
