@@ -113,6 +113,19 @@ export class InterceptionController {
   }
 
   /**
+   * Checks whether an action is currently verified and in the HELD state.
+   * Ensures the system does not claim an action was intercepted unless it is actually held.
+   *
+   * @param actionId Unique identifier of the action
+   * @returns True strictly if the action is actively HELD
+   */
+  public isActionHeld(actionId: string): boolean {
+    const record = this.records.get(actionId);
+    return record !== undefined && record.state === InterceptionState.HELD;
+  }
+
+
+  /**
    * Transitions a tracked action from DETECTED to HELD.
    *
    * @param actionId Unique identifier of the action to hold

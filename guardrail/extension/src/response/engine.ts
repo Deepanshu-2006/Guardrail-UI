@@ -39,7 +39,7 @@ import {
 } from './rules.js';
 import { evaluatePolicies } from './policies.js';
 import { GuardrailPolicyConfig } from '../types/config.js';
-import { getActivePolicyConfig } from '../config/registry.js';
+import { getActivePolicyConfig, isConfigFailed, getConfigLastError } from '../config/registry.js';
 
 /**
  * Creates a strongly typed, fail-closed ResponseDecision for an evaluation failure.
@@ -339,9 +339,50 @@ export function evaluateActionPipeline(
   responseOptions?: ResponseEngineOptions
 ): ConsolidatedEvaluationPipelineResult {
   try {
+    // Fail-closed protection when essential configuration could not be loaded (Requirements 4 & 7)
+    if (isConfigFailed()) {
+
+      const lastErr = getConfigLastError();
+      const failError: EvaluationError = {
+        code: lastErr?.code || 'CONFIG_LOAD_FAILED',
+        message: `Essential policy configuration unavailable: ${lastErr?.message || 'Configuration loading failed'}. Evaluated fail-closed to PROTECT.`,
+      };
+      const failedClassification = classification ?? classifyAction(action);
+      const failedRisk: RiskAssessment = {
+        actionId: action.id,
+        riskLevel: RiskLevel.CRITICAL,
+        score: 100,
+        reasons: [failError.message],
+        structuredReasons: [
+          {
+            code: failError.code,
+            message: failError.message,
+            ruleId: 'RULE_FAIL_CLOSED_FALLBACK',
+            severity: RiskLevel.CRITICAL,
+          },
+        ],
+        matchedRules: [],
+        evaluatedAt: new Date().toISOString(),
+        status: RiskEvaluationStatus.FAILED,
+        success: false,
+        error: failError,
+      };
+      const failedDecision = createFailedResponseDecision(action.id, failError, failedRisk);
+      const evaluationResult = createRiskEvaluationResult(failedRisk, failedDecision);
+
+      return {
+        action,
+        classification: failedClassification,
+        risk: failedRisk,
+        decision: failedDecision,
+        evaluationResult,
+      };
+    }
+
     const config = responseOptions?.config ?? riskOptions?.config ?? getActivePolicyConfig();
     const resolvedRiskOptions: RiskEngineOptions = { ...riskOptions, config };
     const resolvedClassification = classification ?? classifyAction(action);
+
     const risk = assessRisk(action, resolvedClassification, resolvedRiskOptions);
     let decision = decideResponse(risk, responseOptions);
 
@@ -451,10 +492,12 @@ export function evaluateActionPipeline(
     const fallbackClassification: ActionClassificationResult = classification ?? {
       actionId,
       category: action?.category || ('GENERAL' as any),
+      matchedRule: 'PIPELINE_EXCEPTION_FALLBACK',
       confidence: 0,
-      reasons: ['Pipeline evaluation exception'],
+      reason: 'Pipeline evaluation exception',
       classifiedAt: new Date().toISOString(),
     };
+
     const evaluationResult = createRiskEvaluationResult(fallbackRisk, failedDecision);
 
     return {

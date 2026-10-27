@@ -202,3 +202,80 @@ export interface PolicyConfigValidationResult {
   /** The validated and frozen configuration object (undefined if valid is false) */
   readonly config?: GuardrailPolicyConfig;
 }
+
+/**
+ * Operational health status of the policy configuration system.
+ */
+export enum ConfigHealthStatus {
+  /** Registry initialized with default or unverified state; no load attempted */
+  UNINITIALIZED = 'UNINITIALIZED',
+
+  /** Configuration successfully loaded from storage, strictly validated, and active */
+  HEALTHY = 'HEALTHY',
+
+  /**
+   * Fallback defaults active because custom configuration had non-fatal validation
+   * errors, missing optional fields, or recovery is in progress.
+   */
+  DEGRADED = 'DEGRADED',
+
+  /**
+   * Essential configuration could not be loaded or verified (e.g. storage error,
+   * corrupted structure, unsupported version, security invariant violation).
+   * System operates strictly in fail-closed mode.
+   */
+  FAILED = 'FAILED',
+}
+
+/**
+ * Diagnostic record describing a configuration loading or validation failure.
+ * Privacy-safe: guaranteed never to contain passwords, tokens, or sensitive inputs.
+ */
+export interface ConfigErrorDetail {
+  /** Machine-readable error code */
+  readonly code: string;
+
+  /** Sanitized human-readable error description */
+  readonly message: string;
+
+  /** Property path or component associated with the error */
+  readonly field?: string;
+
+  /** ISO 8601 UTC timestamp when the error occurred */
+  readonly timestamp: string;
+
+  /** Whether the error is fatal (triggering FAILED status) or non-fatal (DEGRADED) */
+  readonly fatal: boolean;
+}
+
+/**
+ * Options controlling configuration loading behavior.
+ */
+export interface ConfigLoadOptions {
+  /** Force reloading even if throttling / cooldown is active */
+  readonly force?: boolean;
+
+  /** Custom storage key override */
+  readonly storageKey?: string;
+}
+
+/**
+ * Result returned by the PolicyConfigLoader.
+ */
+export interface ConfigLoadResult {
+  /** Operational health status after loading */
+  readonly healthStatus: ConfigHealthStatus;
+
+  /** Active, safe, validated configuration in effect */
+  readonly config: GuardrailPolicyConfig;
+
+  /** Diagnostic error detail if load encountered errors */
+  readonly error?: ConfigErrorDetail;
+
+  /** True if this result was returned from in-memory cache due to active cooldown */
+  readonly fromCache: boolean;
+
+  /** Remaining cooldown milliseconds before next storage read is permitted (0 if none) */
+  readonly cooldownRemainingMs: number;
+}
+
