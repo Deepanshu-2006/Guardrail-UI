@@ -18,6 +18,10 @@ import { ResponseAction } from '../types/response.js';
 import { RiskPolicyId } from '../types/policy.js';
 import { RiskSignalId } from '../types/risk.js';
 import {
+  ConfigErrorDetail,
+  ConfigHealthStatus,
+  ConfigLoadOptions,
+  ConfigLoadResult,
   ConfigurablePolicyRule,
   ConfigurableSignalSetting,
   GuardrailPolicyConfig,
@@ -28,7 +32,9 @@ import {
   assertValidPolicyConfig,
   DEFAULT_GUARDRAIL_POLICY_CONFIG,
   resolveSafePolicyConfig,
+  validatePolicyConfig,
 } from './schema.js';
+import { ConfigStorageProvider, PolicyConfigLoader } from './loader.js';
 
 export type PolicyConfigChangeListener = (newConfig: GuardrailPolicyConfig) => void;
 
@@ -37,13 +43,82 @@ export type PolicyConfigChangeListener = (newConfig: GuardrailPolicyConfig) => v
  */
 export class PolicyConfigRegistry {
   private activeConfig: GuardrailPolicyConfig = DEFAULT_GUARDRAIL_POLICY_CONFIG;
+  private healthStatus: ConfigHealthStatus = ConfigHealthStatus.UNINITIALIZED;
+  private lastError?: ConfigErrorDetail;
+  private readonly loader: PolicyConfigLoader;
   private readonly listeners: Set<PolicyConfigChangeListener> = new Set();
+
+  constructor(options?: { loader?: PolicyConfigLoader; storageProvider?: ConfigStorageProvider }) {
+    this.loader =
+      options?.loader ??
+      new PolicyConfigLoader(options?.storageProvider ? { storageProvider: options.storageProvider } : undefined);
+  }
 
   /**
    * Retrieves the active, validated, deeply frozen policy configuration.
    */
   public getConfig(): GuardrailPolicyConfig {
     return this.activeConfig;
+  }
+
+  /**
+   * Retrieves the current operational health status of the configuration system.
+   */
+  public getHealthStatus(): ConfigHealthStatus {
+    return this.healthStatus;
+  }
+
+  /**
+   * Checks whether the configuration is running in a degraded state.
+   */
+  public isDegraded(): boolean {
+    return this.healthStatus === ConfigHealthStatus.DEGRADED;
+  }
+
+  /**
+   * Checks whether the configuration is in a failed (fail-closed) state.
+   */
+  public isFailed(): boolean {
+    return this.healthStatus === ConfigHealthStatus.FAILED;
+  }
+
+  /**
+   * Retrieves diagnostic details of the last failure encountered, if any.
+   */
+  public getLastError(): ConfigErrorDetail | undefined {
+    return this.lastError;
+  }
+
+  /**
+   * Directly sets the health status and optional error (useful for tests or runtime hooks).
+   */
+  public setHealthStatus(status: ConfigHealthStatus, error?: ConfigErrorDetail): void {
+    this.healthStatus = status;
+    this.lastError = error;
+  }
+
+  /**
+   * Loads configuration from underlying storage with throttling, validation, and safe defaults.
+   *
+   * SAFETY INVARIANT:
+   * When configuration loading recovers, held actions in the InterceptionController
+   * MUST NOT be automatically continued or executed. Continuation strictly requires
+   * explicit backend approval and user confirmation passing Condition 10 revalidation.
+   */
+  public async loadFromStorage(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
+    const result = await this.loader.load(options);
+    this.activeConfig = result.config;
+    this.healthStatus = result.healthStatus;
+    this.lastError = result.error;
+    this.notifyListeners();
+    return result;
+  }
+
+  /**
+   * Forces a reload from storage, bypassing active failure cooldown.
+   */
+  public async reload(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
+    return this.loadFromStorage({ ...options, force: true });
   }
 
   /**
@@ -56,19 +131,38 @@ export class PolicyConfigRegistry {
   public setConfig(candidate: unknown): GuardrailPolicyConfig {
     assertValidPolicyConfig(candidate);
     this.activeConfig = candidate;
+    this.healthStatus = ConfigHealthStatus.HEALTHY;
+    this.lastError = undefined;
     this.notifyListeners();
     return this.activeConfig;
   }
 
   /**
    * Safely updates the configuration fail-closed.
-   * If candidate is invalid, safely defaults to DEFAULT_GUARDRAIL_POLICY_CONFIG without throwing.
+   * If candidate is invalid, safely defaults to DEFAULT_GUARDRAIL_POLICY_CONFIG without throwing
+   * and marks the operational state as DEGRADED.
    *
    * @param candidate Unvalidated configuration object
    * @returns The resolved safe configuration
    */
   public setConfigSafe(candidate: unknown): GuardrailPolicyConfig {
-    this.activeConfig = resolveSafePolicyConfig(candidate);
+    const validation = validatePolicyConfig(candidate);
+    if (validation.valid && validation.config) {
+      this.activeConfig = validation.config;
+      this.healthStatus = ConfigHealthStatus.HEALTHY;
+      this.lastError = undefined;
+    } else {
+      this.activeConfig = resolveSafePolicyConfig(candidate);
+      this.healthStatus = ConfigHealthStatus.DEGRADED;
+      const firstErr = validation.errors[0];
+      this.lastError = {
+        code: firstErr?.code || 'INVALID_CONFIG_FALLBACK',
+        message: firstErr?.message || 'Configuration candidate was invalid; applied safe defaults.',
+        field: firstErr?.field,
+        timestamp: new Date().toISOString(),
+        fatal: false,
+      };
+    }
     this.notifyListeners();
     return this.activeConfig;
   }
@@ -78,9 +172,12 @@ export class PolicyConfigRegistry {
    */
   public resetToDefault(): GuardrailPolicyConfig {
     this.activeConfig = DEFAULT_GUARDRAIL_POLICY_CONFIG;
+    this.healthStatus = ConfigHealthStatus.HEALTHY;
+    this.lastError = undefined;
     this.notifyListeners();
     return this.activeConfig;
   }
+
 
   /**
    * Returns active categorical risk thresholds.
@@ -296,6 +393,31 @@ export function getOperationalTimeouts(): OperationalTimeouts {
   return defaultPolicyConfigRegistry.getTimeouts();
 }
 
+export function getConfigHealthStatus(): ConfigHealthStatus {
+  return defaultPolicyConfigRegistry.getHealthStatus();
+}
+
+export function isConfigDegraded(): boolean {
+  return defaultPolicyConfigRegistry.isDegraded();
+}
+
+export function isConfigFailed(): boolean {
+  return defaultPolicyConfigRegistry.isFailed();
+}
+
+export function getConfigLastError(): ConfigErrorDetail | undefined {
+  return defaultPolicyConfigRegistry.getLastError();
+}
+
+export function loadPolicyConfigFromStorage(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
+  return defaultPolicyConfigRegistry.loadFromStorage(options);
+}
+
+export function reloadPolicyConfig(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
+  return defaultPolicyConfigRegistry.reload(options);
+}
+
 // Aliases
 export const policyConfigRegistry = defaultPolicyConfigRegistry;
 export const getTimeouts = getOperationalTimeouts;
+
