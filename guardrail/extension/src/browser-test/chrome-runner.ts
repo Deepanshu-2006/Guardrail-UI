@@ -44,8 +44,10 @@ export interface ChromePage {
   navigate: (url: string) => Promise<void>;
   evaluate: <T = any>(expression: string | (() => any)) => Promise<T>;
   click: (selector: string) => Promise<void>;
+  clickInShadow: (hostSelector: string, innerSelector: string) => Promise<void>;
   typeText: (selector: string, text: string) => Promise<void>;
   getText: (selector: string) => Promise<string | null>;
+  getTextInShadow: (hostSelector: string, innerSelector: string) => Promise<string | null>;
   getAttribute: (selector: string, attr: string) => Promise<string | null>;
   waitForCondition: (fnExpression: string, timeoutMs?: number) => Promise<void>;
   close: () => Promise<void>;
@@ -280,6 +282,22 @@ export async function launchControlledChrome(
           })()
         `);
       },
+      clickInShadow: async (hostSelector: string, innerSelector: string) => {
+        await evaluate(`
+          (() => {
+            const host = document.querySelector(${JSON.stringify(hostSelector)});
+            if (!host || !host.shadowRoot) {
+              throw new Error("Shadow host not found or has no shadow root: " + ${JSON.stringify(hostSelector)});
+            }
+            const el = host.shadowRoot.querySelector(${JSON.stringify(innerSelector)});
+            if (!el) {
+              throw new Error("Target not found inside shadow root: " + ${JSON.stringify(innerSelector)});
+            }
+            el.scrollIntoView();
+            el.click();
+          })()
+        `);
+      },
       typeText: async (selector: string, text: string) => {
         await evaluate(`
           (() => {
@@ -297,6 +315,16 @@ export async function launchControlledChrome(
         return evaluate<string | null>(`
           (() => {
             const el = document.querySelector(${JSON.stringify(selector)});
+            return el ? el.textContent : null;
+          })()
+        `);
+      },
+      getTextInShadow: async (hostSelector: string, innerSelector: string) => {
+        return evaluate<string | null>(`
+          (() => {
+            const host = document.querySelector(${JSON.stringify(hostSelector)});
+            if (!host || !host.shadowRoot) return null;
+            const el = host.shadowRoot.querySelector(${JSON.stringify(innerSelector)});
             return el ? el.textContent : null;
           })()
         `);

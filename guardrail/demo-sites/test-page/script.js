@@ -1,5 +1,21 @@
 // Minimal local helper to log page events for visual feedback during development
 (function () {
+  // Synthetic observable test counters for real-browser test verification
+  window.__TEST_COUNTERS__ = {
+    protectPageHandlerCalls: 0,
+    allowPageHandlerCalls: 0,
+    warnPageHandlerCalls: 0,
+    ambientUnmarkedHandlerCalls: 0,
+    controlledContinuationExecutions: 0,
+    actionAllowedEvents: 0,
+    actionWarnedEvents: 0,
+    actionInterceptedEvents: 0,
+    actionCancelledEvents: 0,
+    actionContinuedEvents: 0,
+    formSubmissions: 0,
+    linkClicks: 0,
+  };
+
   const testActionBtn = document.getElementById('test-action-btn');
   const testForm = document.getElementById('test-form');
   const testInput = document.getElementById('test-input');
@@ -67,6 +83,7 @@
 
   if (allowBtn) {
     allowBtn.addEventListener('click', () => {
+      window.__TEST_COUNTERS__.allowPageHandlerCalls++;
       // Normal click handler on the page. For ALLOW, this MUST execute normally.
       appendLog('✅ NORMAL HANDLER EXECUTED: [Test ALLOW Action] was permitted and executed normally without interception.');
     });
@@ -74,6 +91,7 @@
 
   if (warnBtn) {
     warnBtn.addEventListener('click', () => {
+      window.__TEST_COUNTERS__.warnPageHandlerCalls++;
       // Normal click handler on the page. For WARN, Guardrail displays advisory modal without holding the action.
       appendLog('⚠️ NORMAL HANDLER EXECUTED: [Test WARN Action] executed (Guardrail advisory warning presented; action was not held).');
     });
@@ -82,6 +100,7 @@
   const handleProtectExecution = (btnId) => {
     // Normal click handler on the page.
     // IF PROTECT INTERCEPTION SUCCEEDS, THIS HANDLER WILL NEVER RUN!
+    window.__TEST_COUNTERS__.protectPageHandlerCalls++;
     if (statusResultEl) {
       statusResultEl.textContent = '❌ EXECUTED (Normal handler ran!)';
       statusResultEl.style.background = 'rgba(239, 68, 68, 0.4)';
@@ -105,31 +124,37 @@
 
   // Listen for Guardrail's custom pipeline & interception events
   document.addEventListener('guardrail:action-allowed', (e) => {
+    window.__TEST_COUNTERS__.actionAllowedEvents++;
     const detail = e.detail;
     appendLog(`🟢 Guardrail ALLOW: Action [${detail.actionId}] allowed without interception (Risk Score: ${detail.risk?.score ?? 0}).`);
   });
 
   document.addEventListener('guardrail:action-warned', (e) => {
+    window.__TEST_COUNTERS__.actionWarnedEvents++;
     const detail = e.detail;
     appendLog(`🟡 Guardrail WARN: Action [${detail.actionId}] presented advisory modal. Action NOT held (Risk Score: ${detail.risk?.score ?? 0}).`);
   });
 
   document.addEventListener('guardrail:action-intercepted', (e) => {
+    window.__TEST_COUNTERS__.actionInterceptedEvents++;
     const detail = e.detail;
     appendLog(`🛑 Guardrail PROTECT: Action [${detail.actionId}] intercepted and HELD! Normal execution halted (Risk Score: ${detail.risk?.score ?? 0}). Waiting for protection decision.`);
   });
 
   document.addEventListener('guardrail:action-continued', (e) => {
+    window.__TEST_COUNTERS__.actionContinuedEvents++;
     const detail = e.detail;
     appendLog(`▶ Guardrail CONTINUED: Action [${detail.actionId}] continued via explicit development control (Execution Count: ${detail.executionCount}).`);
   });
 
   document.addEventListener('guardrail:action-cancelled', (e) => {
+    window.__TEST_COUNTERS__.actionCancelledEvents++;
     const detail = e.detail;
     appendLog(`✕ Guardrail CANCELLED: Action [${detail.actionId}] cancelled via development control. Action aborted; handler was NOT executed.`);
   });
 
   document.addEventListener('guardrail:controlled-handler-executed', (e) => {
+    window.__TEST_COUNTERS__.controlledContinuationExecutions++;
     const detail = e.detail;
     appendLog(`✅ CONTROLLED TEST HANDLER EXECUTED: Action [${detail.actionId}] executed exactly once via explicit continuation mechanism!`);
   });
@@ -202,6 +227,7 @@
   const unsuppBtn = document.getElementById('btn-unsupported-unmarked-critical');
   if (unsuppBtn) {
     unsuppBtn.addEventListener('click', () => {
+      window.__TEST_COUNTERS__.ambientUnmarkedHandlerCalls++;
       appendLog('⚠️ AMBIENT UNMARKED HANDLER EXECUTED: Normal page handler executed (ambient action is not held).');
     });
   }
@@ -228,6 +254,7 @@
   if (harmlessLink) {
     harmlessLink.addEventListener('click', (e) => {
       e.preventDefault();
+      window.__TEST_COUNTERS__.linkClicks++;
       appendLog('🔗 HARMLESS LINK CLICKED: Default navigation suppressed; remained on test page.');
     });
   }
@@ -253,6 +280,7 @@
   if (testForm) {
     testForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      window.__TEST_COUNTERS__.formSubmissions++;
       const val = testInput ? testInput.value.trim() : '';
       appendLog(`Form submitted: ${val ? `"${val}"` : '(empty input)'}`);
     });

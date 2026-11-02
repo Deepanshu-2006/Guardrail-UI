@@ -30,7 +30,7 @@
             <br>
             • <strong>ALLOW</strong> (Score 0): Routine action. Guardrail does NOT intercept; normal page click handler executes.
             <br>
-            • <strong>WARN</strong> (Score 50): Destructive profile action. Guardrail displays advisory modal; action is NOT held and no interception record is created.
+            • <strong>WARN</strong> (Score 40): Checkout / payment advisory. Guardrail displays advisory modal; action is NOT held and no interception record is created.
             <br>
             • <strong>PROTECT</strong> (Score 100): Compound critical action. Guardrail halts event propagation, creates an interception record in <code>HELD</code>, and displays a development message while waiting for a protection decision.
           </p>
@@ -51,7 +51,7 @@
               data-guardrail-test-action="test-warn"
               style="border-color: #f59e0b; color: #fbbf24; font-weight: 600; background: rgba(245, 158, 11, 0.1); font-size: 13px;"
             >
-              🟡 Test WARN (Delete Account Profile)
+              🟡 Test WARN (Checkout Order)
             </button>
             <button 
               id="btn-intercept-protect" 
