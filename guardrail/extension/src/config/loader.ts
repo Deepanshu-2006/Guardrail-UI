@@ -893,7 +893,19 @@ export class PolicyConfigLoader {
   ): Promise<ConfigLoadResult> {
     assertValidPolicyConfig(config);
     const key = options?.storageKey ?? GUARDRAIL_POLICY_CONFIG_STORAGE_KEY;
-    await this.storageProvider.set(key, config);
+    try {
+      await this.storageProvider.set(key, config);
+    } catch {
+      this.consecutiveFailures++;
+      this.healthStatus = ConfigHealthStatus.DEGRADED;
+      this.lastError = {
+        code: 'STORAGE_WRITE_ERROR',
+        message: 'Failed to persist policy configuration. The previously active configuration remains in effect.',
+        timestamp: new Date().toISOString(),
+        fatal: false,
+      };
+      throw new Error('Failed to persist policy configuration.');
+    }
 
     this.activeConfig = config;
     this.healthStatus = ConfigHealthStatus.HEALTHY;

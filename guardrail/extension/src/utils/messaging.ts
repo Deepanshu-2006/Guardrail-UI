@@ -22,6 +22,7 @@ import {
   RiskAssessment,
   StagingActionContext,
 } from '../types/index.js';
+import { sanitizeUrlForDiagnostics } from './privacy.js';
 
 /**
  * Safely dispatches a GuardrailAction, its classification, risk assessment, response decision, and interception record to the background service worker.
@@ -48,7 +49,17 @@ export async function dispatchActionToBackground(
 
   const message: GuardrailActionMessage = {
     type: 'GUARDRAIL_ACTION',
-    action,
+    action: {
+      ...action,
+      page: {
+        ...action.page,
+        url: sanitizeUrlForDiagnostics(action.page?.url),
+        title: undefined,
+      },
+      element: action.element
+        ? { ...action.element, visibleText: undefined }
+        : action.element,
+    },
     classification,
     risk,
     decision,
@@ -66,17 +77,20 @@ export async function dispatchActionToBackground(
         `%c[Guardrail Messaging]%c Background response for ${action.type}:`,
         'color: #a855f7; font-weight: bold;',
         'color: inherit;',
-        response
+        { received: true }
       );
     }
 
     return response || null;
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    if (errorMsg.includes('Extension context invalidated')) {
+    const errorName = error instanceof Error ? error.name : '';
+    const errorCode = error instanceof Error && error.message.includes('Extension context invalidated')
+      ? 'EXTENSION_CONTEXT_INVALIDATED'
+      : 'DISPATCH_FAILED';
+    if (errorCode === 'EXTENSION_CONTEXT_INVALIDATED') {
       console.info('[Guardrail Messaging] Extension was reloaded. Please refresh this tab to reconnect.');
     } else {
-      console.warn(`[Guardrail Messaging] Failed to dispatch ${action.type} action:`, error);
+      console.warn(`[Guardrail Messaging] Failed to dispatch ${action.type} action (${errorName || errorCode}).`);
     }
     return null;
   }
@@ -118,17 +132,17 @@ export async function dispatchApprovalRequestToBackground(
         `%c[Guardrail Messaging]%c Local approval request registered in background:`,
         'color: #0ea5e9; font-weight: bold;',
         'color: inherit;',
-        response
+        { received: true }
       );
     }
 
     return response || null;
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    if (errorMsg.includes('Extension context invalidated')) {
+    const contextInvalidated = error instanceof Error && error.message.includes('Extension context invalidated');
+    if (contextInvalidated) {
       console.info('[Guardrail Messaging] Extension was reloaded. Please refresh this tab to reconnect.');
     } else {
-      console.warn('[Guardrail Messaging] Failed to dispatch approval request to background:', error);
+      console.warn('[Guardrail Messaging] Failed to dispatch approval request to background.');
     }
     return null;
   }
@@ -207,8 +221,7 @@ export async function dispatchSubmitApprovalRequestToBackground(
       },
     };
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const isTimeout = errorMsg.toLowerCase().includes('timeout');
+    const isTimeout = error instanceof Error && error.name === 'TimeoutError';
 
     return {
       success: false,
@@ -217,7 +230,7 @@ export async function dispatchSubmitApprovalRequestToBackground(
       isAuthoritative: false,
       error: {
         code: isTimeout ? 'TIMEOUT' : 'DISPATCH_ERROR',
-        message: `Failed to dispatch approval request to background: ${errorMsg}. Server state is UNCERTAIN. Action remains safely HELD.`,
+        message: `Failed to dispatch approval request to background${isTimeout ? ' due to timeout' : ''}. Server state is UNCERTAIN. Action remains safely HELD.`,
       },
     };
   }
@@ -300,5 +313,3 @@ export async function dispatchGetApprovalStatusToBackground(
     };
   }
 }
-
-

@@ -316,6 +316,7 @@ const rawDiagnosticPayload = {
     cvv: '123',
     sessionToken: 'jwt.token.here',
   },
+  element: { visibleText: 'Synthetic password=not-a-real-secret' },
   riskScore: 85,
 };
 
@@ -326,6 +327,7 @@ assertEquals((cleanPayload as any).formData.otp, '[REDACTED]', 'otp is redacted'
 assertEquals((cleanPayload as any).formData.cardNumber, '[REDACTED]', 'cardNumber is redacted');
 assertEquals((cleanPayload as any).formData.cvv, '[REDACTED]', 'cvv is redacted');
 assertEquals((cleanPayload as any).formData.sessionToken, '[REDACTED]', 'sessionToken is redacted');
+assertEquals((cleanPayload as any).element.visibleText, '[REDACTED]', 'DOM visible text is redacted from diagnostic payloads');
 assertEquals((cleanPayload as any).formData.username, 'alice@example.com', 'Non-credential fields are retained');
 
 // 5C: Audit verifier

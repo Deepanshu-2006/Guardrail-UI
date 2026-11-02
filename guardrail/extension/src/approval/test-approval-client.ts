@@ -558,7 +558,8 @@ async function runTests(): Promise<void> {
       assertEquals(res.statusCode, testCase.status, `Status code is ${testCase.status}`);
       if (!res.success) {
         assertEquals(res.error.code, testCase.expectedCode, `Error code is ${testCase.expectedCode}`);
-        assertEquals(res.error.message, testCase.envelope.error.message, 'Preserves error message');
+        assertEquals(res.error.message, `Request failed with status ${testCase.status}.`, 'Returns a generic non-sensitive error message');
+        assert(!res.error.message.includes(testCase.envelope.error.message), 'Does not expose server-provided error details');
       }
     }
   }
@@ -625,7 +626,7 @@ async function runTests(): Promise<void> {
     assertEquals(resNet.statusCode, 0, 'Status code is 0 for network failure');
     if (!resNet.success) {
       assertEquals(resNet.error.code, ApiClientErrorCodes.NETWORK_FAILURE, 'Error code is NETWORK_FAILURE');
-      assert(resNet.error.message.includes('ERR_CONNECTION_REFUSED'), 'Includes failure description');
+      assert(!resNet.error.message.includes('ERR_CONNECTION_REFUSED'), 'Does not expose raw transport exception details');
     }
 
     // Timeout (AbortController aborts)

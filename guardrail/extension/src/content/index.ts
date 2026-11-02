@@ -14,7 +14,7 @@
  */
 
 import { ActionDetector } from '../detector/index.js';
-import { evaluateActionPipeline, explainRiskDecision } from '../response/index.js';
+import { evaluateActionPipeline } from '../response/index.js';
 import { showWarningModal } from '../ui/index.js';
 import {
   ActionClassificationResult,
@@ -48,7 +48,6 @@ import {
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
   sanitizeForDiagnostics,
-  sanitizeUrlForDiagnostics,
 } from '../utils/index.js';
 import {
   loadPolicyConfigFromStorage,
@@ -94,32 +93,17 @@ function logPipelineResult(
   risk: RiskAssessment,
   decision: ResponseDecision
 ): void {
-  const explanation = explainRiskDecision(decision, risk, action);
-  const sanitizedUrl = sanitizeUrlForDiagnostics(action.page?.url);
-  const textSummary =
-    action.element?.visibleText ||
-    action.element?.id ||
-    action.element?.tagName ||
-    sanitizedUrl;
-
-  const primaryReason = explanation.userSummary || decision.reasons[0] || 'Standard action evaluation';
-
   console.log(
-    `%c[Guardrail Pipeline]%c EVALUATION SUMMARY\n` +
-    `ACTION: ${action.type}${textSummary ? ` ("${textSummary}")` : ''}\n` +
-    `CATEGORY: ${classification.category}\n` +
-    `RISK: ${risk.riskLevel} (score: ${risk.score})\n` +
-    `RESPONSE: ${decision.response} [${explanation.categoryBadge}]\n` +
-    `EXPLANATION: ${explanation.headline} - ${primaryReason}`,
+    '%c[Guardrail Pipeline]%c EVALUATION SUMMARY',
     'color: #0ea5e9; font-weight: bold; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 3px;',
     'color: inherit; font-weight: normal;',
     sanitizeForDiagnostics({
       actionId: action.id,
-      action,
-      classification,
-      risk,
-      decision,
-      explanation,
+      actionType: action.type,
+      category: classification.category,
+      riskLevel: risk.riskLevel,
+      riskScore: risk.score,
+      response: decision.response,
     })
   );
 }
@@ -192,7 +176,7 @@ function updateControlledTestPageDisplay(
           })
         );
       } catch (err) {
-        console.warn('[Guardrail Content] Error dispatching custom allowed event:', err);
+        console.warn('[Guardrail Content] Failed to dispatch custom allowed event.');
       }
       break;
     }
@@ -244,7 +228,7 @@ function updateControlledTestPageDisplay(
           })
         );
       } catch (err) {
-        console.warn('[Guardrail Content] Error dispatching custom warned event:', err);
+        console.warn('[Guardrail Content] Failed to dispatch custom warned event.');
       }
       break;
     }
@@ -302,7 +286,7 @@ function updateControlledTestPageDisplay(
           })
         );
       } catch (err) {
-        console.warn('[Guardrail Content] Error dispatching custom intercepted event:', err);
+        console.warn('[Guardrail Content] Failed to dispatch custom intercepted event.');
       }
       break;
     }
@@ -317,7 +301,7 @@ function bootstrap(): void {
 
   // Load persisted policy configuration from storage (safe, fail-closed defaults)
   loadPolicyConfigFromStorage().catch((err) => {
-    console.warn('[Guardrail Content] Failed initial policy configuration load from storage:', err);
+    console.warn('[Guardrail Content] Initial policy configuration load failed; check configuration health status.');
   });
 
   // Listen for storage changes across tabs to keep policy configuration synchronized
@@ -325,7 +309,7 @@ function bootstrap(): void {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
         reloadPolicyConfig().catch((err) => {
-          console.warn('[Guardrail Content] Failed to reload policy configuration after storage change:', err);
+          console.warn('[Guardrail Content] Policy configuration reload failed; check configuration health status.');
         });
       }
     });
@@ -434,7 +418,7 @@ function bootstrap(): void {
             // * Do not create an unnecessary interception record.
             console.log(
               `%c[Guardrail Interception]%c ACTION ALLOWED (Score: ${risk.score})\n` +
-              `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
+              `ACTION: ${action.type}\n` +
               `ACTION ID: ${action.id}\n` +
               `DECISION: ALLOW - Action proceeds without interception. Normal page handler permitted.`,
               'color: #10b981; font-weight: bold; padding: 2px 6px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
@@ -459,7 +443,7 @@ function bootstrap(): void {
             // * Do not create an unnecessary interception record if the action has not been held.
             console.log(
               `%c[Guardrail Interception]%c ACTION WARNED (Score: ${risk.score})\n` +
-              `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
+              `ACTION: ${action.type}\n` +
               `ACTION ID: ${action.id}\n` +
               `DECISION: WARN - Displaying advisory modal without creating an interception record. Action is not held.`,
               'color: #f59e0b; font-weight: bold; padding: 2px 6px; background: rgba(245, 158, 11, 0.1); border-radius: 3px;',
@@ -521,13 +505,13 @@ function bootstrap(): void {
                 decision,
               });
             } catch (ctxErr) {
-              console.warn('[Guardrail Content] Error creating StagingActionContext:', ctxErr);
+              console.warn('[Guardrail Content] Failed to create StagingActionContext.');
             }
 
             // * Show a development message explaining that the action is waiting for a protection decision.
             console.log(
               `%c[Guardrail Interception]%c 🛡️ ACTION PROTECTED (HELD)\n` +
-              `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
+              `ACTION: ${action.type}\n` +
               `ACTION ID: ${action.id}\n` +
               `STATE: ${heldRecord.state}\n` +
               `SCORE: ${risk.score} (${risk.riskLevel})\n` +
@@ -536,11 +520,11 @@ function bootstrap(): void {
               'color: inherit; font-weight: normal;',
               {
                 actionId: action.id,
-                record: heldRecord,
-                action,
-                classification,
-                risk,
-                decision,
+                actionType: action.type,
+                state: heldRecord.state,
+                riskLevel: risk.riskLevel,
+                riskScore: risk.score,
+                response: decision.response,
               }
             );
 
@@ -570,7 +554,7 @@ function bootstrap(): void {
                     })
                   );
                 } catch (err) {
-                  console.warn('[Guardrail Content] Error dispatching controlled handler executed event:', err);
+                  console.warn('[Guardrail Content] Failed to dispatch controlled handler executed event.');
                 }
               },
               () => element.isConnected && document.getElementById(element.id) === element
@@ -609,7 +593,7 @@ function bootstrap(): void {
         } catch {
           // ignore if uncancelable
         }
-        console.error('[Guardrail Interception] Error during controlled action interception; failing closed:', err);
+        console.error('[Guardrail Interception] Controlled action interception failed; action remains fail-closed.');
       }
     }
   );
@@ -727,7 +711,7 @@ function initResolutionControls(): void {
       const el = document.getElementById(held.action.element.id);
       if (!el) {
         const err = `Target element "#${held.action.element.id}" is no longer attached to document DOM tree. Cannot continue detached action.`;
-        console.warn(`[Guardrail Continuation] Rejection: ${err}`);
+        console.warn('[Guardrail Continuation] Request rejected due to a validation error.');
         defaultContinuationManager.invalidateHeldAction(actionId, err);
         latestStagingContext = null;
         disableControls();
@@ -748,7 +732,7 @@ function initResolutionControls(): void {
     );
 
     if (!result.success) {
-      console.warn(`[Guardrail Continuation] Rejection: ${result.error}`);
+      console.warn('[Guardrail Continuation] Request rejected.');
       if (detailsEl) {
         detailsEl.textContent = `[Guardrail Continuation Rejection] ${result.error}`;
         detailsEl.style.display = 'block';
@@ -797,7 +781,7 @@ function initResolutionControls(): void {
         })
       );
     } catch (err) {
-      console.warn('[Guardrail Content] Error dispatching custom action-continued event:', err);
+      console.warn('[Guardrail Content] Failed to dispatch custom action-continued event.');
     }
   };
 
@@ -825,7 +809,7 @@ function initResolutionControls(): void {
     );
 
     if (!result.success) {
-      console.warn(`[Guardrail Cancellation] Rejection: ${result.error}`);
+      console.warn('[Guardrail Cancellation] Request rejected.');
       if (detailsEl) {
         detailsEl.textContent = `[Guardrail Cancellation Rejection] ${result.error}`;
         detailsEl.style.display = 'block';
@@ -873,7 +857,7 @@ function initResolutionControls(): void {
         })
       );
     } catch (err) {
-      console.warn('[Guardrail Content] Error dispatching custom action-cancelled event:', err);
+      console.warn('[Guardrail Content] Failed to dispatch custom action-cancelled event.');
     }
 
     return result;
@@ -903,7 +887,7 @@ function initResolutionControls(): void {
     const record = defaultInterceptionController.getRecord(actionId);
     if (!record || record.state !== InterceptionState.HELD) {
       const err = `Action "${actionId}" is in state "${record?.state || 'UNKNOWN'}". Only actions in HELD state are eligible for approval requests.`;
-      console.warn(`[Guardrail Approval] Rejection: ${err}`);
+      console.warn('[Guardrail Approval] Request rejected due to a validation error.');
       if (detailsEl) {
         detailsEl.textContent = `[Guardrail Approval Rejection] ${err}`;
         detailsEl.style.display = 'block';
@@ -929,7 +913,7 @@ function initResolutionControls(): void {
             decision,
           });
         } catch (ctxErr) {
-          console.warn('[Guardrail Approval] Error creating StagingActionContext:', ctxErr);
+          console.warn('[Guardrail Approval] Failed to create StagingActionContext.');
         }
       }
     }
@@ -958,12 +942,12 @@ function initResolutionControls(): void {
         })
       );
     } catch (err) {
-      console.warn('[Guardrail Content] Error dispatching custom approval-requested event:', err);
+      console.warn('[Guardrail Content] Failed to dispatch custom approval-requested event.');
     }
 
     // Dispatch to background coordinator
-    dispatchApprovalRequestToBackground(intent).catch((err) => {
-      console.warn('[Guardrail Content] Background dispatch failed:', err);
+    dispatchApprovalRequestToBackground(intent).catch(() => {
+      console.warn('[Guardrail Content] Background dispatch failed.');
     });
 
     if (detailsEl) {

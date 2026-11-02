@@ -320,8 +320,8 @@ export class PolicyConfigRegistry {
     for (const listener of this.listeners) {
       try {
         listener(this.activeConfig);
-      } catch (err) {
-        console.error('[Guardrail PolicyConfigRegistry] Error in config listener:', err);
+      } catch {
+        console.error('[Guardrail PolicyConfigRegistry] Configuration change listener failed.');
       }
     }
   }
@@ -420,4 +420,3 @@ export function reloadPolicyConfig(options?: ConfigLoadOptions): Promise<ConfigL
 // Aliases
 export const policyConfigRegistry = defaultPolicyConfigRegistry;
 export const getTimeouts = getOperationalTimeouts;
-

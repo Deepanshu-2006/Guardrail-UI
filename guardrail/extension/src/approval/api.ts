@@ -1160,7 +1160,7 @@ export function createHttpStreamHandler(
 ): (req: HttpRequestLike, res: HttpResponseLike) => void {
   return (req, res) => {
     router.handleHttpStream(req, res).catch((err: unknown) => {
-      console.error('[ApprovalApiRouter Unhandled Error]', err);
+      console.error(`[ApprovalApiRouter] Unhandled request failure (${err instanceof Error ? 'Error' : 'UnknownError'}).`);
       if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader('content-type', 'application/json');

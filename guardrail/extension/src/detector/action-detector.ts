@@ -119,8 +119,8 @@ export class ActionDetector {
       if (this.onIntercept) {
         try {
           this.onIntercept(action, controlledTestAction, event);
-        } catch (err) {
-          console.error('[Guardrail Detector] Error in action interception handler:', err);
+        } catch {
+          console.error('[Guardrail Detector] Action interception handler failed; supported event was suppressed.');
           // FAIL-CLOSED INVARIANT: Synchronously suppress the event if an interception error occurs.
           // Exceptions must not silently convert a required protective decision into an unrestricted action.
           try {
@@ -189,8 +189,8 @@ export class ActionDetector {
   private emitAction(action: GuardrailAction): void {
     try {
       this.onAction(action);
-    } catch (err) {
-      console.error('[Guardrail Detector] Error in action subscriber callback:', err);
+    } catch {
+      console.error('[Guardrail Detector] Action subscriber callback failed.');
     }
   }
 }

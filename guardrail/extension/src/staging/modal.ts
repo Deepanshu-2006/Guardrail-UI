@@ -4172,13 +4172,13 @@ export function handleModalRequestApproval(
           bubbles: true,
         })
       );
-    } catch (eventErr) {
-      console.warn('[Guardrail Staging] Error dispatching custom approval-requested event:', eventErr);
+    } catch {
+      console.warn('[Guardrail Staging] Failed to dispatch custom approval-requested event.');
     }
   }
 
-  dispatchApprovalRequestToBackground(intent).catch((err) => {
-    console.warn('[Guardrail Staging] Background approval dispatch notification failed:', err);
+  dispatchApprovalRequestToBackground(intent).catch(() => {
+    console.warn('[Guardrail Staging] Background approval dispatch notification failed.');
   });
 
   return applyApprovalOutcome(result, options, uiElements);

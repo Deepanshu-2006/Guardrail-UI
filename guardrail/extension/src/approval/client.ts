@@ -1205,9 +1205,8 @@ export class ApprovalApiClient {
             success: false,
             error: {
               code: mappedCode,
-              message: envelope.error.message || `HTTP error ${response.status}`,
+              message: `Request failed with status ${envelope.error.statusCode || response.status}.`,
               statusCode: envelope.error.statusCode || response.status,
-              details: envelope.error.details,
             },
             statusCode: response.status,
             isNetworkError: false,
@@ -1263,18 +1262,18 @@ export class ApprovalApiClient {
         };
       }
 
-      const errMsg = networkErr instanceof Error ? networkErr.message : String(networkErr);
+      const errorName = networkErr instanceof Error ? networkErr.name : 'UnknownError';
       this.logger.error('API network request failed', {
         method,
         path,
-        error: errMsg,
+        errorName,
       });
 
       return {
         success: false,
         error: {
           code: ApiClientErrorCodes.NETWORK_FAILURE,
-          message: `Network request to "${url}" failed: ${errMsg}`,
+          message: 'Network request failed. Check connectivity and retry.',
           statusCode: 0,
         },
         statusCode: 0,

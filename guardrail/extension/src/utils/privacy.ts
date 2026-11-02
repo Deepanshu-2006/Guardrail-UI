@@ -38,6 +38,8 @@ export const FORBIDDEN_SENSITIVE_KEY_PATTERNS: readonly RegExp[] = Object.freeze
   /^raw_?form(_?data|_?value)?$/i,
   /^input_?value$/i,
   /^form_?value$/i,
+  // DOM text can contain user supplied or otherwise sensitive page content.
+  /^(visible_?text|text_?summary|inner_?text|text_?content)$/i,
 ]);
 
 /**

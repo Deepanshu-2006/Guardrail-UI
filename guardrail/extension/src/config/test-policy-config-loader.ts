@@ -508,6 +508,29 @@ async function runAllTests(): Promise<void> {
     assertEquals(registry.isFailed(), true, 'isFailed() returns true');
     assertEquals(registry.isDegraded(), false, 'isDegraded() returns false');
     assert(registry.getLastError() !== undefined, 'Registry has lastError record');
+
+    let allowWrite = false;
+    const writeFailStorage = {
+      get: async () => undefined,
+      set: async () => {
+        if (!allowWrite) throw new Error('Synthetic storage write failure with password=not-real');
+      },
+    };
+    const writeLoader = new PolicyConfigLoader({ storageProvider: writeFailStorage });
+    await writeLoader.load();
+    let saveRejected = false;
+    try {
+      await writeLoader.save(DEFAULT_GUARDRAIL_POLICY_CONFIG);
+    } catch (err) {
+      saveRejected = true;
+      assert(!(err instanceof Error) || !err.message.includes('not-real'), 'Write error omits raw exception details');
+    }
+    assertEquals(saveRejected, true, 'Failed configuration persistence rejects the save operation');
+    assertEquals(writeLoader.getHealthStatus(), ConfigHealthStatus.DEGRADED, 'Failed persistence changes health to DEGRADED');
+    assertEquals(writeLoader.getLastError()?.code, 'STORAGE_WRITE_ERROR', 'Failed persistence reports a stable error code');
+    allowWrite = true;
+    await writeLoader.save(DEFAULT_GUARDRAIL_POLICY_CONFIG);
+    assertEquals(writeLoader.getHealthStatus(), ConfigHealthStatus.HEALTHY, 'Health recovers only after persistence succeeds');
   });
 
   // ---------------------------------------------------------------------------

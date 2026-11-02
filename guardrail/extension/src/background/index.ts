@@ -463,16 +463,16 @@ console.log(
 );
 
 // Load persisted policy configuration from storage on background service worker activation
-loadPolicyConfigFromStorage().catch((err) => {
-  console.warn('[Guardrail Background] Failed initial policy configuration load from storage:', err);
+loadPolicyConfigFromStorage().catch(() => {
+  console.warn('[Guardrail Background] Initial policy configuration load failed; check configuration health status.');
 });
 
 // Register storage listener to reload policy configuration across contexts
 if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
-      reloadPolicyConfig().catch((err) => {
-        console.warn('[Guardrail Background] Failed to reload policy configuration after storage change:', err);
+      reloadPolicyConfig().catch(() => {
+        console.warn('[Guardrail Background] Policy configuration reload failed; check configuration health status.');
       });
     }
   });
@@ -600,25 +600,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         }
       }
 
-      const targetSummary = action.element?.visibleText
-        ? `"${action.element.visibleText}"`
-        : action.element?.tagName
-        ? `<${action.element.tagName.toLowerCase()}>`
-        : action.page.url;
-
-      const ruleSummary = classification?.matchedRule || 'none';
-      const riskReasonsList = risk?.reasons?.map((r) => `* ${r}`).join('\n') || '* None';
-      const primaryReason =
-        decision?.reasons?.[0] || risk?.reasons?.[0] || 'Standard action registered';
-
       console.log(
-        `%c[Guardrail Pipeline]%c EVALUATION RECEIVED\n` +
-        `ACTION: ${action.type}${targetSummary ? ` (${targetSummary})` : ''}\n` +
-        `CATEGORY: ${classification?.category || 'UNCLASSIFIED'}\n` +
-        `RISK: ${risk?.riskLevel || 'LOW'} (score: ${risk?.score ?? 0})\n` +
-        `RESPONSE: ${decision?.response || 'ALLOW'}` +
-        `${interception ? `\nINTERCEPTION: ${interception.state} (${interception.reason})` : ''}\n` +
-        `REASON: ${primaryReason}`,
+        '%c[Guardrail Pipeline]%c EVALUATION RECEIVED',
         'color: #0ea5e9; font-weight: bold; padding: 3px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;',
         'color: inherit; font-weight: normal;',
         {
@@ -629,13 +612,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
           riskScore: risk?.score,
           responseAction: decision?.response,
           interceptionState: interception?.state,
-          interception,
-          action,
-          classification,
-          risk,
-          decision,
-          ruleSummary,
-          riskReasonsList,
           senderTabId: sender.tab?.id,
           receivedAt: new Date().toISOString(),
         }
@@ -655,7 +631,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       console.log(
         `%c[Guardrail Background]%c LOCAL APPROVAL REQUEST INTENT RECEIVED (PROTOTYPE ONLY)\n` +
         `ACTION ID: ${intent.actionId}\n` +
-        `DESCRIPTION: ${intent.description}\n` +
         `CATEGORY: ${intent.category || 'UNCLASSIFIED'}\n` +
         `RISK: ${intent.riskLevel} (score: ${intent.riskScore ?? 'N/A'})\n` +
         `STATUS: ${intent.status} (Backend not connected)\n` +
@@ -664,7 +639,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         'color: inherit; font-weight: normal;',
         {
           actionId: intent.actionId,
-          intent,
+          category: intent.category,
+          riskLevel: intent.riskLevel,
+          riskScore: intent.riskScore,
           senderTabId: sender.tab?.id,
           receivedAt: new Date().toISOString(),
           isBackendConnected: false,
@@ -688,11 +665,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         '%c[Guardrail Background]%c Received legacy TEST_ACTION:',
         'color: #10b981; font-weight: bold;',
         'color: inherit;',
-        {
-          action: testMsg.action,
-          url: testMsg.url,
-          senderTabId: sender.tab?.id,
-        }
+        { senderTabId: sender.tab?.id, received: true }
       );
 
       sendResponse({
@@ -706,7 +679,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     // 6. Unsupported message type
     sendResponse({
       success: false,
-      error: `Unsupported message type: "${String(raw.type)}"`,
+      error: 'Unsupported message type.',
     });
 
     return false;
