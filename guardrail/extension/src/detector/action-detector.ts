@@ -105,6 +105,15 @@ export class ActionDetector {
     // The decision to halt execution or permit it is governed by the Response Engine integration.
     const controlledTestAction = findControlledTestAction(event.target);
     if (controlledTestAction) {
+      if (!controlledTestAction.isConnected) {
+        try {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        } catch {
+          // A detached target cannot be resumed; suppress only when the event allows it.
+        }
+        return;
+      }
       const action = createGuardrailAction(ActionType.CLICK, controlledTestAction);
 
       if (this.onIntercept) {

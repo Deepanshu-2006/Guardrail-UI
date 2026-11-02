@@ -171,6 +171,32 @@ class MockEvent {
   }
 }
 
+// Exercise the production detector boundary rather than simulating its callback.
+console.log('▶ Production detector boundary: synchronous dispatch and detached target');
+{
+  const element = new MockElement('BUTTON');
+  element.setAttribute(GUARDRAIL_TEST_ACTION_ATTR, 'detector-proof');
+  let interceptCalls = 0;
+  const detector = new ActionDetector(() => {}, (_action, _element, event) => {
+    interceptCalls++;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  });
+  const liveEvent = new MockEvent('click', element);
+  (detector as any).handleClick(liveEvent);
+  assertEquals(liveEvent.defaultPrevented, true, 'Real detector callback cancels synchronously');
+  assertEquals(liveEvent.immediatePropagationStopped, true, 'Real detector callback stops immediate propagation synchronously');
+  assertEquals(interceptCalls, 1, 'Live controlled action reaches interception once');
+
+  const detached = new MockElement('BUTTON');
+  detached.isConnected = false;
+  detached.setAttribute(GUARDRAIL_TEST_ACTION_ATTR, 'detached-proof');
+  const detachedEvent = new MockEvent('click', detached);
+  (detector as any).handleClick(detachedEvent);
+  assertEquals(detachedEvent.defaultPrevented, true, 'Detached controlled event is suppressed');
+  assertEquals(interceptCalls, 1, 'Detached target does not enter staging callback');
+}
+
 // =============================================================================
 // SCENARIO 1: Synchronous Event Suppression on Controlled Test Action
 // =============================================================================
@@ -370,7 +396,7 @@ console.log('\n▶ Scenario 4: Detached Target Elements and Stale Action Referen
   let handlerExecutions = 0;
   manager.registerHeldAction(action, heldRecord, () => {
     handlerExecutions++;
-  });
+  }, () => false);
 
   const validationService = new ContinuationValidationService({
     controller,
@@ -391,6 +417,39 @@ console.log('\n▶ Scenario 4: Detached Target Elements and Stale Action Referen
   assertEquals(staleContinuation.success, false, 'Stale action reference continuation rejected');
   assertEquals(staleContinuation.executed, false, 'Stale action did not execute');
   assertEquals(handlerExecutions, 0, 'Original handler execution count strictly 0');
+  const detachedContinuation = manager.continueAction(action.id);
+  assertEquals(detachedContinuation.success, false, 'Continuation rejects stale original target');
+  assertEquals(controller.getRecord(action.id)?.state, InterceptionState.CANCELLED, 'Stale target invalidates held lifecycle');
+  assertEquals(handlerExecutions, 0, 'Stale target handler never executes');
+}
+
+// =============================================================================
+// Registration cannot replace active or stale held state
+// =============================================================================
+console.log('\n▶ Held registration cannot replace active or stale state');
+{
+  const controller = new InterceptionController();
+  const manager = new ContinuationManager(controller);
+  const first: GuardrailAction = {
+    id: 'act_registration_first', type: ActionType.CLICK, category: ActionCategory.DESTRUCTIVE,
+    element: { tagName: 'BUTTON', id: 'first' }, page: { url: 'https://test.guardrail.internal', title: 'Test' }, timestamp: new Date().toISOString(),
+  };
+  controller.register(first);
+  const firstHeld = controller.holdAction(first.id);
+  manager.registerHeldAction(first, firstHeld, () => {});
+
+  const second: GuardrailAction = { ...first, id: 'act_registration_second' };
+  controller.register(second);
+  const secondHeld = controller.holdAction(second.id);
+  let replaced = false;
+  try { manager.registerHeldAction(second, secondHeld, () => {}); } catch { replaced = true; }
+  assertEquals(replaced, true, 'Second held registration is rejected');
+  assertEquals(manager.getCurrentHeldAction()?.action.id, first.id, 'Active held entry remains intact');
+
+  manager.cancelAction(first.id);
+  let staleRejected = false;
+  try { manager.registerHeldAction(first, firstHeld, () => {}); } catch { staleRejected = true; }
+  assertEquals(staleRejected, true, 'Stale held record cannot be re-registered');
 }
 
 // =============================================================================

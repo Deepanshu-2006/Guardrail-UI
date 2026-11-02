@@ -438,6 +438,13 @@ function setupApprovedActionFixture(
     elementId?: string;
   }
 ): { action: GuardrailAction; request: ApprovalRequest; binding: ApprovalActionBinding } {
+  // Fixtures are sequential and isolated; resolve the prior single-slot held entry
+  // before setting up the next action so the production manager cannot be overwritten.
+  const priorHeld = fixtures.continuationManager.getCurrentHeldAction();
+  if (priorHeld && priorHeld.action.id !== actionId) {
+    fixtures.continuationManager.cancelAction(priorHeld.action.id, 'Test fixture cleanup before next action.');
+  }
+
   const url = options?.url || 'https://bank.example.com/transfer/confirm';
   const origin = options?.origin || 'https://bank.example.com';
   const elementId = options?.elementId || 'btn-submit-transfer';

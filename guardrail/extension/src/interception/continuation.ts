@@ -71,6 +71,8 @@ export interface HeldActionEntry {
   readonly record: InterceptionRecord;
   readonly handler: ControlledActionCallback;
   readonly heldAt: string;
+  /** Optional live DOM identity check. DOM nodes stay out of controller records. */
+  readonly isTargetCurrent?: () => boolean;
 }
 
 export interface ContinuationResult {
@@ -410,7 +412,8 @@ export class ContinuationManager {
   public registerHeldAction(
     action: GuardrailAction,
     record: InterceptionRecord,
-    handler: ControlledActionCallback
+    handler: ControlledActionCallback,
+    isTargetCurrent?: () => boolean
   ): void {
     if (!action || !action.id) {
       throw new Error('[ContinuationManager] Cannot register held action without a valid actionId.');
@@ -421,11 +424,25 @@ export class ContinuationManager {
       );
     }
 
+    const currentRecord = this.controller.getRecord(action.id);
+    if (!currentRecord || currentRecord !== record || currentRecord.state !== InterceptionState.HELD) {
+      throw new Error(
+        `[ContinuationManager] Cannot register stale or untracked held record for action "${action.id}".`
+      );
+    }
+
+    if (this.currentHeldAction) {
+      throw new Error(
+        `[ContinuationManager] Action "${this.currentHeldAction.action.id}" is already registered as held; refusing to replace it.`
+      );
+    }
+
     this.currentHeldAction = {
       action,
       record,
       handler,
       heldAt: new Date().toISOString(),
+      isTargetCurrent,
     };
   }
 
@@ -550,6 +567,26 @@ export class ContinuationManager {
           executionCount: priorExecutions,
           error: `Cannot continue action "${id}": No verified controlled continuation handler is registered. Resumption is strictly restricted to verified test actions; arbitrary website continuation is not supported.`,
         };
+      }
+
+      if (heldEntry.isTargetCurrent) {
+        let targetIsCurrent = false;
+        try {
+          targetIsCurrent = heldEntry.isTargetCurrent();
+        } catch {
+          targetIsCurrent = false;
+        }
+        if (!targetIsCurrent) {
+          this.invalidateHeldAction(id, 'Controlled action target was detached or replaced before continuation.');
+          return {
+            success: false,
+            actionId: id,
+            record: this.controller.getRecord(id),
+            executed: false,
+            executionCount: priorExecutions,
+            error: `Cannot continue action "${id}": The original controlled target is no longer attached.`,
+          };
+        }
       }
 
       // 4. Transition interception record from HELD -> CONTINUED

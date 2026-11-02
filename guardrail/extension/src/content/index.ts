@@ -389,6 +389,15 @@ function bootstrap(): void {
       const testAttr = element.getAttribute(GUARDRAIL_TEST_ACTION_ATTR) || 'controlled-test-action';
 
       try {
+        // Ignore synthetic events dispatched on detached controls. They cannot represent
+        // an active page control, and must not create resumable staging state.
+        if (!element.isConnected) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          console.warn('[Guardrail Interception] Suppressed event on detached controlled test element; no action was staged.');
+          return;
+        }
+
         // Repeated event & duplicate staging prevention:
         // If an action is already in HELD or active staging state, synchronously cancel the event
         // to prevent unrestricted execution, and prevent duplicate staging operations from overwriting state.
@@ -563,7 +572,8 @@ function bootstrap(): void {
                 } catch (err) {
                   console.warn('[Guardrail Content] Error dispatching controlled handler executed event:', err);
                 }
-              }
+              },
+              () => element.isConnected && document.getElementById(element.id) === element
             );
 
             updateControlledTestPageDisplay(action, {
