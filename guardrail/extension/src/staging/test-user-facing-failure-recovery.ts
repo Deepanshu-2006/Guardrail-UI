@@ -441,13 +441,16 @@ async function runAllTests(): Promise<void> {
       actionId: 'act-004',
       status: ApprovalStatus.APPROVED,
       requesterId: 'usr_alice',
+      actionDescription: 'Synthetic controlled test action',
+      actionType: ActionType.CLICK,
+      riskLevel: RiskLevel.CRITICAL,
+      riskReasons: ['Synthetic test risk'],
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 600000).toISOString(),
       decision: {
         decidedBy: 'tc_carol',
         decidedAt: new Date().toISOString(),
-        status: ApprovalStatus.APPROVED,
+        decision: 'APPROVED',
       },
     },
   });

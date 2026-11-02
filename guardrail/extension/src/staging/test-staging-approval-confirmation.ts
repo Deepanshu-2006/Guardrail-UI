@@ -684,8 +684,8 @@ console.log('\n▶ Suite 4: Cancel Action Workflow During Confirmation');
   const successBanner = shadow?.querySelector('.gs-confirmation-success');
   assert(Boolean(successBanner), 'Success cancellation banner rendered');
   assert(
-    shadow?.querySelector('.gs-confirmation-title')?.textContent?.includes('Action cancelled') || false,
-    'Banner confirms action was cancelled safely'
+    shadow?.querySelector('.gs-confirmation-title')?.textContent === 'Held test interaction cancelled.',
+    'Banner identifies the held test interaction as cancelled'
   );
 
   dismissStagingModal();

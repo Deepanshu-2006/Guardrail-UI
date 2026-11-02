@@ -779,12 +779,13 @@ async function runTests(): Promise<void> {
       'Footer notice includes PENDING status'
     );
 
-    // CRITICAL: Action MUST remain HELD! Continuation handler must NEVER be called (Requirement 11)
+    // Submission moves the interception into the explicit approval-waiting lifecycle state.
+    // It remains unexecuted until the supported continuation workflow completes.
     const rec = controller.getRecord('act_success_1');
     assertEquals(
       rec?.state,
-      InterceptionState.HELD,
-      'Action remains strictly in HELD state in InterceptionController'
+      InterceptionState.AWAITING_APPROVAL,
+      'Action transitions to AWAITING_APPROVAL while the continuation handler remains uncalled'
     );
     assert(!continuationCalled, 'Continuation handler was NEVER executed');
 

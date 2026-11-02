@@ -11,12 +11,12 @@
 
 ## 1. Executive Summary
 
-Following the successful establishment of the real-browser CDP test environment and live-HTTP verification (where 285/285 assertions passed across 5 browser test suites), this milestone focuses on end-to-end **product integration and system hardening**.
+Following the establishment of a real-browser CDP harness and local HTTP fixtures, this audit focuses on **product integration and system hardening**. Repository inspection shows that `test:browser:env` and `test:browser:interception` launch Chrome through `ChromeRunner`; `test:browser:approval`, `test:browser:security`, and `test:browser:privacy` run as Node integration tests using local HTTP/TCP fixtures and mock DOMs. Their passing results are not five real-browser suites.
 
 This audit provides a comprehensive, evidence-based evaluation of the entire Guardrail product surface: the Manifest V3 browser extension, content script event interception, background service worker coordinator, centralized policy and risk pipelines, Shadow DOM staging mode, live HTTP approval workflow, continuation validation engine, and the trusted-contact dashboard shell.
 
 ### Key Audit Findings:
-1.  **Core Safety Invariants are Robust:** Action interception, synchronous capturing-phase event suppression, Shadow DOM staging encapsulation, monotonic approval state progression, and decoupled continuation execution are fully functional and backed by passing real-browser CDP tests.
+1.  **Core Safety Invariants Have Layered Evidence:** Controlled action interception, synchronous event suppression, and Staging UI mounting have real Chrome evidence. Approval lifecycle, dashboard synchronization, policy boundary, and privacy scenarios have Node unit/integration evidence, including local HTTP/TCP fixtures; they are not all verified in Chrome.
 2.  **Privacy and Redaction are Strictly Enforced:** All 9 synthetic test sentinel categories (passwords, OTPs, cards, CVVs, tokens, cookies, SSNs, form text, and query parameters) are scrubbed before reaching diagnostics, wire APIs, error messages, or dashboard DOMs.
 3.  **Identified Integration Gaps:**
     *   *Dashboard Standalone Bootstrapping:* `guardrail/dashboard/index.html` loads `dist/dashboard.js`, which auto-instantiates `DashboardShell` without an `ApprovalApiClient` or token provider, leaving standalone browser usage unconnected.
@@ -161,7 +161,7 @@ The diagram and trace matrix below outline the 6 discrete stages of the supporte
 | **API Payload Validation** | Rejection of unexpected fields, oversized payloads (>16 KB), malformed JSON | **VERIFIED** | Enforced by `ApprovalApiRouter.handleRoute` ([`api.ts`](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/extension/src/approval/api.ts)). |
 | **Authoritative Dashboard State** | Dashboard renders authoritative backend state without local fabrication | **VERIFIED** | Verified in `test-dashboard-shell.ts` and `verify-complete-sync-flow.ts`. |
 | **Terminal Monotonicity** | Terminal statuses (`APPROVED`, `REJECTED`, `CANCELLED`, `EXPIRED`) cannot be reverted | **VERIFIED** | Enforced by `isTerminalApprovalStatus` and modal monotonic guards. |
-| **Zero Execution on Approval** | Approval verdict does NOT auto-execute the held action | **VERIFIED** | Inviolate architectural invariant; verified across all browser test suites. |
+| **Zero Execution on Approval** | Approval verdict does NOT auto-execute the held action | **VERIFIED IN TESTED PATHS** | Covered by unit and Node integration checks plus controlled Chrome continuation checks; not every approval/dashboard behavior ran in Chrome. |
 | **Explicit Mock Distinction** | In-memory persistence flagged explicitly | **VERIFIED** | `PERSISTENCE_METADATA.isProduction === false` and `EPHEMERAL_DEVELOPMENT_ONLY_IN_MEMORY`. |
 
 ---
@@ -197,9 +197,9 @@ All available verification scripts across the extension and dashboard packages w
 | Dashboard Component Build          | npm --prefix guardrail/dashboard run build        | 0        | 192 KB      |
 | Browser Environment Harness        | npm --prefix guardrail/extension run test:browser:env | 0    | 8/8 PASS    |
 | Action Interception in Chrome      | npm --prefix guardrail/extension run test:browser:interception | 0 | 5/5 SUITES  |
-| Live HTTP Approval Integration     | npm --prefix guardrail/extension run test:browser:approval | 0 | 5/5 SUITES  |
-| Security Boundary Hardening        | npm --prefix guardrail/extension run test:browser:security | 0 | 79/79 PASS  |
-| Privacy & Failure Resilience       | npm --prefix guardrail/extension run test:browser:privacy  | 0 | 110/110 PASS|
+| Approval Workflow / Local HTTP Integration (Node) | npm --prefix guardrail/extension run test:browser:approval | 0 | 5/5 SUITES  |
+| Security Boundary Integration (Node/local fixtures) | npm --prefix guardrail/extension run test:browser:security | 0 | 79/79 PASS  |
+| Privacy & Failure Integration (Node/local fixtures) | npm --prefix guardrail/extension run test:browser:privacy  | 0 | 110/110 PASS|
 | Full Dashboard Test Suite          | npm --prefix guardrail/dashboard test             | 0        | 583/583 PASS|
 | Full Extension Unit Test Suite     | npm --prefix guardrail/extension test             | 0        | 48/48 SUITES|
 +------------------------------------+---------------------------------------------------+----------+-------------+
@@ -276,6 +276,6 @@ Based on the confirmed gaps, the following sequence of non-destructive improveme
 
 ## 9. Conclusion
 
-Guardrail UI possesses a rock-solid safety foundation: synchronous action protection, zero-leak privacy sanitization, and decoupled human-confirmed continuation are fully verified in real Chrome.
+Current evidence verifies synchronous interception for explicitly marked controlled test actions in Chrome, and exercises approval, privacy, and continuation invariants through unit and local-service integration tests. It does not establish universal action interception, production-service behavior, or a complete browser-based dashboard-to-extension approval journey.
 
 By addressing the remaining integration gaps—standalone dashboard bootstrapping, popup status observability, standing server daemon availability, and TypeScript configuration decoupling—these focused enhancements will elevate Guardrail from a well-tested collection of components into a unified, seamlessly integrated product.

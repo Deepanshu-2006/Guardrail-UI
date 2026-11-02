@@ -1123,8 +1123,13 @@ async function runApprovalStatusTests(): Promise<void> {
           `State "${st}" does not claim SMS or email sent`
         );
 
-        // Invariant: action must be held
-        assertEquals(computed.isActionHeld, true, `State "${st}" strictly enforces isActionHeld: true`);
+        // The model must report its real state: local_invalid means there is no
+        // confirmed local interception to call held.
+        assertEquals(
+          computed.isActionHeld,
+          st !== 'local_invalid',
+          `State "${st}" accurately reports whether the action is held`
+        );
       }
     }
 

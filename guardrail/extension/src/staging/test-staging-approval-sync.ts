@@ -502,7 +502,11 @@ async function runAllTests(): Promise<void> {
 
     // Inviolable invariants
     const record = controller.getRecord(actionId);
-    assertEquals(record?.state, InterceptionState.HELD, 'Action remains strictly HELD during PENDING state');
+    assertEquals(
+      record?.state,
+      InterceptionState.AWAITING_APPROVAL,
+      'Action enters AWAITING_APPROVAL and its continuation closure remains unexecuted during PENDING'
+    );
     assertEquals(continuationExecCount, 0, 'Continuation closure was NEVER executed');
 
     dismissStagingModal();
@@ -666,9 +670,9 @@ async function runAllTests(): Promise<void> {
     const pill = shadow?.querySelector('.gs-mode-pill');
     assertEquals(pill?.textContent, 'Approval Denied', 'Pill text confirms Approval Denied');
 
-    // Invariant: action is held, never executed
+    // Rejection is terminal: the held closure is invalidated, never executed.
     const record = controller.getRecord(actionId);
-    assertEquals(record?.state, InterceptionState.HELD, 'Action remains HELD in controller');
+    assertEquals(record?.state, InterceptionState.INVALIDATED, 'Rejected action is invalidated in controller');
     assertEquals(continuationExecCount, 0, 'Continuation was not executed');
     assert(getActiveSyncSubscription() === null, 'Polling loop stopped upon terminal REJECTED');
 

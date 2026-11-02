@@ -749,7 +749,11 @@ async function runControlledContinuationIntegrationTests(): Promise<void> {
     assertEquals(validRes.status, ContinuationEligibilityStatus.REJECTED, 'Status is REJECTED');
 
     assertEquals(h.observableEffect.executionCount, 0, 'Controlled handler was strictly NEVER executed (count: 0)');
-    assertEquals(h.controller.getRecord(actionId)?.state, InterceptionState.HELD, 'Action remains safely HELD (Requirement 8)');
+    assertEquals(
+      h.controller.getRecord(actionId)?.state,
+      InterceptionState.INVALIDATED,
+      'Rejected approval invalidates the action and keeps its handler unavailable'
+    );
 
     testButton.remove();
     dismissStagingModal();

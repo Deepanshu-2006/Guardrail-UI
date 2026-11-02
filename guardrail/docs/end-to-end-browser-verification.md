@@ -1,5 +1,7 @@
 # End-to-End Browser Verification & Day 20 Final Security Report
 
+> **Verification scope correction (November 3, 2026):** Inspection of the current package scripts shows that only `test:browser:env` and `test:browser:interception` call `launchControlledChrome`. The approval workflow, security boundary, and privacy/failure scripts execute under Node with local HTTP/TCP fixtures and mock DOMs; they do not launch Chrome. Treat those three results as integration-level evidence, not real-browser CDP runs. The earlier “5 Browser Integration Suites” and “285/285 real-browser” wording below overstates browser coverage.
+
 **Guardrail UI — Day 20: Browser Integration & Real-World Security Validation**  
 **Prompt 7: End-to-End Browser Verification**  
 **Audit & Verification Date:** November 2, 2026  
@@ -271,4 +273,3 @@ For Day 21 and future production hardening, the following engineering tasks are 
 | Production Manifest V3 Compliance           | Build & Code Review   | VERIFIED    |
 +---------------------------------------------+-----------------------+-------------+
 ```
-
