@@ -99,14 +99,9 @@ export class ActionDetector {
    * Handles generic click events via event delegation.
    */
   private handleClick = (event: MouseEvent): void => {
-    const interactiveElement = findInteractiveElement(event.target);
-    if (!interactiveElement) {
-      return;
-    }
-
-    // Controlled Action Interception (Day 8 Integration):
+    // 1. Controlled Action Interception (Day 8 Integration):
     // If the element is explicitly marked with data-guardrail-test-action,
-    // route to interception handler passing the action, element, and original event.
+    // route directly to interception handler passing the action, element, and original event.
     // The decision to halt execution or permit it is governed by the Response Engine integration.
     const controlledTestAction = findControlledTestAction(event.target);
     if (controlledTestAction) {
@@ -117,10 +112,24 @@ export class ActionDetector {
           this.onIntercept(action, controlledTestAction, event);
         } catch (err) {
           console.error('[Guardrail Detector] Error in action interception handler:', err);
+          // FAIL-CLOSED INVARIANT: Synchronously suppress the event if an interception error occurs.
+          // Exceptions must not silently convert a required protective decision into an unrestricted action.
+          try {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          } catch {
+            // Ignore if event cannot be cancelled
+          }
         }
       } else {
         this.emitAction(action);
       }
+      return;
+    }
+
+    // 2. Ambient Interactive Element Detection:
+    const interactiveElement = findInteractiveElement(event.target);
+    if (!interactiveElement) {
       return;
     }
 

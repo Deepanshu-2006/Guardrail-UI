@@ -36,6 +36,33 @@ export const FORM_INPUT_SELECTOR = [
 ].join(', ');
 
 /**
+ * Helper to determine if an event target originates from within Guardrail's internal UI
+ * (e.g. Warning Modal or Staging Mode Shadow DOM host).
+ */
+export function isInternalGuardrailUi(target: Element): boolean {
+  if (
+    target.id === 'guardrail-warning-ui-host' ||
+    target.id === 'guardrail-staging-ui-host' ||
+    Boolean(target.closest?.('#guardrail-warning-ui-host')) ||
+    Boolean(target.closest?.('#guardrail-staging-ui-host'))
+  ) {
+    return true;
+  }
+
+  if (typeof target.getRootNode === 'function') {
+    const root = target.getRootNode();
+    if (root instanceof ShadowRoot && root.host) {
+      const hostId = (root.host as Element).id;
+      if (hostId === 'guardrail-warning-ui-host' || hostId === 'guardrail-staging-ui-host') {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Traverses upwards from the clicked target element to locate the nearest
  * interactive element (such as a button, link, or role="button").
  *
@@ -48,13 +75,7 @@ export function findInteractiveElement(target: EventTarget | null): HTMLElement 
   }
 
   // Ignore interactions originating from within Guardrail's internal UI
-  if (
-    target.id === 'guardrail-warning-ui-host' ||
-    target.closest('#guardrail-warning-ui-host') ||
-    (typeof target.getRootNode === 'function' &&
-      target.getRootNode() instanceof ShadowRoot &&
-      (target.getRootNode() as ShadowRoot).host?.id === 'guardrail-warning-ui-host')
-  ) {
+  if (isInternalGuardrailUi(target)) {
     return null;
   }
 
@@ -83,10 +104,7 @@ export function findControlledTestAction(target: EventTarget | null): HTMLElemen
   }
 
   // Ignore interactions originating from within Guardrail's internal UI
-  if (
-    target.id === 'guardrail-warning-ui-host' ||
-    target.closest('#guardrail-warning-ui-host')
-  ) {
+  if (isInternalGuardrailUi(target)) {
     return null;
   }
 

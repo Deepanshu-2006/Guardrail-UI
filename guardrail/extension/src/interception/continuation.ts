@@ -695,8 +695,12 @@ export class ContinuationManager {
       };
     }
 
-    // Idempotent: If already in CANCELLED state, return success
-    if (record.state === InterceptionState.CANCELLED) {
+    // Idempotent: If already in CANCELLED, INVALIDATED, or EXPIRED terminal state, return success
+    if (
+      record.state === InterceptionState.CANCELLED ||
+      record.state === InterceptionState.INVALIDATED ||
+      record.state === InterceptionState.EXPIRED
+    ) {
       return {
         success: true,
         actionId: id,

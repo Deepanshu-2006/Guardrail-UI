@@ -388,185 +388,218 @@ function bootstrap(): void {
     (action, element, event) => {
       const testAttr = element.getAttribute(GUARDRAIL_TEST_ACTION_ATTR) || 'controlled-test-action';
 
-      // 1. Centralized pipeline evaluation (classification -> prioritized risk rules -> deterministic response precedence)
-      const { classification, risk, decision } = evaluateActionPipeline(action);
-
-      // Log pipeline result for development visibility
-      logPipelineResult(action, classification, risk, decision);
-
-      // 2. Branch strictly based on the response decision:
-      switch (decision.response) {
-        case ResponseAction.ALLOW: {
-          // ALLOW:
-          // * Do not intercept the action.
-          // * Allow the controlled website handler to execute normally.
-          // * Do not create an unnecessary interception record.
-          console.log(
-            `%c[Guardrail Interception]%c ACTION ALLOWED (Score: ${risk.score})\n` +
-            `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
-            `ACTION ID: ${action.id}\n` +
-            `DECISION: ALLOW - Action proceeds without interception. Normal page handler permitted.`,
-            'color: #10b981; font-weight: bold; padding: 2px 6px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
-            'color: inherit; font-weight: normal;'
-          );
-
-          updateControlledTestPageDisplay(action, {
-            response: ResponseAction.ALLOW,
-            risk,
-            decision,
-          });
-
-          // Forward pipeline evaluation to background coordinator (without interception record)
-          dispatchActionToBackground(action, classification, risk, decision);
-          break;
+      try {
+        // Repeated event & duplicate staging prevention:
+        // If an action is already in HELD or active staging state, synchronously cancel the event
+        // to prevent unrestricted execution, and prevent duplicate staging operations from overwriting state.
+        const currentHeld = defaultContinuationManager.getCurrentHeldAction();
+        if (currentHeld) {
+          const existingRecord = defaultInterceptionController.getRecord(currentHeld.action.id);
+          if (
+            existingRecord &&
+            (existingRecord.state === InterceptionState.HELD ||
+              existingRecord.state === InterceptionState.AWAITING_APPROVAL ||
+              existingRecord.state === InterceptionState.READY_FOR_USER_CONFIRMATION)
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            console.warn(
+              `[Guardrail Interception] Synchronously suppressed repeated event: Action [${currentHeld.action.id}] is already held in Staging Mode. Duplicate staging operation prevented.`
+            );
+            return;
+          }
         }
 
-        case ResponseAction.WARN: {
-          // WARN:
-          // * Preserve the existing Guardrail warning behavior.
-          // * Do not treat WARN as authorization to execute an already-held action.
-          // * Do not create an unnecessary interception record if the action has not been held.
-          console.log(
-            `%c[Guardrail Interception]%c ACTION WARNED (Score: ${risk.score})\n` +
-            `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
-            `ACTION ID: ${action.id}\n` +
-            `DECISION: WARN - Displaying advisory modal without creating an interception record. Action is not held.`,
-            'color: #f59e0b; font-weight: bold; padding: 2px 6px; background: rgba(245, 158, 11, 0.1); border-radius: 3px;',
-            'color: inherit; font-weight: normal;'
-          );
+        // 1. Centralized pipeline evaluation (classification -> prioritized risk rules -> deterministic response precedence)
+        const { classification, risk, decision } = evaluateActionPipeline(action);
 
-          updateControlledTestPageDisplay(action, {
-            response: ResponseAction.WARN,
-            risk,
-            decision,
-          });
+        // Log pipeline result for development visibility
+        logPipelineResult(action, classification, risk, decision);
 
-          showWarningModal({
-            action,
-            risk,
-            decision,
-            onContinue: () => {
-              console.log(
-                `[Guardrail UI] User clicked Continue on warning for action: ${action.id}. Action was not held; no held state to authorize.`
-              );
-            },
-            onCancel: () => {
-              console.log(
-                `[Guardrail UI] User clicked Cancel on warning for action: ${action.id}.`
-              );
-            },
-          });
+        // 2. Branch strictly based on the response decision:
+        switch (decision.response) {
+          case ResponseAction.ALLOW: {
+            // ALLOW:
+            // * Do not intercept the action.
+            // * Allow the controlled website handler to execute normally.
+            // * Do not create an unnecessary interception record.
+            console.log(
+              `%c[Guardrail Interception]%c ACTION ALLOWED (Score: ${risk.score})\n` +
+              `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
+              `ACTION ID: ${action.id}\n` +
+              `DECISION: ALLOW - Action proceeds without interception. Normal page handler permitted.`,
+              'color: #10b981; font-weight: bold; padding: 2px 6px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
+              'color: inherit; font-weight: normal;'
+            );
 
-          // Forward pipeline evaluation to background coordinator (without interception record)
-          dispatchActionToBackground(action, classification, risk, decision);
-          break;
+            updateControlledTestPageDisplay(action, {
+              response: ResponseAction.ALLOW,
+              risk,
+              decision,
+            });
+
+            // Forward pipeline evaluation to background coordinator (without interception record)
+            dispatchActionToBackground(action, classification, risk, decision);
+            break;
+          }
+
+          case ResponseAction.WARN: {
+            // WARN:
+            // * Preserve the existing Guardrail warning behavior.
+            // * Do not treat WARN as authorization to execute an already-held action.
+            // * Do not create an unnecessary interception record if the action has not been held.
+            console.log(
+              `%c[Guardrail Interception]%c ACTION WARNED (Score: ${risk.score})\n` +
+              `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
+              `ACTION ID: ${action.id}\n` +
+              `DECISION: WARN - Displaying advisory modal without creating an interception record. Action is not held.`,
+              'color: #f59e0b; font-weight: bold; padding: 2px 6px; background: rgba(245, 158, 11, 0.1); border-radius: 3px;',
+              'color: inherit; font-weight: normal;'
+            );
+
+            updateControlledTestPageDisplay(action, {
+              response: ResponseAction.WARN,
+              risk,
+              decision,
+            });
+
+            showWarningModal({
+              action,
+              risk,
+              decision,
+              onContinue: () => {
+                console.log(
+                  `[Guardrail UI] User clicked Continue on warning for action: ${action.id}. Action was not held; no held state to authorize.`
+                );
+              },
+              onCancel: () => {
+                console.log(
+                  `[Guardrail UI] User clicked Cancel on warning for action: ${action.id}.`
+                );
+              },
+            });
+
+            // Forward pipeline evaluation to background coordinator (without interception record)
+            dispatchActionToBackground(action, classification, risk, decision);
+            break;
+          }
+
+          case ResponseAction.PROTECT: {
+            // PROTECT:
+            // * Prevent the supported test action from executing through the controlled event flow.
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            // * Create an interception record.
+            defaultInterceptionController.register(
+              action,
+              `Controlled test action [${testAttr}] halted pending protection decision.`
+            );
+
+            // * Transition the record to HELD.
+            const heldRecord = defaultInterceptionController.holdAction(
+              action.id,
+              'Action intercepted and held by Guardrail. Normal execution prevented; waiting for a protection decision.'
+            );
+
+            // * Build and cache StagingActionContext for Staging Mode preview
+            try {
+              latestStagingContext = createStagingActionContext({
+                action,
+                interception: heldRecord,
+                risk,
+                classification,
+                decision,
+              });
+            } catch (ctxErr) {
+              console.warn('[Guardrail Content] Error creating StagingActionContext:', ctxErr);
+            }
+
+            // * Show a development message explaining that the action is waiting for a protection decision.
+            console.log(
+              `%c[Guardrail Interception]%c 🛡️ ACTION PROTECTED (HELD)\n` +
+              `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
+              `ACTION ID: ${action.id}\n` +
+              `STATE: ${heldRecord.state}\n` +
+              `SCORE: ${risk.score} (${risk.riskLevel})\n` +
+              `DEVELOPMENT NOTICE: Action is waiting for a protection decision. Normal page execution has been halted.`,
+              'color: #ef4444; font-weight: bold; padding: 2px 6px; background: rgba(239, 68, 68, 0.1); border-radius: 3px;',
+              'color: inherit; font-weight: normal;',
+              {
+                actionId: action.id,
+                record: heldRecord,
+                action,
+                classification,
+                risk,
+                decision,
+              }
+            );
+
+            // * Register in ContinuationManager with a controlled test-action handler
+            defaultContinuationManager.registerHeldAction(
+              action,
+              heldRecord,
+              (act) => {
+                console.log(
+                  `%c[Guardrail Continuation]%c EXECUTED CONTROLLED HANDLER\n` +
+                  `ACTION ID: ${act.id}\n` +
+                  `STATUS: Executed exactly once via explicit continuation mechanism.`,
+                  'color: #10b981; font-weight: bold; padding: 2px 6px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
+                  'color: inherit; font-weight: normal;',
+                  { action: act }
+                );
+
+                try {
+                  document.dispatchEvent(
+                    new CustomEvent('guardrail:controlled-handler-executed', {
+                      detail: {
+                        actionId: act.id,
+                        action: act,
+                        timestamp: new Date().toISOString(),
+                      },
+                      bubbles: true,
+                    })
+                  );
+                } catch (err) {
+                  console.warn('[Guardrail Content] Error dispatching controlled handler executed event:', err);
+                }
+              }
+            );
+
+            updateControlledTestPageDisplay(action, {
+              response: ResponseAction.PROTECT,
+              risk,
+              decision,
+              record: heldRecord,
+            });
+
+            // Forward pipeline evaluation to background coordinator WITH the held interception record
+            dispatchActionToBackground(action, classification, risk, decision, heldRecord);
+
+            // * Automatically present staging interface for user review and decision
+            if (latestStagingContext) {
+              showStagingModal({
+                context: latestStagingContext,
+                state: 'active',
+                controller: defaultInterceptionController,
+                continuationManager: defaultContinuationManager,
+                useRealBackend: true,
+                onCancel: (id) => cancelHeldAction(id),
+              });
+            }
+            break;
+          }
         }
-
-        case ResponseAction.PROTECT: {
-          // PROTECT:
-          // * Prevent the supported test action from executing through the controlled event flow.
+      } catch (err) {
+        // FAIL-CLOSED INVARIANT: Synchronously suppress the event if an interception error occurs.
+        // Exceptions must not silently convert a required protective decision into an unrestricted action.
+        try {
           event.preventDefault();
           event.stopImmediatePropagation();
-
-          // * Create an interception record.
-          defaultInterceptionController.register(
-            action,
-            `Controlled test action [${testAttr}] halted pending protection decision.`
-          );
-
-          // * Transition the record to HELD.
-          const heldRecord = defaultInterceptionController.holdAction(
-            action.id,
-            'Action intercepted and held by Guardrail. Normal execution prevented; waiting for a protection decision.'
-          );
-
-          // * Build and cache StagingActionContext for Staging Mode preview
-          try {
-            latestStagingContext = createStagingActionContext({
-              action,
-              interception: heldRecord,
-              risk,
-              classification,
-              decision,
-            });
-          } catch (ctxErr) {
-            console.warn('[Guardrail Content] Error creating StagingActionContext:', ctxErr);
-          }
-
-          // * Show a development message explaining that the action is waiting for a protection decision.
-          console.log(
-            `%c[Guardrail Interception]%c 🛡️ ACTION PROTECTED (HELD)\n` +
-            `ACTION: ${action.type} ("${action.element?.visibleText || action.element?.id || ''}")\n` +
-            `ACTION ID: ${action.id}\n` +
-            `STATE: ${heldRecord.state}\n` +
-            `SCORE: ${risk.score} (${risk.riskLevel})\n` +
-            `DEVELOPMENT NOTICE: Action is waiting for a protection decision. Normal page execution has been halted.`,
-            'color: #ef4444; font-weight: bold; padding: 2px 6px; background: rgba(239, 68, 68, 0.1); border-radius: 3px;',
-            'color: inherit; font-weight: normal;',
-            {
-              actionId: action.id,
-              record: heldRecord,
-              action,
-              classification,
-              risk,
-              decision,
-            }
-          );
-
-          // * Register in ContinuationManager with a controlled test-action handler
-          defaultContinuationManager.registerHeldAction(
-            action,
-            heldRecord,
-            (act) => {
-              console.log(
-                `%c[Guardrail Continuation]%c EXECUTED CONTROLLED HANDLER\n` +
-                `ACTION ID: ${act.id}\n` +
-                `STATUS: Executed exactly once via explicit continuation mechanism.`,
-                'color: #10b981; font-weight: bold; padding: 2px 6px; background: rgba(16, 185, 129, 0.1); border-radius: 3px;',
-                'color: inherit; font-weight: normal;',
-                { action: act }
-              );
-
-              try {
-                document.dispatchEvent(
-                  new CustomEvent('guardrail:controlled-handler-executed', {
-                    detail: {
-                      actionId: act.id,
-                      action: act,
-                      timestamp: new Date().toISOString(),
-                    },
-                    bubbles: true,
-                  })
-                );
-              } catch (err) {
-                console.warn('[Guardrail Content] Error dispatching controlled handler executed event:', err);
-              }
-            }
-          );
-
-          updateControlledTestPageDisplay(action, {
-            response: ResponseAction.PROTECT,
-            risk,
-            decision,
-            record: heldRecord,
-          });
-
-          // Forward pipeline evaluation to background coordinator WITH the held interception record
-          dispatchActionToBackground(action, classification, risk, decision, heldRecord);
-
-          // * Automatically present staging interface for user review and decision
-          if (latestStagingContext) {
-            showStagingModal({
-              context: latestStagingContext,
-              state: 'active',
-              controller: defaultInterceptionController,
-              continuationManager: defaultContinuationManager,
-              useRealBackend: true,
-              onCancel: (id) => cancelHeldAction(id),
-            });
-          }
-          break;
+        } catch {
+          // ignore if uncancelable
         }
+        console.error('[Guardrail Interception] Error during controlled action interception; failing closed:', err);
       }
     }
   );
@@ -677,6 +710,26 @@ function initResolutionControls(): void {
         detailsEl.style.display = 'block';
       }
       return;
+    }
+
+    // Context & DOM Attachment Guard: Verify target element is still attached to the active DOM
+    if (held?.action?.element?.id && typeof document !== 'undefined') {
+      const el = document.getElementById(held.action.element.id);
+      if (!el) {
+        const err = `Target element "#${held.action.element.id}" is no longer attached to document DOM tree. Cannot continue detached action.`;
+        console.warn(`[Guardrail Continuation] Rejection: ${err}`);
+        defaultContinuationManager.invalidateHeldAction(actionId, err);
+        latestStagingContext = null;
+        disableControls();
+        if (isStagingModalActive()) {
+          dismissStagingModal();
+        }
+        if (detailsEl) {
+          detailsEl.textContent = `[Guardrail Continuation Rejection] ${err}`;
+          detailsEl.style.display = 'block';
+        }
+        return;
+      }
     }
 
     const result = defaultContinuationManager.continueAction(
