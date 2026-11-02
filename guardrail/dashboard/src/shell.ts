@@ -277,6 +277,7 @@ export class DashboardShell {
       pendingCount: this.state.pendingRequests.length,
       onViewChange: (view) => this.setActiveView(view),
     });
+    this.sidebarEl.id = 'gd-primary-sidebar';
 
     const accountArea = renderAccountArea({
       profile: this.state.contactProfile,
@@ -298,7 +299,9 @@ export class DashboardShell {
     const mobileToggle = document.createElement('button');
     mobileToggle.type = 'button';
     mobileToggle.className = 'gd-mobile-toggle';
-    mobileToggle.setAttribute('aria-label', 'Toggle Navigation Menu');
+    mobileToggle.setAttribute('aria-label', 'Open navigation menu');
+    mobileToggle.setAttribute('aria-controls', 'gd-primary-sidebar');
+    mobileToggle.setAttribute('aria-expanded', 'false');
     mobileToggle.textContent = '☰';
     mobileToggle.addEventListener('click', () => this.toggleMobileSidebar());
 
@@ -1090,6 +1093,11 @@ export class DashboardShell {
       } else {
         this.sidebarEl.classList.remove('open');
       }
+    }
+    const toggle = this.rootContainer.querySelector<HTMLButtonElement>('.gd-mobile-toggle');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', String(this.isMobileSidebarOpen));
+      toggle.setAttribute('aria-label', this.isMobileSidebarOpen ? 'Close navigation menu' : 'Open navigation menu');
     }
   }
 

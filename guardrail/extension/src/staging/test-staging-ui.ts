@@ -566,8 +566,13 @@ console.log('\n▶ Test 3: Dismissal Lifecycle & Callbacks');
 
   // Subtest 3C: Escape key dismissal
   let escapeDismissCalled = false;
+  let escapeContinueCalled = false;
   showStagingModal({
     context: createSampleContext(),
+    onContinue: () => {
+      escapeContinueCalled = true;
+      return { success: true, actionId: 'escape-should-not-continue', executed: true, executionCount: 1 };
+    },
     onDismiss: () => {
       escapeDismissCalled = true;
     },
@@ -575,6 +580,7 @@ console.log('\n▶ Test 3: Dismissal Lifecycle & Callbacks');
 
   mockWin.dispatchEvent({ type: 'keydown', key: 'Escape' });
   assertEquals(escapeDismissCalled, true, 'onDismiss called on Escape keydown');
+  assertEquals(escapeContinueCalled, false, 'Escape dismisses without invoking continuation');
   assertEquals(isStagingModalActive(), false, 'Modal dismissed after Escape key');
 }
 

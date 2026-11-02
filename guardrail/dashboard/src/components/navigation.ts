@@ -55,7 +55,6 @@ export function renderNavigation(props: NavigationProps): HTMLElement {
 
   const navList = document.createElement('ul');
   navList.className = 'gd-nav-list';
-  navList.setAttribute('role', 'menubar');
 
   const items: Array<{ view: DashboardView; label: string; icon: string; count?: number }> = [
     { view: 'overview', label: 'Overview', icon: '📊' },
@@ -65,12 +64,10 @@ export function renderNavigation(props: NavigationProps): HTMLElement {
 
   for (const item of items) {
     const li = document.createElement('li');
-    li.setAttribute('role', 'none');
 
     const link = document.createElement('a');
     link.href = `#${item.view}`;
     link.className = `gd-nav-link ${props.activeView === item.view ? 'active' : ''}`;
-    link.setAttribute('role', 'menuitem');
     if (props.activeView === item.view) {
       link.setAttribute('aria-current', 'page');
     }

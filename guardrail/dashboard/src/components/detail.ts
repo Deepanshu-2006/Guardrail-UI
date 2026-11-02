@@ -742,7 +742,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       approveBtn.type = 'button';
       approveBtn.className = 'gd-btn-decision gd-btn-approve';
       approveBtn.textContent = 'Approve Action';
-      approveBtn.setAttribute('aria-haspopup', 'dialog');
       if (props.isSubmittingDecision || props.isBackendUnavailable) {
         approveBtn.disabled = true;
         if (props.isBackendUnavailable) {
@@ -761,7 +760,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       rejectBtn.type = 'button';
       rejectBtn.className = 'gd-btn-decision gd-btn-reject';
       rejectBtn.textContent = 'Reject Action';
-      rejectBtn.setAttribute('aria-haspopup', 'dialog');
       if (props.isSubmittingDecision || props.isBackendUnavailable) {
         rejectBtn.disabled = true;
         if (props.isBackendUnavailable) {
@@ -784,12 +782,13 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       const isApprove = activeConfirmation === 'APPROVED';
       const confirmBox = document.createElement('div');
       confirmBox.className = `gd-decision-confirm-box ${isApprove ? 'confirm-approve' : 'confirm-reject'}`;
-      confirmBox.setAttribute('role', 'dialog');
-      confirmBox.setAttribute('aria-modal', 'false');
-      confirmBox.setAttribute('aria-label', isApprove ? 'Confirm Approval' : 'Confirm Rejection');
+      confirmBox.setAttribute('role', 'group');
+      confirmBox.setAttribute('aria-labelledby', 'gd-decision-confirm-title');
 
       const confirmTitle = document.createElement('h4');
+      confirmTitle.id = 'gd-decision-confirm-title';
       confirmTitle.className = 'gd-confirm-title';
+      confirmTitle.setAttribute('tabindex', '-1');
       confirmTitle.textContent = isApprove ? 'Confirm Approval Decision' : 'Confirm Rejection Decision';
       confirmBox.appendChild(confirmTitle);
 
@@ -817,8 +816,8 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
 
         const warnText = document.createElement('p');
         warnText.textContent = isApprove
-          ? 'Approving this request grants reviewer consent for an elevated-risk operation. Verify that you recognize this interaction and intend for the user to proceed.'
-          : 'Rejecting this request will permanently deny reviewer consent for this elevated-risk operation.';
+          ? 'Approving records reviewer consent for an elevated-risk request. It does not run the action. Verify that you recognize this interaction; the extension must revalidate locally and the user must confirm any supported continuation.'
+          : 'Rejecting records that reviewer consent was denied. The dashboard cannot change or verify the action’s current browser state.';
 
         warnContent.appendChild(warnHeading);
         warnContent.appendChild(warnText);
@@ -829,8 +828,8 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
         const infoText = document.createElement('p');
         infoText.className = 'gd-confirm-desc';
         infoText.textContent = isApprove
-          ? 'Recording reviewer consent will allow the user to proceed with this action in Staging Mode.'
-          : 'Rejecting this request will permanently prevent the held browser action from executing.';
+          ? 'This records reviewer consent only. It does not run the action; the extension must revalidate locally and the user must confirm any supported continuation.'
+          : 'This records rejection of the request. The dashboard cannot change or verify the action’s current browser state.';
         confirmBox.appendChild(infoText);
       }
 
@@ -897,6 +896,10 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
         if (props.isSubmittingDecision) return;
         activeConfirmation = null;
         updateDecisionControls();
+        const returnButton = decisionControlsContainer.querySelector<HTMLButtonElement>(
+          isApprove ? '.gd-btn-approve' : '.gd-btn-reject'
+        );
+        returnButton?.focus();
       });
 
       confirmActions.appendChild(submitBtn);
@@ -904,6 +907,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       confirmBox.appendChild(confirmActions);
 
       decisionControlsContainer.appendChild(confirmBox);
+      confirmTitle.focus();
     }
   };
 

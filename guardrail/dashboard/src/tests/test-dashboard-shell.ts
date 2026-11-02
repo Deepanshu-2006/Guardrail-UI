@@ -159,7 +159,9 @@ class MockDOMElement {
     this.dispatchEvent({ type: 'click', defaultPrevented: false });
   }
 
-  focus(): void {}
+  focus(): void {
+    (globalThis as any).document.activeElement = this;
+  }
 
   private findSimpleMatches(part: string): MockDOMElement[] {
     const matches: MockDOMElement[] = [];
@@ -221,6 +223,7 @@ class MockDOMElement {
 
 // Global environment mock
 const mockDocument = {
+  activeElement: null as MockDOMElement | null,
   createElement(tag: string): MockDOMElement {
     return new MockDOMElement(tag);
   },
@@ -372,6 +375,8 @@ async function runDashboardTests() {
     // Overview should have aria-current="page"
     const navLinks = rootElement.querySelectorAll('.gd-nav-link');
     assertEquals(navLinks.length, 3, 'Renders 3 navigation links (Overview, Pending, History)');
+    assertEquals(rootElement.querySelector('.gd-nav-list')?.getAttribute('role'), null, 'Navigation uses native list semantics instead of an unsupported ARIA menubar pattern');
+    assertEquals(navLinks[0]?.getAttribute('role'), null, 'Navigation anchors retain native link semantics');
     assertEquals(navLinks[0]?.getAttribute('aria-current'), 'page', 'Overview link has aria-current="page"');
 
     // Switch to Pending
@@ -1634,6 +1639,9 @@ async function runDashboardTests() {
 
     const confirmTitle = rootElement.querySelector('.gd-confirm-title');
     assertEquals(confirmTitle?.textContent, 'Confirm Approval Decision', 'Confirmation title is accurate');
+    assertEquals(confirmBox?.getAttribute('role'), 'group', 'Inline confirmation is exposed as a labelled group, not a modal dialog');
+    assertEquals(confirmBox?.getAttribute('aria-labelledby'), 'gd-decision-confirm-title', 'Confirmation group is labelled by its heading');
+    assertEquals(mockDocument.activeElement, confirmTitle, 'Focus moves to the confirmation heading after selecting approval');
 
     // Enter optional reviewer note
     const reasonInput = rootElement.querySelector('#decision-reason-input') as any;
@@ -1822,6 +1830,7 @@ async function runDashboardTests() {
 
     const restoredApproveBtn = rootElement.querySelector('.gd-btn-approve');
     assert(restoredApproveBtn !== null, 'Initial Approve Action button restored');
+    assertEquals(mockDocument.activeElement, restoredApproveBtn, 'Cancelling confirmation returns focus to the originating decision button');
     assertEquals(networkCallCount, 0, 'Zero network calls dispatched when decision is cancelled');
 
     shell.destroy();
@@ -2691,14 +2700,19 @@ async function runDashboardTests() {
     // Mobile sidebar toggle
     const mobileBtn = rootElement.querySelector('.gd-mobile-toggle');
     assert(mobileBtn !== null, 'Mobile toggle button rendered');
-    assertEquals(mobileBtn?.getAttribute('aria-label'), 'Toggle Navigation Menu', 'Accessible mobile toggle label');
+    assertEquals(mobileBtn?.getAttribute('aria-label'), 'Open navigation menu', 'Mobile toggle has a clear initial action label');
+    assertEquals(mobileBtn?.getAttribute('aria-controls'), 'gd-primary-sidebar', 'Mobile toggle identifies the controlled navigation region');
+    assertEquals(mobileBtn?.getAttribute('aria-expanded'), 'false', 'Mobile navigation starts collapsed');
 
     shell.toggleMobileSidebar();
     const sidebar = rootElement.querySelector('.gd-sidebar');
     assert(sidebar?.classList.contains('open') ?? false, 'Sidebar has .open class after toggle');
+    assertEquals(mobileBtn?.getAttribute('aria-expanded'), 'true', 'Mobile toggle announces expanded navigation');
+    assertEquals(mobileBtn?.getAttribute('aria-label'), 'Close navigation menu', 'Mobile toggle label updates to its close action');
 
     shell.toggleMobileSidebar();
     assert(!(sidebar?.classList.contains('open') ?? false), 'Sidebar removes .open class after second toggle');
+    assertEquals(mobileBtn?.getAttribute('aria-expanded'), 'false', 'Mobile toggle announces collapsed navigation');
 
     shell.destroy();
   }
