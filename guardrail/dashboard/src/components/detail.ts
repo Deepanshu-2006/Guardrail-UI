@@ -46,6 +46,8 @@ export interface RequestDetailViewProps {
   decisionSuccessMessage?: string | null;
   /** Callback invoked when the user confirms their decision */
   onDecisionSubmit?: (decision: 'APPROVED' | 'REJECTED', reason?: string) => void | Promise<unknown>;
+  /** Whether backend service is confirmed unreachable or in error */
+  isBackendUnavailable?: boolean;
 }
 
 /**
@@ -206,6 +208,18 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
         'The review deadline elapsed before a decision was recorded. The held action has timed out and cannot proceed without a fresh review.';
       break;
 
+    case 'UNAVAILABLE':
+      titleEl.textContent = '⚠️ Status Unavailable';
+      descEl.textContent =
+        'The current status of this approval request could not be verified by the backend. It may have been removed or the service is temporarily unreachable.';
+      break;
+
+    case 'FAILED':
+      titleEl.textContent = '⚠️ Evaluation Failed';
+      descEl.textContent =
+        'The approval request encountered a processing or authorization failure and cannot proceed.';
+      break;
+
     default:
       titleEl.textContent = `Status: ${status}`;
       descEl.textContent = 'This request is in an authoritative server-recorded state.';
@@ -339,6 +353,8 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   const statusPill = document.createElement('span');
   const statusClass = (req.status || ApprovalStatus.PENDING).toLowerCase();
   statusPill.className = `gd-detail-status-pill ${statusClass}`;
+  statusPill.setAttribute('role', 'status');
+  statusPill.setAttribute('data-status', statusClass);
   statusPill.textContent = req.status || ApprovalStatus.PENDING;
 
   dHeader.appendChild(titleGroup);
@@ -684,6 +700,27 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     return container;
   }
 
+  // Backend Unavailable Notice (Task 3 & 5)
+  if (props.isBackendUnavailable) {
+    const unavailNotice = document.createElement('div');
+    unavailNotice.className = 'gd-decision-error-banner gd-backend-offline-banner';
+    unavailNotice.setAttribute('role', 'alert');
+
+    const unavailIcon = document.createElement('span');
+    unavailIcon.className = 'gd-error-icon';
+    unavailIcon.setAttribute('aria-hidden', 'true');
+    unavailIcon.textContent = '⚠️';
+
+    const unavailText = document.createElement('span');
+    unavailText.className = 'gd-decision-error-text';
+    unavailText.textContent =
+      'Backend Unavailable: Decisions cannot be committed while the approval service is unreachable. Please verify network connectivity and retry.';
+
+    unavailNotice.appendChild(unavailIcon);
+    unavailNotice.appendChild(unavailText);
+    decisionCard.appendChild(unavailNotice);
+  }
+
   // Interactive Decision Submission Flow (Two-Step Deliberate Confirmation)
   const decisionControlsContainer = document.createElement('div');
   decisionControlsContainer.className = 'gd-decision-controls-container';
@@ -706,12 +743,16 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       approveBtn.className = 'gd-btn-decision gd-btn-approve';
       approveBtn.textContent = 'Approve Action';
       approveBtn.setAttribute('aria-haspopup', 'dialog');
-      if (props.isSubmittingDecision) {
+      if (props.isSubmittingDecision || props.isBackendUnavailable) {
         approveBtn.disabled = true;
-        approveBtn.setAttribute('aria-busy', 'true');
+        if (props.isBackendUnavailable) {
+          approveBtn.title = 'Approval backend is currently unreachable';
+        } else {
+          approveBtn.setAttribute('aria-busy', 'true');
+        }
       }
       approveBtn.addEventListener('click', () => {
-        if (props.isSubmittingDecision) return;
+        if (props.isSubmittingDecision || props.isBackendUnavailable) return;
         activeConfirmation = 'APPROVED';
         updateDecisionControls();
       });
@@ -721,12 +762,16 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       rejectBtn.className = 'gd-btn-decision gd-btn-reject';
       rejectBtn.textContent = 'Reject Action';
       rejectBtn.setAttribute('aria-haspopup', 'dialog');
-      if (props.isSubmittingDecision) {
+      if (props.isSubmittingDecision || props.isBackendUnavailable) {
         rejectBtn.disabled = true;
-        rejectBtn.setAttribute('aria-busy', 'true');
+        if (props.isBackendUnavailable) {
+          rejectBtn.title = 'Approval backend is currently unreachable';
+        } else {
+          rejectBtn.setAttribute('aria-busy', 'true');
+        }
       }
       rejectBtn.addEventListener('click', () => {
-        if (props.isSubmittingDecision) return;
+        if (props.isSubmittingDecision || props.isBackendUnavailable) return;
         activeConfirmation = 'REJECTED';
         updateDecisionControls();
       });

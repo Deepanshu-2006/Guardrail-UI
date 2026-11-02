@@ -35,6 +35,14 @@ export interface PendingApprovalsProps {
   filters?: RequestFilters;
   /** Callback when user changes filter settings */
   onFiltersChange?: (filters: RequestFilters) => void;
+  /** Whether displayed requests are cached/stale due to recent sync failure */
+  isStale?: boolean;
+  /** Whether backend service is confirmed unreachable or in error */
+  isBackendUnavailable?: boolean;
+  /** Timestamp of last successful synchronization */
+  lastSynchronizedAt?: Date | null;
+  /** Whether refresh is currently in progress */
+  isRefreshing?: boolean;
 }
 
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
@@ -64,29 +72,75 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
 
+  // Header Actions (Sync status & Refresh)
+  const headerActions = document.createElement('div');
+  headerActions.className = 'gd-pending-header-actions';
+
+  if (props.lastSynchronizedAt) {
+    const syncTime = document.createElement('span');
+    syncTime.className = 'gd-last-sync-time';
+    syncTime.setAttribute('aria-live', 'polite');
+    const timeStr = props.lastSynchronizedAt.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    syncTime.textContent = `Last synced: ${timeStr}`;
+    headerActions.appendChild(syncTime);
+  }
+
   // Refresh Action Button
   if (props.onRefresh) {
+    const isBusy = props.status === 'loading' || Boolean(props.isRefreshing);
     const refreshBtn = document.createElement('button');
     refreshBtn.type = 'button';
     refreshBtn.className = 'gd-btn-refresh';
     refreshBtn.setAttribute('aria-label', 'Refresh pending approval requests');
-    if (props.status === 'loading') {
+    if (isBusy) {
       refreshBtn.disabled = true;
       refreshBtn.setAttribute('aria-busy', 'true');
     }
     refreshBtn.innerHTML = `
-      <svg class="gd-icon ${props.status === 'loading' ? 'gd-spin' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg class="gd-icon ${isBusy ? 'gd-spin' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
       </svg>
-      <span>${props.status === 'loading' ? 'Refreshing...' : 'Refresh'}</span>
+      <span>${isBusy ? 'Refreshing...' : 'Refresh'}</span>
     `;
+    let refreshClicked = false;
     refreshBtn.addEventListener('click', () => {
+      if (refreshClicked || isBusy) return;
+      refreshClicked = true;
       props.onRefresh?.();
     });
-    header.appendChild(refreshBtn);
+    headerActions.appendChild(refreshBtn);
   }
 
+  header.appendChild(headerActions);
   section.appendChild(header);
+
+  // Stale Data Notice (Task 3: Displayed when cached requests exist but latest refresh failed)
+  const isStaleData = Boolean(props.isStale || (props.status === 'error' && props.requests.length > 0));
+  if (isStaleData) {
+    const staleBanner = document.createElement('div');
+    staleBanner.className = 'gd-stale-banner';
+    staleBanner.setAttribute('role', 'alert');
+
+    const staleIcon = document.createElement('span');
+    staleIcon.className = 'gd-error-icon';
+    staleIcon.setAttribute('aria-hidden', 'true');
+    staleIcon.textContent = '⚠️';
+
+    const staleText = document.createElement('span');
+    staleText.className = 'gd-stale-text';
+    const cachedTimeStr = props.lastSynchronizedAt
+      ? ` (${props.lastSynchronizedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`
+      : '';
+    staleText.textContent = `Displaying cached records${cachedTimeStr}. Backend service is currently unreachable; records may be out of date.`;
+
+    staleBanner.appendChild(staleIcon);
+    staleBanner.appendChild(staleText);
+    section.appendChild(staleBanner);
+  }
 
   // Error Banner (if error state)
   if (props.status === 'error' && props.errorMessage) {
@@ -111,11 +165,15 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     errorBanner.appendChild(errorContent);
 
     if (props.onRefresh) {
+      let isRetrying = false;
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
       retryBtn.className = 'gd-btn-retry';
       retryBtn.textContent = 'Retry';
       retryBtn.addEventListener('click', () => {
+        if (isRetrying || props.status === 'loading' || props.isRefreshing) return;
+        isRetrying = true;
+        retryBtn.disabled = true;
         props.onRefresh?.();
       });
       errorBanner.appendChild(retryBtn);
@@ -160,10 +218,51 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     skeletonCard.appendChild(s2);
     skeletonCard.appendChild(s3);
     listPane.appendChild(skeletonCard);
+  } else if (props.status === 'error' && props.requests.length === 0) {
+    // Failed request / Unavailable backend when list is empty (Task 3: Never confuse empty with failed)
+    const errorPlaceholder = document.createElement('div');
+    errorPlaceholder.className = 'gd-placeholder gd-error-placeholder';
+
+    const icon = document.createElement('div');
+    icon.className = 'gd-placeholder-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '⚠️';
+
+    const pTitle = document.createElement('h2');
+    pTitle.className = 'gd-placeholder-title';
+    pTitle.textContent = props.isBackendUnavailable
+      ? 'Approval Backend Unavailable'
+      : 'Unable to Load Approval Requests';
+
+    const pText = document.createElement('p');
+    pText.className = 'gd-placeholder-text';
+    pText.textContent =
+      props.errorMessage ||
+      'A network or service failure prevented retrieving pending requests. Local safety isolation is maintained.';
+
+    errorPlaceholder.appendChild(icon);
+    errorPlaceholder.appendChild(pTitle);
+    errorPlaceholder.appendChild(pText);
+
+    if (props.onRefresh) {
+      let isRetrying = false;
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'gd-btn-retry';
+      retryBtn.textContent = 'Retry Connection';
+      retryBtn.addEventListener('click', () => {
+        if (isRetrying || props.status === 'loading' || props.isRefreshing) return;
+        isRetrying = true;
+        retryBtn.disabled = true;
+        props.onRefresh?.();
+      });
+      errorPlaceholder.appendChild(retryBtn);
+    }
+    listPane.appendChild(errorPlaceholder);
   } else if (props.requests.length === 0) {
-    // Empty Placeholder
+    // Genuinely Empty Placeholder (All Clear)
     const emptyPlaceholder = document.createElement('div');
-    emptyPlaceholder.className = 'gd-placeholder';
+    emptyPlaceholder.className = 'gd-placeholder gd-empty-state';
 
     const icon = document.createElement('div');
     icon.className = 'gd-placeholder-icon';
@@ -298,6 +397,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     decisionErrorMessage: props.decisionErrorMessage,
     decisionSuccessMessage: props.decisionSuccessMessage,
     onDecisionSubmit: props.onDecisionSubmit,
+    isBackendUnavailable: props.isBackendUnavailable,
   });
 
   layout.appendChild(detailPane);
