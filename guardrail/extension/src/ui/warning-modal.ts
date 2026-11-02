@@ -47,6 +47,7 @@ export const HOST_ELEMENT_ID = 'guardrail-warning-ui-host';
 
 let activeEscapeHandler: ((e: KeyboardEvent) => void) | null = null;
 let activeTabTrapHandler: ((e: KeyboardEvent) => void) | null = null;
+let previousActiveElement: HTMLElement | null = null;
 
 /**
  * Checks whether the Guardrail warning modal is currently present in the DOM.
@@ -73,6 +74,16 @@ export function dismissWarningModal(): void {
   if (existingHost) {
     existingHost.remove();
   }
+
+  // Restore focus to previous active element upon dismissal
+  if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+    try {
+      previousActiveElement.focus();
+    } catch {
+      // Ignore focus errors in mock or headless environments
+    }
+    previousActiveElement = null;
+  }
 }
 
 /**
@@ -84,6 +95,11 @@ export function dismissWarningModal(): void {
 export function showWarningModal(props: WarningModalProps): () => void {
   // 1. Remove any previous instance to prevent stacking
   dismissWarningModal();
+
+  // Capture active element before opening modal for focus restoration
+  if (typeof document !== 'undefined' && document.activeElement) {
+    previousActiveElement = document.activeElement as HTMLElement;
+  }
 
   // 2. Create the transient host container
   const host = document.createElement('div');

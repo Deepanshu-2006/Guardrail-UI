@@ -397,6 +397,21 @@ function bootstrap(): void {
 
         if (cancelControlledActionUntilPolicyInitialized(getConfigHealthStatus(), event)) {
           console.warn('[Guardrail Interception] Controlled action was synchronously suppressed while policy configuration initializes; retry after initialization.');
+          if (typeof document !== 'undefined') {
+            const statusEl = document.getElementById('interception-status-result');
+            const detailsEl = document.getElementById('interception-details');
+            if (statusEl) {
+              statusEl.textContent = 'INITIALIZING (Action Suppressed - Retry After Initialization)';
+              statusEl.style.background = 'rgba(245, 158, 11, 0.15)';
+              statusEl.style.color = '#fbbf24';
+              statusEl.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+            }
+            if (detailsEl) {
+              detailsEl.textContent =
+                '[Guardrail Policy] Policy configuration is initializing. Controlled action was synchronously suppressed to prevent unverified execution. Please retry your action after initialization completes.';
+              detailsEl.style.display = 'block';
+            }
+          }
           return;
         }
 

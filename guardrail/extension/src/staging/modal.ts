@@ -2148,7 +2148,7 @@ export function setStagingUIState(
           'error',
           'Approval Denied by Trusted Contact',
           details?.description ||
-            `An authorized contact (${reviewer}) reviewed and denied this request (${reqId}). The held action remains safely blocked and will not be executed.`
+            `An authorized contact (${reviewer}) reviewed and denied this request (${reqId}). The held action remains safely paused and cannot proceed.`
         );
       }
       if (reqBtn) {
