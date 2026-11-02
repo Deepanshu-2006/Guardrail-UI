@@ -18,7 +18,7 @@
 import { ActionCategory, ActionType } from '../types/actions.js';
 import { ResponseAction } from '../types/response.js';
 import { RiskPolicyId } from '../types/policy.js';
-import { RiskSignalId, RiskEvaluationStatus } from '../types/risk.js';
+import { RiskSignalId, RiskEvaluationStatus, RiskLevel } from '../types/risk.js';
 import { ConfigHealthStatus } from '../types/config.js';
 import {
   DEFAULT_GUARDRAIL_POLICY_CONFIG,
@@ -38,7 +38,8 @@ import {
   PolicyConfigRegistry,
   defaultPolicyConfigRegistry,
 } from './registry.js';
-import { evaluateActionPipeline } from '../response/engine.js';
+import { evaluateActionPipeline, decideResponse } from '../response/engine.js';
+import { assessRisk } from '../risk/engine.js';
 import { InterceptionController } from '../interception/controller.js';
 import { InterceptionState } from '../types/interception.js';
 
@@ -569,6 +570,16 @@ async function runAllTests(): Promise<void> {
       RiskEvaluationStatus.FAILED,
       'Canonical evaluation result status is FAILED'
     );
+
+    // 7.3 Direct callers of assessRisk and decideResponse also fail closed directly
+    const directRisk = assessRisk(routineAction);
+    assertEquals(directRisk.status, RiskEvaluationStatus.FAILED, 'Direct assessRisk fails closed with FAILED status');
+    assertEquals(directRisk.riskLevel, RiskLevel.CRITICAL, 'Direct assessRisk fails closed to CRITICAL riskLevel');
+    assertEquals(directRisk.score, 100, 'Direct assessRisk fails closed to score 100');
+
+    const directDecision = decideResponse(directRisk);
+    assertEquals(directDecision.response, ResponseAction.PROTECT, 'Direct decideResponse fails closed to PROTECT');
+    assertEquals(directDecision.status, RiskEvaluationStatus.FAILED, 'Direct decideResponse has FAILED status');
 
     // Reset registry back to default HEALTHY state for subsequent tests
     defaultPolicyConfigRegistry.resetToDefault();

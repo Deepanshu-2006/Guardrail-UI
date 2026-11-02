@@ -134,6 +134,19 @@ export class ResponseEngine {
       });
     }
 
+    // 2. Guard against policy configuration failure (fail closed strictly to PROTECT)
+    if (isConfigFailed()) {
+      const lastErr = getConfigLastError();
+      return createFailedResponseDecision(
+        assessment.actionId,
+        {
+          code: lastErr?.code || 'CONFIG_LOAD_FAILED',
+          message: `Essential policy configuration unavailable: ${lastErr?.message || 'Configuration loading failed'}. Policy resolved fail-closed to PROTECT.`,
+        },
+        assessment
+      );
+    }
+
     // 2. Guard against upstream risk evaluation failure (fail closed to PROTECT)
     if (assessment.status === RiskEvaluationStatus.FAILED || assessment.success === false) {
       return createFailedResponseDecision(

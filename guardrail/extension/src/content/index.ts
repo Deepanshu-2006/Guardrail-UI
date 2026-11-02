@@ -50,6 +50,11 @@ import {
   sanitizeForDiagnostics,
   sanitizeUrlForDiagnostics,
 } from '../utils/index.js';
+import {
+  loadPolicyConfigFromStorage,
+  reloadPolicyConfig,
+} from '../config/index.js';
+import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 
 let latestStagingContext: StagingActionContext | null = null;
 let cancelHeldAction: (targetActionId?: string) => CancellationResult = (targetActionId) => {
@@ -309,6 +314,22 @@ function updateControlledTestPageDisplay(
  */
 function bootstrap(): void {
   const pageInfo = extractPageInfo();
+
+  // Load persisted policy configuration from storage (safe, fail-closed defaults)
+  loadPolicyConfigFromStorage().catch((err) => {
+    console.warn('[Guardrail Content] Failed initial policy configuration load from storage:', err);
+  });
+
+  // Listen for storage changes across tabs to keep policy configuration synchronized
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
+        reloadPolicyConfig().catch((err) => {
+          console.warn('[Guardrail Content] Failed to reload policy configuration after storage change:', err);
+        });
+      }
+    });
+  }
 
   console.log(
     '%c[Guardrail Content]%c End-to-End Pipeline (Event → Detector → Classifier → Risk → Response) initialized',

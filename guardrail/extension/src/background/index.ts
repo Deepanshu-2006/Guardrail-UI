@@ -29,6 +29,11 @@ import { validateApprovalRequestId } from '../approval/model.js';
 import {
   GuardrailGetApprovalStatusResponse,
 } from '../types/approval.js';
+import {
+  loadPolicyConfigFromStorage,
+  reloadPolicyConfig,
+} from '../config/index.js';
+import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 
 const manifest =
   typeof chrome !== 'undefined' && chrome.runtime?.getManifest
@@ -421,6 +426,22 @@ console.log(
     startedAt: startTime,
   }
 );
+
+// Load persisted policy configuration from storage on background service worker activation
+loadPolicyConfigFromStorage().catch((err) => {
+  console.warn('[Guardrail Background] Failed initial policy configuration load from storage:', err);
+});
+
+// Register storage listener to reload policy configuration across contexts
+if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
+      reloadPolicyConfig().catch((err) => {
+        console.warn('[Guardrail Background] Failed to reload policy configuration after storage change:', err);
+      });
+    }
+  });
+}
 
 // Register runtime listeners when running inside browser extension runtime
 if (typeof chrome !== 'undefined' && chrome.runtime) {

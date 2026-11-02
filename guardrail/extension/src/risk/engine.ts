@@ -36,6 +36,8 @@ import {
   getRiskThresholds,
   GuardrailPolicyConfig,
   RiskThresholdSettings,
+  isConfigFailed,
+  getConfigLastError,
 } from '../config/index.js';
 
 /**
@@ -223,6 +225,15 @@ export class RiskEngine {
       return createFailedRiskAssessment(fallbackId, {
         code: 'INVALID_ACTION_PAYLOAD',
         message: 'Action payload is invalid, null, or missing a valid actionId.',
+      });
+    }
+
+    // 2. Fail closed if policy configuration is in a FAILED health state
+    if (isConfigFailed()) {
+      const lastErr = getConfigLastError();
+      return createFailedRiskAssessment(action.id, {
+        code: lastErr?.code || 'CONFIG_LOAD_FAILED',
+        message: `Essential policy configuration unavailable: ${lastErr?.message || 'Configuration loading failed'}. Evaluated fail-closed to CRITICAL risk.`,
       });
     }
 
