@@ -203,6 +203,29 @@
           <div id="dynamic-button-container" style="display: flex; gap: 8px; margin-top: 8px;"></div>
         </div>
 
+        <!-- Day 20: Real-Browser Boundary & Synthetic Action Verification -->
+        <div class="field-group" style="margin-top: 16px; padding: 12px; background: rgba(168, 85, 247, 0.04); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 8px;">
+          <label class="field-label" style="color: #c084fc;">Day 20 Real-Browser Boundary & Synthetic Test Controls</label>
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 10px; line-height: 1.4;">
+            Synthetic controls for verifying boundary truthfulness, invalid marker handling, and harmless navigation in a live browser:
+          </p>
+          <div class="button-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+            <button id="btn-unsupported-unmarked-critical" type="button" class="btn btn-secondary" style="border-color: #ef4444; color: #f87171; font-size: 13px;">
+              ⚠️ Unmarked Critical Action (Ambient Limitation Test - NOT Held)
+            </button>
+            <button id="btn-invalid-empty-marker" type="button" data-guardrail-test-action="" class="btn btn-secondary" style="border-color: #64748b; color: #94a3b8; font-size: 13px;">
+              ⚠️ Empty Test Action Marker
+            </button>
+            <button id="btn-detached-trigger" type="button" class="btn btn-secondary" style="border-color: #64748b; color: #94a3b8; font-size: 13px;">
+              ⚠️ Detached Element Click Test
+            </button>
+            <a id="test-harmless-link" href="#harmless-anchor" class="test-link" style="color: #38bdf8; display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; text-decoration: none; font-size: 13px;">
+              🔗 Harmless Anchor Link
+            </a>
+          </div>
+          <div id="harmless-anchor" style="font-size: 11px; color: #64748b; margin-top: 4px;">[Anchor Destination: Page remains at local harmless section]</div>
+        </div>
+
         <!-- 2. Form with Inputs, Textarea, Select, and Submit -->
         <form id="test-form" class="test-form">
           <!-- Text Input -->
