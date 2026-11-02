@@ -50,6 +50,7 @@ import {
   defaultInterceptionController,
   type InterceptionController,
 } from '../interception/controller.js';
+import { isTerminalInterceptionState } from '../interception/transitions.js';
 import { createApprovalRequestIntent } from './context.js';
 import {
   dispatchApprovalRequestToBackground,
@@ -642,7 +643,7 @@ export function getRiskLevelPresentation(level?: unknown): RiskLevelPresentation
         className: 'gs-risk-low',
         badgeLabel: 'Routine Activity',
         headline: '🟢 Routine Activity: Standard interaction',
-        description: 'Standard everyday interaction evaluated under default Guardrail safety policies.',
+        description: 'Standard routine interaction evaluated under default Guardrail safety policies.',
       };
   }
 }
@@ -2657,6 +2658,20 @@ export async function checkAndApplyContinuationEligibility(
   }
 
   if (result.eligible) {
+    if (
+      currentRecord &&
+      currentRecord.state !== InterceptionState.READY_FOR_USER_CONFIRMATION &&
+      !isTerminalInterceptionState(currentRecord.state)
+    ) {
+      try {
+        activeController.markReadyForConfirmation(
+          id,
+          'Backend approval confirmed and validation passed; ready for user confirmation.'
+        );
+      } catch {
+        // Ignore transition error if already transitioned
+      }
+    }
     setStagingUIState('approval_confirmed_approved', {
       ...details,
       isEligible: true,
@@ -3214,10 +3229,15 @@ function handleDiscoveredApprovalStatus(
     return;
   }
 
-  // Pre-condition: action must still be tracked and in HELD state
+  // Pre-condition: action must still be tracked and in an active, non-terminal state
   const controller = options.controller || defaultInterceptionController;
   const record = controller.getRecord(actionId);
-  if (!record || record.state !== InterceptionState.HELD) {
+  if (
+    !record ||
+    (record.state !== InterceptionState.HELD &&
+      record.state !== InterceptionState.AWAITING_APPROVAL &&
+      record.state !== InterceptionState.READY_FOR_USER_CONFIRMATION)
+  ) {
     return;
   }
 
@@ -3328,6 +3348,16 @@ function handleDiscoveredApprovalStatus(
         return;
       }
 
+      stopModalStatusSync();
+      const activeCtrl = options.controller || defaultInterceptionController;
+      const mgr = options.continuationManager || defaultContinuationManager;
+      try {
+        activeCtrl.invalidateAction(actionId, 'Approval denied by trusted contact.');
+      } catch {
+        // Ignore if already terminal
+      }
+      mgr.invalidateHeldAction(actionId, 'Approval denied by trusted contact.');
+
       setStagingUIState('approval_confirmed_rejected', {
         requestId: reqId,
         decidedBy: req.decision?.decidedBy,
@@ -3358,6 +3388,18 @@ function handleDiscoveredApprovalStatus(
     }
 
     case ApprovalStatus.EXPIRED:
+      stopModalStatusSync();
+      {
+        const activeCtrl = options.controller || defaultInterceptionController;
+        const mgr = options.continuationManager || defaultContinuationManager;
+        try {
+          activeCtrl.expireAction(actionId, 'Approval request expired on server.');
+        } catch {
+          // Ignore if already terminal
+        }
+        mgr.invalidateHeldAction(actionId, 'Approval request expired on server.');
+      }
+
       setStagingUIState('approval_confirmed_expired', {
         requestId: reqId,
         request: req,
@@ -3382,6 +3424,21 @@ function handleDiscoveredApprovalStatus(
       break;
 
     case ApprovalStatus.CANCELLED:
+      stopModalStatusSync();
+      {
+        const activeCtrl = options.controller || defaultInterceptionController;
+        const mgr = options.continuationManager || defaultContinuationManager;
+        try {
+          activeCtrl.cancelAction(
+            actionId,
+            req?.cancellationReason || 'Approval request cancelled on server.'
+          );
+        } catch {
+          // Ignore if already terminal
+        }
+        mgr.invalidateHeldAction(actionId, 'Approval request cancelled on server.');
+      }
+
       setStagingUIState('approval_confirmed_cancelled', {
         requestId: reqId,
         description: req?.cancellationReason,
@@ -3476,10 +3533,15 @@ export function startModalStatusSync(
           return;
         }
 
-        // Action held guard
+        // Action active guard
         const controller = options.controller || defaultInterceptionController;
         const record = controller.getRecord(actionId);
-        if (!record || record.state !== InterceptionState.HELD) {
+        if (
+          !record ||
+          (record.state !== InterceptionState.HELD &&
+            record.state !== InterceptionState.AWAITING_APPROVAL &&
+            record.state !== InterceptionState.READY_FOR_USER_CONFIRMATION)
+        ) {
           subscription.stop();
           return;
         }
@@ -3502,10 +3564,15 @@ export function startModalStatusSync(
           return;
         }
 
-        // Action held guard
+        // Action active guard
         const controller = options.controller || defaultInterceptionController;
         const record = controller.getRecord(actionId);
-        if (!record || record.state !== InterceptionState.HELD) {
+        if (
+          !record ||
+          (record.state !== InterceptionState.HELD &&
+            record.state !== InterceptionState.AWAITING_APPROVAL &&
+            record.state !== InterceptionState.READY_FOR_USER_CONFIRMATION)
+        ) {
           subscription.stop();
           return;
         }
@@ -3753,6 +3820,22 @@ function applyApprovalOutcome(
             request: req,
           });
 
+          // Transition controller record to AWAITING_APPROVAL if currently HELD
+          if (result.actionId) {
+            const activeController = options.controller || defaultInterceptionController;
+            const rec = activeController.getRecord(result.actionId);
+            if (rec && rec.state === InterceptionState.HELD) {
+              try {
+                activeController.awaitApproval(
+                  result.actionId,
+                  `Approval request ${reqId} registered in PENDING status.`
+                );
+              } catch {
+                // Ignore if already transitioned
+              }
+            }
+          }
+
           // Start status synchronization loop to discover changes
           if (result.actionId) {
             startModalStatusSync(reqId, result.actionId, options, sessionInfo);
@@ -3818,7 +3901,7 @@ function applyApprovalOutcome(
     return result;
   }
 
-  // Legacy prototype mode fallback (Day 9 behavior)
+  // Legacy in-memory prototype mode fallback
   if (result.success) {
     currentUIState = 'approval_intent_recorded';
     displayConfirmationBanner(
@@ -4138,7 +4221,7 @@ export function handleModalRequestApproval(
     return performSubmission();
   }
 
-  // 6. Day 9 Prototype fallback (when not using real backend)
+  // 6. In-memory prototype fallback (when not using real backend)
   let intent: ApprovalRequestIntent;
   try {
     intent = createApprovalRequestIntent(context, record);
