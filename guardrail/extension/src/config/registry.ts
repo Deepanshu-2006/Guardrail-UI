@@ -47,6 +47,8 @@ export class PolicyConfigRegistry {
   private lastError?: ConfigErrorDetail;
   private readonly loader: PolicyConfigLoader;
   private readonly listeners: Set<PolicyConfigChangeListener> = new Set();
+  private reloadPromise: Promise<ConfigLoadResult> | null = null;
+  private reloadQueued = false;
 
   constructor(options?: { loader?: PolicyConfigLoader; storageProvider?: ConfigStorageProvider }) {
     this.loader =
@@ -137,7 +139,23 @@ export class PolicyConfigRegistry {
    * Forces a reload from storage, bypassing active failure cooldown.
    */
   public async reload(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
-    return this.loadFromStorage({ ...options, force: true });
+    this.reloadQueued = true;
+    if (!this.reloadPromise) {
+      this.reloadPromise = this.drainQueuedReloads(options).finally(() => {
+        this.reloadPromise = null;
+      });
+    }
+    return this.reloadPromise;
+  }
+
+  /** Runs one trailing reload when storage changes arrive during an active read. */
+  private async drainQueuedReloads(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
+    let result: ConfigLoadResult;
+    do {
+      this.reloadQueued = false;
+      result = await this.loadFromStorage({ ...options, force: true });
+    } while (this.reloadQueued);
+    return result;
   }
 
   /**

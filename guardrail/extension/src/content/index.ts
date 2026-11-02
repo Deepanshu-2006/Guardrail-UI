@@ -303,8 +303,8 @@ function bootstrap(): void {
   const pageInfo = extractPageInfo();
 
   // Begin loading before detection starts. While the result is pending, ambient
-  // events are not evaluated and controlled test actions are synchronously held
-  // at the event boundary by the detector callback below.
+  // events are not evaluated and controlled test actions are synchronously
+  // suppressed at the event boundary by the detector callback below.
   const initialConfigLoad = loadPolicyConfigFromStorage();
   void initialConfigLoad.then((result) => {
     if (result.healthStatus === ConfigHealthStatus.FAILED) {

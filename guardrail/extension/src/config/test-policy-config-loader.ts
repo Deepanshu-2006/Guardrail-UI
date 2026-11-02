@@ -27,6 +27,7 @@ import {
 } from './schema.js';
 import {
   checkVersionCompatibility,
+  ConfigStorageProvider,
   mergeConfigWithDefaults,
   InMemoryConfigStorageProvider,
   PolicyConfigLoader,
@@ -536,6 +537,40 @@ async function runAllTests(): Promise<void> {
     assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.HEALTHY, startupEvent), false, 'Healthy policy does not suppress controlled action');
     assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.DEGRADED, startupEvent), false, 'Validated degraded policy reaches enforcement');
     assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.FAILED, startupEvent), false, 'Failed policy reaches existing fail-closed enforcement');
+
+    // Two storage changes arriving during one read must cause a trailing read so
+    // the registry cannot finish on an older snapshot.
+    let reloadReadCount = 0;
+    let persistedConfig: unknown = DEFAULT_GUARDRAIL_POLICY_CONFIG;
+    let releaseFirstReload: (() => void) | undefined;
+    const reloadStorage: ConfigStorageProvider = {
+      get: async () => {
+        reloadReadCount++;
+        const snapshot = persistedConfig;
+        if (reloadReadCount === 2) {
+          await new Promise<void>((resolve) => { releaseFirstReload = resolve; });
+        }
+        return snapshot;
+      },
+      set: async (_key, value) => { persistedConfig = value; },
+    };
+    const reloadRegistry = new PolicyConfigRegistry({ storageProvider: reloadStorage });
+    await reloadRegistry.loadFromStorage();
+    persistedConfig = mergeConfigWithDefaults({
+      ...DEFAULT_GUARDRAIL_POLICY_CONFIG,
+      thresholds: { ...DEFAULT_GUARDRAIL_POLICY_CONFIG.thresholds, lowMax: 20 },
+    }).config;
+    const firstReload = reloadRegistry.reload();
+    while (reloadReadCount < 2) await Promise.resolve();
+    persistedConfig = mergeConfigWithDefaults({
+      ...DEFAULT_GUARDRAIL_POLICY_CONFIG,
+      thresholds: { ...DEFAULT_GUARDRAIL_POLICY_CONFIG.thresholds, lowMax: 22 },
+    }).config;
+    const coalescedReload = reloadRegistry.reload();
+    releaseFirstReload?.();
+    await Promise.all([firstReload, coalescedReload]);
+    assertEquals(reloadReadCount, 3, 'Storage change during an active reload triggers one trailing read');
+    assertEquals(reloadRegistry.getConfig().thresholds.lowMax, 22, 'Registry ends on latest stored configuration snapshot');
 
     let allowWrite = false;
     const writeFailStorage = {
