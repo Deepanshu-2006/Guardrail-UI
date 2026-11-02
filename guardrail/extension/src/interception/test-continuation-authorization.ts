@@ -181,6 +181,30 @@ async function runContinuationAuthorizationTestSuite(): Promise<void> {
   const aliceAuth: AuthContext = { actorId: 'usr_alice', role: ActorRole.USER, isAuthenticated: true };
   const bobAuth: AuthContext = { actorId: 'tc_bob', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true };
 
+  // A request and its associated binding must retain the same optional digest.
+  {
+    const h = createTestHarness();
+    h.contactRegistry.addContact({
+      id: 'tc_bob', userId: 'usr_alice', status: TrustedContactStatus.ACTIVE,
+      createdAt: '2026-10-25T10:00:00.000Z',
+    });
+    h.actionOwnershipRegistry.registerActionOwnership('act_digest_pair', 'usr_alice');
+    const req = h.service.createRequest({
+      actionId: 'act_digest_pair', actionDescription: 'Controlled test action',
+      actionType: ActionType.CLICK, riskLevel: RiskLevel.HIGH,
+      actionDigest: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    }, aliceAuth);
+    h.service.approveRequest(req.id, {}, bobAuth);
+    const binding = h.repository.findBindingByRequestId(req.id)!;
+    h.repository.saveBinding({
+      ...binding,
+      actionDigest: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    });
+    const result = h.service.validateContinuationAuthorization({ actionId: 'act_digest_pair', requestId: req.id }, aliceAuth);
+    assertEquals(result.authorized, false, 'Mismatched persisted request and binding digests reject continuation');
+    assertEquals(result.errorCode, 'ACTION_ID_MISMATCH', 'Digest inconsistency reports action mismatch');
+  }
+
   // ---------------------------------------------------------------------------
   // 1. Matching Action & Valid Confirmed Approval -> Authorized (Req 1, 2, 3)
   // ---------------------------------------------------------------------------

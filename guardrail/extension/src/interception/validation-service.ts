@@ -592,21 +592,19 @@ export class ContinuationValidationService {
     }
 
     // 8d. Action structural fingerprint digest verification (if expected digest specified)
-    if (options?.expectedDigest) {
+    if (options?.expectedDigest !== undefined) {
       const digestVal = validateActionDigest(options.expectedDigest);
-      if (digestVal.valid && options.binding?.actionDigest) {
-        if (options.binding.actionDigest !== options.expectedDigest) {
-          return {
-            eligible: false,
-            status: ContinuationEligibilityStatus.MISMATCHED,
-            actionId: id,
-            targetState: InterceptionState.INVALIDATED,
-            reason: 'Action structural fingerprint digest mismatch: Recorded digest does not match expected action.',
-            errorCode: 'ACTION_ID_MISMATCH',
-            verifiedAt,
-            limitations: CONTINUATION_VALIDATION_LIMITATIONS,
-          };
-        }
+      if (!digestVal.valid || !options.binding?.actionDigest || options.binding.actionDigest !== options.expectedDigest) {
+        return {
+          eligible: false,
+          status: ContinuationEligibilityStatus.MISMATCHED,
+          actionId: id,
+          targetState: InterceptionState.INVALIDATED,
+          reason: 'Action structural fingerprint digest is invalid or does not match the recorded binding.',
+          errorCode: 'ACTION_ID_MISMATCH',
+          verifiedAt,
+          limitations: CONTINUATION_VALIDATION_LIMITATIONS,
+        };
       }
     }
 

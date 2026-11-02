@@ -235,6 +235,19 @@ async function runContinuationValidationServiceTestSuite(): Promise<void> {
     const updatedRecord = h.validationService.transitionOnValidation(result);
     assert(updatedRecord !== null, 'Updated record exists');
     assertEquals(updatedRecord?.state, InterceptionState.READY_FOR_USER_CONFIRMATION, 'Record transitioned to READY_FOR_USER_CONFIRMATION');
+
+    const malformedDigest = await h.validationService.validateEligibility('act_valid_001', {
+      authContext: aliceAuth,
+      expectedDigest: 'not-a-sha256-digest',
+      binding: {
+        id: 'bnd_digest', actionId: 'act_valid_001', requestId: req.id,
+        requesterId: 'usr_alice', state: ApprovalActionBindingState.APPROVED,
+        actionDigest: '1111111111111111111111111111111111111111111111111111111111111111',
+        createdAt: '2026-10-25T12:00:00.000Z', expiresAt: '2026-10-25T12:15:00.000Z',
+      },
+    });
+    assertEquals(malformedDigest.eligible, false, 'Malformed expected digest is rejected');
+    assertEquals(malformedDigest.errorCode, 'ACTION_ID_MISMATCH', 'Malformed digest fails as action mismatch');
   }
 
   // ---------------------------------------------------------------------------
@@ -669,6 +682,7 @@ async function runContinuationValidationServiceTestSuite(): Promise<void> {
     });
     assertEquals(resDigestMismatch.eligible, false, 'Digest mismatch is rejected');
     assertEquals(resDigestMismatch.status, ContinuationEligibilityStatus.MISMATCHED, 'Status is MISMATCHED for digest');
+
   }
 
   // ---------------------------------------------------------------------------

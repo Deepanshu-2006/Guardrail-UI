@@ -63,6 +63,7 @@ import {
   isBindingExpired,
   transitionBindingState,
   validateActionId,
+  validateActionDigest,
 } from './binding.js';
 import {
   ApprovalRequestRepository,
@@ -1194,6 +1195,26 @@ export class ApprovalService {
 
     if (binding.actionId !== request.actionId) {
       throw new ApprovalBindingReassignmentError(request.id, binding.actionId, request.actionId);
+    }
+
+    // The optional digest is duplicated across the request and binding at creation;
+    // reject malformed or divergent persisted copies before authorizing continuation.
+    const requestDigest = request.actionDigest;
+    const bindingDigest = binding.actionDigest;
+    if (
+      requestDigest !== bindingDigest ||
+      (requestDigest !== undefined && !validateActionDigest(requestDigest).valid) ||
+      (bindingDigest !== undefined && !validateActionDigest(bindingDigest).valid)
+    ) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: 'Approval request and action binding do not contain a consistent valid action digest.',
+        errorCode: 'ACTION_ID_MISMATCH',
+      };
     }
 
     // Expiration check via trusted server clock
