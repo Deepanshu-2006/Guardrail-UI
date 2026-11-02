@@ -227,7 +227,7 @@ export function sanitizeApprovalErrorMessage(rawError: unknown, statusCode?: num
 
   // 3. Strip SQL / database syntax
   text = text.replace(
-    /\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|FROM|WHERE|TABLE|COLUMN)\b.*?(;|\.|$)/gi,
+    /\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|FROM|WHERE|TABLE|COLUMN)\b.*?(;|\.|\n|$)/gi,
     '[Database details omitted]'
   );
 
