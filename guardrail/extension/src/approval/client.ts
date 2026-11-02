@@ -165,9 +165,16 @@ export class NoopApiClientLogger implements ApiClientLogger {
 export interface ApprovalApiClientConfig {
   /**
    * Base URL of the Guardrail Approval Backend.
-   * Defaults to DEFAULT_DEV_API_BASE_URL (http://localhost:3000).
+   * Defaults to DEFAULT_DEV_API_BASE_URL (http://localhost:3000) in development mode.
+   * Defaults to DEFAULT_PROD_API_BASE_URL (https://api.guardrail-safety.org) in production mode.
    */
   readonly baseUrl?: string;
+
+  /**
+   * Target deployment environment: 'development' | 'production' | 'test'.
+   * In production mode, endpoints must use secure HTTPS.
+   */
+  readonly environment?: 'development' | 'production' | 'test';
 
   /**
    * Token provider function returning the active user Bearer token.
@@ -219,21 +226,52 @@ export interface CancelRequestOptions extends RequestOptions {
 // Helper Functions: URL & Token Resolution
 // =============================================================================
 
+export interface ResolveApiBaseUrlOptions {
+  /** Explicit override URL */
+  readonly customBaseUrl?: string;
+  /** Target deployment environment */
+  readonly environment?: 'development' | 'production' | 'test';
+}
+
 /**
  * Resolves the backend base URL using the established hierarchy:
  * 1. Explicit override passed to function.
- * 2. 'guardrailApiBaseUrl' stored in chrome.storage.local (if available).
- * 3. Default development base URL (http://localhost:3000).
+ * 2. 'guardrailApiBaseUrl' stored in sessionStorage (if available).
+ * 3. 'guardrailApiBaseUrl' stored in chrome.storage.local (if available).
+ * 4. In production: DEFAULT_PROD_API_BASE_URL (https://api.guardrail-safety.org).
+ *    In development/test: DEFAULT_DEV_API_BASE_URL (http://localhost:3000).
  */
-export async function resolveApiBaseUrl(customBaseUrl?: string): Promise<string> {
+export async function resolveApiBaseUrl(
+  customBaseUrlOrOptions?: string | ResolveApiBaseUrlOptions
+): Promise<string> {
+  const options: ResolveApiBaseUrlOptions =
+    typeof customBaseUrlOrOptions === 'string'
+      ? { customBaseUrl: customBaseUrlOrOptions }
+      : (customBaseUrlOrOptions ?? {});
+
+  const customBaseUrl = options.customBaseUrl;
+  const env =
+    options.environment ??
+    (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+      ? 'production'
+      : 'development');
+
   if (customBaseUrl && typeof customBaseUrl === 'string' && customBaseUrl.trim()) {
-    return customBaseUrl.trim().replace(/\/+$/, '');
+    const url = customBaseUrl.trim().replace(/\/+$/, '');
+    if (env === 'production' && !url.startsWith('https://')) {
+      throw new Error(`[Guardrail ApiClient] Insecure base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`);
+    }
+    return url;
   }
   if (typeof sessionStorage !== 'undefined') {
     try {
       const stored = sessionStorage.getItem('guardrailApiBaseUrl');
       if (stored && typeof stored === 'string' && stored.trim()) {
-        return stored.trim().replace(/\/+$/, '');
+        const url = stored.trim().replace(/\/+$/, '');
+        if (env === 'production' && !url.startsWith('https://')) {
+          throw new Error(`[Guardrail ApiClient] Insecure stored base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`);
+        }
+        return url;
       }
     } catch {
       // Storage unavailable or permission issue
@@ -243,12 +281,21 @@ export async function resolveApiBaseUrl(customBaseUrl?: string): Promise<string>
     try {
       const res = await chrome.storage.local.get('guardrailApiBaseUrl');
       if (res && typeof res.guardrailApiBaseUrl === 'string' && res.guardrailApiBaseUrl.trim()) {
-        return res.guardrailApiBaseUrl.trim().replace(/\/+$/, '');
+        const url = res.guardrailApiBaseUrl.trim().replace(/\/+$/, '');
+        if (env === 'production' && !url.startsWith('https://')) {
+          throw new Error(`[Guardrail ApiClient] Insecure stored base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`);
+        }
+        return url;
       }
     } catch {
       // Storage unavailable or permission issue, fallback to default
     }
   }
+
+  if (env === 'production') {
+    return DEFAULT_PROD_API_BASE_URL;
+  }
+
   return DEFAULT_DEV_API_BASE_URL;
 }
 
@@ -369,7 +416,37 @@ export class ApprovalApiClient {
   private readonly logger: ApiClientLogger;
 
   constructor(config?: ApprovalApiClientConfig) {
-    this.baseUrl = (config?.baseUrl ?? DEFAULT_DEV_API_BASE_URL).trim().replace(/\/+$/, '');
+    const env =
+      config?.environment ??
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+        ? 'production'
+        : 'development');
+
+    let url = config?.baseUrl;
+    if (!url || !url.trim()) {
+      url = env === 'production' ? DEFAULT_PROD_API_BASE_URL : DEFAULT_DEV_API_BASE_URL;
+    }
+
+    url = url.trim().replace(/\/+$/, '');
+
+    // In production mode, require HTTPS to protect tokens and approval data over the wire
+    if (env === 'production') {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') {
+          throw new Error(
+            `[Guardrail ApiClient] Insecure base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`
+          );
+        }
+      } catch (err: any) {
+        if (err?.message?.includes('must use HTTPS')) {
+          throw err;
+        }
+        throw new Error(`[Guardrail ApiClient] Invalid production base URL: "${url}".`);
+      }
+    }
+
+    this.baseUrl = url;
     this.tokenProvider = config?.tokenProvider;
     this.timeoutMs = config?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     this.fetchFn = config?.fetchFn ?? globalThis.fetch;

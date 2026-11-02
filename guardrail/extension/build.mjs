@@ -7,11 +7,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isWatch = process.argv.includes('--watch');
+const isProd = process.argv.includes('--prod') || process.env.NODE_ENV === 'production';
 const distDir = path.resolve(__dirname, 'dist');
 
 function copyStaticAssets() {
   fs.mkdirSync(path.join(distDir, 'popup'), { recursive: true });
   fs.mkdirSync(path.join(distDir, 'icons'), { recursive: true });
+
+  // Clean stale source maps in production mode
+  if (isProd) {
+    for (const f of ['background.js.map', 'content.js.map']) {
+      const p = path.join(distDir, f);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+    const popupMap = path.join(distDir, 'popup', 'popup.js.map');
+    if (fs.existsSync(popupMap)) fs.unlinkSync(popupMap);
+  }
 
   // Copy manifest
   fs.copyFileSync(
@@ -46,7 +57,8 @@ const buildOptions = [
     outfile: path.join(distDir, 'background.js'),
     format: 'esm',
     target: 'es2022',
-    sourcemap: true,
+    sourcemap: !isProd,
+    minify: isProd,
   },
   {
     entryPoints: [path.join(__dirname, 'src', 'content', 'index.ts')],
@@ -54,7 +66,8 @@ const buildOptions = [
     outfile: path.join(distDir, 'content.js'),
     format: 'iife',
     target: 'es2022',
-    sourcemap: true,
+    sourcemap: !isProd,
+    minify: isProd,
   },
   {
     entryPoints: [path.join(__dirname, 'src', 'popup', 'index.ts')],
@@ -62,7 +75,8 @@ const buildOptions = [
     outfile: path.join(distDir, 'popup', 'popup.js'),
     format: 'iife',
     target: 'es2022',
-    sourcemap: true,
+    sourcemap: !isProd,
+    minify: isProd,
   },
 ];
 
@@ -75,7 +89,7 @@ async function run() {
     console.log('[Guardrail Extension] Watching for changes...');
   } else {
     await Promise.all(buildOptions.map((opt) => esbuild.build(opt)));
-    console.log('[Guardrail Extension] Build completed successfully -> dist/');
+    console.log(`[Guardrail Extension] Build completed successfully (${isProd ? 'production' : 'development'}) -> dist/`);
   }
 }
 
