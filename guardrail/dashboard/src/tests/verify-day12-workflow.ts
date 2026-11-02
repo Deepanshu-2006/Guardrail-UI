@@ -644,8 +644,9 @@ export async function runDay12Verification(): Promise<void> {
       const decouplingNotice = rootElement.querySelector('.gd-action-decoupling-note');
       assert(decouplingNotice !== null, 'Decoupled Action Execution Notice present in detail card');
       assert(
-        decouplingNotice?.textContent.toLowerCase().includes('remotely execute') ?? false,
-        'Notice reiterates approval does not execute the action remotely'
+        (decouplingNotice?.textContent.toLowerCase().includes('do not execute or trigger an action') &&
+          decouplingNotice?.textContent.toLowerCase().includes('explicit user confirmation')) ?? false,
+        'Notice explains decisions do not execute actions and continuation requires user confirmation'
       );
 
       shell.destroy();

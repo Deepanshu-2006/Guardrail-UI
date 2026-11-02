@@ -720,7 +720,8 @@ async function runWorkflowConsistencyTests(): Promise<void> {
 
     assertEquals(state.uiStatus, UIApprovalStatus.STATUS_CONFIRMED_APPROVED, 'UI status is STATUS_CONFIRMED_APPROVED');
     assertEquals(state.isActionHeld, true, 'isActionHeld is strictly true');
-    assert(state.detail.includes('this action is still held until you review and confirm'), 'States action remains held');
+    assert(state.detail.includes('Approval does not run the action'), 'States approval does not execute the action');
+    assert(state.detail.includes('confirm'), 'Requires user confirmation before supported continuation');
     assert(state.footerNotice.includes('Action: HELD'), 'Footer explicitly reflects Action: HELD');
   });
 

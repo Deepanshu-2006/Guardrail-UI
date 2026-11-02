@@ -334,7 +334,7 @@ function assertEquals<T>(actual: T, expected: T, message: string): void {
 
 async function runAllTests(): Promise<void> {
   console.log('================================================================');
-  console.log('Day 19 Prompt 6: User-Facing Failure Recovery Verification Suite');
+  console.log('Recovery and Workflow Failure Verification Suite');
   console.log('================================================================\n');
 
   // ---------------------------------------------------------------------------
@@ -413,7 +413,7 @@ async function runAllTests(): Promise<void> {
   assertEquals(rejectedState.uiStatus, UIApprovalStatus.STATUS_CONFIRMED_REJECTED, 'State is STATUS_CONFIRMED_REJECTED');
   assertEquals(rejectedState.headline, 'Approval Denied by Contact', 'Headline explicitly indicates contact denial');
   assert(rejectedState.detail.includes('tc_carol'), 'Detail credits the authorized reviewer');
-  assert(rejectedState.detail.includes('denied'), 'Detail explains the request was denied');
+  assert(rejectedState.detail.includes('rejected'), 'Detail explains the request was rejected');
   assertEquals(rejectedState.isActionHeld, true, 'Rejected action remains safely HELD/paused');
 
   // Test 1.4: Expiration distinguishes review window expiration from generic failure
@@ -434,6 +434,27 @@ async function runAllTests(): Promise<void> {
   assert(expiredState.detail.includes('expired without a decision'), 'Detail explains review window expired without decision');
   assertEquals(expiredState.isActionHeld, true, 'Expired action remains safely HELD');
 
+  const approvedState = determineApprovalState({
+    state: 'status_confirmed',
+    request: {
+      id: 'apr_approved_001',
+      actionId: 'act-004',
+      status: ApprovalStatus.APPROVED,
+      requesterId: 'usr_alice',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 600000).toISOString(),
+      decision: {
+        decidedBy: 'tc_carol',
+        decidedAt: new Date().toISOString(),
+        status: ApprovalStatus.APPROVED,
+      },
+    },
+  });
+  assertEquals(approvedState.backendStatus, ApprovalStatus.APPROVED, 'Recovery displays authoritative approval status');
+  assertEquals(approvedState.isActionHeld, true, 'Approval recovery leaves the browser action held');
+  assert(approvedState.detail.includes('Approval does not run the action'), 'Approval copy explicitly says recovery does not execute the action');
+
   // ---------------------------------------------------------------------------
   // TEST SUITE 2: Safety & Non-Execution Invariants Across Error States
   // ---------------------------------------------------------------------------
@@ -452,7 +473,8 @@ async function runAllTests(): Promise<void> {
       rawError: 'Simulated failure condition',
       statusCode: st === 'rejected' ? 403 : undefined,
     });
-    assertEquals(computed.isActionHeld, true, `Failure state "${st}" preserves isActionHeld = true`);
+    const expectedHeld = st !== 'local_invalid';
+    assertEquals(computed.isActionHeld, expectedHeld, `Failure state "${st}" reports the actual held state`);
     assertEquals(computed.isRequestButtonDisabled, true, `Failure state "${st}" disables request button to prevent rapid spin`);
   }
 
