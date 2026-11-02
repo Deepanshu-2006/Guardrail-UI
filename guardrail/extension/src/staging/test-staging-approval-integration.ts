@@ -1353,8 +1353,8 @@ async function runTests(): Promise<void> {
       'Runtime disconnect outcome is NOT authoritative'
     );
     assert(
-      Boolean(response.error?.message?.includes('Receiving end does not exist')),
-      'Error message preserves runtime disconnect details'
+      Boolean(response.error?.message?.toLowerCase().includes('dispatch') && !response.error?.message?.includes('Receiving end does not exist')),
+      'Error message reports dispatch failure without exposing raw runtime details'
     );
   }
 

@@ -234,7 +234,7 @@ async function runTests(): Promise<void> {
   console.log('\n▶ Test Suite 3: Valid Submission & Continuation Decoupling (201 Created)');
   {
     const controller = new InterceptionController();
-    const continuationManager = new ContinuationManager();
+    const continuationManager = new ContinuationManager(controller);
 
     const action = createSampleAction('act_payment_001');
     controller.register(action);
@@ -587,7 +587,7 @@ async function runTests(): Promise<void> {
 
     // Setup client runtime
     const controller = new InterceptionController();
-    const continuationManager = new ContinuationManager();
+    const continuationManager = new ContinuationManager(controller);
 
     const action = createSampleAction('act_alice_e2e_wire');
     controller.register(action);

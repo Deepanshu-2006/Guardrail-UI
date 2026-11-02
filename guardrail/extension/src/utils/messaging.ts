@@ -54,7 +54,7 @@ export async function dispatchActionToBackground(
       page: {
         ...action.page,
         url: sanitizeUrlForDiagnostics(action.page?.url),
-        title: undefined,
+        title: '',
       },
       element: action.element
         ? { ...action.element, visibleText: undefined }

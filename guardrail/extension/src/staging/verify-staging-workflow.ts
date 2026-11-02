@@ -539,11 +539,15 @@ console.log('▶ Scenario 1: Protected Action Interception & Staging Mode Presen
   const clickDecision = decideResponse(clickRisk);
 
   if (clickDecision.response === ResponseAction.PROTECT) {
+    // Each test scenario uses an isolated controller because the runtime manager
+    // intentionally permits only one simultaneously held controlled action.
+    const clickController = new InterceptionController();
+    const clickContinuationManager = new ContinuationManager(clickController);
     simulatedClickEvent.preventDefault();
     simulatedClickEvent.stopImmediatePropagation();
-    controller.register(clickAction, 'Intercepted click');
-    const held = controller.holdAction(clickAction.id, 'Held for user decision');
-    continuationManager.registerHeldAction(clickAction, held, () => {
+    clickController.register(clickAction, 'Intercepted click');
+    const held = clickController.holdAction(clickAction.id, 'Held for user decision');
+    clickContinuationManager.registerHeldAction(clickAction, held, () => {
       buttonHandlerCalled = true;
     });
     const ctx = createStagingActionContext({
@@ -553,7 +557,7 @@ console.log('▶ Scenario 1: Protected Action Interception & Staging Mode Presen
       classification: clickClassification,
       decision: clickDecision,
     });
-    showStagingModal({ context: ctx, state: 'active', controller, continuationManager });
+    showStagingModal({ context: ctx, state: 'active', controller: clickController, continuationManager: clickContinuationManager });
   }
 
   assertEquals(defaultPrevented, true, 'Subtest 1B: preventDefault called on protected action click');

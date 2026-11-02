@@ -483,6 +483,7 @@ async function runContinuationValidationServiceTestSuite(): Promise<void> {
     assertEquals(resInvalidated.status, ContinuationEligibilityStatus.REJECTED, 'Status is REJECTED for invalidated binding');
     assertEquals(resInvalidated.errorCode, 'BINDING_INVALIDATED', 'Error code is BINDING_INVALIDATED');
     assertEquals(resInvalidated.targetState, InterceptionState.INVALIDATED, 'Target state is INVALIDATED');
+    h.controller.invalidateAction('act_inval_001', resInvalidated.reason);
 
     // Explicit rejection by trusted contact
     const action2 = createSampleAction('act_rej_002');

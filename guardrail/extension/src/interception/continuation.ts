@@ -432,6 +432,15 @@ export class ContinuationManager {
     }
 
     if (this.currentHeldAction) {
+      const activeRecord = this.controller.getRecord(this.currentHeldAction.action.id);
+      if (!activeRecord || activeRecord.state !== InterceptionState.HELD) {
+        // The controller may be transitioned directly by a cancellation, expiry,
+        // or invalidation path. Drop stale manager state before accepting a new hold.
+        this.currentHeldAction = null;
+      }
+    }
+
+    if (this.currentHeldAction) {
       throw new Error(
         `[ContinuationManager] Action "${this.currentHeldAction.action.id}" is already registered as held; refusing to replace it.`
       );

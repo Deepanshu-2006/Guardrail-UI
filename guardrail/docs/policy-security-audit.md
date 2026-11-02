@@ -176,7 +176,7 @@ To preserve architectural integrity and avoid regression, the following working 
 
 ## 8. Test Execution Commands & Verified Outcomes
 
-The following real test commands were executed against the codebase during this audit:
+The following results are the Prompt 1 audit baseline, not the final Day 18 verification. See Section 9 for current-tree results and corrected scope/counts.
 
 | Test Command | Working Directory | Suites / Tests Run | Result | Evidence / Notes |
 | :--- | :--- | :--- | :--- | :--- |
@@ -190,3 +190,85 @@ The following real test commands were executed against the codebase during this 
 ---
 
 *Report prepared as part of Day 18 Prompt 1: Audit The Existing Implementation.*
+
+---
+
+## 9. Day 18 Prompt 7 — Final Regression Verification (2026-11-02)
+
+This section is the current-state verification record and supersedes stale status statements in the original Prompt 1 baseline above. The original findings document what was observed before Prompts 2–6; it is retained as audit history.
+
+### Executive Summary
+
+The current extension and dashboard package test suites pass. The extension build and dashboard build pass. Tests caught a stale `ContinuationManager` entry after direct controller lifecycle transitions; `registerHeldAction` now clears that entry when the controller no longer reports the action as held. Three test scenarios were adjusted to use a separate manager/controller for a separate held action or to bind the manager to the controller under test.
+
+The repository does not provide live Chrome extension automation or a production backend integration suite. Dashboard and approval API tests use mock DOMs and/or a local in-memory HTTP server. They are not production end-to-end verification.
+
+### Current Status of Prompt 1 Findings
+
+| Original finding | Current status and evidence |
+| :--- | :--- |
+| Extension startup did not load persisted policy | **Addressed in the current tree.** `content/index.ts` and `background/index.ts` call `loadPolicyConfigFromStorage()` and register `chrome.storage.onChanged` reload handlers. The config loader and failure suites pass. |
+| Direct engine calls bypassed failed-config handling | **Addressed in the current tree.** `RiskEngine.assess()` and `ResponseEngine.decide()` check configuration health. The risk, response, contract, and workflow tests pass, including direct-call fail-closed assertions. |
+| Cross-context config storage changes were not synchronized | **Addressed in the current tree.** Both extension contexts listen for the configured storage key and reload. No live multi-tab Chrome verification was run. |
+| Ambient website actions are not reliably held | **Still an explicit limitation.** Only marked controlled test actions use the supported synchronous interception and continuation workflow. Ambient evaluations and warnings are not proof of blocking. |
+| Approval persistence and distributed CAS | **Still an explicit limitation.** Approval repositories are development in-memory implementations; local locks do not establish distributed exactly-once semantics. |
+| DOM cancellation vs page JavaScript/network activity | **Still an explicit limitation.** Event cancellation does not stop independent website JavaScript, timers, sockets, or network requests. |
+
+### Day 18 Security Fixes Verified
+
+- Digest validation rejects malformed supplied digests and mismatches between request and binding digest copies.
+- Approval status synchronization remains status-only; the continuation integration tests require explicit user confirmation and observe no automatic execution after approval.
+- Controlled interception rejects duplicate staging, and stale manager-held state is discarded when the controller has transitioned the record out of `HELD`.
+- Config write failures are surfaced as `DEGRADED` with `STORAGE_WRITE_ERROR`; health returns to `HEALTHY` only after a successful write.
+- Diagnostic logging omits complete action objects and page text. Content-to-background action messages omit `visibleText` and page titles and strip URL query strings and fragments. API server/transport errors and selected extension exception logs no longer expose raw exception text or server-provided details.
+- Synthetic privacy regressions cover diagnostic text redaction, message serialization, config write failure/recovery, and sanitized API errors.
+
+### Files in the Day 18 Change Set
+
+The current Day 18 change set is the four commits ahead of `origin/main` plus the uncommitted Prompt 7 edits. No unrelated pre-existing modifications were present when the final verification started.
+
+**Extension runtime and config:** `guardrail/extension/package.json`; `src/background/index.ts`; `src/content/index.ts`; `src/config/loader.ts`; `src/config/registry.ts`; `src/detector/action-detector.ts`; `src/interception/continuation.ts`; `src/interception/validation-service.ts`; `src/staging/modal.ts`; `src/utils/messaging.ts`; `src/utils/privacy.ts`; `src/approval/api.ts`; `src/approval/client.ts`; `src/approval/service.ts`; `src/approval/sync-client.ts`.
+
+**Extension tests:** `src/config/test-policy-config-loader.ts`; `src/interception/test-continuation-authorization.ts`; `src/interception/test-continuation-hardening-regression.ts`; `src/interception/test-continuation-validation-service.ts`; `src/interception/test-interception-boundary-hardening.ts`; `src/response/test-risk-explanations.ts`; `src/approval/test-approval-client.ts`; `src/approval/test-approval-status-lookup.ts`; `src/approval/test-approval-hardening.ts`; `src/approval/test-submit-operation.ts`; `src/staging/test-staging-approval-integration.ts`; `src/staging/verify-staging-workflow.ts`; `src/utils/test-messaging-privacy.ts`.
+
+**Dashboard test:** `guardrail/dashboard/src/tests/verify-day12-workflow.ts`.
+
+The only uncommitted files at report time are the Prompt 7 lifecycle fix and test-fixture updates. No files were staged or committed by this verification run.
+
+### Test Commands and Exact Outcomes
+
+Commands were run from the package directory shown. Package scripts use esbuild and Node; several suites create mock DOMs or local HTTP servers.
+
+| Command | Outcome |
+| :--- | :--- |
+| `npm test` (`guardrail/extension`) | **Passed, exit 0.** All scripts in the extension package test chain completed. Includes config loader (113/113), config schema (117/117), config centralization (79/79), interception boundary (77/77), workflow enforcement (51/51), continuation authorization (58/58), continuation validation (92/92), staging confirmation (91/91), controlled continuation (62/62), continuation hardening (75/75), approval client (125/125), approval submission (103/103), approval sync client (173/173), and remaining Day 8–17 regression scripts. |
+| `npm test` (`guardrail/dashboard`) | **Passed, exit 0.** Four scripts: dashboard shell 292/292, Day 12 workflow 104/104, dashboard sync 52/52, complete status synchronization 135/135. Local HTTP server tests shut down cleanly. |
+| `npm run build` (`guardrail/extension`) | **Passed.** Extension bundle generated. |
+| `npm run build` (`guardrail/dashboard`) | **Passed.** Dashboard bundle generated. |
+| `npm run type-check` (`guardrail/extension`) | **Failed, exit 2; 196 TypeScript diagnostics.** Includes existing test-source unused imports/types and diagnostics in `staging/modal.ts`; no remaining diagnostic in the modified `utils/messaging.ts`, `config/loader.ts`, or `interception/continuation.ts` paths after the final edits. |
+| `npm run type-check` (`guardrail/dashboard`) | **Failed, exit 2; 140 TypeScript diagnostics.** Includes dashboard and imported extension test/type diagnostics. The stale `utils/messaging.ts` diagnostic observed before the final `title` fix was resolved; the check was rerun and no longer reports that path. |
+| `git diff --check` | **Passed.** |
+
+During verification, initial test attempts exposed test-fixture incompatibilities with single-held-action manager semantics and a stale held manager entry. The controller lifecycle cleanup was fixed; fixtures were isolated or transitioned correctly. Those suites were rerun successfully as part of the final full package runs above.
+
+### Verification Level, Limitations, and Remaining Risks
+
+- **Unit level:** schema/config, risk/response, lifecycle, binding, privacy sanitizer, and API client suites.
+- **In-process integration level:** extension workflow suites and dashboard/backend contract suites, including local HTTP listeners backed by in-memory repositories.
+- **Browser level:** not verified. DOM behavior uses mocks; no real browser or installed extension was launched.
+- **Production backend level:** not verified. No production service, persistent database, credentials, or distributed concurrency test was used.
+- **Privacy scope:** tested paths omit synthetic password/OTP/card/token fields, raw transport exception details, DOM `visibleText` on the content-to-background action message, and URL query/hash values. The staging approval description is derived from a bounded static UI label and can be included in approval metadata; this verification does not prove that arbitrary page labels can never contain sensitive information. A follow-up should either remove dynamic labels from persisted/transmitted approval metadata or add a narrowly scoped privacy policy and regression coverage.
+- **Type checking:** package type-check scripts remain red due to the diagnostics stated above. Builds and runtime test bundles pass, but these results do not substitute for a clean TypeScript check.
+- **Protection boundary:** supported interception applies only to controlled test actions. `preventDefault()` and propagation control do not block unrelated page JavaScript or all network activity. Ambient action warnings do not establish that an action was blocked.
+
+### Completion Checklist and Recommended Follow-up
+
+- [x] Current extension regression chain passes.
+- [x] Current dashboard regression chain passes.
+- [x] Extension and dashboard production bundles build.
+- [x] Day 18 health, binding, continuation, status, and privacy regressions pass in the applicable suites.
+- [x] No automatic continuation on approval status alone is verified by test harnesses.
+- [x] Browser/production guarantees and type-check limitations are explicitly recorded.
+- [ ] Resolve the outstanding TypeScript diagnostics in a separately scoped cleanup.
+- [ ] Decide whether dynamic approval labels should be removed from transmitted approval metadata and test that boundary.
+- [ ] Add real-browser extension tests and persistent-backend concurrency tests before making broader protection or distributed exactly-once claims.

@@ -1097,10 +1097,14 @@ export async function runDay12Verification(): Promise<void> {
 
       // Rejection also does not execute
       actionOwnershipRegistry.registerActionOwnership('act_decoupled_002', 'usr_alice');
+      // A ContinuationManager intentionally tracks only one active held action.
+      // Isolate this rejection case while the approval case remains HELD above.
+      const rejectController = new InterceptionController();
+      const rejectContinuation = new ContinuationManager(rejectController);
       const sampleAction2 = createSampleAction('act_decoupled_002');
-      controller.register(sampleAction2.id, 'Detected action 2');
-      const rec2 = controller.holdAction(sampleAction2.id, 'Held for review 2');
-      continuation.registerHeldAction(sampleAction2, rec2, () => {
+      rejectController.register(sampleAction2.id, 'Detected action 2');
+      const rec2 = rejectController.holdAction(sampleAction2.id, 'Held for review 2');
+      rejectContinuation.registerHeldAction(sampleAction2, rec2, () => {
         actionExecutionCount++;
       });
 
@@ -1119,8 +1123,8 @@ export async function runDay12Verification(): Promise<void> {
         { actorId: 'tc_carol', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true }
       );
       assertEquals(rejectResult.status, ApprovalStatus.REJECTED, 'Backend decision committed as REJECTED');
-      assertEquals(controller.getRecord('act_decoupled_002')?.state, InterceptionState.HELD, 'Action remains HELD in tab after rejection');
-      assertEquals(continuation.getExecutionCount('act_decoupled_002'), 0, 'Rejection also never executes continuation: 0');
+      assertEquals(rejectController.getRecord('act_decoupled_002')?.state, InterceptionState.HELD, 'Action remains HELD in tab after rejection');
+      assertEquals(rejectContinuation.getExecutionCount('act_decoupled_002'), 0, 'Rejection also never executes continuation: 0');
     }
 
     // -------------------------------------------------------------------------

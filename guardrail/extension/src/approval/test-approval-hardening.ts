@@ -761,7 +761,7 @@ async function runHardeningTests(): Promise<void> {
   console.log('\n▶ Test Suite 5: Race Condition Immunity (Cancellation vs. In-Flight Submission)');
   {
     const controller = new InterceptionController();
-    const continuationManager = new ContinuationManager();
+    const continuationManager = new ContinuationManager(controller);
 
     const action = createSampleAction('act_race_001');
     controller.register(action);
