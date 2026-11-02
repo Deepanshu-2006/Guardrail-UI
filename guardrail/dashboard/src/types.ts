@@ -132,6 +132,12 @@ export interface DashboardShellState {
   pendingFilters: RequestFilters;
   /** Filter criteria applied to the decision history list */
   historyFilters: RequestFilters;
+  /** Whether backend service is confirmed unreachable or in transport error */
+  isBackendUnavailable?: boolean;
+  /** Timestamp when approval requests were last synchronized with backend */
+  lastSynchronizedAt?: Date | null;
+  /** Whether a background or foreground synchronization is currently in progress */
+  isRefreshing?: boolean;
 }
 
 /**

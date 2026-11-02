@@ -830,9 +830,9 @@ async function runCompleteSynchronizationTests(): Promise<void> {
       // Polling halted automatically upon terminal REJECTED
       assert(getActiveSyncSubscription() === null, 'Extension polling halted upon terminal REJECTED');
 
-      // Invariant: action is NOT continued on rejection
+      // Invariant: action is NOT continued on rejection, and state is transitioned to terminal INVALIDATED
       assertEquals(continuationExecCount2, 0, 'Continuation execution count is strictly 0 on rejection');
-      assertEquals(controller2.getRecord(action2Id)?.state, InterceptionState.HELD, 'Action remains HELD on rejection');
+      assertEquals(controller2.getRecord(action2Id)?.state, InterceptionState.INVALIDATED, 'Action is transitioned to INVALIDATED on rejection');
 
       dismissStagingModal();
     }
@@ -923,7 +923,7 @@ async function runCompleteSynchronizationTests(): Promise<void> {
       assertEquals(pill?.textContent, 'Request Expired', 'Pill text confirms Request Expired');
 
       assertEquals(continuationExecCount3, 0, 'Continuation execution count is strictly 0 on expiration');
-      assertEquals(controller3.getRecord(action3Id)?.state, InterceptionState.HELD, 'Action remains HELD on expiration');
+      assertEquals(controller3.getRecord(action3Id)?.state, InterceptionState.EXPIRED, 'Action is transitioned to EXPIRED on expiration');
 
       dismissStagingModal();
     }

@@ -12,6 +12,7 @@
 import {
   ApprovalApiClient,
   ApprovalRequest,
+  ApprovalStatus,
   ApiClientErrorCodes,
   DashboardShellOptions,
   DashboardShellState,
@@ -48,6 +49,8 @@ export class DashboardShell {
   private isDestroyed: boolean = false;
   private isPollingHaltedDueToAuth: boolean = false;
   private lastSynchronizedAt: Date | null = null;
+  private isBackendUnavailable: boolean = false;
+  private isRefreshing: boolean = false;
 
   // Monotonic sequence tracking for stale-response protection
   private nextPendingFetchSeq: number = 0;
@@ -310,7 +313,14 @@ export class DashboardShell {
     headerActions.className = 'gd-header-actions';
 
     const statusPill = document.createElement('div');
-    statusPill.className = 'gd-status-pill';
+    const pillModifier = this.isBackendUnavailable
+      ? 'unavailable'
+      : this.isRefreshing
+      ? 'syncing'
+      : this.state.contactProfile?.isAuthenticated
+      ? 'authenticated'
+      : 'portal';
+    statusPill.className = `gd-status-pill ${pillModifier}`;
     statusPill.setAttribute('role', 'status');
 
     const dot = document.createElement('span');
@@ -318,9 +328,19 @@ export class DashboardShell {
     dot.setAttribute('aria-hidden', 'true');
 
     const statusText = document.createElement('span');
-    statusText.textContent = this.state.contactProfile?.isAuthenticated
-      ? 'Verified Reviewer'
-      : 'Reviewer Portal';
+    if (this.isBackendUnavailable) {
+      statusText.textContent = this.state.contactProfile?.isAuthenticated
+        ? 'Verified Reviewer (Offline)'
+        : 'Backend Unavailable';
+    } else if (this.isRefreshing) {
+      statusText.textContent = this.state.contactProfile?.isAuthenticated
+        ? 'Verified Reviewer (Syncing...)'
+        : 'Synchronizing...';
+    } else {
+      statusText.textContent = this.state.contactProfile?.isAuthenticated
+        ? 'Verified Reviewer'
+        : 'Reviewer Portal';
+    }
 
     statusPill.appendChild(dot);
     statusPill.appendChild(statusText);
@@ -369,6 +389,10 @@ export class DashboardShell {
       status: this.state.pendingStatus,
       errorMessage: this.state.errorMessage,
       filters: this.state.pendingFilters,
+      isStale: this.isBackendUnavailable || (this.state.pendingStatus === 'error' && this.state.pendingRequests.length > 0),
+      isBackendUnavailable: this.isBackendUnavailable,
+      lastSynchronizedAt: this.lastSynchronizedAt,
+      isRefreshing: this.isRefreshing,
       onFiltersChange: (newFilters) => this.setPendingFilters(newFilters),
       onRequestSelect: (id) => this.selectRequest(id),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
@@ -496,6 +520,7 @@ export class DashboardShell {
       return;
     }
 
+    this.isRefreshing = true;
     const seq = ++this.nextPendingFetchSeq;
 
     // Only transition to full loading state if not a silent background sync
@@ -522,28 +547,41 @@ export class DashboardShell {
           return;
         }
 
-        // Validate that items are valid objects with canonical ids
+        // Validate that items are valid objects with canonical ids & deduplicate
         const safeRequests: ApprovalRequest[] = [];
+        const seenIds = new Set<string>();
         for (const req of result.data) {
-          if (!req || typeof req !== 'object' || typeof req.id !== 'string') {
+          if (!req || typeof req !== 'object' || typeof req.id !== 'string' || !req.id.trim()) {
             this.setError('Protocol error: Malformed approval request item received from backend.');
             return;
           }
-          safeRequests.push(req);
+          const trimmedId = req.id.trim();
+          if (!seenIds.has(trimmedId)) {
+            seenIds.add(trimmedId);
+            safeRequests.push(req);
+          }
         }
 
-        // Authoritatively update in-memory cache for all retrieved records
+        // Reconcile against authoritative local cache:
+        // A delayed pending response must NEVER revert an already-resolved terminal request
+        const reconciledPending: ApprovalRequest[] = [];
         for (const req of safeRequests) {
+          const cached = this.detailedRequestsCache.get(req.id);
+          if (cached && cached.status !== ApprovalStatus.PENDING) {
+            continue;
+          }
           this.detailedRequestsCache.set(req.id, req);
+          reconciledPending.push(req);
         }
 
+        this.isBackendUnavailable = false;
         this.state.errorMessage = null;
-        this.setPendingRequests(safeRequests);
+        this.setPendingRequests(reconciledPending);
 
         // Synchronize visible request details if a request is currently selected
         if (this.state.selectedRequestId) {
           const selectedId = this.state.selectedRequestId;
-          const stillPending = safeRequests.some((r) => r.id === selectedId);
+          const stillPending = reconciledPending.some((r) => r.id === selectedId);
           if (!stillPending) {
             const cached = this.detailedRequestsCache.get(selectedId);
             // Only fetch remote details if record is missing or still PENDING in memory
@@ -569,27 +607,35 @@ export class DashboardShell {
             }
             this.stopPolling();
             this.isPollingHaltedDueToAuth = true;
+            this.isBackendUnavailable = false;
             break;
           case ApiClientErrorCodes.NOT_FOUND_OR_DENIED:
             userMessage = 'Access denied: You are not authorized to view pending approval requests for this ward.';
+            this.isBackendUnavailable = false;
             break;
           case ApiClientErrorCodes.NETWORK_FAILURE:
             userMessage = 'Network connection error: Unable to reach the Guardrail approval backend. Please verify your connection and retry.';
+            this.isBackendUnavailable = true;
             break;
           case ApiClientErrorCodes.TIMEOUT:
             userMessage = 'Request timed out: The approval backend took too long to respond. Please retry.';
+            this.isBackendUnavailable = true;
             break;
           case ApiClientErrorCodes.MALFORMED_JSON_RESPONSE:
             userMessage = 'Protocol error: Received malformed response syntax from approval backend.';
+            this.isBackendUnavailable = false;
             break;
           case ApiClientErrorCodes.RATE_LIMIT_EXCEEDED:
             userMessage = 'Too many requests: Please wait a few moments before retrying.';
+            this.isBackendUnavailable = false;
             break;
           case ApiClientErrorCodes.SERVER_ERROR:
             userMessage = 'Internal server error: The approval backend encountered an unexpected error.';
+            this.isBackendUnavailable = true;
             break;
           default:
             userMessage = err.message || 'An unexpected error occurred while fetching pending approvals.';
+            this.isBackendUnavailable = false;
             break;
         }
 
@@ -599,8 +645,14 @@ export class DashboardShell {
       if (this.isDestroyed) return;
       if (seq < this.lastAppliedPendingSeq) return;
       this.lastAppliedPendingSeq = seq;
+      this.isBackendUnavailable = true;
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
       this.setError(`Client error while retrieving pending approvals: ${msg}`);
+    } finally {
+      this.isRefreshing = false;
+      if (!this.isDestroyed) {
+        this.render();
+      }
     }
   }
 
@@ -810,6 +862,10 @@ export class DashboardShell {
         // Backend confirmed decision with authoritative updated ApprovalRequest record
         const updatedRecord = result.data;
 
+        // Invalidate pre-decision pending fetches so their delayed response cannot overwrite this decision
+        this.lastAppliedPendingSeq = Math.max(this.lastAppliedPendingSeq, this.nextPendingFetchSeq);
+        this.isBackendUnavailable = false;
+
         // Update detailed cache with authoritative updated record
         this.detailedRequestsCache.set(trimmedId, updatedRecord);
 
@@ -942,6 +998,9 @@ export class DashboardShell {
    */
   public setError(message: string | null): void {
     this.state.errorMessage = message;
+    if (message === null) {
+      this.isBackendUnavailable = false;
+    }
     this.state.pendingStatus = message ? 'error' : this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
     this.render();
   }
@@ -1012,7 +1071,12 @@ export class DashboardShell {
    * Returns a copy of the current dashboard state.
    */
   public getState(): Readonly<DashboardShellState> {
-    return { ...this.state };
+    return {
+      ...this.state,
+      isBackendUnavailable: this.isBackendUnavailable,
+      lastSynchronizedAt: this.lastSynchronizedAt,
+      isRefreshing: this.isRefreshing,
+    };
   }
 
   /**
