@@ -66,7 +66,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
-    'Inspect held browser actions requiring trusted contact review before the user may proceed in Staging Mode.';
+    'Review approval requests recorded by the service. The dashboard cannot verify whether an action remains held in a browser tab.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
@@ -276,7 +276,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'All protected actions have been evaluated or resolved. Incoming requests initiated from your wards’ Staging Mode will appear here as the dashboard synchronizes.';
+      'The service returned no pending approval requests. This does not mean every browser action was evaluated; new requests will appear here after the dashboard synchronizes.';
 
     emptyPlaceholder.appendChild(icon);
     emptyPlaceholder.appendChild(pTitle);

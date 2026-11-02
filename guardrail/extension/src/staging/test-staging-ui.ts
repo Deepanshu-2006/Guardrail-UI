@@ -361,9 +361,12 @@ import {
   GuardrailAction,
 } from '../types/actions.js';
 import {
+  ApprovalRequest,
   ApprovalRequestIntent,
   ApprovalRequestResult,
+  ApprovalStatus,
 } from '../types/approval.js';
+import { determineApprovalState } from './status.js';
 import { InterceptionRecord, InterceptionState } from '../types/interception.js';
 import { ResponseAction, ResponseDecision } from '../types/response.js';
 import { RiskLevel } from '../types/risk.js';
@@ -417,6 +420,27 @@ function assertEquals<T>(actual: T, expected: T, message: string): void {
 console.log('\n============================================================');
 console.log('🧪 GUARDRAIL STAGING MODE: VISUAL SHELL TEST SUITE');
 console.log('============================================================\n');
+
+const heldCopy = determineApprovalState({ state: 'not_submitted', actionId: 'act_test_held' });
+assert(heldCopy.detail.includes('Page scripts may still act independently'), 'Held status does not promise no page-side activity');
+assert(heldCopy.isActionHeld, 'Held status is explicit for the supported controlled action state');
+const invalidCopy = determineApprovalState({ state: 'local_invalid', actionId: 'act_test_stale' });
+assertEquals(invalidCopy.isActionHeld, false, 'Locally invalid status does not claim action remains held');
+assert(!invalidCopy.detail.includes('password='), 'Invalid-state explanation does not expose synthetic secret text');
+const pendingCopy = determineApprovalState({ state: 'creation_confirmed', actionId: 'act_test_pending' });
+assertEquals(pendingCopy.backendStatus, ApprovalStatus.PENDING, 'Request creation reports pending, not approved');
+assert(!pendingCopy.detail.includes('will execute'), 'Pending request does not imply execution');
+const approvedRequest = {
+  id: 'apr_ui_approved',
+  status: ApprovalStatus.APPROVED,
+  decision: { decision: 'APPROVED', decidedBy: 'trusted-contact', decidedAt: '2026-11-03T00:00:00.000Z' },
+} as ApprovalRequest;
+const approvedCopy = determineApprovalState({ state: 'status_confirmed', request: approvedRequest });
+assert(approvedCopy.detail.includes('does not run the action'), 'Approval status explicitly does not imply continuation');
+assert(approvedCopy.detail.includes('confirmation'), 'Approved state says explicit user confirmation is still required');
+const uncertainCopy = determineApprovalState({ state: 'unknown', rawError: 'password=synthetic-secret' });
+assert(!uncertainCopy.isBackendConfirmed, 'Unknown submission outcome is not backend-confirmed');
+assert(!uncertainCopy.detail.includes('synthetic-secret'), 'Unknown-state explanation redacts synthetic sensitive text');
 
 function createSampleContext(overrides: Partial<StagingActionContext> = {}): StagingActionContext {
   return {
@@ -1210,7 +1234,8 @@ console.log('\n▶ Test 11: Staging Mode Cancel Action & Interception Lifecycle'
   assert(Boolean(confirmationBanner), 'Confirmation banner is rendered in modal');
   assert(confirmationBanner?.classList.contains('gs-confirmation-success') || false, 'Banner has .gs-confirmation-success class');
   const bannerTitle = shadow1.querySelector('.gs-confirmation-title');
-  assertEquals(bannerTitle?.textContent, 'Action cancelled. Nothing was changed.', 'Banner displays exact confirmation: "Action cancelled. Nothing was changed."');
+  assertEquals(bannerTitle?.textContent, 'Held test interaction cancelled.', 'Banner confirms only the supported held interaction was cancelled');
+  assert(confirmationBanner?.textContent.includes('independent page-script activity') ?? false, 'Cancellation copy avoids claiming the whole page had no side effects');
 
   // Validate UI Feedback: Header badge and controls update
   const modePill = shadow1.querySelector('.gs-mode-pill');
@@ -1831,7 +1856,7 @@ console.log('\n▶ Test 13: Staging Mode Reliability, Clarity & Accessibility');
   assertEquals(cancelBtn13A.textContent, 'Action Cancelled', 'Cancel button displays "Action Cancelled"');
   assertEquals(cancelBtn13A.disabled, true, 'Cancel button remains disabled in cancelled state');
   assertEquals(reqBtn13A.style.display, 'none', 'Request button is hidden in cancelled state');
-  assert(liveAnnouncer?.textContent?.includes('Action cancelled. Nothing was changed.') || false, 'Live announcer announced cancellation success');
+  assert(liveAnnouncer?.textContent?.includes('Cancellation reported successful for the held test interaction') || false, 'Live announcer announces the supported interaction cancellation');
 
   // State 4: INTENT_RECORDED (approval request intent recorded locally)
   setStagingUIState('approval_intent_recorded');

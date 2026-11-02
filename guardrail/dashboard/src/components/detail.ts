@@ -165,7 +165,7 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
     case ApprovalStatus.PENDING:
       titleEl.textContent = '⏳ Awaiting Review';
       descEl.textContent =
-        'This action is currently held in the ward’s browser. An authorized trusted contact must record a review decision before the ward can proceed in Staging Mode.';
+        'The server records this approval request as pending. This dashboard cannot verify the action’s current state in the ward’s browser. The extension must validate the local action before any continuation.';
       break;
 
     case ApprovalStatus.APPROVED:
@@ -173,10 +173,10 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
       if (request.decision) {
         const decidedBy = request.decision.decidedBy || 'Authorized reviewer';
         const decidedAt = formatTimestamp(request.decision.decidedAt || request.resolvedAt);
-        descEl.textContent = `Approved by ${decidedBy} on ${decidedAt}. The user may proceed with this action in Staging Mode.`;
+        descEl.textContent = `Approved by ${decidedBy} on ${decidedAt}. Approval does not run the action. The extension must revalidate it locally and ask the user to confirm before any supported continuation.`;
       } else {
         descEl.textContent =
-          'Reviewer approval recorded on server. The user may proceed with this action in Staging Mode.';
+          'Reviewer approval is recorded on the server. Approval does not run the action; the extension must revalidate it locally and require user confirmation before any supported continuation.';
       }
       break;
 
@@ -185,10 +185,10 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
       if (request.decision) {
         const decidedBy = request.decision.decidedBy || 'Authorized reviewer';
         const decidedAt = formatTimestamp(request.decision.decidedAt || request.resolvedAt);
-        descEl.textContent = `Rejected by ${decidedBy} on ${decidedAt}. The held action cannot proceed.`;
+        descEl.textContent = `Rejected by ${decidedBy} on ${decidedAt}. This request does not authorize continuation. The dashboard cannot verify the action’s current browser state.`;
       } else {
         descEl.textContent =
-          'This action was rejected by an authorized trusted contact. The held browser action cannot proceed.';
+          'This request was rejected by an authorized trusted contact and does not authorize continuation. The dashboard cannot verify the action’s current browser state.';
       }
       break;
 
@@ -205,7 +205,7 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
     case ApprovalStatus.EXPIRED:
       titleEl.textContent = '⏰ Request Expired';
       descEl.textContent =
-        'The review deadline elapsed before a decision was recorded. The held action has timed out and cannot proceed without a fresh review.';
+        'The server marked this request expired. This approval cannot authorize continuation; the extension must check the current action and require a fresh review if applicable.';
       break;
 
     case 'UNAVAILABLE':
@@ -381,7 +381,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   const actionSubtitle = document.createElement('p');
   actionSubtitle.className = 'gd-card-subtitle';
   actionSubtitle.textContent =
-    'The specific browser interaction intercepted and currently held in the ward’s local tab.';
+    'Details linked to this approval request. The dashboard cannot inspect the ward’s current tab or verify that an interaction remains held.';
 
   actionHeader.appendChild(actionTitle);
   actionHeader.appendChild(actionSubtitle);
@@ -407,7 +407,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
 
   const decouplingP = document.createElement('p');
   decouplingP.textContent =
-    'Held in Ward’s Browser: This interaction is currently paused in the user’s browser tab. Approving or rejecting updates the server governance record; it does NOT remotely execute or trigger the action in the ward’s browser.';
+    'Approval decisions update this server record only. They do not execute or trigger an action in the ward’s browser. The extension must revalidate its local action state and require explicit user confirmation before any supported continuation.';
 
   actionDecouplingBox.appendChild(decouplingP);
   actionCard.appendChild(actionDecouplingBox);

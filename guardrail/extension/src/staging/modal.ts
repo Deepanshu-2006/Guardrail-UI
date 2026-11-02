@@ -1392,7 +1392,7 @@ function renderActiveBody(context: StagingActionContext): HTMLElement {
   const headingSubtitle = document.createElement('p');
   headingSubtitle.className = 'gs-heading-subtitle';
   headingSubtitle.textContent =
-    'Guardrail paused this action before it happens so you have a moment to review it. Nothing has been sent or changed yet.';
+    'Guardrail held this supported test interaction before its registered handler ran. Page scripts may still act independently, so review the page before deciding what to do next.';
 
   headingSection.appendChild(headingTitle);
   headingSection.appendChild(headingSubtitle);
@@ -1850,7 +1850,7 @@ export function setStagingUIState(
       if (title) title.textContent = 'Action Paused for Your Review';
       if (subtitle) {
         subtitle.textContent =
-          'Guardrail paused this action before it happens so you have a moment to review it. Nothing has been sent or changed yet.';
+          'Guardrail held this supported test interaction before its registered handler ran. Page scripts may still act independently, so review the page before deciding what to do next.';
       }
       if (notice) {
         notice.textContent = 'Staging Mode Shell • Approval workflow active in upcoming milestone';
@@ -1868,7 +1868,7 @@ export function setStagingUIState(
         reqBtn.removeAttribute('aria-busy');
         reqBtn.style.display = '';
       }
-      announceStagingState('Action paused for review.');
+      announceStagingState('Supported test interaction held for review. Page scripts may still act independently.');
       break;
 
     case 'cancelling':
@@ -1901,17 +1901,17 @@ export function setStagingUIState(
       }
       if (title) title.textContent = 'Action Cancelled';
       if (subtitle) {
-        subtitle.textContent = 'This action was cancelled before it could run. Nothing was changed.';
+        subtitle.textContent = 'The cancellation handler reported success for this interaction. Independent page scripts may still have acted.';
       }
       if (notice) {
-        notice.textContent = 'Action cancelled safely • State: CANCELLED';
+        notice.textContent = 'Held interaction cancelled • Registered handler did not run';
       }
       if (body) {
         displayConfirmationBanner(
           body,
           'success',
-          'Action cancelled. Nothing was changed.',
-          'The held interaction was aborted safely. No action was executed, no network data was sent, and no page state was modified.'
+          'Held test interaction cancelled.',
+          'The cancellation handler reported success for this supported test interaction. This does not undo or rule out independent page-script activity.'
         );
       }
       if (cancelBtn) {
@@ -1924,7 +1924,7 @@ export function setStagingUIState(
         reqBtn.disabled = true;
         reqBtn.style.display = 'none';
       }
-      announceStagingState('Action cancelled. Nothing was changed.');
+      announceStagingState('Cancellation reported successful for the held test interaction. Independent page scripts may still have acted.');
       break;
 
     case 'approval_intent_recorded':
@@ -2280,8 +2280,8 @@ export function setStagingUIState(
       }
       if (title) title.textContent = 'Action Continued';
       if (subtitle) {
-        subtitle.textContent =
-          details?.description || 'The held action has been executed safely under controlled supervision.';
+        subtitle.textContent = details?.description ||
+          'The supported test action handler completed after local checks and your confirmation. This does not verify effects outside that handler.';
       }
       if (notice) {
         notice.textContent = 'Action continued safely • State: CONTINUED';
@@ -2292,7 +2292,7 @@ export function setStagingUIState(
           'success',
           'Action Continued Successfully',
           details?.description ||
-            'The held action was resumed and executed safely according to your confirmation.'
+            'The supported test action handler completed after local checks and your confirmation. This does not verify effects outside that handler.'
         );
       }
       if (reqBtn) {
@@ -2815,7 +2815,7 @@ export async function handleModalContinue(
       eligible: false,
       status: ContinuationEligibilityStatus.UNAVAILABLE,
       actionId: id,
-      reason: `Validation service threw an unexpected error: ${err?.message || err}`,
+      reason: 'Guardrail could not verify whether this action is eligible to continue. No continuation was started.',
       verifiedAt: new Date().toISOString(),
       limitations: CONTINUATION_VALIDATION_LIMITATIONS,
     };
@@ -2944,7 +2944,7 @@ export async function handleModalContinue(
       actionId: id,
       executed: false,
       executionCount: manager.getExecutionCount(id),
-      error: err?.message || 'Error occurred during action continuation.',
+      error: 'The controlled action handler failed. Guardrail did not report the action as completed.',
     };
   } finally {
     isContinuationInFlight = false;
@@ -2954,7 +2954,7 @@ export async function handleModalContinue(
   if (continuationResult.success) {
     stopModalStatusSync();
     setStagingUIState('continued', {
-      description: 'The held action has been executed safely under controlled supervision.',
+      description: 'The supported test action handler completed after local checks and your confirmation. This does not verify effects outside that handler.',
     });
 
     if (typeof document !== 'undefined') {
@@ -3005,7 +3005,7 @@ export interface ModalCancelUIElements {
  * 2. Source of Truth: Uses InterceptionController / ContinuationManager lifecycle.
  * 3. Validation: Confirms action is currently in HELD state.
  * 4. Zero Handler Invocation: Ensures controlled test handler is not executed.
- * 5. Accurate Feedback: Displays "Action cancelled. Nothing was changed." only upon true success.
+ * 5. Accurate Feedback: Confirms only the registered held interaction was cancelled when the controller reports success.
  *    Displays an appropriate error message if state has changed or cancellation fails.
  */
 function applyCancellationOutcome(
@@ -3021,8 +3021,8 @@ function applyCancellationOutcome(
     displayConfirmationBanner(
       body,
       'success',
-      'Action cancelled. Nothing was changed.',
-      'The held interaction was aborted safely. No action was executed, no network data was sent, and no page state was modified.'
+      'Held test interaction cancelled.',
+      'The cancellation handler reported success for this supported test interaction. This does not undo or rule out independent page-script activity.'
     );
 
     const pill = header.querySelector('.gs-mode-pill');
@@ -3038,7 +3038,7 @@ function applyCancellationOutcome(
     }
     const headingSubtitle = body.querySelector('.gs-heading-subtitle');
     if (headingSubtitle) {
-      headingSubtitle.textContent = 'This action was cancelled before it could run. Nothing was changed.';
+      headingSubtitle.textContent = 'The cancellation handler reported success for this interaction. Independent page scripts may still have acted.';
     }
 
     cancelBtn.textContent = 'Action Cancelled';
@@ -3047,10 +3047,10 @@ function applyCancellationOutcome(
       primaryBtn.disabled = true;
     }
     if (notice) {
-      notice.textContent = 'Action cancelled safely • State: CANCELLED';
+      notice.textContent = 'Held interaction cancelled • Registered handler did not run';
     }
 
-    announceStagingState('Action cancelled. Nothing was changed.');
+    announceStagingState('Cancellation reported successful for the held test interaction. Independent page scripts may still have acted.');
 
     if (options.onCancelSuccess) {
       options.onCancelSuccess(result);
@@ -3099,7 +3099,7 @@ function applyCancellationOutcome(
  * 2. Source of Truth: Uses InterceptionController / ContinuationManager lifecycle.
  * 3. Validation: Confirms action is currently in HELD state.
  * 4. Zero Handler Invocation: Ensures controlled test handler is not executed.
- * 5. Accurate Feedback: Displays "Action cancelled. Nothing was changed." only upon true success.
+ * 5. Accurate Feedback: Confirms only the registered held interaction was cancelled when the controller reports success.
  *    Displays an appropriate error message if state has changed or cancellation fails.
  */
 export function handleModalCancel(
@@ -3137,7 +3137,7 @@ export function handleModalCancel(
       result = {
         success: false,
         actionId: id,
-        error: err?.message || 'Error occurred during action cancellation callback.',
+        error: 'Guardrail could not complete cancellation because the cancellation handler failed.',
       };
     }
   } else if (options.continuationManager) {
@@ -3161,7 +3161,7 @@ export function handleModalCancel(
         success: false,
         actionId: id,
         record: options.controller.getRecord(id),
-        error: err?.message || `Failed to cancel action "${id}".`,
+        error: 'Guardrail could not complete cancellation. Check the current action state before retrying.',
       };
     }
   } else {
@@ -3180,7 +3180,7 @@ export function handleModalCancel(
         const errorResult: CancellationResult = {
           success: false,
           actionId: id,
-          error: err?.message || String(err),
+          error: 'Guardrail could not complete cancellation. Check the current action state before retrying.',
         };
         applyCancellationOutcome(errorResult, options, uiElements);
       });
@@ -4054,7 +4054,7 @@ export function handleModalRequestApproval(
       customOutcome = {
         success: false,
         actionId,
-        error: err?.message || String(err),
+        error: 'Guardrail could not prepare the approval request. Check the action state before trying again.',
         isBackendConnected: Boolean(options.useRealBackend),
         isAuthoritative: true,
       };
@@ -4067,7 +4067,7 @@ export function handleModalRequestApproval(
           const errorRes: ApprovalRequestResult = {
             success: false,
             actionId,
-            error: err?.message || String(err),
+            error: 'Guardrail could not prepare the approval request. Check the action state before trying again.',
             isBackendConnected: Boolean(options.useRealBackend),
             isAuthoritative: true,
           };

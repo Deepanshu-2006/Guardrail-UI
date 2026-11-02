@@ -106,6 +106,9 @@ export enum UIApprovalStatus {
    * [Local validation failure]
    */
   MALFORMED_RESPONSE = 'MALFORMED_RESPONSE',
+
+  /** An unrecognized local UI state; no protection outcome can be asserted. */
+  STATE_UNAVAILABLE = 'STATE_UNAVAILABLE',
 }
 
 /**
@@ -159,7 +162,7 @@ export interface ValidatedApprovalState {
    * The protected action MUST remain in HELD state across all of these states.
    * Never release or execute the action automatically.
    */
-  readonly isActionHeld: true;
+  readonly isActionHeld: boolean;
 }
 
 // =============================================================================
@@ -292,7 +295,7 @@ export function determineApprovalState(
         isBackendConfirmed: false,
         headline: 'Action Paused for Your Review',
         detail:
-          'Guardrail paused this action before it happens so you have a moment to review it. Nothing has been sent or changed yet.',
+          'Guardrail held this supported test interaction before its registered handler ran. Page scripts may still act independently, so review the page before deciding what to do next.',
         badgeLabel: 'Review Mode',
         badgeClass: 'gs-badge-held',
         footerNotice: 'Staging Mode Shell • Approval workflow ready • Action: HELD',
@@ -358,7 +361,7 @@ export function determineApprovalState(
             requestId: params.request.id,
             headline: 'Approval Confirmed by Contact',
             // CRITICAL: Action remains HELD! Does NOT auto-execute
-            detail: `An authorized trusted contact (${params.request.decision?.decidedBy || 'contact'}) approved this action. To ensure your safety, this action is still held until you review and confirm.`,
+            detail: `An authorized trusted contact (${params.request.decision?.decidedBy || 'contact'}) approved this request. Approval does not run the action. Return to Staging Mode; the extension must recheck the local action and request your confirmation before any supported continuation.`,
             badgeLabel: 'Approval Confirmed',
             badgeClass: 'gs-badge-held',
             footerNotice: `Approval Confirmed (${params.request.id}) • Status: APPROVED • Action: HELD`,
@@ -377,11 +380,11 @@ export function determineApprovalState(
             backendStatus: ApprovalStatus.REJECTED,
             requestId: params.request.id,
             headline: 'Approval Denied by Contact',
-            detail: `An authorized trusted contact (${params.request.decision?.decidedBy || 'contact'}) reviewed and denied this approval request. This action remains paused and cannot proceed.`,
+            detail: `An authorized trusted contact (${params.request.decision?.decidedBy || 'contact'}) rejected this request. This decision does not report the current browser state, and it cannot authorize continuation.`,
             badgeLabel: 'Approval Denied',
             badgeClass: 'gs-badge-stale',
             footerNotice: `Approval Denied (${params.request.id}) • Status: REJECTED • Action: HELD`,
-            ariaAnnouncement: 'Action rejected by trusted contact. Action cannot proceed.',
+            ariaAnnouncement: 'Approval request rejected by trusted contact. No continuation is authorized.',
             isRequestButtonDisabled: true,
             requestButtonText: 'Request Denied',
             isBusy: false,
@@ -476,8 +479,7 @@ export function determineApprovalState(
         isBackendConfirmed: false,
         headline: 'Action No Longer Held',
         detail:
-          sanitizeApprovalErrorMessage(params.rawError) ||
-          'The action could not be processed because its state has already changed or it is no longer held.',
+          'The action is no longer held in the local interception state, so this request cannot continue. Check the page and initiate the interaction again if needed.',
         badgeLabel: 'Operation Unavailable',
         badgeClass: 'gs-badge-stale',
         footerNotice: 'Action cannot be modified • Interception is no longer held',
@@ -485,7 +487,7 @@ export function determineApprovalState(
         isRequestButtonDisabled: true,
         requestButtonText: 'Request Unavailable',
         isBusy: false,
-        isActionHeld: true,
+        isActionHeld: false,
       };
 
     case 'malformed':
@@ -508,17 +510,17 @@ export function determineApprovalState(
 
   // Fallback safety
   return {
-    uiStatus: UIApprovalStatus.NOT_SUBMITTED,
+    uiStatus: UIApprovalStatus.STATE_UNAVAILABLE,
     isBackendConfirmed: false,
-    headline: 'Action Paused for Your Review',
-    detail: 'Guardrail paused this action before it happens. Nothing has been sent or changed yet.',
-    badgeLabel: 'Review Mode',
-    badgeClass: 'gs-badge-held',
-    footerNotice: 'Staging Mode Shell • State: HELD',
-    ariaAnnouncement: 'Action paused for review.',
-    isRequestButtonDisabled: false,
-    requestButtonText: 'Request Approval',
+    headline: 'Action State Unavailable',
+    detail: 'Guardrail could not determine the action state. Do not assume the action was held; check the page and start again if needed.',
+    badgeLabel: 'State Unknown',
+    badgeClass: 'gs-badge-stale',
+    footerNotice: 'Action state unknown • No protection outcome confirmed',
+    ariaAnnouncement: 'Action state unavailable. Protection outcome is not confirmed.',
+    isRequestButtonDisabled: true,
+    requestButtonText: 'Request Unavailable',
     isBusy: false,
-    isActionHeld: true,
+    isActionHeld: false,
   };
 }

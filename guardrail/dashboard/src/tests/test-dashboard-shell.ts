@@ -1299,17 +1299,21 @@ async function runDashboardTests() {
     assertEquals(
       actionHeading?.textContent,
       'Browser Action Under Review',
-      'Action heading correctly identifies browser action'
+      'Action heading identifies the record’s related browser action'
     );
     assert(
-      actionCard?.querySelector('.gd-card-subtitle')?.textContent.includes('held in the ward’s local tab') ?? false,
-      'Action card clarifies action is held in local tab'
+      actionCard?.querySelector('.gd-card-subtitle')?.textContent.includes('cannot inspect the ward’s current tab') ?? false,
+      'Action card does not claim dashboard can verify local held state'
     );
     const decouplingNote = actionCard?.querySelector('.gd-action-decoupling-note');
     assert(decouplingNote !== null, 'Action card contains decoupled execution note');
     assert(
-      decouplingNote?.textContent.includes('does NOT remotely execute or trigger the action') ?? false,
+      decouplingNote?.textContent.includes('They do not execute or trigger an action') ?? false,
       'Reiterates that approval does not execute the action remotely'
+    );
+    assert(
+      decouplingNote?.textContent.includes('require explicit user confirmation') ?? false,
+      'Dashboard explains local revalidation and explicit confirmation remain necessary'
     );
 
     // Section 2: Governance Record Card
@@ -1354,6 +1358,7 @@ async function runDashboardTests() {
     const appBanner = approvedView.querySelector('.gd-status-banner.approved');
     assert(appBanner !== null, 'Approved banner rendered');
     assert(appBanner?.textContent.includes('tc_carol') ?? false, 'Banner mentions reviewer');
+    assert(appBanner?.textContent.includes('Approval does not run the action') ?? false, 'Approved status does not imply action execution');
     assert(
       approvedView.textContent.includes('Verified account transfer verbally with user'),
       'Reviewer note displayed in resolution box'
@@ -1382,6 +1387,7 @@ async function runDashboardTests() {
       rejectedView.textContent.includes('User did not authorize this wire transfer'),
       'Rejection explanation displayed'
     );
+    assert(rejectedView.textContent.includes('does not authorize continuation'), 'Rejected request does not imply current browser state');
 
     // 23.3 CANCELLED
     const cancelledReq: ApprovalRequest = {
@@ -1416,8 +1422,8 @@ async function runDashboardTests() {
     const expBanner = expiredView.querySelector('.gd-status-banner.expired');
     assert(expBanner !== null, 'Expired banner rendered');
     assert(
-      expBanner?.textContent.includes('review deadline elapsed') ?? false,
-      'Expired banner notes deadline passed'
+      expBanner?.textContent.includes('server marked this request expired') ?? false,
+      'Expired banner describes the server request state without asserting browser action state'
     );
   }
 

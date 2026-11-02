@@ -714,7 +714,8 @@ console.log('\n▶ Scenario 4: Selecting Cancel Successfully Cancels the Held Ac
 
   const banner = shadow.querySelector('.gs-confirmation-success');
   assert(banner !== null, 'Success confirmation banner is rendered');
-  assert(banner?.textContent.includes('Action cancelled. Nothing was changed.') || false, 'Accurate cancellation confirmation text displayed');
+  assert(banner?.textContent.includes('Held test interaction cancelled.') || false, 'Cancellation confirmation is limited to the held test interaction');
+  assert(banner?.textContent.includes('independent page-script activity') || false, 'Cancellation copy disclaims unrelated page-script activity');
 
   const pill = shadow.querySelector('.gs-mode-pill');
   assertEquals(pill?.textContent, 'Cancelled', 'Header mode pill indicates Cancelled');
