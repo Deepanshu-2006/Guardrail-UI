@@ -2697,6 +2697,190 @@ async function runDashboardTests() {
     shell.destroy();
   }
 
+  // Test Suite 45: Day 21 Trusted-Contact Dashboard Consistency & Resilience
+  console.log('\n▶ Test Suite 45: Day 21 Trusted-Contact Dashboard Consistency & Resilience');
+  {
+    // 1. Distinction between empty queue and failed request placeholder
+    const emptyShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [],
+      autoFetch: false,
+    });
+
+    const emptyPlaceholder = rootElement.querySelector('.gd-empty-state');
+    assert(emptyPlaceholder !== null, 'Empty state placeholder rendered when queue is empty');
+    assert(
+      emptyPlaceholder?.textContent.includes('No Pending Approval Requests') ?? false,
+      'Empty state title communicates No Pending Approval Requests'
+    );
+    assertEquals(rootElement.querySelector('.gd-error-placeholder'), null, 'Error placeholder is NOT rendered when queue is empty');
+    emptyShell.destroy();
+
+    // 2. Failed request with 0 requests renders error placeholder, not empty state
+    const errorShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [],
+      autoFetch: false,
+    });
+    errorShell.setError('Connection refused by approval gateway');
+    const errPlaceholder = rootElement.querySelector('.gd-error-placeholder');
+    assert(errPlaceholder !== null, 'Failed request renders gd-error-placeholder');
+    assert(
+      errPlaceholder?.textContent.includes('Unable to Load Approval Requests') ?? false,
+      'Failed placeholder title is distinct from empty state'
+    );
+    assert(
+      errPlaceholder?.textContent.includes('Connection refused by approval gateway') ?? false,
+      'Failed placeholder displays specific error message'
+    );
+    assertEquals(rootElement.querySelector('.gd-empty-state'), null, 'Empty state placeholder is NOT rendered on failure');
+    errorShell.destroy();
+
+    // 3. Stale data banner when cached records exist during backend outage
+    const staleShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_stale_001' }],
+      autoFetch: false,
+    });
+    staleShell.setError('Network connection error: Unable to reach backend');
+    const staleBanner = rootElement.querySelector('.gd-stale-banner');
+    assert(staleBanner !== null, 'Stale banner rendered when cached records exist during outage');
+    assert(
+      staleBanner?.textContent.includes('cached records') && staleBanner?.textContent.includes('unreachable'),
+      'Stale banner warns reviewer that backend is unreachable'
+    );
+    assertEquals(staleShell.getState().pendingRequests.length, 1, 'Cached records preserved during outage');
+    staleShell.destroy();
+
+    // 4. Request ID Deduplication in incoming list responses
+    const dupFetch = async (): Promise<Response> => {
+      return createMockResponse(200, {
+        success: true,
+        data: [
+          {
+            id: 'apr_dup_001',
+            actionId: 'act_1',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'First Duplicate',
+            actionType: ActionType.CLICK,
+            riskLevel: RiskLevel.LOW,
+            hostname: 'example.com',
+            createdAt: '2026-10-20T10:00:00.000Z',
+          },
+          {
+            id: 'apr_dup_001',
+            actionId: 'act_1',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'Identical Duplicate Record',
+            actionType: ActionType.CLICK,
+            riskLevel: RiskLevel.LOW,
+            hostname: 'example.com',
+            createdAt: '2026-10-20T10:00:00.000Z',
+          },
+        ],
+      });
+    };
+    const dupClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: dupFetch,
+    });
+    const dupShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: dupClient,
+      autoFetch: false,
+    });
+    await dupShell.fetchPendingRequests();
+    assertEquals(dupShell.getState().pendingRequests.length, 1, 'Duplicate request IDs deduplicated to exactly 1 record');
+    dupShell.destroy();
+
+    // 5. Backend offline disables decision actions and displays offline banner
+    const offlineShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_offline_001' }],
+      autoFetch: false,
+    });
+    offlineShell.setError('Network connection error: Unable to reach the Guardrail approval backend. Please verify your connection and retry.');
+    (offlineShell as any).isBackendUnavailable = true;
+    offlineShell.render();
+
+    const offlineBanner = rootElement.querySelector('.gd-backend-offline-banner');
+    assert(offlineBanner !== null, 'Backend offline status banner rendered');
+    assert(
+      offlineBanner?.textContent.includes('Backend Unavailable') ?? false,
+      'Offline banner explains backend service is unreachable'
+    );
+    const approveBtnDisabled = rootElement.querySelector('.gd-btn-approve') as MockDOMElement | null;
+    assertEquals(approveBtnDisabled?.disabled, true, 'Approve button disabled when backend is unavailable');
+    const rejectBtnDisabled = rootElement.querySelector('.gd-btn-reject') as MockDOMElement | null;
+    assertEquals(rejectBtnDisabled?.disabled, true, 'Reject button disabled when backend is unavailable');
+    offlineShell.destroy();
+
+    // 6. Standardized status rendering for UNAVAILABLE and FAILED
+    const unavailDetail = renderRequestDetailView({
+      request: { ...SAMPLE_REQUEST, status: 'UNAVAILABLE' as any },
+      onDecisionSubmit: async () => {},
+    });
+    const unavailBanner = unavailDetail.querySelector('.gd-status-banner.unavailable');
+    assert(unavailBanner !== null, 'Status banner rendered for UNAVAILABLE state');
+    assert(unavailBanner?.textContent.includes('Status Unavailable') ?? false, 'UNAVAILABLE banner text matches');
+
+    const failedDetail = renderRequestDetailView({
+      request: { ...SAMPLE_REQUEST, status: 'FAILED' as any },
+      onDecisionSubmit: async () => {},
+    });
+    const failedBanner = failedDetail.querySelector('.gd-status-banner.failed');
+    assert(failedBanner !== null, 'Status banner rendered for FAILED state');
+    assert(failedBanner?.textContent.includes('Evaluation Failed') ?? false, 'FAILED banner text matches');
+
+    // 6. Terminal state protection: delayed PENDING response cannot revert resolved request
+    const delayedFetch = async (): Promise<Response> => {
+      return createMockResponse(200, {
+        success: true,
+        data: [
+          {
+            id: 'apr_term_001',
+            actionId: 'act_term',
+            requesterId: 'usr_alice',
+            status: ApprovalStatus.PENDING,
+            actionDescription: 'Resolved Request Returned As Pending',
+            actionType: ActionType.CLICK,
+            riskLevel: RiskLevel.LOW,
+            hostname: 'example.com',
+            createdAt: '2026-10-20T10:00:00.000Z',
+          },
+        ],
+      });
+    };
+    const delayedClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'carol-token',
+      fetchFn: delayedFetch,
+    });
+    const termShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      apiClient: delayedClient,
+      autoFetch: false,
+    });
+    // Pre-populate detailed cache with terminal APPROVED record
+    (termShell as any).detailedRequestsCache.set('apr_term_001', {
+      ...SAMPLE_REQUEST,
+      id: 'apr_term_001',
+      status: ApprovalStatus.APPROVED,
+    });
+    await termShell.fetchPendingRequests();
+    assertEquals(termShell.getState().pendingRequests.length, 0, 'Resolved terminal request not reverted to pending list');
+    termShell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');
