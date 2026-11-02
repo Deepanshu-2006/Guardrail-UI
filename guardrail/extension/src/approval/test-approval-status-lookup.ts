@@ -54,6 +54,7 @@ import { ContinuationManager } from '../interception/continuation.js';
 import { InterceptionState } from '../types/interception.js';
 import {
   handleBackgroundApprovalStatusLookup,
+  isTrustedContentScriptSender,
   validateApprovalStatusLookupMessage,
 } from '../background/index.js';
 
@@ -635,6 +636,17 @@ async function runApprovalStatusTests(): Promise<void> {
       }).valid,
       'Token injection rejected'
     );
+    assert(
+      !validateApprovalStatusLookupMessage({
+        type: 'GUARDRAIL_GET_APPROVAL_STATUS',
+        requestId: createdReq.id,
+        unexpected: 'extra',
+      }).valid,
+      'Unexpected status lookup fields rejected'
+    );
+    assert(isTrustedContentScriptSender({ id: 'extension-123', tab: { id: 7 } }, 'extension-123'), 'Own extension content-script sender accepted');
+    assert(!isTrustedContentScriptSender({ id: 'other-extension', tab: { id: 7 } }, 'extension-123'), 'Foreign extension sender rejected');
+    assert(!isTrustedContentScriptSender({ id: 'extension-123' }, 'extension-123'), 'Extension page without tab rejected for content-only approval message');
 
     // 9.3 Valid message execution
     const validMsg: GuardrailGetApprovalStatusMessage = {
@@ -650,6 +662,30 @@ async function runApprovalStatusTests(): Promise<void> {
     assertEquals(lookupRes.status, 'PENDING', 'Returned status is PENDING');
     assertEquals(lookupRes.requestId, createdReq.id, 'Returned requestId matches');
     assert(lookupRes.isAuthoritative, 'Outcome is marked authoritative');
+
+    // A valid request lookup must still reject a backend entity bound to another action.
+    const mismatchedActionSyncClient = {
+      getStatus: async () => ({
+        success: true,
+        requestId: createdReq.id,
+        status: ApprovalStatus.PENDING,
+        isTerminal: false,
+        isApproved: false,
+        isPending: true,
+        isRejected: false,
+        isExpired: false,
+        isCancelled: false,
+        request: { ...createdReq, actionId: 'act_other_action' },
+        isNetworkError: false,
+        isTimeout: false,
+        isAuthoritative: true,
+      }),
+    };
+    const mismatchedActionResponse = await handleBackgroundApprovalStatusLookup(validMsg, bgController, {
+      syncClient: mismatchedActionSyncClient as any,
+    });
+    assertEquals(mismatchedActionResponse.success, false, 'Response bound to another action is rejected');
+    assertEquals(mismatchedActionResponse.error?.code, 'MISMATCHED_APPROVAL_RESPONSE', 'Action mismatch receives generic mismatch code');
 
     // 9.4 Untracked actionId rejected
     const untrackedMsg: GuardrailGetApprovalStatusMessage = {

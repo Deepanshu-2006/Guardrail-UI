@@ -57,6 +57,18 @@ export interface ValidatedApprovalMessage {
   readonly context?: StagingActionContext;
 }
 
+/** Content-script messages are accepted only from this extension and a browser tab. */
+export function isTrustedContentScriptSender(
+  sender: { id?: string; tab?: { id?: number } } | undefined,
+  extensionId: string | undefined
+): boolean {
+  return Boolean(
+    extensionId &&
+    sender?.id === extensionId &&
+    Number.isInteger(sender.tab?.id)
+  );
+}
+
 /**
  * Validates message type, payload shape, security boundaries, and least-privilege constraints
  * for an incoming approval submission message from a content script.
@@ -109,6 +121,11 @@ export function validateApprovalSubmissionMessage(message: unknown): ValidatedAp
         error: `Security violation: Message contains forbidden or privileged instruction "${field}". Untrusted scripts cannot decide approvals or supply arbitrary endpoints/credentials.`,
       };
     }
+  }
+
+  const allowedFields = ['type', 'actionId', 'context', ...privilegedFields];
+  if (Object.keys(raw).some((key) => !allowedFields.includes(key))) {
+    return { valid: false, error: 'Approval submission message contains unsupported fields.' };
   }
 
   // 3. Validate actionId
@@ -294,6 +311,11 @@ export function validateApprovalStatusLookupMessage(message: unknown): Validated
     }
   }
 
+  const allowedFields = ['type', 'requestId', 'actionId', ...privilegedFields];
+  if (Object.keys(raw).some((key) => !allowedFields.includes(key))) {
+    return { valid: false, error: 'Approval status lookup message contains unsupported fields.' };
+  }
+
   // 3. Validate requestId format
   const rawId = typeof raw.requestId === 'string' ? raw.requestId.trim() : '';
   const idValidation = validateApprovalRequestId(rawId);
@@ -378,6 +400,21 @@ export async function handleBackgroundApprovalStatusLookup(
     });
 
     if (result.success && result.request) {
+      if (
+        result.request.id !== requestId ||
+        (actionId !== undefined && result.request.actionId !== actionId) ||
+        result.status !== result.request.status
+      ) {
+        return {
+          success: false,
+          requestId,
+          isAuthoritative: false,
+          error: {
+            code: 'MISMATCHED_APPROVAL_RESPONSE',
+            message: 'Approval status response did not match the requested approval and action.',
+          },
+        };
+      }
       return {
         success: true,
         requestId,
@@ -392,21 +429,19 @@ export async function handleBackgroundApprovalStatusLookup(
         isAuthoritative: result.isAuthoritative,
         error: {
           code: result.error?.code || 'STATUS_LOOKUP_FAILED',
-          message: result.error?.message || 'Failed to retrieve approval request status.',
+          message: 'Failed to retrieve approval request status.',
           statusCode: result.statusCode,
-          details: result.error?.details,
         },
       };
     }
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+  } catch {
     return {
       success: false,
       requestId,
       isAuthoritative: false,
       error: {
         code: 'DISPATCH_ERROR',
-        message: `Status lookup dispatch failed: ${errorMsg}`,
+        message: 'Status lookup dispatch failed.',
         statusCode: 500,
       },
     };
@@ -474,6 +509,21 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
     const raw = message as Record<string, unknown>;
 
+    const approvalMessage =
+      raw.type === 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST' ||
+      raw.type === 'GUARDRAIL_GET_APPROVAL_STATUS';
+    if (
+      approvalMessage &&
+      !isTrustedContentScriptSender(sender, chrome.runtime.id)
+    ) {
+      sendResponse({
+        success: false,
+        isAuthoritative: false,
+        error: { code: 'UNTRUSTED_SENDER', message: 'Approval messages must come from this extension in a browser tab.' },
+      });
+      return false;
+    }
+
     // 1. Reject unauthorized decision attempts or privileged overrides (Requirement 4)
     if (
       raw.type === 'DECIDE_APPROVAL' ||
@@ -481,7 +531,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       raw.status === 'APPROVED' ||
       raw.status === 'REJECTED'
     ) {
-      console.warn('[Guardrail Background] Rejected unauthorized decision attempt from webpage message:', raw);
+      console.warn('[Guardrail Background] Rejected unauthorized approval decision instruction.');
       sendResponse({
         success: false,
         error: {
@@ -507,7 +557,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
             isAuthoritative: false,
             error: {
               code: 'DISPATCH_ERROR',
-              message: err instanceof Error ? err.message : String(err),
+              message: 'Approval request dispatch failed.',
             },
           });
         });
@@ -527,7 +577,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
             isAuthoritative: false,
             error: {
               code: 'DISPATCH_ERROR',
-              message: err instanceof Error ? err.message : String(err),
+              message: 'Approval status lookup failed.',
             },
           });
         });
@@ -664,4 +714,3 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 );
   }
 }
-

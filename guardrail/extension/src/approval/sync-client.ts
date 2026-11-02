@@ -774,7 +774,7 @@ class InternalSyncSubscription implements StatusSyncSubscription {
         this.lastKnownStatus &&
         isTerminalApprovalStatus(this.lastKnownStatus) &&
         result.status &&
-        !isTerminalApprovalStatus(result.status)
+        result.status !== this.lastKnownStatus
       ) {
         return result;
       }
