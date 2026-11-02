@@ -12,11 +12,21 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ApprovalApiRouter, InMemoryTokenVerifier } from '../approval/api.js';
+import {
+  ApprovalApiRouter,
+  InMemoryTokenVerifier,
+  DEFAULT_ALLOWED_ORIGINS,
+} from '../approval/api.js';
 import {
   DevelopmentInMemoryApprovalRequestRepository,
   PERSISTENCE_METADATA,
 } from '../approval/repository.js';
+import { ApprovalService } from '../approval/service.js';
+import {
+  InMemoryActionOwnershipRegistry,
+  InMemoryTrustedContactRegistry,
+  TrustedContactStatus,
+} from '../approval/authorization.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +38,12 @@ export interface RunningTestServers {
   mockBackendServer: http.Server;
   mockBackendPort: number;
   mockBackendUrl: string;
+  repository: DevelopmentInMemoryApprovalRequestRepository;
+  tokenVerifier: InMemoryTokenVerifier;
+  contactRegistry: InMemoryTrustedContactRegistry;
+  actionOwnershipRegistry: InMemoryActionOwnershipRegistry;
+  service: ApprovalService;
+  router: ApprovalApiRouter;
   close: () => Promise<void>;
 }
 
@@ -72,13 +88,20 @@ export function findExtensionDistDir(): string {
   return path.resolve(process.cwd(), 'guardrail/extension/dist');
 }
 
+export interface ControlledTestServerOptions {
+  staticPort?: number;
+  mockBackendPort?: number;
+  repository?: DevelopmentInMemoryApprovalRequestRepository;
+  tokenVerifier?: InMemoryTokenVerifier;
+  contactRegistry?: InMemoryTrustedContactRegistry;
+  actionOwnershipRegistry?: InMemoryActionOwnershipRegistry;
+  service?: ApprovalService;
+}
+
 /**
  * Starts the isolated local test servers for browser integration testing.
  */
-export async function startControlledTestServers(options?: {
-  staticPort?: number;
-  mockBackendPort?: number;
-}): Promise<RunningTestServers> {
+export async function startControlledTestServers(options?: ControlledTestServerOptions): Promise<RunningTestServers> {
   const testPageDir = findTestPageDir();
   const extensionDistDir = findExtensionDistDir();
 
@@ -127,64 +150,76 @@ export async function startControlledTestServers(options?: {
   });
 
   // 2. Mock Approval Backend Server on port 3000 (IN-MEMORY DEVELOPMENT ONLY)
-  const repository = new DevelopmentInMemoryApprovalRequestRepository();
-  const tokenVerifier = new InMemoryTokenVerifier();
-  tokenVerifier.registerToken('test-ward-token', {
-    subject: 'usr_alice',
-    wardId: 'usr_alice',
-    roles: ['ward'],
-  });
-  tokenVerifier.registerToken('test-contact-token', {
-    subject: 'usr_carol',
-    wardId: 'usr_alice',
-    roles: ['trusted_contact'],
-  });
+  const repository = options?.repository ?? new DevelopmentInMemoryApprovalRequestRepository();
+  const tokenVerifier = options?.tokenVerifier ?? new InMemoryTokenVerifier();
+  const contactRegistry = options?.contactRegistry ?? new InMemoryTrustedContactRegistry();
+  const actionOwnershipRegistry = options?.actionOwnershipRegistry ?? new InMemoryActionOwnershipRegistry();
+  const service =
+    options?.service ??
+    new ApprovalService({
+      repository,
+      contactRegistry,
+      actionOwnershipRegistry,
+    });
 
-  const approvalRouter = new ApprovalApiRouter({
-    repository,
-    tokenVerifier,
-    rateLimiter: { isRateLimited: () => false },
+  if (!tokenVerifier.verifyToken('test-ward-token')) {
+    tokenVerifier.registerToken('test-ward-token', {
+      actorId: 'usr_alice',
+      role: 'USER',
+      isAuthenticated: true,
+    });
+  }
+  if (!tokenVerifier.verifyToken('test-contact-token')) {
+    tokenVerifier.registerToken('test-contact-token', {
+      actorId: 'tc_carol',
+      role: 'TRUSTED_CONTACT',
+      isAuthenticated: true,
+    });
+  }
+
+  // Register Carol as an active trusted contact for Alice by default
+  if (!contactRegistry.isTrustedContactForUser('tc_carol', 'usr_alice')) {
+    contactRegistry.addContact({
+      id: 'tc_carol',
+      userId: 'usr_alice',
+      relationshipLabel: 'Caregiver',
+      status: TrustedContactStatus.ACTIVE,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  const mockBackendPort = options?.mockBackendPort || 3000;
+  const approvalRouter = new ApprovalApiRouter(service, tokenVerifier, {
+    rateLimiter: { checkRateLimit: () => ({ allowed: true }) },
+    allowedOrigins: [
+      ...DEFAULT_ALLOWED_ORIGINS,
+      `http://127.0.0.1:${staticPort}`,
+      `http://localhost:${staticPort}`,
+      `http://127.0.0.1:${mockBackendPort}`,
+      `http://localhost:${mockBackendPort}`,
+    ],
   });
 
   const mockBackendServer = http.createServer((req, res) => {
-    const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1');
-    const pathName = parsedUrl.pathname;
-    const method = req.method || 'GET';
-
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', async () => {
-      let parsedBody: any;
-      try {
-        if (body.trim()) parsedBody = JSON.parse(body);
-      } catch {
-        // Leave undefined
+    approvalRouter.handleHttpStream(req, res).catch((err: unknown) => {
+      console.error('[MockBackendServer] Unhandled request error:', err);
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'application/json');
+        res.end(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: 'INTERNAL_SERVER_ERROR',
+              message: err instanceof Error ? err.message : 'Internal Server Error',
+              statusCode: 500,
+            },
+          })
+        );
       }
-
-      const headers: Record<string, string> = {};
-      for (const [k, v] of Object.entries(req.headers)) {
-        if (typeof v === 'string') headers[k] = v;
-      }
-
-      const response = await approvalRouter.handleRequest({
-        method: method as any,
-        path: pathName,
-        headers,
-        body: parsedBody,
-        queryParams: Object.fromEntries(parsedUrl.searchParams.entries()),
-      });
-
-      res.writeHead(response.status, {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      });
-      res.end(JSON.stringify(response.body));
     });
   });
 
-  const mockBackendPort = options?.mockBackendPort || 3000;
   await new Promise<void>((resolve, reject) => {
     mockBackendServer.listen(mockBackendPort, '127.0.0.1', () => resolve());
     mockBackendServer.on('error', reject);
@@ -201,6 +236,12 @@ export async function startControlledTestServers(options?: {
     mockBackendServer,
     mockBackendPort,
     mockBackendUrl: `http://127.0.0.1:${mockBackendPort}`,
+    repository,
+    tokenVerifier,
+    contactRegistry,
+    actionOwnershipRegistry,
+    service,
+    router: approvalRouter,
     close: async () => {
       await Promise.all([
         new Promise<void>((res) => staticServer.close(() => res())),
