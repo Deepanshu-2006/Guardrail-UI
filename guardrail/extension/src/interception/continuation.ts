@@ -27,6 +27,7 @@
 import { GuardrailAction } from '../types/actions.js';
 import { InterceptionRecord, InterceptionState } from '../types/interception.js';
 import { defaultInterceptionController, InterceptionController } from './controller.js';
+import { isTerminalInterceptionState } from './transitions.js';
 import {
   ApprovalActionBinding,
   ApprovalActionBindingState,
@@ -782,6 +783,114 @@ export class ContinuationManager {
   }
 
   /**
+   * Transitions a tracked action to EXPIRED and clears any in-memory held action references.
+   * Idempotent: If already in a terminal state, returns success without error.
+   */
+  public expireAction(
+    actionId: string,
+    reason: string = 'Action authorization or TTL expired.'
+  ): CancellationResult {
+    const id = actionId?.trim();
+    if (!id) {
+      return {
+        success: false,
+        actionId: '',
+        error: 'Cannot expire action without a valid actionId.',
+      };
+    }
+
+    if (this.currentHeldAction && this.currentHeldAction.action.id === id) {
+      this.currentHeldAction = null;
+    }
+
+    const record = this.controller.getRecord(id);
+    if (!record) {
+      return {
+        success: true,
+        actionId: id,
+      };
+    }
+
+    if (isTerminalInterceptionState(record.state)) {
+      return {
+        success: true,
+        actionId: id,
+        record,
+      };
+    }
+
+    try {
+      const expiredRecord = this.controller.expireAction(id, reason);
+      return {
+        success: true,
+        actionId: id,
+        record: expiredRecord,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        actionId: id,
+        record: this.controller.getRecord(id),
+        error: err?.message || 'Error occurred during action expiration.',
+      };
+    }
+  }
+
+  /**
+   * Explicitly transitions a tracked action to INVALIDATED and clears in-memory held action references.
+   * Idempotent: If already in a terminal state, returns success without error.
+   */
+  public invalidateAction(
+    actionId: string,
+    reason: string = 'Action context, DOM attachment, or authorization invalidated.'
+  ): CancellationResult {
+    const id = actionId?.trim();
+    if (!id) {
+      return {
+        success: false,
+        actionId: '',
+        error: 'Cannot invalidate action without a valid actionId.',
+      };
+    }
+
+    if (this.currentHeldAction && this.currentHeldAction.action.id === id) {
+      this.currentHeldAction = null;
+    }
+
+    const record = this.controller.getRecord(id);
+    if (!record) {
+      return {
+        success: true,
+        actionId: id,
+      };
+    }
+
+    if (isTerminalInterceptionState(record.state)) {
+      return {
+        success: true,
+        actionId: id,
+        record,
+      };
+    }
+
+    try {
+      const invalidatedRecord = this.controller.invalidateAction(id, reason);
+      return {
+        success: true,
+        actionId: id,
+        record: invalidatedRecord,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        actionId: id,
+        record: this.controller.getRecord(id),
+        error: err?.message || 'Error occurred during action invalidation.',
+      };
+    }
+  }
+
+  /**
    * Detaches the held action without running any handlers or altering controller records.
    * Useful when a tab unloads or navigates away.
    */
@@ -969,6 +1078,23 @@ export class ContinuationAuthorizationBoundary {
           executionCount: this.continuationManager.getExecutionCount(id),
           error: authResult.error,
         };
+      }
+
+      // Ensure controller record transitions to READY_FOR_USER_CONFIRMATION before continuation execution
+      const currentRec = this.controller.getRecord(id);
+      if (
+        currentRec &&
+        currentRec.state !== InterceptionState.READY_FOR_USER_CONFIRMATION &&
+        !isTerminalInterceptionState(currentRec.state)
+      ) {
+        try {
+          this.controller.markReadyForConfirmation(
+            id,
+            'Continuation validation passed; ready for user confirmation.'
+          );
+        } catch {
+          // Ignore if already transitioned
+        }
       }
 
       // If approvalService is available, consume authorization token atomically (Requirement 11)
