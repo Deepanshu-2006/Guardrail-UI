@@ -31,6 +31,7 @@
  */
 
 declare const chrome: any;
+declare const process: any;
 
 import {
   ApprovalActionBinding,

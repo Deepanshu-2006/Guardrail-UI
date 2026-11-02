@@ -521,14 +521,13 @@ async function runAllTests(): Promise<void> {
   let warningCancelled = false;
   let warningContinued = false;
 
-  const dismissWarn = showWarningModal({
+  showWarningModal({
     action: mockWarnAction,
     risk: {
       actionId: mockWarnAction.id,
       riskLevel: RiskLevel.MEDIUM,
       score: 55,
       reasons: ['Payment interaction'],
-      ruleEvaluations: [],
       matchedRules: [],
       evaluatedAt: new Date().toISOString(),
       status: RiskEvaluationStatus.EVALUATED,
@@ -589,7 +588,6 @@ async function runAllTests(): Promise<void> {
       riskLevel: RiskLevel.MEDIUM,
       score: 50,
       reasons: [],
-      ruleEvaluations: [],
       matchedRules: [],
       evaluatedAt: new Date().toISOString(),
       status: RiskEvaluationStatus.EVALUATED,
