@@ -1128,6 +1128,9 @@ function init(): void {
     }
     (window as any).__GUARDRAIL_CONTENT_BOOTSTRAPPED__ = true;
   }
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.setAttribute('data-guardrail-extension-active', 'true');
+  }
   bootstrap();
 }
 

@@ -198,6 +198,40 @@
     });
   }
 
+  // Day 20: Real-Browser Boundary & Synthetic Action Verification Handlers
+  const unsuppBtn = document.getElementById('btn-unsupported-unmarked-critical');
+  if (unsuppBtn) {
+    unsuppBtn.addEventListener('click', () => {
+      appendLog('⚠️ AMBIENT UNMARKED HANDLER EXECUTED: Normal page handler executed (ambient action is not held).');
+    });
+  }
+
+  const emptyMarkerBtn = document.getElementById('btn-invalid-empty-marker');
+  if (emptyMarkerBtn) {
+    emptyMarkerBtn.addEventListener('click', () => {
+      appendLog('⚠️ EMPTY MARKER CLICKED: Target element has empty data-guardrail-test-action attribute.');
+    });
+  }
+
+  const detachedTriggerBtn = document.getElementById('btn-detached-trigger');
+  if (detachedTriggerBtn) {
+    detachedTriggerBtn.addEventListener('click', () => {
+      const detachedBtn = document.createElement('button');
+      detachedBtn.setAttribute('data-guardrail-test-action', 'test-protect');
+      detachedBtn.textContent = 'Detached Button';
+      detachedBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      appendLog('⚠️ DETACHED EVENT DISPATCHED: Synthetically dispatched click on detached marked control.');
+    });
+  }
+
+  const harmlessLink = document.getElementById('test-harmless-link');
+  if (harmlessLink) {
+    harmlessLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      appendLog('🔗 HARMLESS LINK CLICKED: Default navigation suppressed; remained on test page.');
+    });
+  }
+
   if (testInput) {
     testInput.addEventListener('change', () => {
       appendLog(`Input changed: [${testInput.value ? `"${testInput.value}"` : '(empty)'}]`);
