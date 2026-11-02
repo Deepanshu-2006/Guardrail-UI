@@ -106,7 +106,26 @@ export class PolicyConfigRegistry {
    * explicit backend approval and user confirmation passing Condition 10 revalidation.
    */
   public async loadFromStorage(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
-    const result = await this.loader.load(options);
+    let result: ConfigLoadResult;
+    try {
+      result = await this.loader.load(options);
+    } catch {
+      // Unexpected loader failures must never leave the registry UNINITIALIZED or
+      // allow callers to mistake the built-in defaults for a completed load.
+      const error: ConfigErrorDetail = {
+        code: 'CONFIG_INITIALIZATION_ERROR',
+        message: 'Policy configuration could not be initialized.',
+        timestamp: new Date().toISOString(),
+        fatal: true,
+      };
+      result = {
+        config: DEFAULT_GUARDRAIL_POLICY_CONFIG,
+        healthStatus: ConfigHealthStatus.FAILED,
+        error,
+        fromCache: false,
+        cooldownRemainingMs: 0,
+      };
+    }
     this.activeConfig = result.config;
     this.healthStatus = result.healthStatus;
     this.lastError = result.error;

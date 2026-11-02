@@ -39,6 +39,8 @@ import {
   ContinuationValidationService,
 } from './validation-service.js';
 import { createStagingActionContext } from '../staging/context.js';
+import { ConfigHealthStatus } from '../types/config.js';
+import { cancelControlledActionUntilPolicyInitialized } from '../config/readiness.js';
 
 let passed = 0;
 let failed = 0;
@@ -195,6 +197,57 @@ console.log('▶ Production detector boundary: synchronous dispatch and detached
   (detector as any).handleClick(detachedEvent);
   assertEquals(detachedEvent.defaultPrevented, true, 'Detached controlled event is suppressed');
   assertEquals(interceptCalls, 1, 'Detached target does not enter staging callback');
+}
+
+console.log('▶ Runtime lifecycle: startup gate and repeated detector start/stop');
+{
+  const pendingEvent = new MockEvent('click', new MockElement('BUTTON'));
+  assertEquals(
+    cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.UNINITIALIZED, pendingEvent),
+    true,
+    'Controlled action is blocked while the first policy load is pending'
+  );
+  assertEquals(pendingEvent.defaultPrevented, true, 'Startup gate cancels the event synchronously');
+  assertEquals(pendingEvent.immediatePropagationStopped, true, 'Startup gate prevents later page handlers synchronously');
+  assertEquals(
+    cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.HEALTHY, pendingEvent),
+    false,
+    'Configured policy resumes normal controlled-action evaluation'
+  );
+
+  const originalDocument = (globalThis as any).document;
+  const originalWindow = (globalThis as any).window;
+  const documentAdds: Record<string, number> = {};
+  const documentRemoves: Record<string, number> = {};
+  const windowAdds: Record<string, number> = {};
+  const windowRemoves: Record<string, number> = {};
+  (globalThis as any).document = {
+    referrer: '',
+    addEventListener: (type: string) => { documentAdds[type] = (documentAdds[type] || 0) + 1; },
+    removeEventListener: (type: string) => { documentRemoves[type] = (documentRemoves[type] || 0) + 1; },
+  };
+  (globalThis as any).window = {
+    location: { href: 'https://controlled.example.test/' },
+    addEventListener: (type: string) => { windowAdds[type] = (windowAdds[type] || 0) + 1; },
+    removeEventListener: (type: string) => { windowRemoves[type] = (windowRemoves[type] || 0) + 1; },
+  };
+  try {
+    const detector = new ActionDetector(() => {});
+    detector.start();
+    detector.start();
+    assertEquals(documentAdds.click, 1, 'Repeated start registers one click listener');
+    assertEquals(documentAdds.submit, 1, 'Repeated start registers one submit listener');
+    assertEquals(windowAdds.popstate, 1, 'Repeated start registers one navigation listener');
+    detector.stop();
+    detector.stop();
+    assertEquals(documentRemoves.click, 1, 'Repeated stop removes only the detector click listener once');
+    assertEquals(windowRemoves.popstate, 1, 'Repeated stop removes only the detector navigation listener once');
+  } finally {
+    if (originalDocument === undefined) delete (globalThis as any).document;
+    else (globalThis as any).document = originalDocument;
+    if (originalWindow === undefined) delete (globalThis as any).window;
+    else (globalThis as any).window = originalWindow;
+  }
 }
 
 // =============================================================================

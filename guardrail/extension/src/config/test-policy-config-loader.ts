@@ -38,6 +38,7 @@ import {
   PolicyConfigRegistry,
   defaultPolicyConfigRegistry,
 } from './registry.js';
+import { cancelControlledActionUntilPolicyInitialized, isPolicyConfigurationInitialized } from './readiness.js';
 import { evaluateActionPipeline, decideResponse } from '../response/engine.js';
 import { assessRisk } from '../risk/engine.js';
 import { InterceptionController } from '../interception/controller.js';
@@ -508,6 +509,33 @@ async function runAllTests(): Promise<void> {
     assertEquals(registry.isFailed(), true, 'isFailed() returns true');
     assertEquals(registry.isDegraded(), false, 'isDegraded() returns false');
     assert(registry.getLastError() !== undefined, 'Registry has lastError record');
+
+    // An unexpected loader rejection must become an explicit FAILED result rather
+    // than leaving the registry in UNINITIALIZED with defaults appearing usable.
+    const unexpectedLoader = new PolicyConfigLoader();
+    (unexpectedLoader as any).load = async () => { throw new Error('synthetic loader interruption'); };
+    const interruptedRegistry = new PolicyConfigRegistry({ loader: unexpectedLoader });
+    const interruptedResult = await interruptedRegistry.loadFromStorage();
+    assertEquals(interruptedResult.healthStatus, ConfigHealthStatus.FAILED, 'Unexpected initialization interruption resolves as FAILED');
+    assertEquals(interruptedResult.error?.code, 'CONFIG_INITIALIZATION_ERROR', 'Unexpected failure has stable non-sensitive code');
+    assertEquals(interruptedResult.error?.message.includes('synthetic'), false, 'Unexpected failure does not expose raw exception text');
+    assertEquals(interruptedRegistry.getHealthStatus(), ConfigHealthStatus.FAILED, 'Registry cannot remain UNINITIALIZED after loader interruption');
+
+    // Startup barrier behavior used by the content script: only UNINITIALIZED
+    // suppresses; known healthy/degraded/failed outcomes proceed to policy logic.
+    assertEquals(isPolicyConfigurationInitialized(ConfigHealthStatus.UNINITIALIZED), false, 'UNINITIALIZED is not policy-ready');
+    let prevented = 0;
+    let stopped = 0;
+    const startupEvent = {
+      preventDefault: () => { prevented++; },
+      stopImmediatePropagation: () => { stopped++; },
+    };
+    assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.UNINITIALIZED, startupEvent), true, 'Controlled event is gated while initial load is pending');
+    assertEquals(prevented, 1, 'Startup barrier prevents default synchronously');
+    assertEquals(stopped, 1, 'Startup barrier stops later handlers synchronously');
+    assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.HEALTHY, startupEvent), false, 'Healthy policy does not suppress controlled action');
+    assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.DEGRADED, startupEvent), false, 'Validated degraded policy reaches enforcement');
+    assertEquals(cancelControlledActionUntilPolicyInitialized(ConfigHealthStatus.FAILED, startupEvent), false, 'Failed policy reaches existing fail-closed enforcement');
 
     let allowWrite = false;
     const writeFailStorage = {

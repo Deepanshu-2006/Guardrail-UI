@@ -17,6 +17,7 @@ import {
   StagingActionContext,
   TestActionMessage,
 } from '../types/index.js';
+import { ConfigHealthStatus } from '../types/config.js';
 import { InterceptionController } from '../interception/controller.js';
 import {
   SubmissionOutcome,
@@ -462,16 +463,22 @@ console.log(
   }
 );
 
-// Load persisted policy configuration from storage on background service worker activation
-loadPolicyConfigFromStorage().catch(() => {
-  console.warn('[Guardrail Background] Initial policy configuration load failed; check configuration health status.');
+// Load persisted policy configuration on every service worker activation. The
+// registry is context-local, so an activation must establish health again.
+const initialPolicyConfigLoad = loadPolicyConfigFromStorage();
+void initialPolicyConfigLoad.then((result) => {
+  if (result.healthStatus === ConfigHealthStatus.FAILED) {
+    console.warn('[Guardrail Background] Initial policy configuration load failed; policy health is FAILED.');
+  }
+}).catch(() => {
+  console.warn('[Guardrail Background] Initial policy configuration load failed; policy health is FAILED.');
 });
 
 // Register storage listener to reload policy configuration across contexts
 if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
-      reloadPolicyConfig().catch(() => {
+      void initialPolicyConfigLoad.then(() => reloadPolicyConfig()).catch(() => {
         console.warn('[Guardrail Background] Policy configuration reload failed; check configuration health status.');
       });
     }

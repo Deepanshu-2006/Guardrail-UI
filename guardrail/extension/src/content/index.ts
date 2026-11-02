@@ -50,9 +50,12 @@ import {
   sanitizeForDiagnostics,
 } from '../utils/index.js';
 import {
+  ConfigHealthStatus,
+  getConfigHealthStatus,
   loadPolicyConfigFromStorage,
   reloadPolicyConfig,
 } from '../config/index.js';
+import { cancelControlledActionUntilPolicyInitialized, isPolicyConfigurationInitialized } from '../config/readiness.js';
 import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 
 let latestStagingContext: StagingActionContext | null = null;
@@ -299,16 +302,23 @@ function updateControlledTestPageDisplay(
 function bootstrap(): void {
   const pageInfo = extractPageInfo();
 
-  // Load persisted policy configuration from storage (safe, fail-closed defaults)
-  loadPolicyConfigFromStorage().catch((err) => {
-    console.warn('[Guardrail Content] Initial policy configuration load failed; check configuration health status.');
+  // Begin loading before detection starts. While the result is pending, ambient
+  // events are not evaluated and controlled test actions are synchronously held
+  // at the event boundary by the detector callback below.
+  const initialConfigLoad = loadPolicyConfigFromStorage();
+  void initialConfigLoad.then((result) => {
+    if (result.healthStatus === ConfigHealthStatus.FAILED) {
+      console.warn('[Guardrail Content] Initial policy configuration load failed; policy enforcement is fail-closed.');
+    }
+  }).catch(() => {
+    console.warn('[Guardrail Content] Initial policy configuration load failed; policy enforcement is fail-closed.');
   });
 
   // Listen for storage changes across tabs to keep policy configuration synchronized
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
-        reloadPolicyConfig().catch((err) => {
+        void initialConfigLoad.then(() => reloadPolicyConfig()).catch(() => {
           console.warn('[Guardrail Content] Policy configuration reload failed; check configuration health status.');
         });
       }
@@ -331,6 +341,9 @@ function bootstrap(): void {
   const detector = new ActionDetector(
     // 1. Passive / ambient handler for standard page interactions
     (action) => {
+      // Do not evaluate a possibly stale/default policy while the initial read is pending.
+      if (!isPolicyConfigurationInitialized(getConfigHealthStatus())) return;
+
       // 1. Centralized pipeline evaluation (classification -> prioritized risk rules -> deterministic response precedence)
       const { classification, risk, decision } = evaluateActionPipeline(action);
 
@@ -379,6 +392,11 @@ function bootstrap(): void {
           event.preventDefault();
           event.stopImmediatePropagation();
           console.warn('[Guardrail Interception] Suppressed event on detached controlled test element; no action was staged.');
+          return;
+        }
+
+        if (cancelControlledActionUntilPolicyInitialized(getConfigHealthStatus(), event)) {
+          console.warn('[Guardrail Interception] Controlled action was synchronously suppressed while policy configuration initializes; retry after initialization.');
           return;
         }
 
