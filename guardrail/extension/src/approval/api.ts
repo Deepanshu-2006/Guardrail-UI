@@ -229,6 +229,8 @@ export interface ApprovalApiRouterConfig {
 
   /** Optional server secret */
   readonly serverSecret?: string;
+  /** Identifies the mounted service accurately to existing clients. */
+  readonly serviceType?: 'live' | 'mock' | 'in_memory';
 }
 
 /**
@@ -258,6 +260,7 @@ export class ApprovalApiRouter {
   private readonly allowedOrigins: ReadonlySet<string>;
   private readonly maxBodySizeBytes: number;
   private readonly rateLimiter?: RateLimiter;
+  private readonly serviceType: 'live' | 'mock' | 'in_memory';
 
   constructor(
     service: ApprovalService,
@@ -269,6 +272,7 @@ export class ApprovalApiRouter {
     this.allowedOrigins = new Set(config?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
     this.maxBodySizeBytes = config?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
     this.rateLimiter = config?.rateLimiter;
+    this.serviceType = config?.serviceType ?? 'in_memory';
   }
 
   /**
@@ -280,7 +284,9 @@ export class ApprovalApiRouter {
       'content-type': 'application/json; charset=utf-8',
       'x-content-type-options': 'nosniff',
       'x-frame-options': 'DENY',
-      'x-guardrail-service-type': GUARDRAIL_EPHEMERAL_MOCK_SERVICE_TYPE,
+      'x-guardrail-service-type': this.serviceType === 'in_memory'
+        ? GUARDRAIL_EPHEMERAL_MOCK_SERVICE_TYPE
+        : this.serviceType,
     };
 
     // 1. CORS Validation

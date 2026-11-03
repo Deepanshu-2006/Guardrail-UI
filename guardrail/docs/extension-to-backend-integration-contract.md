@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary & Verification Context
 
-This document establishes the verified technical contract governing communication between the **Guardrail Manifest V3 Browser Extension** and the **Guardrail Remote Approval Backend**.
+This document records the technical contract for communication between the **Guardrail Manifest V3 Browser Extension** and the approval backend. Its original readiness assessment below predates the current `guardrail/server` implementation; use `guardrail/server/README.md` for current backend setup and limits.
 
 Guardrail is an in-browser interaction safety system:
 * **Day 8** implemented the **controlled action interception foundation** (`InterceptionController`, `ContinuationManager`, and DOM capturing-phase cancellation).
@@ -10,17 +10,17 @@ Guardrail is an in-browser interaction safety system:
 * **Day 10** established the **server-side approval domain model, lifecycle state machine, multi-tenant authorization rules, coordination service, and REST API router** (`guardrail/extension/src/approval/`).
 
 > [!IMPORTANT]
-> **READINESS VERDICT: NOT YET READY FOR LIVE NETWORK INTEGRATION**
-> While the Day 10 domain logic, lifecycle rules, authorization engine, in-memory atomic repository, and REST API routing have been fully implemented and verified with 124 passing checks across 17 test scenarios, **the repository cannot currently execute live network integration**. 
+> **CURRENT READINESS: API TRANSPORT EXISTS; LIVE PILOT AUTHENTICATION IS NOT CONFIGURED**
+> The repository now includes a Node HTTP server, SQLite-backed approval and trusted-contact records, and integration tests using the existing API client over local TCP. Those tests use a synthetic in-memory token verifier and do not establish a live identity provider or deployed service.
 > 
 > Specifically:
-> 1. `guardrail/server` is an uninitialized placeholder containing only a `README.md`. No HTTP daemon (e.g. Express, Fastify, or Node `http.createServer`) is running or listening on a network port.
+> 1. `guardrail/server/src/http-server.ts` starts the API over Node HTTP when supplied a host-provided `TokenVerifier`; no production verifier or deployed listener is configured in this repository.
 > 2. `guardrail/extension/public/manifest.json` does **not** declare `host_permissions`. Under Manifest V3, network requests from the extension to localhost or remote origins are prohibited.
-> 3. The extension background service worker (`guardrail/extension/src/background/index.ts`) has no HTTP client implemented and explicitly responds with `{ isBackendConnected: false }`.
-> 4. Persistence is currently an ephemeral, in-memory development abstraction (`DevelopmentInMemoryApprovalRequestRepository`). No persistent SQL database exists.
+> 3. The background service worker can call the existing `ApprovalApiClient`, but no production identity session or granted API host permission is configured in the checked-in manifest.
+> 4. SQLite persists approval requests, action bindings, invitations, and trusted-contact relationships for a single backend instance. Action ownership and authentication sessions are not persisted here.
 > 5. No user authentication session bootstrap or token storage mechanism exists in the extension.
 
-This contract provides the definitive specification that must be fulfilled when implementing the backend server daemon (Day 11) and the extension network transport client (Day 12).
+This document's remaining future roadmap notes are historical; current server setup and live deployment prerequisites are documented in `guardrail/server/README.md`.
 
 ---
 
@@ -33,15 +33,15 @@ An inspection of the real repository reveals the exact state of each architectur
 | **Extension Manifest** | `extension/public/manifest.json` | **Incomplete for API** | Manifest V3 declared with `"permissions": ["storage"]`. **Gap:** Missing `host_permissions`. Network `fetch()` calls to external hosts or `http://localhost:*` will be rejected by Chrome. |
 | **Content Script** | `extension/src/content/index.ts` | **Operational (Day 8-9)** | Intercepts `CLICK`, `INPUT`, `SUBMIT`, `NAVIGATION`. Halts event propagation; puts action in `HELD` state; opens Staging Mode. Dispatches local intent via `chrome.runtime.sendMessage`. |
 | **Staging Mode UI** | `extension/src/staging/modal.ts` | **Operational (Day 9)** | Shadow DOM dialog with WCAG 2.1 AA focus trap. "Request Approval" button constructs `ApprovalRequestIntent` and emits DOM event `guardrail:approval-requested` (`isBackendConnected: false`). |
-| **Background Service Worker** | `extension/src/background/index.ts` | **Prototype Only** | Listens for `GUARDRAIL_APPROVAL_REQUEST` message. Logs intent locally to console. Returns mock acknowledgement with `{ isBackendConnected: false }`. **Gap:** No HTTP client or network requests exist. |
+| **Background Service Worker** | `extension/src/background/index.ts` | **Client path implemented; environment wiring incomplete** | Uses `submitApprovalRequest` and `ApprovalApiClient`; tokens/base URL may be supplied from extension storage. The checked-in manifest has no API `host_permissions`, and no pilot auth session is configured. |
 | **Approval Domain Model** | `extension/src/approval/model.ts` | **Complete & Verified** | Strongly typed `ApprovalRequest` entity, zero-trust validation engine (`validateApprovalRequest`), strict privacy whitelist, and lifecycle transition functions. |
 | **Lifecycle State Machine** | `extension/src/approval/lifecycle.ts` | **Complete & Verified** | Deterministic state transitions (`PENDING` $\rightarrow$ `APPROVED` / `REJECTED` / `EXPIRED` / `CANCELLED`). Enforces terminal state immutability, duplicate suppression, and expiration timers. |
 | **Server Authorization** | `extension/src/approval/authorization.ts` | **Complete & Verified** | Server-side authorization rules for `USER`, `TRUSTED_CONTACT`, and `ADMIN`. Enforces action ownership, trusted contact status, anti-enumeration (opaque 404), and strict self-approval prohibition. |
-| **Approval Repository** | `extension/src/approval/repository.ts` | **Development Only** | Interface `ApprovalRequestRepository` with atomic CAS conditional updates (`atomicTransition`). Implementation `DevelopmentInMemoryApprovalRequestRepository` is in-memory and ephemeral. |
+| **Approval Repository** | `server/src/sqlite-approval-request-repository.ts` | **Persistent single-instance backend** | SQLite stores approval requests and bindings with validated reads/writes and atomic transitions. The extension-side in-memory repository remains available for unit tests and local simulations. |
 | **Approval Service** | `extension/src/approval/service.ts` | **Complete & Verified** | Coordinates creation, retrieval, reviewer approval, rejection, and user cancellation with atomic concurrency protection and safe, whitelisted logging. |
 | **Approval API Router** | `extension/src/approval/api.ts` | **Complete & Verified** | REST API router with headless dispatch (`ApprovalApiRouter.dispatch()`). Enforces Bearer token authentication, 16 KB body limit, JSON content-type, narrow CORS, and standard error envelopes. |
-| **Server Directory** | `guardrail/server/` | **Uninitialized** | Contains only `README.md`. **Gap:** No server process, no entry point, no database migrations, and no active network listeners. |
-| **Dashboard Directory**| `guardrail/dashboard/` | **Uninitialized** | Contains only `README.md`. Caretaker review web dashboard is not yet implemented. |
+| **Server Directory** | `server/src/http-server.ts` | **Runnable when composed by a host** | Node HTTP server mounts `ApprovalApiRouter`; SQLite stores approval and trusted-contact data. A host-supplied production `TokenVerifier` and deployment are still required. |
+| **Dashboard Directory**| `dashboard/src/shell.ts` | **UI and client injection implemented** | Dashboard can use the shared `ApprovalApiClient` when the host injects an authenticated client. Standalone mount does not authenticate or create a session. |
 
 ---
 

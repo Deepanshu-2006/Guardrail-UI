@@ -4,9 +4,9 @@
 
 The API uses an injected `TokenVerifier`. `ApprovalApiRouter` accepts a Bearer token, asks that verifier for an authoritative `AuthContext`, and rejects missing, invalid, expired, unauthenticated, malformed, or unsupported-role contexts with `401`. It validates `actorId`, `role`, `isAuthenticated`, and an optional `sessionId` before passing identity to the service.
 
-The only concrete verifier currently in this repository is `InMemoryTokenVerifier`, which is intended for tests and local development. The repository does not configure an identity provider, token issuer, cryptographic JWT verifier, session store, or live server deployment. Test tokens registered in memory are not live authentication. A deployment must supply a verifier that validates issuer, audience, signature/session, expiry, revocation, and maps the verified subject and role to `AuthContext`. It must fail closed when those checks cannot complete.
+The only concrete verifier currently in this repository is `InMemoryTokenVerifier`, which is intended for tests and local development. The Node HTTP server mounts the API router and requires a `TokenVerifier` to be injected; it does not default to the in-memory verifier. The repository does not configure an identity provider, token issuer, cryptographic JWT verifier, or session store. Test tokens registered in memory are not live authentication. A deployment must supply a verifier that validates issuer, audience, signature/session, expiry, revocation, and maps the verified subject and role to `AuthContext`. It must fail closed when those checks cannot complete.
 
-Approval requests and action bindings can use the SQLite adapter. Trusted-contact relationships, invitations, action ownership, and token registrations remain in-memory in the current implementation. They are lost on process restart and are not yet a durable live authorization source.
+The HTTP runtime persists approval requests, action bindings, invitations, and trusted-contact relationships in SQLite. Action ownership registrations and token registrations are not persisted by this adapter. Backend API integration tests use a synthetic in-memory verifier; they do not verify a live identity provider.
 
 ## Authorization rules enforced by the current service
 
@@ -35,5 +35,5 @@ Dashboard labels and profile data are presentation state only. Backend authoriza
 - Treat a missing, expired, revoked, malformed, or unverifiable credential as unauthenticated. Do not fall back to an in-memory identity or permissive mode.
 - Do not log bearer tokens, session identifiers, invitation pairing codes, or request bodies. Invitation logging records identifiers and lifecycle metadata only.
 - Keep issuer secrets and signing keys on the server. Do not bundle them into the extension or dashboard.
-- Persist contact relationships and invitation lifecycle in an authoritative store before treating this persistence adapter as a live multi-user authorization service.
+- Supply a real token verifier before using the HTTP runtime for a pilot. SQLite provides durable relationship state for a single backend instance; multi-instance deployment needs a shared transactional store.
 - Exercise route authorization against the real provider and durable relationship store before pilot use. Current tests use synthetic identities, in-memory verifier/relationship fixtures, and local SQLite; they do not verify a live provider or deployment.

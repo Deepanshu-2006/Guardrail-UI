@@ -38,3 +38,25 @@ npm run test
 # Build production bundle
 npm run build
 ```
+
+## Connecting to the backend
+
+The dashboard uses the shared `ApprovalApiClient`; the host application supplies both the backend URL and an authenticated token provider. The standalone HTML auto-mount intentionally does not invent a login session or actor identity.
+
+```ts
+import { ApprovalApiClient } from '../extension/src/approval/client.js';
+import { mountDashboardShell } from './src/index.js';
+
+const apiClient = new ApprovalApiClient({
+  baseUrl: backendBaseUrl,
+  environment: 'pilot',
+  tokenProvider: () => authenticatedSession.getAccessToken(),
+});
+
+mountDashboardShell({
+  container: document.getElementById('dashboard-app')!,
+  apiClient,
+});
+```
+
+`backendBaseUrl` and `authenticatedSession` are host-provided values; do not embed credentials in dashboard code. The repository does not configure a live identity provider or dashboard host. Backend API integration tests use local HTTP plus SQLite and a synthetic verifier, not a live login service.

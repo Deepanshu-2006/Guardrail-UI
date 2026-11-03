@@ -52,6 +52,7 @@ import {
   AppEnvironment,
   DEFAULT_PILOT_API_BASE_URL,
   isLocalhost,
+  resolveApiBaseUrl,
 } from '../config/environment.js';
 import { TrustedContact, TrustedContactInvitation } from './authorization.js';
 
@@ -457,6 +458,7 @@ export class ApprovalApiClient {
   private readonly fetchFn: typeof fetch;
   private readonly logger: ApiClientLogger;
   private readonly environment: AppEnvironment;
+  private readonly hasExplicitBaseUrl: boolean;
   private detectedServiceType: 'live' | 'mock' | 'in_memory';
 
   constructor(config?: ApprovalApiClientConfig) {
@@ -469,6 +471,7 @@ export class ApprovalApiClient {
         : 'development');
 
     this.environment = env;
+    this.hasExplicitBaseUrl = Boolean(config?.baseUrl?.trim());
     this.detectedServiceType = config?.serviceType ?? 'live';
 
     let url = config?.baseUrl;
@@ -1362,7 +1365,25 @@ export class ApprovalApiClient {
     options?: RequestOptions
   ): Promise<ApiClientResult<T>> {
     const startTime = Date.now();
-    const url = `${this.baseUrl}${path}`;
+    let resolvedBaseUrl = this.baseUrl;
+    if (!this.hasExplicitBaseUrl) {
+      try {
+        resolvedBaseUrl = await resolveApiBaseUrl({ environment: this.environment });
+      } catch {
+        return {
+          success: false,
+          error: {
+            code: ApiClientErrorCodes.VALIDATION_ERROR,
+            message: 'Configured approval service URL is invalid for this environment.',
+            statusCode: 400,
+          },
+          statusCode: 400,
+          isNetworkError: false,
+          isTimeout: false,
+        };
+      }
+    }
+    const url = `${resolvedBaseUrl}${path}`;
 
     // 1. Resolve authentication token
     let token = options?.token?.trim();

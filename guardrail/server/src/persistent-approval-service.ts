@@ -7,6 +7,7 @@ import {
   ApprovalServiceDependencies,
 } from '../../extension/src/approval/service.js';
 import { SqliteApprovalRequestRepository } from './sqlite-approval-request-repository.js';
+import { SqliteTrustedContactRegistry } from './sqlite-trusted-contact-registry.js';
 
 export interface PersistentApprovalServiceOptions
   extends Omit<ApprovalServiceDependencies, 'repository' | 'enforceActiveContact'> {
@@ -17,10 +18,12 @@ export interface PersistentApprovalServiceOptions
 
 /** Opens the persistent request store and composes it with the existing service. */
 export function createPersistentApprovalService(options: PersistentApprovalServiceOptions = {}) {
-  const repository = SqliteApprovalRequestRepository.open(options.databasePath);
+  const databasePath = options.databasePath ?? process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite';
+  const repository = SqliteApprovalRequestRepository.open(databasePath);
+  const contactRegistry = options.contactRegistry ?? SqliteTrustedContactRegistry.open(databasePath);
   const service = new ApprovalService({
     repository,
-    contactRegistry: options.contactRegistry,
+    contactRegistry,
     actionOwnershipRegistry: options.actionOwnershipRegistry,
     timeProvider: options.timeProvider,
     logger: options.logger,
@@ -31,6 +34,9 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
   return Object.freeze({
     repository,
     service,
-    close: () => repository.close(),
+    close: () => {
+      repository.close();
+      if (contactRegistry instanceof SqliteTrustedContactRegistry) contactRegistry.close();
+    },
   });
 }
