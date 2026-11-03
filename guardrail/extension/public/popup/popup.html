@@ -13,35 +13,83 @@
         <div class="logo-badge">G</div>
         <div>
           <h1 class="title">Guardrail UI</h1>
-          <p class="subtitle">Client Extension Foundation</p>
+          <p class="subtitle" id="ext-subtitle">Controlled Pilot</p>
         </div>
       </div>
-      <span class="status-indicator">Ready</span>
+      <div class="header-badges">
+        <span class="badge badge-env" id="ext-env-badge">PILOT</span>
+        <span class="status-indicator" id="ext-status-indicator">Active</span>
+      </div>
     </header>
 
     <main class="content">
+      <!-- Live Protection Status Card -->
+      <section class="status-card" id="protection-status-card">
+        <div class="status-card-header">
+          <span class="status-dot" id="status-dot"></span>
+          <span class="status-title" id="ext-status-title">Active (Test Actions Only)</span>
+        </div>
+        <p class="status-explanation" id="ext-status-explanation">
+          Evaluating supported pilot test actions against active safety policies. Arbitrary websites are not protected.
+        </p>
+      </section>
+
+      <!-- Onboarding / Pilot Setup Banner -->
+      <section class="onboarding-banner" id="onboarding-banner">
+        <div class="onboarding-text">
+          <span class="onboarding-title" id="onboarding-status-title">Pilot Setup</span>
+          <span class="onboarding-desc" id="onboarding-status-desc">Incomplete (review required)</span>
+        </div>
+        <button class="btn-action" id="btn-open-onboarding">Open Setup →</button>
+      </section>
+
+      <!-- Configuration Card -->
       <section class="info-card">
         <div class="card-row">
-          <span class="label">Status</span>
-          <span class="value" id="ext-status">Active</span>
+          <span class="label">Environment</span>
+          <span class="value" id="ext-env-val">pilot</span>
         </div>
         <div class="card-row">
-          <span class="label">Manifest</span>
-          <span class="value">V3</span>
+          <span class="label">Backend Service</span>
+          <span class="value" id="ext-service-val">Live Backend</span>
         </div>
         <div class="card-row">
-          <span class="label">Version</span>
+          <span class="label">Policy Health</span>
+          <span class="value" id="ext-policy-health">HEALTHY (v1.0.0)</span>
+        </div>
+        <div class="card-row">
+          <span class="label">Active Rules</span>
+          <span class="value" id="ext-rules-val">3 rules active</span>
+        </div>
+        <div class="card-row">
+          <span class="label">Extension Version</span>
           <span class="value" id="ext-version">0.1.0</span>
         </div>
       </section>
 
-      <section class="description-card">
-        <p>Day 1 extension foundation initialized with TypeScript and Manifest V3 architecture.</p>
+      <!-- Scope Boundary Disclosure Card -->
+      <section class="boundary-card">
+        <div class="boundary-title">Protection Scope Boundary</div>
+        <div class="boundary-row">
+          <span class="check-icon">✓</span>
+          <span>Protected: Designated pilot test actions</span>
+        </div>
+        <div class="boundary-row">
+          <span class="cross-icon">✕</span>
+          <span>Not Protected: Arbitrary websites & scripts</span>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <section class="actions-section">
+        <a href="../demo-sites/test-page/index.html" target="_blank" class="btn btn-secondary btn-full" id="btn-open-demo">
+          Launch Controlled Test Page ↗
+        </a>
       </section>
     </main>
 
     <footer class="footer">
-      <span class="footer-text">Guardrail Observability</span>
+      <span class="footer-text">Zero credentials or sensitive form values collected</span>
     </footer>
   </div>
 

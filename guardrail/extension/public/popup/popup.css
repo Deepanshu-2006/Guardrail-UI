@@ -1,15 +1,33 @@
 :root {
   --bg-primary: #090d16;
   --bg-secondary: #111827;
+  --bg-surface: #1e293b;
   --bg-card: rgba(255, 255, 255, 0.04);
   --border-color: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+
   --accent-cyan: #0ea5e9;
+  --accent-cyan-hover: #0284c7;
   --accent-cyan-glow: rgba(14, 165, 233, 0.2);
+
   --badge-bg: rgba(16, 185, 129, 0.15);
   --badge-text: #34d399;
+  --badge-border: rgba(52, 211, 153, 0.3);
+
+  --status-warn-bg: rgba(245, 158, 11, 0.15);
+  --status-warn-text: #fbbf24;
+  --status-warn-border: rgba(251, 191, 36, 0.3);
+
+  --status-error-bg: rgba(239, 68, 68, 0.15);
+  --status-error-text: #f87171;
+  --status-error-border: rgba(248, 113, 113, 0.3);
+
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -19,7 +37,7 @@
 }
 
 body {
-  width: 320px;
+  width: 340px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-family);
@@ -32,7 +50,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  gap: 14px;
+  gap: 12px;
 }
 
 .header {
@@ -74,6 +92,23 @@ body {
   color: var(--text-secondary);
 }
 
+.header-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-env {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(14, 165, 233, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  text-transform: uppercase;
+}
+
 .status-indicator {
   font-size: 11px;
   font-weight: 600;
@@ -81,7 +116,7 @@ body {
   border-radius: 9999px;
   background: var(--badge-bg);
   color: var(--badge-text);
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  border: 1px solid var(--badge-border);
 }
 
 .content {
@@ -90,6 +125,112 @@ body {
   gap: 10px;
 }
 
+/* Status Card */
+.status-card {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-card.warn {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.status-card.error {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.status-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+}
+
+.status-card.warn .status-dot {
+  background-color: #f59e0b;
+}
+
+.status-card.error .status-dot {
+  background-color: #ef4444;
+}
+
+.status-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-explanation {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Onboarding Banner */
+.onboarding-banner {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(37, 99, 235, 0.08) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.onboarding-banner.completed {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.onboarding-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.onboarding-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.onboarding-desc {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.btn-action {
+  background: var(--accent-cyan);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  text-decoration: none;
+}
+
+.btn-action:hover {
+  background: var(--accent-cyan-hover);
+  box-shadow: 0 0 8px var(--accent-cyan-glow);
+}
+
+/* Info Card */
 .info-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -97,7 +238,7 @@ body {
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .card-row {
@@ -108,22 +249,87 @@ body {
 
 .label {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .value {
   font-weight: 500;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-primary);
+  font-family: var(--font-mono);
 }
 
-.description-card {
+/* Boundary Card */
+.boundary-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 11px;
+}
+
+.boundary-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.boundary-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
+}
+
+.check-icon {
+  color: #34d399;
+  font-weight: bold;
+}
+
+.cross-icon {
+  color: #f87171;
+  font-weight: bold;
+}
+
+/* Actions Section */
+.actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-full {
+  width: 100%;
 }
 
 .footer {
@@ -134,7 +340,7 @@ body {
 
 .footer-text {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
