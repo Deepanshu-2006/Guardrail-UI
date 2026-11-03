@@ -1571,7 +1571,7 @@ async function runAllTests(): Promise<void> {
     });
 
     // Wait for the modal to discover the APPROVED status
-    await new Promise((r) => setTimeout(r, 60));
+    await new Promise((r) => setTimeout(r, 150));
 
     assertEquals(
       getStagingUIState(),
