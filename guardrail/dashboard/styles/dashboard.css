@@ -1627,6 +1627,232 @@ button:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
+   Trusted Contact Setup & Ward Pairing Card
+   ----------------------------------------------------------------------------- */
+
+.gd-setup-card {
+  margin-bottom: 28px;
+  border-left: 4px solid var(--gd-green-primary);
+}
+
+.gd-setup-header {
+  margin-bottom: 16px;
+}
+
+.gd-setup-title {
+  margin-bottom: 6px;
+}
+
+.gd-setup-subtitle {
+  font-size: 13px;
+  color: var(--gd-text-secondary);
+}
+
+.gd-setup-steps {
+  list-style-type: decimal;
+  list-style-position: inside;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  background-color: var(--gd-bg-canvas);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--gd-text-secondary);
+  line-height: 1.5;
+}
+
+.gd-setup-step strong {
+  color: var(--gd-text-primary);
+}
+
+.gd-setup-step code {
+  font-family: var(--gd-font-mono);
+  background-color: var(--gd-bg-subtle);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--gd-text-primary);
+}
+
+.gd-setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gd-setup-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-setup-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+}
+
+.gd-setup-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 480px;
+}
+
+.gd-setup-input {
+  flex: 1;
+  padding: 10px 14px;
+  font-family: var(--gd-font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gd-text-primary);
+  background-color: #ffffff;
+  border: 1px solid var(--gd-border-strong);
+  border-radius: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gd-setup-input:focus {
+  outline: none;
+  border-color: var(--gd-green-primary);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+.gd-setup-input:disabled {
+  background-color: var(--gd-bg-subtle);
+  color: var(--gd-text-muted);
+  cursor: not-allowed;
+}
+
+.gd-btn-connect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: var(--gd-green-primary);
+  border: 1px solid var(--gd-green-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: var(--gd-shadow-sm);
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+}
+
+.gd-btn-connect:hover:not(:disabled) {
+  background-color: var(--gd-green-hover);
+  border-color: var(--gd-green-hover);
+}
+
+.gd-btn-connect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gd-setup-feedback {
+  font-size: 13px;
+  line-height: 1.45;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.gd-setup-feedback:empty {
+  display: none;
+}
+
+.gd-setup-feedback.error {
+  display: block;
+  padding: 10px 14px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.gd-setup-feedback.success {
+  display: block;
+  padding: 10px 14px;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.gd-setup-feedback.note {
+  display: block;
+  padding: 10px 14px;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+/* Active Ward Association Card */
+.gd-active-ward-card {
+  margin-bottom: 28px;
+  border-left: 4px solid var(--gd-green-primary);
+}
+
+.gd-ward-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+  padding: 16px;
+  background-color: var(--gd-bg-canvas);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+}
+
+.gd-ward-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gd-ward-meta-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gd-text-muted);
+}
+
+.gd-ward-meta-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+}
+
+.gd-ward-meta-value.gd-mono {
+  font-family: var(--gd-font-mono);
+}
+
+.gd-ward-meta-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.gd-ward-duty-notice {
+  font-size: 13px;
+  color: var(--gd-text-secondary);
+  line-height: 1.5;
+  padding-top: 4px;
+}
+
+/* -----------------------------------------------------------------------------
    Responsive Breakpoints
    ----------------------------------------------------------------------------- */
 
