@@ -491,6 +491,9 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   if (chrome.runtime.onInstalled) {
     chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
       console.log(`[Guardrail] Extension lifecycle event: onInstalled (reason: ${details.reason})`);
+      if (details.reason === 'install' && typeof chrome.tabs !== 'undefined' && chrome.tabs.create) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/onboarding.html') });
+      }
     });
   }
 
