@@ -74,9 +74,14 @@ import {
   ApprovalAccessDeniedError,
   AuthContext,
   ActionOwnershipRegistry,
+  CreateInvitationOptions,
   InMemoryActionOwnershipRegistry,
   InMemoryTrustedContactRegistry,
+  InvitationStatus,
+  NoActiveTrustedContactError,
   SelfApprovalProhibitedError,
+  TrustedContact,
+  TrustedContactInvitation,
   TrustedContactRegistry,
   UnauthenticatedError,
   UnauthorizedActionRequesterError,
@@ -169,6 +174,9 @@ export interface ApprovalServiceDependencies {
 
   /** Safe logger */
   readonly logger?: ApprovalServiceLogger;
+
+  /** If true, creating approval requests strictly requires at least one active trusted contact */
+  readonly enforceActiveContact?: boolean;
 }
 
 /**
@@ -177,6 +185,9 @@ export interface ApprovalServiceDependencies {
 export interface CreateApprovalServiceRequestOptions extends CreateApprovalRequestOptions {
   /** If true, duplicate active submissions for an actionId throw DuplicateApprovalRequestError */
   readonly rejectDuplicates?: boolean;
+
+  /** If true, creating request fails with NoActiveTrustedContactError if user has 0 active contacts */
+  readonly requireActiveContact?: boolean;
 }
 
 /**
@@ -200,6 +211,7 @@ export class ApprovalService {
   private readonly actionOwnershipRegistry: ActionOwnershipRegistry;
   private timeProvider: TimeProvider;
   private readonly logger: ApprovalServiceLogger;
+  private readonly enforceActiveContact: boolean;
   private readonly consumedContinuations: Map<
     string,
     { actionId: string; requestId: string; consumedAt: string; consumedBy: string }
@@ -212,6 +224,7 @@ export class ApprovalService {
       dependencies?.actionOwnershipRegistry ?? new InMemoryActionOwnershipRegistry();
     this.timeProvider = dependencies?.timeProvider ?? defaultTimeProvider;
     this.logger = dependencies?.logger ?? new NoopApprovalServiceLogger();
+    this.enforceActiveContact = dependencies?.enforceActiveContact ?? false;
   }
 
   /**
@@ -374,6 +387,13 @@ export class ApprovalService {
 
     // 5. Authoritative requester binding & 1:1 Action-Approval Binding
     const requesterId = authContext.actorId;
+
+    // Enforce active trusted contact configuration if required
+    const requireContact = options?.requireActiveContact ?? this.enforceActiveContact;
+    if (requireContact && !this.contactRegistry.hasActiveTrustedContact(requesterId)) {
+      throw new NoActiveTrustedContactError(requesterId);
+    }
+
     const createdAt = options?.createdAt ?? resolveTimestamp(this.timeProvider);
     const ttlMs = options?.ttlMs ?? 15 * 60 * 1000;
     const expiresAt =

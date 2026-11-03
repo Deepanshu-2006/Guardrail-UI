@@ -42,6 +42,7 @@ import {
 import {
   CreateApprovalRequestOptions,
 } from './model.js';
+import { generateActionId, generateTimestamp } from '../utils/metadata.js';
 
 // =============================================================================
 // Authentication & Identity Models
@@ -77,8 +78,8 @@ export interface AuthContext {
   readonly sessionId?: string;
 }
 
-// =============================================================================
-// Trusted Contact Relationship Model
+/// =============================================================================
+// Trusted Contact & Invitation Relationship Models
 // =============================================================================
 
 /**
@@ -90,6 +91,20 @@ export enum TrustedContactStatus {
   /** Invitation pending acceptance; not yet authorized */
   PENDING_INVITE = 'PENDING_INVITE',
   /** Relationship revoked by user or policy; decisions prohibited */
+  REVOKED = 'REVOKED',
+}
+
+/**
+ * Lifecycle status of an out-of-band trusted contact invitation.
+ */
+export enum InvitationStatus {
+  /** Invitation generated and waiting for contact acceptance */
+  PENDING = 'PENDING',
+  /** Accepted by designated contact; relationship is now ACTIVE */
+  ACCEPTED = 'ACCEPTED',
+  /** Expired past validity window without acceptance */
+  EXPIRED = 'EXPIRED',
+  /** Revoked by issuing ward before acceptance */
   REVOKED = 'REVOKED',
 }
 
@@ -114,7 +129,133 @@ export interface TrustedContact {
 }
 
 /**
- * Interface for querying trusted contact relationships.
+ * Representation of a secure out-of-band invitation to become a trusted contact.
+ */
+export interface TrustedContactInvitation {
+  /** Canonical invitation identifier (e.g., 'inv_...') */
+  readonly id: string;
+
+  /** Out-of-band pairing code (e.g., 'GR-INV-A1B2-C3D4') */
+  readonly code: string;
+
+  /** The issuing protected user / ward ('usr_...') */
+  readonly userId: string;
+
+  /** Optional human-readable relationship label suggested by the ward */
+  readonly relationshipLabel?: string;
+
+  /** Current lifecycle status of the invitation */
+  readonly status: InvitationStatus;
+
+  /** ISO 8601 UTC creation timestamp */
+  readonly createdAt: string;
+
+  /** ISO 8601 UTC expiration timestamp */
+  readonly expiresAt: string;
+
+  /** Trusted contact identifier that accepted this invitation, if resolved */
+  readonly acceptedByContactId?: string;
+
+  /** ISO 8601 UTC acceptance timestamp, if resolved */
+  readonly acceptedAt?: string;
+
+  /** ISO 8601 UTC revocation timestamp, if revoked */
+  readonly revokedAt?: string;
+}
+
+/**
+ * Options for generating a new trusted contact invitation.
+ */
+export interface CreateInvitationOptions {
+  /** Optional human-readable relationship label (e.g., 'Guardian', 'Spouse', 'IT Supervisor') */
+  readonly relationshipLabel?: string;
+
+  /** Optional invitation TTL in milliseconds (defaults to 24 hours = 86,400,000 ms) */
+  readonly ttlMs?: number;
+
+  /** Optional custom invitation code (for testing or deterministic seeding) */
+  readonly customCode?: string;
+
+  /** Optional custom invitation identifier ('inv_...') */
+  readonly id?: string;
+}
+
+/**
+ * Generates an unambiguous, human-readable pairing code (format: 'GR-INV-XXXX-YYYY').
+ * Uses a Crockford-inspired alphanumeric character set excluding easily confused glyphs (0, O, 1, I, L).
+ */
+export function generateInvitationCode(): string {
+  const chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  let p1 = '';
+  let p2 = '';
+  for (let i = 0; i < 4; i++) {
+    p1 += chars.charAt(Math.floor(Math.random() * chars.length));
+    p2 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `GR-INV-${p1}-${p2}`;
+}
+
+/**
+ * Validates an invitation pairing code format.
+ */
+export function validateInvitationCode(
+  code: unknown
+): { valid: boolean; normalized?: string; errors: readonly string[] } {
+  const errors: string[] = [];
+  if (typeof code !== 'string' || !code.trim()) {
+    errors.push('Invitation code is required and must be a non-empty string.');
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  const normalized = code.trim().toUpperCase();
+  // Accepts standard GR-INV-XXXX-YYYY, or testing token forms (INV-...)
+  if (
+    !/^GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalized) &&
+    !/^INV-[A-Z0-9_-]{4,32}$/.test(normalized)
+  ) {
+    errors.push(
+      `Invalid invitation code format "${code}". Expected format: "GR-INV-XXXX-YYYY" (e.g. "GR-INV-4B7K-9MP2").`
+    );
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  return { valid: true, normalized, errors: Object.freeze(errors) };
+}
+
+/**
+ * Validates a human-readable relationship label.
+ */
+export function validateRelationshipLabel(
+  label: unknown
+): { valid: boolean; normalized?: string; errors: readonly string[] } {
+  const errors: string[] = [];
+  if (label === undefined || label === null || label === '') {
+    return { valid: true, normalized: undefined, errors: Object.freeze(errors) };
+  }
+
+  if (typeof label !== 'string') {
+    errors.push('Relationship label must be a string if provided.');
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  const trimmed = label.trim();
+  if (trimmed.length > 64) {
+    errors.push(
+      `Relationship label exceeds maximum permitted length of 64 characters (length: ${trimmed.length}).`
+    );
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  if (/[\r\n\t\x00-\x1F\x7F]/.test(trimmed)) {
+    errors.push('Relationship label must not contain control characters or newlines.');
+    return { valid: false, errors: Object.freeze(errors) };
+  }
+
+  return { valid: true, normalized: trimmed, errors: Object.freeze(errors) };
+}
+
+/**
+ * Interface for querying and managing trusted contact relationships and invitations.
  */
 export interface TrustedContactRegistry {
   /**
@@ -126,15 +267,61 @@ export interface TrustedContactRegistry {
    * Retrieves all active trusted contacts designated by a user.
    */
   getTrustedContactsForUser(userId: string): readonly TrustedContact[];
+
+  /**
+   * Checks whether a user has at least one ACTIVE designated trusted contact.
+   */
+  hasActiveTrustedContact(userId: string): boolean;
+
+  /**
+   * Creates an out-of-band invitation for a ward to invite a trusted contact.
+   */
+  createInvitation(userId: string, options?: CreateInvitationOptions): TrustedContactInvitation;
+
+  /**
+   * Looks up an invitation by its pairing code, lazily expiring it if deadline passed.
+   */
+  getInvitationByCode(code: string): TrustedContactInvitation | undefined;
+
+  /**
+   * Looks up an invitation by its unique identifier.
+   */
+  getInvitationById(id: string): TrustedContactInvitation | undefined;
+
+  /**
+   * Lists all invitations created by a user.
+   */
+  listInvitationsForUser(userId: string): readonly TrustedContactInvitation[];
+
+  /**
+   * Accepts an invitation code on behalf of an authenticated contact, activating the relationship.
+   */
+  acceptInvitation(
+    code: string,
+    contactId: string
+  ): { invitation: TrustedContactInvitation; contact: TrustedContact };
+
+  /**
+   * Revokes an existing invitation created by the ward.
+   */
+  revokeInvitation(invitationId: string, userId: string): TrustedContactInvitation;
+
+  /**
+   * Revokes an active trusted contact relationship.
+   */
+  revokeTrustedContact(contactId: string, userId: string): boolean;
 }
 
 /**
  * Minimal in-memory implementation of TrustedContactRegistry.
- * Provides the relationship abstraction until database persistence is added.
+ * Provides the relationship and invitation abstraction until persistent database storage is introduced.
  */
 export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
   private readonly contacts: Map<string, TrustedContact> = new Map();
   private readonly userIndex: Map<string, Set<string>> = new Map(); // userId -> Set<contactId>
+  private readonly invitations: Map<string, TrustedContactInvitation> = new Map(); // invitationId -> invitation
+  private readonly codeIndex: Map<string, string> = new Map(); // normalized code -> invitationId
+  private readonly userInvitations: Map<string, Set<string>> = new Map(); // userId -> Set<invitationId>
 
   public addContact(contact: TrustedContact): void {
     const frozen = Object.freeze({ ...contact });
@@ -188,9 +375,236 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
     return Object.freeze(result);
   }
 
+  public hasActiveTrustedContact(userId: string): boolean {
+    return this.getTrustedContactsForUser(userId).length > 0;
+  }
+
+  public createInvitation(
+    userId: string,
+    options?: CreateInvitationOptions
+  ): TrustedContactInvitation {
+    if (!userId || typeof userId !== 'string' || !userId.trim()) {
+      throw new Error('userId is required to create a trusted contact invitation.');
+    }
+
+    const trimmedUserId = userId.trim();
+
+    // Validate relationship label if specified
+    const labelValidation = validateRelationshipLabel(options?.relationshipLabel);
+    if (!labelValidation.valid) {
+      throw new Error(labelValidation.errors[0]);
+    }
+
+    // Determine code
+    let code: string;
+    if (options?.customCode !== undefined) {
+      const codeValidation = validateInvitationCode(options.customCode);
+      if (!codeValidation.valid) {
+        throw new Error(codeValidation.errors[0]);
+      }
+      code = codeValidation.normalized!;
+      if (this.codeIndex.has(code)) {
+        const existingId = this.codeIndex.get(code)!;
+        const existing = this.invitations.get(existingId);
+        if (existing && existing.status === InvitationStatus.PENDING) {
+          throw new DuplicateContactRelationshipError(code, trimmedUserId);
+        }
+      }
+    } else {
+      do {
+        code = generateInvitationCode();
+      } while (this.codeIndex.has(code));
+    }
+
+    const id = options?.id ?? generateActionId('inv');
+    const createdAt = generateTimestamp();
+    const ttlMs = options?.ttlMs ?? 24 * 60 * 60 * 1000; // default 24h
+    const expiresAt = new Date(Date.parse(createdAt) + ttlMs).toISOString();
+
+    const invitation: TrustedContactInvitation = Object.freeze({
+      id,
+      code,
+      userId: trimmedUserId,
+      relationshipLabel: labelValidation.normalized,
+      status: InvitationStatus.PENDING,
+      createdAt,
+      expiresAt,
+    });
+
+    this.invitations.set(id, invitation);
+    this.codeIndex.set(code, id);
+
+    let userInviteSet = this.userInvitations.get(trimmedUserId);
+    if (!userInviteSet) {
+      userInviteSet = new Set();
+      this.userInvitations.set(trimmedUserId, userInviteSet);
+    }
+    userInviteSet.add(id);
+
+    return invitation;
+  }
+
+  public getInvitationByCode(code: string): TrustedContactInvitation | undefined {
+    if (!code || typeof code !== 'string') {
+      return undefined;
+    }
+    const normalized = code.trim().toUpperCase();
+    const id = this.codeIndex.get(normalized);
+    if (!id) {
+      return undefined;
+    }
+    return this.getInvitationById(id);
+  }
+
+  public getInvitationById(id: string): TrustedContactInvitation | undefined {
+    const existing = this.invitations.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    // Lazy expiration check
+    if (
+      existing.status === InvitationStatus.PENDING &&
+      Date.now() >= Date.parse(existing.expiresAt)
+    ) {
+      const expired = Object.freeze({
+        ...existing,
+        status: InvitationStatus.EXPIRED,
+      });
+      this.invitations.set(id, expired);
+      return expired;
+    }
+
+    return existing;
+  }
+
+  public listInvitationsForUser(userId: string): readonly TrustedContactInvitation[] {
+    const inviteIds = this.userInvitations.get(userId);
+    if (!inviteIds) {
+      return [];
+    }
+    const result: TrustedContactInvitation[] = [];
+    for (const id of inviteIds) {
+      const inv = this.getInvitationById(id);
+      if (inv) {
+        result.push(inv);
+      }
+    }
+    // Newest first
+    result.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    return Object.freeze(result);
+  }
+
+  public acceptInvitation(
+    code: string,
+    contactId: string
+  ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
+    if (!contactId || typeof contactId !== 'string' || !contactId.trim()) {
+      throw new Error('contactId is required to accept an invitation.');
+    }
+    const trimmedContactId = contactId.trim();
+
+    const codeValidation = validateInvitationCode(code);
+    if (!codeValidation.valid) {
+      throw new InvitationNotFoundError(code);
+    }
+
+    const invitation = this.getInvitationByCode(codeValidation.normalized!);
+    if (!invitation) {
+      throw new InvitationNotFoundError(code);
+    }
+
+    // Check expiration
+    if (invitation.status === InvitationStatus.EXPIRED) {
+      throw new InvitationExpiredError(invitation.id, invitation.expiresAt);
+    }
+
+    // Check revocation
+    if (invitation.status === InvitationStatus.REVOKED) {
+      throw new InvitationRevokedError(invitation.id);
+    }
+
+    // Check duplicate acceptance
+    if (invitation.status === InvitationStatus.ACCEPTED) {
+      throw new InvitationAlreadyAcceptedError(invitation.id);
+    }
+
+    // Separation of duties: Self-invitation is prohibited
+    if (trimmedContactId === invitation.userId) {
+      throw new SelfInvitationProhibitedError(trimmedContactId, invitation.id);
+    }
+
+    // Check duplicate relationship
+    if (this.isTrustedContactForUser(trimmedContactId, invitation.userId)) {
+      throw new DuplicateContactRelationshipError(trimmedContactId, invitation.userId);
+    }
+
+    const acceptedAt = generateTimestamp();
+    const updatedInvitation: TrustedContactInvitation = Object.freeze({
+      ...invitation,
+      status: InvitationStatus.ACCEPTED,
+      acceptedByContactId: trimmedContactId,
+      acceptedAt,
+    });
+    this.invitations.set(invitation.id, updatedInvitation);
+
+    const contact: TrustedContact = Object.freeze({
+      id: trimmedContactId,
+      userId: invitation.userId,
+      relationshipLabel: invitation.relationshipLabel,
+      status: TrustedContactStatus.ACTIVE,
+      createdAt: acceptedAt,
+    });
+    this.addContact(contact);
+
+    return { invitation: updatedInvitation, contact };
+  }
+
+  public revokeInvitation(invitationId: string, userId: string): TrustedContactInvitation {
+    const invitation = this.getInvitationById(invitationId);
+    if (!invitation || invitation.userId !== userId) {
+      throw new InvitationNotFoundError(invitationId);
+    }
+
+    if (invitation.status === InvitationStatus.ACCEPTED) {
+      throw new ApprovalAuthorizationError(
+        'Cannot revoke an invitation that has already been accepted.',
+        409
+      );
+    }
+
+    if (invitation.status === InvitationStatus.REVOKED) {
+      return invitation;
+    }
+
+    const revoked: TrustedContactInvitation = Object.freeze({
+      ...invitation,
+      status: InvitationStatus.REVOKED,
+      revokedAt: generateTimestamp(),
+    });
+    this.invitations.set(invitationId, revoked);
+    return revoked;
+  }
+
+  public revokeTrustedContact(contactId: string, userId: string): boolean {
+    const contact = this.contacts.get(contactId);
+    if (!contact || contact.userId !== userId) {
+      return false;
+    }
+    const revoked = Object.freeze({
+      ...contact,
+      status: TrustedContactStatus.REVOKED,
+    });
+    this.contacts.set(contactId, revoked);
+    return true;
+  }
+
   public clear(): void {
     this.contacts.clear();
     this.userIndex.clear();
+    this.invitations.clear();
+    this.codeIndex.clear();
+    this.userInvitations.clear();
   }
 }
 
@@ -338,6 +752,118 @@ export class UnauthorizedActionRequesterError extends ApprovalAuthorizationError
   }
 }
 
+/**
+ * Error thrown when a user without an active trusted contact attempts to create an approval request.
+ */
+export class NoActiveTrustedContactError extends ApprovalAuthorizationError {
+  public readonly userId: string;
+
+  constructor(userId: string) {
+    super(
+      `Cannot create approval request: No active trusted contact is configured for user "${userId}". High-risk browser actions requiring approval cannot proceed until a trusted contact is linked.`,
+      422
+    );
+    this.name = 'NoActiveTrustedContactError';
+    this.userId = userId;
+  }
+}
+
+/**
+ * Error thrown when an invitation cannot be found or the code is invalid.
+ */
+export class InvitationNotFoundError extends ApprovalAuthorizationError {
+  constructor(identifier?: string) {
+    super(`Invitation not found or invalid: "${identifier ?? 'unknown'}".`, 404);
+    this.name = 'InvitationNotFoundError';
+  }
+}
+
+/**
+ * Error thrown when an invitation has expired past its validity window.
+ */
+export class InvitationExpiredError extends ApprovalAuthorizationError {
+  public readonly invitationId: string;
+  public readonly expiresAt: string;
+
+  constructor(invitationId: string, expiresAt: string) {
+    super(
+      `Invitation "${invitationId}" has expired at ${expiresAt}. Please request a new invitation code.`,
+      410
+    );
+    this.name = 'InvitationExpiredError';
+    this.invitationId = invitationId;
+    this.expiresAt = expiresAt;
+  }
+}
+
+/**
+ * Error thrown when an invitation was revoked by the issuing user.
+ */
+export class InvitationRevokedError extends ApprovalAuthorizationError {
+  public readonly invitationId: string;
+
+  constructor(invitationId: string) {
+    super(
+      `Invitation "${invitationId}" was revoked by the user and is no longer valid.`,
+      410
+    );
+    this.name = 'InvitationRevokedError';
+    this.invitationId = invitationId;
+  }
+}
+
+/**
+ * Error thrown when an invitation has already been accepted.
+ */
+export class InvitationAlreadyAcceptedError extends ApprovalAuthorizationError {
+  public readonly invitationId: string;
+
+  constructor(invitationId: string) {
+    super(
+      `Invitation "${invitationId}" has already been accepted and cannot be reused.`,
+      409
+    );
+    this.name = 'InvitationAlreadyAcceptedError';
+    this.invitationId = invitationId;
+  }
+}
+
+/**
+ * Error thrown when a user attempts to accept their own invitation or link with themselves.
+ */
+export class SelfInvitationProhibitedError extends ApprovalAuthorizationError {
+  public readonly actorId: string;
+  public readonly invitationId: string;
+
+  constructor(actorId: string, invitationId: string) {
+    super(
+      `Access denied: Actor "${actorId}" cannot accept an invitation issued by themselves ("${invitationId}"). Users cannot serve as their own trusted contact. Separation of duties is strictly enforced.`,
+      403
+    );
+    this.name = 'SelfInvitationProhibitedError';
+    this.actorId = actorId;
+    this.invitationId = invitationId;
+  }
+}
+
+/**
+ * Error thrown when a contact relationship already exists between this contact and user.
+ */
+export class DuplicateContactRelationshipError extends ApprovalAuthorizationError {
+  public readonly contactId: string;
+  public readonly userId: string;
+
+  constructor(contactId: string, userId: string) {
+    super(
+      `Contact "${contactId}" is already an active trusted contact for user "${userId}". Duplicate active relationships are not permitted.`,
+      409
+    );
+    this.name = 'DuplicateContactRelationshipError';
+    this.contactId = contactId;
+    this.userId = userId;
+  }
+}
+
 // =============================================================================
 // Server-Side Approval Authorization Service
 // =============================================================================
@@ -389,7 +915,10 @@ export class ApprovalAuthorizationService {
   public createRequest(
     payload: ClientApprovalRequestPayload,
     authContext: AuthContext,
-    options?: CreateApprovalRequestOptions & { rejectDuplicates?: boolean }
+    options?: CreateApprovalRequestOptions & {
+      rejectDuplicates?: boolean;
+      requireActiveContact?: boolean;
+    }
   ): ApprovalRequest {
     this.assertAuthenticated(authContext);
 
@@ -409,6 +938,11 @@ export class ApprovalAuthorizationService {
 
     // 2. Identity is strictly bound to the authenticated server context
     const requesterId = authContext.actorId;
+
+    // 3. Enforce trusted contact configuration if required
+    if (options?.requireActiveContact && !this.contactRegistry.hasActiveTrustedContact(requesterId)) {
+      throw new NoActiveTrustedContactError(requesterId);
+    }
 
     const request = this.lifecycleManager.createRequest(payload, requesterId, options);
 
@@ -604,6 +1138,103 @@ export class ApprovalAuthorizationService {
       authContext.actorId,
       reason
     );
+  }
+
+  // ===========================================================================
+  // Trusted Contact & Invitation Operations
+  // ===========================================================================
+
+  /**
+   * Creates a new trusted contact invitation on behalf of the authenticated ward.
+   */
+  public createInvitation(
+    authContext: AuthContext,
+    options?: CreateInvitationOptions
+  ): TrustedContactInvitation {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.createInvitation(authContext.actorId, options);
+  }
+
+  /**
+   * Lists all trusted contact invitations issued by the authenticated user.
+   */
+  public listInvitationsForUser(
+    authContext: AuthContext
+  ): readonly TrustedContactInvitation[] {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.listInvitationsForUser(authContext.actorId);
+  }
+
+  /**
+   * Retrieves an invitation by its pairing code or identifier.
+   */
+  public getInvitation(
+    identifier: string,
+    authContext: AuthContext
+  ): TrustedContactInvitation {
+    this.assertAuthenticated(authContext);
+
+    let invitation = this.contactRegistry.getInvitationByCode(identifier);
+    if (!invitation) {
+      invitation = this.contactRegistry.getInvitationById(identifier);
+    }
+
+    if (!invitation) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    const isOwner = invitation.userId === authContext.actorId;
+    const isPending = invitation.status === InvitationStatus.PENDING;
+    const isAdmin = authContext.role === ActorRole.ADMIN;
+
+    if (!isOwner && !isPending && !isAdmin) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return invitation;
+  }
+
+  /**
+   * Accepts an invitation code on behalf of the authenticated contact.
+   */
+  public acceptInvitation(
+    code: string,
+    authContext: AuthContext
+  ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.acceptInvitation(code, authContext.actorId);
+  }
+
+  /**
+   * Revokes an invitation created by the authenticated user.
+   */
+  public revokeInvitation(
+    invitationId: string,
+    authContext: AuthContext
+  ): TrustedContactInvitation {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.revokeInvitation(invitationId, authContext.actorId);
+  }
+
+  /**
+   * Retrieves all active trusted contacts for the authenticated user.
+   */
+  public getTrustedContactsForUser(
+    authContext: AuthContext
+  ): readonly TrustedContact[] {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.getTrustedContactsForUser(authContext.actorId);
+  }
+
+  /**
+   * Revokes an active trusted contact relationship.
+   */
+  public revokeTrustedContact(
+    contactId: string,
+    authContext: AuthContext
+  ): boolean {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.revokeTrustedContact(contactId, authContext.actorId);
   }
 
   /**
