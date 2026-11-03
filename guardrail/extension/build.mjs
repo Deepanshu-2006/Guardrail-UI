@@ -14,6 +14,7 @@ const distDir = path.resolve(__dirname, 'dist');
 
 function copyStaticAssets() {
   fs.mkdirSync(path.join(distDir, 'popup'), { recursive: true });
+  fs.mkdirSync(path.join(distDir, 'onboarding'), { recursive: true });
   fs.mkdirSync(path.join(distDir, 'icons'), { recursive: true });
 
   // Clean stale source maps in production or pilot mode
@@ -24,6 +25,8 @@ function copyStaticAssets() {
     }
     const popupMap = path.join(distDir, 'popup', 'popup.js.map');
     if (fs.existsSync(popupMap)) fs.unlinkSync(popupMap);
+    const onboardingMap = path.join(distDir, 'onboarding', 'onboarding.js.map');
+    if (fs.existsSync(onboardingMap)) fs.unlinkSync(onboardingMap);
   }
 
   // Copy manifest with environment annotations
@@ -43,6 +46,16 @@ function copyStaticAssets() {
   fs.copyFileSync(
     path.join(__dirname, 'public', 'popup', 'popup.css'),
     path.join(distDir, 'popup', 'popup.css')
+  );
+
+  // Copy onboarding assets
+  fs.copyFileSync(
+    path.join(__dirname, 'public', 'onboarding', 'onboarding.html'),
+    path.join(distDir, 'onboarding', 'onboarding.html')
+  );
+  fs.copyFileSync(
+    path.join(__dirname, 'public', 'onboarding', 'onboarding.css'),
+    path.join(distDir, 'onboarding', 'onboarding.css')
   );
 
   // Copy icons
@@ -95,6 +108,19 @@ const buildOptions = [
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
     },
   },
+  {
+    entryPoints: [path.join(__dirname, 'src', 'onboarding', 'index.ts')],
+    bundle: true,
+    outfile: path.join(distDir, 'onboarding', 'onboarding.js'),
+    format: 'iife',
+    target: 'es2022',
+    sourcemap: !isProd && !isPilot,
+    minify: isProd || isPilot,
+    define: {
+      'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
+      'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+    },
+  },
 ];
 
 async function run() {
@@ -105,10 +131,7 @@ async function run() {
     await Promise.all(contexts.map((ctx) => ctx.watch()));
     console.log(`[Guardrail Extension] Watching for changes (${targetEnv})...`);
   } else {
-    for (const opt of buildOptions) {
-      await esbuild.build(opt);
-    }
-    await esbuild.stop();
+    await Promise.all(buildOptions.map((opt) => esbuild.build(opt)));
     console.log(`[Guardrail Extension] Build completed successfully (${targetEnv}) -> dist/`);
   }
 }
