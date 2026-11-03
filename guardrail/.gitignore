@@ -3,6 +3,8 @@ node_modules/
 
 # Build outputs
 dist/
+dist-pilot/
+*.zip
 
 # OS and Editor files
 .DS_Store
