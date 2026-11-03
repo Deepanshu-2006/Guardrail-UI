@@ -53,6 +53,7 @@ import {
   DEFAULT_PILOT_API_BASE_URL,
   isLocalhost,
 } from '../config/environment.js';
+import { TrustedContact, TrustedContactInvitation } from './authorization.js';
 
 // =============================================================================
 // Configuration Constants
@@ -84,6 +85,13 @@ export const ApiClientErrorCodes = Object.freeze({
   RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
   UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
+  NO_ACTIVE_TRUSTED_CONTACT: 'NO_ACTIVE_TRUSTED_CONTACT',
+  INVITATION_NOT_FOUND: 'INVITATION_NOT_FOUND',
+  INVITATION_EXPIRED: 'INVITATION_EXPIRED',
+  INVITATION_REVOKED: 'INVITATION_REVOKED',
+  INVITATION_ALREADY_ACCEPTED: 'INVITATION_ALREADY_ACCEPTED',
+  SELF_INVITATION_PROHIBITED: 'SELF_INVITATION_PROHIBITED',
+  DUPLICATE_CONTACT_RELATIONSHIP: 'DUPLICATE_CONTACT_RELATIONSHIP',
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const);
 
@@ -200,6 +208,10 @@ export interface ApprovalApiClientConfig {
    * Defaults to globalThis.fetch.
    */
   readonly fetchFn?: typeof fetch;
+  /**
+   * Alias for fetchFn for unit tests and custom transports.
+   */
+  readonly customFetch?: typeof fetch;
 
   /**
    * Safe logger instance.
@@ -493,7 +505,7 @@ export class ApprovalApiClient {
     this.baseUrl = url;
     this.tokenProvider = config?.tokenProvider;
     this.timeoutMs = config?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-    this.fetchFn = config?.fetchFn ?? globalThis.fetch;
+    this.fetchFn = config?.fetchFn ?? config?.customFetch ?? globalThis.fetch;
     this.logger = config?.logger ?? new NoopApiClientLogger();
   }
 
@@ -1151,6 +1163,187 @@ export class ApprovalApiClient {
       request.status === ApprovalStatus.REJECTED ||
       request.status === ApprovalStatus.EXPIRED ||
       request.status === ApprovalStatus.CANCELLED
+    );
+  }
+
+  // ===========================================================================
+  // Trusted Contact & Invitation Client Operations
+  // ===========================================================================
+
+  /**
+   * Generates a new trusted contact invitation with an out-of-band pairing code.
+   *
+   * @param payload Optional invitation configuration (relationshipLabel, ttlMs, customCode)
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with created TrustedContactInvitation
+   */
+  public async createInvitation(
+    payload?: { relationshipLabel?: string; ttlMs?: number; customCode?: string },
+    options?: RequestOptions
+  ): Promise<ApiClientResult<TrustedContactInvitation>> {
+    return this.dispatchRequest<TrustedContactInvitation>(
+      'POST',
+      '/api/v1/invitations',
+      payload ?? {},
+      options
+    );
+  }
+
+  /**
+   * Lists all trusted contact invitations issued by the authenticated ward.
+   *
+   * @param options Optional request overrides
+   * @returns Typed ApiClientResult with readonly array of TrustedContactInvitation
+   */
+  public async listInvitations(
+    options?: RequestOptions
+  ): Promise<ApiClientResult<readonly TrustedContactInvitation[]>> {
+    return this.dispatchRequest<readonly TrustedContactInvitation[]>(
+      'GET',
+      '/api/v1/invitations',
+      undefined,
+      options
+    );
+  }
+
+  /**
+   * Retrieves invitation metadata by pairing code or canonical ID.
+   *
+   * @param identifier Out-of-band code or invitation ID ('inv_...')
+   * @param options Optional request overrides
+   * @returns Typed ApiClientResult with TrustedContactInvitation
+   */
+  public async getInvitation(
+    identifier: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<TrustedContactInvitation>> {
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'identifier is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(identifier.trim());
+    return this.dispatchRequest<TrustedContactInvitation>(
+      'GET',
+      `/api/v1/invitations/${sanitized}`,
+      undefined,
+      options
+    );
+  }
+
+  /**
+   * Accepts an invitation code on behalf of the authenticated contact, establishing the relationship.
+   *
+   * @param code Out-of-band invitation code (e.g., 'GR-INV-A1B2-C3D4')
+   * @param options Optional request overrides
+   * @returns Typed ApiClientResult with updated invitation and new contact record
+   */
+  public async acceptInvitation(
+    code: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<{ invitation: TrustedContactInvitation; contact: TrustedContact }>> {
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'code is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(code.trim().toUpperCase());
+    return this.dispatchRequest<{ invitation: TrustedContactInvitation; contact: TrustedContact }>(
+      'POST',
+      `/api/v1/invitations/${sanitized}/accept`,
+      {},
+      options
+    );
+  }
+
+  /**
+   * Revokes an existing invitation created by the ward.
+   *
+   * @param invitationId Canonical invitation identifier ('inv_...')
+   * @param options Optional request overrides
+   * @returns Typed ApiClientResult with revoked TrustedContactInvitation
+   */
+  public async revokeInvitation(
+    invitationId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<TrustedContactInvitation>> {
+    if (!invitationId || typeof invitationId !== 'string' || !invitationId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'invitationId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(invitationId.trim());
+    return this.dispatchRequest<TrustedContactInvitation>(
+      'POST',
+      `/api/v1/invitations/${sanitized}/revoke`,
+      {},
+      options
+    );
+  }
+
+  /**
+   * Retrieves all active trusted contacts designated by the authenticated ward.
+   *
+   * @param options Optional request overrides
+   * @returns Typed ApiClientResult with readonly array of TrustedContact
+   */
+  public async listTrustedContacts(
+    options?: RequestOptions
+  ): Promise<ApiClientResult<readonly TrustedContact[]>> {
+    return this.dispatchRequest<readonly TrustedContact[]>(
+      'GET',
+      '/api/v1/trusted-contacts',
+      undefined,
+      options
+    );
+  }
+
+  /**
+   * Revokes an active trusted contact relationship.
+   *
+   * @param contactId Unique trusted contact identifier ('tc_...')
+   * @param options Optional request overrides
+   * @returns Typed ApiClientResult with revocation confirmation
+   */
+  public async revokeTrustedContact(
+    contactId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<{ revoked: boolean; contactId: string }>> {
+    if (!contactId || typeof contactId !== 'string' || !contactId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'contactId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(contactId.trim());
+    return this.dispatchRequest<{ revoked: boolean; contactId: string }>(
+      'POST',
+      `/api/v1/trusted-contacts/${sanitized}/revoke`,
+      {},
+      options
     );
   }
 

@@ -112,11 +112,17 @@ export enum InvitationStatus {
  * Representation of a designated trusted contact relationship.
  */
 export interface TrustedContact {
-  /** Unique trusted contact identifier (e.g., 'tc_01J9X4...') */
+  /** Unique trusted contact identifier (e.g., 'tc_01J9X4...' or actorId) */
   readonly id: string;
+
+  /** Canonical alias for id representing the contact actor */
+  readonly contactId?: string;
 
   /** The protected user / ward who designated this contact ('usr_...') */
   readonly userId: string;
+
+  /** Canonical alias for userId representing the ward */
+  readonly wardId?: string;
 
   /** Optional human-readable relationship label (e.g., 'Guardian', 'Supervisor') */
   readonly relationshipLabel?: string;
@@ -140,6 +146,9 @@ export interface TrustedContactInvitation {
 
   /** The issuing protected user / ward ('usr_...') */
   readonly userId: string;
+
+  /** Canonical alias for userId representing the ward */
+  readonly wardId?: string;
 
   /** Optional human-readable relationship label suggested by the ward */
   readonly relationshipLabel?: string;
@@ -425,6 +434,7 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       id,
       code,
       userId: trimmedUserId,
+      wardId: trimmedUserId,
       relationshipLabel: labelValidation.normalized,
       status: InvitationStatus.PENDING,
       createdAt,
@@ -550,7 +560,9 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
 
     const contact: TrustedContact = Object.freeze({
       id: trimmedContactId,
+      contactId: trimmedContactId,
       userId: invitation.userId,
+      wardId: invitation.userId,
       relationshipLabel: invitation.relationshipLabel,
       status: TrustedContactStatus.ACTIVE,
       createdAt: acceptedAt,

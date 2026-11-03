@@ -395,6 +395,27 @@ export class DashboardShell {
       pendingCount: this.state.pendingRequests.length,
       recentActivity: this.state.historyRequests,
       onViewHistory: () => this.setActiveView('history'),
+      onConnectInvitation: this.apiClient
+        ? async (code: string) => {
+            const res = await this.apiClient!.acceptInvitation(code);
+            if (res.success) {
+              const wardId = res.data.invitation.wardId;
+              const relLabel = res.data.invitation.relationshipLabel;
+              this.state.contactProfile = {
+                actorId: this.state.contactProfile?.actorId || 'tc_contact',
+                role: this.state.contactProfile?.role || 'TRUSTED_CONTACT',
+                assignedWardId: wardId,
+                relationshipLabel: relLabel ?? this.state.contactProfile?.relationshipLabel,
+                isAuthenticated: true,
+              };
+              await this.refresh();
+              this.render();
+              return { success: true, wardId };
+            } else {
+              return { success: false, error: res.error.message };
+            }
+          }
+        : undefined,
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');

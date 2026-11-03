@@ -1497,6 +1497,138 @@ export class ApprovalService {
     this.consumedContinuations.clear();
   }
 
+  // ===========================================================================
+  // Trusted Contact & Invitation Operations
+  // ===========================================================================
+
+  /**
+   * Checks whether a user has at least one active configured trusted contact.
+   */
+  public hasActiveTrustedContact(userId: string): boolean {
+    return this.contactRegistry.hasActiveTrustedContact(userId);
+  }
+
+  /**
+   * Creates a new trusted contact invitation on behalf of the authenticated ward.
+   */
+  public createInvitation(
+    authContext: AuthContext,
+    options?: CreateInvitationOptions
+  ): TrustedContactInvitation {
+    this.assertAuthenticated(authContext);
+    const invitation = this.contactRegistry.createInvitation(authContext.actorId, options);
+    this.logger.info('Created trusted contact invitation', {
+      invitationId: invitation.id,
+      code: invitation.code,
+      userId: authContext.actorId,
+      expiresAt: invitation.expiresAt,
+    });
+    return invitation;
+  }
+
+  /**
+   * Lists all trusted contact invitations created by the authenticated ward.
+   */
+  public listInvitationsForUser(
+    authContext: AuthContext
+  ): readonly TrustedContactInvitation[] {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.listInvitationsForUser(authContext.actorId);
+  }
+
+  /**
+   * Retrieves an invitation by its pairing code or identifier with anti-enumeration protection.
+   */
+  public getInvitation(
+    identifier: string,
+    authContext: AuthContext
+  ): TrustedContactInvitation {
+    this.assertAuthenticated(authContext);
+
+    let invitation = this.contactRegistry.getInvitationByCode(identifier);
+    if (!invitation) {
+      invitation = this.contactRegistry.getInvitationById(identifier);
+    }
+
+    if (!invitation) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    // Authorization: Issuing ward, pending invitation (for reviewer accept/preview), or admin
+    const isOwner = invitation.userId === authContext.actorId;
+    const isPending = invitation.status === InvitationStatus.PENDING;
+    const isAdmin = authContext.role === ActorRole.ADMIN;
+
+    if (!isOwner && !isPending && !isAdmin) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return invitation;
+  }
+
+  /**
+   * Accepts an invitation code on behalf of the authenticated contact, establishing the relationship.
+   */
+  public acceptInvitation(
+    code: string,
+    authContext: AuthContext
+  ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
+    this.assertAuthenticated(authContext);
+    const result = this.contactRegistry.acceptInvitation(code, authContext.actorId);
+    this.logger.info('Accepted trusted contact invitation', {
+      invitationId: result.invitation.id,
+      code: result.invitation.code,
+      wardId: result.invitation.userId,
+      contactId: authContext.actorId,
+    });
+    return result;
+  }
+
+  /**
+   * Revokes an existing invitation created by the authenticated ward.
+   */
+  public revokeInvitation(
+    invitationId: string,
+    authContext: AuthContext
+  ): TrustedContactInvitation {
+    this.assertAuthenticated(authContext);
+    const revoked = this.contactRegistry.revokeInvitation(invitationId, authContext.actorId);
+    this.logger.info('Revoked trusted contact invitation', {
+      invitationId: revoked.id,
+      userId: authContext.actorId,
+      status: 'REVOKED',
+    });
+    return revoked;
+  }
+
+  /**
+   * Retrieves all active trusted contacts designated by the authenticated ward.
+   */
+  public getTrustedContactsForUser(
+    authContext: AuthContext
+  ): readonly TrustedContact[] {
+    this.assertAuthenticated(authContext);
+    return this.contactRegistry.getTrustedContactsForUser(authContext.actorId);
+  }
+
+  /**
+   * Revokes an active trusted contact relationship.
+   */
+  public revokeTrustedContact(
+    contactId: string,
+    authContext: AuthContext
+  ): boolean {
+    this.assertAuthenticated(authContext);
+    const success = this.contactRegistry.revokeTrustedContact(contactId, authContext.actorId);
+    if (success) {
+      this.logger.info('Revoked trusted contact relationship', {
+        contactId,
+        wardId: authContext.actorId,
+      });
+    }
+    return success;
+  }
+
   /**
    * Asserts that the caller possesses a valid authenticated session.
    */
