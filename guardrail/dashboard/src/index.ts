@@ -12,6 +12,7 @@ export * from './components/history.js';
 
 import { DashboardShell } from './shell.js';
 import { DashboardShellOptions } from './types.js';
+import { resolveEnvironmentConfig } from '../../extension/src/config/environment.js';
 
 /**
  * Convenience bootstrap function to mount the dashboard shell into the page.
@@ -24,6 +25,11 @@ export function mountDashboardShell(options: DashboardShellOptions): DashboardSh
 if (typeof document !== 'undefined') {
   const defaultMountPoint = document.getElementById('dashboard-app');
   if (defaultMountPoint) {
-    new DashboardShell({ container: defaultMountPoint });
+    const envConfig = resolveEnvironmentConfig();
+    new DashboardShell({
+      container: defaultMountPoint,
+      environment: envConfig.env,
+      isMockService: envConfig.serviceType === 'mock' || envConfig.serviceType === 'in_memory',
+    });
   }
 }

@@ -48,12 +48,18 @@ import {
   validateApprovalRequest,
 } from './model.js';
 import { validateApprovalActionBinding } from './binding.js';
+import {
+  AppEnvironment,
+  DEFAULT_PILOT_API_BASE_URL,
+  isLocalhost,
+} from '../config/environment.js';
 
 // =============================================================================
 // Configuration Constants
 // =============================================================================
 
 export const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
+export { DEFAULT_PILOT_API_BASE_URL };
 export const DEFAULT_PROD_API_BASE_URL = 'https://api.guardrail-safety.org';
 export const DEFAULT_REQUEST_TIMEOUT_MS = 10000; // 10 seconds
 
@@ -167,15 +173,16 @@ export interface ApprovalApiClientConfig {
   /**
    * Base URL of the Guardrail Approval Backend.
    * Defaults to DEFAULT_DEV_API_BASE_URL (http://localhost:3000) in development mode.
+   * Defaults to DEFAULT_PILOT_API_BASE_URL (https://pilot-api.guardrail-safety.org) in pilot mode.
    * Defaults to DEFAULT_PROD_API_BASE_URL (https://api.guardrail-safety.org) in production mode.
    */
   readonly baseUrl?: string;
 
   /**
-   * Target deployment environment: 'development' | 'production' | 'test'.
-   * In production mode, endpoints must use secure HTTPS.
+   * Target deployment environment: 'development' | 'pilot' | 'production' | 'test'.
+   * In pilot and production modes, remote endpoints must use secure HTTPS.
    */
-  readonly environment?: 'development' | 'production' | 'test';
+  readonly environment?: AppEnvironment | 'development' | 'pilot' | 'production' | 'test';
 
   /**
    * Token provider function returning the active user Bearer token.
@@ -198,6 +205,11 @@ export interface ApprovalApiClientConfig {
    * Safe logger instance.
    */
   readonly logger?: ApiClientLogger;
+
+  /**
+   * Explicit service type descriptor ('live' | 'mock' | 'in_memory').
+   */
+  readonly serviceType?: 'live' | 'mock' | 'in_memory';
 }
 
 /**
@@ -231,7 +243,7 @@ export interface ResolveApiBaseUrlOptions {
   /** Explicit override URL */
   readonly customBaseUrl?: string;
   /** Target deployment environment */
-  readonly environment?: 'development' | 'production' | 'test';
+  readonly environment?: AppEnvironment | 'development' | 'pilot' | 'production' | 'test';
 }
 
 /**
@@ -240,6 +252,7 @@ export interface ResolveApiBaseUrlOptions {
  * 2. 'guardrailApiBaseUrl' stored in sessionStorage (if available).
  * 3. 'guardrailApiBaseUrl' stored in chrome.storage.local (if available).
  * 4. In production: DEFAULT_PROD_API_BASE_URL (https://api.guardrail-safety.org).
+ *    In pilot: DEFAULT_PILOT_API_BASE_URL (https://pilot-api.guardrail-safety.org).
  *    In development/test: DEFAULT_DEV_API_BASE_URL (http://localhost:3000).
  */
 export async function resolveApiBaseUrl(
@@ -251,17 +264,34 @@ export async function resolveApiBaseUrl(
       : (customBaseUrlOrOptions ?? {});
 
   const customBaseUrl = options.customBaseUrl;
-  const env =
+  const env: AppEnvironment =
     options.environment ??
-    (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+    (typeof process !== 'undefined' && process.env?.GUARDRAIL_ENV === 'pilot'
+      ? 'pilot'
+      : typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
       ? 'production'
       : 'development');
 
+  const checkHttpsRequirement = (candidateUrl: string) => {
+    if ((env === 'production' || env === 'pilot') && !candidateUrl.startsWith('https://')) {
+      let isLocal = false;
+      try {
+        const parsed = new URL(candidateUrl);
+        isLocal = isLocalhost(parsed.hostname);
+      } catch {
+        isLocal = isLocalhost(candidateUrl);
+      }
+      if (!isLocal) {
+        throw new Error(
+          `[Guardrail ApiClient] Insecure base URL "${candidateUrl}" rejected in ${env} mode. ${env.charAt(0).toUpperCase() + env.slice(1)} endpoints must use HTTPS.`
+        );
+      }
+    }
+  };
+
   if (customBaseUrl && typeof customBaseUrl === 'string' && customBaseUrl.trim()) {
     const url = customBaseUrl.trim().replace(/\/+$/, '');
-    if (env === 'production' && !url.startsWith('https://')) {
-      throw new Error(`[Guardrail ApiClient] Insecure base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`);
-    }
+    checkHttpsRequirement(url);
     return url;
   }
   if (typeof sessionStorage !== 'undefined') {
@@ -269,9 +299,7 @@ export async function resolveApiBaseUrl(
       const stored = sessionStorage.getItem('guardrailApiBaseUrl');
       if (stored && typeof stored === 'string' && stored.trim()) {
         const url = stored.trim().replace(/\/+$/, '');
-        if (env === 'production' && !url.startsWith('https://')) {
-          throw new Error(`[Guardrail ApiClient] Insecure stored base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`);
-        }
+        checkHttpsRequirement(url);
         return url;
       }
     } catch {
@@ -283,9 +311,7 @@ export async function resolveApiBaseUrl(
       const res = await chrome.storage.local.get('guardrailApiBaseUrl');
       if (res && typeof res.guardrailApiBaseUrl === 'string' && res.guardrailApiBaseUrl.trim()) {
         const url = res.guardrailApiBaseUrl.trim().replace(/\/+$/, '');
-        if (env === 'production' && !url.startsWith('https://')) {
-          throw new Error(`[Guardrail ApiClient] Insecure stored base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`);
-        }
+        checkHttpsRequirement(url);
         return url;
       }
     } catch {
@@ -295,6 +321,9 @@ export async function resolveApiBaseUrl(
 
   if (env === 'production') {
     return DEFAULT_PROD_API_BASE_URL;
+  }
+  if (env === 'pilot') {
+    return DEFAULT_PILOT_API_BASE_URL;
   }
 
   return DEFAULT_DEV_API_BASE_URL;
@@ -415,35 +444,49 @@ export class ApprovalApiClient {
   private readonly timeoutMs: number;
   private readonly fetchFn: typeof fetch;
   private readonly logger: ApiClientLogger;
+  private readonly environment: AppEnvironment;
+  private detectedServiceType: 'live' | 'mock' | 'in_memory';
 
   constructor(config?: ApprovalApiClientConfig) {
-    const env =
+    const env: AppEnvironment =
       config?.environment ??
-      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
+      (typeof process !== 'undefined' && process.env?.GUARDRAIL_ENV === 'pilot'
+        ? 'pilot'
+        : typeof process !== 'undefined' && process.env?.NODE_ENV === 'production'
         ? 'production'
         : 'development');
 
+    this.environment = env;
+    this.detectedServiceType = config?.serviceType ?? 'live';
+
     let url = config?.baseUrl;
     if (!url || !url.trim()) {
-      url = env === 'production' ? DEFAULT_PROD_API_BASE_URL : DEFAULT_DEV_API_BASE_URL;
+      if (env === 'production') {
+        url = DEFAULT_PROD_API_BASE_URL;
+      } else if (env === 'pilot') {
+        url = DEFAULT_PILOT_API_BASE_URL;
+      } else {
+        url = DEFAULT_DEV_API_BASE_URL;
+      }
     }
 
     url = url.trim().replace(/\/+$/, '');
 
-    // In production mode, require HTTPS to protect tokens and approval data over the wire
-    if (env === 'production') {
+    // In production and pilot modes, require HTTPS to protect tokens and approval data over the wire (unless localhost)
+    if (env === 'production' || env === 'pilot') {
       try {
         const parsed = new URL(url);
-        if (parsed.protocol !== 'https:') {
+        const isLocal = isLocalhost(parsed.hostname);
+        if (parsed.protocol !== 'https:' && !isLocal) {
           throw new Error(
-            `[Guardrail ApiClient] Insecure base URL "${url}" rejected in production mode. Production endpoints must use HTTPS.`
+            `[Guardrail ApiClient] Insecure base URL "${url}" rejected in ${env} mode. ${env.charAt(0).toUpperCase() + env.slice(1)} endpoints must use HTTPS.`
           );
         }
       } catch (err: any) {
         if (err?.message?.includes('must use HTTPS')) {
           throw err;
         }
-        throw new Error(`[Guardrail ApiClient] Invalid production base URL: "${url}".`);
+        throw new Error(`[Guardrail ApiClient] Invalid ${env} base URL: "${url}".`);
       }
     }
 
@@ -452,6 +495,27 @@ export class ApprovalApiClient {
     this.timeoutMs = config?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     this.fetchFn = config?.fetchFn ?? globalThis.fetch;
     this.logger = config?.logger ?? new NoopApiClientLogger();
+  }
+
+  /**
+   * Returns the resolved target environment ('development' | 'pilot' | 'test' | 'production').
+   */
+  public getEnvironment(): AppEnvironment {
+    return this.environment;
+  }
+
+  /**
+   * Returns the detected service type ('live' | 'mock' | 'in_memory').
+   */
+  public getServiceType(): 'live' | 'mock' | 'in_memory' {
+    return this.detectedServiceType;
+  }
+
+  /**
+   * Returns true if the client is connected to a simulated or in-memory mock service.
+   */
+  public isMockService(): boolean {
+    return this.detectedServiceType === 'mock' || this.detectedServiceType === 'in_memory';
   }
 
   /**
@@ -1200,6 +1264,20 @@ export class ApprovalApiClient {
         body: serializedBody,
         signal: controller.signal,
       });
+
+      // Detect service type header if present (e.g. mock/in-memory backend identification)
+      const serviceTypeHeader =
+        response.headers && typeof (response.headers as any).get === 'function'
+          ? (response.headers as any).get('x-guardrail-service-type')
+          : undefined;
+      if (serviceTypeHeader && typeof serviceTypeHeader === 'string') {
+        const lower = serviceTypeHeader.toLowerCase();
+        if (lower.includes('in_memory')) {
+          this.detectedServiceType = 'in_memory';
+        } else if (lower.includes('mock')) {
+          this.detectedServiceType = 'mock';
+        }
+      }
 
       // 5. Read raw response body safely
       let rawText = '';

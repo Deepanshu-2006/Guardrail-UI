@@ -102,6 +102,8 @@ export class DashboardShell {
       selectedHistoryRequestId: initialHistory[0]?.id ?? null,
       pendingFilters: defaultPendingFilters,
       historyFilters: defaultHistoryFilters,
+      environment: options.environment ?? (typeof options.apiClient?.getEnvironment === 'function' ? options.apiClient.getEnvironment() : undefined),
+      isMockService: options.isMockService ?? (typeof options.apiClient?.isMockService === 'function' ? options.apiClient.isMockService() : false),
     };
 
     // Pre-seed in-memory detail cache with authoritative initial records
@@ -348,6 +350,31 @@ export class DashboardShell {
     statusPill.appendChild(dot);
     statusPill.appendChild(statusText);
     headerActions.appendChild(statusPill);
+
+    const isMock = Boolean(
+      this.state.isMockService ||
+        (typeof this.apiClient?.isMockService === 'function' && this.apiClient.isMockService())
+    );
+    if (isMock) {
+      const mockBadge = document.createElement('span');
+      mockBadge.className = 'gd-mock-service-badge';
+      mockBadge.setAttribute('role', 'status');
+      mockBadge.textContent = 'MOCK BACKEND';
+      mockBadge.title = 'Connected to simulated or in-memory mock service. Not connected to a live pilot backend.';
+      headerActions.appendChild(mockBadge);
+    }
+
+    const env =
+      this.state.environment ||
+      (typeof this.apiClient?.getEnvironment === 'function'
+        ? this.apiClient.getEnvironment()
+        : undefined);
+    if (env && env !== 'production') {
+      const envBadge = document.createElement('span');
+      envBadge.className = `gd-env-badge gd-env-${env}`;
+      envBadge.textContent = env.toUpperCase();
+      headerActions.appendChild(envBadge);
+    }
 
     topHeader.appendChild(headerLeft);
     topHeader.appendChild(headerActions);
@@ -1115,6 +1142,28 @@ export class DashboardShell {
       default:
         return 'Trusted Contact Portal';
     }
+  }
+
+  /**
+   * Returns true if the dashboard is connected to a mock or in-memory service.
+   */
+  public isMockService(): boolean {
+    return Boolean(
+      this.state.isMockService ||
+        (typeof this.apiClient?.isMockService === 'function' && this.apiClient.isMockService())
+    );
+  }
+
+  /**
+   * Returns the current deployment environment if configured.
+   */
+  public getEnvironment(): string | undefined {
+    return (
+      this.state.environment ||
+      (typeof this.apiClient?.getEnvironment === 'function'
+        ? this.apiClient.getEnvironment()
+        : undefined)
+    );
   }
 
   /**

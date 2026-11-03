@@ -64,6 +64,9 @@ import { ApprovalService } from './service.js';
 // API Configuration & Interfaces
 // =============================================================================
 
+export const GUARDRAIL_SERVICE_TYPE_HEADER = 'x-guardrail-service-type';
+export const GUARDRAIL_EPHEMERAL_MOCK_SERVICE_TYPE = 'ephemeral_in_memory_mock';
+
 /**
  * Standard API response envelope.
  */
@@ -264,6 +267,7 @@ export class ApprovalApiRouter {
       'content-type': 'application/json; charset=utf-8',
       'x-content-type-options': 'nosniff',
       'x-frame-options': 'DENY',
+      'x-guardrail-service-type': GUARDRAIL_EPHEMERAL_MOCK_SERVICE_TYPE,
     };
 
     // 1. CORS Validation
@@ -271,7 +275,8 @@ export class ApprovalApiRouter {
     if (origin && this.allowedOrigins.has(origin)) {
       headers['access-control-allow-origin'] = origin;
       headers['access-control-allow-methods'] = 'GET, POST, OPTIONS';
-      headers['access-control-allow-headers'] = 'Authorization, Content-Type';
+      headers['access-control-allow-headers'] = 'Authorization, Content-Type, ' + GUARDRAIL_SERVICE_TYPE_HEADER;
+      headers['access-control-expose-headers'] = GUARDRAIL_SERVICE_TYPE_HEADER + ', Retry-After';
       headers['access-control-max-age'] = '86400';
     }
 

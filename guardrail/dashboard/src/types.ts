@@ -32,6 +32,7 @@ import {
   StatusSyncListener,
   StatusSyncSubscription,
 } from '../../extension/src/approval/sync-client.js';
+import { AppEnvironment } from '../../extension/src/config/environment.js';
 
 export type {
   ApprovalRequest,
@@ -44,6 +45,7 @@ export type {
   StatusSyncOptions,
   StatusSyncListener,
   StatusSyncSubscription,
+  AppEnvironment,
 };
 export {
   ApprovalStatus,
@@ -138,6 +140,10 @@ export interface DashboardShellState {
   lastSynchronizedAt?: Date | null;
   /** Whether a background or foreground synchronization is currently in progress */
   isRefreshing?: boolean;
+  /** Target deployment environment */
+  environment?: AppEnvironment;
+  /** Whether connected service is explicitly identified as mock/in-memory */
+  isMockService?: boolean;
 }
 
 /**
@@ -160,4 +166,8 @@ export interface DashboardShellOptions {
   autoFetch?: boolean;
   /** Optional background polling interval in milliseconds (0 or undefined disables polling) */
   pollIntervalMs?: number;
+  /** Explicit deployment environment override */
+  environment?: AppEnvironment;
+  /** Explicitly flag whether connected backend is a mock/in-memory service */
+  isMockService?: boolean;
 }

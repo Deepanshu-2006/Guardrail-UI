@@ -7,15 +7,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isWatch = process.argv.includes('--watch');
-const isProd = process.argv.includes('--prod') || process.env.NODE_ENV === 'production';
+const isPilot = process.argv.includes('--pilot') || process.env.GUARDRAIL_ENV === 'pilot';
+const isProd = (process.argv.includes('--prod') || process.env.NODE_ENV === 'production') && !isPilot;
+const targetEnv = isPilot ? 'pilot' : isProd ? 'production' : 'development';
 const distDir = path.resolve(__dirname, 'dist');
 
 function copyStaticAssets() {
   fs.mkdirSync(path.join(distDir, 'popup'), { recursive: true });
   fs.mkdirSync(path.join(distDir, 'icons'), { recursive: true });
 
-  // Clean stale source maps in production mode
-  if (isProd) {
+  // Clean stale source maps in production or pilot mode
+  if (isProd || isPilot) {
     for (const f of ['background.js.map', 'content.js.map']) {
       const p = path.join(distDir, f);
       if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -24,11 +26,14 @@ function copyStaticAssets() {
     if (fs.existsSync(popupMap)) fs.unlinkSync(popupMap);
   }
 
-  // Copy manifest
-  fs.copyFileSync(
-    path.join(__dirname, 'public', 'manifest.json'),
-    path.join(distDir, 'manifest.json')
-  );
+  // Copy manifest with environment annotations
+  const manifestRaw = fs.readFileSync(path.join(__dirname, 'public', 'manifest.json'), 'utf-8');
+  const manifest = JSON.parse(manifestRaw);
+  if (isPilot) {
+    manifest.version_name = `${manifest.version}-pilot`;
+    manifest.description = `${manifest.description} [PILOT DEPLOYMENT]`;
+  }
+  fs.writeFileSync(path.join(distDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
   // Copy popup assets
   fs.copyFileSync(
@@ -57,8 +62,12 @@ const buildOptions = [
     outfile: path.join(distDir, 'background.js'),
     format: 'esm',
     target: 'es2022',
-    sourcemap: !isProd,
-    minify: isProd,
+    sourcemap: !isProd && !isPilot,
+    minify: isProd || isPilot,
+    define: {
+      'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
+      'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+    },
   },
   {
     entryPoints: [path.join(__dirname, 'src', 'content', 'index.ts')],
@@ -66,8 +75,12 @@ const buildOptions = [
     outfile: path.join(distDir, 'content.js'),
     format: 'iife',
     target: 'es2022',
-    sourcemap: !isProd,
-    minify: isProd,
+    sourcemap: !isProd && !isPilot,
+    minify: isProd || isPilot,
+    define: {
+      'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
+      'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+    },
   },
   {
     entryPoints: [path.join(__dirname, 'src', 'popup', 'index.ts')],
@@ -75,8 +88,12 @@ const buildOptions = [
     outfile: path.join(distDir, 'popup', 'popup.js'),
     format: 'iife',
     target: 'es2022',
-    sourcemap: !isProd,
-    minify: isProd,
+    sourcemap: !isProd && !isPilot,
+    minify: isProd || isPilot,
+    define: {
+      'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
+      'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+    },
   },
 ];
 
@@ -86,10 +103,13 @@ async function run() {
   if (isWatch) {
     const contexts = await Promise.all(buildOptions.map((opt) => esbuild.context(opt)));
     await Promise.all(contexts.map((ctx) => ctx.watch()));
-    console.log('[Guardrail Extension] Watching for changes...');
+    console.log(`[Guardrail Extension] Watching for changes (${targetEnv})...`);
   } else {
-    await Promise.all(buildOptions.map((opt) => esbuild.build(opt)));
-    console.log(`[Guardrail Extension] Build completed successfully (${isProd ? 'production' : 'development'}) -> dist/`);
+    for (const opt of buildOptions) {
+      await esbuild.build(opt);
+    }
+    await esbuild.stop();
+    console.log(`[Guardrail Extension] Build completed successfully (${targetEnv}) -> dist/`);
   }
 }
 
