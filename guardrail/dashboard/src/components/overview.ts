@@ -12,6 +12,7 @@ export interface OverviewProps {
   pendingCount: number;
   recentActivity?: readonly ApprovalRequest[];
   onViewHistory?: () => void;
+  onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
 }
 
 export function renderOverview(props: OverviewProps): HTMLElement {
@@ -162,6 +163,220 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   grid.appendChild(statusCard);
 
   section.appendChild(grid);
+
+  // Ward Connection & Setup Section
+  if (!props.profile?.assignedWardId) {
+    const setupCard = document.createElement('div');
+    setupCard.className = 'gd-card gd-setup-card';
+    setupCard.id = 'gd-setup-card';
+
+    const setupHeader = document.createElement('div');
+    setupHeader.className = 'gd-setup-header';
+
+    const setupTitle = document.createElement('h2');
+    setupTitle.className = 'gd-section-title gd-setup-title';
+    setupTitle.textContent = 'Trusted Contact Setup & Ward Connection';
+
+    const setupSubtitle = document.createElement('p');
+    setupSubtitle.className = 'gd-setup-subtitle';
+    setupSubtitle.textContent =
+      'Connect your trusted contact portal to a ward’s browser extension using a secure out-of-band invitation code.';
+
+    setupHeader.appendChild(setupTitle);
+    setupHeader.appendChild(setupSubtitle);
+    setupCard.appendChild(setupHeader);
+
+    // Setup Steps
+    const stepsList = document.createElement('ol');
+    stepsList.className = 'gd-setup-steps';
+
+    const step1 = document.createElement('li');
+    step1.className = 'gd-setup-step';
+    step1.innerHTML =
+      '<strong>Step 1:</strong> The ward generates an invitation code (e.g. <code>GR-INV-A1B2-C3D4</code>) in their Guardrail extension popup or onboarding flow.';
+
+    const step2 = document.createElement('li');
+    step2.className = 'gd-setup-step';
+    step2.innerHTML =
+      '<strong>Step 2:</strong> They transmit the code to you through an out-of-band secure channel (in-person, SMS, Signal).';
+
+    const step3 = document.createElement('li');
+    step3.className = 'gd-setup-step';
+    step3.innerHTML =
+      '<strong>Step 3:</strong> Enter the invitation code below and click <strong>Connect Ward</strong> to establish the authorized oversight relationship.';
+
+    stepsList.appendChild(step1);
+    stepsList.appendChild(step2);
+    stepsList.appendChild(step3);
+    setupCard.appendChild(stepsList);
+
+    // Connection Form
+    const form = document.createElement('form');
+    form.className = 'gd-setup-form';
+    form.noValidate = true;
+
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'gd-setup-input-group';
+
+    const label = document.createElement('label');
+    label.className = 'gd-setup-label';
+    label.htmlFor = 'gd-invitation-code-input';
+    label.textContent = 'Invitation Code';
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'gd-setup-input-wrap';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'gd-invitation-code-input';
+    input.className = 'gd-setup-input';
+    input.placeholder = 'GR-INV-XXXX-YYYY';
+    input.maxLength = 32;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('aria-describedby', 'gd-invitation-feedback');
+
+    const connectBtn = document.createElement('button');
+    connectBtn.type = 'submit';
+    connectBtn.id = 'gd-btn-connect-invitation';
+    connectBtn.className = 'gd-btn-connect';
+    connectBtn.textContent = 'Connect Ward';
+
+    inputWrap.appendChild(input);
+    inputWrap.appendChild(connectBtn);
+    inputGroup.appendChild(label);
+    inputGroup.appendChild(inputWrap);
+    form.appendChild(inputGroup);
+
+    // Feedback container
+    const feedback = document.createElement('div');
+    feedback.id = 'gd-invitation-feedback';
+    feedback.className = 'gd-setup-feedback';
+    feedback.setAttribute('role', 'status');
+    feedback.setAttribute('aria-live', 'polite');
+    form.appendChild(feedback);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawCode = input.value.trim().toUpperCase();
+      feedback.textContent = '';
+      feedback.className = 'gd-setup-feedback';
+
+      if (!rawCode) {
+        feedback.className = 'gd-setup-feedback error';
+        feedback.textContent = 'Please enter an invitation code.';
+        input.focus();
+        return;
+      }
+
+      // Format validation: GR-INV-XXXX-YYYY or INV-...
+      const codeRegex = /^(?:GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}|INV-[A-Z0-9]+)$/;
+      if (!codeRegex.test(rawCode)) {
+        feedback.className = 'gd-setup-feedback error';
+        feedback.textContent =
+          'Invalid invitation code format. Expected format: GR-INV-XXXX-YYYY (e.g., GR-INV-A1B2-C3D4).';
+        input.focus();
+        return;
+      }
+
+      if (!props.onConnectInvitation) {
+        feedback.className = 'gd-setup-feedback note';
+        feedback.textContent =
+          'Dashboard is running in standalone mode without an active API client. Connect a live backend to accept invitations.';
+        return;
+      }
+
+      connectBtn.disabled = true;
+      input.disabled = true;
+      connectBtn.textContent = 'Connecting...';
+
+      try {
+        const result = await props.onConnectInvitation(rawCode);
+        if (result.success) {
+          feedback.className = 'gd-setup-feedback success';
+          feedback.textContent = `Successfully connected to ward ${result.wardId || 'assigned'}! Pending approval requests will now appear in your review queue.`;
+          input.value = '';
+        } else {
+          feedback.className = 'gd-setup-feedback error';
+          feedback.textContent =
+            result.error ||
+            'Failed to connect. The invitation code may be invalid, expired, or already accepted.';
+          connectBtn.disabled = false;
+          input.disabled = false;
+          connectBtn.textContent = 'Connect Ward';
+        }
+      } catch (err: unknown) {
+        feedback.className = 'gd-setup-feedback error';
+        feedback.textContent =
+          err instanceof Error ? err.message : 'An unexpected error occurred while connecting.';
+        connectBtn.disabled = false;
+        input.disabled = false;
+        connectBtn.textContent = 'Connect Ward';
+      }
+    });
+
+    setupCard.appendChild(form);
+    section.appendChild(setupCard);
+  } else {
+    // Linked State: Active Ward Association Card
+    const wardCard = document.createElement('div');
+    wardCard.className = 'gd-card gd-active-ward-card';
+    wardCard.id = 'gd-active-ward-card';
+
+    const wardTitle = document.createElement('h2');
+    wardTitle.className = 'gd-section-title';
+    wardTitle.textContent = 'Active Ward Association';
+
+    const wardGrid = document.createElement('div');
+    wardGrid.className = 'gd-ward-meta-grid';
+
+    const item1 = document.createElement('div');
+    item1.className = 'gd-ward-meta-item';
+    const label1 = document.createElement('span');
+    label1.className = 'gd-ward-meta-label';
+    label1.textContent = 'Designated Ward';
+    const val1 = document.createElement('span');
+    val1.className = 'gd-ward-meta-value gd-mono';
+    val1.textContent = props.profile.assignedWardId;
+    item1.appendChild(label1);
+    item1.appendChild(val1);
+
+    const item2 = document.createElement('div');
+    item2.className = 'gd-ward-meta-item';
+    const label2 = document.createElement('span');
+    label2.className = 'gd-ward-meta-label';
+    label2.textContent = 'Relationship';
+    const val2 = document.createElement('span');
+    val2.className = 'gd-ward-meta-value';
+    val2.textContent = props.profile.relationshipLabel ?? 'Designated Trusted Contact';
+    item2.appendChild(label2);
+    item2.appendChild(val2);
+
+    const item3 = document.createElement('div');
+    item3.className = 'gd-ward-meta-item';
+    const label3 = document.createElement('span');
+    label3.className = 'gd-ward-meta-label';
+    label3.textContent = 'Separation of Duties';
+    const val3 = document.createElement('span');
+    val3.className = 'gd-ward-meta-badge';
+    val3.textContent = 'Enforced';
+    item3.appendChild(label3);
+    item3.appendChild(val3);
+
+    wardGrid.appendChild(item1);
+    wardGrid.appendChild(item2);
+    wardGrid.appendChild(item3);
+
+    const dutyNotice = document.createElement('p');
+    dutyNotice.className = 'gd-ward-duty-notice';
+    dutyNotice.textContent =
+      `Separation of Duties Enforced: You are authorized to review and evaluate intercepted actions for ward ${props.profile.assignedWardId}. Approval decisions register consent on the backend; the user in Staging Mode retains ultimate agency to execute or cancel the action.`;
+
+    wardCard.appendChild(wardTitle);
+    wardCard.appendChild(wardGrid);
+    wardCard.appendChild(dutyNotice);
+    section.appendChild(wardCard);
+  }
 
   // Recent Activity Section
   const activitySection = document.createElement('div');
