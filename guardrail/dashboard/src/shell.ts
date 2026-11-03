@@ -401,13 +401,15 @@ export class DashboardShell {
             if (res.success) {
               const wardId = res.data.invitation.wardId;
               const relLabel = res.data.invitation.relationshipLabel;
-              this.state.contactProfile = {
-                actorId: this.state.contactProfile?.actorId || 'tc_contact',
-                role: this.state.contactProfile?.role || 'TRUSTED_CONTACT',
-                assignedWardId: wardId,
-                relationshipLabel: relLabel ?? this.state.contactProfile?.relationshipLabel,
-                isAuthenticated: true,
-              };
+              // Invitation acceptance establishes a relationship, not an authenticated session.
+              // Preserve only an existing server-authenticated profile; never invent a local actor.
+              if (this.state.contactProfile?.isAuthenticated) {
+                this.state.contactProfile = {
+                  ...this.state.contactProfile,
+                  assignedWardId: wardId,
+                  relationshipLabel: relLabel ?? this.state.contactProfile.relationshipLabel,
+                };
+              }
               await this.refresh();
               this.render();
               return { success: true, wardId };

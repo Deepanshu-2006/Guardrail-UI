@@ -2899,6 +2899,30 @@ async function runDashboardTests() {
     await termShell.fetchPendingRequests();
     assertEquals(termShell.getState().pendingRequests.length, 0, 'Resolved terminal request not reverted to pending list');
     termShell.destroy();
+
+    // Invitation acceptance grants a relationship, not an authenticated dashboard identity.
+    const invitationClient = {
+      acceptInvitation: async () => ({
+        success: true,
+        data: { invitation: { wardId: 'usr_invited_ward', relationshipLabel: 'Guardian' } },
+      }),
+      listPendingApprovals: async () => ({ success: true, data: [] }),
+    } as any;
+    const invitationShell = new DashboardShell({
+      container: testContainer,
+      apiClient: invitationClient,
+      autoFetch: false,
+    });
+    const invitationInput = rootElement.querySelector('#gd-invitation-code-input') as MockDOMElement;
+    const invitationForm = rootElement.querySelector('.gd-setup-form') as MockDOMElement;
+    invitationInput.value = 'GR-INV-ABCD-EFGH';
+    await invitationForm.listeners.submit[0]({ preventDefault() {} });
+    assertEquals(
+      invitationShell.getState().contactProfile,
+      null,
+      'Successful invitation acceptance does not fabricate an authenticated contact profile'
+    );
+    invitationShell.destroy();
   }
 
   console.log('\n======================================================');

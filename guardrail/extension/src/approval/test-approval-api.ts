@@ -466,12 +466,67 @@ async function runAllTests(): Promise<void> {
       method: 'POST',
       url: '/api/v1/approval-requests',
       headers: {
-        authorization: 'Bearer non-existent-token',
+        authorization: 'Bearer invalid-secret-token-sentinel',
         'content-type': 'application/json',
       },
       body: makeValidPayload(),
     });
     assertEquals(unknownTokenRes.statusCode, 401, 'Unrecognized token returns 401');
+    assert(
+      !JSON.stringify(unknownTokenRes.body).includes('invalid-secret-token-sentinel'),
+      'Authentication errors never echo bearer tokens'
+    );
+
+    // Verifier output must be a complete server-authenticated identity with a supported role.
+    env.tokenVerifier.registerToken('malformed-context-token', {
+      actorId: 'usr_alice', role: 'ROOT' as any, isAuthenticated: true,
+    });
+    const malformedContextRes = await env.router.dispatch({
+      method: 'GET',
+      url: '/api/v1/approvals/pending',
+      headers: { authorization: 'Bearer malformed-context-token' },
+    });
+    assertEquals(malformedContextRes.statusCode, 401, 'Unsupported verifier role fails authentication');
+
+    env.tokenVerifier.registerToken('unauthenticated-context-token', {
+      actorId: 'usr_alice', role: ActorRole.USER, isAuthenticated: false,
+    });
+    const unauthenticatedContextRes = await env.router.dispatch({
+      method: 'GET',
+      url: '/api/v1/approvals/pending',
+      headers: { authorization: 'Bearer unauthenticated-context-token' },
+    });
+    assertEquals(unauthenticatedContextRes.statusCode, 401, 'Unverified session context fails authentication');
+
+    const protectedRoutes: readonly [string, string][] = [
+      ['POST', '/api/v1/approval-requests'],
+      ['GET', '/api/v1/approval-requests/apr_auth_check'],
+      ['GET', '/api/v1/approval-requests/apr_auth_check/binding'],
+      ['POST', '/api/v1/approval-requests/apr_auth_check/invalidate'],
+      ['POST', '/api/v1/approval-requests/apr_auth_check/cancel'],
+      ['GET', '/api/v1/actions/act_auth_check/binding'],
+      ['POST', '/api/v1/actions/act_auth_check/invalidate'],
+      ['POST', '/api/v1/actions/act_auth_check/validate-continuation'],
+      ['GET', '/api/v1/approvals/pending'],
+      ['POST', '/api/v1/approvals/apr_auth_check/decide'],
+      ['GET', '/api/v1/approvals/apr_auth_check'],
+      ['POST', '/api/v1/invitations'],
+      ['GET', '/api/v1/invitations'],
+      ['POST', '/api/v1/invitations/GR-INV-ABCD-EFGH/accept'],
+      ['POST', '/api/v1/invitations/inv_auth_check/revoke'],
+      ['GET', '/api/v1/invitations/inv_auth_check'],
+      ['GET', '/api/v1/trusted-contacts'],
+      ['POST', '/api/v1/trusted-contacts/tc_auth_check/revoke'],
+    ];
+    for (const [method, url] of protectedRoutes) {
+      const response = await env.router.dispatch({
+        method,
+        url,
+        headers: method === 'POST' ? { 'content-type': 'application/json' } : undefined,
+        body: method === 'POST' ? {} : undefined,
+      });
+      assertEquals(response.statusCode, 401, `${method} ${url} requires authentication`);
+    }
 
     // 4.4 Revoked Token
     env.tokenVerifier.revokeToken('alice-token');

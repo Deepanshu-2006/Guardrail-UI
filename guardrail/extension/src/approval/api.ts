@@ -52,6 +52,7 @@ import {
   ApprovalBindingValidationError,
 } from './binding.js';
 import {
+  ActorRole,
   ApprovalAccessDeniedError,
   AuthContext,
   CreateInvitationOptions,
@@ -1038,12 +1039,25 @@ export class ApprovalApiRouter {
     }
 
     const token = parts[1];
-    const authContext = await this.tokenVerifier.verifyToken(token);
-    if (!authContext || !authContext.isAuthenticated || !authContext.actorId.trim()) {
+    const authContext: unknown = await this.tokenVerifier.verifyToken(token);
+    if (!this.isValidAuthContext(authContext)) {
       throw new UnauthenticatedError('Invalid or expired authentication token.');
     }
 
     return authContext;
+  }
+
+  /** Accepts only a complete identity produced by the configured server verifier. */
+  private isValidAuthContext(value: unknown): value is AuthContext {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const context = value as Record<string, unknown>;
+    return typeof context.actorId === 'string' &&
+      context.actorId.trim().length > 0 &&
+      context.isAuthenticated === true &&
+      typeof context.role === 'string' &&
+      Object.values(ActorRole).includes(context.role as ActorRole) &&
+      (context.sessionId === undefined ||
+        (typeof context.sessionId === 'string' && context.sessionId.trim().length > 0));
   }
 
   /**

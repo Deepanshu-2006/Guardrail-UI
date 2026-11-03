@@ -1503,7 +1503,6 @@ export class ApprovalService {
     const invitation = this.contactRegistry.createInvitation(authContext.actorId, options);
     this.logger.info('Created trusted contact invitation', {
       invitationId: invitation.id,
-      code: invitation.code,
       userId: authContext.actorId,
       expiresAt: invitation.expiresAt,
     });
@@ -1561,7 +1560,6 @@ export class ApprovalService {
     const result = this.contactRegistry.acceptInvitation(code, authContext.actorId);
     this.logger.info('Accepted trusted contact invitation', {
       invitationId: result.invitation.id,
-      code: result.invitation.code,
       wardId: result.invitation.userId,
       contactId: authContext.actorId,
     });
