@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail UI — Controlled Pilot Onboarding & Setup</title>
+  <link rel="stylesheet" href="onboarding.css">
+</head>
+<body>
+  <div class="onboarding-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" aria-label="Onboarding Progress">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="logo-badge">G</div>
+          <div class="brand-info">
+            <span class="brand-title">Guardrail UI</span>
+            <span class="brand-subtitle">Controlled Pilot</span>
+          </div>
+        </div>
+        <div id="env-badge-container">
+          <span class="badge badge-pilot" id="sidebar-env-badge">PILOT</span>
+        </div>
+      </div>
+
+      <nav class="step-nav" aria-label="Onboarding Steps">
+        <ul class="step-list" id="step-nav-list" role="tablist">
+          <!-- Dynamically populated step items -->
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="live-status-chip" id="sidebar-status-chip">
+          <span class="status-dot"></span>
+          <span class="status-label" id="sidebar-status-text">Status: Active</span>
+        </div>
+        <div class="sidebar-subtext">Guardrail Safety Foundation v0.1.0</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" role="main">
+      <header class="content-header">
+        <div class="step-indicator" id="step-indicator-text">Step 1 of 7</div>
+        <h1 class="step-heading" id="step-heading-text">Installation Instructions</h1>
+        <p class="step-lead" id="step-lead-text">Load the Guardrail extension in Chrome Developer Mode and verify activation.</p>
+      </header>
+
+      <!-- Diagnostic Alert Banner (shows if setup is incomplete or error detected) -->
+      <section class="diagnostic-banner hidden" id="diagnostic-banner" aria-live="polite">
+        <div class="diagnostic-icon" id="diagnostic-icon">⚠️</div>
+        <div class="diagnostic-content">
+          <div class="diagnostic-title" id="diagnostic-title">Setup Diagnostics Alert</div>
+          <div class="diagnostic-message" id="diagnostic-message">Checking setup configuration...</div>
+          <div class="diagnostic-actions" id="diagnostic-actions"></div>
+        </div>
+      </section>
+
+      <!-- Step 1: Installation Instructions -->
+      <section class="step-panel" id="panel-installation_guide" role="tabpanel" aria-labelledby="step-0">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Installing Guardrail for the Controlled Pilot</h2>
+            <span class="badge badge-neutral">Developer Mode Unpacked</span>
+          </div>
+          <div class="card-body">
+            <ol class="instruction-list">
+              <li class="instruction-item">
+                <span class="step-num">1</span>
+                <div class="step-desc">
+                  <strong>Build Extension Assets:</strong>
+                  <code>npm run build:pilot</code> (or <code>npm run build</code>) in the <code>guardrail/extension</code> directory. This compiles TypeScript to <code>dist/</code>.
+                </div>
+              </li>
+              <li class="instruction-item">
+                <span class="step-num">2</span>
+                <div class="step-desc">
+                  <strong>Open Chrome Extensions:</strong>
+                  In Google Chrome, navigate to <code>chrome://extensions</code> in the address bar.
+                </div>
+              </li>
+              <li class="instruction-item">
+                <span class="step-num">3</span>
+                <div class="step-desc">
+                  <strong>Enable Developer Mode:</strong>
+                  Turn on the <strong>Developer mode</strong> toggle located in the top-right corner of the Extensions page.
+                </div>
+              </li>
+              <li class="instruction-item">
+                <span class="step-num">4</span>
+                <div class="step-desc">
+                  <strong>Load Unpacked Extension:</strong>
+                  Click the <strong>Load unpacked</strong> button and select the <code>guardrail/extension/dist</code> directory.
+                </div>
+              </li>
+              <li class="instruction-item">
+                <span class="step-num">5</span>
+                <div class="step-desc">
+                  <strong>Pin Guardrail to Toolbar:</strong>
+                  Click the puzzle-piece Extensions icon in the browser toolbar and pin <strong>Guardrail</strong> for one-click access to status and diagnostics.
+                </div>
+              </li>
+              <li class="instruction-item">
+                <span class="step-num">6</span>
+                <div class="step-desc">
+                  <strong>Verify Background Service Worker:</strong>
+                  Confirm that the extension card on <code>chrome://extensions</code> displays <em>"Inspect views: service worker"</em> and reports status as active.
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 2: Protection Scope & Boundaries -->
+      <section class="step-panel hidden" id="panel-protection_scope" role="tabpanel" aria-labelledby="step-1">
+        <div class="scope-grid">
+          <div class="scope-card scope-protected">
+            <div class="scope-header">
+              <span class="scope-icon">✓</span>
+              <div>
+                <h3 class="scope-title">What Guardrail UI Protects</h3>
+                <span class="scope-subtitle">Supported pilot test actions</span>
+              </div>
+            </div>
+            <ul class="scope-list" id="protected-scope-list">
+              <li>Designated pilot test actions marked with <code>data-guardrail-test-action</code>.</li>
+              <li>Synchronous event cancellation of designated transfer and credential actions.</li>
+              <li>Holding intercepted actions in Staging Mode for deliberate confirmation or cancellation.</li>
+              <li>Out-of-band approval requests routed to the Guardrail Trusted-Contact Dashboard.</li>
+              <li>Fail-closed protection when policy configuration is corrupted or uninitialized.</li>
+            </ul>
+          </div>
+
+          <div class="scope-card scope-unprotected">
+            <div class="scope-header">
+              <span class="scope-icon">✕</span>
+              <div>
+                <h3 class="scope-title">What Guardrail UI Does NOT Protect</h3>
+                <span class="scope-subtitle">Unmonitored web activity</span>
+              </div>
+            </div>
+            <ul class="scope-list" id="unprotected-scope-list">
+              <li>Arbitrary, unmarked third-party web pages and unhandled DOM events.</li>
+              <li>Ambient background scripts, asynchronous fetch/XHR, or WebSockets initiated by page JavaScript.</li>
+              <li>Web pages loaded before extension installation or when the service worker is inactive.</li>
+              <li>Phishing websites, malicious browser extensions, keyloggers, or OS malware.</li>
+              <li>Direct browser navigation, browser address bar, downloads, or password managers.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="acknowledgement-box">
+          <label class="checkbox-label" for="ack-scope">
+            <input type="checkbox" id="ack-scope" class="checkbox-input">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">
+              <strong>I understand Guardrail's scope boundary:</strong> Guardrail UI protects supported pilot test actions and does <em>NOT</em> act as a universal web firewall or claim protection on arbitrary websites.
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 3: Browser Permissions & Privacy -->
+      <section class="step-panel hidden" id="panel-browser_permissions" role="tabpanel" aria-labelledby="step-2">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Requested Browser Permissions Explained</h2>
+            <span class="badge badge-neutral">Least Privilege Architecture</span>
+          </div>
+          <div class="card-body">
+            <div class="permissions-list" id="permissions-disclosure-list">
+              <!-- Dynamically populated or rendered -->
+              <div class="permission-item">
+                <div class="permission-badge">storage</div>
+                <div class="permission-details">
+                  <h4>Browser Local Storage</h4>
+                  <p class="perm-desc">Required to persist safety policy configurations and onboarding progress locally.</p>
+                  <p class="perm-never"><strong>Never Accesses:</strong> Browsing history, website cookies, or personal account credentials.</p>
+                </div>
+              </div>
+              <div class="permission-item">
+                <div class="permission-badge">activeTab / content_scripts</div>
+                <div class="permission-details">
+                  <h4>Controlled DOM Action Detection</h4>
+                  <p class="perm-desc">Monitors user interactions on designated pilot test elements to evaluate policy risk.</p>
+                  <p class="perm-never"><strong>Never Accesses:</strong> Passwords, credit card numbers, CVVs, OTPs, or raw form inputs.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="privacy-guarantee-card">
+          <div class="privacy-header">
+            <div class="privacy-shield-icon">🛡️</div>
+            <div>
+              <h3 class="privacy-title">Strict Zero-Sensitive-Data Guarantee</h3>
+              <p class="privacy-subtitle">Guardrail UI architecture strictly guarantees zero credential and financial data collection.</p>
+            </div>
+          </div>
+          <div class="privacy-grid">
+            <div class="privacy-pill">
+              <span class="pill-icon">🚫</span>
+              <span><strong>NO Passwords:</strong> Never captures, stores, or transmits password fields.</span>
+            </div>
+            <div class="privacy-pill">
+              <span class="pill-icon">🚫</span>
+              <span><strong>NO Payment Data:</strong> Never captures card numbers, CVVs, or bank logins.</span>
+            </div>
+            <div class="privacy-pill">
+              <span class="pill-icon">🚫</span>
+              <span><strong>NO OTP / 2FA Codes:</strong> Never reads SMS or authenticator passcodes.</span>
+            </div>
+            <div class="privacy-pill">
+              <span class="pill-icon">🚫</span>
+              <span><strong>NO Raw Form Values:</strong> Never transmits unredacted form field values.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="acknowledgement-box">
+          <label class="checkbox-label" for="ack-permissions">
+            <input type="checkbox" id="ack-permissions" class="checkbox-input">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">
+              <strong>I acknowledge the permissions & privacy guarantees:</strong> Guardrail requests only necessary permissions and will never capture or transmit sensitive credentials or raw form values.
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 4: Understanding Staging Mode -->
+      <section class="step-panel hidden" id="panel-staging_mode" role="tabpanel" aria-labelledby="step-3">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">How Staging Mode Works</h2>
+            <span class="badge badge-accent">Synchronous Interception</span>
+          </div>
+          <div class="card-body">
+            <p class="section-text">
+              When you trigger a supported high-risk action (such as a large financial transfer button or credential modification form on a designated pilot page), Guardrail's <strong>Staging Mode</strong> engages automatically:
+            </p>
+
+            <div class="workflow-steps">
+              <div class="workflow-step">
+                <div class="wf-circle">1</div>
+                <div class="wf-content">
+                  <h4>Synchronous Hold</h4>
+                  <p>The action event is cancelled synchronously before browser propagation. It is placed into <code>HELD</code> state in browser memory.</p>
+                </div>
+              </div>
+              <div class="workflow-step">
+                <div class="wf-circle">2</div>
+                <div class="wf-content">
+                  <h4>Zero Automatic Execution</h4>
+                  <p><strong>Crucial Safety Invariant:</strong> Guardrail NEVER automatically replays or submits the held action behind your back, even if approved.</p>
+                </div>
+              </div>
+              <div class="workflow-step">
+                <div class="wf-circle">3</div>
+                <div class="wf-content">
+                  <h4>Deliberate Confirmation</h4>
+                  <p>Continuing the action requires your explicit, physical confirmation click in the Staging Mode dialog after authorization is verified.</p>
+                </div>
+              </div>
+              <div class="workflow-step">
+                <div class="wf-circle">4</div>
+                <div class="wf-content">
+                  <h4>Cancel at Any Time</h4>
+                  <p>You can cancel the held action at any moment to safely discard it without modifying web page state.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="acknowledgement-box">
+          <label class="checkbox-label" for="ack-staging">
+            <input type="checkbox" id="ack-staging" class="checkbox-input">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">
+              <strong>I understand Staging Mode:</strong> Actions are held in memory without automatic execution, and resuming requires my explicit local confirmation.
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 5: Trusted Contact Approvals -->
+      <section class="step-panel hidden" id="panel-trusted_approval" role="tabpanel" aria-labelledby="step-4">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">How Trusted Contacts Participate</h2>
+            <span class="badge badge-neutral">Decoupled Human Review</span>
+          </div>
+          <div class="card-body">
+            <div class="info-columns">
+              <div class="info-column">
+                <h4>1. Out-of-Band Notification</h4>
+                <p>When an action requires secondary approval, an approval request is dispatched to the backend with high-level metadata (action category, target element descriptor, timestamp). No raw sensitive form values are sent.</p>
+              </div>
+              <div class="info-column">
+                <h4>2. Independent Dashboard Review</h4>
+                <p>Trusted contacts review pending requests on the standalone Guardrail Dashboard. They can independently approve or reject the action based on predefined safety criteria.</p>
+              </div>
+              <div class="info-column">
+                <h4>3. Decision Decoupling</h4>
+                <p>A trusted contact's approval only grants <em>authorization</em>. It does NOT execute the action. You retain full control to confirm or cancel the action on your device.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="acknowledgement-box">
+          <label class="checkbox-label" for="ack-approvals">
+            <input type="checkbox" id="ack-approvals" class="checkbox-input">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">
+              <strong>I understand Trusted Contact review:</strong> Contacts provide out-of-band authorization via their dashboard, but final execution authority remains with me locally.
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 6: Configuration & Protection Status -->
+      <section class="step-panel hidden" id="panel-protection_status" role="tabpanel" aria-labelledby="step-5">
+        <div class="status-summary-card">
+          <div class="status-header-row">
+            <div>
+              <span class="label">Current Protection Status</span>
+              <h2 class="status-title-display" id="status-title-display">Active (Test Actions Only)</h2>
+            </div>
+            <span class="status-badge" id="status-badge-display">ACTIVE</span>
+          </div>
+          <p class="status-desc-display" id="status-desc-display">
+            Evaluating supported pilot test actions against active safety policies. Arbitrary websites are not protected.
+          </p>
+
+          <div class="config-grid">
+            <div class="config-item">
+              <span class="config-label">Environment</span>
+              <span class="config-value" id="cfg-env">pilot</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Backend Service</span>
+              <span class="config-value" id="cfg-service">Live (Remote)</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">API Endpoint</span>
+              <span class="config-value code-value" id="cfg-endpoint">https://pilot-api.guardrail-safety.org</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Policy Health</span>
+              <span class="config-value" id="cfg-health">HEALTHY</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Policy Version</span>
+              <span class="config-value" id="cfg-version">1.0.0</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Active Rules</span>
+              <span class="config-value" id="cfg-rules">3 rules active</span>
+            </div>
+          </div>
+
+          <div class="mock-warning-banner hidden" id="mock-warning-banner">
+            <span class="warn-icon">ℹ️</span>
+            <span><strong>Mock Service Notice:</strong> Active backend is in-memory/mock. Approvals will be simulated locally.</span>
+          </div>
+        </div>
+
+        <div class="diagnostics-box">
+          <div class="diag-header">
+            <h4>Pilot Setup Diagnostics</h4>
+            <button class="btn btn-secondary btn-sm" id="btn-rerun-diag">Re-run Diagnostics</button>
+          </div>
+          <ul class="diag-checklist" id="diag-checklist">
+            <li class="diag-item" id="diag-storage">
+              <span class="diag-status-icon">✓</span>
+              <span>Browser local storage functional</span>
+            </li>
+            <li class="diag-item" id="diag-policy">
+              <span class="diag-status-icon">✓</span>
+              <span>Policy configuration validated & active</span>
+            </li>
+            <li class="diag-item" id="diag-https">
+              <span class="diag-status-icon">✓</span>
+              <span>HTTPS transport enforced for remote endpoints</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Step 7: Pilot Setup Complete -->
+      <section class="step-panel hidden" id="panel-setup_complete" role="tabpanel" aria-labelledby="step-6">
+        <div class="completion-card">
+          <div class="completion-badge-icon">🎉</div>
+          <h2 class="completion-title">Pilot Onboarding Complete!</h2>
+          <p class="completion-desc">
+            You are ready to test Guardrail UI in the controlled pilot environment. All boundaries, permissions, and safety invariants have been reviewed.
+          </p>
+
+          <div class="readiness-summary">
+            <div class="readiness-item">
+              <span class="ri-check">✓</span>
+              <span>Extension installed and active in Chrome</span>
+            </div>
+            <div class="readiness-item">
+              <span class="ri-check">✓</span>
+              <span>Protection scope and boundaries acknowledged</span>
+            </div>
+            <div class="readiness-item">
+              <span class="ri-check">✓</span>
+              <span>Zero-sensitive-data privacy guarantees acknowledged</span>
+            </div>
+            <div class="readiness-item">
+              <span class="ri-check">✓</span>
+              <span>Staging Mode & deliberate confirmation workflow understood</span>
+            </div>
+            <div class="readiness-item">
+              <span class="ri-check">✓</span>
+              <span>Trusted Contact remote review process understood</span>
+            </div>
+            <div class="readiness-item">
+              <span class="ri-check">✓</span>
+              <span>Configuration and safety policy verified healthy</span>
+            </div>
+          </div>
+
+          <div class="completion-actions">
+            <a href="../../demo-sites/test-page/index.html" target="_blank" class="btn btn-primary" id="btn-launch-demo">
+              Launch Controlled Test Page ↗
+            </a>
+            <button class="btn btn-secondary" id="btn-review-again">Review Onboarding Steps</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Navigation Footer -->
+      <footer class="content-footer">
+        <button class="btn btn-secondary" id="btn-back" disabled>← Back</button>
+        <div class="footer-center" id="footer-helper-text"></div>
+        <button class="btn btn-primary" id="btn-next">Next →</button>
+      </footer>
+    </main>
+  </div>
+
+  <script src="onboarding.js"></script>
+</body>
+</html>
