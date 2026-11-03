@@ -474,21 +474,7 @@ export class ApprovalService {
 
     // Lazy expiration check
     if (request.status === ApprovalStatus.PENDING && isRequestExpired(request, this.timeProvider)) {
-      const expired = expireApprovalRequest(request, this.timeProvider);
-      this.repository.save(expired);
-      const bnd = this.repository.findBindingByRequestId(request.id);
-      if (bnd && bnd.state === ApprovalActionBindingState.BOUND) {
-        const updatedBnd = transitionBindingState(bnd, ApprovalActionBindingState.EXPIRED, {
-          resolvedAt: expired.resolvedAt,
-          timeProvider: this.timeProvider,
-        });
-        this.repository.atomicTransitionBinding(
-          bnd.id,
-          ApprovalActionBindingState.BOUND,
-          updatedBnd
-        );
-      }
-      request = expired;
+      request = this.persistExpiration(request);
     }
 
     // Multi-tenant authorization check
@@ -713,32 +699,13 @@ export class ApprovalService {
       throw new ApprovalAlreadyResolvedError(requestId, request.status, ApprovalStatus.EXPIRED);
     }
 
-    const expired = expireApprovalRequest(request, this.timeProvider);
-    const success = this.repository.atomicTransition(requestId, ApprovalStatus.PENDING, expired);
-    if (!success) {
-      const current = this.repository.findById(requestId);
-      const currStatus = current ? current.status : ApprovalStatus.EXPIRED;
-      throw new ApprovalAlreadyResolvedError(requestId, currStatus, ApprovalStatus.EXPIRED);
+    if (!isRequestExpired(request, this.timeProvider)) {
+      throw new ApprovalValidationError(['Approval request has not reached its expiration time.']);
     }
-
-    // Synchronize associated binding
-    const binding = this.repository.findBindingByRequestId(requestId);
-    if (binding && binding.state === ApprovalActionBindingState.BOUND) {
-      const updatedBinding = transitionBindingState(
-        binding,
-        ApprovalActionBindingState.EXPIRED,
-        {
-          resolvedAt: expired.resolvedAt,
-          timeProvider: this.timeProvider,
-        }
-      );
-      this.repository.atomicTransitionBinding(
-        binding.id,
-        ApprovalActionBindingState.BOUND,
-        updatedBinding
-      );
+    const expired = this.persistExpiration(request);
+    if (expired.status !== ApprovalStatus.EXPIRED) {
+      throw new ApprovalAlreadyResolvedError(requestId, expired.status, ApprovalStatus.EXPIRED);
     }
-
     return expired;
   }
 
@@ -752,27 +719,8 @@ export class ApprovalService {
     const all = this.repository.findAll();
     for (const req of all) {
       if (req.status === ApprovalStatus.PENDING && isRequestExpired(req, this.timeProvider)) {
-        const expired = expireApprovalRequest(req, this.timeProvider);
-        const success = this.repository.atomicTransition(req.id, ApprovalStatus.PENDING, expired);
-        if (success) {
-          count++;
-          const bnd = this.repository.findBindingByRequestId(req.id);
-          if (bnd && bnd.state === ApprovalActionBindingState.BOUND) {
-            const updatedBnd = transitionBindingState(
-              bnd,
-              ApprovalActionBindingState.EXPIRED,
-              {
-                resolvedAt: expired.resolvedAt,
-                timeProvider: this.timeProvider,
-              }
-            );
-            this.repository.atomicTransitionBinding(
-              bnd.id,
-              ApprovalActionBindingState.BOUND,
-              updatedBnd
-            );
-          }
-        }
+        const expired = this.persistExpiration(req);
+        if (expired.status === ApprovalStatus.EXPIRED) count++;
       }
     }
     return count;
@@ -781,6 +729,41 @@ export class ApprovalService {
   // ===========================================================================
   // Internal Decision Handler
   // ===========================================================================
+
+  /** Atomically expires a request and its active action binding in durable stores. */
+  private persistExpiration(request: ApprovalRequest): ApprovalRequest {
+    const expired = expireApprovalRequest(request, this.timeProvider);
+    const binding = this.repository.findBindingByRequestId(request.id);
+    if (binding && binding.state !== ApprovalActionBindingState.BOUND) {
+      throw new ApprovalBindingStateTransitionError(
+        binding.id,
+        binding.state,
+        ApprovalActionBindingState.EXPIRED,
+      );
+    }
+    let transitioned: boolean;
+    if (binding) {
+      const expiredBinding = transitionBindingState(binding, ApprovalActionBindingState.EXPIRED, {
+        resolvedAt: expired.resolvedAt,
+        timeProvider: this.timeProvider,
+      });
+      transitioned = this.repository.atomicTransitionRequestAndBinding(
+        request.id,
+        ApprovalStatus.PENDING,
+        expired,
+        binding.id,
+        ApprovalActionBindingState.BOUND,
+        expiredBinding,
+      );
+    } else {
+      transitioned = this.repository.atomicTransition(request.id, ApprovalStatus.PENDING, expired);
+    }
+    if (transitioned) return expired;
+
+    const current = this.repository.findById(request.id);
+    if (!current) throw new ApprovalAccessDeniedError();
+    return current;
+  }
 
   /**
    * Submits an authoritative reviewer decision (APPROVED or REJECTED).
@@ -832,8 +815,10 @@ export class ApprovalService {
     }
 
     if (isRequestExpired(request, this.timeProvider)) {
-      const expired = expireApprovalRequest(request, this.timeProvider);
-      this.repository.atomicTransition(requestId, ApprovalStatus.PENDING, expired);
+      const expired = this.persistExpiration(request);
+      if (expired.status !== ApprovalStatus.EXPIRED) {
+        throw new ApprovalAlreadyResolvedError(requestId, expired.status, targetStatus);
+      }
       const now = resolveTimestamp(this.timeProvider);
       throw new ApprovalExpiredError(requestId, request.expiresAt, now);
     }
@@ -861,6 +846,10 @@ export class ApprovalService {
 
       if (isBindingExpired(binding, this.timeProvider)) {
         const now = resolveTimestamp(this.timeProvider);
+        const expired = this.persistExpiration(request);
+        if (expired.status !== ApprovalStatus.EXPIRED) {
+          throw new ApprovalAlreadyResolvedError(requestId, expired.status, targetStatus);
+        }
         throw new ApprovalExpiredError(requestId, binding.expiresAt, now);
       }
     }
@@ -951,22 +940,7 @@ export class ApprovalService {
       throw new ApprovalAccessDeniedError();
     }
 
-    // Lazy expiration
     let activeBinding = binding;
-    if (
-      activeBinding.state === ApprovalActionBindingState.BOUND &&
-      isBindingExpired(activeBinding, this.timeProvider)
-    ) {
-      const expired = transitionBindingState(activeBinding, ApprovalActionBindingState.EXPIRED, {
-        timeProvider: this.timeProvider,
-      });
-      this.repository.atomicTransitionBinding(
-        activeBinding.id,
-        ApprovalActionBindingState.BOUND,
-        expired
-      );
-      activeBinding = expired;
-    }
 
     const isOwner = activeBinding.requesterId === authContext.actorId;
     const isAuthorizedContact = this.contactRegistry.isTrustedContactForUser(
@@ -977,6 +951,22 @@ export class ApprovalService {
 
     if (!isOwner && !isAuthorizedContact && !isAdmin) {
       throw new ApprovalAccessDeniedError();
+    }
+
+    if (
+      activeBinding.state === ApprovalActionBindingState.BOUND &&
+      isBindingExpired(activeBinding, this.timeProvider)
+    ) {
+      const request = this.repository.findById(requestId);
+      if (!request || request.status !== ApprovalStatus.PENDING) {
+        throw new ApprovalBindingStateTransitionError(
+          activeBinding.id,
+          activeBinding.state,
+          ApprovalActionBindingState.EXPIRED,
+        );
+      }
+      this.persistExpiration(request);
+      activeBinding = this.repository.findBindingById(activeBinding.id) ?? activeBinding;
     }
 
     const request = this.repository.findById(requestId);
@@ -1007,22 +997,7 @@ export class ApprovalService {
       return undefined;
     }
 
-    // Lazy expiration
     let activeBinding = binding;
-    if (
-      activeBinding.state === ApprovalActionBindingState.BOUND &&
-      isBindingExpired(activeBinding, this.timeProvider)
-    ) {
-      const expired = transitionBindingState(activeBinding, ApprovalActionBindingState.EXPIRED, {
-        timeProvider: this.timeProvider,
-      });
-      this.repository.atomicTransitionBinding(
-        activeBinding.id,
-        ApprovalActionBindingState.BOUND,
-        expired
-      );
-      activeBinding = expired;
-    }
 
     const isOwner = activeBinding.requesterId === authContext.actorId;
     const isAuthorizedContact = this.contactRegistry.isTrustedContactForUser(
@@ -1033,6 +1008,22 @@ export class ApprovalService {
 
     if (!isOwner && !isAuthorizedContact && !isAdmin) {
       throw new ApprovalAccessDeniedError();
+    }
+
+    if (
+      activeBinding.state === ApprovalActionBindingState.BOUND &&
+      isBindingExpired(activeBinding, this.timeProvider)
+    ) {
+      const request = this.repository.findById(activeBinding.requestId);
+      if (!request || request.status !== ApprovalStatus.PENDING) {
+        throw new ApprovalBindingStateTransitionError(
+          activeBinding.id,
+          activeBinding.state,
+          ApprovalActionBindingState.EXPIRED,
+        );
+      }
+      this.persistExpiration(request);
+      activeBinding = this.repository.findBindingById(activeBinding.id) ?? activeBinding;
     }
 
     const request = this.repository.findById(activeBinding.requestId);
@@ -1239,15 +1230,8 @@ export class ApprovalService {
 
     // Expiration check via trusted server clock
     if (isRequestExpired(request, this.timeProvider) || isBindingExpired(binding, this.timeProvider)) {
-      if (binding.state === ApprovalActionBindingState.BOUND) {
-        const expiredBinding = transitionBindingState(binding, ApprovalActionBindingState.EXPIRED, {
-          timeProvider: this.timeProvider,
-        });
-        this.repository.atomicTransitionBinding(binding.id, ApprovalActionBindingState.BOUND, expiredBinding);
-      }
-      if (request.status === ApprovalStatus.PENDING) {
-        const expiredReq = expireApprovalRequest(request, this.timeProvider);
-        this.repository.atomicTransition(request.id, ApprovalStatus.PENDING, expiredReq);
+      if (request.status === ApprovalStatus.PENDING && binding.state === ApprovalActionBindingState.BOUND) {
+        this.persistExpiration(request);
       }
       return {
         authorized: false,

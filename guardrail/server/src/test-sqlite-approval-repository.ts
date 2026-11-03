@@ -42,17 +42,19 @@ const payload = {
   hostname: 'example.test',
 };
 
-function openRuntime(databasePath: string) {
+function openRuntime(databasePath: string, timeProvider: () => string = () => new Date().toISOString()) {
   const contactRegistry = new InMemoryTrustedContactRegistry();
-  contactRegistry.addContact({
-    id: 'tc_synthetic_reviewer',
-    userId: auth.actorId,
-    status: TrustedContactStatus.ACTIVE,
-    createdAt,
-  });
+  for (const id of ['tc_synthetic_reviewer', 'tc_synthetic_reviewer_2']) {
+    contactRegistry.addContact({
+      id,
+      userId: auth.actorId,
+      status: TrustedContactStatus.ACTIVE,
+      createdAt,
+    });
+  }
   return createPersistentApprovalService({
     databasePath,
-    timeProvider: () => new Date().toISOString(),
+    timeProvider,
     contactRegistry,
     actionOwnershipRegistry: new InMemoryActionOwnershipRegistry(),
   });
@@ -138,6 +140,81 @@ try {
     'persisted requests remain scoped to their requester'
   );
 
+  // Reviewer revocation takes effect immediately for decisions on existing requests.
+  const reviewerRevocationTarget = restartedService.createRequest(
+    { ...payload, actionId: 'act_sqlite_reviewer_revocation' },
+    auth,
+    {
+      id: 'apr_sqlite_reviewer_revocation',
+      createdAt,
+      expiresAt,
+    },
+  );
+  restartedService.revokeTrustedContact('tc_synthetic_reviewer_2', auth);
+  assert.throws(
+    () => restartedService.approveRequest(reviewerRevocationTarget.id, undefined, {
+      actorId: 'tc_synthetic_reviewer_2', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true,
+    }),
+    ApprovalAccessDeniedError,
+    'a revoked reviewer cannot decide a previously-created request'
+  );
+  assert.equal(reopenedRepository.findById(reviewerRevocationTarget.id)?.status, ApprovalStatus.PENDING);
+
+  // Two independent SQLite connections race to decide one request. The database CAS permits one winner.
+  const concurrentTarget = restartedService.createRequest(
+    { ...payload, actionId: 'act_sqlite_concurrent_decisions' },
+    auth,
+    { id: 'apr_sqlite_concurrent_decisions', createdAt, expiresAt },
+  );
+  const competingRuntime = openRuntime(databasePath);
+  const reviewerOne: AuthContext = {
+    actorId: 'tc_synthetic_reviewer', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true,
+  };
+  const reviewerTwo: AuthContext = {
+    actorId: 'tc_synthetic_reviewer_2', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true,
+  };
+  const competingResults = await Promise.allSettled([
+    Promise.resolve().then(() => restartedService.approveRequest(concurrentTarget.id, undefined, reviewerOne)),
+    Promise.resolve().then(() => competingRuntime.service.rejectRequest(concurrentTarget.id, undefined, reviewerTwo)),
+  ]);
+  assert.equal(competingResults.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(competingResults.filter((result) => result.status === 'rejected').length, 1);
+  const concurrentResult = reopenedRepository.findById(concurrentTarget.id);
+  assert.ok(concurrentResult);
+  assert.ok([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED].includes(concurrentResult.status));
+  assert.equal(
+    reopenedRepository.findBindingByRequestId(concurrentTarget.id)?.state,
+    concurrentResult.status,
+    'request and action binding commit the same winning terminal state'
+  );
+  competingRuntime.close();
+
+  // Lazy expiry is atomic with its binding, including after the deadline passes.
+  let expiryClock = new Date('2026-11-03T00:00:00.000Z');
+  const expiryRuntime = openRuntime(join(root, 'expiry.sqlite'), () => expiryClock.toISOString());
+  const expiring = expiryRuntime.service.createRequest(
+    { ...payload, actionId: 'act_sqlite_expiration' },
+    auth,
+    {
+      id: 'apr_sqlite_expiration',
+      createdAt: expiryClock.toISOString(),
+      expiresAt: new Date(expiryClock.getTime() + 60_000).toISOString(),
+    },
+  );
+  expiryClock = new Date(expiryClock.getTime() + 60_000);
+  assert.equal(expiryRuntime.service.getRequest(expiring.id, auth).status, ApprovalStatus.EXPIRED);
+  assert.equal(
+    expiryRuntime.repository.findBindingByRequestId(expiring.id)?.state,
+    ApprovalActionBindingState.EXPIRED,
+    'expiration cannot leave an active action binding behind'
+  );
+  assert.throws(
+    () => expiryRuntime.service.approveRequest(expiring.id, undefined, reviewerOne),
+    /already resolved|expired/i,
+    'an expired request cannot be revived by a later review attempt'
+  );
+  expiryRuntime.close();
+
   const approvedAt = new Date().toISOString();
   const approved = resolveApprovalRequest(
     restored,
@@ -172,7 +249,39 @@ try {
 
   const finalRepository = SqliteApprovalRequestRepository.open(databasePath);
   assert.equal(finalRepository.findById(created.id)?.status, ApprovalStatus.APPROVED);
-  assert.equal(finalRepository.findBindingByRequestId(created.id)?.state, ApprovalActionBindingState.APPROVED);
+  const {
+    resolvedAt: _resolvedAt,
+    decision: _decision,
+    cancellationReason: _cancellationReason,
+    ...approvedWithoutResolution
+  } = approved;
+  const attemptedReopen = {
+    ...approvedWithoutResolution,
+    status: ApprovalStatus.PENDING,
+  };
+  assert.throws(
+    () => finalRepository.atomicTransition(created.id, ApprovalStatus.APPROVED, attemptedReopen),
+    /Invalid approval state transition/,
+    'terminal approval states cannot transition back to PENDING'
+  );
+  assert.throws(
+    () => finalRepository.save(attemptedReopen),
+    /immutable outside an atomic transition/,
+    'ordinary persistence writes cannot overwrite an approval decision'
+  );
+  const approvedBindingRecord = finalRepository.findBindingByRequestId(created.id);
+  assert.equal(approvedBindingRecord?.state, ApprovalActionBindingState.APPROVED);
+  assert.ok(approvedBindingRecord);
+  const { resolvedAt: _bindingResolvedAt, reason: _bindingReason, ...bindingWithoutResolution } = approvedBindingRecord;
+  assert.throws(
+    () => finalRepository.atomicTransitionBinding(
+      approvedBindingRecord.id,
+      ApprovalActionBindingState.APPROVED,
+      { ...bindingWithoutResolution, state: ApprovalActionBindingState.BOUND },
+    ),
+    /Invalid binding state transition/,
+    'terminal action bindings cannot transition back to BOUND'
+  );
 
   const invalidWrite = { ...approved, password: 'SYNTHETIC_SECRET_SENTINEL' };
   assert.throws(
@@ -206,7 +315,7 @@ try {
     'connection failure is reported with a sanitized error'
   );
 
-  console.log('PASS: create, restart retrieval, scoped reads, atomic status update, invalid records, and connection failure');
+  console.log('PASS: persistence, ownership, transition validation, reviewer revocation, cross-connection decision race, atomic expiry, invalid records, and database failure');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

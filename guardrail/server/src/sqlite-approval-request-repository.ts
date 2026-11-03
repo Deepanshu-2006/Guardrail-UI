@@ -11,11 +11,15 @@ import {
   ApprovalBindingConflictError,
   ApprovalBindingReassignmentError,
   assertValidApprovalActionBinding,
+  isValidBindingTransition,
 } from '../../extension/src/approval/binding.js';
 import {
   ApprovalRequestRepository,
 } from '../../extension/src/approval/repository.js';
-import { assertValidApprovalRequest } from '../../extension/src/approval/model.js';
+import {
+  assertValidApprovalRequest,
+  isValidApprovalTransition,
+} from '../../extension/src/approval/model.js';
 
 const SCHEMA_VERSION = 1;
 
@@ -179,7 +183,14 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
     this.validateRequest(request);
     const transaction = this.database.transaction(() => {
       const existing = this.findById(request.id);
-      if (existing) this.assertRequestIdentity(existing, request);
+      if (existing) {
+        this.assertRequestIdentity(existing, request);
+        if (JSON.stringify(existing) !== JSON.stringify(request)) {
+          throw new Error('Persisted approval records are immutable outside an atomic transition.');
+        }
+      } else if (request.status !== ApprovalStatus.PENDING) {
+        throw new Error('New approval requests must start in PENDING state.');
+      }
       const binding = this.findBindingByRequestId(request.id);
       if (binding && (binding.actionId !== request.actionId || binding.requesterId !== request.requesterId)) {
         throw new ApprovalBindingReassignmentError(request.id, binding.actionId, request.actionId);
@@ -202,8 +213,21 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
     }
 
     const existingRequest = this.findById(request.id);
-    if (existingRequest) this.assertRequestIdentity(existingRequest, request);
+    if (existingRequest) {
+      this.assertRequestIdentity(existingRequest, request);
+      if (JSON.stringify(existingRequest) !== JSON.stringify(request)) {
+        throw new Error('Persisted approval records are immutable outside an atomic transition.');
+      }
+    } else if (request.status !== ApprovalStatus.PENDING) {
+      throw new Error('New approval requests must start in PENDING state.');
+    }
     const existingBinding = this.findBindingByRequestId(request.id);
+    if (existingBinding && JSON.stringify(existingBinding) !== JSON.stringify(binding)) {
+      throw new Error('Persisted binding records are immutable outside an atomic transition.');
+    }
+    if (!existingBinding && binding.state !== ApprovalActionBindingState.BOUND) {
+      throw new Error('New approval bindings must start in BOUND state.');
+    }
     if (existingBinding && existingBinding.actionId !== binding.actionId) {
       throw new ApprovalBindingReassignmentError(request.id, existingBinding.actionId, binding.actionId);
     }
@@ -239,6 +263,9 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
       const existing = this.findById(requestId);
       if (!existing || existing.status !== expectedCurrentStatus) return false;
       this.assertRequestIdentity(existing, updatedRequest);
+      if (!isValidApprovalTransition(existing.status, updatedRequest.status)) {
+        throw new Error(`Invalid approval state transition: ${existing.status} -> ${updatedRequest.status}.`);
+      }
       const result = this.database.prepare(`
         UPDATE approval_requests SET status = ?, created_at = ?, expires_at = ?, payload_json = ?
         WHERE id = ? AND status = ? AND requester_id = ? AND action_id = ?
@@ -278,6 +305,12 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
 
       this.assertRequestIdentity(currentRequest, updatedRequest);
       this.assertBindingIdentity(currentBinding, updatedBinding);
+      if (!isValidApprovalTransition(currentRequest.status, updatedRequest.status)) {
+        throw new Error(`Invalid approval state transition: ${currentRequest.status} -> ${updatedRequest.status}.`);
+      }
+      if (!isValidBindingTransition(currentBinding.state, updatedBinding.state)) {
+        throw new Error(`Invalid binding state transition: ${currentBinding.state} -> ${updatedBinding.state}.`);
+      }
       if (
         currentBinding.requestId !== requestId ||
         updatedBinding.requestId !== requestId ||
@@ -352,7 +385,14 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
   public saveBinding(binding: ApprovalActionBinding): void {
     this.validateBinding(binding);
     const existing = this.findBindingById(binding.id);
-    if (existing) this.assertBindingIdentity(existing, binding);
+    if (existing) {
+      this.assertBindingIdentity(existing, binding);
+      if (JSON.stringify(existing) !== JSON.stringify(binding)) {
+        throw new Error('Persisted binding records are immutable outside an atomic transition.');
+      }
+    } else if (binding.state !== ApprovalActionBindingState.BOUND) {
+      throw new Error('New approval bindings must start in BOUND state.');
+    }
     const request = this.findById(binding.requestId);
     if (request && (request.actionId !== binding.actionId || request.requesterId !== binding.requesterId)) {
       throw new ApprovalBindingReassignmentError(binding.requestId, request.actionId, binding.actionId);
@@ -398,6 +438,9 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
       const current = this.findBindingById(bindingId);
       if (!current || current.state !== expectedCurrentState) return false;
       this.assertBindingIdentity(current, updatedBinding);
+      if (!isValidBindingTransition(current.state, updatedBinding.state)) {
+        throw new Error(`Invalid binding state transition: ${current.state} -> ${updatedBinding.state}.`);
+      }
       const result = this.database.prepare(`
         UPDATE approval_bindings SET state = ?, created_at = ?, payload_json = ?
         WHERE id = ? AND state = ? AND request_id = ? AND action_id = ?
