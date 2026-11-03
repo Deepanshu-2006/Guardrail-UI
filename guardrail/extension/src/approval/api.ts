@@ -54,9 +54,21 @@ import {
 import {
   ApprovalAccessDeniedError,
   AuthContext,
+  CreateInvitationOptions,
+  DuplicateContactRelationshipError,
+  InvitationAlreadyAcceptedError,
+  InvitationExpiredError,
+  InvitationNotFoundError,
+  InvitationRevokedError,
+  NoActiveTrustedContactError,
   SelfApprovalProhibitedError,
+  SelfInvitationProhibitedError,
+  TrustedContact,
+  TrustedContactInvitation,
   UnauthenticatedError,
   UnauthorizedActionRequesterError,
+  validateInvitationCode,
+  validateRelationshipLabel,
 } from './authorization.js';
 import { ApprovalService } from './service.js';
 
@@ -401,6 +413,49 @@ export class ApprovalApiRouter {
       if (method === 'GET' && getContactMatch && path !== '/api/v1/approvals/pending') {
         const requestId = decodeURIComponent(getContactMatch[1]);
         return await this.handleGetRequest(request, requestId, headers);
+      }
+
+      // Route 9: POST /api/v1/invitations (Ward creates invitation)
+      if (method === 'POST' && path === '/api/v1/invitations') {
+        return await this.handleCreateInvitation(request, headers);
+      }
+
+      // Route 10: GET /api/v1/invitations (Ward lists invitations)
+      if (method === 'GET' && path === '/api/v1/invitations') {
+        return await this.handleListInvitations(request, headers);
+      }
+
+      // Route 11: POST /api/v1/invitations/:code/accept (Contact accepts invitation)
+      const acceptInviteMatch = path.match(/^\/api\/v1\/invitations\/([^/]+)\/accept$/);
+      if (method === 'POST' && acceptInviteMatch) {
+        const code = decodeURIComponent(acceptInviteMatch[1]);
+        return await this.handleAcceptInvitation(request, code, headers);
+      }
+
+      // Route 12: POST /api/v1/invitations/:id/revoke (Ward revokes invitation)
+      const revokeInviteMatch = path.match(/^\/api\/v1\/invitations\/([^/]+)\/revoke$/);
+      if (method === 'POST' && revokeInviteMatch) {
+        const id = decodeURIComponent(revokeInviteMatch[1]);
+        return await this.handleRevokeInvitation(request, id, headers);
+      }
+
+      // Route 13: GET /api/v1/invitations/:id (Inspect invitation by code or ID)
+      const getInviteMatch = path.match(/^\/api\/v1\/invitations\/([^/]+)$/);
+      if (method === 'GET' && getInviteMatch) {
+        const identifier = decodeURIComponent(getInviteMatch[1]);
+        return await this.handleGetInvitation(request, identifier, headers);
+      }
+
+      // Route 14: GET /api/v1/trusted-contacts (Ward lists active contacts)
+      if (method === 'GET' && path === '/api/v1/trusted-contacts') {
+        return await this.handleListTrustedContacts(request, headers);
+      }
+
+      // Route 15: POST /api/v1/trusted-contacts/:id/revoke (Ward revokes active contact)
+      const revokeContactMatch = path.match(/^\/api\/v1\/trusted-contacts\/([^/]+)\/revoke$/);
+      if (method === 'POST' && revokeContactMatch) {
+        const contactId = decodeURIComponent(revokeContactMatch[1]);
+        return await this.handleRevokeTrustedContact(request, contactId, headers);
       }
 
       // Route Not Found
@@ -777,6 +832,189 @@ export class ApprovalApiRouter {
     };
   }
 
+  /**
+   * POST /api/v1/invitations
+   */
+  private async handleCreateInvitation(
+    request: ApiRequest,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<TrustedContactInvitation>> {
+    this.validateContentType(request.headers);
+    const authContext = await this.authenticate(request.headers);
+
+    const body = (request.body as Record<string, unknown> | undefined) ?? {};
+    let relationshipLabel: string | undefined;
+    let customCode: string | undefined;
+    let ttlMs: number | undefined;
+
+    if (body.relationshipLabel !== undefined) {
+      const labelVal = validateRelationshipLabel(body.relationshipLabel);
+      if (!labelVal.valid) {
+        throw new ApprovalValidationError(labelVal.errors);
+      }
+      relationshipLabel = labelVal.normalized;
+    }
+
+    if (body.code !== undefined || body.customCode !== undefined) {
+      const candidateCode = (body.code ?? body.customCode) as string;
+      const codeVal = validateInvitationCode(candidateCode);
+      if (!codeVal.valid) {
+        throw new ApprovalValidationError(codeVal.errors);
+      }
+      customCode = codeVal.normalized;
+    }
+
+    if (body.ttlMs !== undefined) {
+      if (typeof body.ttlMs !== 'number' || body.ttlMs <= 0) {
+        throw new ApprovalValidationError(['Field "ttlMs" must be a positive number if provided.']);
+      }
+      ttlMs = body.ttlMs;
+    }
+
+    const invitation = this.service.createInvitation(authContext, {
+      relationshipLabel,
+      customCode,
+      ttlMs,
+    });
+
+    return {
+      statusCode: 201,
+      headers,
+      body: {
+        success: true,
+        data: invitation,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/invitations
+   */
+  private async handleListInvitations(
+    request: ApiRequest,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<readonly TrustedContactInvitation[]>> {
+    const authContext = await this.authenticate(request.headers);
+    const invitations = this.service.listInvitationsForUser(authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: invitations,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/invitations/:identifier
+   */
+  private async handleGetInvitation(
+    request: ApiRequest,
+    identifier: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<TrustedContactInvitation>> {
+    const authContext = await this.authenticate(request.headers);
+    const invitation = this.service.getInvitation(identifier, authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: invitation,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/invitations/:code/accept
+   */
+  private async handleAcceptInvitation(
+    request: ApiRequest,
+    code: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<{ invitation: TrustedContactInvitation; contact: TrustedContact }>> {
+    const authContext = await this.authenticate(request.headers);
+    const result = this.service.acceptInvitation(code, authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: result,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/invitations/:id/revoke
+   */
+  private async handleRevokeInvitation(
+    request: ApiRequest,
+    invitationId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<TrustedContactInvitation>> {
+    const authContext = await this.authenticate(request.headers);
+    const revoked = this.service.revokeInvitation(invitationId, authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: revoked,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/trusted-contacts
+   */
+  private async handleListTrustedContacts(
+    request: ApiRequest,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<readonly TrustedContact[]>> {
+    const authContext = await this.authenticate(request.headers);
+    const contacts = this.service.getTrustedContactsForUser(authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: contacts,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/trusted-contacts/:id/revoke
+   */
+  private async handleRevokeTrustedContact(
+    request: ApiRequest,
+    contactId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<{ revoked: boolean; contactId: string }>> {
+    const authContext = await this.authenticate(request.headers);
+    const revoked = this.service.revokeTrustedContact(contactId, authContext);
+
+    if (!revoked) {
+      throw new ApprovalAccessDeniedError();
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: { revoked: true, contactId },
+      },
+    };
+  }
+
   // ===========================================================================
   // Authentication & Validation Helpers
   // ===========================================================================
@@ -1105,6 +1343,111 @@ export class ApprovalApiRouter {
             message: err.message,
             statusCode: 400,
             details: err.errors,
+          },
+        },
+      };
+    }
+
+    if (err instanceof NoActiveTrustedContactError) {
+      return {
+        statusCode: 422,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'NO_ACTIVE_TRUSTED_CONTACT',
+            message: err.message,
+            statusCode: 422,
+          },
+        },
+      };
+    }
+
+    if (err instanceof InvitationNotFoundError) {
+      return {
+        statusCode: 404,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'INVITATION_NOT_FOUND',
+            message: err.message,
+            statusCode: 404,
+          },
+        },
+      };
+    }
+
+    if (err instanceof InvitationExpiredError) {
+      return {
+        statusCode: 410,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'INVITATION_EXPIRED',
+            message: err.message,
+            statusCode: 410,
+          },
+        },
+      };
+    }
+
+    if (err instanceof InvitationRevokedError) {
+      return {
+        statusCode: 410,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'INVITATION_REVOKED',
+            message: err.message,
+            statusCode: 410,
+          },
+        },
+      };
+    }
+
+    if (err instanceof InvitationAlreadyAcceptedError) {
+      return {
+        statusCode: 409,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'INVITATION_ALREADY_ACCEPTED',
+            message: err.message,
+            statusCode: 409,
+          },
+        },
+      };
+    }
+
+    if (err instanceof SelfInvitationProhibitedError) {
+      return {
+        statusCode: 403,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'SELF_INVITATION_PROHIBITED',
+            message: err.message,
+            statusCode: 403,
+          },
+        },
+      };
+    }
+
+    if (err instanceof DuplicateContactRelationshipError) {
+      return {
+        statusCode: 409,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'DUPLICATE_CONTACT_RELATIONSHIP',
+            message: err.message,
+            statusCode: 409,
           },
         },
       };
