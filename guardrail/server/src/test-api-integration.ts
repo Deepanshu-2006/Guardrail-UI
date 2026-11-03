@@ -27,6 +27,30 @@ try {
   const ward = api(server.address.port, 'synthetic-ward-token');
   const contact = api(server.address.port, 'synthetic-contact-token');
 
+  const live = await fetch(`http://127.0.0.1:${server.address.port}/health`);
+  assert.equal(live.status, 200);
+  assert.deepEqual(await live.json(), { status: 'ok' });
+  const ready = await fetch(`http://127.0.0.1:${server.address.port}/ready`);
+  assert.equal(ready.status, 200);
+  assert.deepEqual(await ready.json(), { status: 'ready' });
+  const healthCors = await fetch(`http://127.0.0.1:${server.address.port}/ready`, {
+    headers: { Origin: 'http://localhost:5173' },
+  });
+  assert.equal(healthCors.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+  const deniedHealthCors = await fetch(`http://127.0.0.1:${server.address.port}/ready`, {
+    headers: { Origin: 'https://unlisted.example.test' },
+  });
+  assert.equal(deniedHealthCors.headers.get('access-control-allow-origin'), null);
+  const malformedRequest = await fetch(`http://127.0.0.1:${server.address.port}/api/v1/approval-requests`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer synthetic-ward-token', 'Content-Type': 'application/json' },
+    body: '{',
+  });
+  assert.equal(malformedRequest.status, 400);
+  const malformedBody = await malformedRequest.text();
+  assert.equal(malformedBody.includes(' at '), false, 'client error response does not expose a stack trace');
+  assert.equal(malformedBody.includes('synthetic-ward-token'), false, 'client error response does not echo credentials');
+
   const inviteResult = await ward.createInvitation({ relationshipLabel: 'Synthetic reviewer', customCode: 'GR-INV-ABCD-EFGH' });
   assert.equal(inviteResult.success, true);
   if (!inviteResult.success) throw new Error(inviteResult.error.message);

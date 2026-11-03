@@ -7,11 +7,13 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "../extension/node_modules/.bin/esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/index.mjs",
+    "build": "../extension/node_modules/.bin/esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/index.mjs && ../extension/node_modules/.bin/esbuild src/serve.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/serve.mjs",
+    "start": "node dist/serve.mjs",
     "type-check": "../extension/node_modules/.bin/tsc --noEmit -p tsconfig.json",
     "test:sqlite": "../extension/node_modules/.bin/esbuild src/test-sqlite-approval-repository.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-sqlite-approval-repository.mjs && node dist/test-sqlite-approval-repository.mjs",
     "test:api": "../extension/node_modules/.bin/esbuild src/test-api-integration.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-api-integration.mjs && node dist/test-api-integration.mjs",
-    "test": "npm run test:sqlite && npm run test:api"
+    "test:config": "../extension/node_modules/.bin/esbuild src/test-runtime-config.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/test-runtime-config.mjs && node dist/test-runtime-config.mjs",
+    "test": "npm run test:config && npm run test:sqlite && npm run test:api"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3"

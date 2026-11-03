@@ -102,6 +102,11 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
 
   public close(): void { this.database.close(); }
 
+  public healthCheck(): boolean {
+    const result = this.database.prepare('SELECT 1 AS ok').get() as { ok: number } | undefined;
+    return Number(result?.ok) === 1;
+  }
+
   public isTrustedContactForUser(contactId: string, userId: string): boolean {
     return Boolean(this.database.prepare(
       "SELECT 1 FROM trusted_contacts WHERE id = ? AND user_id = ? AND status = 'ACTIVE'"

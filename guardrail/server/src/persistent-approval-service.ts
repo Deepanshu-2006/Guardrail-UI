@@ -33,6 +33,10 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
 
   return Object.freeze({
     repository,
+    healthCheck: () => {
+      if (!repository.healthCheck()) return false;
+      return !(contactRegistry instanceof SqliteTrustedContactRegistry) || contactRegistry.healthCheck();
+    },
     service,
     close: () => {
       repository.close();
