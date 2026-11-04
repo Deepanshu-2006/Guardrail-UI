@@ -41,6 +41,7 @@ import {
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
 import { ApiResponseEnvelope } from './api.js';
+import { validateInvitationCode } from './authorization.js';
 import {
   FORBIDDEN_PROPERTY_PATTERNS,
   validateActionId,
@@ -1186,7 +1187,7 @@ export class ApprovalApiClient {
    * @returns Typed ApiClientResult with created TrustedContactInvitation
    */
   public async createInvitation(
-    payload: { recipientActorId: string; relationshipLabel?: string; ttlMs?: number; customCode?: string },
+    payload: { recipientActorId: string; relationshipLabel?: string; ttlMs?: number },
     options?: RequestOptions
   ): Promise<ApiClientResult<TrustedContactInvitation>> {
     return this.dispatchRequest<TrustedContactInvitation>(
@@ -1272,11 +1273,18 @@ export class ApprovalApiClient {
         statusCode: 400,
       };
     }
-    const sanitized = encodeURIComponent(code.trim().toUpperCase());
+    const validation = validateInvitationCode(code);
+    if (!validation.valid || !validation.normalized) {
+      return {
+        success: false,
+        error: { code: ApiClientErrorCodes.VALIDATION_ERROR, message: 'Invitation code is invalid.', statusCode: 400 },
+        statusCode: 400,
+      };
+    }
     return this.dispatchRequest<{ invitation: TrustedContactInvitation; contact: TrustedContact }>(
       'POST',
-      `/api/v1/invitations/${sanitized}/accept`,
-      {},
+      '/api/v1/invitations/accept',
+      { code: validation.normalized },
       options
     );
   }

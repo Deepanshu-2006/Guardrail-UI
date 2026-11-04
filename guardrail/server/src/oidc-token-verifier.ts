@@ -73,10 +73,13 @@ export class OidcTokenVerifier implements TokenVerifier {
       if (!role) return undefined;
       const issuer = typeof payload.iss === 'string' ? payload.iss : '';
       if (!issuer) return undefined;
+      const verifiedEmail = payload.email_verified === true && typeof payload.email === 'string'
+        ? payload.email
+        : undefined;
       if (payload.jti !== undefined && (typeof payload.jti !== 'string' || !payload.jti.trim() || this.identities.isTokenRevoked(payload.jti))) {
         return undefined;
       }
-      const identity = this.identities.resolveVerifiedIdentity(issuer, payload.sub, role);
+      const identity = this.identities.resolveVerifiedIdentity(issuer, payload.sub, role, verifiedEmail);
       if (!identity) return undefined;
       return Object.freeze({
         actorId: identity.actorId,

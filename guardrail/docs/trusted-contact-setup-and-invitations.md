@@ -13,7 +13,7 @@ Previously, the backend approval state machine and dashboard evaluated authoriza
 
 > [!IMPORTANT]
 > **Zero-Friction, Out-of-Band Pairing Protocol (No Fake Email Delivery)**
-> Guardrail deliberately does **NOT** simulate or invent an email delivery service or fake SMTP server for the controlled pilot. In safety-critical assistive tooling, email delivery introduces delivery latency, spam filtering hazards, and credential theft vectors. Instead, Guardrail employs high-entropy, out-of-band pairing codes (`GR-INV-XXXX-YYYY`) designed to be shared directly via secure, existing channels (e.g., Signal, SMS, encrypted chat, or in person).
+> Invitation email delivery is optional and uses a backend-only Resend adapter. It sends only after a persistent invitation is created and uses an issuer-verified recipient email. Until Resend credentials, a verified sender, and the dashboard URL are configured, the API reports `NOT_CONFIGURED`; the issuer may share the one-time code out-of-band. Provider submission is not proof of inbox delivery.
 
 ---
 
@@ -34,16 +34,18 @@ sequenceDiagram
     Svc-->>Contact: { actorId, role: "TRUSTED_CONTACT" }
     Contact->>Ward: Shares actor ID out-of-band
     Ext->>Svc: POST /api/v1/invitations { recipientActorId, relationshipLabel }
-    Svc-->>Ext: 201 Created { code: "GR-INV-K8M2-P4X9", expiresAt: +7d }
-    Ext-->>Ward: Displays Pairing Code & Copy Button
+    Svc->>Svc: Create recipient-bound invitation; persist token hash only
+    Svc->>Svc: Submit email after creation when provider is configured
+    Svc-->>Ext: 201 Created { code, expiresAt, deliveryStatus }
+    Ext-->>Ward: Shows provider submission state
 
     Note over Ward,Contact: Secure Out-of-Band Transfer (Signal / SMS / In-person)
-    Ward->>Contact: Sends "GR-INV-K8M2-P4X9"
+    Ward->>Contact: May share one-time code out-of-band if email is unavailable
 
     Note over Contact,Dash: Pairing & Acceptance
     Contact->>Dash: Logs in & enters pairing code
-    Dash->>Svc: POST /api/v1/invitations/GR-INV-K8M2-P4X9/accept
-    Svc->>Svc: Validate code, TTL, active status, verified recipient identity & self-pairing
+    Dash->>Svc: POST /api/v1/invitations/accept { code }
+    Svc->>Svc: Hash token, validate TTL, active status, verified recipient identity & self-pairing
     Svc->>Svc: Create TrustedContact (Ward <-> Contact)
     Svc-->>Dash: 200 OK { status: "ACCEPTED", wardId: "usr_alice" }
     Dash-->>Contact: Displays Active Ward Association & Separation of Duties Notice
@@ -154,8 +156,9 @@ All invitation and user management routes require valid Bearer token authenticat
 * **Param**: Canonical ID (`inv_...`) or pairing code (`GR-INV-...`)
 * **Response (200 OK)**: Returns invitation metadata only to its owner or intended recipient. A pairing code alone does not authorize preview or acceptance by another identity.
 
-### 6.4 `POST /api/v1/invitations/:code/accept`
+### 6.4 `POST /api/v1/invitations/accept`
 * **Role**: The `TRUSTED_CONTACT` identity whose internal actor ID matches `recipientActorId` on the invitation.
+* **Request Body**: `{ "code": "<one-time invitation token>" }`. The token is sent in the POST body, not a URL path or query string.
 * **Response (200 OK)**:
   ```json
   {

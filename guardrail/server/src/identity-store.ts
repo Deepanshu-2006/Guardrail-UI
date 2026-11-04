@@ -41,6 +41,7 @@ export class SqliteIdentityStore {
           subject TEXT NOT NULL CHECK(length(trim(subject)) > 0),
           role TEXT NOT NULL CHECK(role IN ('USER','TRUSTED_CONTACT','ADMIN')),
           status TEXT NOT NULL CHECK(status IN ('ACTIVE','DISABLED')),
+          verified_email TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           UNIQUE(issuer, subject)
@@ -52,6 +53,10 @@ export class SqliteIdentityStore {
         );
         CREATE INDEX IF NOT EXISTS idx_guardrail_revoked_tokens_expiry ON guardrail_revoked_tokens(expires_at);
       `);
+      const userColumns = database.pragma('table_info(guardrail_users)') as { name: string }[];
+      if (!userColumns.some((column) => column.name === 'verified_email')) {
+        database.exec('ALTER TABLE guardrail_users ADD COLUMN verified_email TEXT');
+      }
       if (resolved !== ':memory:') chmodSync(resolved, 0o600);
       return new SqliteIdentityStore(database, resolved);
     } catch (error) {
@@ -61,8 +66,10 @@ export class SqliteIdentityStore {
   }
 
   /** Resolve a verified provider subject to one stable internal actor record. */
-  public resolveVerifiedIdentity(issuer: string, subject: string, role: ActorRole): InternalIdentity | undefined {
+  public resolveVerifiedIdentity(issuer: string, subject: string, role: ActorRole, verifiedEmail?: string): InternalIdentity | undefined {
     if (!issuer.trim() || !subject.trim() || !Object.values(ActorRole).includes(role)) return undefined;
+    const normalizedEmail = verifiedEmail?.trim().toLowerCase();
+    if (normalizedEmail && (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))) return undefined;
     const now = new Date().toISOString();
     const resolve = this.database.transaction((): InternalIdentity | undefined => {
       let row = this.database.prepare(
@@ -71,8 +78,8 @@ export class SqliteIdentityStore {
       if (row?.status === 'DISABLED') return undefined;
       if (!row) {
         this.database.prepare(`INSERT INTO guardrail_users
-          (id,issuer,subject,role,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)`)
-          .run(`usr_${randomUUID()}`, issuer, subject, role, 'ACTIVE', now, now);
+          (id,issuer,subject,role,status,verified_email,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+          .run(`usr_${randomUUID()}`, issuer, subject, role, 'ACTIVE', normalizedEmail ?? null, now, now);
         row = this.database.prepare(
           'SELECT id, role, status FROM guardrail_users WHERE issuer = ? AND subject = ?'
         ).get(issuer, subject) as IdentityRow | undefined;
@@ -82,9 +89,20 @@ export class SqliteIdentityStore {
           .run(role, now, row.id);
         row = { ...row, role };
       }
+      if (row && normalizedEmail) {
+        this.database.prepare('UPDATE guardrail_users SET verified_email=?,updated_at=? WHERE id=? AND status=\'ACTIVE\'')
+          .run(normalizedEmail, now, row.id);
+      }
       return row?.status === 'ACTIVE' ? Object.freeze({ actorId: row.id, role: row.role }) : undefined;
     });
     return resolve.immediate();
+  }
+
+  /** Email is available only when it came from an issuer-signed email_verified=true claim. */
+  public getVerifiedEmail(actorId: string): string | undefined {
+    const row = this.database.prepare("SELECT verified_email FROM guardrail_users WHERE id=? AND status='ACTIVE'")
+      .get(actorId) as { verified_email?: string | null } | undefined;
+    return row?.verified_email ?? undefined;
   }
 
   public isTokenRevoked(jti: string, now = new Date().toISOString()): boolean {

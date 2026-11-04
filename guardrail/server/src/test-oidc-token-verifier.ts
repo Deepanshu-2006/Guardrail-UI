@@ -23,10 +23,10 @@ const keySet = createLocalJWKSet({ keys: [jwk] });
 const identities = SqliteIdentityStore.open(':memory:');
 const verifier = new OidcTokenVerifier(config, identities, keySet);
 
-async function signedToken(overrides: Record<string, unknown> = {}, key = privateKey): Promise<string> {
+async function signedToken(overrides: Record<string, unknown> = {}, key = privateKey, subject = 'provider-user-123'): Promise<string> {
   return new SignJWT({ [roleClaim]: ActorRole.USER, ...overrides })
     .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-    .setIssuer(issuer).setAudience(audience).setSubject('provider-user-123')
+    .setIssuer(issuer).setAudience(audience).setSubject(subject)
     .setIssuedAt().setExpirationTime('5m').sign(key);
 }
 
@@ -36,6 +36,12 @@ try {
   assert.equal(valid?.isAuthenticated, true);
   assert.equal(valid?.role, ActorRole.USER);
   assert.match(valid?.actorId ?? '', /^usr_/);
+  const verifiedEmailContext = await verifier.verifyToken(await signedToken({ email: 'verified@example.test', email_verified: true }));
+  assert.equal(verifiedEmailContext?.actorId, valid?.actorId);
+  assert.equal(identities.getVerifiedEmail(valid!.actorId), 'verified@example.test', 'only issuer-signed verified email is retained');
+  const unverifiedIdentity = await verifier.verifyToken(await signedToken({ email: 'unverified@example.test', email_verified: false }, privateKey, 'unverified-user'));
+  assert.ok(unverifiedIdentity);
+  assert.equal(identities.getVerifiedEmail(unverifiedIdentity.actorId), undefined, 'unverified email claims are not retained');
   const signed = await signedToken();
   const segments = signed.split('.');
   segments[2] = `${segments[2]![0] === 'A' ? 'B' : 'A'}${segments[2]!.slice(1)}`;

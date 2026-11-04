@@ -443,10 +443,13 @@ assert(revokeContactRes.body.data.revoked === true, 'Charlie was revoked');
 console.log('\n▶ Scenario 10: ApprovalApiClient SDK Integration');
 
 // Custom transport calling apiRouter.dispatch in-memory
+let lastClientRequestPath = '';
+let lastClientRequestBody: unknown;
 const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const urlStr = typeof input === 'string' ? input : input.toString();
   const parsed = new URL(urlStr, 'https://guardrail.local');
   const path = parsed.pathname;
+  lastClientRequestPath = path;
   const method = (init?.method || 'GET') as 'GET' | 'POST';
   const rawHeaders: Record<string, string> = {};
   if (init?.headers) {
@@ -470,6 +473,7 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
     headers: rawHeaders,
     body: bodyObj,
   });
+  lastClientRequestBody = bodyObj;
 
   return new Response(JSON.stringify(apiRes.body), {
     status: apiRes.statusCode,
@@ -507,6 +511,8 @@ const charlieClient = new ApprovalApiClient({
 
 const clientAcceptRes = await charlieClient.acceptInvitation(clientInvRes.data.code);
 assert(clientAcceptRes.success === true, 'apiClient.acceptInvitation succeeded');
+assert(lastClientRequestPath === '/api/v1/invitations/accept', 'acceptance token is sent in request body rather than URL');
+assert((lastClientRequestBody as { code?: string })?.code === clientInvRes.data.code, 'acceptance POST body carries the invitation token');
 assert(clientAcceptRes.data.invitation.status === 'ACCEPTED', 'apiClient.acceptInvitation returned ACCEPTED');
 
 // Alice lists contacts via client

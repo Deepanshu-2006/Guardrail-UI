@@ -2,11 +2,14 @@ import { startGuardrailHttpServer } from './http-server.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
 import { loadOidcTokenVerifierConfig, OidcTokenVerifier } from './oidc-token-verifier.js';
 import { SqliteIdentityStore } from './identity-store.js';
+import { createResendProviderFromEnv, SqliteInvitationDeliveryCoordinator } from './invitation-delivery.js';
 
 async function main(): Promise<void> {
   const serverConfig = loadGuardrailServerConfig();
   const oidcConfig = loadOidcTokenVerifierConfig();
+  const emailProvider = createResendProviderFromEnv();
   const identities = SqliteIdentityStore.open(serverConfig.databasePath);
+  const invitationDelivery = SqliteInvitationDeliveryCoordinator.open(serverConfig.databasePath, identities, emailProvider);
   let runtime: Awaited<ReturnType<typeof startGuardrailHttpServer>>;
   try {
     runtime = await startGuardrailHttpServer({
@@ -15,8 +18,10 @@ async function main(): Promise<void> {
       host: serverConfig.host,
       port: serverConfig.port,
       routerConfig: serverConfig.allowedOrigins.length ? { allowedOrigins: serverConfig.allowedOrigins } : undefined,
+      invitationDelivery,
     });
   } catch (error) {
+    invitationDelivery.close();
     identities.close();
     throw error;
   }
@@ -24,6 +29,7 @@ async function main(): Promise<void> {
   const shutdown = () => {
     void runtime.close().then(() => {
       identities.close();
+      invitationDelivery.close();
       process.exit(0);
     }, () => process.exit(1));
   };

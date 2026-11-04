@@ -5,3 +5,4 @@ export * from './http-server.js';
 export * from './runtime-config.js';
 export * from './identity-store.js';
 export * from './oidc-token-verifier.js';
+export * from './invitation-delivery.js';

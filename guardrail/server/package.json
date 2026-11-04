@@ -14,7 +14,8 @@
     "test:api": "../extension/node_modules/.bin/esbuild src/test-api-integration.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-api-integration.mjs && node dist/test-api-integration.mjs",
     "test:config": "../extension/node_modules/.bin/esbuild src/test-runtime-config.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/test-runtime-config.mjs && node dist/test-runtime-config.mjs",
     "test:oidc": "../extension/node_modules/.bin/esbuild src/test-oidc-token-verifier.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-oidc-token-verifier.mjs && node dist/test-oidc-token-verifier.mjs",
-    "test": "npm run test:config && npm run test:sqlite && npm run test:api && npm run test:oidc"
+    "test:delivery": "../extension/node_modules/.bin/esbuild src/test-invitation-delivery.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-invitation-delivery.mjs && node dist/test-invitation-delivery.mjs",
+    "test": "npm run test:config && npm run test:sqlite && npm run test:api && npm run test:oidc && npm run test:delivery"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

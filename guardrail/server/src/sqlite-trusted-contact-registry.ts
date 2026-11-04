@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import {
@@ -15,13 +16,20 @@ import {
   TrustedContactInvitation,
   TrustedContactRegistry,
   TrustedContactStatus,
-  generateInvitationCode,
   validateInvitationCode,
   validateRelationshipLabel,
 } from '../../extension/src/approval/authorization.js';
 import { generateActionId, generateTimestamp } from '../../extension/src/utils/metadata.js';
 
 type JsonRow = { payload_json: string };
+
+function hashInvitationToken(token: string): string {
+  return `sha256:${createHash('sha256').update(token).digest('hex')}`;
+}
+
+function retiredInvitationTokenHash(): string {
+  return hashInvitationToken(`retired:${randomBytes(32).toString('base64url')}`);
+}
 
 function parseInvitation(json: string): TrustedContactInvitation {
   let value: unknown;
@@ -32,7 +40,7 @@ function parseInvitation(json: string): TrustedContactInvitation {
     typeof invitation.id !== 'string' || !invitation.id.startsWith('inv_') ||
     typeof invitation.userId !== 'string' || !invitation.userId.trim() ||
     typeof invitation.recipientActorId !== 'string' || !invitation.recipientActorId.trim() ||
-    !validateInvitationCode(invitation.code).valid ||
+    (invitation.code !== undefined && !validateInvitationCode(invitation.code).valid) ||
     !Object.values(InvitationStatus).includes(invitation.status) ||
     !Number.isFinite(Date.parse(invitation.createdAt)) ||
     !Number.isFinite(Date.parse(invitation.expiresAt)) ||
@@ -40,7 +48,11 @@ function parseInvitation(json: string): TrustedContactInvitation {
     (invitation.relationshipLabel !== undefined && !validateRelationshipLabel(invitation.relationshipLabel).valid) ||
     (invitation.acceptedAt !== undefined && !Number.isFinite(Date.parse(invitation.acceptedAt))) ||
     (invitation.revokedAt !== undefined && !Number.isFinite(Date.parse(invitation.revokedAt))) ||
-    (invitation.expiredAt !== undefined && !Number.isFinite(Date.parse(invitation.expiredAt)))
+    (invitation.expiredAt !== undefined && !Number.isFinite(Date.parse(invitation.expiredAt))) ||
+    (invitation.deliveryStatus !== undefined && !['NOT_CONFIGURED', 'SUBMITTING', 'SUBMITTED', 'FAILED'].includes(invitation.deliveryStatus)) ||
+    (invitation.deliveryAttemptedAt !== undefined && !Number.isFinite(Date.parse(invitation.deliveryAttemptedAt))) ||
+    (invitation.deliverySubmittedAt !== undefined && !Number.isFinite(Date.parse(invitation.deliverySubmittedAt))) ||
+    (invitation.deliveryFailureCode !== undefined && !['RECIPIENT_EMAIL_UNAVAILABLE', 'PROVIDER_REJECTED', 'PROVIDER_UNAVAILABLE'].includes(invitation.deliveryFailureCode))
   ) throw new Error('Stored invitation record is invalid.');
   return Object.freeze(invitation);
 }
@@ -74,17 +86,18 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       database.pragma('foreign_keys = ON');
       database.pragma('journal_mode = WAL');
       database.pragma('synchronous = FULL');
+      database.pragma('secure_delete = ON');
       database.exec(`
         CREATE TABLE IF NOT EXISTS trusted_contact_invitations (
           id TEXT PRIMARY KEY NOT NULL,
           user_id TEXT NOT NULL,
           code TEXT NOT NULL UNIQUE,
-      recipient_actor_id TEXT,
+          recipient_actor_id TEXT,
           status TEXT NOT NULL CHECK(status IN ('PENDING','ACCEPTED','EXPIRED','REVOKED')),
-      created_at TEXT,
-      accepted_at TEXT,
-      revoked_at TEXT,
-      expired_at TEXT,
+          created_at TEXT,
+          accepted_at TEXT,
+          revoked_at TEXT,
+          expired_at TEXT,
           expires_at TEXT NOT NULL,
           payload_json TEXT NOT NULL CHECK(json_valid(payload_json))
         );
@@ -116,9 +129,9 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       ensureColumn('trusted_contact_invitations', 'expired_at', 'TEXT');
       ensureColumn('trusted_contacts', 'created_at', 'TEXT');
       ensureColumn('trusted_contacts', 'revoked_at', 'TEXT');
-      const legacyInvitations = database.prepare('SELECT id,payload_json FROM trusted_contact_invitations WHERE recipient_actor_id IS NULL').all() as { id: string; payload_json: string }[];
+      const legacyInvitations = database.prepare('SELECT id,code,recipient_actor_id,payload_json FROM trusted_contact_invitations').all() as { id: string; code: string; recipient_actor_id: string | null; payload_json: string }[];
       const migrateLegacy = database.prepare(`UPDATE trusted_contact_invitations
-        SET recipient_actor_id=?,status=?,revoked_at=?,expired_at=?,payload_json=? WHERE id=? AND recipient_actor_id IS NULL`);
+        SET code=?,recipient_actor_id=?,status=?,revoked_at=?,expired_at=?,payload_json=? WHERE id=?`);
       const migrationNow = generateTimestamp();
       for (const row of legacyInvitations) {
         let legacy: Record<string, unknown>;
@@ -130,22 +143,47 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
           throw new Error('Legacy invitation record is invalid.');
         }
         const accepted = legacy.status === InvitationStatus.ACCEPTED && typeof legacy.acceptedByContactId === 'string';
-        const recipientActorId = accepted ? legacy.acceptedByContactId as string : 'unassigned';
+        const needsRecipientMigration = row.recipient_actor_id === null;
+        const recipientActorId = needsRecipientMigration
+          ? (accepted ? legacy.acceptedByContactId as string : 'unassigned')
+          : row.recipient_actor_id!;
         const legacyExpired = legacy.status === InvitationStatus.EXPIRED;
         const legacyRevoked = legacy.status === InvitationStatus.REVOKED;
-        const status = accepted ? InvitationStatus.ACCEPTED : legacyExpired ? InvitationStatus.EXPIRED : InvitationStatus.REVOKED;
-        const revokedAt = accepted || legacyExpired ? undefined : typeof legacy.revokedAt === 'string' ? legacy.revokedAt : migrationNow;
+        const status = needsRecipientMigration
+          ? (accepted ? InvitationStatus.ACCEPTED : legacyExpired ? InvitationStatus.EXPIRED : InvitationStatus.REVOKED)
+          : legacy.status as InvitationStatus;
+        const revokedAt = accepted || legacyExpired ? undefined : typeof legacy.revokedAt === 'string' ? legacy.revokedAt : needsRecipientMigration ? migrationNow : undefined;
         const expiredAt = legacyExpired ? (typeof legacy.expiredAt === 'string' ? legacy.expiredAt : legacy.expiresAt as string) : undefined;
+        const hashedCode = status === InvitationStatus.PENDING
+          ? (/^sha256:[a-f0-9]{64}$/.test(row.code) ? row.code : hashInvitationToken(row.code))
+          : retiredInvitationTokenHash();
         const migrated = { ...legacy, recipientActorId, status,
+          deliveryStatus: (legacy.deliveryStatus as TrustedContactInvitation['deliveryStatus']) ?? 'NOT_CONFIGURED',
           ...(revokedAt ? { revokedAt } : {}), ...(expiredAt ? { expiredAt } : {}),
-          ...(legacyRevoked && !revokedAt ? { revokedAt: migrationNow } : {}) };
-        migrateLegacy.run(recipientActorId, status, revokedAt ?? null, expiredAt ?? null, JSON.stringify(migrated), row.id);
+          ...(legacyRevoked && !revokedAt ? { revokedAt: migrationNow } : {}) } as Record<string, unknown>;
+        delete migrated.code;
+        migrateLegacy.run(hashedCode, recipientActorId, status, revokedAt ?? null, expiredAt ?? null, JSON.stringify(migrated), row.id);
+      }
+      const pendingRows = database.prepare("SELECT id,user_id,recipient_actor_id,payload_json FROM trusted_contact_invitations WHERE status='PENDING' ORDER BY rowid")
+        .all() as { id: string; user_id: string; recipient_actor_id: string; payload_json: string }[];
+      const firstPendingByRecipient = new Set<string>();
+      const revokeDuplicate = database.prepare("UPDATE trusted_contact_invitations SET status='REVOKED',revoked_at=?,payload_json=? WHERE id=? AND status='PENDING'");
+      for (const row of pendingRows) {
+        const pair = `${row.user_id}\u0000${row.recipient_actor_id}`;
+        if (!row.recipient_actor_id || !firstPendingByRecipient.has(pair)) {
+          firstPendingByRecipient.add(pair);
+          continue;
+        }
+        const invitation = JSON.parse(row.payload_json) as TrustedContactInvitation;
+        revokeDuplicate.run(migrationNow, JSON.stringify({ ...invitation, status: InvitationStatus.REVOKED, revokedAt: migrationNow }), row.id);
       }
       database.exec(`
         CREATE INDEX IF NOT EXISTS idx_invitation_recipient_status
           ON trusted_contact_invitations(recipient_actor_id, status);
         CREATE UNIQUE INDEX IF NOT EXISTS uq_trusted_contacts_active
           ON trusted_contacts(user_id, id) WHERE status = 'ACTIVE';
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_invitation_recipient
+          ON trusted_contact_invitations(user_id, recipient_actor_id) WHERE status = 'PENDING';
       `);
       });
       migrateTrustedContactSchema.immediate();
@@ -199,27 +237,33 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     if (!Number.isFinite(ttlMs) || ttlMs <= 0 || ttlMs > 30 * 24 * 60 * 60 * 1000) {
       throw new Error('Invitation lifetime must be between 1 millisecond and 30 days.');
     }
-    let code = options?.customCode;
-    if (code !== undefined) {
-      const validated = validateInvitationCode(code);
-      if (!validated.valid) throw new Error(validated.errors[0]);
-      code = validated.normalized;
-    } else {
-      do { code = generateInvitationCode(); }
-      while (this.database.prepare('SELECT 1 FROM trusted_contact_invitations WHERE code = ?').get(code));
+    if (options?.customCode !== undefined) throw new Error('Invitation tokens are generated by the backend.');
+    const existing = this.database.prepare("SELECT id FROM trusted_contact_invitations WHERE user_id=? AND recipient_actor_id=? AND status='PENDING'")
+      .all(userId.trim(), recipientActorId) as { id: string }[];
+    for (const row of existing) {
+      const prior = this.getInvitationById(row.id);
+      if (prior?.status === InvitationStatus.PENDING) return prior;
     }
+    const code = `GRI_${randomBytes(32).toString('base64url')}`;
     const createdAt = generateTimestamp();
     const invitation: TrustedContactInvitation = Object.freeze({
       id: options?.id ?? generateActionId('inv'), code, userId: userId.trim(), wardId: userId.trim(), recipientActorId,
       relationshipLabel: label.normalized, status: InvitationStatus.PENDING, createdAt,
       expiresAt: new Date(Date.parse(createdAt) + ttlMs).toISOString(),
+      deliveryStatus: 'NOT_CONFIGURED',
     });
     try {
       this.database.prepare(`INSERT INTO trusted_contact_invitations
         (id,user_id,code,recipient_actor_id,status,created_at,expires_at,payload_json) VALUES (?,?,?,?,?,?,?,?)`)
-        .run(invitation.id, invitation.userId, code, recipientActorId, invitation.status, invitation.createdAt, invitation.expiresAt, JSON.stringify(invitation));
+        .run(invitation.id, invitation.userId, hashInvitationToken(code), recipientActorId, invitation.status, invitation.createdAt, invitation.expiresAt,
+          JSON.stringify({ ...invitation, code: undefined }));
     } catch (error) {
-      if (String(error).includes('UNIQUE')) throw new DuplicateContactRelationshipError(code, userId);
+      if (String(error).includes('UNIQUE')) {
+        const duplicate = this.database.prepare("SELECT id FROM trusted_contact_invitations WHERE user_id=? AND recipient_actor_id=? AND status='PENDING'")
+          .get(invitation.userId, recipientActorId) as { id: string } | undefined;
+        if (duplicate) return this.getInvitationById(duplicate.id)!;
+        throw new DuplicateContactRelationshipError(invitation.userId, recipientActorId);
+      }
       throw error;
     }
     return invitation;
@@ -229,7 +273,7 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     const normalized = validateInvitationCode(code);
     if (!normalized.valid) return undefined;
     const row = this.database.prepare('SELECT id FROM trusted_contact_invitations WHERE code = ?')
-      .get(normalized.normalized) as { id: string } | undefined;
+      .get(hashInvitationToken(normalized.normalized)) as { id: string } | undefined;
     return row ? this.getInvitationById(row.id) : undefined;
   }
 
@@ -240,8 +284,8 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     const invitation = parseInvitation(row.payload_json);
     if (invitation.status === InvitationStatus.PENDING && Date.now() >= Date.parse(invitation.expiresAt)) {
       const expired = Object.freeze({ ...invitation, status: InvitationStatus.EXPIRED, expiredAt: invitation.expiresAt });
-      const changed = this.database.prepare("UPDATE trusted_contact_invitations SET status='EXPIRED',expired_at=?,payload_json=? WHERE id=? AND status='PENDING' AND expires_at <= ?")
-        .run(expired.expiredAt, JSON.stringify(expired), id, new Date().toISOString());
+      const changed = this.database.prepare("UPDATE trusted_contact_invitations SET code=?,status='EXPIRED',expired_at=?,payload_json=? WHERE id=? AND status='PENDING' AND expires_at <= ?")
+        .run(retiredInvitationTokenHash(), expired.expiredAt, JSON.stringify(expired), id, new Date().toISOString());
       // Another connection may have accepted or revoked it while the expiry check ran.
       if (Number(changed.changes) !== 1) {
         row = this.database.prepare('SELECT payload_json FROM trusted_contact_invitations WHERE id = ?')
@@ -275,8 +319,8 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       const updated: TrustedContactInvitation = Object.freeze({ ...invitation, status: InvitationStatus.ACCEPTED, acceptedByContactId: contactId, acceptedAt });
       const contact: TrustedContact = Object.freeze({ id: contactId, contactId, userId: invitation.userId, wardId: invitation.userId,
         relationshipLabel: invitation.relationshipLabel, status: TrustedContactStatus.ACTIVE, createdAt: acceptedAt });
-      const result = this.database.prepare("UPDATE trusted_contact_invitations SET status='ACCEPTED',accepted_at=?,payload_json=? WHERE id=? AND status='PENDING' AND recipient_actor_id=?")
-        .run(acceptedAt, JSON.stringify(updated), invitation.id, contactId);
+      const result = this.database.prepare("UPDATE trusted_contact_invitations SET code=?,status='ACCEPTED',accepted_at=?,payload_json=? WHERE id=? AND status='PENDING' AND recipient_actor_id=?")
+        .run(retiredInvitationTokenHash(), acceptedAt, JSON.stringify(updated), invitation.id, contactId);
       if (Number(result.changes) !== 1) throw new InvitationAlreadyAcceptedError(invitation.id);
       this.database.prepare('INSERT INTO trusted_contacts(id,user_id,status,created_at,payload_json) VALUES (?,?,?,?,?)')
         .run(contact.id, contact.userId, contact.status, contact.createdAt, JSON.stringify(contact));
@@ -291,8 +335,8 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     if (invitation.status === InvitationStatus.ACCEPTED) throw new Error('Cannot revoke an invitation that has already been accepted.');
     if (invitation.status === InvitationStatus.REVOKED || invitation.status === InvitationStatus.EXPIRED) return invitation;
     const revoked = Object.freeze({ ...invitation, status: InvitationStatus.REVOKED, revokedAt: generateTimestamp() });
-    const result = this.database.prepare("UPDATE trusted_contact_invitations SET status='REVOKED',revoked_at=?,payload_json=? WHERE id=? AND user_id=? AND status='PENDING'")
-      .run(revoked.revokedAt, JSON.stringify(revoked), invitationId, userId);
+    const result = this.database.prepare("UPDATE trusted_contact_invitations SET code=?,status='REVOKED',revoked_at=?,payload_json=? WHERE id=? AND user_id=? AND status='PENDING'")
+      .run(retiredInvitationTokenHash(), revoked.revokedAt, JSON.stringify(revoked), invitationId, userId);
     if (Number(result.changes) !== 1) throw new InvitationNotFoundError(invitationId);
     return revoked;
   }

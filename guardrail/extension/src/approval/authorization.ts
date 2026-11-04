@@ -145,7 +145,8 @@ export interface TrustedContactInvitation {
   readonly id: string;
 
   /** Out-of-band pairing code (e.g., 'GR-INV-A1B2-C3D4') */
-  readonly code: string;
+  /** Secret is returned only on initial creation; persistent reads omit it. */
+  readonly code?: string;
 
   /** The issuing protected user / ward ('usr_...') */
   readonly userId: string;
@@ -176,6 +177,12 @@ export interface TrustedContactInvitation {
 
   /** ISO 8601 UTC time when an invitation expired, if expired. */
   readonly expiredAt?: string;
+
+  /** Provider submission state; SUBMITTED means accepted by the provider, not inbox delivery. */
+  readonly deliveryStatus?: 'NOT_CONFIGURED' | 'SUBMITTING' | 'SUBMITTED' | 'FAILED';
+  readonly deliveryAttemptedAt?: string;
+  readonly deliverySubmittedAt?: string;
+  readonly deliveryFailureCode?: 'RECIPIENT_EMAIL_UNAVAILABLE' | 'PROVIDER_REJECTED' | 'PROVIDER_UNAVAILABLE';
 
   /** ISO 8601 UTC revocation timestamp, if revoked */
   readonly revokedAt?: string;
@@ -227,10 +234,13 @@ export function validateInvitationCode(
     return { valid: false, errors: Object.freeze(errors) };
   }
 
-  const normalized = code.trim().toUpperCase();
+  const trimmed = code.trim();
+  const isSecureToken = /^GRI_[A-Za-z0-9_-]{43}$/.test(trimmed);
+  const normalized = isSecureToken ? trimmed : trimmed.toUpperCase();
   // Accepts standard GR-INV-XXXX-YYYY, or testing token forms (INV-...)
   if (
     !/^GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalized) &&
+    !/^GRI_[A-Za-z0-9_-]{43}$/.test(normalized) &&
     !/^INV-[A-Z0-9_-]{4,32}$/.test(normalized)
   ) {
     errors.push(

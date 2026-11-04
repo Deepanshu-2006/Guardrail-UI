@@ -107,10 +107,12 @@ try {
   });
   assert.equal(unauthenticatedRequest.status, 401, 'approval API rejects unauthenticated requests');
 
-  const inviteResult = await ward.createInvitation({ recipientActorId: contactId, relationshipLabel: 'Synthetic reviewer', customCode: 'GR-INV-ABCD-EFGH' });
+  const inviteResult = await ward.createInvitation({ recipientActorId: contactId, relationshipLabel: 'Synthetic reviewer' });
   assert.equal(inviteResult.success, true);
   if (!inviteResult.success) throw new Error(inviteResult.error.message);
   assert.equal(inviteResult.data.status, 'PENDING');
+  assert.equal(inviteResult.data.deliveryStatus, 'NOT_CONFIGURED', 'missing Resend configuration is reported accurately');
+  assert.match(inviteResult.data.code ?? '', /^GRI_[A-Za-z0-9_-]{43}$/);
   assert.equal(inviteResult.data.recipientActorId, contactId);
   assert.notEqual(contactId, otherContactId);
   assert.equal((await ward.createInvitation({ recipientActorId: outsiderId })).success, false,
@@ -126,10 +128,11 @@ try {
   assert.equal((await outsiderBeforeRestart.acceptInvitation(inviteResult.data.code)).success, false, 'unrelated user cannot accept an invitation');
 
   const accepted = await contact.acceptInvitation(inviteResult.data.code);
-  assert.equal(accepted.success, true);
   if (!accepted.success) throw new Error(accepted.error.message);
   assert.equal(accepted.data.contact.status, 'ACTIVE');
   assert.equal(accepted.data.invitation.recipientActorId, contactId);
+  assert.equal((await contact.acceptInvitation(inviteResult.data.code!)).success, false,
+    'accepted invitation token is retired and cannot be reused');
   await server.close();
   server = undefined;
 
@@ -193,7 +196,7 @@ try {
   if (!rejection.success) throw new Error(rejection.error.message);
   assert.equal(rejection.data.status, ApprovalStatus.REJECTED);
 
-  const expiring = await wardAfterRestart.createInvitation({ recipientActorId: otherContactId, customCode: 'GR-INV-IJKL-MNOP', ttlMs: 1 });
+  const expiring = await wardAfterRestart.createInvitation({ recipientActorId: otherContactId, ttlMs: 1 });
   assert.equal(expiring.success, true);
   if (!expiring.success) throw new Error(expiring.error.message);
   await new Promise((resolve) => setTimeout(resolve, 5));
@@ -207,7 +210,7 @@ try {
   const otherContactAfterRestart = api(server.address.port, 'synthetic-other-contact-token');
   const expiredAccept = await otherContactAfterRestart.acceptInvitation(expiring.data.code);
   assert.equal(expiredAccept.success, false, 'expired invitation cannot be accepted');
-  const revoked = await wardAfterRestart.createInvitation({ recipientActorId: otherContactId, customCode: 'GR-INV-QRST-UVWX' });
+  const revoked = await wardAfterRestart.createInvitation({ recipientActorId: otherContactId });
   assert.equal(revoked.success, true);
   if (!revoked.success) throw new Error(revoked.error.message);
   const revokedResult = await wardAfterRestart.revokeInvitation(revoked.data.id);

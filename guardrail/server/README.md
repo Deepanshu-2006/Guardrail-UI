@@ -4,7 +4,7 @@
 
 The backend uses SQLite through `better-sqlite3`, isolated from extension and dashboard bundles. Approval requests, action bindings, invitations, and trusted-contact relationships persist in the configured SQLite file. Approval transitions and invitation acceptance use SQLite transactions/conditional updates. This is durable storage for a single backend instance, not a horizontally scaled production database.
 
-The database stores validated approval, binding, invitation, and relationship records. It does not store passwords, OTPs, payment-card values, cookies, bearer tokens, or raw form values. The database file is created with owner-only permissions where supported. Invitation codes are secret pairing material: creation returns the code to the authenticated issuer for manual sharing, and each invitation is bound to the intended active trusted-contact identity ID. Possession of the code alone cannot authorize another identity. No email or SMS delivery provider is configured. Invitation expiry, acceptance, revocation, and relationship revocation timestamps are retained for lifecycle auditing.
+The database stores validated approval, binding, invitation, and relationship records. It does not store passwords, OTPs, payment-card values, cookies, bearer tokens, raw form values, or plaintext invitation tokens. The SQLite file is created with owner-only permissions where supported. High-entropy invitation tokens are returned only in the creation response and stored as SHA-256 hashes; the hash is retired on acceptance, expiry, or revocation. Each invitation is bound to the intended active trusted-contact identity. Where the identity provider supplies issuer-signed `email` with `email_verified: true`, that verified address is retained for invitation delivery. Invitation lifecycle timestamps are retained for auditing.
 
 ## Run the persistence tests
 
@@ -23,6 +23,7 @@ npm run build
 - `test:sqlite` uses temporary, file-backed SQLite databases to verify persistence and transactional behavior. This is a real SQLite integration test.
 - `test:api` starts the Node HTTP API on a local TCP port and exercises it through the existing `ApprovalApiClient` using a temporary SQLite database. It verifies invitation ownership, acceptance, expiration, revocation, restart durability, pending review retrieval, approve/reject, and persisted status. The token verifier in this test is synthetic and in-memory; it does not verify a live identity provider.
 - `test:oidc` verifies JWT signatures and claims with locally generated RSA keys, a local JWKS resolver, and in-memory SQLite. It does not connect to a live identity provider.
+- `test:delivery` uses a temporary SQLite file and mocked Resend HTTP responses to test verified-recipient addressing, provider submission and failure, token hashing, expiry, and duplicate suppression. It does not send email.
 
 ## Use the adapter
 
@@ -53,6 +54,9 @@ The server reads environment variables directly; it does not load a `.env` file.
 | `GUARDRAIL_OIDC_AUDIENCE` | Required API audience identifier. | Required; exact audience expected in API access tokens. |
 | `GUARDRAIL_OIDC_JWKS_URL` | Required HTTPS public-key endpoint on issuer origin. | Required; provider's public signing keys endpoint. Private signing keys remain with the provider. |
 | `GUARDRAIL_OIDC_ROLE_CLAIM` | Required name of the issuer-signed role claim. | Required; provider must issue exactly one of `USER`, `TRUSTED_CONTACT`, or `ADMIN`. Configure role assignment at the identity provider. |
+| `RESEND_API_KEY` | Optional; if omitted, invitation delivery is disabled. | Resend API key, backend only. |
+| `GUARDRAIL_EMAIL_FROM` | Required with Resend key and dashboard URL; verified sender address. | Sender address verified with Resend. |
+| `GUARDRAIL_DASHBOARD_URL` | Required with Resend key and sender; credential-free HTTPS dashboard URL. | Trusted-contact dashboard URL; invitation code is sent separately in the email body and is never embedded in a URL. |
 
 Example pilot environment (replace the sample origins and filesystem path with values for the controlled test environment):
 
@@ -66,12 +70,16 @@ export GUARDRAIL_OIDC_ISSUER='https://<tenant>.auth0.com/'
 export GUARDRAIL_OIDC_AUDIENCE='https://api.example.test/guardrail'
 export GUARDRAIL_OIDC_JWKS_URL='https://<tenant>.auth0.com/.well-known/jwks.json'
 export GUARDRAIL_OIDC_ROLE_CLAIM='https://guardrail.example/role'
+# Optional email delivery; configure all three together after verifying the sender and dashboard.
+export RESEND_API_KEY='re_...'
+export GUARDRAIL_EMAIL_FROM='invites@example.test'
+export GUARDRAIL_DASHBOARD_URL='https://dashboard.example.test/'
 npm ci
 npm run build
 npm start
 ```
 
-`npm start` runs `dist/serve.mjs`. It validates server and OIDC settings, opens the SQLite identity mapping store, and constructs the OIDC verifier before opening the API listener. Startup fails closed if configuration or storage is unavailable. This is an Auth0-compatible OIDC/JWKS verifier, not a configured Auth0 tenant: no tenant, client registration, frontend login flow, provider-side role mapping, or deployment is included. The extension/dashboard must obtain access tokens from a separately configured identity-provider client and send them as bearer tokens. Provider secrets must not be put in frontend bundles.
+`npm start` runs `dist/serve.mjs`. It validates server, OIDC, and paired optional email settings, opens the SQLite identity mapping store, and constructs the OIDC verifier before opening the API listener. Startup fails closed if required configuration or storage is unavailable. This is an Auth0-compatible OIDC/JWKS verifier, not a configured Auth0 tenant: no tenant, client registration, frontend login flow, provider-side role mapping, or deployment is included. The extension/dashboard must obtain access tokens from a separately configured identity-provider client and send them as bearer tokens. Provider secrets must not be put in frontend bundles.
 
 ### Health and readiness
 
@@ -90,7 +98,8 @@ Opening the approval repository applies its versioned schema migration transacti
 - The extension API client already supports the API contract when given a server URL and authenticated token provider. The dashboard `DashboardShell` also accepts that client, but its standalone mount does not provide authentication/session setup; a host application must inject the authenticated client. Invitation acceptance creates a relationship, not a login session.
 - Action ownership data remains runtime-specific unless the host supplies its own `ActionOwnershipRegistry`; it is not part of this persistence adapter.
 - SQLite is intended for a single backend instance. Multi-instance deployment requires a shared transactional database adapter and database-level concurrency guarantees.
-- Invitations are manually shared out-of-band. No notification provider is configured and the system does not claim delivery.
+- Resend is integrated through a backend-only HTTP adapter using Node's built-in `fetch`; no additional package is required. No Resend credentials or verified sender are configured in this repository, so the current standalone server reports `NOT_CONFIGURED` until the three email settings are supplied. Tests use mocked provider responses and do not send mail.
 - Invitation creation requires the recipient's existing internal actor ID; the backend verifies that it maps to an active `TRUSTED_CONTACT` identity. The recipient identity must be communicated to the issuer out-of-band before creating an invitation. Verified email matching is not implemented and email addresses are not used as proof of identity.
+- Delivery status `SUBMITTED` means Resend accepted the request; it does not prove inbox delivery. Provider/network failures remain `FAILED`; no invitation is described as delivered. The email contains only generic setup instructions, the invitation code, expiry, and the configured dashboard URL. The email URL contains no token, and the current client submits the code in the acceptance POST body rather than the request path.
 - Authenticated `GET /api/v1/identity` returns only the caller's verified internal actor ID and role, so a trusted contact can share the correct ID without decoding client-side token claims. No profile or email attributes are returned.
 - Database files, WAL files, build output, and `.env` files are ignored by Git. No database credentials are compiled into frontend bundles; SQLite itself uses a filesystem path, not a database credential.
