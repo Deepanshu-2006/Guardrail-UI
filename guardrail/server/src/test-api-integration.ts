@@ -50,6 +50,10 @@ try {
   const malformedBody = await malformedRequest.text();
   assert.equal(malformedBody.includes(' at '), false, 'client error response does not expose a stack trace');
   assert.equal(malformedBody.includes('synthetic-ward-token'), false, 'client error response does not echo credentials');
+  const unauthenticatedRequest = await fetch(`http://127.0.0.1:${server.address.port}/api/v1/invitations`, {
+    method: 'GET',
+  });
+  assert.equal(unauthenticatedRequest.status, 401, 'approval API rejects unauthenticated requests');
 
   const inviteResult = await ward.createInvitation({ relationshipLabel: 'Synthetic reviewer', customCode: 'GR-INV-ABCD-EFGH' });
   assert.equal(inviteResult.success, true);

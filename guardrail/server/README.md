@@ -18,14 +18,15 @@ npm run type-check
 npm run build
 ```
 
-`npm test` runs two different checks:
+`npm test` runs the following checks:
 
 - `test:sqlite` uses temporary, file-backed SQLite databases to verify persistence and transactional behavior. This is a real SQLite integration test.
 - `test:api` starts the Node HTTP API on a local TCP port and exercises it through the existing `ApprovalApiClient` using a temporary SQLite database. It verifies invitation ownership, acceptance, expiration, revocation, restart durability, pending review retrieval, approve/reject, and persisted status. The token verifier in this test is synthetic and in-memory; it does not verify a live identity provider.
+- `test:oidc` verifies JWT signatures and claims with locally generated RSA keys, a local JWKS resolver, and in-memory SQLite. It does not connect to a live identity provider.
 
 ## Use the adapter
 
-`startGuardrailHttpServer()` composes `ApprovalApiRouter`, the existing API routes, and SQLite persistence. It requires an injected `TokenVerifier`; it has no default or fake identity implementation. The database location is selected with `GUARDRAIL_DB_PATH`; the default is `data/guardrail.sqlite` relative to the server process working directory. Call the returned `close()` during shutdown. Initialization fails closed if the database cannot be opened. The default bind address is loopback (`127.0.0.1`); configure an HTTPS reverse proxy before remote use.
+`startGuardrailHttpServer()` composes `ApprovalApiRouter`, the existing API routes, and SQLite persistence. It requires an injected `TokenVerifier`; tests may inject a synthetic verifier, while the standalone server uses the backend OIDC verifier. The database location is selected with `GUARDRAIL_DB_PATH`; the default is `data/guardrail.sqlite` relative to the server process working directory. Call the returned `close()` during shutdown. Initialization fails closed if the database cannot be opened. The default bind address is loopback (`127.0.0.1`); configure an HTTPS reverse proxy before remote use.
 
 ```ts
 import { startGuardrailHttpServer } from './dist/index.mjs';
@@ -48,7 +49,10 @@ The server reads environment variables directly; it does not load a `.env` file.
 | `GUARDRAIL_ALLOWED_ORIGINS` | If omitted, the existing exact local development allowlist is used. | Required comma-separated exact origins. Wildcards, paths, credentials, duplicate entries, and non-HTTPS remote web origins are rejected. Include the actual installed extension origin and dashboard origin only. |
 | `GUARDRAIL_HOST` | Defaults to `127.0.0.1`. | Defaults to `127.0.0.1`; set an explicit bind address only when the test environment's network topology requires it. Terminate TLS at a configured trusted proxy before remote browser use. |
 | `GUARDRAIL_PORT` | Defaults to `3000`; `0` is allowed for tests. | Defaults to `3000`; must be a valid nonzero TCP port. |
-| `GUARDRAIL_AUTH_MODULE` | Not needed when embedding `startGuardrailHttpServer()` with a test verifier. | Required by the standalone `npm start` entrypoint. It must be an absolute path to a host-owned module exporting a real `tokenVerifier` that implements `TokenVerifier`. There is no bundled or default verifier. |
+| `GUARDRAIL_OIDC_ISSUER` | Required by standalone server; exact HTTPS token issuer. | Required; exact issuer configured for the provider's access tokens. |
+| `GUARDRAIL_OIDC_AUDIENCE` | Required API audience identifier. | Required; exact audience expected in API access tokens. |
+| `GUARDRAIL_OIDC_JWKS_URL` | Required HTTPS public-key endpoint on issuer origin. | Required; provider's public signing keys endpoint. Private signing keys remain with the provider. |
+| `GUARDRAIL_OIDC_ROLE_CLAIM` | Required name of the issuer-signed role claim. | Required; provider must issue exactly one of `USER`, `TRUSTED_CONTACT`, or `ADMIN`. Configure role assignment at the identity provider. |
 
 Example pilot environment (replace the sample origins and filesystem path with values for the controlled test environment):
 
@@ -58,13 +62,16 @@ export GUARDRAIL_DB_PATH=/var/lib/guardrail/pilot.sqlite
 export GUARDRAIL_ALLOWED_ORIGINS='chrome-extension://<installed-extension-id>,https://dashboard.example.test'
 export GUARDRAIL_HOST=127.0.0.1
 export GUARDRAIL_PORT=3000
-export GUARDRAIL_AUTH_MODULE=/opt/guardrail/auth-adapter.mjs
+export GUARDRAIL_OIDC_ISSUER='https://<tenant>.auth0.com/'
+export GUARDRAIL_OIDC_AUDIENCE='https://api.example.test/guardrail'
+export GUARDRAIL_OIDC_JWKS_URL='https://<tenant>.auth0.com/.well-known/jwks.json'
+export GUARDRAIL_OIDC_ROLE_CLAIM='https://guardrail.example/role'
 npm ci
 npm run build
 npm start
 ```
 
-`npm start` runs `dist/serve.mjs`. It dynamically loads the host authentication adapter, validates configuration before opening the API listener, and exits with a startup error if required configuration or the verifier is missing. This prepares a runnable server package but does not configure a real identity provider, TLS proxy, host, or deployment.
+`npm start` runs `dist/serve.mjs`. It validates server and OIDC settings, opens the SQLite identity mapping store, and constructs the OIDC verifier before opening the API listener. Startup fails closed if configuration or storage is unavailable. This is an Auth0-compatible OIDC/JWKS verifier, not a configured Auth0 tenant: no tenant, client registration, frontend login flow, provider-side role mapping, or deployment is included. The extension/dashboard must obtain access tokens from a separately configured identity-provider client and send them as bearer tokens. Provider secrets must not be put in frontend bundles.
 
 ### Health and readiness
 
@@ -79,7 +86,7 @@ Opening the approval repository applies its versioned schema migration transacti
 ## Current boundaries
 
 - SQLite persists approval requests, action bindings, invitations, and trusted-contact relationships. User identity records, token/session records, and distributed rate limits are not implemented here.
-- No production token verifier or configured deployment is included. The HTTP server requires dependency injection and does not create identities. Do not expose it to pilot users until a real verifier is connected and deployment protections are configured.
+- The standalone server verifies issuer-signed RS256 tokens using remote JWKS and checks issuer, audience, expiry, subject, and a signed role claim. It maps `(issuer, subject)` to stable internal SQLite user records. A live provider is not configured: no tenant, client registration, login/session flow, role assignment, revocation feed, TLS proxy, or deployed backend exists. Locally recorded JTI revocations and disabled identity records are enforced; provider revocation is not automatically synchronized.
 - The extension API client already supports the API contract when given a server URL and authenticated token provider. The dashboard `DashboardShell` also accepts that client, but its standalone mount does not provide authentication/session setup; a host application must inject the authenticated client. Invitation acceptance creates a relationship, not a login session.
 - Action ownership data remains runtime-specific unless the host supplies its own `ActionOwnershipRegistry`; it is not part of this persistence adapter.
 - SQLite is intended for a single backend instance. Multi-instance deployment requires a shared transactional database adapter and database-level concurrency guarantees.
