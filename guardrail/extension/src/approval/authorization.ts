@@ -132,6 +132,9 @@ export interface TrustedContact {
 
   /** ISO 8601 UTC creation timestamp */
   readonly createdAt: string;
+
+  /** ISO 8601 UTC time when this relationship was revoked, if revoked. */
+  readonly revokedAt?: string;
 }
 
 /**
@@ -146,6 +149,9 @@ export interface TrustedContactInvitation {
 
   /** The issuing protected user / ward ('usr_...') */
   readonly userId: string;
+
+  /** Verified internal identity that alone may accept this invitation. */
+  readonly recipientActorId: string;
 
   /** Canonical alias for userId representing the ward */
   readonly wardId?: string;
@@ -168,6 +174,9 @@ export interface TrustedContactInvitation {
   /** ISO 8601 UTC acceptance timestamp, if resolved */
   readonly acceptedAt?: string;
 
+  /** ISO 8601 UTC time when an invitation expired, if expired. */
+  readonly expiredAt?: string;
+
   /** ISO 8601 UTC revocation timestamp, if revoked */
   readonly revokedAt?: string;
 }
@@ -176,6 +185,8 @@ export interface TrustedContactInvitation {
  * Options for generating a new trusted contact invitation.
  */
 export interface CreateInvitationOptions {
+  /** Existing verified trusted-contact actor ID; required by the persistent API. */
+  readonly recipientActorId: string;
   /** Optional human-readable relationship label (e.g., 'Guardian', 'Spouse', 'IT Supervisor') */
   readonly relationshipLabel?: string;
 
@@ -397,6 +408,8 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
     }
 
     const trimmedUserId = userId.trim();
+    const recipientActorId = options?.recipientActorId?.trim();
+    if (!recipientActorId) throw new Error('A designated trusted-contact recipient is required.');
 
     // Validate relationship label if specified
     const labelValidation = validateRelationshipLabel(options?.relationshipLabel);
@@ -434,6 +447,7 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       id,
       code,
       userId: trimmedUserId,
+      recipientActorId,
       wardId: trimmedUserId,
       relationshipLabel: labelValidation.normalized,
       status: InvitationStatus.PENDING,
@@ -480,6 +494,7 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       const expired = Object.freeze({
         ...existing,
         status: InvitationStatus.EXPIRED,
+        expiredAt: existing.expiresAt,
       });
       this.invitations.set(id, expired);
       return expired;
@@ -537,6 +552,10 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
     // Check duplicate acceptance
     if (invitation.status === InvitationStatus.ACCEPTED) {
       throw new InvitationAlreadyAcceptedError(invitation.id);
+    }
+
+    if (!invitation.recipientActorId || invitation.recipientActorId !== trimmedContactId) {
+      throw new ApprovalAccessDeniedError();
     }
 
     // Separation of duties: Self-invitation is prohibited
@@ -606,6 +625,7 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
     const revoked = Object.freeze({
       ...contact,
       status: TrustedContactStatus.REVOKED,
+      revokedAt: generateTimestamp(),
     });
     this.contacts.set(contactId, revoked);
     return true;
@@ -1043,6 +1063,7 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): readonly ApprovalRequest[] {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.TRUSTED_CONTACT);
 
     const all = this.lifecycleManager.getAllRequests();
     return Object.freeze(
@@ -1080,6 +1101,9 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): ApprovalRequest {
     this.assertAuthenticated(authContext);
+    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
 
     // Retrieve request (opaque error if not found)
     const request = this.lifecycleManager.getRequest(requestId);
@@ -1164,6 +1188,7 @@ export class ApprovalAuthorizationService {
     options?: CreateInvitationOptions
   ): TrustedContactInvitation {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.USER);
     return this.contactRegistry.createInvitation(authContext.actorId, options);
   }
 
@@ -1174,6 +1199,7 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): readonly TrustedContactInvitation[] {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.USER);
     return this.contactRegistry.listInvitationsForUser(authContext.actorId);
   }
 
@@ -1196,10 +1222,10 @@ export class ApprovalAuthorizationService {
     }
 
     const isOwner = invitation.userId === authContext.actorId;
-    const isPending = invitation.status === InvitationStatus.PENDING;
+    const isRecipient = invitation.recipientActorId === authContext.actorId;
     const isAdmin = authContext.role === ActorRole.ADMIN;
 
-    if (!isOwner && !isPending && !isAdmin) {
+    if (!isOwner && !isRecipient && !isAdmin) {
       throw new ApprovalAccessDeniedError();
     }
 
@@ -1214,6 +1240,7 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.TRUSTED_CONTACT);
     return this.contactRegistry.acceptInvitation(code, authContext.actorId);
   }
 
@@ -1225,6 +1252,7 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): TrustedContactInvitation {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.USER);
     return this.contactRegistry.revokeInvitation(invitationId, authContext.actorId);
   }
 
@@ -1235,6 +1263,7 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): readonly TrustedContact[] {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.USER);
     return this.contactRegistry.getTrustedContactsForUser(authContext.actorId);
   }
 
@@ -1246,6 +1275,7 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): boolean {
     this.assertAuthenticated(authContext);
+    this.assertRole(authContext, ActorRole.USER);
     return this.contactRegistry.revokeTrustedContact(contactId, authContext.actorId);
   }
 
@@ -1260,6 +1290,12 @@ export class ApprovalAuthorizationService {
       !authContext.actorId.trim()
     ) {
       throw new UnauthenticatedError();
+    }
+  }
+
+  private assertRole(authContext: AuthContext, role: ActorRole): void {
+    if (authContext.role !== role) {
+      throw new ApprovalAccessDeniedError();
     }
   }
 }

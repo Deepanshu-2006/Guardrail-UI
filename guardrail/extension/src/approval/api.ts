@@ -427,6 +427,15 @@ export class ApprovalApiRouter {
         return await this.handleCreateInvitation(request, headers);
       }
 
+      if (method === 'GET' && path === '/api/v1/identity') {
+        const authContext = await this.authenticate(request.headers);
+        return {
+          statusCode: 200,
+          headers,
+          body: { success: true, data: { actorId: authContext.actorId, role: authContext.role } },
+        };
+      }
+
       // Route 10: GET /api/v1/invitations (Ward lists invitations)
       if (method === 'GET' && path === '/api/v1/invitations') {
         return await this.handleListInvitations(request, headers);
@@ -851,6 +860,7 @@ export class ApprovalApiRouter {
 
     const body = (request.body as Record<string, unknown> | undefined) ?? {};
     let relationshipLabel: string | undefined;
+    let recipientActorId: string | undefined;
     let customCode: string | undefined;
     let ttlMs: number | undefined;
 
@@ -861,6 +871,11 @@ export class ApprovalApiRouter {
       }
       relationshipLabel = labelVal.normalized;
     }
+
+    if (typeof body.recipientActorId !== 'string' || !/^usr_[A-Za-z0-9_-]{1,128}$/.test(body.recipientActorId)) {
+      throw new ApprovalValidationError(['Field "recipientActorId" must identify a registered Guardrail user.']);
+    }
+    recipientActorId = body.recipientActorId;
 
     if (body.code !== undefined || body.customCode !== undefined) {
       const candidateCode = (body.code ?? body.customCode) as string;
@@ -880,6 +895,7 @@ export class ApprovalApiRouter {
 
     const invitation = this.service.createInvitation(authContext, {
       relationshipLabel,
+      recipientActorId,
       customCode,
       ttlMs,
     });

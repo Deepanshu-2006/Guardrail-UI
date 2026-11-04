@@ -237,6 +237,11 @@ export interface RequestOptions {
   readonly signal?: AbortSignal;
 }
 
+export interface VerifiedIdentitySummary {
+  readonly actorId: string;
+  readonly role: 'USER' | 'TRUSTED_CONTACT' | 'ADMIN';
+}
+
 /**
  * Options supported when cancelling an approval request.
  */
@@ -1181,15 +1186,20 @@ export class ApprovalApiClient {
    * @returns Typed ApiClientResult with created TrustedContactInvitation
    */
   public async createInvitation(
-    payload?: { relationshipLabel?: string; ttlMs?: number; customCode?: string },
+    payload: { recipientActorId: string; relationshipLabel?: string; ttlMs?: number; customCode?: string },
     options?: RequestOptions
   ): Promise<ApiClientResult<TrustedContactInvitation>> {
     return this.dispatchRequest<TrustedContactInvitation>(
       'POST',
       '/api/v1/invitations',
-      payload ?? {},
+      payload,
       options
     );
+  }
+
+  /** Returns only the caller's server-verified internal actor ID and role. */
+  public async getVerifiedIdentity(options?: RequestOptions): Promise<ApiClientResult<VerifiedIdentitySummary>> {
+    return this.dispatchRequest<VerifiedIdentitySummary>('GET', '/api/v1/identity', undefined, options);
   }
 
   /**

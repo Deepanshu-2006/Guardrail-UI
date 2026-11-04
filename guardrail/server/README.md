@@ -4,7 +4,7 @@
 
 The backend uses SQLite through `better-sqlite3`, isolated from extension and dashboard bundles. Approval requests, action bindings, invitations, and trusted-contact relationships persist in the configured SQLite file. Approval transitions and invitation acceptance use SQLite transactions/conditional updates. This is durable storage for a single backend instance, not a horizontally scaled production database.
 
-The database stores validated approval, binding, invitation, and relationship records. It does not store passwords, OTPs, payment-card values, cookies, bearer tokens, or raw form values. The database file is created with owner-only permissions where supported. Invitation codes are secret pairing material: creation returns the code only to the authenticated issuer so it can be shared manually. Invitation lookup by code is restricted to the issuer/admin; the invitee accepts by submitting the code to the accept endpoint. No email or SMS delivery provider is configured.
+The database stores validated approval, binding, invitation, and relationship records. It does not store passwords, OTPs, payment-card values, cookies, bearer tokens, or raw form values. The database file is created with owner-only permissions where supported. Invitation codes are secret pairing material: creation returns the code to the authenticated issuer for manual sharing, and each invitation is bound to the intended active trusted-contact identity ID. Possession of the code alone cannot authorize another identity. No email or SMS delivery provider is configured. Invitation expiry, acceptance, revocation, and relationship revocation timestamps are retained for lifecycle auditing.
 
 ## Run the persistence tests
 
@@ -81,7 +81,7 @@ npm start
 
 ### Schema initialization and upgrades
 
-Opening the approval repository applies its versioned schema migration transactionally before the server begins listening. That schema uses SQLite `user_version`; startup fails closed if the database cannot be opened or its version is newer than the application supports. The trusted-contact registry creates its tables idempotently with `CREATE TABLE IF NOT EXISTS`; it currently has no separate versioned migration. There is no standalone migration CLI. For a controlled test upgrade, stop the single server instance, make a protected backup of the database (including any needed WAL state using SQLite's backup facility or after a clean shutdown), deploy the tested build, then start it so initialization runs. Confirm `/ready` before directing test clients to it. Do not copy a live database into source control or frontend assets.
+Opening the approval repository applies its versioned schema migration transactionally before the server begins listening. That schema uses SQLite `user_version`; startup fails closed if the database cannot be opened or its version is newer than the application supports. The trusted-contact registry adds its recipient and lifecycle columns idempotently at startup. Legacy accepted invitations are bound to their recorded accepter; old pending invitations are revoked because their original schema did not identify an intended recipient. There is no standalone migration CLI. For a controlled test upgrade, stop the single server instance, make a protected backup of the database (including any needed WAL state using SQLite's backup facility or after a clean shutdown), deploy the tested build, then start it so initialization runs. Confirm `/ready` before directing test clients to it. Do not copy a live database into source control or frontend assets.
 
 ## Current boundaries
 
@@ -91,4 +91,6 @@ Opening the approval repository applies its versioned schema migration transacti
 - Action ownership data remains runtime-specific unless the host supplies its own `ActionOwnershipRegistry`; it is not part of this persistence adapter.
 - SQLite is intended for a single backend instance. Multi-instance deployment requires a shared transactional database adapter and database-level concurrency guarantees.
 - Invitations are manually shared out-of-band. No notification provider is configured and the system does not claim delivery.
+- Invitation creation requires the recipient's existing internal actor ID; the backend verifies that it maps to an active `TRUSTED_CONTACT` identity. The recipient identity must be communicated to the issuer out-of-band before creating an invitation. Verified email matching is not implemented and email addresses are not used as proof of identity.
+- Authenticated `GET /api/v1/identity` returns only the caller's verified internal actor ID and role, so a trusted contact can share the correct ID without decoding client-side token claims. No profile or email attributes are returned.
 - Database files, WAL files, build output, and `.env` files are ignored by Git. No database credentials are compiled into frontend bundles; SQLite itself uses a filesystem path, not a database credential.

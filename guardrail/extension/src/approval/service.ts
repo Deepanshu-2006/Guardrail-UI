@@ -1503,7 +1503,7 @@ export class ApprovalService {
     options?: CreateInvitationOptions
   ): TrustedContactInvitation {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+    if (authContext.role !== ActorRole.USER) {
       throw new ApprovalAccessDeniedError();
     }
     const invitation = this.contactRegistry.createInvitation(authContext.actorId, options);
@@ -1522,7 +1522,7 @@ export class ApprovalService {
     authContext: AuthContext
   ): readonly TrustedContactInvitation[] {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+    if (authContext.role !== ActorRole.USER) {
       throw new ApprovalAccessDeniedError();
     }
     return this.contactRegistry.listInvitationsForUser(authContext.actorId);
@@ -1546,13 +1546,9 @@ export class ApprovalService {
       throw new ApprovalAccessDeniedError();
     }
 
-    // A pending invitation may be previewed by an authenticated invitee who already
-    // possesses the out-of-band pairing code. The code is never logged or listed to other users.
     const isOwner = invitation.userId === authContext.actorId;
-    const isPending = invitation.status === InvitationStatus.PENDING;
-    const isAdmin = authContext.role === ActorRole.ADMIN;
-
-    if (!isOwner && !isPending && !isAdmin) {
+    const isRecipient = invitation.recipientActorId === authContext.actorId;
+    if (!isOwner && !isRecipient) {
       throw new ApprovalAccessDeniedError();
     }
 
@@ -1567,7 +1563,7 @@ export class ApprovalService {
     authContext: AuthContext
   ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
+    if (authContext.role !== ActorRole.TRUSTED_CONTACT) {
       throw new ApprovalAccessDeniedError();
     }
     const result = this.contactRegistry.acceptInvitation(code, authContext.actorId);
@@ -1587,7 +1583,7 @@ export class ApprovalService {
     authContext: AuthContext
   ): TrustedContactInvitation {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+    if (authContext.role !== ActorRole.USER) {
       throw new ApprovalAccessDeniedError();
     }
     const revoked = this.contactRegistry.revokeInvitation(invitationId, authContext.actorId);
@@ -1606,7 +1602,7 @@ export class ApprovalService {
     authContext: AuthContext
   ): readonly TrustedContact[] {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+    if (authContext.role !== ActorRole.USER) {
       throw new ApprovalAccessDeniedError();
     }
     return this.contactRegistry.getTrustedContactsForUser(authContext.actorId);
@@ -1620,7 +1616,7 @@ export class ApprovalService {
     authContext: AuthContext
   ): boolean {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+    if (authContext.role !== ActorRole.USER) {
       throw new ApprovalAccessDeniedError();
     }
     const success = this.contactRegistry.revokeTrustedContact(contactId, authContext.actorId);

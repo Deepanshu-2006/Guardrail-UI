@@ -30,7 +30,10 @@ sequenceDiagram
 
     Note over Ward,Ext: Initial Setup & Invitation Generation
     Ward->>Ext: "Invite Trusted Contact" (e.g., "Financial Advisor")
-    Ext->>Svc: POST /api/v1/invitations { relationshipLabel: "Financial Advisor" }
+    Contact->>Svc: GET /api/v1/identity (authenticated)
+    Svc-->>Contact: { actorId, role: "TRUSTED_CONTACT" }
+    Contact->>Ward: Shares actor ID out-of-band
+    Ext->>Svc: POST /api/v1/invitations { recipientActorId, relationshipLabel }
     Svc-->>Ext: 201 Created { code: "GR-INV-K8M2-P4X9", expiresAt: +7d }
     Ext-->>Ward: Displays Pairing Code & Copy Button
 
@@ -40,7 +43,7 @@ sequenceDiagram
     Note over Contact,Dash: Pairing & Acceptance
     Contact->>Dash: Logs in & enters pairing code
     Dash->>Svc: POST /api/v1/invitations/GR-INV-K8M2-P4X9/accept
-    Svc->>Svc: Validate code format, TTL, active status & self-pairing
+    Svc->>Svc: Validate code, TTL, active status, verified recipient identity & self-pairing
     Svc->>Svc: Create TrustedContact (Ward <-> Contact)
     Svc-->>Dash: 200 OK { status: "ACCEPTED", wardId: "usr_alice" }
     Dash-->>Contact: Displays Active Ward Association & Separation of Duties Notice
@@ -114,11 +117,14 @@ stateDiagram-v2
 
 All invitation and user management routes require valid Bearer token authentication and strict JSON payload validation.
 
+`GET /api/v1/identity` returns only the authenticated caller's backend-mapped `actorId` and verified role. Clients must not derive this identifier from an unverified token payload.
+
 ### 6.1 `POST /api/v1/invitations`
 * **Role**: `USER` (Ward)
 * **Request Body**:
   ```json
   {
+    "recipientActorId": "usr_verified_contact_id",
     "relationshipLabel": "Financial Advisor",
     "ttlMs": 604800000
   }
@@ -144,12 +150,12 @@ All invitation and user management routes require valid Bearer token authenticat
 * **Response (200 OK)**: Returns array of active/pending invitations for the authenticated ward.
 
 ### 6.3 `GET /api/v1/invitations/:identifier`
-* **Role**: Authenticated actors (`USER` or `TRUSTED_CONTACT`)
+* **Role**: Invitation owner or the exact verified recipient identity (opaque denial otherwise)
 * **Param**: Canonical ID (`inv_...`) or pairing code (`GR-INV-...`)
-* **Response (200 OK)**: Returns public invitation metadata (excluding sensitive ward private data).
+* **Response (200 OK)**: Returns invitation metadata only to its owner or intended recipient. A pairing code alone does not authorize preview or acceptance by another identity.
 
 ### 6.4 `POST /api/v1/invitations/:code/accept`
-* **Role**: `TRUSTED_CONTACT` (Caretaker)
+* **Role**: The `TRUSTED_CONTACT` identity whose internal actor ID matches `recipientActorId` on the invitation.
 * **Response (200 OK)**:
   ```json
   {
@@ -163,11 +169,12 @@ All invitation and user management routes require valid Bearer token authenticat
 
 ### 6.5 `POST /api/v1/invitations/:id/revoke`
 * **Role**: `USER` (Ward)
-* **Response (200 OK)**: Marks pending invitation as `REVOKED`.
+* **Response (200 OK)**: Marks a pending invitation as `REVOKED` with a persisted lifecycle timestamp. Expired or revoked codes cannot be accepted.
 
 ### 6.6 `GET /api/v1/trusted-contacts`
 * **Role**: `USER` (Ward)
 * **Response (200 OK)**: Returns list of active `TrustedContact` associations.
+* Revocation changes the relationship state and persists `revokedAt`; approval review access checks the active relationship on each request, so the revoked contact loses access immediately.
 
 ### 6.7 `POST /api/v1/trusted-contacts/:id/revoke`
 * **Role**: `USER` (Ward)

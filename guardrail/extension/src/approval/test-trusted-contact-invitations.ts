@@ -136,6 +136,7 @@ const registry = new InMemoryTrustedContactRegistry();
 const authService = new ApprovalAuthorizationService({ trustedContactRegistry: registry });
 
 const inv1 = registry.createInvitation('usr_alice', {
+  recipientActorId: 'usr_bob',
   relationshipLabel: 'Caregiver',
   ttlMs: 3600000, // 1 hour
 });
@@ -164,9 +165,17 @@ console.log('\n▶ Scenario 3: Contact Accepts Invitation & Establishes Relation
 assert(!registry.hasActiveTrustedContact('usr_alice'), 'Alice has no active contacts before acceptance');
 assert(!registry.isTrustedContactForUser('usr_bob', 'usr_alice'), 'Bob is not a trusted contact for Alice yet');
 
+const wrongRecipientInvite = registry.createInvitation('usr_alice', { recipientActorId: 'usr_bob', ttlMs: 3600000 });
+assertRejects(
+  async () => registry.acceptInvitation(wrongRecipientInvite.code, 'usr_carol'),
+  ApprovalAccessDeniedError,
+  'an authenticated identity other than the designated recipient cannot accept'
+);
+
 const accepted = registry.acceptInvitation(inv1.code, 'usr_bob');
 assert(accepted.invitation.status === InvitationStatus.ACCEPTED, 'Invitation status transitions to ACCEPTED');
 assert(accepted.invitation.acceptedByContactId === 'usr_bob', 'Accepted by contact recorded as Bob');
+assert(accepted.invitation.recipientActorId === 'usr_bob', 'Invitation is bound to intended verified actor');
 assert(accepted.contact.wardId === 'usr_alice', 'Contact wardId is Alice');
 assert(accepted.contact.contactId === 'usr_bob', 'Contact contactId is Bob');
 assert(accepted.contact.status === TrustedContactStatus.ACTIVE, 'Contact status is ACTIVE');
@@ -197,16 +206,18 @@ assertRejects(
 );
 
 // 3. Expired code
-const expiredInv = registry.createInvitation('usr_alice', { ttlMs: -1000 });
+const expiredInv = registry.createInvitation('usr_alice', { recipientActorId: 'usr_carol', ttlMs: -1000 });
 assertRejects(
   async () => registry.acceptInvitation(expiredInv.code, 'usr_carol'),
   InvitationExpiredError,
   'Expired invitation throws InvitationExpiredError (410)'
 );
+assert(registry.getInvitationById(expiredInv.id)?.expiredAt === expiredInv.expiresAt, 'expiry lifecycle timestamp is persisted in the in-memory model');
 
 // 4. Revoked code
-const revokedInv = registry.createInvitation('usr_alice', { ttlMs: 3600000 });
-registry.revokeInvitation(revokedInv.id, 'usr_alice');
+const revokedInv = registry.createInvitation('usr_alice', { recipientActorId: 'usr_carol', ttlMs: 3600000 });
+const revokedStored = registry.revokeInvitation(revokedInv.id, 'usr_alice');
+assert(Boolean(revokedStored.revokedAt), 'invitation revocation timestamp is recorded');
 assertRejects(
   async () => registry.acceptInvitation(revokedInv.code, 'usr_carol'),
   InvitationRevokedError,
@@ -214,7 +225,7 @@ assertRejects(
 );
 
 // 5. Duplicate active relationship
-const dupInv = registry.createInvitation('usr_alice', { ttlMs: 3600000 });
+const dupInv = registry.createInvitation('usr_alice', { recipientActorId: 'usr_bob', ttlMs: 3600000 });
 assertRejects(
   async () => registry.acceptInvitation(dupInv.code, 'usr_bob'),
   DuplicateContactRelationshipError,
@@ -226,7 +237,7 @@ assertRejects(
 // =============================================================================
 console.log('\n▶ Scenario 5: Separation of Duties & Self-Invitation Prohibited');
 
-const selfInv = registry.createInvitation('usr_david', { ttlMs: 3600000 });
+const selfInv = registry.createInvitation('usr_david', { recipientActorId: 'usr_david', ttlMs: 3600000 });
 assertRejects(
   async () => registry.acceptInvitation(selfInv.code, 'usr_david'),
   SelfInvitationProhibitedError,
@@ -300,6 +311,7 @@ assertRejects(
 // Now pair a trusted contact for usr_unconfigured
 const pairInv = service.createInvitation(newWardAuth, {
   relationshipLabel: 'Sibling',
+  recipientActorId: 'usr_sibling',
 });
 const contactAuth: AuthContext = {
   actorId: 'usr_sibling',
@@ -326,6 +338,7 @@ assert(registry.isTrustedContactForUser('usr_sibling', 'usr_unconfigured'), 'Sib
 const successRevoke = service.revokeTrustedContact('usr_sibling', newWardAuth);
 assert(successRevoke === true, 'revokeTrustedContact returns true');
 assert(!registry.isTrustedContactForUser('usr_sibling', 'usr_unconfigured'), 'Sibling immediately loses contact authority');
+assert(registry.getTrustedContactsForUser('usr_unconfigured').length === 0, 'revoked relationship is excluded immediately');
 
 // Sibling attempting to decide createdReq is rejected (403)
 assertRejects(
@@ -367,7 +380,7 @@ const postInvRes = await apiRouter.dispatch({
   method: 'POST',
   url: '/api/v1/invitations',
   headers: { authorization: 'Bearer alice_token', 'content-type': 'application/json' },
-  body: { relationshipLabel: 'Accountant', ttlMs: 86400000 },
+  body: { recipientActorId: 'usr_charlie', relationshipLabel: 'Accountant', ttlMs: 86400000 },
 });
 assert(postInvRes.statusCode === 201, 'POST /api/v1/invitations returns 201');
 assert(postInvRes.body.success === true, 'Response body success is true');
@@ -471,7 +484,7 @@ const apiClient = new ApprovalApiClient({
 });
 
 // Create invitation via client
-const clientInvRes = await apiClient.createInvitation({ relationshipLabel: 'Advisor' });
+const clientInvRes = await apiClient.createInvitation({ recipientActorId: 'usr_charlie', relationshipLabel: 'Advisor' });
 assert(clientInvRes.success === true, 'apiClient.createInvitation succeeded');
 assert(clientInvRes.data.code.startsWith('GR-INV-'), 'Client created invitation code valid');
 
