@@ -47,6 +47,29 @@ npm run build
 npm run watch
 ```
 
+### Backend connectivity configuration
+
+`GUARDRAIL_API_BASE_URL` is the single backend-origin setting used by the extension and dashboard build scripts. It is public routing configuration, never a credential. Development defaults to `http://localhost:3000`; pilot and production builds require the variable and reject missing, malformed, credentialed, or non-HTTPS remote origins. HTTP is permitted only for localhost in pilot mode.
+
+```sh
+# Local development
+npm run build
+
+# Controlled pilot package (replace with the actual HTTPS backend origin)
+GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL=https://api.pilot.example.test npm run build:pilot
+```
+
+The build writes a Manifest V3 `host_permissions` entry scoped to that exact origin (`https://api.pilot.example.test/*`). The checked-in source manifest stays free of deployment hosts. The backend must separately allow the actual extension origin and dashboard origin using exact `GUARDRAIL_ALLOWED_ORIGINS`; browser host permission and server CORS are separate checks. Do not add wildcard origins. The extension API client requires an authenticated token provider, applies request timeouts, and does not automatically retry approval or invitation POSTs.
+
+Build from the extension directory. The dashboard uses the same `GUARDRAIL_API_BASE_URL` variable:
+
+```sh
+cd ../dashboard
+GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL=https://api.pilot.example.test npm run build
+```
+
+The embedding identity host must provide a verified access-token provider through `mountAuthenticatedDashboardShell()` or `window.__GUARDRAIL_AUTH_TOKEN_PROVIDER__`. The bundle contains no identity-provider secrets or tokens. Without a provider, the standalone dashboard remains disconnected instead of making unauthenticated API calls.
+
 ### 3. Load Extension in Google Chrome
 1. Open Google Chrome and navigate to `chrome://extensions`.
 2. Enable **Developer mode** toggle in the top-right corner.

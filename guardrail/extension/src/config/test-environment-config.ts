@@ -24,8 +24,6 @@ import {
   validateEnvironmentConfig,
   resolveEnvironmentConfig,
   DEFAULT_DEV_API_BASE_URL,
-  DEFAULT_PILOT_API_BASE_URL,
-  DEFAULT_PROD_API_BASE_URL,
 } from './environment.js';
 import {
   ApprovalApiClient,
@@ -74,13 +72,11 @@ async function runEnvironmentConfigTests(): Promise<void> {
 
     assert(PILOT_CONFIG.environment === 'pilot', 'Pilot preset has environment: "pilot"');
     assert(PILOT_CONFIG.serviceType === 'live', 'Pilot preset targets live service');
-    assert(PILOT_CONFIG.apiBaseUrl === DEFAULT_PILOT_API_BASE_URL, 'Pilot API base URL is pilot-api.guardrail-safety.org');
-    assert(PILOT_CONFIG.apiBaseUrl.startsWith('https://'), 'Pilot preset enforces HTTPS');
+    assert(PILOT_CONFIG.apiBaseUrl === '', 'Pilot endpoint is supplied by build configuration');
 
     assert(PRODUCTION_CONFIG.environment === 'production', 'Production preset has environment: "production"');
     assert(PRODUCTION_CONFIG.serviceType === 'live', 'Production preset targets live service');
-    assert(PRODUCTION_CONFIG.apiBaseUrl === DEFAULT_PROD_API_BASE_URL, 'Production API base URL is api.guardrail-safety.org');
-    assert(PRODUCTION_CONFIG.apiBaseUrl.startsWith('https://'), 'Production preset enforces HTTPS');
+    assert(PRODUCTION_CONFIG.apiBaseUrl === '', 'Production endpoint is supplied by build configuration');
 
     assert(TEST_CONFIG.environment === 'test', 'Test preset has environment: "test"');
     assert(TEST_CONFIG.serviceType === 'mock', 'Test preset defaults to mock service');
@@ -137,9 +133,9 @@ async function runEnvironmentConfigTests(): Promise<void> {
     assert(devValid.errors.length === 0, 'Zero errors for valid development configuration');
 
     // Valid pilot configuration
-    const pilotValid = validateEnvironmentConfig(PILOT_CONFIG, 'pilot');
+    const pilotValid = validateEnvironmentConfig({ ...PILOT_CONFIG, apiBaseUrl: 'https://pilot.example.test' }, 'pilot');
     assert(pilotValid.valid, 'Pilot preset passes startup validation');
-    assert(pilotValid.config?.apiBaseUrl === 'https://pilot-api.guardrail-safety.org', 'Sanitized pilot URL returned');
+    assert(pilotValid.config?.apiBaseUrl === 'https://pilot.example.test', 'Sanitized pilot URL returned');
 
     // Reject HTTP for pilot remote endpoints
     const insecurePilot = validateEnvironmentConfig(
@@ -264,8 +260,9 @@ async function runEnvironmentConfigTests(): Promise<void> {
     );
 
     // Resolve URL for pilot mode via resolveApiBaseUrl
-    const pilotUrl = await resolveApiBaseUrl({ environment: 'pilot' });
-    assert(pilotUrl === DEFAULT_PILOT_API_BASE_URL, 'resolveApiBaseUrl returns DEFAULT_PILOT_API_BASE_URL for pilot');
+    let missingPilotEndpointRejected = false;
+    try { await resolveApiBaseUrl({ environment: 'pilot' }); } catch { missingPilotEndpointRejected = true; }
+    assert(missingPilotEndpointRejected, 'Pilot resolution rejects missing configured endpoint');
 
     // Rejection of insecure URL in pilot mode via resolveApiBaseUrl
     let pilotHttpsErrorThrown = false;
@@ -276,7 +273,7 @@ async function runEnvironmentConfigTests(): Promise<void> {
       });
     } catch (err: any) {
       pilotHttpsErrorThrown = true;
-      assert(err.message.includes('must use HTTPS'), 'resolveApiBaseUrl enforces HTTPS in pilot mode');
+      assert(err.message.includes('HTTPS'), 'resolveApiBaseUrl enforces HTTPS in pilot mode');
     }
     assert(pilotHttpsErrorThrown, 'Threw error for insecure pilot URL');
   }
@@ -292,7 +289,7 @@ async function runEnvironmentConfigTests(): Promise<void> {
       fetchFn: globalThis.fetch,
     });
     assert(pilotClient.getEnvironment() === 'pilot', 'ApprovalApiClient correctly records "pilot" environment');
-    assert(pilotClient.getBaseUrl() === DEFAULT_PILOT_API_BASE_URL, 'ApprovalApiClient defaults to pilot base URL');
+    assert(pilotClient.getBaseUrl() === '', 'ApprovalApiClient has no remote fallback endpoint');
     assert(!pilotClient.isMockService(), 'Pilot client starts as live service by default');
 
     // Reject insecure HTTP in pilot client constructor
@@ -391,9 +388,9 @@ async function runEnvironmentConfigTests(): Promise<void> {
       assert(defaultConfig.apiBaseUrl === DEFAULT_DEV_API_BASE_URL, 'Defaults to local dev API URL');
 
       process.env.GUARDRAIL_ENV = 'pilot';
-      const pilotEnvConfig = resolveEnvironmentConfig();
-      assert(pilotEnvConfig.environment === 'pilot', 'Detects GUARDRAIL_ENV="pilot"');
-      assert(pilotEnvConfig.apiBaseUrl === DEFAULT_PILOT_API_BASE_URL, 'Resolves pilot base URL from environment');
+      let rejectedMissingEndpoint = false;
+      try { resolveEnvironmentConfig(); } catch { rejectedMissingEndpoint = true; }
+      assert(rejectedMissingEndpoint, 'Rejects pilot startup when configured endpoint is missing');
 
       process.env.GUARDRAIL_ENV = 'invalid_env_name';
       const invalidEnvConfig = resolveEnvironmentConfig();

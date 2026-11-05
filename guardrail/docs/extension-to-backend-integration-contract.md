@@ -370,42 +370,23 @@ All API errors return a uniform error structure in the `ApiResponseEnvelope`:
 
 ## 9. API Base URL Configuration Strategy
 
-### 9.1 Environment Base URLs
+### 9.1 Shared build-time backend origin
 
-| Environment | Default Base URL | Host Permissions Required in `manifest.json` |
+| Environment | Backend origin source | Host permission |
 | :--- | :--- | :--- |
-| **Development (Local Daemon)** | `http://localhost:3000` | `"host_permissions": ["http://localhost:3000/*", "http://127.0.0.1:3000/*"]` |
-| **Staging / QA** | `https://staging-api.guardrail-safety.org` | `"host_permissions": ["https://staging-api.guardrail-safety.org/*"]` |
-| **Production** | `https://api.guardrail-safety.org` | `"host_permissions": ["https://api.guardrail-safety.org/*"]` |
+| **Development** | Defaults to `http://localhost:3000`; optional `GUARDRAIL_API_BASE_URL` build setting | Build emits one exact origin permission |
+| **Pilot** | Required `GUARDRAIL_API_BASE_URL` build setting; HTTPS for remote endpoints | Build emits one exact origin permission |
+| **Production** | Required `GUARDRAIL_API_BASE_URL` build setting; HTTPS required | Build emits one exact origin permission |
 
-### 9.2 Configuration Storage & Resolution Hierarchy
+### 9.2 Configuration and authentication
 
-The extension must resolve the API Base URL using a two-tier hierarchy:
+`GUARDRAIL_API_BASE_URL` is the shared build-time origin for extension and dashboard bundles. Pilot and production builds fail when it is missing or invalid. The extension build derives the one required MV3 host permission from that same origin. Backend CORS independently lists exact extension and dashboard origins in `GUARDRAIL_ALLOWED_ORIGINS`. Tokens are never part of URL configuration: clients receive them from a host-supplied authenticated token provider and send them in the `Authorization` header. Runtime storage overrides are not used for backend URLs because they could point outside the manifest's host-permission scope.
 
-1. **User / Developer Override**: Checked first in `chrome.storage.local`:
-   ```typescript
-   const { guardrailApiBaseUrl } = await chrome.storage.local.get('guardrailApiBaseUrl');
-   ```
-2. **Build-Time Fallback**: Injected during compilation via `build.mjs`:
-   ```javascript
-   const DEFAULT_API_BASE_URL = process.env.GUARDRAIL_API_BASE_URL || 'http://localhost:3000';
-   ```
-
-### 9.3 Extension Manifest Permissions Requirement
-
-To allow `fetch()` calls to the backend from the background service worker, `guardrail/extension/public/manifest.json` must be updated prior to Day 12 client integration:
-
-```json
-{
-  "permissions": [
-    "storage"
-  ],
-  "host_permissions": [
-    "http://localhost:3000/*",
-    "http://127.0.0.1:3000/*"
-  ]
-}
+```sh
+GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL=https://api.pilot.example.test npm run build:pilot
 ```
+
+The checked-in source manifest does not contain deployment host permissions. `build.mjs` generates the exact configured backend origin permission when it packages the extension.
 
 > [!WARNING]
 > Unrestricted wildcard host permissions (`"<all_urls>"` or `"*://*/*"`) must **never** be used as a shortcut. Permissions must be scoped strictly to the authorized backend API origins.

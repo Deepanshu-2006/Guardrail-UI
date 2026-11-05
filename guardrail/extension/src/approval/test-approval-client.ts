@@ -28,7 +28,6 @@ import {
   ApprovalApiClient,
   checkPayloadForSensitiveFields,
   DEFAULT_DEV_API_BASE_URL,
-  DEFAULT_PROD_API_BASE_URL,
   resolveApiBaseUrl,
   resolveAuthToken,
   validateClientPayloadIntegrity,
@@ -126,8 +125,8 @@ async function runTests(): Promise<void> {
     assertEquals(defaultUrl, DEFAULT_DEV_API_BASE_URL, 'Resolves default dev URL when unconfigured');
 
     // Custom string with trailing slash
-    const customUrl = await resolveApiBaseUrl('https://api.guardrail-safety.org/');
-    assertEquals(customUrl, DEFAULT_PROD_API_BASE_URL, 'Normalizes URL by stripping trailing slashes');
+    const customUrl = await resolveApiBaseUrl('https://api.example.test/');
+    assertEquals(customUrl, 'https://api.example.test', 'Normalizes URL by stripping trailing slashes');
 
     // Constructor baseUrl override
     const client = new ApprovalApiClient({ baseUrl: 'http://localhost:8080/' });
@@ -149,7 +148,7 @@ async function runTests(): Promise<void> {
     };
 
     const storageUrl = await resolveApiBaseUrl();
-    assertEquals(storageUrl, 'https://staging.guardrail.internal', 'Reads URL from chrome.storage.local');
+    assertEquals(storageUrl, DEFAULT_DEV_API_BASE_URL, 'Ignores legacy runtime URL storage in favor of the build configuration');
 
     // Restore chrome
     (globalThis as any).chrome = originalChrome;

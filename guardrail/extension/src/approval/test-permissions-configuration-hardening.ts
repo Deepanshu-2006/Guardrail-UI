@@ -125,12 +125,12 @@ async function runTests(): Promise<void> {
     'Development client defaults to localhost:3000'
   );
 
-  // Test 2.2: Prod mode defaults to https://api.guardrail-safety.org
+  // Test 2.2: Prod mode has no implicit remote endpoint
   const prodClient = new ApprovalApiClient({ environment: 'production' });
   assertEquals(
     (prodClient as any).baseUrl,
     DEFAULT_PROD_API_BASE_URL,
-    'Production client defaults to production HTTPS endpoint'
+    'Production client refuses to guess a deployment endpoint'
   );
 
   // Test 2.3: Prod mode allows valid HTTPS custom base URL
@@ -181,9 +181,10 @@ async function runTests(): Promise<void> {
   const resolvedDev = await resolveApiBaseUrl({ environment: 'development' });
   assertEquals(resolvedDev, DEFAULT_DEV_API_BASE_URL, 'resolveApiBaseUrl returns dev default');
 
-  // Test 3.2: resolveApiBaseUrl in production returns prod default
-  const resolvedProd = await resolveApiBaseUrl({ environment: 'production' });
-  assertEquals(resolvedProd, DEFAULT_PROD_API_BASE_URL, 'resolveApiBaseUrl returns prod default');
+  // Test 3.2: production requires explicit backend configuration
+  let missingProductionEndpointRejected = false;
+  try { await resolveApiBaseUrl({ environment: 'production' }); } catch { missingProductionEndpointRejected = true; }
+  assert(missingProductionEndpointRejected, 'resolveApiBaseUrl rejects missing production endpoint');
 
   // Test 3.3: resolveApiBaseUrl in production rejects insecure override
   let resolvedInsecureRejected = false;
@@ -195,7 +196,7 @@ async function runTests(): Promise<void> {
   } catch (err: any) {
     resolvedInsecureRejected = true;
     assert(
-      err?.message?.includes('Production endpoints must use HTTPS'),
+      err?.message?.includes('HTTPS'),
       'resolveApiBaseUrl rejects insecure HTTP in production'
     );
   }

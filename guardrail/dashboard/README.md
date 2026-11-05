@@ -41,22 +41,16 @@ npm run build
 
 ## Connecting to the backend
 
-The dashboard uses the shared `ApprovalApiClient`; the host application supplies both the backend URL and an authenticated token provider. The standalone HTML auto-mount intentionally does not invent a login session or actor identity.
+The dashboard uses the shared `ApprovalApiClient`. Both browser clients receive the same public backend origin through the build-time `GUARDRAIL_API_BASE_URL`; pilot/production builds fail if it is missing and require HTTPS. This URL is public configuration, not a secret. The identity host must supply a verified access-token provider; the dashboard never invents a login session or actor identity. Without that provider, standalone auto-mount remains disconnected and makes no API request.
 
 ```ts
 import { ApprovalApiClient } from '../extension/src/approval/client.js';
-import { mountDashboardShell } from './src/index.js';
+import { mountAuthenticatedDashboardShell } from './src/index.js';
 
-const apiClient = new ApprovalApiClient({
-  baseUrl: backendBaseUrl,
-  environment: 'pilot',
-  tokenProvider: () => authenticatedSession.getAccessToken(),
-});
-
-mountDashboardShell({
+mountAuthenticatedDashboardShell({
   container: document.getElementById('dashboard-app')!,
-  apiClient,
+  tokenProvider: () => authenticatedSession.getAccessToken(),
 });
 ```
 
-`backendBaseUrl` and `authenticatedSession` are host-provided values; do not embed credentials in dashboard code. The repository does not configure a live identity provider or dashboard host. Backend API integration tests use local HTTP plus SQLite and a synthetic verifier, not a live login service.
+Build the dashboard with `npm run build` in development. For pilot/production, set `GUARDRAIL_ENV=pilot` (or `production`) and `GUARDRAIL_API_BASE_URL=https://<your-api-origin>` before building; the same variable is used for the extension package. The API client sends a bearer token returned by the host's authenticated `tokenProvider` and does not retry non-idempotent POST requests automatically. Do not embed provider secrets or tokens into the bundle. The repository does not configure a live identity provider or remote dashboard host. Backend API integration tests use local HTTP plus SQLite and synthetic verifiers, not a live login service.

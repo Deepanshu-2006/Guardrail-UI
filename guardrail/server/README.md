@@ -79,6 +79,8 @@ npm run build
 npm start
 ```
 
+The browser clients share `GUARDRAIL_API_BASE_URL` as a build-time setting; it is not a server secret. Set it to the externally reachable HTTPS API origin when building both the extension and dashboard. Set `GUARDRAIL_ALLOWED_ORIGINS` on the server to the exact installed extension origin and dashboard origin. Do not include the backend origin as a CORS caller unless the browser UI itself is hosted there. CORS does not authenticate requests; approval endpoints still require a verified bearer token.
+
 `npm start` runs `dist/serve.mjs`. It validates server, OIDC, and paired optional email settings, opens the SQLite identity mapping store, and constructs the OIDC verifier before opening the API listener. Startup fails closed if required configuration or storage is unavailable. This is an Auth0-compatible OIDC/JWKS verifier, not a configured Auth0 tenant: no tenant, client registration, frontend login flow, provider-side role mapping, or deployment is included. The extension/dashboard must obtain access tokens from a separately configured identity-provider client and send them as bearer tokens. Provider secrets must not be put in frontend bundles.
 
 ### Health and readiness

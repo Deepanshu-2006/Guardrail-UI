@@ -16,7 +16,7 @@ To ensure controlled pilot readiness and prevent unintended security exposures o
 2. **Zero Exposed Secrets**: Configuration files, bundle definitions, and build scripts strictly **forbid embedded credentials** (passwords, tokens, API keys, private keys, JWTs). All authentication tokens are supplied exclusively at runtime via authenticated user sessions.
 3. **Transport Security (HTTPS Enforcement)**: Remote pilot and production endpoints **must strictly use HTTPS**. Plaintext HTTP is rejected at startup and network dispatch unless targeting a verified local loopback address (`localhost`, `127.0.0.1`, `::1`).
 4. **Startup Configuration Validation**: Environment settings are validated on startup before network operations commence. Malformed URLs, forbidden credentials, or invalid parameter bounds fail fast.
-5. **Safe Fallbacks for Optional Settings**: Missing optional configuration values gracefully default to bounded environment presets (`timeoutMs`, `pollIntervalMs`, `apiBaseUrl`) without throwing runtime errors or corrupting application state.
+5. **Safe Fallbacks for Optional Settings**: Optional timeout and polling settings default to bounded presets. Pilot/production API origins are required build configuration and fail closed if absent; development/test may use localhost.
 6. **Explicit Mock vs. Live Service Distinction**: In-memory and mock services broadcast their ephemeral nature via HTTP response headers (`x-guardrail-service-type: ephemeral_in_memory_mock`). The dashboard UI displays a prominent `[MOCK BACKEND]` badge to ensure reviewers never mistake a test stub for a live pilot system.
 7. **No Credential Embedding in URLs**: URLs containing inline user credentials (`https://user:pass@host`) are prohibited and rejected by startup validation.
 8. **Isolated Storage Namespaces**: Client storage keys are segregated by environment (`guardrail_dev`, `guardrail_pilot`, `guardrail_prod`, `guardrail_test`) to prevent cross-environment cache contamination.
@@ -28,7 +28,7 @@ To ensure controlled pilot readiness and prevent unintended security exposures o
 | Setting | `development` | `pilot` | `production` | `test` |
 | :--- | :--- | :--- | :--- | :--- |
 | **Target Audience** | Local core engineers | Controlled pilot testers | Public deployment | Automated CI suites |
-| **Default API Base URL** | `http://localhost:3000` | `https://pilot-api.guardrail-safety.org` | `https://api.guardrail-safety.org` | `http://localhost:3000` |
+| **Backend URL** | `http://localhost:3000` | Required build-time `GUARDRAIL_API_BASE_URL` | Required build-time `GUARDRAIL_API_BASE_URL` | `http://localhost:3000` |
 | **Protocol Requirement** | HTTP permitted on localhost | **HTTPS strictly enforced** (HTTP only on localhost) | **HTTPS strictly enforced** (No exceptions) | HTTP permitted on localhost |
 | **Default Service Type** | `in_memory` | `live` (remote) | `live` (remote) | `mock` / `in_memory` |
 | **Mock Permitted?** | Yes | Only with explicit `allowMockInPilot: true` | **Strictly Forbidden** | Yes |
@@ -71,8 +71,8 @@ Configuration objects are validated by `validateEnvironmentConfig(input, targetE
 5. **Numeric Clamping**: Extreme timeout values (< 500 ms or > 60,000 ms) and polling intervals (< 10 ms or > 300,000 ms) generate warnings and are clamped to safe operating bounds.
 
 ### 4.2 Safe Fallback Behavior
-When optional configuration properties are omitted (such as when running without environment variables):
-- `apiBaseUrl` defaults to the preset's canonical endpoint (`DEFAULT_PILOT_API_BASE_URL` or `DEFAULT_DEV_API_BASE_URL`).
+When optional configuration properties are omitted:
+- Development/test `apiBaseUrl` defaults to `http://localhost:3000`. Pilot/production startup and builds fail if `GUARDRAIL_API_BASE_URL` is missing; no sample remote endpoint is used.
 - `timeoutMs` defaults to the environment preset.
 - `pollIntervalMs` defaults to the environment preset.
 - `logLevel` defaults to `info` in pilot, `debug` in development, and `warn` in production.
@@ -129,29 +129,26 @@ npm test
 ### 6.2 Controlled Pilot Deployment
 
 ```bash
-# 1. Build extension specifically for controlled pilot
+# 1. Build extension for controlled pilot with the actual API origin
 cd guardrail/extension
-npm run build:pilot
+GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL=https://<actual-api-origin> npm run build:pilot
 
 # Output:
 # - Generates dist/ with version_name: "0.1.0-pilot" in manifest.json
 # - Injects process.env.GUARDRAIL_ENV = 'pilot'
 # - Minifies bundles and removes stale sourcemaps
-# - Enforces HTTPS endpoints (defaults to https://pilot-api.guardrail-safety.org)
+# - Requires the configured HTTPS endpoint; generates one exact host permission for it
 
 # 2. Verify all pilot environment and configuration tests pass
 npm run test:env-config
 
-# 3. Configure pilot backend endpoint in the extension (optional override)
-# In Chrome DevTools console for the extension service worker:
-await chrome.storage.local.set({
-  guardrailApiBaseUrl: 'https://pilot-api.guardrail-safety.org'
-});
+# 3. Build the dashboard with the same endpoint
+cd ../dashboard
+GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL=https://<actual-api-origin> npm run build
 ```
 
 > [!IMPORTANT]
-> **Pilot Chrome Manifest Permission Requirement**:  
-> In Manifest V3, communicating with a remote pilot backend (`https://pilot-api.guardrail-safety.org`) requires the remote origin to be declared in `host_permissions` in `manifest.json`. When preparing a pilot package, add `"https://pilot-api.guardrail-safety.org/*"` to `host_permissions`.
+> **Pilot Chrome Manifest Permission Requirement**: The build generates a Manifest V3 `host_permissions` entry scoped to the configured API origin. The backend separately requires exact `GUARDRAIL_ALLOWED_ORIGINS` entries for the real extension ID origin and dashboard origin; do not use wildcards. CORS does not replace extension host permission.
 
 ### 6.3 Automated Test Environment
 
@@ -186,13 +183,13 @@ import {
   DEVELOPMENT_CONFIG,
 } from './config/environment.js';
 
-// Resolve configuration for current runtime (safely defaulted)
+// Resolve development configuration; pilot/production use the build-injected URL.
 const config = resolveEnvironmentConfig();
 
 // Explicit pilot validation check
 const validation = validateEnvironmentConfig({
   environment: 'pilot',
-  apiBaseUrl: 'https://pilot-api.guardrail-safety.org',
+  apiBaseUrl: 'https://pilot.example.test',
   timeoutMs: 15000,
 });
 

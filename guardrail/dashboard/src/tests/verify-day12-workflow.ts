@@ -506,17 +506,17 @@ export async function runDay12Verification(): Promise<void> {
       // Dave attempts to fetch pending requests via real HTTP
       await shell.fetchPendingRequests();
 
-      // Multi-tenant authorization rule: Dave is not assigned to Alice, returns empty array
+      // The pending endpoint is restricted to authorized trusted contacts and must not masquerade as an empty list.
       assertEquals(shell.getState().pendingRequests.length, 0, 'Unrelated user receives 0 pending requests');
-      assertEquals(shell.getState().pendingStatus, 'empty', 'Pending status is empty');
+      assertEquals(shell.getState().pendingStatus, 'error', 'Unauthorized access remains distinguishable from an empty list');
 
       // DOM renders intentional empty placeholder
       const emptyPlaceholder = rootElement.querySelector('#view-pending .gd-placeholder');
       assert(emptyPlaceholder !== null, 'Empty placeholder rendered for unrelated user');
       assertEquals(
         emptyPlaceholder?.querySelector('.gd-placeholder-title')?.textContent,
-        'No Pending Approval Requests',
-        'Displays "No Pending Approval Requests" without leaking existence of other tenants'
+        'Unable to Load Approval Requests',
+        'Displays a sanitized access failure instead of claiming the inbox is empty'
       );
 
       // Attempt direct detail query via verified endpoint: GET /api/v1/approvals/:id

@@ -8,7 +8,7 @@ This document establishes the authoritative build, packaging, installation, and 
 > **Controlled Pilot Deployment Boundary**
 > * The extension is packaged specifically for the internal, controlled pilot deployment (`0.1.0-pilot`).
 > * **NO PUBLIC PUBLISHING**: The extension is NOT published to the public Chrome Web Store, Edge Add-ons catalog, or public CDN.
-> * **NO PRODUCTION BACKEND DEPLOYMENT**: Live backend services remain scoped to the pilot environment (`https://pilot-api.guardrail-safety.org` or authorized localhost testing instances). Deployment claims reflect only verified local builds and package assemblies.
+> * **NO PRODUCTION BACKEND DEPLOYMENT**: This repository does not provide a deployed pilot endpoint. Configure the actual controlled-test API origin with `GUARDRAIL_API_BASE_URL`; no remote URL is assumed by the build.
 
 ---
 
@@ -21,8 +21,8 @@ The pilot build pipeline uses `build.mjs` with explicit environment targeting, s
 From `guardrail/extension`:
 
 ```bash
-# 1. Clean build for the controlled pilot (assembles dist/ and dist-pilot/)
-npm run build:pilot
+# 1. Build using the actual controlled-test HTTPS backend origin
+GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL=https://<actual-api-origin> npm run build:pilot
 
 # 2. Package clean distribution zip (generates dist/guardrail-extension-pilot.zip)
 npm run package:pilot
@@ -82,12 +82,9 @@ The automated test suite (`npm run test:pilot-build`) verifies:
 
 ## 4. Backend Configuration & Offline Resilience
 
-### 4.1 Endpoint Resolution Hierarchy
+### 4.1 Shared endpoint configuration
 
-The pilot extension resolves its approval backend in the following order:
-1. `guardrailApiBaseUrl` override stored in `sessionStorage` (temporary session).
-2. `guardrailApiBaseUrl` stored in `chrome.storage.local` (managed by admin/options).
-3. Default Pilot Endpoint: `DEFAULT_PILOT_API_BASE_URL` (`https://pilot-api.guardrail-safety.org`).
+The extension and dashboard use the same build-time `GUARDRAIL_API_BASE_URL` origin. Pilot/production builds fail when it is missing or invalid. The extension build generates a Manifest V3 host permission for only that origin. Runtime URL storage overrides are not supported because they could exceed the permission granted by the packaged manifest. Set server-side `GUARDRAIL_ALLOWED_ORIGINS` to the exact installed extension origin and dashboard origin.
 
 ### 4.2 Security & Protocol Invariants
 

@@ -23,6 +23,8 @@
  *    - Enforces strict URL sanitization (disallowing embedded user:pass credentials).
  */
 
+declare const __GUARDRAIL_API_BASE_URL__: string;
+
 export type AppEnvironment = 'development' | 'pilot' | 'test' | 'production';
 
 export type ServiceType = 'live' | 'mock' | 'in_memory';
@@ -33,8 +35,15 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
  * Standard public endpoints and configuration defaults.
  */
 export const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
-export const DEFAULT_PILOT_API_BASE_URL = 'https://pilot-api.guardrail-safety.org';
-export const DEFAULT_PROD_API_BASE_URL = 'https://api.guardrail-safety.org';
+// Remote origins are supplied at build time and are intentionally not guessed here.
+export const DEFAULT_PILOT_API_BASE_URL = '';
+export const DEFAULT_PROD_API_BASE_URL = '';
+
+export function getBuildConfiguredApiBaseUrl(): string | undefined {
+  return typeof __GUARDRAIL_API_BASE_URL__ === 'string' && __GUARDRAIL_API_BASE_URL__.trim()
+    ? __GUARDRAIL_API_BASE_URL__.trim()
+    : undefined;
+}
 
 export const DEFAULT_DEV_TIMEOUT_MS = 10000;
 export const DEFAULT_PILOT_TIMEOUT_MS = 15000;
@@ -553,6 +562,7 @@ export function resolveEnvironmentConfig(
 
   const merged: Record<string, unknown> = {
     ...preset,
+    ...(getBuildConfiguredApiBaseUrl() ? { apiBaseUrl: getBuildConfiguredApiBaseUrl() } : {}),
     ...(overrides || {}),
     environment: env,
   };

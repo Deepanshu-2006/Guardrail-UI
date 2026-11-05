@@ -28,7 +28,6 @@ import {
 import {
   resolveEnvironmentConfig,
   validateEnvironmentConfig,
-  DEFAULT_PILOT_API_BASE_URL,
   FORBIDDEN_SECRET_KEYS,
 } from '../config/environment.js';
 import { InterceptionController } from '../interception/controller.js';
@@ -81,11 +80,25 @@ async function runPilotVerificationSuite() {
   // ===========================================================================
   console.log('▶ Scenario 1: Documented Pilot Build Process Execution');
   {
+    let missingEndpointBuildRejected = false;
+    try {
+      execSync('node build.mjs --pilot', {
+        cwd: extensionRoot,
+        encoding: 'utf-8',
+        env: { ...process.env, GUARDRAIL_API_BASE_URL: '' },
+      });
+    } catch (error) {
+      const detail = error as { stderr?: Buffer; stdout?: Buffer };
+      missingEndpointBuildRejected = `${detail.stderr?.toString() ?? ''}${detail.stdout?.toString() ?? ''}`.includes('GUARDRAIL_API_BASE_URL is required');
+    }
+    assert(missingEndpointBuildRejected, 'Pilot packaging fails when the backend origin is missing');
+
     const startTime = Date.now();
     // Run the documented pilot build command
     const output = execSync('node build.mjs --pilot', {
       cwd: extensionRoot,
       encoding: 'utf-8',
+      env: { ...process.env, GUARDRAIL_API_BASE_URL: 'https://pilot.example.test' },
     });
 
     const elapsedMs = Date.now() - startTime;
@@ -112,6 +125,8 @@ async function runPilotVerificationSuite() {
     assert(manifest.version_name.includes('-pilot'), 'version_name includes -pilot annotation');
     assert(manifest.description.includes('[PILOT DEPLOYMENT]'), 'description includes [PILOT DEPLOYMENT]');
     assert(Array.isArray(manifest.permissions), 'Manifest permissions is an array');
+    assertEquals(manifest.host_permissions?.length, 1, 'Pilot manifest grants exactly one backend host permission');
+    assertEquals(manifest.host_permissions?.[0], 'https://pilot.example.test/*', 'Host permission is scoped to configured API origin');
     assert(manifest.permissions.includes('storage'), 'Includes storage permission');
     assert(!manifest.permissions.includes('cookies'), 'Least privilege: does not request cookies permission');
     assert(!manifest.permissions.includes('webRequest'), 'Least privilege: does not request webRequest permission');
@@ -168,7 +183,7 @@ async function runPilotVerificationSuite() {
     assert(!onboardingFiles.some((f) => f.endsWith('.map')), 'Zero sourcemap files in dist-pilot/onboarding');
 
     // Verify pilot environment profile
-    const pilotConfig = resolveEnvironmentConfig({ environment: 'pilot' });
+    const pilotConfig = resolveEnvironmentConfig({ environment: 'pilot', apiBaseUrl: 'https://pilot.example.test' });
     assertEquals(pilotConfig.environment, 'pilot', 'Environment is pilot');
     assertEquals(pilotConfig.isMockService, false, 'isMockService is strictly false in pilot profile');
     assertEquals(pilotConfig.serviceType, 'live', 'serviceType is strictly live in pilot profile');
@@ -188,9 +203,9 @@ async function runPilotVerificationSuite() {
   console.log('\n▶ Scenario 4: Backend Configuration & Secure Endpoint Resolution');
   {
     // Default pilot endpoint
-    const defaultUrl = await resolveApiBaseUrl({ environment: 'pilot' });
-    assertEquals(defaultUrl, DEFAULT_PILOT_API_BASE_URL, 'Default pilot URL is DEFAULT_PILOT_API_BASE_URL');
-    assert(defaultUrl.startsWith('https://'), 'Default pilot URL uses HTTPS protocol');
+    let missingEndpointRejected = false;
+    try { await resolveApiBaseUrl({ environment: 'pilot' }); } catch { missingEndpointRejected = true; }
+    assert(missingEndpointRejected, 'Pilot URL resolution fails closed when build configuration is absent');
 
     // Valid HTTPS custom endpoint
     const customHttpsUrl = await resolveApiBaseUrl({

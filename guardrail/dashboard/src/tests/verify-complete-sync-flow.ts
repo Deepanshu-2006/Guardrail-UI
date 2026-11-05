@@ -1018,9 +1018,9 @@ async function runCompleteSynchronizationTests(): Promise<void> {
         tokenProvider: async () => 'token_mallory',
       });
       const malloryPending = await malloryClient.listPendingApprovals();
-      assert(malloryPending.success, 'Mallory pending query succeeded');
-      if (malloryPending.success) {
-        assertEquals(malloryPending.data.length, 0, 'Mallory sees 0 pending requests (anti-enumeration isolation)');
+      assert(!malloryPending.success, 'Mallory pending query is rejected without trusted-contact authorization');
+      if (!malloryPending.success) {
+        assertEquals(malloryPending.error.code, 'NOT_FOUND_OR_DENIED', 'Unauthorized pending query returns opaque denial');
       }
 
       // 3. Mallory cannot retrieve Alice's request details (403 FORBIDDEN or 404 NOT_FOUND_OR_DENIED)

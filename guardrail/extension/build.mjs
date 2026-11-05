@@ -3,14 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import { hostPermissionForBackend, resolveBackendUrl } from '../build/backend-url.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isWatch = process.argv.includes('--watch');
 const isPilot = process.argv.includes('--pilot') || process.env.GUARDRAIL_ENV === 'pilot';
-const isProd = (process.argv.includes('--prod') || process.env.NODE_ENV === 'production') && !isPilot;
+const isProd = (process.argv.includes('--prod') || process.env.GUARDRAIL_ENV === 'production' || process.env.NODE_ENV === 'production') && !isPilot;
 const targetEnv = isPilot ? 'pilot' : isProd ? 'production' : 'development';
+const backendUrl = resolveBackendUrl(process.env, targetEnv);
 const distDir = path.resolve(__dirname, 'dist');
 const pilotDir = path.resolve(__dirname, 'dist-pilot');
 
@@ -38,6 +40,8 @@ function copyStaticAssets() {
   }
   const manifestRaw = fs.readFileSync(manifestPath, 'utf-8');
   const manifest = JSON.parse(manifestRaw);
+  // MV3 requires an exact backend origin host permission for cross-origin fetches.
+  manifest.host_permissions = [hostPermissionForBackend(backendUrl)];
   if (isPilot) {
     manifest.version_name = `${manifest.version}-pilot`;
     manifest.description = `${manifest.description} [PILOT DEPLOYMENT]`;
@@ -88,6 +92,7 @@ const buildOptions = [
     define: {
       'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
     },
   },
   {
@@ -101,6 +106,7 @@ const buildOptions = [
     define: {
       'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
     },
   },
   {
@@ -114,6 +120,7 @@ const buildOptions = [
     define: {
       'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
     },
   },
   {
@@ -127,6 +134,7 @@ const buildOptions = [
     define: {
       'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
       'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
     },
   },
 ];
