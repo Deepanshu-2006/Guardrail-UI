@@ -28,15 +28,35 @@ The dashboard explicitly emphasizes the **Decoupled Action Execution Guarantee**
 
 ## Development & Testing
 
+### Running the Local Development Server
+The dashboard uses modern ES module `<script type="module">` tags, which requires a local HTTP development server to load scripts without browser `file://` CORS restrictions:
+
 ```bash
-# Type check TypeScript files
-npm run type-check
+# Start local development server with live watching & auto-rebuild
+npm run dev
 
-# Run automated component test suite (47 assertions)
-npm run test
+# Open in browser:
+# http://localhost:5173/
+```
 
-# Build production bundle
+The dev server defaults to `http://localhost:5173` (an origin pre-whitelisted in the Guardrail backend CORS configuration). You can optionally override host or port:
+```bash
+PORT=8080 npm run dev
+```
+
+### Building & Testing
+```bash
+# Build standalone bundle (dist/dashboard.js)
 npm run build
+
+# Watch mode without HTTP server
+node build.mjs --watch
+
+# Run dev server test suite
+npm run test:dev
+
+# Run full automated test suite
+npm run test
 ```
 
 ## Connecting to the backend

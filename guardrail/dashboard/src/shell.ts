@@ -14,6 +14,7 @@ import {
   ApprovalRequest,
   ApprovalStatus,
   ApiClientErrorCodes,
+  DEFAULT_DASHBOARD_POLL_INTERVAL_MS,
   DashboardShellOptions,
   DashboardShellState,
   DashboardView,
@@ -71,7 +72,9 @@ export class DashboardShell {
 
     this.apiClient = options.apiClient;
     this.autoFetch = options.autoFetch ?? Boolean(options.apiClient);
-    this.pollIntervalMs = options.pollIntervalMs;
+    // Authenticated live mounts opt in with isMockService=false. Keep mock/test mounts
+    // deterministic unless they explicitly request polling.
+    this.pollIntervalMs = options.pollIntervalMs ?? (options.isMockService === false ? DEFAULT_DASHBOARD_POLL_INTERVAL_MS : undefined);
 
     const initialRequests = options.initialRequests ?? [];
     const initialHistory = options.initialHistoryRequests ?? [];

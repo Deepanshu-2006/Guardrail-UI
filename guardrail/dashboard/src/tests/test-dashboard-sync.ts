@@ -361,6 +361,17 @@ async function runDashboardSyncTests(): Promise<void> {
     // Verify default constant
     assertEquals(DEFAULT_DASHBOARD_POLL_INTERVAL_MS, 10000, 'DEFAULT_DASHBOARD_POLL_INTERVAL_MS is 10,000ms (10s)');
 
+    const liveShell = new DashboardShell({
+      container: testContainer,
+      apiClient: client,
+      autoFetch: false,
+      isMockService: false,
+    });
+    assertEquals(liveShell.getPollIntervalMs(), DEFAULT_DASHBOARD_POLL_INTERVAL_MS,
+      'authenticated live dashboard defaults to authoritative 10-second refresh');
+    assertEquals(liveShell.isPolling(), true, 'live dashboard starts polling without manual refresh configuration');
+    liveShell.destroy();
+
     const shell = new DashboardShell({
       container: testContainer,
       initialView: 'pending',
