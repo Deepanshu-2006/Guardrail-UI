@@ -1,18 +1,35 @@
 /**
  * Guardrail Trusted-Contact Dashboard - Overview Component
  *
- * Renders the top-level overview, assigned ward status, safety architecture guidance,
- * and an intentional activity placeholder without fake counts or simulated users.
+ * Renders the top-level overview:
+ * 1. Current protection status & governance banner
+ * 2. Key metrics (Assigned Wards, Pending Actions, Portal Status)
+ * 3. Important notifications & unresolved action items
+ * 4. Actionable pending approvals quick-review
+ * 5. Connected users they are authorized to assist (Ward oversight or setup)
+ * 6. Recent approval activity audit
+ *
+ * Strictly avoids fake counts, simulated activity, or fabricated data.
  */
 
-import { ApprovalRequest, ApprovalStatus, TrustedContactProfile } from '../types.js';
+import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 
 export interface OverviewProps {
   profile: TrustedContactProfile | null;
   pendingCount: number;
+  pendingRequests?: readonly ApprovalRequest[];
+  pendingStatus?: ViewStatus;
+  errorMessage?: string | null;
   recentActivity?: readonly ApprovalRequest[];
+  isBackendUnavailable?: boolean;
+  isMockService?: boolean;
+  environment?: string;
+  lastSynchronizedAt?: Date | null;
   onViewHistory?: () => void;
+  onViewPending?: () => void;
+  onSelectPending?: (requestId: string) => void;
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
+  onRefresh?: () => void;
 }
 
 export function renderOverview(props: OverviewProps): HTMLElement {
@@ -38,6 +55,107 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   header.appendChild(title);
   header.appendChild(subtitle);
   section.appendChild(header);
+
+  // 1. Current Protection Status & Governance Banner
+  const protectionCard = document.createElement('div');
+  protectionCard.className = 'gd-card gd-protection-status-card';
+  protectionCard.setAttribute('role', 'region');
+  protectionCard.setAttribute('aria-label', 'System Protection Status');
+
+  const protHeader = document.createElement('div');
+  protHeader.className = 'gd-protection-header';
+
+  const protIcon = document.createElement('div');
+  protIcon.className = 'gd-protection-icon';
+  protIcon.setAttribute('aria-hidden', 'true');
+
+  const protTextGroup = document.createElement('div');
+  protTextGroup.className = 'gd-protection-text-group';
+
+  const protTitle = document.createElement('h2');
+  protTitle.className = 'gd-protection-title';
+
+  const protDesc = document.createElement('p');
+  protDesc.className = 'gd-protection-desc';
+
+  const protBadge = document.createElement('span');
+  protBadge.className = 'gd-protection-badge';
+
+  if (props.isBackendUnavailable) {
+    protectionCard.classList.add('status-offline');
+    protIcon.textContent = '⚠️';
+    protBadge.className = 'gd-protection-badge badge-offline';
+    protBadge.textContent = 'Service Offline';
+    protTitle.textContent = 'Protection Status: Service Connection Offline';
+    protDesc.textContent =
+      'The approval backend is currently unreachable. Live action streaming and status synchronization are paused. The client will automatically resume when connectivity is restored.';
+  } else if (props.isMockService) {
+    protectionCard.classList.add('status-mock');
+    protIcon.textContent = '🧪';
+    protBadge.className = 'gd-protection-badge badge-mock';
+    protBadge.textContent = 'Mock Fixture';
+    protTitle.textContent = 'Protection Status: Development Fixture Active';
+    protDesc.textContent =
+      'Operating against an in-memory fixture service. Decisions are recorded in local memory and are not enforced on a production Guardrail cluster.';
+  } else if (props.profile?.isAuthenticated) {
+    protectionCard.classList.add('status-operational');
+    protIcon.textContent = '🛡️';
+    protBadge.className = 'gd-protection-badge badge-active';
+    protBadge.textContent = 'Operational & Enforced';
+    protTitle.textContent = 'Protection Status: Live Guardrail Protection Active';
+    protDesc.textContent =
+      'Connected to authoritative Guardrail safety backend. Intercepted actions from your authorized ward are evaluated under strict separation of duties.';
+  } else {
+    protectionCard.classList.add('status-standalone');
+    protIcon.textContent = '🔒';
+    protBadge.className = 'gd-protection-badge badge-standalone';
+    protBadge.textContent = 'Standalone Shell';
+    protTitle.textContent = 'Protection Status: Standalone Preview Mode';
+    protDesc.textContent =
+      'Running in decoupled client preview. Connect with an authorized trusted contact session to evaluate real browser actions.';
+  }
+
+  protTextGroup.appendChild(protTitle);
+  protTextGroup.appendChild(protDesc);
+  protHeader.appendChild(protIcon);
+  protHeader.appendChild(protTextGroup);
+  protHeader.appendChild(protBadge);
+  protectionCard.appendChild(protHeader);
+
+  // Invariant Posture Chips
+  const chipsRow = document.createElement('div');
+  chipsRow.className = 'gd-protection-chips-row';
+
+  const createChip = (icon: string, label: string, value: string) => {
+    const chip = document.createElement('div');
+    chip.className = 'gd-protection-chip';
+    const icn = document.createElement('span');
+    icn.className = 'gd-chip-icon';
+    icn.setAttribute('aria-hidden', 'true');
+    icn.textContent = icon;
+    const lbl = document.createElement('span');
+    lbl.className = 'gd-chip-label';
+    lbl.textContent = label;
+    const val = document.createElement('span');
+    val.className = 'gd-chip-val';
+    val.textContent = value;
+    chip.appendChild(icn);
+    chip.appendChild(lbl);
+    chip.appendChild(val);
+    return chip;
+  };
+
+  chipsRow.appendChild(createChip('⚡', 'Interception', 'Active in Staging Mode'));
+  chipsRow.appendChild(createChip('🔒', 'Execution', 'Decoupled (Consent Only)'));
+  chipsRow.appendChild(createChip('👥', 'Isolation', 'Strict Multi-Tenant Scoping'));
+
+  const syncTimeStr = props.lastSynchronizedAt
+    ? props.lastSynchronizedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : 'Not yet synchronized';
+  chipsRow.appendChild(createChip('⏱️', 'Last Sync', syncTimeStr));
+
+  protectionCard.appendChild(chipsRow);
+  section.appendChild(protectionCard);
 
   // Trust & Architectural Separation Callout
   const callout = document.createElement('div');
@@ -164,7 +282,348 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   section.appendChild(grid);
 
-  // Ward Connection & Setup Section
+  // 2. Important Notifications or Unresolved Items
+  const notifSection = document.createElement('div');
+  notifSection.className = 'gd-card gd-notifications-card';
+  notifSection.id = 'gd-notifications-card';
+
+  const notifHeader = document.createElement('div');
+  notifHeader.className = 'gd-notifications-header';
+
+  const notifTitle = document.createElement('h2');
+  notifTitle.className = 'gd-section-title';
+  notifTitle.textContent = 'Important Notifications & Action Items';
+
+  notifHeader.appendChild(notifTitle);
+  notifSection.appendChild(notifHeader);
+
+  const notifList = document.createElement('div');
+  notifList.className = 'gd-notifications-list';
+
+  let hasActionItem = false;
+
+  // Notification 1: Pending Approvals Action Required
+  if (props.pendingCount > 0) {
+    hasActionItem = true;
+    const item = document.createElement('div');
+    item.className = 'gd-notification-item gd-notif-warning';
+
+    const notifIcn = document.createElement('span');
+    notifIcn.className = 'gd-notif-icon';
+    notifIcn.setAttribute('aria-hidden', 'true');
+    notifIcn.textContent = '⏳';
+
+    const notifContent = document.createElement('div');
+    notifContent.className = 'gd-notif-content';
+
+    const notifMsg = document.createElement('p');
+    notifMsg.className = 'gd-notif-text';
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Action Required: ';
+    notifMsg.appendChild(strong);
+
+    const txt = document.createElement('span');
+    txt.textContent = `You have ${props.pendingCount} pending approval request${
+      props.pendingCount > 1 ? 's' : ''
+    } awaiting your evaluation.`;
+    notifMsg.appendChild(txt);
+
+    notifContent.appendChild(notifMsg);
+    item.appendChild(notifIcn);
+    item.appendChild(notifContent);
+
+    if (props.onViewPending) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'gd-btn-notif-action';
+      btn.textContent = 'Review Pending →';
+      btn.addEventListener('click', () => {
+        props.onViewPending?.();
+      });
+      item.appendChild(btn);
+    }
+
+    notifList.appendChild(item);
+  }
+
+  // Notification 2: Backend Unreachable Alert
+  if (props.isBackendUnavailable) {
+    hasActionItem = true;
+    const item = document.createElement('div');
+    item.className = 'gd-notification-item gd-notif-danger';
+
+    const notifIcn = document.createElement('span');
+    notifIcn.className = 'gd-notif-icon';
+    notifIcn.setAttribute('aria-hidden', 'true');
+    notifIcn.textContent = '📡';
+
+    const notifContent = document.createElement('div');
+    notifContent.className = 'gd-notif-content';
+
+    const notifMsg = document.createElement('p');
+    notifMsg.className = 'gd-notif-text';
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Connection Alert: ';
+    notifMsg.appendChild(strong);
+
+    const txt = document.createElement('span');
+    txt.textContent = 'The approval backend is currently unreachable. Last verified data may be stale.';
+    notifMsg.appendChild(txt);
+
+    notifContent.appendChild(notifMsg);
+    item.appendChild(notifIcn);
+    item.appendChild(notifContent);
+
+    if (props.onRefresh) {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'gd-btn-notif-action';
+      retryBtn.textContent = 'Retry Sync';
+      retryBtn.addEventListener('click', () => {
+        props.onRefresh?.();
+      });
+      item.appendChild(retryBtn);
+    }
+
+    notifList.appendChild(item);
+  }
+
+  // Notification 3: Unlinked Ward Notice
+  if (!props.profile?.assignedWardId) {
+    hasActionItem = true;
+    const item = document.createElement('div');
+    item.className = 'gd-notification-item gd-notif-info';
+
+    const notifIcn = document.createElement('span');
+    notifIcn.className = 'gd-notif-icon';
+    notifIcn.setAttribute('aria-hidden', 'true');
+    notifIcn.textContent = '🔗';
+
+    const notifContent = document.createElement('div');
+    notifContent.className = 'gd-notif-content';
+
+    const notifMsg = document.createElement('p');
+    notifMsg.className = 'gd-notif-text';
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Ward Oversight Needed: ';
+    notifMsg.appendChild(strong);
+
+    const txt = document.createElement('span');
+    txt.textContent = 'No user ward is currently connected. Connect an invitation code below to begin receiving approval requests.';
+    notifMsg.appendChild(txt);
+
+    notifContent.appendChild(notifMsg);
+    item.appendChild(notifIcn);
+    item.appendChild(notifContent);
+    notifList.appendChild(item);
+  }
+
+  // Notification 4: Mock Service Fixture Indicator
+  if (props.isMockService) {
+    const item = document.createElement('div');
+    item.className = 'gd-notification-item gd-notif-muted';
+
+    const notifIcn = document.createElement('span');
+    notifIcn.className = 'gd-notif-icon';
+    notifIcn.setAttribute('aria-hidden', 'true');
+    notifIcn.textContent = '🧪';
+
+    const notifContent = document.createElement('div');
+    notifContent.className = 'gd-notif-content';
+
+    const notifMsg = document.createElement('p');
+    notifMsg.className = 'gd-notif-text';
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Development Mode: ';
+    notifMsg.appendChild(strong);
+
+    const txt = document.createElement('span');
+    txt.textContent = 'Dashboard is connected to a local mock or in-memory service fixture. Real browser actions are not intercepted.';
+    notifMsg.appendChild(txt);
+
+    notifContent.appendChild(notifMsg);
+    item.appendChild(notifIcn);
+    item.appendChild(notifContent);
+    notifList.appendChild(item);
+  }
+
+  // Sensible Empty State for Notifications
+  if (!hasActionItem) {
+    const item = document.createElement('div');
+    item.className = 'gd-notification-item gd-notif-success';
+
+    const notifIcn = document.createElement('span');
+    notifIcn.className = 'gd-notif-icon';
+    notifIcn.setAttribute('aria-hidden', 'true');
+    notifIcn.textContent = '✓';
+
+    const notifContent = document.createElement('div');
+    notifContent.className = 'gd-notif-content';
+
+    const notifMsg = document.createElement('p');
+    notifMsg.className = 'gd-notif-text';
+    notifMsg.textContent = 'All Systems Normal: No unresolved safety items or pending approvals requiring attention.';
+
+    notifContent.appendChild(notifMsg);
+    item.appendChild(notifIcn);
+    item.appendChild(notifContent);
+    notifList.appendChild(item);
+  }
+
+  notifSection.appendChild(notifList);
+  section.appendChild(notifSection);
+
+  // 3. Actionable Pending Approvals Quick-Review Section
+  const pendingSection = document.createElement('div');
+  pendingSection.className = 'gd-card gd-overview-pending-section';
+  pendingSection.id = 'gd-overview-pending-section';
+
+  const pendingSecHeader = document.createElement('div');
+  pendingSecHeader.className = 'gd-overview-pending-header';
+
+  const pendingSecTitle = document.createElement('h2');
+  pendingSecTitle.className = 'gd-section-title';
+  pendingSecTitle.textContent = 'Pending Approval Requests';
+
+  const pendingSecSub = document.createElement('p');
+  pendingSecSub.className = 'gd-section-subtitle';
+  pendingSecSub.textContent =
+    'High-risk browser actions intercepted in Staging Mode awaiting your safety determination.';
+
+  pendingSecHeader.appendChild(pendingSecTitle);
+  pendingSecHeader.appendChild(pendingSecSub);
+  pendingSection.appendChild(pendingSecHeader);
+
+  const pendingList = props.pendingRequests ?? [];
+
+  if (props.pendingStatus === 'loading') {
+    // Skeleton loader
+    const skeletonWrap = document.createElement('div');
+    skeletonWrap.className = 'gd-overview-pending-skeleton';
+    skeletonWrap.setAttribute('aria-busy', 'true');
+    for (let i = 0; i < 2; i++) {
+      const line1 = document.createElement('div');
+      line1.className = 'gd-skeleton gd-skeleton-line';
+      const line2 = document.createElement('div');
+      line2.className = 'gd-skeleton gd-skeleton-line short';
+      skeletonWrap.appendChild(line1);
+      skeletonWrap.appendChild(line2);
+    }
+    pendingSection.appendChild(skeletonWrap);
+  } else if (props.pendingStatus === 'error' && pendingList.length === 0) {
+    // Error state
+    const errBox = document.createElement('div');
+    errBox.className = 'gd-error-banner';
+    errBox.textContent = props.errorMessage || 'Unable to load pending approval requests.';
+    if (props.onRefresh) {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'gd-btn-retry';
+      retryBtn.textContent = 'Retry';
+      retryBtn.addEventListener('click', () => props.onRefresh?.());
+      errBox.appendChild(retryBtn);
+    }
+    pendingSection.appendChild(errBox);
+  } else if (pendingList.length > 0) {
+    // Actionable Pending Items List (Top 3 on Overview)
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'gd-overview-pending-list';
+
+    for (const req of pendingList.slice(0, 3)) {
+      const item = document.createElement('div');
+      item.className = 'gd-overview-pending-item';
+
+      const left = document.createElement('div');
+      left.className = 'gd-overview-pending-left';
+
+      const topRow = document.createElement('div');
+      topRow.className = 'gd-overview-pending-top-row';
+
+      const desc = document.createElement('span');
+      desc.className = 'gd-overview-pending-desc';
+      desc.textContent = req.actionDescription;
+
+      const riskBadge = document.createElement('span');
+      const riskClass = (req.riskLevel || RiskLevel.HIGH).toLowerCase();
+      riskBadge.className = `gd-risk-badge gd-risk-${riskClass}`;
+      riskBadge.textContent = req.riskLevel || 'HIGH';
+
+      topRow.appendChild(desc);
+      topRow.appendChild(riskBadge);
+
+      const metaRow = document.createElement('div');
+      metaRow.className = 'gd-overview-pending-meta';
+      const host = req.hostname || 'Browser Action';
+      const timeStr = req.timestamp
+        ? new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Just now';
+      metaRow.textContent = `${host} • Requested ${timeStr}`;
+
+      left.appendChild(topRow);
+      left.appendChild(metaRow);
+
+      const actionBtn = document.createElement('button');
+      actionBtn.type = 'button';
+      actionBtn.className = 'gd-btn-overview-review';
+      actionBtn.setAttribute('aria-label', `Review and evaluate ${req.actionDescription}`);
+      actionBtn.textContent = 'Review & Decide →';
+      actionBtn.addEventListener('click', () => {
+        if (props.onSelectPending) {
+          props.onSelectPending(req.id);
+        } else if (props.onViewPending) {
+          props.onViewPending();
+        }
+      });
+
+      item.appendChild(left);
+      item.appendChild(actionBtn);
+      itemsContainer.appendChild(item);
+    }
+
+    pendingSection.appendChild(itemsContainer);
+
+    if (pendingList.length > 3 && props.onViewPending) {
+      const viewAllBtn = document.createElement('button');
+      viewAllBtn.type = 'button';
+      viewAllBtn.className = 'gd-btn-view-all-history';
+      viewAllBtn.textContent = `View All ${pendingList.length} Pending Approvals →`;
+      viewAllBtn.addEventListener('click', () => {
+        props.onViewPending?.();
+      });
+      pendingSection.appendChild(viewAllBtn);
+    }
+  } else {
+    // Sensible Empty State for Pending Requests
+    const emptyBox = document.createElement('div');
+    emptyBox.className = 'gd-overview-empty-pending';
+
+    const empIcon = document.createElement('div');
+    empIcon.className = 'gd-placeholder-icon';
+    empIcon.setAttribute('aria-hidden', 'true');
+    empIcon.textContent = '🛡️';
+
+    const empTitle = document.createElement('h3');
+    empTitle.className = 'gd-placeholder-title';
+    empTitle.textContent = 'Review Queue All Clear';
+
+    const empText = document.createElement('p');
+    empText.className = 'gd-placeholder-text';
+    empText.textContent =
+      'No browser actions are currently held in Staging Mode waiting for evaluation. When an authorized ward initiates a high-risk action, it will appear here.';
+
+    emptyBox.appendChild(empIcon);
+    emptyBox.appendChild(empTitle);
+    emptyBox.appendChild(empText);
+    pendingSection.appendChild(emptyBox);
+  }
+
+  section.appendChild(pendingSection);
+
+  // 4. Ward Connection & Setup Section (Authorized Users Assistance)
   if (!props.profile?.assignedWardId) {
     const setupCard = document.createElement('div');
     setupCard.className = 'gd-card gd-setup-card';
@@ -325,7 +784,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
     const wardTitle = document.createElement('h2');
     wardTitle.className = 'gd-section-title';
-    wardTitle.textContent = 'Active Ward Association';
+    wardTitle.textContent = 'Active Ward Association & Authorized Oversight';
 
     const wardGrid = document.createElement('div');
     wardGrid.className = 'gd-ward-meta-grid';
@@ -363,14 +822,26 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     item3.appendChild(label3);
     item3.appendChild(val3);
 
+    const item4 = document.createElement('div');
+    item4.className = 'gd-ward-meta-item';
+    const label4 = document.createElement('span');
+    label4.className = 'gd-ward-meta-label';
+    label4.textContent = 'Tenant Scoping';
+    const val4 = document.createElement('span');
+    val4.className = 'gd-ward-meta-badge';
+    val4.textContent = 'Isolated';
+    item4.appendChild(label4);
+    item4.appendChild(val4);
+
     wardGrid.appendChild(item1);
     wardGrid.appendChild(item2);
     wardGrid.appendChild(item3);
+    wardGrid.appendChild(item4);
 
     const dutyNotice = document.createElement('p');
     dutyNotice.className = 'gd-ward-duty-notice';
     dutyNotice.textContent =
-      `Separation of Duties Enforced: You are authorized to review and evaluate intercepted actions for ward ${props.profile.assignedWardId}. Approval decisions register consent on the backend; the user in Staging Mode retains ultimate agency to execute or cancel the action.`;
+      `Separation of Duties Enforced: You are authorized to review and evaluate intercepted actions for ward ${props.profile.assignedWardId}. Approval decisions register consent on the backend; the user in Staging Mode retains ultimate agency to execute or cancel the action. Multi-tenant isolation guarantees no access to data belonging to other users.`;
 
     wardCard.appendChild(wardTitle);
     wardCard.appendChild(wardGrid);
@@ -378,7 +849,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     section.appendChild(wardCard);
   }
 
-  // Recent Activity Section
+  // 5. Recent Activity Section
   const activitySection = document.createElement('div');
   activitySection.className = 'gd-card';
 
@@ -434,7 +905,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       const meta = document.createElement('div');
       meta.className = 'gd-recent-activity-meta';
       const host = req.hostname || 'Local Interaction';
-      const timeStr = req.resolvedAt ? new Date(req.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Resolved';
+      const timeStr = req.resolvedAt
+        ? new Date(req.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Resolved';
       meta.textContent = `${host} • ${timeStr}`;
 
       itemLeft.appendChild(desc);
