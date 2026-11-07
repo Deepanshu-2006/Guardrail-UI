@@ -27,11 +27,17 @@ import { RiskSignalId } from '../types/risk.js';
 import {
   ConfigurablePolicyRule,
   ConfigurableSignalSetting,
+  CURRENT_ARCHITECTURE_POLICY_VERSION,
+  CURRENT_ARCHITECTURE_SCHEMA_VERSION,
   GuardrailPolicyConfig,
+  MIN_SUPPORTED_POLICY_VERSION,
+  MIN_SUPPORTED_SCHEMA_VERSION,
   OperationalTimeouts,
   PolicyConfigValidationErrorDetail,
   PolicyConfigValidationResult,
+  PolicySettingSpecification,
   RiskThresholdSettings,
+  VersionCompatibilityResult,
 } from '../types/config.js';
 
 // =============================================================================
@@ -132,6 +138,62 @@ export const SEMVER_REGEX = /^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/;
  */
 export const HOSTNAME_REGEX = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$/;
 
+/**
+ * Checks whether a candidate version string is semver-compatible with current architecture.
+ *
+ * RULES:
+ * 1. Must match standard semver pattern (e.g. '1.0.0').
+ * 2. Major version < 1 is STALE (rejected to prevent applying outdated policies).
+ * 3. Major version > 1 is UNSUPPORTED (rejected to prevent future breaking policy formats).
+ */
+export function checkVersionCompatibility(
+  version: unknown,
+  fieldName = 'schemaVersion'
+): VersionCompatibilityResult {
+  if (!version || typeof version !== 'string') {
+    return {
+      compatible: false,
+      code: 'INVALID_CONFIG_VERSION',
+      message: `Version field "${fieldName}" must be a non-empty semver string.`,
+      field: fieldName,
+    };
+  }
+
+  const trimmed = version.trim();
+  if (!SEMVER_REGEX.test(trimmed)) {
+    return {
+      compatible: false,
+      code: 'INVALID_SEMVER_FORMAT',
+      message: `Property "${fieldName}" must be a valid semantic version (e.g. "1.0.0"), got "${trimmed}".`,
+      field: fieldName,
+    };
+  }
+
+  const [majorStr] = trimmed.split('.');
+  const major = parseInt(majorStr, 10);
+  const minVersion = fieldName === 'policyVersion' ? MIN_SUPPORTED_POLICY_VERSION : MIN_SUPPORTED_SCHEMA_VERSION;
+
+  if (isNaN(major) || major < 1) {
+    return {
+      compatible: false,
+      code: 'STALE_CONFIG_VERSION',
+      message: `Stale configuration version (v${trimmed}) cannot be applied; current architecture requires v${minVersion} or newer.`,
+      field: fieldName,
+    };
+  }
+
+  if (major > 1) {
+    return {
+      compatible: false,
+      code: 'UNSUPPORTED_CONFIG_VERSION',
+      message: `Unsupported configuration version (v${trimmed}); current architecture only supports v1.x.`,
+      field: fieldName,
+    };
+  }
+
+  return { compatible: true };
+}
+
 // =============================================================================
 // Custom Validation Error
 // =============================================================================
@@ -167,122 +229,151 @@ export class PolicyConfigValidationError extends Error {
  * Baseline default Guardrail risk-policy configuration.
  * Fully compliant with all schema rules and immutable security invariants.
  */
-export const DEFAULT_GUARDRAIL_POLICY_CONFIG: Readonly<GuardrailPolicyConfig> = Object.freeze({
-  schemaVersion: '1.0.0',
-  policyVersion: '1.0.0',
-  updatedAt: '2026-10-26T00:00:00.000Z',
-  thresholds: Object.freeze({
-    lowMax: 24,
-    mediumMax: 49,
-    highMax: 74,
+/**
+ * Explicit safe default risk thresholds.
+ * Strictly bounded: 5 <= lowMax < mediumMax < highMax <= 85.
+ */
+export const DEFAULT_RISK_THRESHOLDS: Readonly<RiskThresholdSettings> = Object.freeze({
+  lowMax: 24,
+  mediumMax: 49,
+  highMax: 74,
+});
+
+/**
+ * Explicit safe default signal settings.
+ * DESTRUCTIVE_ACTION is mandatory and cannot be disabled or lowered below 25.
+ */
+export const DEFAULT_SIGNAL_SETTINGS: Readonly<Record<RiskSignalId, ConfigurableSignalSetting>> = Object.freeze({
+  [RiskSignalId.DESTRUCTIVE_ACTION]: Object.freeze({
+    id: RiskSignalId.DESTRUCTIVE_ACTION,
+    enabled: true,
+    scoreContribution: 50,
   }),
-  signals: Object.freeze({
-    [RiskSignalId.DESTRUCTIVE_ACTION]: Object.freeze({
-      id: RiskSignalId.DESTRUCTIVE_ACTION,
-      enabled: true,
-      scoreContribution: 50,
-    }),
-    [RiskSignalId.PAYMENT_ACTION]: Object.freeze({
-      id: RiskSignalId.PAYMENT_ACTION,
-      enabled: true,
-      scoreContribution: 40,
-    }),
-    [RiskSignalId.AUTHENTICATION_ACTION]: Object.freeze({
-      id: RiskSignalId.AUTHENTICATION_ACTION,
-      enabled: true,
-      scoreContribution: 20,
-    }),
-    [RiskSignalId.EXTERNAL_NAVIGATION]: Object.freeze({
-      id: RiskSignalId.EXTERNAL_NAVIGATION,
-      enabled: true,
-      scoreContribution: 20,
-    }),
-    [RiskSignalId.DOWNLOAD_ACTION]: Object.freeze({
-      id: RiskSignalId.DOWNLOAD_ACTION,
-      enabled: true,
-      scoreContribution: 10,
-    }),
+  [RiskSignalId.PAYMENT_ACTION]: Object.freeze({
+    id: RiskSignalId.PAYMENT_ACTION,
+    enabled: true,
+    scoreContribution: 40,
   }),
-  policies: Object.freeze([
-    Object.freeze({
-      id: RiskPolicyId.CONTROLLED_DESTRUCTIVE,
-      name: 'Controlled Irreversible / Destructive Action Policy',
-      enabled: true,
-      actionTypes: Object.freeze([ActionType.CLICK]),
-      decision: ResponseAction.PROTECT,
-      priority: 300,
-      reasonCode: 'POLICY_PROTECT_DESTRUCTIVE',
-      userExplanation:
-        'Protective mechanism required: Irreversible destructive action detected on target element. Staging Mode initiated.',
-      isImmutableSecurityInvariant: true,
-    }),
-    Object.freeze({
-      id: RiskPolicyId.CONTROLLED_PAYMENT,
-      name: 'Controlled Financial & Checkout Policy',
-      enabled: true,
-      actionTypes: Object.freeze([ActionType.CLICK, ActionType.SUBMIT]),
-      decision: ResponseAction.WARN,
-      priority: 250,
-      reasonCode: 'POLICY_WARN_PAYMENT',
-      userExplanation:
-        'User advisory recommended: Action interacts with checkout or payment transaction flow.',
-    }),
-    Object.freeze({
-      id: RiskPolicyId.EXTERNAL_NAVIGATION,
-      name: 'External Navigation & Origin Boundary Policy',
-      enabled: true,
-      actionTypes: Object.freeze([ActionType.NAVIGATION, ActionType.CLICK]),
-      decision: ResponseAction.WARN,
-      priority: 200,
-      reasonCode: 'POLICY_WARN_EXTERNAL_NAVIGATION',
-      userExplanation:
-        'User advisory recommended: Navigation redirects to an external origin across domain boundaries.',
-    }),
-    Object.freeze({
-      id: RiskPolicyId.AUTHENTICATION_BOUNDARY,
-      name: 'Authentication & Credential Boundary Policy',
-      enabled: true,
-      actionTypes: Object.freeze([ActionType.CLICK, ActionType.INPUT, ActionType.SUBMIT]),
-      decision: ResponseAction.WARN,
-      priority: 150,
-      reasonCode: 'POLICY_WARN_AUTHENTICATION',
-      userExplanation:
-        'User advisory recommended: Action interacts with authentication, credential, or session boundaries.',
-    }),
-    Object.freeze({
-      id: RiskPolicyId.ROUTINE_INTERACTION,
-      name: 'Routine Interaction Policy',
-      enabled: true,
-      actionTypes: Object.freeze([ActionType.CLICK, ActionType.NAVIGATION]),
-      decision: ResponseAction.ALLOW,
-      priority: 100,
-      reasonCode: 'POLICY_ALLOW_ROUTINE',
-      userExplanation:
-        'Action permitted without intervention: No elevated risk signals detected. Routine interaction.',
-    }),
-    Object.freeze({
-      id: RiskPolicyId.UNSUPPORTED_BOUNDARY_GUARD,
-      name: 'Unsupported Action Type & Corruption Guard Policy',
-      enabled: true,
-      actionTypes: Object.freeze([ActionType.INPUT, ActionType.SUBMIT, ActionType.NAVIGATION]),
-      decision: ResponseAction.PROTECT,
-      priority: 350,
-      reasonCode: 'POLICY_FAIL_CLOSED_CORRUPT_PAYLOAD',
-      userExplanation:
-        'Protective mechanism required: Malformed or unverified action payload resolved fail-closed.',
-      isImmutableSecurityInvariant: true,
-    }),
-  ]),
-  trustedDomains: Object.freeze([]),
-  timeouts: Object.freeze({
-    approvalTtlSeconds: 3600,
-    dashboardPollIntervalMs: 10000,
+  [RiskSignalId.AUTHENTICATION_ACTION]: Object.freeze({
+    id: RiskSignalId.AUTHENTICATION_ACTION,
+    enabled: true,
+    scoreContribution: 20,
+  }),
+  [RiskSignalId.EXTERNAL_NAVIGATION]: Object.freeze({
+    id: RiskSignalId.EXTERNAL_NAVIGATION,
+    enabled: true,
+    scoreContribution: 20,
+  }),
+  [RiskSignalId.DOWNLOAD_ACTION]: Object.freeze({
+    id: RiskSignalId.DOWNLOAD_ACTION,
+    enabled: true,
+    scoreContribution: 10,
   }),
 });
 
 /**
- * Returns a deeply frozen copy of the safe default configuration.
+ * Explicit safe default policy rules.
+ * Preserves immutable security invariants (CONTROLLED_DESTRUCTIVE, UNSUPPORTED_BOUNDARY_GUARD).
  */
+export const DEFAULT_POLICY_RULES: readonly ConfigurablePolicyRule[] = Object.freeze([
+  Object.freeze({
+    id: RiskPolicyId.CONTROLLED_DESTRUCTIVE,
+    name: 'Controlled Irreversible / Destructive Action Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.CLICK]),
+    decision: ResponseAction.PROTECT,
+    priority: 300,
+    reasonCode: 'POLICY_PROTECT_DESTRUCTIVE',
+    userExplanation:
+      'Protective mechanism required: Irreversible destructive action detected on target element. Staging Mode initiated.',
+    isImmutableSecurityInvariant: true,
+  }),
+  Object.freeze({
+    id: RiskPolicyId.CONTROLLED_PAYMENT,
+    name: 'Controlled Financial & Checkout Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.CLICK, ActionType.SUBMIT]),
+    decision: ResponseAction.WARN,
+    priority: 250,
+    reasonCode: 'POLICY_WARN_PAYMENT',
+    userExplanation:
+      'User advisory recommended: Action interacts with checkout or payment transaction flow.',
+  }),
+  Object.freeze({
+    id: RiskPolicyId.EXTERNAL_NAVIGATION,
+    name: 'External Navigation & Origin Boundary Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.NAVIGATION, ActionType.CLICK]),
+    decision: ResponseAction.WARN,
+    priority: 200,
+    reasonCode: 'POLICY_WARN_EXTERNAL_NAVIGATION',
+    userExplanation:
+      'User advisory recommended: Navigation redirects to an external origin across domain boundaries.',
+  }),
+  Object.freeze({
+    id: RiskPolicyId.AUTHENTICATION_BOUNDARY,
+    name: 'Authentication & Credential Boundary Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.CLICK, ActionType.INPUT, ActionType.SUBMIT]),
+    decision: ResponseAction.WARN,
+    priority: 150,
+    reasonCode: 'POLICY_WARN_AUTHENTICATION',
+    userExplanation:
+      'User advisory recommended: Action interacts with authentication, credential, or session boundaries.',
+  }),
+  Object.freeze({
+    id: RiskPolicyId.ROUTINE_INTERACTION,
+    name: 'Routine Interaction Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.CLICK, ActionType.NAVIGATION]),
+    decision: ResponseAction.ALLOW,
+    priority: 100,
+    reasonCode: 'POLICY_ALLOW_ROUTINE',
+    userExplanation:
+      'Action permitted without intervention: No elevated risk signals detected. Routine interaction.',
+  }),
+  Object.freeze({
+    id: RiskPolicyId.UNSUPPORTED_BOUNDARY_GUARD,
+    name: 'Unsupported Action Type & Corruption Guard Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.INPUT, ActionType.SUBMIT, ActionType.NAVIGATION]),
+    decision: ResponseAction.PROTECT,
+    priority: 350,
+    reasonCode: 'POLICY_FAIL_CLOSED_CORRUPT_PAYLOAD',
+    userExplanation:
+      'Protective mechanism required: Malformed or unverified action payload resolved fail-closed.',
+    isImmutableSecurityInvariant: true,
+  }),
+]);
+
+/**
+ * Explicit safe default trusted domains list (empty by default).
+ */
+export const DEFAULT_TRUSTED_DOMAINS: readonly string[] = Object.freeze([]);
+
+/**
+ * Explicit safe default operational timeouts.
+ */
+export const DEFAULT_OPERATIONAL_TIMEOUTS: Readonly<OperationalTimeouts> = Object.freeze({
+  approvalTtlSeconds: 3600,
+  dashboardPollIntervalMs: 10000,
+});
+
+/**
+ * Baseline default Guardrail risk-policy configuration.
+ * Fully compliant with all schema rules and immutable security invariants.
+ */
+export const DEFAULT_GUARDRAIL_POLICY_CONFIG: Readonly<GuardrailPolicyConfig> = Object.freeze({
+  schemaVersion: CURRENT_ARCHITECTURE_SCHEMA_VERSION,
+  policyVersion: CURRENT_ARCHITECTURE_POLICY_VERSION,
+  updatedAt: '2026-10-26T00:00:00.000Z',
+  thresholds: DEFAULT_RISK_THRESHOLDS,
+  signals: DEFAULT_SIGNAL_SETTINGS,
+  policies: DEFAULT_POLICY_RULES,
+  trustedDomains: DEFAULT_TRUSTED_DOMAINS,
+  timeouts: DEFAULT_OPERATIONAL_TIMEOUTS,
+});
+
 export function getSafeDefaultPolicyConfig(): GuardrailPolicyConfig {
   return DEFAULT_GUARDRAIL_POLICY_CONFIG;
 }
@@ -403,13 +494,16 @@ export function validatePolicyConfig(candidate: unknown): PolicyConfigValidation
       message: 'Property "schemaVersion" is required and must be a non-empty semver string.',
       actualValue: schemaVersion,
     });
-  } else if (!SEMVER_REGEX.test(schemaVersion.trim())) {
-    errors.push({
-      field: 'schemaVersion',
-      code: 'INVALID_SEMVER_FORMAT',
-      message: `Property "schemaVersion" must be a valid semantic version (e.g. "1.0.0"), got "${schemaVersion}".`,
-      actualValue: schemaVersion,
-    });
+  } else {
+    const compat = checkVersionCompatibility(schemaVersion, 'schemaVersion');
+    if (!compat.compatible) {
+      errors.push({
+        field: 'schemaVersion',
+        code: compat.code || 'INVALID_CONFIG_VERSION',
+        message: compat.message || `Property "schemaVersion" is incompatible with current architecture.`,
+        actualValue: schemaVersion,
+      });
+    }
   }
 
   // 5. Validate policyVersion
@@ -421,13 +515,16 @@ export function validatePolicyConfig(candidate: unknown): PolicyConfigValidation
       message: 'Property "policyVersion" is required and must be a non-empty semver string.',
       actualValue: policyVersion,
     });
-  } else if (!SEMVER_REGEX.test(policyVersion.trim())) {
-    errors.push({
-      field: 'policyVersion',
-      code: 'INVALID_SEMVER_FORMAT',
-      message: `Property "policyVersion" must be a valid semantic version (e.g. "1.0.0"), got "${policyVersion}".`,
-      actualValue: policyVersion,
-    });
+  } else {
+    const compat = checkVersionCompatibility(policyVersion, 'policyVersion');
+    if (!compat.compatible) {
+      errors.push({
+        field: 'policyVersion',
+        code: compat.code || 'INVALID_CONFIG_VERSION',
+        message: compat.message || `Property "policyVersion" is incompatible with current architecture.`,
+        actualValue: policyVersion,
+      });
+    }
   }
 
   // 6. Validate updatedAt timestamp
@@ -1070,6 +1167,245 @@ export function resolveSafePolicyConfig(candidate: unknown): GuardrailPolicyConf
 
   return DEFAULT_GUARDRAIL_POLICY_CONFIG;
 }
+
+// =============================================================================
+// Comprehensive Policy Settings Specifications Dictionary
+// =============================================================================
+
+/**
+ * Programmatic dictionary describing every single supported policy setting,
+ * its constraints, default values, and security implications.
+ */
+export const POLICY_SETTINGS_SPECIFICATIONS: readonly PolicySettingSpecification[] = Object.freeze([
+  Object.freeze({
+    key: 'schemaVersion',
+    category: 'version',
+    title: 'Policy Schema Format Version',
+    description: 'Defines the structural format and parsing specification of the policy document.',
+    valueType: 'string',
+    defaultValue: CURRENT_ARCHITECTURE_SCHEMA_VERSION,
+    permittedValues: Object.freeze(['1.x']),
+    isImmutableInvariant: false,
+    securityImplication: 'Protects against schema parsing drift. Unsupported or stale versions (< 1.0.0 or > 1.x) are strictly rejected to prevent malformed rule interpretations.',
+  }),
+  Object.freeze({
+    key: 'policyVersion',
+    category: 'version',
+    title: 'Protection Policy Version',
+    description: 'Identifies active operational policy configuration version. Included in approval requests and verified during action continuation.',
+    valueType: 'string',
+    defaultValue: CURRENT_ARCHITECTURE_POLICY_VERSION,
+    permittedValues: Object.freeze(['1.x']),
+    isImmutableInvariant: false,
+    securityImplication: 'Guarantees version synchronization between client and backend. Prevents client execution against stale or tampered policies.',
+  }),
+  Object.freeze({
+    key: 'updatedAt',
+    category: 'version',
+    title: 'Configuration Update Timestamp',
+    description: 'ISO 8601 UTC timestamp recording when configuration was generated or committed.',
+    valueType: 'string',
+    defaultValue: '2026-10-26T00:00:00.000Z',
+    isImmutableInvariant: false,
+    securityImplication: 'Provides non-repudiation audit trails for policy update provenance.',
+  }),
+  Object.freeze({
+    key: 'thresholds.lowMax',
+    category: 'threshold',
+    title: 'Low Risk Tier Ceiling',
+    description: 'Maximum risk score considered LOW risk (inclusive). Actions within this tier proceed without user warning.',
+    valueType: 'integer',
+    defaultValue: 24,
+    minValue: 5,
+    maxValue: 35,
+    isImmutableInvariant: false,
+    securityImplication: 'Raising lowMax widens the envelope of silent actions. Capped at 35 to prevent high-impact actions from masquerading as benign.',
+  }),
+  Object.freeze({
+    key: 'thresholds.mediumMax',
+    category: 'threshold',
+    title: 'Medium Risk Tier Ceiling',
+    description: 'Maximum risk score considered MEDIUM risk (inclusive). Actions in this tier display user advisories (WARN).',
+    valueType: 'integer',
+    defaultValue: 49,
+    minValue: 6,
+    maxValue: 65,
+    isImmutableInvariant: false,
+    securityImplication: 'Must strictly exceed lowMax. Capped at 65 to ensure high-stakes operations cannot be downgraded to advisory warnings.',
+  }),
+  Object.freeze({
+    key: 'thresholds.highMax',
+    category: 'threshold',
+    title: 'High Risk Tier Ceiling',
+    description: 'Maximum risk score considered HIGH risk (inclusive). Actions in this tier trigger Staging Mode review.',
+    valueType: 'integer',
+    defaultValue: 74,
+    minValue: 7,
+    maxValue: 85,
+    isImmutableInvariant: false,
+    securityImplication: 'Must strictly exceed mediumMax. Capped at 85 to ensure severe, irreversible actions (>= 86) unconditionally trigger fail-closed CRITICAL protection.',
+  }),
+  Object.freeze({
+    key: 'signals.DESTRUCTIVE_ACTION',
+    category: 'signal',
+    title: 'Destructive Action Risk Signal',
+    description: 'Fires when user interacts with irreversible elements (delete, remove, reset, purge).',
+    valueType: 'boolean',
+    defaultValue: true,
+    minValue: 25,
+    maxValue: 100,
+    isImmutableInvariant: true,
+    securityImplication: 'Mandatory security invariant: Cannot be disabled and score contribution cannot be set below 25. Silencing this signal would permit unreviewed permanent data loss.',
+  }),
+  Object.freeze({
+    key: 'signals.PAYMENT_ACTION',
+    category: 'signal',
+    title: 'Payment & Financial Risk Signal',
+    description: 'Fires when action targets checkout, payment submission, or transaction authorization controls.',
+    valueType: 'boolean',
+    defaultValue: true,
+    minValue: 0,
+    maxValue: 100,
+    isImmutableInvariant: false,
+    securityImplication: 'Disabling or setting score contribution to 0 allows financial commitments without prompt or warning.',
+  }),
+  Object.freeze({
+    key: 'signals.AUTHENTICATION_ACTION',
+    category: 'signal',
+    title: 'Authentication Boundary Signal',
+    description: 'Fires when action interacts with login forms, credential fields, or session elevation triggers.',
+    valueType: 'boolean',
+    defaultValue: true,
+    minValue: 0,
+    maxValue: 100,
+    isImmutableInvariant: false,
+    securityImplication: 'Disabling risks unreviewed account hijacking or credential handoffs.',
+  }),
+  Object.freeze({
+    key: 'signals.EXTERNAL_NAVIGATION',
+    category: 'signal',
+    title: 'External Navigation Risk Signal',
+    description: 'Fires when links or forms redirect outside current origin domain.',
+    valueType: 'boolean',
+    defaultValue: true,
+    minValue: 0,
+    maxValue: 100,
+    isImmutableInvariant: false,
+    securityImplication: 'Disabling risks unprompted phishing redirections and cross-site request forgery.',
+  }),
+  Object.freeze({
+    key: 'signals.DOWNLOAD_ACTION',
+    category: 'signal',
+    title: 'File Download Risk Signal',
+    description: 'Fires when interaction initiates binary or executable payload downloads.',
+    valueType: 'boolean',
+    defaultValue: true,
+    minValue: 0,
+    maxValue: 100,
+    isImmutableInvariant: false,
+    securityImplication: 'Disabling reduces risk visibility into potentially malicious executable downloads.',
+  }),
+  Object.freeze({
+    key: 'policies.CONTROLLED_DESTRUCTIVE',
+    category: 'policy',
+    title: 'Controlled Destructive Action Policy',
+    description: 'Requires protective staging mode interception for irreversible destructive click actions.',
+    valueType: 'enum',
+    defaultValue: 'PROTECT',
+    permittedValues: Object.freeze(['PROTECT']),
+    isImmutableInvariant: true,
+    securityImplication: 'Core safety invariant. Must be enabled with decision PROTECT. Disabling or downgrading is strictly prohibited by schema and server validation.',
+  }),
+  Object.freeze({
+    key: 'policies.CONTROLLED_PAYMENT',
+    category: 'policy',
+    title: 'Controlled Payment Policy',
+    description: 'Advises user or holds financial checkout transactions.',
+    valueType: 'enum',
+    defaultValue: 'WARN',
+    permittedValues: Object.freeze(['WARN', 'PROTECT']),
+    isImmutableInvariant: false,
+    securityImplication: 'Downgrading to ALLOW is strictly prohibited. Permitted choices: WARN or PROTECT.',
+  }),
+  Object.freeze({
+    key: 'policies.EXTERNAL_NAVIGATION',
+    category: 'policy',
+    title: 'External Navigation Boundary Policy',
+    description: 'Warns before navigating across origin boundaries to external domains.',
+    valueType: 'enum',
+    defaultValue: 'WARN',
+    permittedValues: Object.freeze(['WARN', 'PROTECT']),
+    isImmutableInvariant: false,
+    securityImplication: 'Downgrading to ALLOW is strictly prohibited. Permitted choices: WARN or PROTECT.',
+  }),
+  Object.freeze({
+    key: 'policies.AUTHENTICATION_BOUNDARY',
+    category: 'policy',
+    title: 'Authentication Boundary Policy',
+    description: 'Advises user on credential and authentication boundary interactions.',
+    valueType: 'enum',
+    defaultValue: 'WARN',
+    permittedValues: Object.freeze(['WARN', 'PROTECT']),
+    isImmutableInvariant: false,
+    securityImplication: 'Downgrading to ALLOW is strictly prohibited. Permitted choices: WARN or PROTECT.',
+  }),
+  Object.freeze({
+    key: 'policies.ROUTINE_INTERACTION',
+    category: 'policy',
+    title: 'Routine Interaction Policy',
+    description: 'Permits non-sensitive, routine browsing interactions without intervention.',
+    valueType: 'enum',
+    defaultValue: 'ALLOW',
+    permittedValues: Object.freeze(['ALLOW']),
+    isImmutableInvariant: false,
+    securityImplication: 'Must remain ALLOW to prevent denial-of-service on routine browsing.',
+  }),
+  Object.freeze({
+    key: 'policies.UNSUPPORTED_BOUNDARY_GUARD',
+    category: 'policy',
+    title: 'Unsupported Boundary Fail-Closed Policy',
+    description: 'Fails closed into Staging Mode when action payload is corrupt, malformed, or unverified.',
+    valueType: 'enum',
+    defaultValue: 'PROTECT',
+    permittedValues: Object.freeze(['PROTECT']),
+    isImmutableInvariant: true,
+    securityImplication: 'Core safety invariant. Must be enabled with decision PROTECT. Disabling would allow corrupted or unvetted actions to execute blindly.',
+  }),
+  Object.freeze({
+    key: 'trustedDomains',
+    category: 'domain',
+    title: 'Trusted Domains Allowlist',
+    description: 'Array of domain hostnames exempt from external navigation warnings.',
+    valueType: 'array',
+    defaultValue: Object.freeze([]),
+    isImmutableInvariant: false,
+    securityImplication: 'Adding untrusted hostnames allows silent navigation without warning. Hostnames must strictly match valid hostname syntax without protocols, paths, or credentials.',
+  }),
+  Object.freeze({
+    key: 'timeouts.approvalTtlSeconds',
+    category: 'timeout',
+    title: 'Approval Request Time-to-Live',
+    description: 'Duration in seconds before an approval request expires.',
+    valueType: 'integer',
+    defaultValue: 3600,
+    minValue: 60,
+    maxValue: 86400,
+    isImmutableInvariant: false,
+    securityImplication: 'Setting too low (< 60s) causes frequent expiration. Setting too high (> 24h) increases window for stale authorizations.',
+  }),
+  Object.freeze({
+    key: 'timeouts.dashboardPollIntervalMs',
+    category: 'timeout',
+    title: 'Dashboard Polling Cadence',
+    description: 'Interval in milliseconds between dashboard status refresh calls.',
+    valueType: 'integer',
+    defaultValue: 10000,
+    minValue: 1000,
+    maxValue: 60000,
+    isImmutableInvariant: false,
+    securityImplication: 'Setting below 1s risks denial of service; setting above 60s severely delays trusted contact notification.',
+  }),
+]);
 
 /**
  * Deep freezes an object recursively to guarantee immutability.
