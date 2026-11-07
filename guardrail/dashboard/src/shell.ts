@@ -66,6 +66,11 @@ export class DashboardShell {
   private readonly nextDetailFetchSeqByRequestId: Map<string, number> = new Map();
   private readonly lastAppliedDetailSeqByRequestId: Map<string, number> = new Map();
 
+  // Monotonic sequence tracking for history stale-response protection
+  private nextHistoryFetchSeq: number = 0;
+  private lastAppliedHistorySeq: number = 0;
+  private activeHistoryFetchPromise: Promise<void> | null = null;
+
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
       const el = document.querySelector<HTMLElement>(options.container);
@@ -112,6 +117,11 @@ export class DashboardShell {
       decisionErrorMessage: null,
       decisionSuccessMessage: null,
       historyRequests: initialHistory,
+      historyStatus: options.initialHistoryStatus ?? (initialHistory.length === 0 ? 'empty' : 'idle'),
+      historyError: null,
+      historyPage: 0,
+      historyLimit: 50,
+      hasMoreHistory: false,
       selectedHistoryRequestId: initialHistory[0]?.id ?? null,
       pendingFilters: defaultPendingFilters,
       historyFilters: defaultHistoryFilters,
@@ -147,6 +157,7 @@ export class DashboardShell {
     if (this.autoFetch && this.apiClient) {
       void this.fetchPendingRequests();
       void this.fetchRelationships();
+      void this.fetchHistoryRequests();
     }
     if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
       this.startPolling();
@@ -501,11 +512,16 @@ export class DashboardShell {
 
     const historySection = renderDecisionHistory({
       requests: this.state.historyRequests,
+      status: this.state.historyStatus,
+      errorMessage: this.state.historyError,
       selectedRequestId: this.state.selectedHistoryRequestId,
       selectedRequestDetail: selectedHistoryDetail,
       isDetailLoading: this.isDetailLoading,
       detailErrorMessage: this.detailErrorMessage,
       filters: this.state.historyFilters,
+      hasMore: this.state.hasMoreHistory,
+      page: this.state.historyPage,
+      onLoadMore: this.apiClient ? () => void this.loadMoreHistory() : undefined,
       onRequestSelect: (id) => this.selectHistoryRequest(id),
       onFiltersChange: (newFilters) => this.setHistoryFilters(newFilters),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
@@ -579,6 +595,10 @@ export class DashboardShell {
     // When switching to pending view, refresh pending requests if autoFetch is enabled
     if (view === 'pending' && this.autoFetch && this.apiClient && this.state.pendingStatus !== 'loading') {
       void this.fetchPendingRequests();
+    }
+    // When switching to history view, refresh decision history if autoFetch is enabled
+    if (view === 'history' && this.autoFetch && this.apiClient && this.state.historyStatus !== 'loading') {
+      void this.fetchHistoryRequests({ isBackground: this.state.historyRequests.length > 0 });
     }
 
     // Full re-render guarantees accessibility attributes and view DOM sync
@@ -770,12 +790,13 @@ export class DashboardShell {
   }
 
   /**
-   * Refreshes the pending approvals list and relationship data from the backend.
+   * Refreshes the pending approvals list, relationships, and history from the backend.
    */
   public async refresh(): Promise<void> {
     await Promise.all([
       this.fetchPendingRequests(),
       this.fetchRelationships({ isBackground: true }),
+      this.fetchHistoryRequests({ isBackground: true }),
     ]);
   }
 
@@ -787,9 +808,13 @@ export class DashboardShell {
     this.state.selectedRequestId = null;
     this.state.connectedUsers = [];
     this.state.invitations = [];
+    this.state.historyRequests = [];
+    this.state.historyPage = 0;
+    this.detailedRequestsCache.clear();
     await Promise.all([
       this.fetchPendingRequests(),
       this.fetchRelationships(),
+      this.fetchHistoryRequests(),
     ]);
   }
 
@@ -1166,14 +1191,154 @@ export class DashboardShell {
   }
 
   /**
-   * Updates decision history filters and re-renders.
+   * Fetches historical approval requests from the authoritative backend endpoint (GET /api/v1/approvals/history).
+   */
+  public async fetchHistoryRequests(options?: { isBackground?: boolean; page?: number }): Promise<void> {
+    if (this.isDestroyed || !this.apiClient) return;
+
+    if (this.activeHistoryFetchPromise) {
+      return this.activeHistoryFetchPromise;
+    }
+
+    this.activeHistoryFetchPromise = (async () => {
+      try {
+        await this.doFetchHistoryRequests(options);
+      } finally {
+        this.activeHistoryFetchPromise = null;
+      }
+    })();
+
+    return this.activeHistoryFetchPromise;
+  }
+
+  private async doFetchHistoryRequests(options?: { isBackground?: boolean; page?: number }): Promise<void> {
+    if (this.isDestroyed || !this.apiClient) return;
+
+    const page = options?.page ?? this.state.historyPage ?? 0;
+    const limit = this.state.historyLimit ?? 50;
+    const offset = page * limit;
+
+    const seq = ++this.nextHistoryFetchSeq;
+    if (!options?.isBackground && this.state.historyRequests.length === 0) {
+      this.state.historyStatus = 'loading';
+      this.state.historyError = null;
+      this.render();
+    }
+
+    try {
+      if (typeof (this.apiClient as any).listApprovalHistory !== 'function') {
+        if (this.state.historyRequests.length === 0) {
+          this.state.historyStatus = 'empty';
+        }
+        return;
+      }
+
+      const statusFilter = this.state.historyFilters?.status !== 'ALL'
+        ? (this.state.historyFilters?.status as ApprovalStatus)
+        : undefined;
+      const riskFilter = this.state.historyFilters?.riskLevel !== 'ALL'
+        ? (this.state.historyFilters?.riskLevel as RiskLevel)
+        : undefined;
+
+      const result = await (this.apiClient as any).listApprovalHistory({
+        status: statusFilter,
+        riskLevel: riskFilter,
+        limit,
+        offset,
+      });
+
+      if (this.isDestroyed || seq < this.lastAppliedHistorySeq) return;
+      this.lastAppliedHistorySeq = seq;
+
+      if (result.success && Array.isArray(result.data)) {
+        const fetchedRecords: ApprovalRequest[] = [];
+        const seenIds = new Set<string>();
+
+        for (const req of result.data) {
+          if (req && typeof req === 'object' && typeof req.id === 'string' && req.id.trim()) {
+            const trimmed = req.id.trim();
+            if (!seenIds.has(trimmed)) {
+              seenIds.add(trimmed);
+              fetchedRecords.push(req);
+              this.detailedRequestsCache.set(trimmed, req);
+            }
+          }
+        }
+
+        // Merge with locally decided terminal requests in session history so in-flight decisions aren't discarded
+        const mergedMap = new Map<string, ApprovalRequest>();
+        for (const req of fetchedRecords) {
+          mergedMap.set(req.id, req);
+        }
+        for (const localReq of this.state.historyRequests) {
+          if (!mergedMap.has(localReq.id)) {
+            mergedMap.set(localReq.id, localReq);
+          }
+        }
+
+        const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+          const timeA = new Date(a.resolvedAt || a.expiresAt || a.createdAt).getTime();
+          const timeB = new Date(b.resolvedAt || b.expiresAt || b.createdAt).getTime();
+          return timeB - timeA;
+        });
+
+        this.state.historyRequests = mergedList;
+        this.state.historyStatus = mergedList.length === 0 ? 'empty' : 'idle';
+        this.state.historyError = null;
+        this.state.historyPage = page;
+        this.state.hasMoreHistory = fetchedRecords.length >= limit;
+
+        if (!this.state.selectedHistoryRequestId && mergedList.length > 0) {
+          this.state.selectedHistoryRequestId = mergedList[0].id;
+        }
+      } else if (!result.success) {
+        const err = result.error;
+        if (err.statusCode === 401) {
+          this.state.historyError = 'Authentication required: Please sign in with an authorized trusted contact session.';
+          this.state.historyStatus = 'error';
+        } else if (err.statusCode === 403 || err.statusCode === 404) {
+          // Multi-tenant isolation: opaque refusal or denied
+          this.state.historyError = 'Access denied or no approval history available.';
+          this.state.historyStatus = this.state.historyRequests.length === 0 ? 'empty' : 'idle';
+        } else {
+          this.state.historyError = err.message || 'Failed to retrieve approval history.';
+          if (this.state.historyRequests.length === 0) {
+            this.state.historyStatus = 'error';
+          }
+        }
+      }
+    } catch (unhandled: any) {
+      if (this.isDestroyed || seq < this.lastAppliedHistorySeq) return;
+      this.lastAppliedHistorySeq = seq;
+      this.state.historyError = unhandled instanceof Error ? unhandled.message : String(unhandled);
+      if (this.state.historyRequests.length === 0) {
+        this.state.historyStatus = 'error';
+      }
+    } finally {
+      if (!this.isDestroyed) {
+        this.render();
+      }
+    }
+  }
+
+  public async loadMoreHistory(): Promise<void> {
+    if (this.isDestroyed || !this.apiClient || !this.state.hasMoreHistory) return;
+    await this.fetchHistoryRequests({ page: this.state.historyPage + 1 });
+  }
+
+  /**
+   * Updates decision history filters and refreshes if apiClient is available.
    */
   public setHistoryFilters(filters: Partial<RequestFilters>): void {
     this.state.historyFilters = {
       ...this.state.historyFilters,
       ...filters,
     };
-    this.render();
+    if (this.apiClient) {
+      void this.fetchHistoryRequests({ isBackground: false, page: 0 });
+    } else {
+      this.render();
+    }
   }
 
   /**
@@ -1196,6 +1361,7 @@ export class DashboardShell {
       request,
       ...this.state.historyRequests.filter((r) => r.id !== request.id),
     ];
+    this.state.historyStatus = 'idle';
     if (!this.state.selectedHistoryRequestId) {
       this.state.selectedHistoryRequestId = request.id;
     }

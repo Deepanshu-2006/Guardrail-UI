@@ -139,6 +139,16 @@ export interface DashboardShellState {
   decisionSuccessMessage?: string | null;
   /** Historical/resolved approval requests archive */
   historyRequests: readonly ApprovalRequest[];
+  /** Loading/error status for decision history list */
+  historyStatus: ViewStatus;
+  /** Error message when fetching history fails */
+  historyError: string | null;
+  /** Current page index for bounded history loading */
+  historyPage: number;
+  /** Maximum number of records requested per history page */
+  historyLimit: number;
+  /** Whether additional historical records exist on the backend */
+  hasMoreHistory: boolean;
   /** Selected request ID in the decision history view */
   selectedHistoryRequestId: string | null;
   /** Filter criteria applied to the pending approvals list */
@@ -187,6 +197,8 @@ export interface DashboardShellOptions {
   initialRequests?: readonly ApprovalRequest[];
   /** Initial historical/resolved requests list (if preloaded) */
   initialHistoryRequests?: readonly ApprovalRequest[];
+  /** Initial loading/error status for decision history list */
+  initialHistoryStatus?: ViewStatus;
   /** Initial list of connected users or trusted contacts */
   initialConnectedUsers?: readonly TrustedContact[];
   /** Initial list of invitations */

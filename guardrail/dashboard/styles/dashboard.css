@@ -1680,6 +1680,93 @@ button:focus-visible,
   border: 1px solid #a7f3d0;
 }
 
+/* History Activity Timeline & Decoupled Continuation Posture */
+.gd-history-continuation-posture {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.gd-continuation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.01em;
+}
+
+.gd-continuation-chip.approved {
+  background-color: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.gd-continuation-chip.rejected {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.gd-continuation-chip.expired {
+  background-color: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.gd-continuation-chip.cancelled {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.gd-history-loading {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--gd-text-muted);
+}
+
+.gd-history-error-banner {
+  margin-bottom: 16px;
+}
+
+.gd-history-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+}
+
+.gd-btn-load-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  background-color: var(--gd-bg-canvas);
+  color: var(--gd-text-primary);
+  border: 1px solid var(--gd-border-strong);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gd-btn-load-more:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.gd-btn-load-more:focus {
+  outline: 2px solid var(--gd-blue-primary);
+  outline-offset: 2px;
+}
+
 /* -----------------------------------------------------------------------------
    Recent Activity Section in Overview
    ----------------------------------------------------------------------------- */

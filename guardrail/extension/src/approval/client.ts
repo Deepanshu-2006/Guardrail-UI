@@ -40,6 +40,7 @@ import {
   BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
+import { RiskLevel } from '../types/risk.js';
 import { ApiResponseEnvelope } from './api.js';
 import { validateInvitationCode } from './authorization.js';
 import {
@@ -982,6 +983,49 @@ export class ApprovalApiClient {
     return this.dispatchRequest<readonly ApprovalRequest[]>(
       'GET',
       '/api/v1/approvals/pending',
+      undefined,
+      options
+    );
+  }
+
+  /**
+   * Retrieves historical / resolved approval requests that the authenticated user is authorized to inspect.
+   *
+   * Adheres to GET /api/v1/approvals/history
+   *
+   * @param params Optional filters (status, riskLevel, limit, offset)
+   * @param options Optional request overrides (token, timeout, signal)
+   * @returns Typed ApiClientResult with readonly array of ApprovalRequest or error
+   */
+  public async listApprovalHistory(
+    params?: {
+      status?: ApprovalStatus | 'ALL';
+      riskLevel?: RiskLevel | 'ALL';
+      limit?: number;
+      offset?: number;
+    },
+    options?: RequestOptions
+  ): Promise<ApiClientResult<readonly ApprovalRequest[]>> {
+    const query = new URLSearchParams();
+    if (params?.status && params.status !== 'ALL') {
+      query.set('status', params.status);
+    }
+    if (params?.riskLevel && params.riskLevel !== 'ALL') {
+      query.set('riskLevel', params.riskLevel);
+    }
+    if (params?.limit !== undefined && params.limit > 0) {
+      query.set('limit', String(params.limit));
+    }
+    if (params?.offset !== undefined && params.offset >= 0) {
+      query.set('offset', String(params.offset));
+    }
+
+    const qs = query.toString();
+    const endpoint = `/api/v1/approvals/history${qs ? `?${qs}` : ''}`;
+
+    return this.dispatchRequest<readonly ApprovalRequest[]>(
+      'GET',
+      endpoint,
       undefined,
       options
     );

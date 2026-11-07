@@ -36,6 +36,7 @@ import {
   BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
+import { RiskLevel } from '../types/risk.js';
 import {
   ApprovalAlreadyResolvedError,
   ApprovalExpiredError,
@@ -423,6 +424,11 @@ export class ApprovalApiRouter {
         return await this.handleListPending(request, headers);
       }
 
+      // Route 6b: GET /api/v1/approvals/history
+      if (method === 'GET' && path === '/api/v1/approvals/history') {
+        return await this.handleListHistory(request, parsedUrl, headers);
+      }
+
       // Route 7: POST /api/v1/approvals/:id/decide
       const decideMatch = path.match(/^\/api\/v1\/approvals\/([^/]+)\/decide$/);
       if (method === 'POST' && decideMatch) {
@@ -681,6 +687,51 @@ export class ApprovalApiRouter {
   ): Promise<ApiResponse<readonly ApprovalRequest[]>> {
     const authContext = await this.authenticate(request.headers);
     const list = this.service.listPendingRequestsForContact(authContext);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: list,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/approvals/history
+   */
+  private async handleListHistory(
+    request: ApiRequest,
+    url: URL,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<readonly ApprovalRequest[]>> {
+    const authContext = await this.authenticate(request.headers);
+
+    const statusParam = url.searchParams.get('status');
+    const riskParam = url.searchParams.get('riskLevel');
+    const limitParam = url.searchParams.get('limit');
+    const offsetParam = url.searchParams.get('offset');
+
+    let status: ApprovalStatus | undefined;
+    if (statusParam && Object.values(ApprovalStatus).includes(statusParam as ApprovalStatus)) {
+      status = statusParam as ApprovalStatus;
+    }
+
+    let riskLevel: RiskLevel | undefined;
+    if (riskParam && Object.values(RiskLevel).includes(riskParam as RiskLevel)) {
+      riskLevel = riskParam as RiskLevel;
+    }
+
+    const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+    const offset = offsetParam ? parseInt(offsetParam, 10) : undefined;
+
+    const list = this.service.listHistory(authContext, {
+      status,
+      riskLevel,
+      limit: Number.isFinite(limit) && limit! > 0 ? limit : undefined,
+      offset: Number.isFinite(offset) && offset! >= 0 ? offset : undefined,
+    });
 
     return {
       statusCode: 200,

@@ -36,6 +36,7 @@ import {
   BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
 } from '../types/approval.js';
+import { RiskLevel } from '../types/risk.js';
 import {
   ApprovalAlreadyResolvedError,
   ApprovalExpiredError,
@@ -542,6 +543,77 @@ export class ApprovalService {
     this.assertAuthenticated(authContext);
 
     return this.repository.findByRequesterId(authContext.actorId, status);
+  }
+
+  /**
+   * Lists historical / resolved approval requests that the authenticated actor is authorized to inspect.
+   *
+   * @param authContext Verified server authentication context of the caller
+   * @param options Optional filter and pagination options
+   * @returns Array of historical requests for authorized wards or requester
+   */
+  public listHistory(
+    authContext: AuthContext,
+    options?: {
+      status?: ApprovalStatus;
+      riskLevel?: RiskLevel;
+      limit?: number;
+      offset?: number;
+    }
+  ): readonly ApprovalRequest[] {
+    this.assertAuthenticated(authContext);
+
+    // Proactively transition any stale pending requests whose deadline has passed
+    this.checkAndExpireStaleRequests();
+
+    const all = this.repository.findAll();
+    // Sort descending by resolution or creation timestamp (newest first)
+    const sorted = [...all].sort((a, b) => {
+      const timeA = new Date(a.resolvedAt || a.expiresAt || a.createdAt).getTime();
+      const timeB = new Date(b.resolvedAt || b.expiresAt || b.createdAt).getTime();
+      return timeB - timeA;
+    });
+
+    const isContact = authContext.role === ActorRole.TRUSTED_CONTACT || authContext.role === ActorRole.ADMIN;
+    const isUser = authContext.role === ActorRole.USER;
+
+    const filtered = sorted.filter((r) => {
+      // 1. Multi-tenant authorization check
+      if (isContact) {
+        if (!this.contactRegistry.isTrustedContactForUser(authContext.actorId, r.requesterId)) {
+          return false;
+        }
+      } else if (isUser) {
+        if (r.requesterId !== authContext.actorId) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+
+      // 2. Lifecycle check: Exclude active PENDING requests (those belong in /pending)
+      if (r.status === ApprovalStatus.PENDING) {
+        return false;
+      }
+
+      // 3. Status filter
+      if (options?.status && r.status !== options.status) {
+        return false;
+      }
+
+      // 4. Risk level filter
+      if (options?.riskLevel && r.riskLevel !== options.riskLevel) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // 5. Pagination / Bounded loading (max 100 per page)
+    const offset = Math.max(0, options?.offset ?? 0);
+    const limit = options?.limit !== undefined && options.limit > 0 ? Math.min(options.limit, 100) : 50;
+
+    return Object.freeze(filtered.slice(offset, offset + limit));
   }
 
   /**

@@ -1,33 +1,42 @@
 /**
  * Guardrail Trusted-Contact Dashboard - Decision History Component
  *
- * Implements the authoritative Decision History and Audit Log:
+ * Implements the authoritative Decision History, Audit Log & Activity Timeline:
  * 1. Two-pane layout matching Pending Approvals for visual and ergonomic consistency:
  *    - Left pane: Filterable, searchable list of resolved requests (APPROVED, REJECTED, CANCELLED, EXPIRED).
- *    - Right pane: Request detail inspector displaying full governance audit trail and reviewer notes.
- * 2. Visual Distinction:
+ *    - Right pane: Request detail inspector displaying full governance audit trail, timestamps, and reviewer notes.
+ * 2. Visual Distinction & Lifecycle States:
  *    - Resolved cards display authoritative status pills (green APPROVED, red REJECTED, slate CANCELLED, amber EXPIRED).
  *    - Status badges, resolved timestamps, and reviewer attribution prominently displayed.
- * 3. Useful Filtering & Search:
+ * 3. Decoupled Action Execution & Continuation Boundary:
+ *    - Explicitly distinguishes reviewer approval from browser continuation.
+ *    - Communicates that approval registers consent on the server, while action continuation
+ *      remains safely HELD in the ward's browser tab until user confirmation.
+ * 4. Useful Filtering & Search:
  *    - Filters by Decision Status (ALL, APPROVED, REJECTED, CANCELLED, EXPIRED).
  *    - Filters by Risk Level (ALL, CRITICAL, HIGH, MEDIUM, LOW).
  *    - Filters by Date Range (ALL, TODAY/24h, 7_DAYS, 30_DAYS).
- *    - Safe keyword search over non-sensitive fields (description, hostname, ID, category, audit notes).
- * 4. Architectural Capability Documentation:
- *    - Documents the server-side history endpoint status (`GET /api/v1/approvals/history` on roadmap)
- *      without generating fictional history.
- * 5. Distinct Empty States:
- *    - Empty view state ("No Prior Decisions Recorded").
- *    - Empty filter state ("No Matching Requests Found" with Clear Filters button).
+ *    - Safe keyword search over non-sensitive fields (description, hostname, ID).
+ * 5. Bounded Loading & Pagination:
+ *    - Supports pagination / bounded result loading via `hasMore` and `onLoadMore`.
+ * 6. Distinct States:
+ *    - Loading state with role="status" and aria-busy="true".
+ *    - Error banner with retry button.
+ *    - Empty view state ("No Prior Decisions Recorded" #gd-history-empty).
+ *    - Empty filter state ("No Matching Decisions Found" #gd-history-filter-empty with Clear Filters button).
  */
 
-import { ApprovalRequest, ApprovalStatus, RequestFilters } from '../types.js';
+import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../types.js';
 import { formatTimestamp, renderRequestDetailView } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
 
 export interface DecisionHistoryProps {
   /** Authoritative historical / resolved requests */
   requests?: readonly ApprovalRequest[];
+  /** Loading/error status of the history view */
+  status?: ViewStatus;
+  /** Optional error message if loading history failed */
+  errorMessage?: string | null;
   /** Identifier of the currently selected request in the detail pane */
   selectedRequestId?: string | null;
   /** Selected request detail record (if loaded/cached) */
@@ -38,6 +47,12 @@ export interface DecisionHistoryProps {
   detailErrorMessage?: string | null;
   /** Current filter settings */
   filters?: RequestFilters;
+  /** Whether additional history records exist on the backend */
+  hasMore?: boolean;
+  /** Current page index for bounded history loading */
+  page?: number;
+  /** Callback when user clicks load more */
+  onLoadMore?: () => void;
   /** Callback when user selects a request from the list */
   onRequestSelect?: (requestId: string) => void;
   /** Callback when user changes filter settings */
@@ -106,8 +121,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   section.appendChild(header);
 
-  // 2. Architectural Backend Capability Notice
-  // Strictly documents backend capabilities without generating fictional history
+  // 2. Architectural Backend Capability & Decoupled Execution Notice
   const noticeBox = document.createElement('div');
   noticeBox.className = 'gd-history-notice';
   noticeBox.setAttribute('role', 'note');
@@ -121,7 +135,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   noticeIcon.textContent = 'ℹ️';
 
   const noticeTitle = document.createElement('strong');
-  noticeTitle.textContent = 'Authoritative Decision History';
+  noticeTitle.textContent = 'Authoritative Decision History & Decoupled Execution Record';
 
   noticeHeader.appendChild(noticeIcon);
   noticeHeader.appendChild(noticeTitle);
@@ -129,16 +143,77 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const noticeDesc = document.createElement('p');
   noticeDesc.className = 'gd-notice-text';
   noticeDesc.textContent =
-    'This audit view presents authoritative decision records committed during your active session. Cross-session persistent querying requires the dedicated server-side history endpoint (GET /api/v1/approvals/history), documented on the backend roadmap.';
+    'Historical approval decisions are authoritatively committed to the server audit log via GET /api/v1/approvals/history. Important Decoupling Invariant: Approving a request records trusted-contact consent on the server, but does NOT execute the browser action. The intercepted action remains safely held in the ward\'s browser runtime until explicitly released by the user.';
 
   noticeBox.appendChild(noticeHeader);
   noticeBox.appendChild(noticeDesc);
   section.appendChild(noticeBox);
 
-  // 3. Empty State Check (0 total requests in history)
+  // 3. Loading State (when fetching history)
+  if (props.status === 'loading' && allRequests.length === 0) {
+    const loadingCard = document.createElement('div');
+    loadingCard.className = 'gd-card gd-history-loading';
+    loadingCard.setAttribute('role', 'status');
+    loadingCard.setAttribute('aria-busy', 'true');
+
+    const spinner = document.createElement('span');
+    spinner.className = 'gd-spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+
+    const loadingText = document.createElement('span');
+    loadingText.textContent = ' Loading historical approval requests from backend...';
+
+    loadingCard.appendChild(spinner);
+    loadingCard.appendChild(loadingText);
+    section.appendChild(loadingCard);
+    return section;
+  }
+
+  // 4. Error State (when fetching history fails)
+  if (props.status === 'error' && props.errorMessage) {
+    const errorBanner = document.createElement('div');
+    errorBanner.className = 'gd-error-banner gd-history-error-banner';
+    errorBanner.id = 'gd-history-error-banner';
+    errorBanner.setAttribute('role', 'alert');
+
+    const errorContent = document.createElement('div');
+    errorContent.className = 'gd-error-content';
+
+    const errIcon = document.createElement('span');
+    errIcon.className = 'gd-error-icon';
+    errIcon.setAttribute('aria-hidden', 'true');
+    errIcon.textContent = '⚠️';
+
+    const errText = document.createElement('p');
+    errText.className = 'gd-error-text';
+    errText.textContent = props.errorMessage;
+
+    errorContent.appendChild(errIcon);
+    errorContent.appendChild(errText);
+    errorBanner.appendChild(errorContent);
+
+    if (props.onRefresh) {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'gd-btn-retry';
+      retryBtn.textContent = 'Retry';
+      retryBtn.addEventListener('click', () => props.onRefresh?.());
+      errorBanner.appendChild(retryBtn);
+    }
+
+    section.appendChild(errorBanner);
+
+    // If no cached records exist, stop here
+    if (allRequests.length === 0) {
+      return section;
+    }
+  }
+
+  // 5. Empty State Check (0 total requests in history)
   if (allRequests.length === 0) {
     const card = document.createElement('div');
     card.className = 'gd-card';
+    card.id = 'gd-history-empty';
 
     const placeholder = document.createElement('div');
     placeholder.className = 'gd-placeholder';
@@ -155,7 +230,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'Decisions submitted by trusted contacts (or actions cancelled by wards) will be archived here with immutable timestamps and reviewer signatures.';
+      'Decisions submitted by trusted contacts (or actions cancelled by wards) will be archived here with immutable timestamps, reviewer signatures, and continuation postures.';
 
     placeholder.appendChild(icon);
     placeholder.appendChild(pTitle);
@@ -166,7 +241,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     return section;
   }
 
-  // 4. Two-Pane History Layout (when historical items exist)
+  // 6. Two-Pane History Layout (when historical items exist)
   const layout = document.createElement('div');
   layout.className = 'gd-approvals-layout gd-history-layout';
 
@@ -208,6 +283,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         });
       },
     });
+    emptyFilter.id = 'gd-history-filter-empty';
     listPane.appendChild(emptyFilter);
   } else {
     // Render History Cards
@@ -226,7 +302,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       cardHeader.className = 'gd-request-card-header gd-history-card-header';
 
       const idSpan = document.createElement('span');
-      idSpan.className = 'gd-request-id';
+      idSpan.className = 'gd-request-id gd-mono';
       idSpan.textContent = req.id ? (req.id.slice(0, 16) + '...') : 'Unknown ID';
 
       const headerBadges = document.createElement('div');
@@ -252,16 +328,26 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       desc.className = 'gd-request-description';
       desc.textContent = req.actionDescription;
 
-      // Card Meta (Resolved timestamp & reviewer signature)
+      // Card Meta: Hostname, Timestamps, Reviewer attribution
       const meta = document.createElement('div');
       meta.className = 'gd-request-meta gd-history-meta';
 
       const originSpan = document.createElement('span');
+      originSpan.className = 'gd-meta-hostname';
       originSpan.textContent = req.hostname || 'Local Interaction';
 
       const resolvedTimeSpan = document.createElement('span');
-      const timeLabel = req.status === ApprovalStatus.CANCELLED ? 'Cancelled' : req.status === ApprovalStatus.EXPIRED ? 'Expired' : 'Decided';
-      resolvedTimeSpan.textContent = `${timeLabel}: ${formatTimestamp(req.resolvedAt || req.createdAt)}`;
+      resolvedTimeSpan.className = 'gd-meta-timestamp';
+      let timeLabel = 'Decided';
+      let timestampVal = req.resolvedAt || req.createdAt;
+      if (req.status === ApprovalStatus.CANCELLED) {
+        timeLabel = 'Cancelled';
+        timestampVal = req.resolvedAt || req.createdAt;
+      } else if (req.status === ApprovalStatus.EXPIRED) {
+        timeLabel = 'Expired';
+        timestampVal = req.expiresAt || req.resolvedAt || req.createdAt;
+      }
+      resolvedTimeSpan.textContent = `${timeLabel}: ${formatTimestamp(timestampVal)}`;
 
       meta.appendChild(originSpan);
       meta.appendChild(resolvedTimeSpan);
@@ -273,9 +359,31 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         meta.appendChild(reviewerSpan);
       }
 
+      // Decoupled Continuation Posture Chip (Requirement 4)
+      const continuationRow = document.createElement('div');
+      continuationRow.className = 'gd-history-continuation-posture';
+
+      const continuationChip = document.createElement('span');
+      continuationChip.className = `gd-continuation-chip ${statusClass}`;
+
+      if (req.status === ApprovalStatus.APPROVED) {
+        continuationChip.textContent = '✓ Approved on Server • Action Decoupled & Held in Browser';
+      } else if (req.status === ApprovalStatus.REJECTED) {
+        continuationChip.textContent = '✕ Rejected • Browser Action Blocked';
+      } else if (req.status === ApprovalStatus.EXPIRED) {
+        continuationChip.textContent = '⏱ Review Expired • Browser Action Timed Out';
+      } else if (req.status === ApprovalStatus.CANCELLED) {
+        continuationChip.textContent = '⊘ Cancelled by Ward • Browser Action Dismissed';
+      } else {
+        continuationChip.textContent = 'Decoupled Execution Enforced';
+      }
+
+      continuationRow.appendChild(continuationChip);
+
       card.appendChild(cardHeader);
       card.appendChild(desc);
       card.appendChild(meta);
+      card.appendChild(continuationRow);
 
       // Keyboard & Click Handlers
       const selectAction = () => props.onRequestSelect?.(req.id);
@@ -288,6 +396,24 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       });
 
       listPane.appendChild(card);
+    }
+
+    // Bounded Pagination / Load More Control (Requirement 7)
+    if (props.hasMore && props.onLoadMore) {
+      const paginationContainer = document.createElement('div');
+      paginationContainer.className = 'gd-history-pagination';
+
+      const loadMoreBtn = document.createElement('button');
+      loadMoreBtn.type = 'button';
+      loadMoreBtn.className = 'gd-btn-load-more';
+      loadMoreBtn.id = 'gd-btn-load-more';
+      loadMoreBtn.textContent = 'Load More Decisions';
+      loadMoreBtn.addEventListener('click', () => {
+        props.onLoadMore?.();
+      });
+
+      paginationContainer.appendChild(loadMoreBtn);
+      listPane.appendChild(paginationContainer);
     }
   }
 
