@@ -28,7 +28,7 @@
  *    - Dynamic content rendered securely without HTML injection.
  */
 
-declare const process: { exit: (code: number) => void; exitCode?: number };
+declare const process: { exit: (code: number) => void; exitCode?: number; cwd?: () => string };
 
 // Minimal DOM simulation for Node.js test environment
 class MockDOMTokenList {
@@ -288,7 +288,6 @@ import {
 import {
   renderRequestDetailView,
 } from '../components/detail.js';
-import { isInvitationExpired } from '../components/relationships.js';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -2794,7 +2793,7 @@ async function runDashboardTests() {
     const staleBanner = rootElement.querySelector('.gd-stale-banner');
     assert(staleBanner !== null, 'Stale banner rendered when cached records exist during outage');
     assert(
-      staleBanner?.textContent.includes('cached records') && staleBanner?.textContent.includes('unreachable'),
+      Boolean(staleBanner?.textContent.includes('cached records') && staleBanner?.textContent.includes('unreachable')),
       'Stale banner warns reviewer that backend is unreachable'
     );
     assertEquals(staleShell.getState().pendingRequests.length, 1, 'Cached records preserved during outage');
@@ -4275,6 +4274,235 @@ async function runDashboardTests() {
     assert(!renderedHistoryHtml.includes('4111333355557777'), 'No card numbers in rendered history DOM');
     assert(!renderedHistoryHtml.includes('sk_live_very_secret_token_abc'), 'No API secrets in rendered history DOM');
     privacyShell.destroy();
+  }
+
+  // ===========================================================================
+  // Test Suite 50: Dashboard Accessibility, Responsive Behavior & Non-Color Indicators
+  // ===========================================================================
+  console.log('\n▶ Test Suite 50: Dashboard Accessibility, Responsive Behavior & Non-Color Indicators');
+  {
+    // 50.1: Screen-Reader Live Region & Dynamic Announcements
+    const liveShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      autoFetch: false,
+    });
+
+    const announcerEl = rootElement.querySelector('#gd-live-announcer');
+    assert(announcerEl !== null, 'Dedicated screen-reader live region (#gd-live-announcer) is mounted');
+    assertEquals(announcerEl?.getAttribute('role'), 'status', 'Announcer has role="status"');
+    assertEquals(announcerEl?.getAttribute('aria-live'), 'polite', 'Announcer defaults to aria-live="polite"');
+    assertEquals(announcerEl?.getAttribute('aria-atomic'), 'true', 'Announcer has aria-atomic="true"');
+    assert(announcerEl?.classList.contains('gd-sr-only') ?? false, 'Announcer is visually hidden via .gd-sr-only');
+
+    // Announcing view transition
+    liveShell.setActiveView('history');
+    const updatedAnnouncer = rootElement.querySelector('#gd-live-announcer');
+    assert(
+      updatedAnnouncer?.textContent.includes('Navigated to Decision History') ?? false,
+      'Screen reader receives announcement on view navigation'
+    );
+
+    // Announcing custom status update
+    liveShell.announce('Test accessible announcement', 'assertive');
+    assertEquals(updatedAnnouncer?.textContent, 'Test accessible announcement', 'Announcer receives explicit message');
+    assertEquals(updatedAnnouncer?.getAttribute('aria-live'), 'assertive', 'Announcer updates priority to assertive');
+    liveShell.destroy();
+
+    // 50.2: Landmark Hierarchy & Skip-to-Content Navigation
+    const landmarkShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      autoFetch: false,
+    });
+
+    const skipLink = rootElement.querySelector('.gd-skip-link');
+    assert(skipLink !== null, 'Skip to main content link rendered');
+    assertEquals(skipLink?.getAttribute('href'), '#main-content', 'Skip link targets #main-content');
+
+    const mainElement = rootElement.querySelector('#main-content');
+    assert(mainElement !== null, '<main> landmark element rendered with id="main-content"');
+    assertEquals(mainElement?.tagName.toLowerCase(), 'main', 'Landmark is <main> element');
+    assertEquals(mainElement?.getAttribute('tabindex'), '-1', '<main> has tabindex="-1" for accessible programmatic focus');
+
+    const navElement = rootElement.querySelector('nav');
+    assert(navElement !== null, '<nav> landmark element rendered for primary sidebar');
+    assertEquals(navElement?.getAttribute('aria-label'), 'Dashboard Sections', '<nav> has accessible aria-label Dashboard Sections');
+    landmarkShell.destroy();
+
+    // 50.3: Non-Color Indicators for Status and Risk Levels
+    const multiStatusRequests: ApprovalRequest[] = [
+      { ...SAMPLE_REQUEST, id: 'apr_a11y_pending', status: ApprovalStatus.PENDING, riskLevel: RiskLevel.LOW },
+      { ...SAMPLE_REQUEST, id: 'apr_a11y_approved', status: ApprovalStatus.APPROVED, riskLevel: RiskLevel.CRITICAL },
+    ];
+
+    const indicatorShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: multiStatusRequests,
+      autoFetch: false,
+    });
+
+    // Risk Badges have distinct class & accessible textual label
+    const pendingCards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assert(pendingCards.length > 0, 'Pending request cards rendered');
+    const riskBadge = pendingCards[0].querySelector('.gd-risk-badge');
+    assert(riskBadge !== null, 'Risk badge rendered');
+    assert(riskBadge?.classList.contains('low') ?? false, 'Low risk badge has .low class');
+    assertEquals(riskBadge?.textContent, 'LOW', 'Low risk badge has clear textual label, not color alone');
+
+    // Detail status pill has data-status and textual label
+    indicatorShell.selectRequest('apr_a11y_pending');
+    const detailPill = rootElement.querySelector('.gd-detail-status-pill');
+    assert(detailPill !== null, 'Detail status pill rendered');
+    assertEquals(detailPill?.getAttribute('data-status'), 'pending', 'Status pill has data-status="pending"');
+    assertEquals(detailPill?.textContent, 'PENDING', 'Status pill displays textual status, not color alone');
+    indicatorShell.destroy();
+
+    // 50.4: Keyboard Navigation on Cards (Enter and Space Keydown)
+    const keyNavShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        { ...SAMPLE_REQUEST, id: 'apr_key_01', actionDescription: 'First Request' },
+        { ...SAMPLE_REQUEST, id: 'apr_key_02', actionDescription: 'Second Request' },
+      ],
+      autoFetch: false,
+    });
+
+    const cards = rootElement.querySelectorAll('#view-pending .gd-request-card');
+    assertEquals(cards.length, 2, 'Two request cards rendered');
+    assertEquals(cards[0].getAttribute('role'), 'button', 'Request card has role="button"');
+    assertEquals(cards[0].getAttribute('tabindex'), '0', 'Request card has tabindex="0"');
+    assert(cards[0].getAttribute('aria-label') !== null, 'Request card has accessible aria-label');
+
+    // Press Enter on second card
+    const secondCard = cards[1] as MockDOMElement;
+    secondCard.listeners.keydown[0]({ key: 'Enter', preventDefault() {} });
+    assertEquals(keyNavShell.getState().selectedRequestId, 'apr_key_02', 'Pressing Enter selects request card');
+
+    // Press Space on first card
+    const firstCard = cards[0] as MockDOMElement;
+    firstCard.listeners.keydown[0]({ key: ' ', preventDefault() {} });
+    assertEquals(keyNavShell.getState().selectedRequestId, 'apr_key_01', 'Pressing Space selects request card');
+    keyNavShell.destroy();
+
+    // 50.5: Accessible Form Controls & Labels
+    const filterShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [{ ...SAMPLE_REQUEST, id: 'apr_form_test', status: ApprovalStatus.APPROVED }],
+      autoFetch: false,
+    });
+
+    const searchInput = rootElement.querySelector('input.gd-search-input');
+    assert(searchInput !== null, 'Search input rendered in filter bar');
+    assert(searchInput?.getAttribute('aria-label') !== null, 'Search input has explicit aria-label');
+    assertEquals(searchInput?.getAttribute('type'), 'search', 'Search input has type="search"');
+
+    const statusFilter = rootElement.querySelector('select.gd-status-filter');
+    assert(statusFilter !== null, 'Status filter select rendered');
+    assert(statusFilter?.getAttribute('aria-label') !== null, 'Status filter has explicit aria-label');
+
+    const riskFilter = rootElement.querySelector('select.gd-risk-filter');
+    assert(riskFilter !== null, 'Risk filter select rendered');
+    assert(riskFilter?.getAttribute('aria-label') !== null, 'Risk filter has explicit aria-label');
+    filterShell.destroy();
+
+    // 50.6: Consequential Confirmation Box Keyboard Dismissal (Escape Key)
+    const confirmShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_escape_test', status: ApprovalStatus.PENDING }],
+      apiClient: new ApprovalApiClient({ baseUrl: 'http://localhost:3000', tokenProvider: () => 't' }),
+      autoFetch: false,
+    });
+
+    const approveTriggerBtn = rootElement.querySelector('.gd-btn-approve') as MockDOMElement | null;
+    assert(approveTriggerBtn !== null, 'Approve trigger button present');
+    approveTriggerBtn?.listeners.click[0]({ preventDefault() {} });
+
+    const confirmBox = rootElement.querySelector('.gd-decision-confirm-box') as MockDOMElement | null;
+    assert(confirmBox !== null, 'Confirmation box opened');
+    assertEquals(confirmBox?.getAttribute('role'), 'group', 'Confirmation box is role="group"');
+    assertEquals(confirmBox?.getAttribute('aria-labelledby'), 'gd-decision-confirm-title', 'Confirmation box labelled by title');
+
+    // Press Escape to dismiss confirmation
+    confirmBox?.listeners.keydown[0]({ key: 'Escape', preventDefault() {} });
+    const dismissedConfirmBox = rootElement.querySelector('.gd-decision-confirm-box');
+    assert(dismissedConfirmBox === null, 'Pressing Escape dismisses confirmation box');
+    const returnedApproveBtn = rootElement.querySelector('.gd-btn-approve');
+    assert(returnedApproveBtn !== null, 'Returned to initial action choices after Escape dismissal');
+    confirmShell.destroy();
+
+    // 50.7: Responsive Mobile Navigation & Accessibility Attributes
+    const mobileA11yShell = new DashboardShell({
+      container: testContainer,
+      autoFetch: false,
+    });
+
+    const mobileToggleBtn = rootElement.querySelector('.gd-mobile-toggle') as MockDOMElement | null;
+    assert(mobileToggleBtn !== null, 'Mobile toggle button rendered');
+    assertEquals(mobileToggleBtn?.getAttribute('aria-expanded'), 'false', 'Initial aria-expanded is false');
+    assertEquals(mobileToggleBtn?.getAttribute('aria-controls'), 'gd-primary-sidebar', 'aria-controls targets primary sidebar');
+    assertEquals(mobileToggleBtn?.getAttribute('aria-label'), 'Open navigation menu', 'aria-label explains action');
+
+    // Toggle open
+    mobileA11yShell.toggleMobileSidebar(true);
+    assertEquals(mobileToggleBtn?.getAttribute('aria-expanded'), 'true', 'aria-expanded is true when open');
+    assertEquals(mobileToggleBtn?.getAttribute('aria-label'), 'Close navigation menu', 'aria-label updates to Close');
+
+    const backdrop = rootElement.querySelector('.gd-mobile-backdrop');
+    assert(backdrop !== null, 'Backdrop element rendered');
+    assertEquals(backdrop?.getAttribute('aria-hidden'), 'true', 'Backdrop has aria-hidden="true"');
+
+    // Press Escape to close drawer
+    const escEvent = { key: 'Escape', defaultPrevented: false, preventDefault() {} };
+    if ((mobileA11yShell as any).keyHandler) {
+      (mobileA11yShell as any).keyHandler(escEvent);
+    }
+    assert(!(rootElement.querySelector('.gd-sidebar')?.classList.contains('open') ?? false), 'Escape key closes mobile sidebar');
+    mobileA11yShell.destroy();
+
+    // 50.8: Loading, Empty, and Error States Accessibility
+    const stateShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [],
+      autoFetch: false,
+    });
+
+    stateShell.setLoading(true);
+    const loadingSkeleton = rootElement.querySelector('.gd-list-pane [aria-busy="true"]');
+    assert(loadingSkeleton !== null, 'Loading skeleton has aria-busy="true"');
+    assert(loadingSkeleton?.classList.contains('gd-request-card') ?? false, 'Loading skeleton has gd-request-card class');
+    assertEquals(loadingSkeleton?.getAttribute('role'), 'status', 'Loading skeleton has role="status"');
+
+    // Error State
+    stateShell.setLoading(false);
+    stateShell.setError('Unable to load pending approvals from backend');
+    const errorBanner = rootElement.querySelector('.gd-error-banner');
+    assert(errorBanner !== null, 'Error banner rendered');
+    assertEquals(errorBanner?.getAttribute('role'), 'alert', 'Error banner has role="alert"');
+
+    // Empty State
+    stateShell.setError(null);
+    stateShell.setPendingRequests([]);
+    const emptyPlaceholder = rootElement.querySelector('.gd-placeholder.gd-empty-state');
+    assert(emptyPlaceholder !== null, 'Empty placeholder rendered when no requests exist');
+    assert(emptyPlaceholder?.textContent.includes('No Pending Approval Requests') ?? false, 'Communicates all-clear empty state');
+    stateShell.destroy();
+
+    // 50.9: Stylesheet Audit: Reduced Motion & Forced Colors High-Contrast Guarantees
+    const nodeFs = await (Function('return import("node:fs")')() as Promise<any>);
+    const nodePath = await (Function('return import("node:path")')() as Promise<any>);
+    const cssPath = nodePath.resolve(process.cwd(), 'styles/dashboard.css');
+    const cssContent = nodeFs.readFileSync(cssPath, 'utf8');
+    assert(cssContent.includes('@media (prefers-reduced-motion: reduce)'), 'Stylesheet implements prefers-reduced-motion: reduce');
+    assert(cssContent.includes('@media (forced-colors: active)'), 'Stylesheet implements forced-colors: active high-contrast support');
+    assert(cssContent.includes('.gd-sr-only'), 'Stylesheet includes .gd-sr-only utility class');
+    assert(cssContent.includes('.gd-risk-badge.critical::before'), 'Stylesheet provides non-color shape indicators for critical risk');
+    assert(cssContent.includes('.gd-detail-status-pill.approved::before'), 'Stylesheet provides non-color checkmark indicator for approval');
   }
 
   console.log('\n======================================================');
