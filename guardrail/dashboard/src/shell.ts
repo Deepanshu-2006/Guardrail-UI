@@ -695,6 +695,7 @@ export class DashboardShell {
             break;
         }
 
+        console.warn('[Dashboard Shell] Pending approvals fetch failed:', err);
         this.setError(userMessage);
       }
     } catch (unhandled) {
@@ -703,6 +704,7 @@ export class DashboardShell {
       this.lastAppliedPendingSeq = seq;
       this.isBackendUnavailable = true;
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
+      console.error('[Dashboard Shell] Pending approvals unhandled exception:', unhandled);
       this.setError(`Client error while retrieving pending approvals: ${msg}`);
     } finally {
       this.isRefreshing = false;

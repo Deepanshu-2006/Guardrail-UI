@@ -1111,9 +1111,6 @@ export class ApprovalAuthorizationService {
     authContext: AuthContext
   ): ApprovalRequest {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
-      throw new ApprovalAccessDeniedError();
-    }
 
     // Retrieve request (opaque error if not found)
     const request = this.lifecycleManager.getRequest(requestId);
@@ -1124,6 +1121,10 @@ export class ApprovalAuthorizationService {
     // 1. Separation of duties: Self-approval is rejected by default
     if (request.requesterId === authContext.actorId) {
       throw new SelfApprovalProhibitedError(authContext.actorId, requestId);
+    }
+
+    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
     }
 
     // 2. Authorization check: Must be an active trusted contact for the requesting ward (or admin)

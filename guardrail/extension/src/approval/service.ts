@@ -776,12 +776,26 @@ export class ApprovalService {
    * at the exact moment of commitment. If another decision committed first,
    * the update fails and throws ApprovalAlreadyResolvedError.
    */
-  private submitDecision(
+  public submitDecision(
     requestId: string,
-    decision: 'APPROVED' | 'REJECTED',
-    decisionInput: DecisionInput | undefined,
-    authContext: AuthContext
+    decisionOrInput: 'APPROVED' | 'REJECTED' | SubmitApprovalDecisionInput,
+    inputOrAuthContext?: DecisionInput | AuthContext,
+    maybeAuthContext?: AuthContext
   ): ApprovalRequest {
+    let decision: 'APPROVED' | 'REJECTED';
+    let decisionInput: DecisionInput | undefined;
+    let authContext: AuthContext;
+
+    if (typeof decisionOrInput === 'object' && decisionOrInput !== null) {
+      decision = decisionOrInput.decision;
+      decisionInput = decisionOrInput.decisionReason !== undefined ? { decisionReason: decisionOrInput.decisionReason } : undefined;
+      authContext = inputOrAuthContext as AuthContext;
+    } else {
+      decision = decisionOrInput;
+      decisionInput = inputOrAuthContext as DecisionInput | undefined;
+      authContext = maybeAuthContext as AuthContext;
+    }
+
     this.assertAuthenticated(authContext);
 
     const validation = validateApprovalRequestId(requestId);

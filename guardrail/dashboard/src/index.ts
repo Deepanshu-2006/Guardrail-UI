@@ -44,25 +44,62 @@ declare global {
   }
 }
 
+function parseJwtProfile(token: string): TrustedContactProfile | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    const role = payload['https://guardrail.local/role'] || payload.role || 'TRUSTED_CONTACT';
+    const actorId = payload.sub || 'tc_reviewer';
+    return {
+      actorId,
+      role,
+      isAuthenticated: true,
+      relationshipLabel: 'Authorized Contact',
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Auto-mount if running in standalone HTML document with #dashboard-app container
 if (typeof document !== 'undefined') {
   const defaultMountPoint = document.getElementById('dashboard-app');
   if (defaultMountPoint) {
     const envConfig = resolveEnvironmentConfig();
-    const tokenProvider = (globalThis as typeof globalThis & { __GUARDRAIL_AUTH_TOKEN_PROVIDER__?: TokenProvider })
+    const globalProvider = (globalThis as typeof globalThis & { __GUARDRAIL_AUTH_TOKEN_PROVIDER__?: TokenProvider })
       .__GUARDRAIL_AUTH_TOKEN_PROVIDER__;
+    const storageToken = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
+    const tokenProvider: TokenProvider | undefined = globalProvider ?? (storageToken ? () => storageToken : undefined);
+    const initialProfile: TrustedContactProfile | null = storageToken ? parseJwtProfile(storageToken) : null;
     const apiClient = tokenProvider ? new ApprovalApiClient({
       baseUrl: envConfig.apiBaseUrl,
       environment: envConfig.environment,
       serviceType: 'live',
       tokenProvider,
       timeoutMs: envConfig.timeoutMs,
+      logger: {
+        debug: (msg, ctx) => console.debug('[Guardrail API]', msg, ctx ?? ''),
+        info: (msg, ctx) => console.info('[Guardrail API]', msg, ctx ?? ''),
+        warn: (msg, ctx) => console.warn('[Guardrail API]', msg, ctx ?? ''),
+        error: (msg, ctx) => console.error('[Guardrail API]', msg, ctx ?? ''),
+      },
     }) : undefined;
-    new DashboardShell({
+    const shell = new DashboardShell({
       container: defaultMountPoint,
       environment: envConfig.environment,
       isMockService: apiClient ? false : envConfig.serviceType === 'mock' || envConfig.serviceType === 'in_memory',
+      initialProfile: initialProfile ?? undefined,
       ...(apiClient ? { apiClient } : {}),
     });
+    (globalThis as unknown as { __GUARDRAIL_SHELL__?: DashboardShell }).__GUARDRAIL_SHELL__ = shell;
   }
 }

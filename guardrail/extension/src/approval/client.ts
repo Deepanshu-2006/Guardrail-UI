@@ -455,7 +455,8 @@ export class ApprovalApiClient {
       this.baseUrl = '';
       this.tokenProvider = config?.tokenProvider;
       this.timeoutMs = config?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-      this.fetchFn = config?.fetchFn ?? config?.customFetch ?? globalThis.fetch;
+      const resolvedFetch = config?.fetchFn ?? config?.customFetch ?? globalThis.fetch;
+      this.fetchFn = typeof resolvedFetch === 'function' ? resolvedFetch.bind(globalThis) : resolvedFetch;
       this.logger = config?.logger ?? new NoopApiClientLogger();
       return;
     }
@@ -491,7 +492,8 @@ export class ApprovalApiClient {
     this.baseUrl = url;
     this.tokenProvider = config?.tokenProvider;
     this.timeoutMs = config?.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-    this.fetchFn = config?.fetchFn ?? config?.customFetch ?? globalThis.fetch;
+    const resolvedFetch = config?.fetchFn ?? config?.customFetch ?? globalThis.fetch;
+    this.fetchFn = typeof resolvedFetch === 'function' ? resolvedFetch.bind(globalThis) : resolvedFetch;
     this.logger = config?.logger ?? new NoopApiClientLogger();
   }
 
