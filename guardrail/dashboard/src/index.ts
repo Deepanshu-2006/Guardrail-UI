@@ -13,7 +13,7 @@ export * from './components/settings.js';
 export * from './components/relationships.js';
 
 import { DashboardShell } from './shell.js';
-import { DashboardShellOptions } from './types.js';
+import { DashboardShellOptions, TrustedContactProfile } from './types.js';
 import { resolveEnvironmentConfig } from '../../extension/src/config/environment.js';
 import { ApprovalApiClient, TokenProvider } from '../../extension/src/approval/client.js';
 
@@ -89,10 +89,9 @@ if (typeof document !== 'undefined') {
       tokenProvider,
       timeoutMs: envConfig.timeoutMs,
       logger: {
-        debug: (msg, ctx) => console.debug('[Guardrail API]', msg, ctx ?? ''),
-        info: (msg, ctx) => console.info('[Guardrail API]', msg, ctx ?? ''),
-        warn: (msg, ctx) => console.warn('[Guardrail API]', msg, ctx ?? ''),
-        error: (msg, ctx) => console.error('[Guardrail API]', msg, ctx ?? ''),
+        info: (msg: string, ctx?: Record<string, unknown>) => console.info('[Guardrail API]', msg, ctx ?? ''),
+        warn: (msg: string, ctx?: Record<string, unknown>) => console.warn('[Guardrail API]', msg, ctx ?? ''),
+        error: (msg: string, ctx?: Record<string, unknown>) => console.error('[Guardrail API]', msg, ctx ?? ''),
       },
     }) : undefined;
     const shell = new DashboardShell({

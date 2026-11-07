@@ -130,6 +130,7 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
 
   const searchInput = document.createElement('input');
   searchInput.type = 'search';
+  searchInput.setAttribute('type', 'search');
   searchInput.className = 'gd-search-input';
   searchInput.placeholder = options.searchPlaceholder || 'Search by description, website, or ID...';
   searchInput.value = options.filters.searchQuery || '';

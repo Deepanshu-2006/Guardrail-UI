@@ -18,12 +18,10 @@ import {
   DashboardShellOptions,
   DashboardShellState,
   DashboardView,
-  InvitationStatus,
   RequestFilters,
-  TrustedContact,
+  RiskLevel,
   TrustedContactInvitation,
   TrustedContactProfile,
-  TrustedContactStatus,
 } from './types.js';
 import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
@@ -40,6 +38,7 @@ export class DashboardShell {
   private sidebarEl: HTMLElement | null = null;
   private headerTitleEl: HTMLElement | null = null;
   private mainContentEl: HTMLElement | null = null;
+  private liveAnnouncerEl: HTMLElement | null = null;
   private isMobileSidebarOpen: boolean = false;
   private hashChangeHandler: (() => void) | null = null;
   private visibilityChangeHandler: (() => void) | null = null;
@@ -305,9 +304,19 @@ export class DashboardShell {
     // Accessible Skip-to-Content Link
     const skipLink = document.createElement('a');
     skipLink.href = '#main-content';
+    skipLink.setAttribute('href', '#main-content');
     skipLink.className = 'gd-skip-link';
     skipLink.textContent = 'Skip to main content';
     this.rootContainer.appendChild(skipLink);
+
+    // Accessible live region for screen-reader announcements
+    this.liveAnnouncerEl = document.createElement('div');
+    this.liveAnnouncerEl.id = 'gd-live-announcer';
+    this.liveAnnouncerEl.className = 'gd-sr-only';
+    this.liveAnnouncerEl.setAttribute('role', 'status');
+    this.liveAnnouncerEl.setAttribute('aria-live', 'polite');
+    this.liveAnnouncerEl.setAttribute('aria-atomic', 'true');
+    this.rootContainer.appendChild(this.liveAnnouncerEl);
 
     // App Wrapper
     this.appWrapper = document.createElement('div');
@@ -427,7 +436,9 @@ export class DashboardShell {
 
     this.mainContentEl = document.createElement('main');
     this.mainContentEl.id = 'main-content';
+    this.mainContentEl.setAttribute('id', 'main-content');
     this.mainContentEl.tabIndex = -1;
+    this.mainContentEl.setAttribute('tabindex', '-1');
     this.mainContentEl.className = 'gd-content-container';
 
     // View 1: Overview
@@ -604,6 +615,9 @@ export class DashboardShell {
     // Full re-render guarantees accessibility attributes and view DOM sync
     this.render();
 
+    // Announce view change to screen readers
+    this.announce(`Navigated to ${this.formatViewTitle(view)}`);
+
     // Move focus to main content region for screen readers
     if (this.mainContentEl && typeof this.mainContentEl.focus === 'function') {
       try {
@@ -612,6 +626,22 @@ export class DashboardShell {
         // Ignore in headless test environments
       }
     }
+  }
+
+  /**
+   * Announces an accessible status update to assistive technology (screen readers).
+   */
+  public announce(message: string, priority: 'polite' | 'assertive' = 'polite'): void {
+    if (!this.liveAnnouncerEl) return;
+    this.liveAnnouncerEl.setAttribute('aria-live', priority);
+    this.liveAnnouncerEl.textContent = message;
+  }
+
+  /**
+   * Exposes live announcer element for testing.
+   */
+  public getLiveAnnouncerElement(): HTMLElement | null {
+    return this.liveAnnouncerEl;
   }
 
   /**
@@ -798,6 +828,7 @@ export class DashboardShell {
       this.fetchRelationships({ isBackground: true }),
       this.fetchHistoryRequests({ isBackground: true }),
     ]);
+    this.announce('Dashboard data refreshed.');
   }
 
   /**
@@ -1043,6 +1074,7 @@ export class DashboardShell {
         // Set authoritative success message
         this.state.decisionSuccessMessage = `Decision successfully recorded: ${decision}. Reviewer consent is committed on the server.`;
         this.state.decisionErrorMessage = null;
+        this.announce(`Decision recorded: ${decision}. Reviewer consent committed to server.`);
 
         // Immediate background refresh so dashboard does not depend exclusively on periodic polling
         void this.fetchPendingRequests({ isBackground: true });
@@ -1114,12 +1146,14 @@ export class DashboardShell {
 
         this.state.decisionErrorMessage = userMessage;
         this.state.decisionSuccessMessage = null;
+        this.announce(`Decision failed: ${userMessage}`, 'assertive');
         return null;
       }
     } catch (unhandled) {
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
       this.state.decisionErrorMessage = `Client error while submitting decision: ${msg}`;
       this.state.decisionSuccessMessage = null;
+      this.announce(`Decision error: ${msg}`, 'assertive');
       return null;
     } finally {
       this.isSubmittingDecision = false;

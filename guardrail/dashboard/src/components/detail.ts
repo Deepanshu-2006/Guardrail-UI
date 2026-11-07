@@ -221,7 +221,7 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
     descEl.textContent =
       'The expiration deadline for this approval request has passed. Decisions can no longer be recorded. The extension will revalidate the local action state and require a fresh request if needed.';
   } else {
-    switch (status) {
+    switch (status as string) {
       case ApprovalStatus.PENDING:
         titleEl.textContent = '⏳ Awaiting Review';
         descEl.textContent =
@@ -864,6 +864,21 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       confirmBox.className = `gd-decision-confirm-box ${isApprove ? 'confirm-approve' : 'confirm-reject'}`;
       confirmBox.setAttribute('role', 'group');
       confirmBox.setAttribute('aria-labelledby', 'gd-decision-confirm-title');
+
+      // Accessible keyboard dismissal via Escape key
+      confirmBox.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          if (!props.isSubmittingDecision) {
+            activeConfirmation = null;
+            updateDecisionControls();
+            const returnButton = decisionControlsContainer.querySelector<HTMLButtonElement>(
+              isApprove ? '.gd-btn-approve' : '.gd-btn-reject'
+            );
+            returnButton?.focus();
+          }
+        }
+      });
 
       const confirmTitle = document.createElement('h4');
       confirmTitle.id = 'gd-decision-confirm-title';

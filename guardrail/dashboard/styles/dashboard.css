@@ -108,9 +108,34 @@ html, body {
 /* Global Focus States */
 a:focus-visible,
 button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
 [tabindex]:focus-visible {
   outline: var(--gd-focus-outline);
   outline-offset: var(--gd-focus-offset);
+}
+
+.gd-request-card:focus-visible,
+.gd-history-card:focus-visible,
+.gd-overview-pending-item:focus-visible,
+.gd-relationship-item:focus-visible {
+  outline: 2px solid var(--gd-green-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+}
+
+/* Screen Reader Only Utility */
+.gd-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 /* =============================================================================
@@ -640,6 +665,9 @@ button:focus-visible,
   padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .gd-risk-badge.low {
@@ -648,10 +676,22 @@ button:focus-visible,
   color: var(--gd-risk-low-text);
 }
 
+.gd-risk-badge.low::before {
+  content: "●";
+  font-size: 8px;
+  line-height: 1;
+}
+
 .gd-risk-badge.medium {
   background-color: var(--gd-risk-med-bg);
   border-color: var(--gd-risk-med-border);
   color: var(--gd-risk-med-text);
+}
+
+.gd-risk-badge.medium::before {
+  content: "■";
+  font-size: 8px;
+  line-height: 1;
 }
 
 .gd-risk-badge.high {
@@ -660,10 +700,22 @@ button:focus-visible,
   color: var(--gd-risk-high-text);
 }
 
+.gd-risk-badge.high::before {
+  content: "◆";
+  font-size: 9px;
+  line-height: 1;
+}
+
 .gd-risk-badge.critical {
   background-color: var(--gd-risk-crit-bg);
   border-color: var(--gd-risk-crit-border);
   color: var(--gd-risk-crit-text);
+}
+
+.gd-risk-badge.critical::before {
+  content: "▲";
+  font-size: 9px;
+  line-height: 1;
 }
 
 .gd-request-description {
@@ -695,6 +747,9 @@ button:focus-visible,
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .gd-status-badge.expired {
@@ -703,10 +758,22 @@ button:focus-visible,
   color: #b45309;
 }
 
+.gd-status-badge.expired::before {
+  content: "⏱";
+  font-size: 9px;
+  line-height: 1;
+}
+
 .gd-status-badge.pending {
   background-color: #fffbeb;
   border-color: #fef3c7;
   color: #92400e;
+}
+
+.gd-status-badge.pending::before {
+  content: "⏳";
+  font-size: 9px;
+  line-height: 1;
 }
 
 .gd-status-badge.approved {
@@ -715,16 +782,37 @@ button:focus-visible,
   color: var(--gd-green-text);
 }
 
+.gd-status-badge.approved::before {
+  content: "✓";
+  font-weight: 900;
+  font-size: 9px;
+  line-height: 1;
+}
+
 .gd-status-badge.rejected {
   background-color: #fef2f2;
   border-color: #fecaca;
   color: #991b1b;
 }
 
+.gd-status-badge.rejected::before {
+  content: "✕";
+  font-weight: 900;
+  font-size: 9px;
+  line-height: 1;
+}
+
 .gd-status-badge.cancelled {
   background-color: #f1f5f9;
   border-color: #cbd5e1;
   color: #475569;
+}
+
+.gd-status-badge.cancelled::before {
+  content: "⊘";
+  font-weight: 900;
+  font-size: 9px;
+  line-height: 1;
 }
 
 .gd-card-meta-expired {
@@ -796,6 +884,9 @@ button:focus-visible,
   border-radius: 6px;
   background-color: #f1f5f9;
   color: var(--gd-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .gd-detail-status-pill.pending {
@@ -803,9 +894,22 @@ button:focus-visible,
   color: #92400e;
 }
 
+.gd-detail-status-pill.pending::before {
+  content: "⏳";
+  font-size: 10px;
+  line-height: 1;
+}
+
 .gd-detail-status-pill.approved {
   background-color: var(--gd-green-bg);
   color: var(--gd-green-text);
+}
+
+.gd-detail-status-pill.approved::before {
+  content: "✓";
+  font-weight: 900;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .gd-detail-status-pill.rejected {
@@ -813,9 +917,23 @@ button:focus-visible,
   color: #991b1b;
 }
 
+.gd-detail-status-pill.rejected::before {
+  content: "✕";
+  font-weight: 900;
+  font-size: 11px;
+  line-height: 1;
+}
+
 .gd-detail-status-pill.cancelled {
   background-color: #f1f5f9;
   color: #475569;
+}
+
+.gd-detail-status-pill.cancelled::before {
+  content: "⊘";
+  font-weight: 900;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .gd-detail-status-pill.expired {
@@ -823,10 +941,23 @@ button:focus-visible,
   color: #92400e;
 }
 
+.gd-detail-status-pill.expired::before {
+  content: "⏱";
+  font-size: 10px;
+  line-height: 1;
+}
+
 .gd-detail-status-pill.unavailable,
 .gd-detail-status-pill.failed {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+.gd-detail-status-pill.unavailable::before,
+.gd-detail-status-pill.failed::before {
+  content: "⚠";
+  font-size: 10px;
+  line-height: 1;
 }
 
 /* Status Banner */
@@ -3054,4 +3185,46 @@ button:focus-visible,
 .gd-btn-manage-relationships:hover {
   color: var(--gd-green-hover);
 }
+
+/* -----------------------------------------------------------------------------
+   Accessibility Preferences: Reduced Motion & High Contrast (Forced Colors)
+   ----------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --gd-focus-outline: 2px solid Highlight;
+  }
+
+  .gd-btn-approve,
+  .gd-btn-reject,
+  .gd-btn-confirm-submit,
+  .gd-btn-decision,
+  .gd-btn-revoke,
+  .gd-btn-retry,
+  .gd-request-card.selected,
+  .gd-request-card[aria-selected="true"] {
+    outline: 2px solid ButtonText;
+  }
+
+  .gd-request-card:focus-visible,
+  .gd-history-card:focus-visible,
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 2px !important;
+  }
+}
+
 

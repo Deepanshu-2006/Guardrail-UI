@@ -362,6 +362,17 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
         const confirmBox = document.createElement('div');
         confirmBox.className = 'gd-relationship-confirm-box';
         confirmBox.style.display = 'none';
+        confirmBox.setAttribute('role', 'alertdialog');
+        confirmBox.setAttribute('aria-label', `Confirm revocation of ${contact.id}`);
+
+        confirmBox.addEventListener('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            confirmBox.style.display = 'none';
+            revokeBtn.style.display = 'inline-block';
+            revokeBtn.focus();
+          }
+        });
 
         const confirmMsg = document.createElement('p');
         confirmMsg.className = 'gd-confirm-warning';
@@ -618,6 +629,17 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
         const confirmBox = document.createElement('div');
         confirmBox.className = 'gd-relationship-confirm-box';
         confirmBox.style.display = 'none';
+        confirmBox.setAttribute('role', 'alertdialog');
+        confirmBox.setAttribute('aria-label', `Confirm revocation of invitation for ${inv.recipientActorId}`);
+
+        confirmBox.addEventListener('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            confirmBox.style.display = 'none';
+            revokeBtn.style.display = 'inline-block';
+            revokeBtn.focus();
+          }
+        });
 
         const confirmMsg = document.createElement('p');
         confirmMsg.className = 'gd-confirm-warning';

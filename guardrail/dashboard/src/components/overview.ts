@@ -521,6 +521,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     // Error state
     const errBox = document.createElement('div');
     errBox.className = 'gd-error-banner';
+    errBox.setAttribute('role', 'alert');
     errBox.textContent = props.errorMessage || 'Unable to load pending approval requests.';
     if (props.onRefresh) {
       const retryBtn = document.createElement('button');
@@ -561,8 +562,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       const metaRow = document.createElement('div');
       metaRow.className = 'gd-overview-pending-meta';
       const host = req.hostname || 'Browser Action';
-      const timeStr = req.timestamp
-        ? new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const reqTime = req.createdAt || (req as any).timestamp;
+      const timeStr = reqTime
+        ? new Date(reqTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : 'Just now';
       metaRow.textContent = `${host} • Requested ${timeStr}`;
 
