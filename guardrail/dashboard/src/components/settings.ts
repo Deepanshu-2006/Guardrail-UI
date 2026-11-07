@@ -281,6 +281,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     'Zero-Trust Data Scrubbing',
     'High-risk actions containing sensitive credentials, payment card details, security codes, and authentication tokens are scrubbed before reaching the backend or dashboard. Secrets are never exposed in UI or memory.'
   );
+  addInvariant(
+    'Ward Policy Authority Separation',
+    'Protection policies, risk thresholds, and staging rules are strictly configured by the protected user through their extension settings interface. Trusted contacts hold zero authority to weaken, disable, or alter ward policies.'
+  );
 
   invariantsCard.appendChild(invList);
   section.appendChild(invariantsCard);

@@ -26,5 +26,9 @@
   ],
   "permissions": [
     "storage"
-  ]
+  ],
+  "options_ui": {
+    "page": "settings/settings.html",
+    "open_in_tab": true
+  }
 }

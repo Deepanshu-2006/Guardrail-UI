@@ -19,6 +19,7 @@ const pilotDir = path.resolve(__dirname, 'dist-pilot');
 function copyStaticAssets() {
   fs.mkdirSync(path.join(distDir, 'popup'), { recursive: true });
   fs.mkdirSync(path.join(distDir, 'onboarding'), { recursive: true });
+  fs.mkdirSync(path.join(distDir, 'settings'), { recursive: true });
   fs.mkdirSync(path.join(distDir, 'icons'), { recursive: true });
 
   // Clean stale source maps in production or pilot mode
@@ -31,6 +32,8 @@ function copyStaticAssets() {
     if (fs.existsSync(popupMap)) fs.unlinkSync(popupMap);
     const onboardingMap = path.join(distDir, 'onboarding', 'onboarding.js.map');
     if (fs.existsSync(onboardingMap)) fs.unlinkSync(onboardingMap);
+    const settingsMap = path.join(distDir, 'settings', 'settings.js.map');
+    if (fs.existsSync(settingsMap)) fs.unlinkSync(settingsMap);
   }
 
   // Copy manifest with environment annotations
@@ -65,6 +68,14 @@ function copyStaticAssets() {
   }
   fs.copyFileSync(onboardingHtml, path.join(distDir, 'onboarding', 'onboarding.html'));
   fs.copyFileSync(onboardingCss, path.join(distDir, 'onboarding', 'onboarding.css'));
+
+  // Copy settings assets
+  const settingsHtml = path.join(__dirname, 'public', 'settings', 'settings.html');
+  const settingsCss = path.join(__dirname, 'public', 'settings', 'settings.css');
+  if (fs.existsSync(settingsHtml) && fs.existsSync(settingsCss)) {
+    fs.copyFileSync(settingsHtml, path.join(distDir, 'settings', 'settings.html'));
+    fs.copyFileSync(settingsCss, path.join(distDir, 'settings', 'settings.css'));
+  }
 
   // Copy icons
   const iconFiles = ['icon-16.png', 'icon-48.png', 'icon-128.png'];
@@ -137,6 +148,20 @@ const buildOptions = [
       '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
     },
   },
+  {
+    entryPoints: [path.join(__dirname, 'src', 'settings', 'index.ts')],
+    bundle: true,
+    outfile: path.join(distDir, 'settings', 'settings.js'),
+    format: 'iife',
+    target: 'es2022',
+    sourcemap: !isProd && !isPilot,
+    minify: isProd || isPilot,
+    define: {
+      'process.env.GUARDRAIL_ENV': JSON.stringify(targetEnv),
+      'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
+    },
+  },
 ];
 
 function assemblePilotDistribution() {
@@ -146,6 +171,7 @@ function assemblePilotDistribution() {
   fs.mkdirSync(pilotDir, { recursive: true });
   fs.mkdirSync(path.join(pilotDir, 'popup'), { recursive: true });
   fs.mkdirSync(path.join(pilotDir, 'onboarding'), { recursive: true });
+  fs.mkdirSync(path.join(pilotDir, 'settings'), { recursive: true });
   fs.mkdirSync(path.join(pilotDir, 'icons'), { recursive: true });
 
   // Copy manifest
@@ -160,6 +186,13 @@ function assemblePilotDistribution() {
   // Copy onboarding
   for (const f of ['onboarding.html', 'onboarding.css', 'onboarding.js']) {
     fs.copyFileSync(path.join(distDir, 'onboarding', f), path.join(pilotDir, 'onboarding', f));
+  }
+  // Copy settings
+  for (const f of ['settings.html', 'settings.css', 'settings.js']) {
+    const p = path.join(distDir, 'settings', f);
+    if (fs.existsSync(p)) {
+      fs.copyFileSync(p, path.join(pilotDir, 'settings', f));
+    }
   }
   // Copy icons
   for (const f of ['icon-16.png', 'icon-48.png', 'icon-128.png']) {

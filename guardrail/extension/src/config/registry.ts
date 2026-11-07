@@ -159,6 +159,23 @@ export class PolicyConfigRegistry {
   }
 
   /**
+   * Persists a validated configuration document to storage and updates active configuration.
+   * Throws PolicyConfigValidationError if configuration is invalid.
+   */
+  public async saveToStorage(
+    config: GuardrailPolicyConfig,
+    options?: ConfigLoadOptions
+  ): Promise<ConfigLoadResult> {
+    assertValidPolicyConfig(config);
+    const result = await this.loader.save(config, options);
+    this.activeConfig = result.config;
+    this.healthStatus = result.healthStatus;
+    this.lastError = result.error;
+    this.notifyListeners();
+    return result;
+  }
+
+  /**
    * Updates the active configuration after strict schema validation.
    * Throws PolicyConfigValidationError if candidate violates schema or security invariants.
    *
@@ -448,6 +465,13 @@ export function getConfigLastError(): ConfigErrorDetail | undefined {
 
 export function loadPolicyConfigFromStorage(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {
   return defaultPolicyConfigRegistry.loadFromStorage(options);
+}
+
+export function savePolicyConfigToStorage(
+  config: GuardrailPolicyConfig,
+  options?: ConfigLoadOptions
+): Promise<ConfigLoadResult> {
+  return defaultPolicyConfigRegistry.saveToStorage(config, options);
 }
 
 export function reloadPolicyConfig(options?: ConfigLoadOptions): Promise<ConfigLoadResult> {

@@ -11,6 +11,9 @@ export * from './components/pending.js';
 export * from './components/history.js';
 export * from './components/settings.js';
 export * from './components/relationships.js';
+export * from '../../extension/src/settings/types.js';
+export * from '../../extension/src/settings/controller.js';
+export * from '../../extension/src/settings/component.js';
 
 import { DashboardShell } from './shell.js';
 import { DashboardShellOptions, TrustedContactProfile } from './types.js';

@@ -7,6 +7,10 @@ node_modules/
 dist/
 */dist/
 */*/dist/
+dist-pilot/
+*/dist-pilot/
+*/*/dist-pilot/
+*.zip
 
 # OS & Editor files
 .DS_Store

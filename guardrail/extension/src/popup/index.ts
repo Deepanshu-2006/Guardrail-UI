@@ -155,6 +155,25 @@ export function renderPopupStatus(
  * Attaches popup action click listeners.
  */
 function setupPopupActions(): void {
+  const btnOpenSettings = document.getElementById('btn-open-settings');
+  if (btnOpenSettings) {
+    btnOpenSettings.addEventListener('click', () => {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
+        chrome.runtime.openOptionsPage();
+      } else {
+        const url =
+          typeof chrome !== 'undefined' && chrome.runtime?.getURL
+            ? chrome.runtime.getURL('settings/settings.html')
+            : 'settings/settings.html';
+        if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+          chrome.tabs.create({ url });
+        } else {
+          window.open(url, '_blank');
+        }
+      }
+    });
+  }
+
   const btnOpenOnboarding = document.getElementById('btn-open-onboarding');
   if (btnOpenOnboarding) {
     btnOpenOnboarding.addEventListener('click', () => {
