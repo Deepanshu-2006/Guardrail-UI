@@ -9,6 +9,7 @@
 import {
   TrustedContact,
   TrustedContactInvitation,
+  TrustedContactPolicySummary,
   TrustedContactProfile,
   ViewStatus,
 } from '../types.js';
@@ -28,6 +29,9 @@ export interface SettingsProps {
   invitations?: readonly TrustedContactInvitation[];
   invitationsStatus?: ViewStatus;
   invitationsError?: string | null;
+  wardPolicySummary?: TrustedContactPolicySummary | null;
+  wardPolicyStatus?: ViewStatus;
+  wardPolicyError?: string | null;
   isSubmittingRelationshipAction?: boolean;
   relationshipActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
   onCreateInvitation?: (payload: {
@@ -159,6 +163,132 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     onRefresh: props.onRefresh,
   });
   section.appendChild(relationshipsSection);
+
+  // Card 2b: Assigned Ward Protection Policy & Invariants
+  if (props.profile?.assignedWardId) {
+    const policyCard = document.createElement('div');
+    policyCard.className = 'gd-card gd-settings-card';
+    policyCard.id = 'gd-card-ward-policy';
+
+    const pHeader = document.createElement('div');
+    pHeader.className = 'gd-settings-card-header';
+
+    const pTitle = document.createElement('h2');
+    pTitle.className = 'gd-section-title';
+    pTitle.textContent = 'Ward Protection Policy & Invariants';
+
+    const pBadge = document.createElement('span');
+    if (props.isBackendUnavailable) {
+      pBadge.className = 'gd-settings-badge gd-badge-danger';
+      pBadge.textContent = 'Sync Offline';
+    } else if (props.wardPolicyStatus === 'loading') {
+      pBadge.className = 'gd-settings-badge gd-badge-neutral';
+      pBadge.textContent = 'Syncing...';
+    } else if (props.wardPolicySummary) {
+      pBadge.className =
+        props.wardPolicySummary.overallStatus === 'ACTIVE'
+          ? 'gd-settings-badge gd-badge-active'
+          : 'gd-settings-badge gd-badge-warning';
+      pBadge.textContent =
+        props.wardPolicySummary.overallStatus === 'ACTIVE'
+          ? 'Synchronized (Active)'
+          : 'Degraded';
+    } else if (props.wardPolicyStatus === 'error') {
+      pBadge.className = 'gd-settings-badge gd-badge-danger';
+      pBadge.textContent = 'Sync Error';
+    } else {
+      pBadge.className = 'gd-settings-badge gd-badge-neutral';
+      pBadge.textContent = 'Awaiting Sync';
+    }
+
+    pHeader.appendChild(pTitle);
+    pHeader.appendChild(pBadge);
+    policyCard.appendChild(pHeader);
+
+    const pGrid = document.createElement('div');
+    pGrid.className = 'gd-settings-grid';
+
+    const addPolicyItem = (label: string, value: string, isMono = false, sub = '') => {
+      const item = document.createElement('div');
+      item.className = 'gd-settings-item';
+      const lbl = document.createElement('span');
+      lbl.className = 'gd-settings-label';
+      lbl.textContent = label;
+      const val = document.createElement('span');
+      val.className = `gd-settings-value ${isMono ? 'gd-mono' : ''}`;
+      val.textContent = value;
+      item.appendChild(lbl);
+      item.appendChild(val);
+      if (sub) {
+        const s = document.createElement('span');
+        s.className = 'gd-settings-subbadge';
+        s.textContent = sub;
+        item.appendChild(s);
+      }
+      pGrid.appendChild(item);
+    };
+
+    const summary = props.wardPolicySummary;
+    addPolicyItem('Governed Ward', props.profile.assignedWardId, true, 'Sovereign Owner');
+    addPolicyItem(
+      'Sensitivity Preset',
+      summary ? summary.sensitivityPreset.toUpperCase() : 'BALANCED',
+      false,
+      'Validated Thresholds'
+    );
+    addPolicyItem('Policy Version', summary ? summary.policyVersion : '1.0.0', true);
+    addPolicyItem('Schema Version', summary ? summary.schemaVersion : '1.0.0', true);
+    addPolicyItem(
+      'Staging Mode',
+      summary ? (summary.stagingModeEnabled ? 'Enabled' : 'Disabled') : 'Enabled',
+      false,
+      'Mandatory Holding'
+    );
+    addPolicyItem(
+      'Last Policy Sync',
+      summary?.updatedAt ? new Date(summary.updatedAt).toLocaleTimeString() : 'Default Recommendations'
+    );
+
+    policyCard.appendChild(pGrid);
+
+    // Categories Breakdown
+    const catHeader = document.createElement('h3');
+    catHeader.className = 'gd-settings-subtitle';
+    catHeader.textContent = 'Protection Category Enforcement';
+    catHeader.style.marginTop = '1rem';
+    policyCard.appendChild(catHeader);
+
+    const catList = document.createElement('ul');
+    catList.className = 'gd-settings-invariants-list';
+
+    const addCatItem = (titleText: string, decision: string, isLocked: boolean) => {
+      const li = document.createElement('li');
+      li.className = 'gd-settings-invariant-item';
+      const strong = document.createElement('strong');
+      strong.textContent = titleText + ': ';
+      const span = document.createElement('span');
+      span.textContent = `${decision} ${isLocked ? '(Permanently Locked Invariant)' : '(Configured by Ward)'}`;
+      li.appendChild(strong);
+      li.appendChild(span);
+      catList.appendChild(li);
+    };
+
+    addCatItem('Destructive Actions', summary?.categoryProtections?.destructiveActions ?? 'PROTECT', true);
+    addCatItem('Boundary Guards', summary?.categoryProtections?.boundaryGuards ?? 'PROTECT', true);
+    addCatItem('Payment Actions', summary?.categoryProtections?.paymentActions ?? 'PROTECT', false);
+    addCatItem('Sensitive Data Input', summary?.categoryProtections?.sensitiveData ?? 'WARN', false);
+    addCatItem('External Navigation', summary?.categoryProtections?.externalNavigation ?? 'WARN', false);
+
+    policyCard.appendChild(catList);
+
+    const notice = document.createElement('p');
+    notice.className = 'gd-settings-notice';
+    notice.textContent =
+      'Ward Sovereignty Notice: Protection policies, thresholds, and exempt domains are configured exclusively by the protected user through their browser extension. Trusted contacts hold zero authority to alter or weaken ward policies. Private allowlists are strictly redacted.';
+    policyCard.appendChild(notice);
+
+    section.appendChild(policyCard);
+  }
 
   // Card 3: Backend Connection & Runtime Environment
   const backendCard = document.createElement('div');

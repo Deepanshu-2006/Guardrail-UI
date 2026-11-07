@@ -58,6 +58,12 @@ import {
   resolveApiBaseUrl,
 } from '../config/environment.js';
 import { TrustedContact, TrustedContactInvitation } from './authorization.js';
+import {
+  PolicyAuditRecord,
+  UpdateUserPolicyInput,
+  UserPolicyRecord,
+  UserPolicyView,
+} from './policy-permissions.js';
 
 // =============================================================================
 // Configuration Constants
@@ -96,8 +102,18 @@ export const ApiClientErrorCodes = Object.freeze({
   INVITATION_ALREADY_ACCEPTED: 'INVITATION_ALREADY_ACCEPTED',
   SELF_INVITATION_PROHIBITED: 'SELF_INVITATION_PROHIBITED',
   DUPLICATE_CONTACT_RELATIONSHIP: 'DUPLICATE_CONTACT_RELATIONSHIP',
+  POLICY_VERSION_CONFLICT: 'POLICY_VERSION_CONFLICT',
+  MANDATORY_INVARIANT_VIOLATION: 'MANDATORY_INVARIANT_VIOLATION',
+  POLICY_ADMINISTRATION_DENIED: 'POLICY_ADMINISTRATION_DENIED',
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const);
+
+export type {
+  PolicyAuditRecord,
+  UpdateUserPolicyInput,
+  UserPolicyRecord,
+  UserPolicyView,
+};
 
 /**
  * Payload sent by an authorized trusted contact to approve or reject a pending request.
@@ -1391,6 +1407,142 @@ export class ApprovalApiClient {
     );
   }
 
+  /**
+   * Retrieves the protection policy for a user.
+   * If the authenticated caller is the ward, returns the full policy.
+   * If the authenticated caller is an active trusted contact, returns a sanitized read-only summary.
+   *
+   * @param userId Target user ID
+   * @param options Optional request options
+   */
+  public async getUserPolicy(
+    userId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<UserPolicyView>> {
+    if (!userId || typeof userId !== 'string' || !userId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'userId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(userId.trim());
+    return this.dispatchRequest<UserPolicyView>(
+      'GET',
+      `/api/v1/users/${sanitized}/policy`,
+      undefined,
+      options
+    );
+  }
+
+  /**
+   * Updates the protection policy for the protected user (ward).
+   * Enforces optimistic concurrency control via expectedPolicyVersion if supplied.
+   *
+   * @param userId Target ward user ID
+   * @param payload Candidate policy configuration and concurrency expectations
+   * @param options Optional request options
+   */
+  public async updateUserPolicy(
+    userId: string,
+    payload: UpdateUserPolicyInput,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<UserPolicyRecord>> {
+    if (!userId || typeof userId !== 'string' || !userId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'userId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    if (!payload || typeof payload !== 'object' || !payload.config) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'payload must include a valid config object.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(userId.trim());
+    return this.dispatchRequest<UserPolicyRecord>(
+      'PUT',
+      `/api/v1/users/${sanitized}/policy`,
+      payload,
+      options
+    );
+  }
+
+  /**
+   * Resets the user's protection policy to default recommendations.
+   *
+   * @param userId Target ward user ID
+   * @param options Optional request options
+   */
+  public async resetUserPolicy(
+    userId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<UserPolicyRecord>> {
+    if (!userId || typeof userId !== 'string' || !userId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'userId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(userId.trim());
+    return this.dispatchRequest<UserPolicyRecord>(
+      'POST',
+      `/api/v1/users/${sanitized}/policy/reset`,
+      {},
+      options
+    );
+  }
+
+  /**
+   * Retrieves non-sensitive audit history for a user's protection policy modifications.
+   *
+   * @param userId Target user ID
+   * @param options Optional request options
+   */
+  public async getPolicyAuditHistory(
+    userId: string,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<readonly PolicyAuditRecord[]>> {
+    if (!userId || typeof userId !== 'string' || !userId.trim()) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: 'userId is required and must be a non-empty string.',
+          statusCode: 400,
+        },
+        statusCode: 400,
+      };
+    }
+    const sanitized = encodeURIComponent(userId.trim());
+    return this.dispatchRequest<readonly PolicyAuditRecord[]>(
+      'GET',
+      `/api/v1/users/${sanitized}/policy/audit`,
+      undefined,
+      options
+    );
+  }
+
   // ===========================================================================
   // Internal Transport & Dispatch Implementation
   // ===========================================================================
@@ -1400,7 +1552,7 @@ export class ApprovalApiClient {
    * safe parsing, and error mapping without crashing the extension runtime.
    */
   private async dispatchRequest<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PUT',
     path: string,
     body?: unknown,
     options?: RequestOptions
@@ -1458,7 +1610,7 @@ export class ApprovalApiClient {
     };
 
     let serializedBody: string | undefined;
-    if (body !== undefined && method === 'POST') {
+    if (body !== undefined && (method === 'POST' || method === 'PUT')) {
       headers['Content-Type'] = 'application/json';
       try {
         serializedBody = JSON.stringify(body);

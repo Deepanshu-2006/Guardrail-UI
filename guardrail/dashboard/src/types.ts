@@ -32,6 +32,7 @@ import {
   ApiClientErrorCodes,
   SubmitDecisionPayload,
 } from '../../extension/src/approval/client.js';
+import { TrustedContactPolicySummary } from '../../extension/src/approval/policy-permissions.js';
 import {
   ApprovalStatusSyncClient,
   ApprovalStatusResult,
@@ -55,6 +56,7 @@ export type {
   AppEnvironment,
   TrustedContact,
   TrustedContactInvitation,
+  TrustedContactPolicySummary,
 };
 export {
   ApprovalStatus,
@@ -181,6 +183,12 @@ export interface DashboardShellState {
   relationshipActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
   /** Guard flag preventing duplicate relationship submissions */
   isSubmittingRelationshipAction?: boolean;
+  /** Sanitized read-only policy summary for the designated ward */
+  wardPolicySummary?: TrustedContactPolicySummary | null;
+  /** Loading/error status for ward policy retrieval */
+  wardPolicyStatus?: ViewStatus;
+  /** Error message when fetching ward policy fails */
+  wardPolicyError?: string | null;
 }
 
 /**
@@ -197,6 +205,8 @@ export interface DashboardShellOptions {
   initialRequests?: readonly ApprovalRequest[];
   /** Initial historical/resolved requests list (if preloaded) */
   initialHistoryRequests?: readonly ApprovalRequest[];
+  /** Initial sanitized ward policy summary */
+  initialWardPolicy?: TrustedContactPolicySummary | null;
   /** Initial loading/error status for decision history list */
   initialHistoryStatus?: ViewStatus;
   /** Initial list of connected users or trusted contacts */

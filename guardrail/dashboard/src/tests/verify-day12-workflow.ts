@@ -615,7 +615,7 @@ export async function runDay12Verification(): Promise<void> {
           actionId: 'act_day12_002',
           actionDescription: 'Update Profile Settings',
           actionType: ActionType.SUBMIT,
-          category: ActionCategory.DESTRUCTIVE,
+          category: ActionCategory.GENERAL,
           riskLevel: RiskLevel.LOW,
           riskScore: 20,
           origin: 'https://bank.example.com',

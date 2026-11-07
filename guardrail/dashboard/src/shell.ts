@@ -134,6 +134,9 @@ export class DashboardShell {
       invitationsError: null,
       isSubmittingRelationshipAction: false,
       relationshipActionMessage: null,
+      wardPolicySummary: options.initialWardPolicy ?? null,
+      wardPolicyStatus: options.initialWardPolicy ? 'idle' : 'empty',
+      wardPolicyError: null,
     };
 
     // Pre-seed in-memory detail cache with authoritative initial records
@@ -157,6 +160,7 @@ export class DashboardShell {
       void this.fetchPendingRequests();
       void this.fetchRelationships();
       void this.fetchHistoryRequests();
+      void this.fetchWardPolicy();
     }
     if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
       this.startPolling();
@@ -562,6 +566,9 @@ export class DashboardShell {
       invitations: this.state.invitations,
       invitationsStatus: this.state.invitationsStatus,
       invitationsError: this.state.invitationsError,
+      wardPolicySummary: this.state.wardPolicySummary,
+      wardPolicyStatus: this.state.wardPolicyStatus,
+      wardPolicyError: this.state.wardPolicyError,
       isSubmittingRelationshipAction: this.state.isSubmittingRelationshipAction,
       relationshipActionMessage: this.state.relationshipActionMessage,
       onCreateInvitation: this.apiClient ? (payload) => this.createInvitation(payload) : undefined,
@@ -827,6 +834,7 @@ export class DashboardShell {
       this.fetchPendingRequests(),
       this.fetchRelationships({ isBackground: true }),
       this.fetchHistoryRequests({ isBackground: true }),
+      this.fetchWardPolicy(),
     ]);
     this.announce('Dashboard data refreshed.');
   }
@@ -1771,6 +1779,68 @@ export class DashboardShell {
   }
 
   /**
+   * Fetches the sanitized policy summary for the assigned ward from the backend.
+   */
+  public async fetchWardPolicy(): Promise<void> {
+    const wardId = this.state.contactProfile?.assignedWardId;
+    if (!this.apiClient || !wardId) {
+      this.state.wardPolicySummary = null;
+      this.state.wardPolicyStatus = 'empty';
+      this.state.wardPolicyError = null;
+      return;
+    }
+
+    this.state.wardPolicyStatus = 'loading';
+    this.state.wardPolicyError = null;
+
+    try {
+      const res = await this.apiClient.getUserPolicy(wardId);
+      if (res.success && res.data) {
+        if (res.data.viewType === 'TRUSTED_CONTACT_SUMMARY') {
+          this.state.wardPolicySummary = res.data.summary;
+          this.state.wardPolicyStatus = 'idle';
+          this.state.wardPolicyError = null;
+        } else if (res.data.viewType === 'WARD_FULL_POLICY') {
+          const full = res.data.config;
+          this.state.wardPolicySummary = {
+            wardId,
+            policyVersion: full.policyVersion,
+            schemaVersion: full.schemaVersion,
+            updatedAt: full.updatedAt,
+            overallStatus: 'ACTIVE',
+            sensitivityPreset: 'balanced',
+            stagingModeEnabled: true,
+            categoryProtections: {
+              destructiveActions: (full.policies.find((p) => p.id === 'POLICY_CONTROLLED_DESTRUCTIVE')?.decision as any) ?? 'PROTECT',
+              paymentActions: (full.policies.find((p) => p.id === 'POLICY_CONTROLLED_PAYMENT')?.decision as any) ?? 'PROTECT',
+              boundaryGuards: (full.policies.find((p) => p.id === 'POLICY_UNSUPPORTED_BOUNDARY_GUARD')?.decision as any) ?? 'PROTECT',
+              sensitiveData: (full.policies.find((p) => p.id === 'POLICY_AUTHENTICATION_BOUNDARY')?.decision as any) ?? 'WARN',
+              externalNavigation: (full.policies.find((p) => p.id === 'POLICY_EXTERNAL_NAVIGATION')?.decision as any) ?? 'WARN',
+            },
+            relationship: {
+              contactId: this.state.contactProfile?.actorId ?? 'contact',
+              relationshipLabel: this.state.contactProfile?.relationshipLabel,
+              status: 'ACTIVE',
+            },
+          };
+          this.state.wardPolicyStatus = 'idle';
+          this.state.wardPolicyError = null;
+        }
+      } else {
+        this.state.wardPolicyStatus = 'error';
+        this.state.wardPolicyError = res.error?.message || 'Failed to retrieve ward policy.';
+      }
+    } catch (err) {
+      this.state.wardPolicyStatus = 'error';
+      this.state.wardPolicyError = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (!this.isDestroyed) {
+        this.render();
+      }
+    }
+  }
+
+  /**
    * Unlinks the active ward relationship from the trusted contact portal.
    */
   public disconnectWard(): void {
@@ -1780,6 +1850,9 @@ export class DashboardShell {
         assignedWardId: undefined,
         relationshipLabel: undefined,
       };
+      this.state.wardPolicySummary = null;
+      this.state.wardPolicyStatus = 'empty';
+      this.state.wardPolicyError = null;
       this.state.relationshipActionMessage = {
         type: 'info',
         text: 'Ward relationship disconnected. Your review queue is now unlinked.',
