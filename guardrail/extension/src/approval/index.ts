@@ -15,6 +15,9 @@ export * from './client.js';
 export * from './sync-client.js';
 export * from './submit-operation.js';
 export * from './binding.js';
+export * from './policy-permissions.js';
+export * from './policy-repository.js';
+export * from './policy-service.js';
 export * from '../types/approval.js';
 
 

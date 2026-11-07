@@ -81,6 +81,17 @@ import {
   POLICY_SETTINGS_SPECIFICATIONS,
   validatePolicyConfig,
 } from '../config/schema.js';
+import { PolicyService } from './policy-service.js';
+import {
+  PolicyAccessDeniedError,
+  PolicyAdministrationDeniedError,
+  PolicyAuditRecord,
+  PolicyInvariantViolationError,
+  PolicyVersionConflictError,
+  UpdateUserPolicyInput,
+  UserPolicyRecord,
+  UserPolicyView,
+} from './policy-permissions.js';
 
 // =============================================================================
 // API Configuration & Interfaces
@@ -242,6 +253,8 @@ export interface ApprovalApiRouterConfig {
   readonly serviceType?: 'live' | 'mock' | 'in_memory';
   /** Optional backend-owned invitation email delivery callback. */
   readonly invitationDelivery?: InvitationDeliveryHandler;
+  /** Authoritative policy authorization and persistence service. */
+  readonly policyService?: PolicyService;
 }
 
 export interface InvitationDeliveryOutcome {
@@ -278,6 +291,7 @@ export const DEFAULT_MAX_BODY_SIZE_BYTES = 16 * 1024; // 16 KB
  */
 export class ApprovalApiRouter {
   private readonly service: ApprovalService;
+  private readonly policyService: PolicyService;
   private readonly tokenVerifier: TokenVerifier;
   private readonly allowedOrigins: ReadonlySet<string>;
   private readonly maxBodySizeBytes: number;
@@ -291,6 +305,9 @@ export class ApprovalApiRouter {
     config?: ApprovalApiRouterConfig
   ) {
     this.service = service;
+    this.policyService = config?.policyService ?? new PolicyService({
+      contactRegistry: service.getContactRegistry(),
+    });
     this.tokenVerifier = tokenVerifier;
     this.allowedOrigins = new Set(config?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
     this.maxBodySizeBytes = config?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
@@ -463,6 +480,34 @@ export class ApprovalApiRouter {
           headers,
           body: { success: true, data: { actorId: authContext.actorId, role: authContext.role } },
         };
+      }
+
+      // Route: GET /api/v1/users/:userId/policy/audit (Ward inspects policy audit history)
+      const getPolicyAuditMatch = path.match(/^\/api\/v1\/users\/([^/]+)\/policy\/audit$/);
+      if (method === 'GET' && getPolicyAuditMatch) {
+        const userId = decodeURIComponent(getPolicyAuditMatch[1]);
+        return await this.handleGetPolicyAudit(request, userId, headers);
+      }
+
+      // Route: POST /api/v1/users/:userId/policy/reset (Ward resets policy to defaults)
+      const resetPolicyMatch = path.match(/^\/api\/v1\/users\/([^/]+)\/policy\/reset$/);
+      if (method === 'POST' && resetPolicyMatch) {
+        const userId = decodeURIComponent(resetPolicyMatch[1]);
+        return await this.handleResetUserPolicy(request, userId, headers);
+      }
+
+      // Route: GET /api/v1/users/:userId/policy (Inspect policy: full for ward, sanitized for contact)
+      const getUserPolicyMatch = path.match(/^\/api\/v1\/users\/([^/]+)\/policy$/);
+      if (method === 'GET' && getUserPolicyMatch) {
+        const userId = decodeURIComponent(getUserPolicyMatch[1]);
+        return await this.handleGetUserPolicy(request, userId, headers);
+      }
+
+      // Route: PUT /api/v1/users/:userId/policy (Ward updates protection policy)
+      const putUserPolicyMatch = path.match(/^\/api\/v1\/users\/([^/]+)\/policy$/);
+      if (method === 'PUT' && putUserPolicyMatch) {
+        const userId = decodeURIComponent(putUserPolicyMatch[1]);
+        return await this.handleUpdateUserPolicy(request, userId, headers);
       }
 
       // Route: GET /api/v1/policy-config (Canonical policy configuration and specifications)
@@ -1315,10 +1360,156 @@ export class ApprovalApiRouter {
   }
 
   /**
+   * GET /api/v1/users/:userId/policy
+   */
+  private async handleGetUserPolicy(
+    request: ApiRequest,
+    userId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<UserPolicyView>> {
+    const authContext = await this.authenticate(request.headers);
+    const result = await this.policyService.getUserPolicy(authContext, userId);
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: result,
+      },
+    };
+  }
+
+  /**
+   * PUT /api/v1/users/:userId/policy
+   */
+  private async handleUpdateUserPolicy(
+    request: ApiRequest,
+    userId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<UserPolicyRecord>> {
+    this.validateContentType(request.headers);
+    const authContext = await this.authenticate(request.headers);
+    const body = request.body as UpdateUserPolicyInput;
+    if (!body || typeof body !== 'object') {
+      throw new ApprovalValidationError(['Request body must be a valid JSON object.']);
+    }
+    const result = await this.policyService.updateUserPolicy(authContext, userId, body);
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: result,
+      },
+    };
+  }
+
+  /**
+   * GET /api/v1/users/:userId/policy/audit
+   */
+  private async handleGetPolicyAudit(
+    request: ApiRequest,
+    userId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<readonly PolicyAuditRecord[]>> {
+    const authContext = await this.authenticate(request.headers);
+    const result = await this.policyService.getPolicyAuditHistory(authContext, userId);
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: result,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/users/:userId/policy/reset
+   */
+  private async handleResetUserPolicy(
+    request: ApiRequest,
+    userId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<UserPolicyRecord>> {
+    const authContext = await this.authenticate(request.headers);
+    const result = await this.policyService.resetPolicyToDefaults(authContext, userId);
+    return {
+      statusCode: 200,
+      headers,
+      body: {
+        success: true,
+        data: result,
+      },
+    };
+  }
+
+  /**
    * Maps domain and transport errors to consistent HTTP error envelopes.
    */
   private mapErrorToResponse(err: unknown, baseHeaders: Record<string, string>): ApiResponse {
     const headers = { ...baseHeaders };
+
+    if (err instanceof PolicyAdministrationDeniedError) {
+      return {
+        statusCode: 403,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'POLICY_ADMINISTRATION_DENIED',
+            message: err.message,
+            statusCode: 403,
+          },
+        },
+      };
+    }
+
+    if (err instanceof PolicyAccessDeniedError) {
+      return {
+        statusCode: 404,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'NOT_FOUND_OR_DENIED',
+            message: 'Access denied: Policy not found or insufficient permissions.',
+            statusCode: 404,
+          },
+        },
+      };
+    }
+
+    if (err instanceof PolicyVersionConflictError) {
+      return {
+        statusCode: 409,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'POLICY_VERSION_CONFLICT',
+            message: err.message,
+            statusCode: 409,
+          },
+        },
+      };
+    }
+
+    if (err instanceof PolicyInvariantViolationError) {
+      return {
+        statusCode: 400,
+        headers,
+        body: {
+          success: false,
+          error: {
+            code: 'MANDATORY_INVARIANT_VIOLATION',
+            message: err.message,
+            statusCode: 400,
+            details: err.violations,
+          },
+        },
+      };
+    }
 
     if (err instanceof UnauthenticatedError) {
       return {

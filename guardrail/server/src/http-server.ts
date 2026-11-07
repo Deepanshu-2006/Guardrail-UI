@@ -44,6 +44,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
   const router = new ApprovalApiRouter(runtime.service, options.tokenVerifier, {
     ...options.routerConfig,
     ...(options.invitationDelivery ? { invitationDelivery: options.invitationDelivery } : {}),
+    policyService: runtime.policyService,
     allowedOrigins: config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS),
     serviceType: 'live',
   });
