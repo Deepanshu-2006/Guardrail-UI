@@ -3917,6 +3917,366 @@ async function runDashboardTests() {
     authShell.destroy();
   }
 
+  // ===========================================================================
+  // Test Suite 49: Approval History, Lifecycle States, Activity Timeline & Server Isolation
+  // ===========================================================================
+  console.log('\n▶ Test Suite 49: Approval History, Lifecycle States, Activity Timeline & Server Isolation');
+  {
+    // 49.1: Empty State when no history exists
+    const emptyHistoryShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [],
+      autoFetch: false,
+    });
+
+    const emptyHistoryCard = rootElement.querySelector('#gd-history-empty');
+    assert(emptyHistoryCard !== null, 'Empty state rendered when no history exists');
+    assert(
+      emptyHistoryCard?.textContent.includes('No Prior Decisions Recorded') ?? false,
+      'Empty state title communicates zero prior decisions'
+    );
+    emptyHistoryShell.destroy();
+
+    // 49.2: Accurate Lifecycle States & Relevant Timestamps Display
+    const nowIso = new Date().toISOString();
+    const mockHistory: ApprovalRequest[] = [
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_approved_01',
+        actionDescription: 'Export Encrypted Vault Backup',
+        riskLevel: RiskLevel.HIGH,
+        status: ApprovalStatus.APPROVED,
+        createdAt: '2026-10-20T09:00:00.000Z',
+        resolvedAt: '2026-10-20T09:15:00.000Z',
+        decision: {
+          decision: 'APPROVED',
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T09:15:00.000Z',
+          decisionReason: 'Verified authorized offsite backup procedure',
+        },
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_rejected_02',
+        actionDescription: 'Wire Transfer to Unknown Account',
+        riskLevel: RiskLevel.CRITICAL,
+        status: ApprovalStatus.REJECTED,
+        createdAt: '2026-10-20T10:00:00.000Z',
+        resolvedAt: '2026-10-20T10:05:00.000Z',
+        decision: {
+          decision: 'REJECTED',
+          decidedBy: 'tc_carol',
+          decidedAt: '2026-10-20T10:05:00.000Z',
+          decisionReason: 'Unrecognized recipient routing number',
+        },
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_expired_03',
+        actionDescription: 'Modify OAuth Application Permissions',
+        riskLevel: RiskLevel.MEDIUM,
+        status: ApprovalStatus.EXPIRED,
+        createdAt: '2026-10-19T08:00:00.000Z',
+        expiresAt: '2026-10-19T08:30:00.000Z',
+        resolvedAt: '2026-10-19T08:30:00.000Z',
+      },
+      {
+        ...SAMPLE_REQUEST,
+        id: 'apr_hist_cancelled_04',
+        actionDescription: 'Delete Primary Encryption Key',
+        riskLevel: RiskLevel.CRITICAL,
+        status: ApprovalStatus.CANCELLED,
+        createdAt: '2026-10-18T14:00:00.000Z',
+        resolvedAt: '2026-10-18T14:02:00.000Z',
+        cancellationReason: 'Ward dismissed action in staging mode',
+      },
+    ];
+
+    const historyShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: mockHistory,
+      autoFetch: false,
+    });
+
+    const historySection = rootElement.querySelector('#view-history');
+    assert(historySection !== null, 'Decision history section rendered');
+
+    // Approved Card
+    const approvedCard = historySection?.querySelector('.status-approved');
+    assert(approvedCard !== null, 'Approved history card rendered');
+    assert(approvedCard?.textContent.includes('APPROVED') ?? false, 'Displays APPROVED status pill');
+    assert(approvedCard?.textContent.includes('HIGH') ?? false, 'Displays HIGH risk badge');
+    assert(approvedCard?.textContent.includes('Reviewer: tc_carol') ?? false, 'Displays reviewer attribution');
+    assert(approvedCard?.textContent.includes('Decided:') ?? false, 'Displays Decided timestamp label');
+
+    // Rejected Card
+    const rejectedCard = historySection?.querySelector('.status-rejected');
+    assert(rejectedCard !== null, 'Rejected history card rendered');
+    assert(rejectedCard?.textContent.includes('REJECTED') ?? false, 'Displays REJECTED status pill');
+    assert(rejectedCard?.textContent.includes('CRITICAL') ?? false, 'Displays CRITICAL risk badge');
+    assert(rejectedCard?.textContent.includes('Reviewer: tc_carol') ?? false, 'Displays reviewer attribution');
+
+    // Expired Card
+    const expiredCard = historySection?.querySelector('.status-expired');
+    assert(expiredCard !== null, 'Expired history card rendered');
+    assert(expiredCard?.textContent.includes('EXPIRED') ?? false, 'Displays EXPIRED status pill');
+    assert(expiredCard?.textContent.includes('Expired:') ?? false, 'Displays Expired timestamp label');
+
+    // Cancelled Card
+    const cancelledCard = historySection?.querySelector('.status-cancelled');
+    assert(cancelledCard !== null, 'Cancelled history card rendered');
+    assert(cancelledCard?.textContent.includes('CANCELLED') ?? false, 'Displays CANCELLED status pill');
+    assert(cancelledCard?.textContent.includes('Cancelled:') ?? false, 'Displays Cancelled timestamp label');
+
+    // 49.3: Distinguish Approval Decisions from Actual Browser Action Continuation
+    const approvedPostureChip = approvedCard?.querySelector('.gd-continuation-chip.approved');
+    assert(approvedPostureChip !== null, 'Continuation chip rendered for approved request');
+    assert(
+      approvedPostureChip?.textContent.includes('Action Decoupled & Held in Browser') ?? false,
+      'Explicitly distinguishes server approval from browser action execution'
+    );
+    assert(
+      !approvedCard?.textContent.includes('Action Completed in Browser'),
+      'Strictly avoids false claim of browser action completion'
+    );
+
+    const rejectedPostureChip = rejectedCard?.querySelector('.gd-continuation-chip.rejected');
+    assert(
+      rejectedPostureChip?.textContent.includes('Browser Action Blocked') ?? false,
+      'Communicates browser action blocked upon rejection'
+    );
+
+    const expiredPostureChip = expiredCard?.querySelector('.gd-continuation-chip.expired');
+    assert(
+      expiredPostureChip?.textContent.includes('Browser Action Timed Out') ?? false,
+      'Communicates browser action timed out upon expiration'
+    );
+
+    const cancelledPostureChip = cancelledCard?.querySelector('.gd-continuation-chip.cancelled');
+    assert(
+      cancelledPostureChip?.textContent.includes('Cancelled by Ward') ?? false,
+      'Communicates action cancelled by ward'
+    );
+
+    // Architectural Notice Box
+    const noticeBox = historySection?.querySelector('.gd-history-notice');
+    assert(noticeBox !== null, 'Architectural decoupled execution notice present');
+    assert(
+      noticeBox?.textContent.includes('does NOT execute the browser action') ?? false,
+      'Notice emphasizes decoupled execution invariant'
+    );
+
+    // 49.4: Useful Multi-Facet Filtering & Search
+    // Filter by status: APPROVED
+    historyShell.setHistoryFilters({ status: ApprovalStatus.APPROVED });
+    const onlyApprovedCards = rootElement.querySelectorAll('#view-history .gd-history-card');
+    assertEquals(onlyApprovedCards?.length, 1, 'Status filter limits list to approved requests only');
+    assertEquals(onlyApprovedCards?.[0].classList.contains('status-approved'), true, 'Rendered item is approved');
+
+    // Filter by risk level: CRITICAL
+    historyShell.setHistoryFilters({ status: 'ALL', riskLevel: RiskLevel.CRITICAL });
+    const criticalCards = rootElement.querySelectorAll('#view-history .gd-history-card');
+    assertEquals(criticalCards?.length, 2, 'Risk filter limits list to critical requests only');
+
+    // Safe Text Search query
+    historyShell.setHistoryFilters({ status: 'ALL', riskLevel: 'ALL', searchQuery: 'Vault' });
+    const searchCards = rootElement.querySelectorAll('#view-history .gd-history-card');
+    assertEquals(searchCards?.length, 1, 'Search query filters list by non-sensitive keywords');
+    assert(searchCards?.[0].textContent.includes('Vault') ?? false, 'Matched item contains search term');
+
+    // 49.5: Empty Filter State with Clear Filters Action
+    historyShell.setHistoryFilters({ searchQuery: 'NonExistentActionStringXYZ' });
+    const emptyFilterEl = rootElement.querySelector('#gd-history-filter-empty');
+    assert(emptyFilterEl !== null, 'Empty filter state rendered when no items match search');
+    assert(
+      emptyFilterEl?.textContent.includes('No Matching Decisions Found') ?? false,
+      'Communicates zero decisions match criteria'
+    );
+
+    // Clear filters button resets filters
+    const clearBtn = emptyFilterEl?.querySelector('.gd-btn-reset-filters') as MockDOMElement | null;
+    assert(clearBtn !== null, 'Clear filters button present in empty filter state');
+    clearBtn?.listeners.click[0]({ preventDefault() {} });
+    assertEquals(historyShell.getState().historyFilters.searchQuery, '', 'Search query cleared');
+    historyShell.destroy();
+
+    // 49.6: Detail Pane Activity Timeline & Audit Trail Inspection
+    const detailShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: mockHistory,
+      autoFetch: false,
+    });
+
+    detailShell.selectHistoryRequest('apr_hist_approved_01');
+    const detailPane = rootElement.querySelector('#view-history .gd-detail-pane');
+    assert(detailPane !== null, 'Detail pane rendered in history view');
+    assert(detailPane?.textContent.includes('apr_hist_approved_01') ?? false, 'Detail pane displays canonical request ID');
+    assert(detailPane?.textContent.includes('Export Encrypted Vault Backup') ?? false, 'Detail pane displays action description');
+    assert(detailPane?.textContent.includes('APPROVED') ?? false, 'Detail pane displays APPROVED status pill');
+    assert(detailPane?.textContent.includes('Initiated At') ?? false, 'Detail pane displays Initiated At timestamp');
+    assert(detailPane?.textContent.includes('Decided At') ?? false, 'Detail pane displays Decided At timestamp');
+    assert(detailPane?.textContent.includes('tc_carol') ?? false, 'Detail pane displays reviewer signature');
+    assert(detailPane?.textContent.includes('Verified authorized offsite backup procedure') ?? false, 'Detail pane displays decision reason');
+    detailShell.destroy();
+
+    // 49.7: Bounded Loading & Pagination Controls
+    let capturedOffset: number | null = null;
+    const mockPagedClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-contact-token',
+      fetchFn: async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes('/api/v1/approvals/history')) {
+          const parsed = new URL(u);
+          capturedOffset = Number(parsed.searchParams.get('offset'));
+          // Return 50 items to trigger hasMore
+          const pagedItems: ApprovalRequest[] = Array.from({ length: 50 }, (_, i) => ({
+            ...SAMPLE_REQUEST,
+            id: `apr_paged_${i}`,
+            status: ApprovalStatus.APPROVED,
+            createdAt: nowIso,
+            resolvedAt: nowIso,
+          }));
+          return createMockResponse(200, { success: true, data: pagedItems });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const pagedShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      apiClient: mockPagedClient,
+      autoFetch: false,
+    });
+
+    await pagedShell.fetchHistoryRequests({ page: 0 });
+    assertEquals(pagedShell.getState().historyRequests.length, 50, 'Retrieved initial page of 50 records');
+    assertEquals(pagedShell.getState().hasMoreHistory, true, 'hasMoreHistory flag is true');
+
+    const loadMoreBtn = rootElement.querySelector('#gd-btn-load-more') as MockDOMElement | null;
+    assert(loadMoreBtn !== null, 'Load More Decisions button present when hasMore is true');
+
+    // Click Load More
+    await pagedShell.loadMoreHistory();
+    assertEquals(capturedOffset, 50, 'Offset passed to backend for page 2 is 50');
+    pagedShell.destroy();
+
+    // 49.8: Loading State & Error State with Retry
+    const loadingShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [],
+      initialHistoryStatus: 'loading',
+      autoFetch: false,
+    });
+
+    const loadingEl = rootElement.querySelector('.gd-history-loading');
+    assert(loadingEl !== null, 'Loading indicator rendered when status is loading');
+    assertEquals(loadingEl?.getAttribute('aria-busy'), 'true', 'aria-busy is true during loading');
+    loadingShell.destroy();
+
+    let historyRefreshed = false;
+    const mockRetryClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-token',
+      fetchFn: async () => {
+        historyRefreshed = true;
+        return createMockResponse(200, { success: true, data: [] });
+      },
+    });
+
+    const errorShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [],
+      apiClient: mockRetryClient,
+      autoFetch: false,
+    });
+    (errorShell as any).state.historyStatus = 'error';
+    (errorShell as any).state.historyError = 'Database cluster connection timeout';
+    errorShell.render();
+
+    const errorBannerEl = rootElement.querySelector('#gd-history-error-banner');
+    assert(errorBannerEl !== null, 'Error banner rendered when historyStatus is error');
+    assert(
+      errorBannerEl?.textContent.includes('Database cluster connection timeout') ?? false,
+      'Error banner displays sanitized error message'
+    );
+
+    const retryBtn = errorBannerEl?.querySelector('.gd-btn-retry') as MockDOMElement | null;
+    assert(retryBtn !== null, 'Retry button rendered in error banner');
+    retryBtn?.listeners.click[0]({ preventDefault() {} });
+    await new Promise((r) => setTimeout(r, 20));
+    assert(historyRefreshed, 'Clicking retry dispatches backend history refresh');
+    errorShell.destroy();
+
+    // 49.9: Multi-Tenant User Isolation & Server-Side Security
+    let historyUnauthorizedDenied = false;
+    const mockUnauthorizedHistoryClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'attacker-token',
+      fetchFn: async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes('/api/v1/approvals/history')) {
+          historyUnauthorizedDenied = true;
+          return createMockResponse(404, {
+            success: false,
+            error: {
+              code: 'NOT_FOUND_OR_DENIED',
+              message: 'Access denied: You are not authorized to view this history.',
+            },
+          });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const isolatedShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      apiClient: mockUnauthorizedHistoryClient,
+      autoFetch: false,
+    });
+
+    await isolatedShell.fetchHistoryRequests();
+    assert(historyUnauthorizedDenied, 'History query independently checked by backend authorization');
+    assertEquals(isolatedShell.getState().historyRequests.length, 0, 'No unauthorized history records displayed or fabricated');
+    isolatedShell.destroy();
+
+    // 49.10: Strict Zero-Trust Privacy: No Raw Credentials or OTPs in History DOM
+    const sensitiveHistoryRequest: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_hist_privacy_01',
+      actionDescription: 'Save Payment & Identity Form',
+      status: ApprovalStatus.APPROVED,
+      // Malicious / Sensitive injected properties that must NEVER render
+      ...({
+        rawPassword: 'SecretPassword999!',
+        otpCode: '918273',
+        cardNumber: '4111333355557777',
+        apiSecretKey: 'sk_live_very_secret_token_abc',
+      } as any),
+    };
+
+    const privacyShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: [sensitiveHistoryRequest],
+      autoFetch: false,
+    });
+
+    const renderedHistoryHtml = (rootElement as any).innerHTML || '';
+    assert(!renderedHistoryHtml.includes('SecretPassword999!'), 'No raw passwords in rendered history DOM');
+    assert(!renderedHistoryHtml.includes('918273'), 'No OTP codes in rendered history DOM');
+    assert(!renderedHistoryHtml.includes('4111333355557777'), 'No card numbers in rendered history DOM');
+    assert(!renderedHistoryHtml.includes('sk_live_very_secret_token_abc'), 'No API secrets in rendered history DOM');
+    privacyShell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');
