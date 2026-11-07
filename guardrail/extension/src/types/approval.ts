@@ -336,6 +336,11 @@ export interface ApprovalRequest {
    * Proves structural action identity without exposing passwords, OTPs, cards, or form values.
    */
   readonly actionDigest?: string;
+
+  /**
+   * Policy version under which the action was evaluated and submitted (e.g. '1.0.0').
+   */
+  readonly policyVersion?: string;
 }
 
 // =============================================================================
@@ -379,6 +384,9 @@ export interface ClientApprovalRequestPayload {
 
   /** Optional action structural fingerprint digest computed at interception time */
   readonly actionDigest?: string;
+
+  /** Optional policy version identifier under which the client evaluated the action (e.g. '1.0.0') */
+  readonly policyVersion?: string;
 }
 
 /**

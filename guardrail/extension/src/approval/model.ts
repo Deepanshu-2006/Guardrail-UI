@@ -59,6 +59,7 @@ export const PERMITTED_APPROVAL_REQUEST_FIELDS: ReadonlySet<string> = new Set([
   'resolvedAt',
   'decision',
   'cancellationReason',
+  'policyVersion',
 ]);
 
 /**
@@ -749,6 +750,18 @@ export function validateApprovalRequest(data: unknown): ApprovalValidationResult
     }
   }
 
+  // 11. Policy Version Validation
+  if (rec.policyVersion !== undefined) {
+    if (
+      typeof rec.policyVersion !== 'string' ||
+      !/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(rec.policyVersion.trim())
+    ) {
+      errors.push(
+        `Field "policyVersion" must be a valid semver string (e.g. "1.0.0"). Received "${String(rec.policyVersion)}".`
+      );
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors: Object.freeze(errors),
@@ -884,6 +897,7 @@ export function createApprovalRequest(
     expiresAt,
     ...(bindingId ? { bindingId } : {}),
     ...(actionDigest ? { actionDigest } : {}),
+    ...(payload.policyVersion ? { policyVersion: payload.policyVersion } : {}),
   });
 
   assertValidApprovalRequest(request);

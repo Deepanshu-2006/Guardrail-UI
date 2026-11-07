@@ -279,3 +279,64 @@ export interface ConfigLoadResult {
   readonly cooldownRemainingMs: number;
 }
 
+/**
+ * Result of checking version compatibility against current architecture.
+ */
+export interface VersionCompatibilityResult {
+  readonly compatible: boolean;
+  readonly code?: string;
+  readonly message?: string;
+  readonly field?: string;
+}
+
+/**
+ * Standard specification describing a single supported policy setting,
+ * including its constraints, default value, and security implications.
+ */
+export interface PolicySettingSpecification {
+  /** Canonical setting identifier or property path (e.g. 'thresholds.lowMax') */
+  readonly key: string;
+
+  /** Setting category (threshold, signal, policy, domain, timeout) */
+  readonly category: 'threshold' | 'signal' | 'policy' | 'domain' | 'timeout' | 'version';
+
+  /** Human-readable title */
+  readonly title: string;
+
+  /** Comprehensive description of the setting's operational behavior */
+  readonly description: string;
+
+  /** Data type of the setting value */
+  readonly valueType: 'integer' | 'boolean' | 'string' | 'array' | 'enum';
+
+  /** Baseline default value */
+  readonly defaultValue: unknown;
+
+  /** Minimum permitted value (for numbers) or minimum length */
+  readonly minValue?: number;
+
+  /** Maximum permitted value (for numbers) or maximum length */
+  readonly maxValue?: number;
+
+  /** Permitted enum or literal options */
+  readonly permittedValues?: readonly string[];
+
+  /** Whether this setting is an immutable security invariant that cannot be downgraded or disabled */
+  readonly isImmutableInvariant: boolean;
+
+  /** Security and architectural implications of altering or misconfiguring this setting */
+  readonly securityImplication: string;
+}
+
+/** Current architectural schema format version */
+export const CURRENT_ARCHITECTURE_SCHEMA_VERSION = '1.0.0';
+
+/** Current architectural policy version */
+export const CURRENT_ARCHITECTURE_POLICY_VERSION = '1.0.0';
+
+/** Minimum supported schema version; configurations older than this are rejected as stale */
+export const MIN_SUPPORTED_SCHEMA_VERSION = '1.0.0';
+
+/** Minimum supported policy version */
+export const MIN_SUPPORTED_POLICY_VERSION = '1.0.0';
+

@@ -35,8 +35,11 @@ import {
   BackendContinuationValidationInput,
   BackendContinuationValidationResult,
   ClientApprovalRequestPayload,
+  SubmitApprovalDecisionInput,
 } from '../types/approval.js';
+import { ActionCategory } from '../types/actions.js';
 import { RiskLevel } from '../types/risk.js';
+import { checkVersionCompatibility } from '../config/schema.js';
 import {
   ApprovalAlreadyResolvedError,
   ApprovalExpiredError,
@@ -78,7 +81,6 @@ import {
   CreateInvitationOptions,
   InMemoryActionOwnershipRegistry,
   InMemoryTrustedContactRegistry,
-  InvitationStatus,
   NoActiveTrustedContactError,
   SelfApprovalProhibitedError,
   TrustedContact,
@@ -338,6 +340,35 @@ export class ApprovalService {
       if (!idValidation.valid) {
         throw new ApprovalValidationError(idValidation.errors);
       }
+    }
+
+    // Server-Side Policy Validation (Zero Client Trust)
+    // 1. Verify policyVersion compatibility if specified by client
+    if (payload.policyVersion !== undefined) {
+      const compat = checkVersionCompatibility(payload.policyVersion, 'policyVersion');
+      if (!compat.compatible) {
+        throw new ApprovalValidationError([
+          compat.message || `Incompatible policy version "${payload.policyVersion}".`,
+        ]);
+      }
+    }
+
+    // 2. Prevent client from maliciously or erroneously under-reporting risk level
+    // to bypass protective review
+    if (payload.category === ActionCategory.DESTRUCTIVE && payload.riskLevel === RiskLevel.LOW) {
+      throw new ApprovalValidationError([
+        'Security invariant violation: Destructive actions cannot be submitted with LOW risk level.',
+      ]);
+    }
+    if (payload.category === ActionCategory.PAYMENT && payload.riskLevel === RiskLevel.LOW) {
+      throw new ApprovalValidationError([
+        'Security invariant violation: Financial checkout/payment actions cannot be submitted with LOW risk level.',
+      ]);
+    }
+    if (payload.category === ActionCategory.AUTHENTICATION && payload.riskLevel === RiskLevel.LOW) {
+      throw new ApprovalValidationError([
+        'Security invariant violation: Authentication boundary actions cannot be submitted with LOW risk level.',
+      ]);
     }
 
     // 3. Verify action ownership & binding assignment

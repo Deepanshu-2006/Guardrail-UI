@@ -56,7 +56,6 @@ import {
   ActorRole,
   ApprovalAccessDeniedError,
   AuthContext,
-  CreateInvitationOptions,
   DuplicateContactRelationshipError,
   InvitationAlreadyAcceptedError,
   InvitationExpiredError,
@@ -73,6 +72,15 @@ import {
   validateRelationshipLabel,
 } from './authorization.js';
 import { ApprovalService } from './service.js';
+import {
+  CURRENT_ARCHITECTURE_POLICY_VERSION,
+  CURRENT_ARCHITECTURE_SCHEMA_VERSION,
+} from '../types/config.js';
+import {
+  DEFAULT_GUARDRAIL_POLICY_CONFIG,
+  POLICY_SETTINGS_SPECIFICATIONS,
+  validatePolicyConfig,
+} from '../config/schema.js';
 
 // =============================================================================
 // API Configuration & Interfaces
@@ -454,6 +462,56 @@ export class ApprovalApiRouter {
           statusCode: 200,
           headers,
           body: { success: true, data: { actorId: authContext.actorId, role: authContext.role } },
+        };
+      }
+
+      // Route: GET /api/v1/policy-config (Canonical policy configuration and specifications)
+      if (method === 'GET' && path === '/api/v1/policy-config') {
+        return {
+          statusCode: 200,
+          headers,
+          body: {
+            success: true,
+            data: {
+              config: DEFAULT_GUARDRAIL_POLICY_CONFIG,
+              specifications: POLICY_SETTINGS_SPECIFICATIONS,
+              schemaVersion: CURRENT_ARCHITECTURE_SCHEMA_VERSION,
+              policyVersion: CURRENT_ARCHITECTURE_POLICY_VERSION,
+            },
+          },
+        };
+      }
+
+      // Route: POST /api/v1/policy-config/validate (Server-side policy validation)
+      if (method === 'POST' && path === '/api/v1/policy-config/validate') {
+        this.validateContentType(request.headers);
+        const candidate = request.body;
+        const validation = validatePolicyConfig(candidate);
+        if (!validation.valid) {
+          return {
+            statusCode: 400,
+            headers,
+            body: {
+              success: false,
+              error: {
+                code: 'INVALID_POLICY_CONFIG',
+                message: `Policy configuration validation failed with ${validation.errors.length} error(s).`,
+                statusCode: 400,
+                details: validation.errors.map((e) => `[${e.code}] ${e.field}: ${e.message}`),
+              },
+            },
+          };
+        }
+        return {
+          statusCode: 200,
+          headers,
+          body: {
+            success: true,
+            data: {
+              valid: true,
+              config: validation.config,
+            },
+          },
         };
       }
 
