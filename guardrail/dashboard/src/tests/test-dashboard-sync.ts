@@ -324,7 +324,7 @@ const SAMPLE_REQUEST: ApprovalRequest = {
   requesterId: 'usr_alice',
   status: ApprovalStatus.PENDING,
   createdAt: '2026-10-21T08:00:00.000Z',
-  expiresAt: '2026-10-21T08:15:00.000Z',
+  expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
 };
 
 // =============================================================================

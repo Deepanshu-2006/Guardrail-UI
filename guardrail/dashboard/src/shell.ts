@@ -933,13 +933,24 @@ export class DashboardShell {
       return null;
     }
 
-    // 3. Verify that the request is currently in pending state in memory
+    // 3. Verify that the request is currently in pending state in memory and not expired
     const existingReq =
       this.detailedRequestsCache.get(trimmedId) ||
       this.state.pendingRequests.find((r) => r.id === trimmedId);
 
-    if (existingReq && existingReq.status !== 'PENDING') {
-      this.state.decisionErrorMessage = `This request is already ${existingReq.status.toLowerCase()} and cannot accept new decisions.`;
+    const isExpired = Boolean(
+      existingReq && (existingReq.status === 'EXPIRED' || (existingReq.expiresAt && new Date(existingReq.expiresAt).getTime() <= Date.now()))
+    );
+
+    if (existingReq && (existingReq.status !== 'PENDING' || isExpired)) {
+      if (isExpired) {
+        this.state.decisionErrorMessage = 'Request expired: The review deadline for this request has elapsed. Stale or expired requests cannot be approved.';
+        // Prune from pending requests if present
+        this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
+        this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+      } else {
+        this.state.decisionErrorMessage = `This request is already ${existingReq.status.toLowerCase()} and cannot accept new decisions.`;
+      }
       this.state.decisionSuccessMessage = null;
       this.render();
       return null;
@@ -1011,7 +1022,10 @@ export class DashboardShell {
             userMessage = 'Authorization failure: Self-approval is strictly prohibited. You cannot review your own browser action.';
             break;
           case ApiClientErrorCodes.NOT_FOUND_OR_DENIED:
-            userMessage = 'Access denied: You are not authorized to decide on this request, or the request does not exist.';
+            userMessage = 'Access denied: You are not authorized to decide on this request. The request may have been removed, or your trusted-contact relationship was revoked.';
+            this.state.pendingRequests = this.state.pendingRequests.filter((r) => r.id !== trimmedId);
+            this.state.pendingStatus = this.state.pendingRequests.length === 0 ? 'empty' : 'idle';
+            void this.fetchPendingRequests({ isBackground: true });
             break;
           case ApiClientErrorCodes.ALREADY_RESOLVED:
             userMessage = 'Conflict: This request has already been resolved by another reviewer or cancelled by the user.';

@@ -104,6 +104,60 @@ export function formatTimestamp(isoString?: string | null): string {
 }
 
 /**
+ * Evaluates whether an approval request has expired based on its expiresAt timestamp.
+ */
+export function isRequestExpired(request?: ApprovalRequest | null): boolean {
+  if (!request) return false;
+  if (request.status === ApprovalStatus.EXPIRED) return true;
+  if (!request.expiresAt || typeof request.expiresAt !== 'string') return false;
+  const expTime = new Date(request.expiresAt).getTime();
+  if (isNaN(expTime)) return false;
+  return expTime <= Date.now();
+}
+
+/**
+ * Returns a human-friendly expiration description (e.g. "Expired 5m ago" or "Expires in 12m (10:15:00 AM)").
+ */
+export function formatExpirationInfo(isoString?: string | null): { text: string; isPast: boolean } {
+  if (!isoString || typeof isoString !== 'string' || !isoString.trim()) {
+    return { text: 'No expiration deadline', isPast: false };
+  }
+  try {
+    const expTime = new Date(isoString).getTime();
+    if (isNaN(expTime)) {
+      return { text: isoString, isPast: false };
+    }
+    const now = Date.now();
+    const diffMs = expTime - now;
+    const formattedDate = formatTimestamp(isoString);
+
+    if (diffMs <= 0) {
+      const elapsedMins = Math.max(1, Math.floor(Math.abs(diffMs) / 60000));
+      return {
+        text: `Expired ${elapsedMins > 60 ? Math.floor(elapsedMins / 60) + 'h ago' : elapsedMins + 'm ago'} (${formattedDate})`,
+        isPast: true,
+      };
+    } else {
+      const remainingMins = Math.floor(diffMs / 60000);
+      if (remainingMins < 60) {
+        return {
+          text: `Expires in ${Math.max(1, remainingMins)}m (${formattedDate})`,
+          isPast: false,
+        };
+      } else {
+        const remainingHours = Math.floor(remainingMins / 60);
+        return {
+          text: `Expires in ~${remainingHours}h (${formattedDate})`,
+          isPast: false,
+        };
+      }
+    }
+  } catch {
+    return { text: isoString, isPast: false };
+  }
+}
+
+/**
  * Helper to safely extract or fallback a display hostname from hostname or origin.
  */
 function resolveSafeHostname(request: ApprovalRequest): string {
@@ -146,9 +200,10 @@ function createGridItem(label: string, valueText: string, extraClass?: string): 
  * Helper to build a styled status banner explaining the request's current lifecycle state.
  */
 function createStatusBanner(request: ApprovalRequest): HTMLElement {
+  const expired = isRequestExpired(request);
   const status = request.status || ApprovalStatus.PENDING;
   const banner = document.createElement('div');
-  const statusClass = status.toLowerCase();
+  const statusClass = (expired && status === ApprovalStatus.PENDING ? 'expired' : status).toLowerCase();
   banner.className = `gd-status-banner ${statusClass}`;
   banner.setAttribute('role', 'status');
 
@@ -161,12 +216,17 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
   const descEl = document.createElement('p');
   descEl.className = 'gd-status-banner-desc';
 
-  switch (status) {
-    case ApprovalStatus.PENDING:
-      titleEl.textContent = '⏳ Awaiting Review';
-      descEl.textContent =
-        'The server records this approval request as pending. This dashboard cannot verify the action’s current state in the ward’s browser. The extension must validate the local action before any continuation.';
-      break;
+  if (status === ApprovalStatus.PENDING && expired) {
+    titleEl.textContent = '⏱️ Review Deadline Elapsed';
+    descEl.textContent =
+      'The expiration deadline for this approval request has passed. Decisions can no longer be recorded. The extension will revalidate the local action state and require a fresh request if needed.';
+  } else {
+    switch (status) {
+      case ApprovalStatus.PENDING:
+        titleEl.textContent = '⏳ Awaiting Review';
+        descEl.textContent =
+          'The server records this approval request as pending. This dashboard cannot verify the action’s current state in the ward’s browser. The extension must validate the local action before any continuation.';
+        break;
 
     case ApprovalStatus.APPROVED:
       titleEl.textContent = '✅ Approved by Trusted Contact';
@@ -224,6 +284,7 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
       titleEl.textContent = `Status: ${status}`;
       descEl.textContent = 'This request is in an authoritative server-recorded state.';
       break;
+    }
   }
 
   content.appendChild(titleEl);
@@ -350,12 +411,14 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   titleGroup.appendChild(idSpan);
   titleGroup.appendChild(dTitle);
 
+  const isExpired = isRequestExpired(req);
+  const displayStatus = isExpired && req.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (req.status || ApprovalStatus.PENDING);
   const statusPill = document.createElement('span');
-  const statusClass = (req.status || ApprovalStatus.PENDING).toLowerCase();
+  const statusClass = displayStatus.toLowerCase();
   statusPill.className = `gd-detail-status-pill ${statusClass}`;
   statusPill.setAttribute('role', 'status');
   statusPill.setAttribute('data-status', statusClass);
-  statusPill.textContent = req.status || ApprovalStatus.PENDING;
+  statusPill.textContent = displayStatus;
 
   dHeader.appendChild(titleGroup);
   dHeader.appendChild(statusPill);
@@ -552,10 +615,11 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   govGrid.className = 'gd-detail-grid';
 
   govGrid.appendChild(createGridItem('Canonical Request ID', req.id));
-  govGrid.appendChild(createGridItem('Current Status', req.status || ApprovalStatus.PENDING));
+  govGrid.appendChild(createGridItem('Current Status', displayStatus));
   govGrid.appendChild(createGridItem('Initiated At', formatTimestamp(req.createdAt)));
+  const expInfo = formatExpirationInfo(req.expiresAt);
   govGrid.appendChild(
-    createGridItem('Expires At', req.expiresAt ? formatTimestamp(req.expiresAt) : 'No expiration deadline')
+    createGridItem('Expires At', expInfo.text, expInfo.isPast ? 'gd-expired-text' : undefined)
   );
 
   if (req.resolvedAt) {
@@ -688,13 +752,29 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   // Lifecycle check: Decisions are allowed ONLY when request is PENDING
   if (req.status !== ApprovalStatus.PENDING) {
     const resolvedNotice = document.createElement('div');
-    resolvedNotice.className = 'gd-decision-resolved-notice';
+    const isExpiredNotice = req.status === ApprovalStatus.EXPIRED;
+    resolvedNotice.className = `gd-decision-resolved-notice ${isExpiredNotice ? 'expired-notice' : ''}`;
     resolvedNotice.setAttribute('role', 'note');
 
     const p = document.createElement('p');
-    const statusLabel = (req.status || 'resolved').toLowerCase();
-    p.textContent = `This request has already been ${statusLabel} and is no longer eligible for decisions.`;
+    if (isExpiredNotice) {
+      p.textContent = 'This request has expired and is no longer eligible for decisions. The review deadline has elapsed.';
+    } else {
+      const statusLabel = (req.status || 'resolved').toLowerCase();
+      p.textContent = `This request has already been ${statusLabel} and is no longer eligible for decisions.`;
+    }
     resolvedNotice.appendChild(p);
+
+    if (props.onRefresh) {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'gd-btn-retry';
+      retryBtn.style.marginTop = '10px';
+      retryBtn.textContent = 'Refresh Status from Server';
+      retryBtn.addEventListener('click', () => props.onRefresh?.());
+      resolvedNotice.appendChild(retryBtn);
+    }
+
     decisionCard.appendChild(resolvedNotice);
     container.appendChild(decisionCard);
     return container;
@@ -856,6 +936,16 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       noteGroup.appendChild(noteLabel);
       noteGroup.appendChild(noteInput);
       confirmBox.appendChild(noteGroup);
+
+      // Consequential Decision Invariant Notice
+      const consequentialNotice = document.createElement('div');
+      consequentialNotice.className = 'gd-consequential-notice';
+      consequentialNotice.setAttribute('role', 'note');
+      const cNoticeText = document.createElement('p');
+      cNoticeText.textContent =
+        'Consequential Decision Notice: Submitting this decision authoritatively commits it to the Guardrail backend audit log. Decisions are permanent and cannot be reversed or undone.';
+      consequentialNotice.appendChild(cNoticeText);
+      confirmBox.appendChild(consequentialNotice);
 
       // Actions Row (Confirm Submit + Cancel)
       const confirmActions = document.createElement('div');

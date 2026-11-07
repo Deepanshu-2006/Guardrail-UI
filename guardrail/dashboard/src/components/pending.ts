@@ -8,8 +8,8 @@
  * Note: Approval decision submission is intentionally deferred to Day 13+.
  */
 
-import { ApprovalRequest, RequestFilters, ViewStatus } from '../types.js';
-import { renderRequestDetailView } from './detail.js';
+import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../types.js';
+import { formatExpirationInfo, isRequestExpired, renderRequestDetailView } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
 
 export interface PendingApprovalsProps {
@@ -320,14 +320,15 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       // Render Request Cards
       for (const req of filteredRequests) {
         const isSelected = req.id === props.selectedRequestId;
+        const isExpired = isRequestExpired(req);
         const card = document.createElement('article');
-        card.className = `gd-request-card ${isSelected ? 'selected' : ''}`;
+        card.className = `gd-request-card ${isSelected ? 'selected' : ''} ${isExpired ? 'is-expired' : ''}`;
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
         card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
         card.setAttribute('aria-label', `Review request ${req.id}: ${req.actionDescription}`);
 
-        // Card Header: ID and Risk Badge
+        // Card Header: ID, Status Badge (if applicable), and Risk Badge
         const cardHeader = document.createElement('div');
         cardHeader.className = 'gd-request-card-header';
 
@@ -335,13 +336,29 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
         idSpan.className = 'gd-request-id';
         idSpan.textContent = req.id.slice(0, 16) + '...';
 
+        const headerBadges = document.createElement('div');
+        headerBadges.className = 'gd-pending-card-badges';
+
+        if (req.status && req.status !== ApprovalStatus.PENDING) {
+          const statusBadge = document.createElement('span');
+          statusBadge.className = `gd-status-badge ${req.status.toLowerCase()}`;
+          statusBadge.textContent = req.status;
+          headerBadges.appendChild(statusBadge);
+        } else if (isExpired) {
+          const expBadge = document.createElement('span');
+          expBadge.className = 'gd-status-badge expired';
+          expBadge.textContent = 'EXPIRED';
+          headerBadges.appendChild(expBadge);
+        }
+
         const riskBadge = document.createElement('span');
         const riskClass = (req.riskLevel || 'LOW').toLowerCase();
         riskBadge.className = `gd-risk-badge ${riskClass}`;
         riskBadge.textContent = req.riskLevel || 'LOW';
+        headerBadges.appendChild(riskBadge);
 
         cardHeader.appendChild(idSpan);
-        cardHeader.appendChild(riskBadge);
+        cardHeader.appendChild(headerBadges);
 
         // Card Description
         const desc = document.createElement('h2');
@@ -360,6 +377,16 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
         meta.appendChild(originSpan);
         meta.appendChild(timeSpan);
+
+        if (req.expiresAt) {
+          const expInfo = formatExpirationInfo(req.expiresAt);
+          const expSpan = document.createElement('span');
+          expSpan.className = expInfo.isPast ? 'gd-card-meta-expired' : 'gd-card-meta-expires';
+          expSpan.textContent = expInfo.isPast
+            ? '⚠️ Expired'
+            : `Expires: ${new Date(req.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+          meta.appendChild(expSpan);
+        }
 
         card.appendChild(cardHeader);
         card.appendChild(desc);

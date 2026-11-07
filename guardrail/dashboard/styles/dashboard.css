@@ -681,6 +681,74 @@ button:focus-visible,
   color: var(--gd-text-muted);
 }
 
+.gd-pending-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gd-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.gd-status-badge.expired {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.gd-status-badge.pending {
+  background-color: #fffbeb;
+  border-color: #fef3c7;
+  color: #92400e;
+}
+
+.gd-status-badge.approved {
+  background-color: var(--gd-green-bg);
+  border-color: var(--gd-green-border);
+  color: var(--gd-green-text);
+}
+
+.gd-status-badge.rejected {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.gd-status-badge.cancelled {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.gd-card-meta-expired {
+  color: #dc2626;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gd-card-meta-expires {
+  color: var(--gd-text-muted);
+}
+
+.gd-expired-text {
+  color: #dc2626 !important;
+  font-weight: 600 !important;
+}
+
+.gd-request-card.is-expired {
+  border-color: #fcd34d;
+  background-color: #fffdf9;
+}
+
 /* Detail Pane */
 .gd-detail-pane {
   background-color: var(--gd-bg-surface);
@@ -745,10 +813,14 @@ button:focus-visible,
   color: #991b1b;
 }
 
-.gd-detail-status-pill.cancelled,
-.gd-detail-status-pill.expired {
+.gd-detail-status-pill.cancelled {
   background-color: #f1f5f9;
   color: #475569;
+}
+
+.gd-detail-status-pill.expired {
+  background-color: #fef3c7;
+  color: #92400e;
 }
 
 .gd-detail-status-pill.unavailable,
@@ -783,11 +855,16 @@ button:focus-visible,
   color: #991b1b;
 }
 
-.gd-status-banner.cancelled,
-.gd-status-banner.expired {
+.gd-status-banner.cancelled {
   background-color: #f8fafc;
   border-color: #e2e8f0;
   color: #475569;
+}
+
+.gd-status-banner.expired {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
 }
 
 .gd-status-banner.unavailable,
@@ -1219,6 +1296,12 @@ button:focus-visible,
   line-height: 1.4;
 }
 
+.gd-decision-resolved-notice.expired-notice {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
 .gd-decision-actions-row {
   display: flex;
   align-items: center;
@@ -1290,6 +1373,17 @@ button:focus-visible,
 .gd-confirm-desc {
   font-size: 13px;
   color: var(--gd-text-secondary);
+  line-height: 1.45;
+}
+
+.gd-consequential-notice {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #64748b;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #334155;
   line-height: 1.45;
 }
 

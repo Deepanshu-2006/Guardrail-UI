@@ -331,7 +331,7 @@ const SAMPLE_REQUEST: ApprovalRequest = {
   hostname: 'bank.example.com',
   pageTitle: 'Wire Transfer Confirmation',
   createdAt: '2026-10-20T10:00:00.000Z',
-  expiresAt: '2026-10-20T10:15:00.000Z',
+  expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
 };
 
 async function runDashboardTests() {
@@ -3135,6 +3135,237 @@ async function runDashboardTests() {
     assert(!(rootElement.querySelector('.gd-sidebar')?.classList.contains('open') ?? false), 'Drawer closes when active view is re-selected');
 
     mobileShell.destroy();
+  }
+
+  // Test Suite 47: Trusted-Contact Approval Request Interface Enhancements
+  console.log('\n▶ Test Suite 47: Trusted-Contact Approval Request Interface Enhancements');
+  {
+    // 47.1: Distinct Status Distinction for All 5 States
+    const fiveStatuses: { status: ApprovalStatus; bannerClass: string; titleKeyword: string }[] = [
+      { status: ApprovalStatus.PENDING, bannerClass: 'pending', titleKeyword: 'Awaiting Review' },
+      { status: ApprovalStatus.APPROVED, bannerClass: 'approved', titleKeyword: 'Approved by Trusted Contact' },
+      { status: ApprovalStatus.REJECTED, bannerClass: 'rejected', titleKeyword: 'Rejected by Trusted Contact' },
+      { status: ApprovalStatus.CANCELLED, bannerClass: 'cancelled', titleKeyword: 'Action Cancelled' },
+      { status: ApprovalStatus.EXPIRED, bannerClass: 'expired', titleKeyword: 'Request Expired' },
+    ];
+
+    for (const item of fiveStatuses) {
+      const view = renderRequestDetailView({
+        request: {
+          ...SAMPLE_REQUEST,
+          id: `apr_status_${item.status.toLowerCase()}`,
+          status: item.status,
+          decision: item.status === ApprovalStatus.APPROVED || item.status === ApprovalStatus.REJECTED
+            ? { decision: item.status, decidedBy: 'tc_carol', decidedAt: '2026-10-20T10:05:00.000Z' }
+            : undefined,
+          cancellationReason: item.status === ApprovalStatus.CANCELLED ? 'User dismissed staging' : undefined,
+        },
+      });
+
+      const banner = view.querySelector(`.gd-status-banner.${item.bannerClass}`);
+      assert(banner !== null, `Renders .gd-status-banner.${item.bannerClass} for ${item.status}`);
+      assert(banner?.textContent.includes(item.titleKeyword) ?? false, `Status banner for ${item.status} contains "${item.titleKeyword}"`);
+
+      const pill = view.querySelector('.gd-detail-status-pill');
+      assertEquals(pill?.textContent, item.status, `Detail status pill displays ${item.status}`);
+      assert(pill?.classList.contains(item.status.toLowerCase()) ?? false, `Status pill has .${item.status.toLowerCase()} class`);
+    }
+
+    // 47.2: Request Timestamps & Expiration Information Display
+    const futureIso = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const createdIso = '2026-10-20T10:00:00.000Z';
+    const timestampShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        {
+          ...SAMPLE_REQUEST,
+          id: 'apr_ts_info_01',
+          createdAt: createdIso,
+          expiresAt: futureIso,
+        },
+      ],
+      autoFetch: false,
+    });
+
+    const pendingCard = rootElement.querySelector('#view-pending .gd-request-card');
+    assert(pendingCard !== null, 'Pending request card rendered');
+    const expiresMeta = pendingCard?.querySelector('.gd-card-meta-expires');
+    assert(expiresMeta !== null, 'Expiration deadline rendered in pending card meta');
+    assert(expiresMeta?.textContent.includes('Expires:') ?? false, 'Card meta displays "Expires:" prefix');
+
+    const detailPane = rootElement.querySelector('#view-pending .gd-detail-pane');
+    assert(detailPane !== null, 'Detail pane rendered');
+    assert(detailPane?.textContent.includes('Initiated At') ?? false, 'Detail pane displays Initiated At timestamp');
+    assert(detailPane?.textContent.includes('Expires At') ?? false, 'Detail pane displays Expires At information');
+    assert(detailPane?.textContent.includes('Expires in') ?? false, 'Detail pane computes relative expiration time');
+    timestampShell.destroy();
+
+    // 47.3: Stale / Expired Request Proactive Client-Side Handling
+    const pastIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const expiredShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        {
+          ...SAMPLE_REQUEST,
+          id: 'apr_expired_client_01',
+          status: ApprovalStatus.PENDING,
+          expiresAt: pastIso,
+        },
+      ],
+      autoFetch: false,
+    });
+
+    // Pending card reflects expired status badge and meta
+    const expiredCard = rootElement.querySelector('#view-pending .gd-request-card');
+    assert(expiredCard !== null, 'Card rendered for expired request');
+    assert(expiredCard?.classList.contains('is-expired') ?? false, 'Card has .is-expired class');
+    const expiredBadge = expiredCard?.querySelector('.gd-status-badge.expired');
+    assert(expiredBadge !== null, 'Expired status badge rendered on card');
+    assertEquals(expiredBadge?.textContent, 'EXPIRED', 'Badge text is EXPIRED');
+    const expiredMeta = expiredCard?.querySelector('.gd-card-meta-expired');
+    assert(expiredMeta !== null, 'Card meta displays expired indicator');
+    assert(expiredMeta?.textContent.includes('Expired') ?? false, 'Meta text warns Expired');
+
+    // Detail view displays review deadline elapsed banner
+    const deadlineBanner = rootElement.querySelector('.gd-status-banner.expired');
+    assert(deadlineBanner !== null, 'Review deadline elapsed banner rendered in detail view');
+    assert(deadlineBanner?.textContent.includes('Review Deadline Elapsed') ?? false, 'Banner title specifies Review Deadline Elapsed');
+
+    // Attempting decision on expired request proactively rejects without dispatching network call
+    let networkCallMade = false;
+    const clientForExpired = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      fetchFn: async () => {
+        networkCallMade = true;
+        return createMockResponse(200, {});
+      },
+    });
+    (expiredShell as any).apiClient = clientForExpired;
+
+    const approveBtn = rootElement.querySelector('.gd-btn-approve');
+    assert(approveBtn !== null, 'Approve button rendered in pending view');
+    approveBtn?.click();
+
+    const confirmSubmitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
+    assert(confirmSubmitBtn !== null, 'Confirm submit button rendered');
+    confirmSubmitBtn?.click();
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    assertEquals(networkCallMade, false, 'Zero network calls dispatched for client-detected expired request');
+    assert(
+      expiredShell.getState().decisionErrorMessage?.includes('Request expired') ?? false,
+      'Error message identifies that review deadline elapsed'
+    );
+    const expiredErrorBanner = rootElement.querySelector('.gd-decision-error-banner');
+    assert(expiredErrorBanner !== null, 'Decision error banner displayed for expired request attempt');
+    expiredShell.destroy();
+
+    // 47.4: Consequential Confirmation Step with Irreversible Notice
+    const confirmShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        {
+          ...SAMPLE_REQUEST,
+          id: 'apr_consequential_01',
+          riskLevel: RiskLevel.HIGH,
+          riskScore: 78,
+          status: ApprovalStatus.PENDING,
+        },
+      ],
+      autoFetch: false,
+    });
+
+    const approveButton = rootElement.querySelector('.gd-btn-approve');
+    approveButton?.click();
+
+    const confirmBox = rootElement.querySelector('.gd-decision-confirm-box');
+    assert(confirmBox !== null, 'Confirmation box displayed on Approve');
+    const consequentialNotice = confirmBox?.querySelector('.gd-consequential-notice');
+    assert(consequentialNotice !== null, 'Consequential decision notice rendered in confirmation box');
+    assert(
+      consequentialNotice?.textContent.includes('Consequential Decision Notice') ?? false,
+      'Notice informs reviewer that decisions are consequential'
+    );
+    assert(
+      consequentialNotice?.textContent.includes('cannot be reversed or undone') ?? false,
+      'Notice explicitly emphasizes that server commitments cannot be reversed or undone'
+    );
+
+    const highImpact = confirmBox?.querySelector('.gd-high-impact-warning');
+    assert(highImpact !== null, 'High-Impact warning displayed for HIGH risk action');
+    confirmShell.destroy();
+
+    // 47.5: Revoked Trusted-Contact Relationship Handling
+    let fetchPendingDispatched = false;
+    const mockRevokedClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'revoked-token',
+      fetchFn: async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes('/decide')) {
+          return createMockResponse(404, {
+            success: false,
+            error: {
+              code: 'NOT_FOUND_OR_DENIED',
+              message: 'Request not found or access denied',
+            },
+          });
+        }
+        if (u.includes('/pending')) {
+          fetchPendingDispatched = true;
+          return createMockResponse(200, { success: true, data: [] });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const revokedShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        { ...SAMPLE_REQUEST, id: 'apr_revoked_rel_01', status: ApprovalStatus.PENDING },
+      ],
+      apiClient: mockRevokedClient,
+      autoFetch: false,
+    });
+
+    await revokedShell.submitDecision('apr_revoked_rel_01', 'APPROVED');
+    await new Promise((r) => setTimeout(r, 15));
+    assert(
+      revokedShell.getState().decisionErrorMessage?.includes('trusted-contact relationship was revoked') ?? false,
+      'Error message informs user of possible relationship revocation'
+    );
+    assertEquals(revokedShell.getState().pendingRequests.length, 0, 'Unauthorized request pruned from pending list');
+    assert(fetchPendingDispatched, 'Pending requests refreshed after relationship authorization failure');
+    revokedShell.destroy();
+
+    // 47.6: Strict Zero-Trust Privacy: No Raw Passwords, OTPs, or Form Values in DOM
+    const sensitiveWardRequest: ApprovalRequest = {
+      ...SAMPLE_REQUEST,
+      id: 'apr_privacy_strict_01',
+      actionDescription: 'Submit Secure Form',
+      origin: 'https://bank.example.com',
+      hostname: 'bank.example.com',
+      pageTitle: 'Account Security Settings',
+      // Injected malicious/sensitive mock properties that must NEVER be rendered
+      ...({
+        rawPassword: 'SuperSecretPassword123!',
+        otpCode: '839201',
+        cardNumber: '4111222233334444',
+        formData: { password: 'secret', token: 'bearer-xyz' },
+      } as any),
+    };
+
+    const privacyView = renderRequestDetailView({ request: sensitiveWardRequest });
+    const renderedHtml = privacyView.innerHTML || '';
+    assert(!renderedHtml.includes('SuperSecretPassword123!'), 'No raw passwords in rendered DOM');
+    assert(!renderedHtml.includes('839201'), 'No OTP codes in rendered DOM');
+    assert(!renderedHtml.includes('4111222233334444'), 'No card numbers in rendered DOM');
+    assert(!renderedHtml.includes('bearer-xyz'), 'No sensitive form data or auth tokens in rendered DOM');
   }
 
   console.log('\n======================================================');
