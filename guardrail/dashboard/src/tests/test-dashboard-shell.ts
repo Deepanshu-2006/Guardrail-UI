@@ -172,6 +172,20 @@ class MockDOMElement {
       } else if (part.startsWith('.')) {
         const classes = part.split('.').filter(Boolean);
         isMatch = classes.every((c) => node.classList.contains(c));
+      } else if (part.includes('[') && part.endsWith(']')) {
+        const bracketIdx = part.indexOf('[');
+        const tag = part.slice(0, bracketIdx);
+        const attrContent = part.slice(bracketIdx + 1, -1);
+        const tagMatch = !tag || node.tagName.toLowerCase() === tag.toLowerCase();
+        let attrMatch = false;
+        if (attrContent.includes('=')) {
+          const [attrName, rawVal] = attrContent.split('=');
+          const expectedVal = rawVal.replace(/^["']|["']$/g, '');
+          attrMatch = node.getAttribute(attrName) === expectedVal;
+        } else {
+          attrMatch = node.getAttribute(attrContent) !== null;
+        }
+        isMatch = tagMatch && attrMatch;
       } else if (part.includes('.')) {
         const [tag, ...classes] = part.split('.');
         isMatch =
@@ -266,10 +280,15 @@ import {
   RiskLevel,
   ActionType,
   ActionCategory,
+  TrustedContact,
+  TrustedContactInvitation,
+  TrustedContactStatus,
+  InvitationStatus,
 } from '../types.js';
 import {
   renderRequestDetailView,
 } from '../components/detail.js';
+import { isInvitationExpired } from '../components/relationships.js';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -3366,6 +3385,536 @@ async function runDashboardTests() {
     assert(!renderedHtml.includes('839201'), 'No OTP codes in rendered DOM');
     assert(!renderedHtml.includes('4111222233334444'), 'No card numbers in rendered DOM');
     assert(!renderedHtml.includes('bearer-xyz'), 'No sensitive form data or auth tokens in rendered DOM');
+  }
+
+  // ===========================================================================
+  // Test Suite 48: Trusted-Contact Relationship Lifecycle & Unauthorized Access
+  // ===========================================================================
+  console.log('\n▶ Test Suite 48: Trusted-Contact Relationship Lifecycle & Unauthorized Access');
+  {
+    // 48.1: Empty states when no relationships or invitations exist
+    const emptyRelShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialConnectedUsers: [],
+      initialInvitations: [],
+      autoFetch: false,
+    });
+
+    const emptyUsersEl = rootElement.querySelector('#gd-connected-users-empty');
+    assert(emptyUsersEl !== null, 'Empty state rendered when no connected users exist');
+    assert(
+      emptyUsersEl?.textContent.includes('No Connected Users or Contacts') ?? false,
+      'Empty state title communicates zero connected users'
+    );
+
+    const emptyInvitesEl = rootElement.querySelector('#gd-invitations-empty');
+    assert(emptyInvitesEl !== null, 'Empty state rendered when no invitations exist');
+    assert(
+      emptyInvitesEl?.textContent.includes('No Invitations Issued') ?? false,
+      'Empty state title communicates zero issued invitations'
+    );
+    emptyRelShell.destroy();
+
+    // 48.2: Displaying Connected Users and Authoritative Relationship Status
+    const nowIso = new Date().toISOString();
+    const mockContacts: TrustedContact[] = [
+      {
+        id: 'tc_bob_active',
+        contactId: 'tc_bob_active',
+        userId: 'usr_alice',
+        wardId: 'usr_alice',
+        relationshipLabel: 'Financial Advisor',
+        status: TrustedContactStatus.ACTIVE,
+        createdAt: nowIso,
+      },
+      {
+        id: 'tc_mallory_revoked',
+        contactId: 'tc_mallory_revoked',
+        userId: 'usr_alice',
+        wardId: 'usr_alice',
+        relationshipLabel: 'Ex-Guardian',
+        status: TrustedContactStatus.REVOKED,
+        createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+        revokedAt: nowIso,
+      },
+    ];
+
+    const relShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialProfile: {
+        actorId: 'usr_alice',
+        role: 'USER',
+        isAuthenticated: true,
+      },
+      initialConnectedUsers: mockContacts,
+      autoFetch: false,
+    });
+
+    const usersList = rootElement.querySelector('#gd-connected-users-list');
+    assert(usersList !== null, 'Connected users list is rendered');
+
+    // Active Contact Item
+    const activeItem = usersList?.querySelector('[data-contact-id="tc_bob_active"]');
+    assert(activeItem !== null, 'Active contact item rendered');
+    assert(activeItem?.textContent.includes('tc_bob_active') ?? false, 'Displays contact ID');
+    assert(activeItem?.textContent.includes('ACTIVE') ?? false, 'Displays ACTIVE status badge');
+    assert(activeItem?.textContent.includes('Financial Advisor') ?? false, 'Displays relationship label');
+
+    // Revoked Contact Item
+    const revokedItem = usersList?.querySelector('[data-contact-id="tc_mallory_revoked"]');
+    assert(revokedItem !== null, 'Revoked contact item rendered');
+    assert(revokedItem?.textContent.includes('REVOKED') ?? false, 'Displays REVOKED status badge');
+    assert(revokedItem?.textContent.includes('Ex-Guardian') ?? false, 'Displays revoked contact label');
+    assert(
+      revokedItem?.querySelector('.gd-btn-revoke') === null,
+      'Revoke button is not rendered for already revoked contact'
+    );
+
+    relShell.destroy();
+
+    // 48.3: Reviewer Assigned Ward Display
+    const reviewerShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_david',
+        relationshipLabel: 'Family Guardian',
+        isAuthenticated: true,
+      },
+      autoFetch: false,
+    });
+
+    const reviewerUsersList = rootElement.querySelector('#gd-connected-users-list');
+    assert(reviewerUsersList !== null, 'Reviewer assigned ward rendered in relationships list');
+    const wardItem = reviewerUsersList?.querySelector('.ward-item');
+    assert(wardItem !== null, 'Ward item present');
+    assert(wardItem?.textContent.includes('usr_david') ?? false, 'Displays assigned ward identifier');
+    assert(wardItem?.textContent.includes('Ward (Protected User)') ?? false, 'Displays Ward role badge');
+    assert(wardItem?.textContent.includes('ACTIVE') ?? false, 'Displays ACTIVE status badge');
+    assert(wardItem?.textContent.includes('Family Guardian') ?? false, 'Displays relationship label');
+    reviewerShell.destroy();
+
+    // 48.4: Displaying Invitations in All Lifecycle States (PENDING, ACCEPTED, EXPIRED, REVOKED)
+    const futureExpiresIso = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    const pastExpiresIso = new Date(Date.now() - 3600 * 1000).toISOString();
+
+    const mockInvitations: TrustedContactInvitation[] = [
+      {
+        id: 'inv_pending_01',
+        code: 'GR-INV-K8M2-P4X9',
+        userId: 'usr_alice',
+        recipientActorId: 'tc_carol',
+        relationshipLabel: 'Primary Guardian',
+        status: InvitationStatus.PENDING,
+        createdAt: nowIso,
+        expiresAt: futureExpiresIso,
+        deliveryStatus: 'NOT_CONFIGURED',
+      },
+      {
+        id: 'inv_submitted_02',
+        code: 'GR-INV-S1B2-C3D4',
+        userId: 'usr_alice',
+        recipientActorId: 'tc_advisor',
+        relationshipLabel: 'Financial Advisor',
+        status: InvitationStatus.PENDING,
+        createdAt: nowIso,
+        expiresAt: futureExpiresIso,
+        deliveryStatus: 'SUBMITTED',
+        deliverySubmittedAt: nowIso,
+      },
+      {
+        id: 'inv_accepted_03',
+        userId: 'usr_alice',
+        recipientActorId: 'tc_bob',
+        relationshipLabel: 'Accountant',
+        status: InvitationStatus.ACCEPTED,
+        createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
+        acceptedByContactId: 'tc_bob',
+        acceptedAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+        deliveryStatus: 'SUBMITTED',
+      },
+      {
+        id: 'inv_expired_04',
+        userId: 'usr_alice',
+        recipientActorId: 'tc_late',
+        status: InvitationStatus.EXPIRED,
+        createdAt: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
+        expiresAt: pastExpiresIso,
+        expiredAt: pastExpiresIso,
+      },
+      {
+        id: 'inv_revoked_05',
+        userId: 'usr_alice',
+        recipientActorId: 'tc_cancelled',
+        status: InvitationStatus.REVOKED,
+        createdAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+        expiresAt: futureExpiresIso,
+        revokedAt: nowIso,
+      },
+    ];
+
+    const dummyClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-token',
+    });
+
+    const invitesShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialInvitations: mockInvitations,
+      apiClient: dummyClient,
+      autoFetch: false,
+    });
+
+    const invitesList = rootElement.querySelector('#gd-invitations-list');
+    assert(invitesList !== null, 'Invitations list rendered');
+
+    // Pending Invitation
+    const pendingInvItem = invitesList?.querySelector('[data-invitation-id="inv_pending_01"]');
+    assert(pendingInvItem !== null, 'Pending invitation rendered');
+    assert(pendingInvItem?.textContent.includes('tc_carol') ?? false, 'Displays recipient actor ID');
+    assert(pendingInvItem?.textContent.includes('PENDING') ?? false, 'Displays PENDING badge');
+    assert(pendingInvItem?.textContent.includes('GR-INV-K8M2-P4X9') ?? false, 'Displays pairing code chip');
+    assert(
+      pendingInvItem?.textContent.includes('Manual Out-of-Band Delivery') ?? false,
+      'Displays Manual Delivery badge for NOT_CONFIGURED delivery status'
+    );
+    assert(
+      pendingInvItem?.querySelector('.gd-btn-revoke') !== null,
+      'Revoke button is present for active pending invitation'
+    );
+
+    // Submitted Email Invitation
+    const submittedInvItem = invitesList?.querySelector('[data-invitation-id="inv_submitted_02"]');
+    assert(submittedInvItem !== null, 'Submitted delivery invitation rendered');
+    assert(
+      submittedInvItem?.textContent.includes('Email Submitted') ?? false,
+      'Displays Email Submitted badge for provider delivery'
+    );
+
+    // Accepted Invitation
+    const acceptedInvItem = invitesList?.querySelector('[data-invitation-id="inv_accepted_03"]');
+    assert(acceptedInvItem !== null, 'Accepted invitation rendered');
+    assert(acceptedInvItem?.textContent.includes('ACCEPTED') ?? false, 'Displays ACCEPTED status badge');
+    assert(acceptedInvItem?.textContent.includes('Accepted by tc_bob') ?? false, 'Displays who accepted invitation');
+
+    // Expired Invitation
+    const expiredInvItem = invitesList?.querySelector('[data-invitation-id="inv_expired_04"]');
+    assert(expiredInvItem !== null, 'Expired invitation rendered');
+    assert(expiredInvItem?.textContent.includes('EXPIRED') ?? false, 'Displays EXPIRED status badge');
+    assert(
+      expiredInvItem?.querySelector('.gd-btn-revoke') === null,
+      'Revoke button omitted for expired invitation'
+    );
+
+    // Revoked Invitation
+    const revokedInvItem = invitesList?.querySelector('[data-invitation-id="inv_revoked_05"]');
+    assert(revokedInvItem !== null, 'Revoked invitation rendered');
+    assert(revokedInvItem?.textContent.includes('REVOKED') ?? false, 'Displays REVOKED status badge');
+    assert(
+      revokedInvItem?.querySelector('.gd-btn-revoke') === null,
+      'Revoke button omitted for revoked invitation'
+    );
+
+    invitesShell.destroy();
+
+    // 48.5: Operations & Lifecycle: createInvitation with Authoritative Backend Response
+    let createdPayloadCaptured: any = null;
+    let listInvitesRefreshed = false;
+
+    const mockCreateClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-ward-token',
+      fetchFn: async (url: string | URL | Request, init?: RequestInit) => {
+        const u = String(url);
+        const m = init?.method || 'GET';
+        if (m === 'POST' && u.includes('/api/v1/invitations') && !u.includes('/revoke') && !u.includes('/accept')) {
+          createdPayloadCaptured = JSON.parse(String(init?.body || '{}'));
+          return createMockResponse(201, {
+            success: true,
+            data: {
+              id: 'inv_created_999',
+              code: 'GR-INV-TEST-CODE',
+              userId: 'usr_alice',
+              recipientActorId: createdPayloadCaptured.recipientActorId,
+              relationshipLabel: createdPayloadCaptured.relationshipLabel,
+              status: 'PENDING',
+              createdAt: new Date().toISOString(),
+              expiresAt: new Date(Date.now() + 86400000).toISOString(),
+              deliveryStatus: 'NOT_CONFIGURED',
+            },
+          });
+        }
+        if (m === 'GET' && u.includes('/api/v1/invitations')) {
+          listInvitesRefreshed = true;
+          return createMockResponse(200, { success: true, data: [] });
+        }
+        if (m === 'GET' && u.includes('/api/v1/trusted-contacts')) {
+          return createMockResponse(200, { success: true, data: [] });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const createShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      apiClient: mockCreateClient,
+      autoFetch: false,
+    });
+
+    const createRes = await createShell.createInvitation({
+      recipientActorId: 'tc_new_caretaker',
+      relationshipLabel: 'Security Advisor',
+      ttlMs: 86400000,
+    });
+
+    assert(createRes.success, 'createInvitation returned success');
+    assertEquals(createdPayloadCaptured?.recipientActorId, 'tc_new_caretaker', 'Recipient actor ID sent to backend');
+    assertEquals(createdPayloadCaptured?.relationshipLabel, 'Security Advisor', 'Relationship label sent to backend');
+    assert(
+      createShell.getState().relationshipActionMessage?.text.includes('GR-INV-TEST-CODE') ?? false,
+      'Feedback message informs user of generated pairing code'
+    );
+    assert(listInvitesRefreshed, 'Invitations refreshed from backend after creation');
+
+    createShell.destroy();
+
+    // 48.6: Consequential Revocation with Two-Step Confirmation Box
+    let contactRevokedCaptured: string | null = null;
+    let inviteRevokedCaptured: string | null = null;
+
+    const mockRevokeClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-ward-token',
+      fetchFn: async (url: string | URL | Request, init?: RequestInit) => {
+        const u = String(url);
+        const m = init?.method || 'GET';
+        if (m === 'POST' && u.includes('/trusted-contacts/') && u.includes('/revoke')) {
+          const id = u.split('/trusted-contacts/')[1].split('/')[0];
+          contactRevokedCaptured = id;
+          return createMockResponse(200, { success: true, data: { revoked: true, contactId: id } });
+        }
+        if (m === 'POST' && u.includes('/invitations/') && u.includes('/revoke')) {
+          const id = u.split('/invitations/')[1].split('/')[0];
+          inviteRevokedCaptured = id;
+          return createMockResponse(200, {
+            success: true,
+            data: { id, status: 'REVOKED', revokedAt: new Date().toISOString() },
+          });
+        }
+        if (m === 'GET') {
+          return createMockResponse(200, { success: true, data: [] });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const revokeShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialConnectedUsers: [
+        {
+          id: 'tc_revoke_target',
+          contactId: 'tc_revoke_target',
+          userId: 'usr_alice',
+          wardId: 'usr_alice',
+          status: TrustedContactStatus.ACTIVE,
+          createdAt: nowIso,
+        },
+      ],
+      initialInvitations: [
+        {
+          id: 'inv_revoke_target',
+          code: 'GR-INV-REVOKE-ME',
+          userId: 'usr_alice',
+          recipientActorId: 'tc_someone',
+          status: InvitationStatus.PENDING,
+          createdAt: nowIso,
+          expiresAt: futureExpiresIso,
+        },
+      ],
+      apiClient: mockRevokeClient,
+      autoFetch: false,
+    });
+
+    // Test Contact Revocation Confirmation
+    const contactItemEl = rootElement.querySelector('[data-contact-id="tc_revoke_target"]');
+    assert(contactItemEl !== null, 'Contact item for revocation present');
+    const revokeContactBtn = contactItemEl?.querySelector('.gd-btn-revoke') as MockDOMElement | null;
+    assert(revokeContactBtn !== null, 'Revoke Relationship button present');
+
+    // Click Revoke Contact -> opens confirmation box
+    revokeContactBtn?.listeners.click[0]({ preventDefault() {} });
+    const contactConfirmBox = contactItemEl?.querySelector('.gd-relationship-confirm-box') as MockDOMElement | null;
+    assertEquals(contactConfirmBox?.style.display, 'block', 'Confirmation box opens upon clicking revoke');
+    assert(
+      contactConfirmBox?.textContent.includes('Consequential Decision') ?? false,
+      'Consequential warning emphasizes permanent audit log commitment'
+    );
+
+    // Submitting through shell method calls backend
+    const contactRevokeRes = await revokeShell.revokeTrustedContact('tc_revoke_target');
+    assert(contactRevokeRes.success, 'revokeTrustedContact returned success');
+    assertEquals(contactRevokedCaptured, 'tc_revoke_target', 'Authoritative contact ID sent to backend for revocation');
+
+    // Test Invitation Revocation Confirmation
+    const inviteRevokeRes = await revokeShell.revokeInvitation('inv_revoke_target');
+    assert(inviteRevokeRes.success, 'revokeInvitation returned success');
+    assertEquals(inviteRevokedCaptured, 'inv_revoke_target', 'Authoritative invitation ID sent to backend for revocation');
+
+    revokeShell.destroy();
+
+    // 48.7: Guarding Expired Invitations against Revocation
+    const expiredGuardShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialInvitations: [
+        {
+          id: 'inv_already_expired',
+          code: 'GR-INV-EXPIRED-CODE',
+          userId: 'usr_alice',
+          recipientActorId: 'tc_late',
+          status: InvitationStatus.EXPIRED,
+          createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+          expiresAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+        },
+      ],
+      apiClient: mockRevokeClient,
+      autoFetch: false,
+    });
+
+    const expiredRevokeRes = await expiredGuardShell.revokeInvitation('inv_already_expired');
+    assertEquals(expiredRevokeRes.success, false, 'Revoking expired invitation rejected client-side');
+    assert(
+      expiredRevokeRes.error?.includes('already expired') ?? false,
+      'Error message clarifies that expired invitation cannot be revoked'
+    );
+    expiredGuardShell.destroy();
+
+    // 48.8: Duplicate Submission Prevention
+    const inFlightShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      apiClient: mockRevokeClient,
+      autoFetch: false,
+    });
+
+    // Simulate in-flight lock
+    (inFlightShell as any).state.isSubmittingRelationshipAction = true;
+    const dupRes = await inFlightShell.createInvitation({ recipientActorId: 'tc_dup_test' });
+    assertEquals(dupRes.success, false, 'Duplicate relationship action rejected while in-flight');
+    assert(dupRes.error?.includes('already in progress') ?? false, 'Reports action already in progress');
+    inFlightShell.destroy();
+
+    // 48.9: Disconnecting Ward Relationship
+    const disconnectShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_caretaker',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_linked_ward',
+        relationshipLabel: 'Guardian',
+        isAuthenticated: true,
+      },
+      autoFetch: false,
+    });
+
+    assertEquals(disconnectShell.getState().contactProfile?.assignedWardId, 'usr_linked_ward', 'Initially linked to ward');
+    const disconnectBtn = rootElement.querySelector('#gd-btn-disconnect-ward') as MockDOMElement | null;
+    assert(disconnectBtn !== null, 'Disconnect Ward button present on Overview');
+
+    disconnectShell.disconnectWard();
+    assertEquals(disconnectShell.getState().contactProfile?.assignedWardId, undefined, 'Assigned ward cleared after disconnect');
+    assert(
+      disconnectShell.getState().relationshipActionMessage?.text.includes('disconnected') ?? false,
+      'Feedback message informs user of disconnect'
+    );
+    disconnectShell.destroy();
+
+    // 48.10: Connecting Ward via Invitation Code (connectInvitation)
+    let acceptedCodeCaptured: string | null = null;
+    const mockAcceptClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-contact-token',
+      fetchFn: async (url: string | URL | Request, init?: RequestInit) => {
+        const u = String(url);
+        const m = init?.method || 'GET';
+        if (m === 'POST' && u.includes('/invitations/accept')) {
+          const body = JSON.parse(String(init?.body || '{}'));
+          acceptedCodeCaptured = body.code;
+          return createMockResponse(200, {
+            success: true,
+            data: {
+              invitation: { id: 'inv_123', wardId: 'usr_new_ward', status: 'ACCEPTED', relationshipLabel: 'Guardian' },
+              contact: { id: 'tc_caretaker', wardId: 'usr_new_ward', status: 'ACTIVE' },
+            },
+          });
+        }
+        if (m === 'GET') {
+          return createMockResponse(200, { success: true, data: [] });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const connectShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_caretaker',
+        role: 'TRUSTED_CONTACT',
+        isAuthenticated: true,
+      },
+      apiClient: mockAcceptClient,
+      autoFetch: false,
+    });
+
+    const connectRes = await connectShell.connectInvitation('GR-INV-A1B2-C3D4');
+    assert(connectRes.success, 'connectInvitation returned success');
+    assertEquals(acceptedCodeCaptured, 'GR-INV-A1B2-C3D4', 'Correct pairing code sent to backend');
+    assertEquals(connectShell.getState().contactProfile?.assignedWardId, 'usr_new_ward', 'Profile updated with paired ward');
+    connectShell.destroy();
+
+    // 48.11: Multi-Tenant Authorization & Server-Side Security Invariant
+    let unauthorizedDeniedReported = false;
+    const mockUnauthorizedClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'attacker-token',
+      fetchFn: async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes('/trusted-contacts') || u.includes('/invitations')) {
+          unauthorizedDeniedReported = true;
+          return createMockResponse(404, {
+            success: false,
+            error: {
+              code: 'NOT_FOUND_OR_DENIED',
+              message: 'Access denied: You are not authorized to view these resources.',
+            },
+          });
+        }
+        return createMockResponse(404, {});
+      },
+    });
+
+    const authShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      apiClient: mockUnauthorizedClient,
+      autoFetch: false,
+    });
+
+    await authShell.fetchRelationships();
+    assert(unauthorizedDeniedReported, 'Backend independently queried and returned NOT_FOUND_OR_DENIED');
+    assertEquals(authShell.getState().connectedUsers.length, 0, 'No unauthorized users displayed or fabricated');
+    assertEquals(authShell.getState().invitations.length, 0, 'No unauthorized invitations displayed or fabricated');
+    authShell.destroy();
   }
 
   console.log('\n======================================================');
