@@ -26,6 +26,7 @@ import { renderAccountArea } from './components/account.js';
 import { renderOverview } from './components/overview.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory } from './components/history.js';
+import { renderSettings } from './components/settings.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -37,6 +38,7 @@ export class DashboardShell {
   private isMobileSidebarOpen: boolean = false;
   private hashChangeHandler: (() => void) | null = null;
   private visibilityChangeHandler: (() => void) | null = null;
+  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private readonly apiClient?: ApprovalApiClient;
   private readonly autoFetch: boolean;
   private pollIntervalMs?: number;
@@ -147,6 +149,13 @@ export class DashboardShell {
       };
 
       window.addEventListener('hashchange', this.hashChangeHandler);
+
+      this.keyHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && this.isMobileSidebarOpen) {
+          this.toggleMobileSidebar(false);
+        }
+      };
+      window.addEventListener('keydown', this.keyHandler);
     }
 
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
@@ -245,12 +254,12 @@ export class DashboardShell {
   }
 
   /**
-   * Reads view name from URL hash (#overview, #pending, #history).
+   * Reads view name from URL hash (#overview, #pending, #history, #settings).
    */
   private getViewFromHash(): DashboardView | null {
     if (typeof window === 'undefined' || !window.location.hash) return null;
     const cleanHash = window.location.hash.replace(/^#/, '').toLowerCase();
-    if (cleanHash === 'overview' || cleanHash === 'pending' || cleanHash === 'history') {
+    if (cleanHash === 'overview' || cleanHash === 'pending' || cleanHash === 'history' || cleanHash === 'settings') {
       return cleanHash as DashboardView;
     }
     return null;
@@ -286,6 +295,7 @@ export class DashboardShell {
 
     const accountArea = renderAccountArea({
       profile: this.state.contactProfile,
+      onOpenSettings: () => this.setActiveView('settings'),
     });
     this.sidebarEl.appendChild(accountArea);
     this.appWrapper.appendChild(this.sidebarEl);
@@ -396,8 +406,21 @@ export class DashboardShell {
     const overviewSection = renderOverview({
       profile: this.state.contactProfile,
       pendingCount: this.state.pendingRequests.length,
+      pendingRequests: this.state.pendingRequests,
+      pendingStatus: this.state.pendingStatus,
+      errorMessage: this.state.errorMessage,
       recentActivity: this.state.historyRequests,
+      isBackendUnavailable: this.isBackendUnavailable,
+      isMockService: this.isMockService(),
+      environment: this.getEnvironment(),
+      lastSynchronizedAt: this.lastSynchronizedAt,
       onViewHistory: () => this.setActiveView('history'),
+      onViewPending: () => this.setActiveView('pending'),
+      onSelectPending: (id) => {
+        this.setActiveView('pending');
+        this.selectRequest(id);
+      },
+      onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onConnectInvitation: this.apiClient
         ? async (code: string) => {
             const res = await this.apiClient!.acceptInvitation(code);
@@ -499,6 +522,27 @@ export class DashboardShell {
     }
     this.mainContentEl.appendChild(historySection);
 
+    // View 4: Account & Settings
+    const settingsSection = renderSettings({
+      profile: this.state.contactProfile,
+      environment: this.getEnvironment(),
+      isMockService: this.isMockService(),
+      backendOrigin: (this.apiClient as any)?.backendOrigin || (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'http://127.0.0.1:3000'),
+      pollIntervalMs: this.pollIntervalMs,
+      lastSynchronizedAt: this.lastSynchronizedAt,
+      isBackendUnavailable: this.isBackendUnavailable,
+      onRefresh: this.apiClient ? () => void this.refresh() : undefined,
+      onClearSession: () => {
+        this.setProfile(null);
+      },
+    });
+    if (this.state.activeView === 'settings') {
+      settingsSection.classList.add('active');
+    } else {
+      settingsSection.classList.remove('active');
+    }
+    this.mainContentEl.appendChild(settingsSection);
+
     contentBody.appendChild(this.mainContentEl);
     workspace.appendChild(contentBody);
     this.appWrapper.appendChild(workspace);
@@ -510,15 +554,15 @@ export class DashboardShell {
    * Switches the active dashboard section.
    */
   public setActiveView(view: DashboardView, updateHash: boolean = true): void {
+    if (this.isMobileSidebarOpen) {
+      this.toggleMobileSidebar(false);
+    }
+
     if (this.state.activeView === view) return;
 
     this.state.activeView = view;
     if (updateHash && typeof window !== 'undefined') {
       window.location.hash = `#${view}`;
-    }
-
-    if (this.isMobileSidebarOpen) {
-      this.toggleMobileSidebar(false);
     }
 
     // When switching to pending view, refresh pending requests if autoFetch is enabled
@@ -1154,6 +1198,22 @@ export class DashboardShell {
       toggle.setAttribute('aria-expanded', String(this.isMobileSidebarOpen));
       toggle.setAttribute('aria-label', this.isMobileSidebarOpen ? 'Close navigation menu' : 'Open navigation menu');
     }
+
+    // Manage mobile backdrop
+    const existingBackdrop = this.appWrapper?.querySelector<HTMLElement>('.gd-mobile-backdrop');
+    if (this.isMobileSidebarOpen) {
+      if (!existingBackdrop && this.appWrapper) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'gd-mobile-backdrop active';
+        backdrop.setAttribute('aria-hidden', 'true');
+        backdrop.addEventListener('click', () => this.toggleMobileSidebar(false));
+        this.appWrapper.appendChild(backdrop);
+      }
+    } else {
+      if (existingBackdrop && existingBackdrop.parentNode) {
+        existingBackdrop.parentNode.removeChild(existingBackdrop);
+      }
+    }
   }
 
   /**
@@ -1167,6 +1227,8 @@ export class DashboardShell {
         return 'Pending Approvals';
       case 'history':
         return 'Decision History';
+      case 'settings':
+        return 'Settings & Account';
       default:
         return 'Trusted Contact Portal';
     }
@@ -1204,6 +1266,11 @@ export class DashboardShell {
     if (this.hashChangeHandler && typeof window !== 'undefined') {
       window.removeEventListener('hashchange', this.hashChangeHandler);
       this.hashChangeHandler = null;
+    }
+
+    if (this.keyHandler && typeof window !== 'undefined') {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
     }
 
     if (this.visibilityChangeHandler && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {

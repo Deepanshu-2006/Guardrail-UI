@@ -374,7 +374,7 @@ async function runDashboardTests() {
 
     // Overview should have aria-current="page"
     const navLinks = rootElement.querySelectorAll('.gd-nav-link');
-    assertEquals(navLinks.length, 3, 'Renders 3 navigation links (Overview, Pending, History)');
+    assertEquals(navLinks.length, 4, 'Renders 4 navigation links (Overview, Pending, History, Settings)');
     assertEquals(rootElement.querySelector('.gd-nav-list')?.getAttribute('role'), null, 'Navigation uses native list semantics instead of an unsupported ARIA menubar pattern');
     assertEquals(navLinks[0]?.getAttribute('role'), null, 'Navigation anchors retain native link semantics');
     assertEquals(navLinks[0]?.getAttribute('aria-current'), 'page', 'Overview link has aria-current="page"');
@@ -389,6 +389,12 @@ async function runDashboardTests() {
     // Switch to History
     shell.setActiveView('history', false);
     assertEquals(shell.getState().activeView, 'history', 'activeView state updated to history');
+
+    // Switch to Settings
+    shell.setActiveView('settings', false);
+    assertEquals(shell.getState().activeView, 'settings', 'activeView state updated to settings');
+    const settingsLinks = rootElement.querySelectorAll('.gd-nav-link');
+    assertEquals(settingsLinks[3]?.getAttribute('aria-current'), 'page', 'Settings link now has aria-current="page"');
 
     shell.destroy();
   }
@@ -2923,6 +2929,212 @@ async function runDashboardTests() {
       'Successful invitation acceptance does not fabricate an authenticated contact profile'
     );
     invitationShell.destroy();
+  }
+
+  // Test Suite 46: Overview Enhancement & Trusted Contact User Experience
+  console.log('\n▶ Test Suite 46: Overview Enhancement & Trusted Contact User Experience');
+  {
+    // 1. Protection Status Card states
+    const standaloneShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      autoFetch: false,
+    });
+    const standCard = rootElement.querySelector('.gd-protection-status-card');
+    assert(standCard !== null, 'Protection status card is rendered on Overview');
+    assert(standCard?.classList.contains('status-standalone') ?? false, 'Renders standalone status when unauthenticated');
+    assert(standCard?.textContent.includes('Standalone Preview Mode') ?? false, 'Communicates standalone preview mode');
+
+    // Posture chips present
+    const chips = rootElement.querySelectorAll('.gd-protection-chip');
+    assertEquals(chips.length, 4, 'Renders 4 governance posture chips (Interception, Execution, Isolation, Last Sync)');
+    assert(chips[0]?.textContent.includes('Interception') ?? false, 'Interception posture chip present');
+    assert(chips[1]?.textContent.includes('Execution') ?? false, 'Execution posture chip present');
+    assert(chips[2]?.textContent.includes('Isolation') ?? false, 'Multi-tenant isolation posture chip present');
+    standaloneShell.destroy();
+
+    // Authenticated live protection status
+    const liveShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        isAuthenticated: true,
+      },
+      autoFetch: false,
+    });
+    const liveCard = rootElement.querySelector('.gd-protection-status-card');
+    assert(liveCard?.classList.contains('status-operational') ?? false, 'Renders operational status when authenticated');
+    assert(liveCard?.textContent.includes('Live Guardrail Protection Active') ?? false, 'Communicates live guardrail protection');
+    liveShell.destroy();
+
+    // Mock service fixture indicator
+    const mockShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      isMockService: true,
+      autoFetch: false,
+    });
+    const mockCard = rootElement.querySelector('.gd-protection-status-card');
+    assert(mockCard?.classList.contains('status-mock') ?? false, 'Renders mock status when isMockService is true');
+    assert(mockCard?.textContent.includes('Development Fixture Active') ?? false, 'Communicates development fixture mode');
+    mockShell.destroy();
+
+    // Offline status card
+    const offlineShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      autoFetch: false,
+    });
+    (offlineShell as any).isBackendUnavailable = true;
+    offlineShell.render();
+    const offCard = rootElement.querySelector('.gd-protection-status-card');
+    assert(offCard?.classList.contains('status-offline') ?? false, 'Renders offline status when backend unavailable');
+    assert(offCard?.textContent.includes('Service Connection Offline') ?? false, 'Communicates service connection offline');
+    offlineShell.destroy();
+
+    // 2. Important Notifications & Action Items
+    const notifPendingShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        isAuthenticated: true,
+      },
+      initialRequests: [{ ...SAMPLE_REQUEST, id: 'apr_notif_1' }],
+      autoFetch: false,
+    });
+    const notifWarning = rootElement.querySelector('.gd-notification-item.gd-notif-warning');
+    assert(notifWarning !== null, 'Action Required notification item rendered when pending actions exist');
+    assert(notifWarning?.textContent.includes('1 pending approval request') ?? false, 'Notification text specifies pending count');
+    notifPendingShell.destroy();
+
+    // All Systems Normal when queue is clear and ward is linked
+    const normalShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        isAuthenticated: true,
+      },
+      initialRequests: [],
+      autoFetch: false,
+    });
+    const notifSuccess = rootElement.querySelector('.gd-notification-item.gd-notif-success');
+    assert(notifSuccess !== null, 'All Systems Normal notification rendered when queue is empty');
+    assert(notifSuccess?.textContent.includes('All Systems Normal') ?? false, 'Communicates all systems normal');
+    normalShell.destroy();
+
+    // 3. Actionable Pending Approvals Quick-Review on Overview
+    const quickShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        isAuthenticated: true,
+      },
+      initialRequests: [
+        {
+          ...SAMPLE_REQUEST,
+          id: 'apr_quick_01',
+          actionDescription: 'Wire Transfer to Unknown Payee',
+          riskLevel: RiskLevel.CRITICAL,
+        },
+      ],
+      autoFetch: false,
+    });
+    const quickSection = rootElement.querySelector('#gd-overview-pending-section');
+    assert(quickSection !== null, 'Pending approval section rendered on Overview');
+    const quickItem = quickSection?.querySelector('.gd-overview-pending-item');
+    assert(quickItem !== null, 'Pending request item rendered on Overview');
+    assert(quickItem?.textContent.includes('Wire Transfer to Unknown Payee') ?? false, 'Displays action description');
+    assert(quickItem?.textContent.includes('CRITICAL') ?? false, 'Displays critical risk level badge');
+
+    // Clicking "Review & Decide →" button navigates to pending view with request selected
+    const reviewBtn = quickItem?.querySelector('.gd-btn-overview-review') as MockDOMElement | null;
+    assert(reviewBtn !== null, 'Review & Decide button present on overview item');
+    reviewBtn?.listeners.click[0]({ preventDefault() {} });
+    assertEquals(quickShell.getState().activeView, 'pending', 'Active view transitioned to pending');
+    assertEquals(quickShell.getState().selectedRequestId, 'apr_quick_01', 'Selected request ID matches clicked overview item');
+    quickShell.destroy();
+
+    // 4. Authorized Ward Oversight & Tenant Isolation Guarantee
+    const wardShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        relationshipLabel: 'Designated Guardian',
+        isAuthenticated: true,
+      },
+      autoFetch: false,
+    });
+    const activeWardCard = rootElement.querySelector('#gd-active-ward-card');
+    assert(activeWardCard !== null, 'Active ward association card rendered on Overview');
+    assert(activeWardCard?.textContent.includes('usr_alice') ?? false, 'Displays assigned ward identifier');
+    assert(activeWardCard?.textContent.includes('Designated Guardian') ?? false, 'Displays relationship label');
+    assert(activeWardCard?.textContent.includes('Separation of Duties') ?? false, 'Emphasizes separation of duties');
+    assert(activeWardCard?.textContent.includes('Multi-tenant isolation guarantees no access to data belonging to other users') ?? false, 'Guarantees multi-tenant isolation');
+    wardShell.destroy();
+
+    // 5. Account & Settings View
+    const settingsShell = new DashboardShell({
+      container: testContainer,
+      initialView: 'settings',
+      initialProfile: {
+        actorId: 'tc_carol',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        relationshipLabel: 'Designated Guardian',
+        isAuthenticated: true,
+      },
+      environment: 'pilot' as any,
+      autoFetch: false,
+    });
+    const settingsSec = rootElement.querySelector('#view-settings');
+    assert(settingsSec !== null, 'Settings section rendered');
+    assert(settingsSec?.classList.contains('active') ?? false, 'Settings section is active');
+    assert(settingsSec?.textContent.includes('tc_carol') ?? false, 'Displays canonical actor ID');
+    assert(settingsSec?.textContent.includes('PILOT') ?? false, 'Displays deployment environment');
+    assert(settingsSec?.textContent.includes('Decoupled Action Execution') ?? false, 'Documents decoupled execution invariant');
+    assert(settingsSec?.textContent.includes('Zero-Trust Data Scrubbing') ?? false, 'Documents data scrubbing invariant');
+
+    // Clear session resets profile to null
+    const clearBtn = rootElement.querySelector('#gd-btn-clear-session') as MockDOMElement | null;
+    assert(clearBtn !== null, 'Clear session button present');
+    clearBtn?.listeners.click[0]({ preventDefault() {} });
+    assertEquals(settingsShell.getState().contactProfile, null, 'Contact profile cleared on sign out');
+    settingsShell.destroy();
+
+    // 6. Mobile Navigation & Drawer Backing
+    const mobileShell = new DashboardShell({
+      container: testContainer,
+      autoFetch: false,
+    });
+    mobileShell.toggleMobileSidebar(true);
+    const backdrop = rootElement.querySelector('.gd-mobile-backdrop.active');
+    assert(backdrop !== null, 'Mobile backdrop element created when drawer opens');
+
+    // Clicking backdrop closes drawer
+    (backdrop as MockDOMElement)?.listeners.click[0]({ preventDefault() {} });
+    assert(!(rootElement.querySelector('.gd-sidebar')?.classList.contains('open') ?? false), 'Drawer closes on backdrop click');
+
+    // Selecting view on mobile closes drawer
+    mobileShell.toggleMobileSidebar(true);
+    mobileShell.setActiveView('overview');
+    assert(!(rootElement.querySelector('.gd-sidebar')?.classList.contains('open') ?? false), 'Drawer closes when active view is re-selected');
+
+    mobileShell.destroy();
   }
 
   console.log('\n======================================================');

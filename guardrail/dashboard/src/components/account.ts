@@ -9,6 +9,7 @@ import { TrustedContactProfile } from '../types.js';
 
 export interface AccountProps {
   profile: TrustedContactProfile | null;
+  onOpenSettings?: () => void;
 }
 
 export function renderAccountArea(props: AccountProps): HTMLElement {
@@ -18,6 +19,21 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
 
   const card = document.createElement('div');
   card.className = 'gd-account-card';
+  if (props.onOpenSettings) {
+    card.classList.add('clickable');
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', 'View account settings and authorization details');
+    card.addEventListener('click', () => {
+      props.onOpenSettings?.();
+    });
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        props.onOpenSettings?.();
+      }
+    });
+  }
 
   const avatar = document.createElement('div');
   avatar.className = 'gd-account-avatar';
@@ -49,6 +65,15 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
 
   card.appendChild(avatar);
   card.appendChild(details);
+
+  if (props.onOpenSettings) {
+    const settingsIcon = document.createElement('span');
+    settingsIcon.className = 'gd-account-settings-icon';
+    settingsIcon.setAttribute('aria-hidden', 'true');
+    settingsIcon.textContent = '⚙️';
+    card.appendChild(settingsIcon);
+  }
+
   container.appendChild(card);
 
   return container;

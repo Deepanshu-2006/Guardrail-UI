@@ -60,6 +60,7 @@ export function renderNavigation(props: NavigationProps): HTMLElement {
     { view: 'overview', label: 'Overview', icon: '📊' },
     { view: 'pending', label: 'Pending Approvals', icon: '⏳', count: props.pendingCount },
     { view: 'history', label: 'Decision History', icon: '📜' },
+    { view: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
   for (const item of items) {

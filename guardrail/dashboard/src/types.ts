@@ -67,7 +67,7 @@ export const DEFAULT_DASHBOARD_POLL_INTERVAL_MS = 10000;
 /**
  * Top-level navigation views available in the dashboard shell.
  */
-export type DashboardView = 'overview' | 'pending' | 'history';
+export type DashboardView = 'overview' | 'pending' | 'history' | 'settings';
 
 /**
  * Loading and error states for dashboard data panels.
