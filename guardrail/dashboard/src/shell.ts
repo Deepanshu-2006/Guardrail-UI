@@ -18,8 +18,12 @@ import {
   DashboardShellOptions,
   DashboardShellState,
   DashboardView,
+  InvitationStatus,
   RequestFilters,
+  TrustedContact,
+  TrustedContactInvitation,
   TrustedContactProfile,
+  TrustedContactStatus,
 } from './types.js';
 import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
@@ -27,6 +31,7 @@ import { renderOverview } from './components/overview.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory } from './components/history.js';
 import { renderSettings } from './components/settings.js';
+import { isInvitationExpired } from './components/relationships.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -80,6 +85,9 @@ export class DashboardShell {
 
     const initialRequests = options.initialRequests ?? [];
     const initialHistory = options.initialHistoryRequests ?? [];
+    const initialConnectedUsers = options.initialConnectedUsers ?? [];
+    const initialInvitations = options.initialInvitations ?? [];
+
     const defaultPendingFilters: RequestFilters = {
       status: 'ALL',
       riskLevel: 'ALL',
@@ -109,6 +117,14 @@ export class DashboardShell {
       historyFilters: defaultHistoryFilters,
       environment: options.environment ?? (typeof options.apiClient?.getEnvironment === 'function' ? options.apiClient.getEnvironment() : undefined),
       isMockService: options.isMockService ?? (typeof options.apiClient?.isMockService === 'function' ? options.apiClient.isMockService() : false),
+      connectedUsers: initialConnectedUsers,
+      connectedUsersStatus: initialConnectedUsers.length === 0 ? 'empty' : 'idle',
+      connectedUsersError: null,
+      invitations: initialInvitations,
+      invitationsStatus: initialInvitations.length === 0 ? 'empty' : 'idle',
+      invitationsError: null,
+      isSubmittingRelationshipAction: false,
+      relationshipActionMessage: null,
     };
 
     // Pre-seed in-memory detail cache with authoritative initial records
@@ -130,6 +146,7 @@ export class DashboardShell {
     this.setupListeners();
     if (this.autoFetch && this.apiClient) {
       void this.fetchPendingRequests();
+      void this.fetchRelationships();
     }
     if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
       this.startPolling();
@@ -414,36 +431,17 @@ export class DashboardShell {
       isMockService: this.isMockService(),
       environment: this.getEnvironment(),
       lastSynchronizedAt: this.lastSynchronizedAt,
+      isSubmitting: this.state.isSubmittingRelationshipAction,
       onViewHistory: () => this.setActiveView('history'),
       onViewPending: () => this.setActiveView('pending'),
+      onViewSettings: () => this.setActiveView('settings'),
+      onDisconnectWard: () => this.disconnectWard(),
       onSelectPending: (id) => {
         this.setActiveView('pending');
         this.selectRequest(id);
       },
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
-      onConnectInvitation: this.apiClient
-        ? async (code: string) => {
-            const res = await this.apiClient!.acceptInvitation(code);
-            if (res.success) {
-              const wardId = res.data.invitation.wardId;
-              const relLabel = res.data.invitation.relationshipLabel;
-              // Invitation acceptance establishes a relationship, not an authenticated session.
-              // Preserve only an existing server-authenticated profile; never invent a local actor.
-              if (this.state.contactProfile?.isAuthenticated) {
-                this.state.contactProfile = {
-                  ...this.state.contactProfile,
-                  assignedWardId: wardId,
-                  relationshipLabel: relLabel ?? this.state.contactProfile.relationshipLabel,
-                };
-              }
-              await this.refresh();
-              this.render();
-              return { success: true, wardId };
-            } else {
-              return { success: false, error: res.error.message };
-            }
-          }
-        : undefined,
+      onConnectInvitation: this.apiClient ? (code: string) => this.connectInvitation(code) : undefined,
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
@@ -531,6 +529,19 @@ export class DashboardShell {
       pollIntervalMs: this.pollIntervalMs,
       lastSynchronizedAt: this.lastSynchronizedAt,
       isBackendUnavailable: this.isBackendUnavailable,
+      connectedUsers: this.state.connectedUsers,
+      connectedUsersStatus: this.state.connectedUsersStatus,
+      connectedUsersError: this.state.connectedUsersError,
+      invitations: this.state.invitations,
+      invitationsStatus: this.state.invitationsStatus,
+      invitationsError: this.state.invitationsError,
+      isSubmittingRelationshipAction: this.state.isSubmittingRelationshipAction,
+      relationshipActionMessage: this.state.relationshipActionMessage,
+      onCreateInvitation: this.apiClient ? (payload) => this.createInvitation(payload) : undefined,
+      onRevokeInvitation: this.apiClient ? (id) => this.revokeInvitation(id) : undefined,
+      onRevokeTrustedContact: this.apiClient ? (id) => this.revokeTrustedContact(id) : undefined,
+      onConnectInvitation: this.apiClient ? (code) => this.connectInvitation(code) : undefined,
+      onDisconnectWard: () => this.disconnectWard(),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onClearSession: () => {
         this.setProfile(null);
@@ -759,10 +770,13 @@ export class DashboardShell {
   }
 
   /**
-   * Refreshes the pending approvals list from the backend.
+   * Refreshes the pending approvals list and relationship data from the backend.
    */
   public async refresh(): Promise<void> {
-    return this.fetchPendingRequests();
+    await Promise.all([
+      this.fetchPendingRequests(),
+      this.fetchRelationships({ isBackground: true }),
+    ]);
   }
 
   /**
@@ -771,7 +785,12 @@ export class DashboardShell {
   public async invalidate(): Promise<void> {
     this.state.pendingRequests = [];
     this.state.selectedRequestId = null;
-    return this.fetchPendingRequests();
+    this.state.connectedUsers = [];
+    this.state.invitations = [];
+    await Promise.all([
+      this.fetchPendingRequests(),
+      this.fetchRelationships(),
+    ]);
   }
 
   /**
@@ -1268,6 +1287,305 @@ export class DashboardShell {
         ? this.apiClient.getEnvironment()
         : undefined)
     );
+  }
+
+  /**
+   * Authoritatively retrieves connected users/contacts and invitations from the backend.
+   * Respects multi-tenant scoping and authorization boundaries without fabricating data.
+   */
+  public async fetchRelationships(options?: { isBackground?: boolean }): Promise<void> {
+    if (!this.apiClient || this.isDestroyed) {
+      return;
+    }
+
+    if (!options?.isBackground) {
+      if (this.state.connectedUsers.length === 0) {
+        this.state.connectedUsersStatus = 'loading';
+      }
+      if (this.state.invitations.length === 0) {
+        this.state.invitationsStatus = 'loading';
+      }
+      this.render();
+    }
+
+    try {
+      const [contactsRes, invitesRes] = await Promise.all([
+        this.apiClient.listTrustedContacts(),
+        this.apiClient.listInvitations(),
+      ]);
+
+      if (this.isDestroyed) return;
+
+      if (contactsRes.success) {
+        this.state.connectedUsers = contactsRes.data;
+        this.state.connectedUsersStatus = contactsRes.data.length === 0 ? 'empty' : 'idle';
+        this.state.connectedUsersError = null;
+      } else {
+        // If 403 / NOT_FOUND_OR_DENIED, the caller may be a TRUSTED_CONTACT whose scope is bounded to assignedWardId
+        if (
+          contactsRes.error.code === ApiClientErrorCodes.NOT_FOUND_OR_DENIED ||
+          contactsRes.statusCode === 403 ||
+          contactsRes.statusCode === 404
+        ) {
+          this.state.connectedUsersStatus = 'idle';
+          this.state.connectedUsersError = null;
+        } else {
+          this.state.connectedUsersStatus = 'error';
+          this.state.connectedUsersError = contactsRes.error.message;
+        }
+      }
+
+      if (invitesRes.success) {
+        this.state.invitations = invitesRes.data;
+        this.state.invitationsStatus = invitesRes.data.length === 0 ? 'empty' : 'idle';
+        this.state.invitationsError = null;
+      } else {
+        if (
+          invitesRes.error.code === ApiClientErrorCodes.NOT_FOUND_OR_DENIED ||
+          invitesRes.statusCode === 403 ||
+          invitesRes.statusCode === 404
+        ) {
+          this.state.invitationsStatus = 'idle';
+          this.state.invitationsError = null;
+        } else {
+          this.state.invitationsStatus = 'error';
+          this.state.invitationsError = invitesRes.error.message;
+        }
+      }
+    } catch (unhandled: unknown) {
+      if (this.isDestroyed) return;
+      const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
+      this.state.connectedUsersStatus = 'error';
+      this.state.connectedUsersError = msg;
+      this.state.invitationsStatus = 'error';
+      this.state.invitationsError = msg;
+    } finally {
+      if (!this.isDestroyed) {
+        this.render();
+      }
+    }
+  }
+
+  /**
+   * Generates a new trusted contact invitation on the backend.
+   * Prevents duplicate in-flight requests and refreshes the invitations list on success.
+   */
+  public async createInvitation(payload: {
+    recipientActorId: string;
+    relationshipLabel?: string;
+    ttlMs?: number;
+  }): Promise<{ success: boolean; invitation?: TrustedContactInvitation; error?: string }> {
+    if (this.state.isSubmittingRelationshipAction) {
+      return { success: false, error: 'A relationship action is already in progress. Please wait.' };
+    }
+    if (!this.apiClient) {
+      return { success: false, error: 'Dashboard is running in standalone mode without an active backend.' };
+    }
+
+    this.state.isSubmittingRelationshipAction = true;
+    this.state.relationshipActionMessage = null;
+    this.render();
+
+    try {
+      const res = await this.apiClient.createInvitation(payload);
+      if (res.success) {
+        this.state.relationshipActionMessage = {
+          type: 'success',
+          text: `Invitation generated successfully! One-time code: ${res.data.code ?? res.data.id}. Share this securely with ${res.data.recipientActorId}.`,
+        };
+        await this.fetchRelationships({ isBackground: true });
+        this.render();
+        return { success: true, invitation: res.data };
+      } else {
+        const errorMsg = res.error.message || 'Failed to create invitation.';
+        this.state.relationshipActionMessage = { type: 'error', text: errorMsg };
+        this.render();
+        return { success: false, error: errorMsg };
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error creating invitation.';
+      this.state.relationshipActionMessage = { type: 'error', text: msg };
+      this.render();
+      return { success: false, error: msg };
+    } finally {
+      this.state.isSubmittingRelationshipAction = false;
+      this.render();
+    }
+  }
+
+  /**
+   * Revokes an existing invitation on the backend.
+   * Checks expiration to prevent redundant operations and re-syncs state immediately.
+   */
+  public async revokeInvitation(invitationId: string): Promise<{ success: boolean; error?: string }> {
+    if (!invitationId || typeof invitationId !== 'string' || !invitationId.trim()) {
+      return { success: false, error: 'Invitation ID is required.' };
+    }
+    if (this.state.isSubmittingRelationshipAction) {
+      return { success: false, error: 'A relationship action is already in progress. Please wait.' };
+    }
+    if (!this.apiClient) {
+      return { success: false, error: 'Dashboard is running in standalone mode without an active backend.' };
+    }
+
+    const trimmedId = invitationId.trim();
+    const existing = this.state.invitations.find((i) => i.id === trimmedId);
+    if (existing && isInvitationExpired(existing)) {
+      const err = 'This invitation has already expired and cannot be revoked.';
+      this.state.relationshipActionMessage = { type: 'error', text: err };
+      this.render();
+      return { success: false, error: err };
+    }
+
+    this.state.isSubmittingRelationshipAction = true;
+    this.state.relationshipActionMessage = null;
+    this.render();
+
+    try {
+      const res = await this.apiClient.revokeInvitation(trimmedId);
+      if (res.success) {
+        this.state.relationshipActionMessage = {
+          type: 'success',
+          text: `Invitation ${trimmedId} has been revoked. The pairing code can no longer be accepted.`,
+        };
+        await this.fetchRelationships({ isBackground: true });
+        this.render();
+        return { success: true };
+      } else {
+        const errorMsg = res.error.message || 'Failed to revoke invitation.';
+        this.state.relationshipActionMessage = { type: 'error', text: errorMsg };
+        this.render();
+        return { success: false, error: errorMsg };
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error revoking invitation.';
+      this.state.relationshipActionMessage = { type: 'error', text: msg };
+      this.render();
+      return { success: false, error: msg };
+    } finally {
+      this.state.isSubmittingRelationshipAction = false;
+      this.render();
+    }
+  }
+
+  /**
+   * Revokes an active trusted contact relationship on the backend.
+   * Commits the revocation permanently and re-syncs connected users immediately.
+   */
+  public async revokeTrustedContact(contactId: string): Promise<{ success: boolean; error?: string }> {
+    if (!contactId || typeof contactId !== 'string' || !contactId.trim()) {
+      return { success: false, error: 'Contact ID is required.' };
+    }
+    if (this.state.isSubmittingRelationshipAction) {
+      return { success: false, error: 'A relationship action is already in progress. Please wait.' };
+    }
+    if (!this.apiClient) {
+      return { success: false, error: 'Dashboard is running in standalone mode without an active backend.' };
+    }
+
+    const trimmedId = contactId.trim();
+    this.state.isSubmittingRelationshipAction = true;
+    this.state.relationshipActionMessage = null;
+    this.render();
+
+    try {
+      const res = await this.apiClient.revokeTrustedContact(trimmedId);
+      if (res.success) {
+        this.state.relationshipActionMessage = {
+          type: 'success',
+          text: `Trusted contact relationship with ${trimmedId} has been revoked. They can no longer evaluate browser actions.`,
+        };
+        await this.fetchRelationships({ isBackground: true });
+        this.render();
+        return { success: true };
+      } else {
+        const errorMsg = res.error.message || 'Failed to revoke trusted contact.';
+        this.state.relationshipActionMessage = { type: 'error', text: errorMsg };
+        this.render();
+        return { success: false, error: errorMsg };
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error revoking trusted contact.';
+      this.state.relationshipActionMessage = { type: 'error', text: msg };
+      this.render();
+      return { success: false, error: msg };
+    } finally {
+      this.state.isSubmittingRelationshipAction = false;
+      this.render();
+    }
+  }
+
+  /**
+   * Accepts an invitation code on the backend to pair with a ward.
+   */
+  public async connectInvitation(code: string): Promise<{ success: boolean; wardId?: string; error?: string }> {
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return { success: false, error: 'Please enter an invitation code.' };
+    }
+    if (this.state.isSubmittingRelationshipAction) {
+      return { success: false, error: 'An action is already in progress. Please wait.' };
+    }
+    if (!this.apiClient) {
+      return { success: false, error: 'Dashboard is running in standalone mode without an active backend.' };
+    }
+
+    this.state.isSubmittingRelationshipAction = true;
+    this.state.relationshipActionMessage = null;
+    this.render();
+
+    try {
+      const res = await this.apiClient.acceptInvitation(code);
+      if (res.success) {
+        const wardId = res.data.invitation.wardId || res.data.contact.wardId;
+        const relLabel = res.data.invitation.relationshipLabel || res.data.contact.relationshipLabel;
+
+        if (this.state.contactProfile?.isAuthenticated) {
+          this.state.contactProfile = {
+            ...this.state.contactProfile,
+            assignedWardId: wardId,
+            relationshipLabel: relLabel ?? this.state.contactProfile.relationshipLabel,
+          };
+        }
+        this.state.relationshipActionMessage = {
+          type: 'success',
+          text: `Successfully connected to ward ${wardId}! Pending approval requests will now appear in your review queue.`,
+        };
+        await this.refresh();
+        this.render();
+        return { success: true, wardId };
+      } else {
+        const errorMsg = res.error.message || 'Failed to connect. The invitation code may be invalid, expired, or already accepted.';
+        this.state.relationshipActionMessage = { type: 'error', text: errorMsg };
+        this.render();
+        return { success: false, error: errorMsg };
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error connecting ward.';
+      this.state.relationshipActionMessage = { type: 'error', text: msg };
+      this.render();
+      return { success: false, error: msg };
+    } finally {
+      this.state.isSubmittingRelationshipAction = false;
+      this.render();
+    }
+  }
+
+  /**
+   * Unlinks the active ward relationship from the trusted contact portal.
+   */
+  public disconnectWard(): void {
+    if (this.state.contactProfile) {
+      this.state.contactProfile = {
+        ...this.state.contactProfile,
+        assignedWardId: undefined,
+        relationshipLabel: undefined,
+      };
+      this.state.relationshipActionMessage = {
+        type: 'info',
+        text: 'Ward relationship disconnected. Your review queue is now unlinked.',
+      };
+      this.render();
+    }
   }
 
   /**

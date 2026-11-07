@@ -17,7 +17,14 @@ import {
 } from '../../extension/src/types/approval.js';
 import { ActionCategory, ActionType } from '../../extension/src/types/actions.js';
 import { RiskLevel } from '../../extension/src/types/risk.js';
-import { ActorRole, AuthContext } from '../../extension/src/approval/authorization.js';
+import {
+  ActorRole,
+  AuthContext,
+  InvitationStatus,
+  TrustedContact,
+  TrustedContactInvitation,
+  TrustedContactStatus,
+} from '../../extension/src/approval/authorization.js';
 import {
   ApprovalApiClient,
   ApiClientResult,
@@ -46,6 +53,8 @@ export type {
   StatusSyncListener,
   StatusSyncSubscription,
   AppEnvironment,
+  TrustedContact,
+  TrustedContactInvitation,
 };
 export {
   ApprovalStatus,
@@ -56,6 +65,8 @@ export {
   ApprovalApiClient,
   ApprovalStatusSyncClient,
   ApiClientErrorCodes,
+  TrustedContactStatus,
+  InvitationStatus,
 };
 
 /**
@@ -144,6 +155,22 @@ export interface DashboardShellState {
   environment?: AppEnvironment;
   /** Whether connected service is explicitly identified as mock/in-memory */
   isMockService?: boolean;
+  /** List of connected trusted contacts or authorized wards */
+  connectedUsers: readonly TrustedContact[];
+  /** Loading/error status for connected users list */
+  connectedUsersStatus: ViewStatus;
+  /** Error message when fetching connected users fails */
+  connectedUsersError: string | null;
+  /** List of trusted contact invitations (pending, accepted, expired, revoked) */
+  invitations: readonly TrustedContactInvitation[];
+  /** Loading/error status for invitations list */
+  invitationsStatus: ViewStatus;
+  /** Error message when fetching invitations fails */
+  invitationsError: string | null;
+  /** Feedback notification resulting from relationship operations */
+  relationshipActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
+  /** Guard flag preventing duplicate relationship submissions */
+  isSubmittingRelationshipAction?: boolean;
 }
 
 /**
@@ -160,6 +187,10 @@ export interface DashboardShellOptions {
   initialRequests?: readonly ApprovalRequest[];
   /** Initial historical/resolved requests list (if preloaded) */
   initialHistoryRequests?: readonly ApprovalRequest[];
+  /** Initial list of connected users or trusted contacts */
+  initialConnectedUsers?: readonly TrustedContact[];
+  /** Initial list of invitations */
+  initialInvitations?: readonly TrustedContactInvitation[];
   /** API client instance for remote backend requests */
   apiClient?: ApprovalApiClient;
   /** Automatically fetch pending requests upon mounting or view switch (defaults to false) */

@@ -6,7 +6,13 @@
  * Strictly avoids exposing information belonging to other users or hardcoding fake data.
  */
 
-import { TrustedContactProfile } from '../types.js';
+import {
+  TrustedContact,
+  TrustedContactInvitation,
+  TrustedContactProfile,
+  ViewStatus,
+} from '../types.js';
+import { renderRelationshipManagementSection } from './relationships.js';
 
 export interface SettingsProps {
   profile: TrustedContactProfile | null;
@@ -16,6 +22,23 @@ export interface SettingsProps {
   pollIntervalMs?: number;
   lastSynchronizedAt?: Date | null;
   isBackendUnavailable?: boolean;
+  connectedUsers?: readonly TrustedContact[];
+  connectedUsersStatus?: ViewStatus;
+  connectedUsersError?: string | null;
+  invitations?: readonly TrustedContactInvitation[];
+  invitationsStatus?: ViewStatus;
+  invitationsError?: string | null;
+  isSubmittingRelationshipAction?: boolean;
+  relationshipActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
+  onCreateInvitation?: (payload: {
+    recipientActorId: string;
+    relationshipLabel?: string;
+    ttlMs?: number;
+  }) => Promise<{ success: boolean; invitation?: TrustedContactInvitation; error?: string }>;
+  onRevokeInvitation?: (invitationId: string) => Promise<{ success: boolean; error?: string }>;
+  onRevokeTrustedContact?: (contactId: string) => Promise<{ success: boolean; error?: string }>;
+  onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
+  onDisconnectWard?: () => void;
   onClearSession?: () => void;
   onRefresh?: () => void;
 }
@@ -116,7 +139,28 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   section.appendChild(identityCard);
 
-  // Card 2: Backend Connection & Runtime Environment
+  // Card 2: Trusted Contacts & Connected Users Lifecycle Management
+  const relationshipsSection = renderRelationshipManagementSection({
+    profile: props.profile,
+    connectedUsers: props.connectedUsers ?? [],
+    connectedUsersStatus: props.connectedUsersStatus ?? 'idle',
+    connectedUsersError: props.connectedUsersError ?? null,
+    invitations: props.invitations ?? [],
+    invitationsStatus: props.invitationsStatus ?? 'idle',
+    invitationsError: props.invitationsError ?? null,
+    isSubmitting: props.isSubmittingRelationshipAction,
+    actionMessage: props.relationshipActionMessage,
+    isBackendUnavailable: props.isBackendUnavailable,
+    onCreateInvitation: props.onCreateInvitation,
+    onRevokeInvitation: props.onRevokeInvitation,
+    onRevokeTrustedContact: props.onRevokeTrustedContact,
+    onConnectInvitation: props.onConnectInvitation,
+    onDisconnectWard: props.onDisconnectWard,
+    onRefresh: props.onRefresh,
+  });
+  section.appendChild(relationshipsSection);
+
+  // Card 3: Backend Connection & Runtime Environment
   const backendCard = document.createElement('div');
   backendCard.className = 'gd-card gd-settings-card';
 

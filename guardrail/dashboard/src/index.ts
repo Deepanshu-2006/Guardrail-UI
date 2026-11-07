@@ -9,6 +9,8 @@ export * from './components/account.js';
 export * from './components/overview.js';
 export * from './components/pending.js';
 export * from './components/history.js';
+export * from './components/settings.js';
+export * from './components/relationships.js';
 
 import { DashboardShell } from './shell.js';
 import { DashboardShellOptions } from './types.js';

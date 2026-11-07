@@ -25,10 +25,13 @@ export interface OverviewProps {
   isMockService?: boolean;
   environment?: string;
   lastSynchronizedAt?: Date | null;
+  isSubmitting?: boolean;
   onViewHistory?: () => void;
   onViewPending?: () => void;
+  onViewSettings?: () => void;
   onSelectPending?: (requestId: string) => void;
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
+  onDisconnectWard?: () => void;
   onRefresh?: () => void;
 }
 
@@ -846,6 +849,71 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     wardCard.appendChild(wardTitle);
     wardCard.appendChild(wardGrid);
     wardCard.appendChild(dutyNotice);
+
+    // Ward Action Buttons (Disconnect & Settings Link)
+    const wardActions = document.createElement('div');
+    wardActions.className = 'gd-ward-actions-row';
+
+    if (props.onDisconnectWard) {
+      const disconnectBtn = document.createElement('button');
+      disconnectBtn.type = 'button';
+      disconnectBtn.className = 'gd-btn-revoke';
+      disconnectBtn.id = 'gd-btn-disconnect-ward';
+      disconnectBtn.textContent = 'Disconnect Ward';
+
+      const confirmBox = document.createElement('div');
+      confirmBox.className = 'gd-relationship-confirm-box';
+      confirmBox.style.display = 'none';
+
+      const confirmMsg = document.createElement('p');
+      confirmMsg.className = 'gd-confirm-warning';
+      confirmMsg.textContent =
+        `Disconnecting from ${props.profile.assignedWardId} unlinks your review portal. You will stop receiving pending approval requests.`;
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.type = 'button';
+      confirmBtn.className = 'gd-btn-revoke-confirm';
+      confirmBtn.textContent = 'Confirm Disconnect';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'gd-btn-cancel';
+      cancelBtn.textContent = 'Cancel';
+
+      confirmBtn.addEventListener('click', () => {
+        props.onDisconnectWard?.();
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        confirmBox.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+      });
+
+      disconnectBtn.addEventListener('click', () => {
+        disconnectBtn.style.display = 'none';
+        confirmBox.style.display = 'block';
+      });
+
+      confirmBox.appendChild(confirmMsg);
+      confirmBox.appendChild(confirmBtn);
+      confirmBox.appendChild(cancelBtn);
+
+      wardActions.appendChild(disconnectBtn);
+      wardActions.appendChild(confirmBox);
+    }
+
+    if (props.onViewSettings) {
+      const manageBtn = document.createElement('button');
+      manageBtn.type = 'button';
+      manageBtn.className = 'gd-btn-manage-relationships';
+      manageBtn.textContent = 'Manage Trusted Contacts & Invitations in Settings →';
+      manageBtn.addEventListener('click', () => {
+        props.onViewSettings?.();
+      });
+      wardActions.appendChild(manageBtn);
+    }
+
+    wardCard.appendChild(wardActions);
     section.appendChild(wardCard);
   }
 
