@@ -75,7 +75,44 @@ export interface TechnicalDiagnostics {
 /**
  * Structured, human-readable explanation of an operational risk decision.
  */
+/**
+ * Structured security context for suspicious website and phishing warnings.
+ */
+export interface WebsiteSecurityContext {
+  /** The specific website domain or host that triggered the warning */
+  readonly domain: string;
+
+  /** Full or sanitized target URL */
+  readonly targetUrl?: string;
+
+  /** Intelligence source classification: local heuristic vs verified threat intelligence */
+  readonly source: "LOCAL_HEURISTIC" | "VERIFIED_THREAT_INTEL";
+
+  /** Clear explanation of the intelligence source (clarifying scope) */
+  readonly sourceDisclaimer: string;
+
+  /** Action status: whether the action was merely warned about, held in staging, or prevented */
+  readonly actionStatus: "WARNED_NOT_HELD" | "HELD_IN_STAGING" | "PREVENTED";
+
+  /** Plain-language explanation of what happened to the action */
+  readonly actionStatusExplanation: string;
+
+  /** Specific suspicious characteristics observed (bullet points) */
+  readonly detectedCharacteristics: readonly string[];
+
+  /** Why Guardrail considers this situation risky */
+  readonly riskImpactExplanation: string;
+
+  /** What the user can safely do next (recovery steps) */
+  readonly safeNextSteps: readonly string[];
+
+  /** Explicit disclaimer on continuing */
+  readonly continuationDisclaimer: string;
+}
+
 export interface RiskDecisionExplanation {
+  /** Optional structured website security context for suspicious website warnings */
+  readonly websiteContext?: WebsiteSecurityContext;
   /** The operational governance decision (ALLOW, WARN, PROTECT) */
   readonly decision: ResponseAction;
 
@@ -192,6 +229,105 @@ function explainEvaluationFailure(
  * @param action Optional normalized action
  * @returns Complete, strongly-typed RiskDecisionExplanation
  */
+
+/**
+ * Extracts and compiles comprehensive, plain-language website security context.
+ */
+export function extractWebsiteSecurityContext(
+  action?: GuardrailAction,
+  risk?: Readonly<RiskAssessment>,
+  decision?: Readonly<ResponseDecision>
+): WebsiteSecurityContext {
+  const targetCandidate =
+    action?.element?.targetUrl ||
+    action?.element?.formAction ||
+    action?.page?.url ||
+    "";
+
+  let domain = "Unknown Website";
+  if (targetCandidate) {
+    try {
+      domain = new URL(targetCandidate).hostname;
+    } catch {
+      domain = targetCandidate.split("/")[0] || "Unknown Website";
+    }
+  } else if (action?.page?.url) {
+    try {
+      domain = new URL(action.page.url).hostname;
+    } catch {
+      domain = action.page.url;
+    }
+  }
+
+  // Characteristics from structured reasons
+  const characteristics: string[] = [];
+  const sReasons = risk?.structuredReasons || decision?.structuredReasons || [];
+
+  for (const sr of sReasons) {
+    const code = sr.code || "";
+    if (code.includes("BRAND_IDENTITY_MISMATCH")) {
+      characteristics.push("Brand Identity Inconsistency: Page claims to represent a recognized brand, but the web address does not match official domain records.");
+    } else if (code.includes("INSECURE_LOGIN_CONTEXT")) {
+      characteristics.push("Insecure Login Connection: Password field is displayed on an unencrypted (HTTP) page.");
+    } else if (code.includes("INSECURE_CREDENTIAL_TRANSMISSION")) {
+      characteristics.push("Unencrypted Transmission: Form submits credentials over an insecure HTTP connection.");
+    } else if (code.includes("CROSS_ORIGIN_CREDENTIAL_SUBMISSION")) {
+      characteristics.push("Unexpected Cross-Origin Submission: Form submits credentials across origin boundaries to a third-party domain.");
+    } else if (code.includes("EXFILTRATION_ENDPOINT")) {
+      characteristics.push("Unusual Data Destination: Form submits data to an external data collection endpoint.");
+    } else if (code.includes("IP_ADDRESS_AS_HOSTNAME") || code.includes("IP_HOSTED_LOGIN")) {
+      characteristics.push("Numerical Address Hostname: Website uses a raw numerical IP address instead of a standard domain name.");
+    } else if (code.includes("DECEPTIVE_SUBDOMAIN")) {
+      characteristics.push("Misleading Subdomain: Uses a brand name in a subdomain prefix to disguise an unrelated domain.");
+    } else if (code.includes("PUNYCODE_OR_HOMOGLYPH") || code.includes("DECEPTIVE_BRAND_HOMOGLYPH")) {
+      characteristics.push("Lookalike Domain: Uses lookalike or internationalized characters to resemble another brand.");
+    } else if (code.includes("URL_CREDENTIAL_FIELD") || code.includes("EMBEDDED_CREDENTIALS")) {
+      characteristics.push("Deceptive Web Address: URL embeds username/password fields to obscure the real destination.");
+    } else if (code.includes("DOUBLE_URL_ENCODING") || code.includes("SUSPICIOUS_ENCODING")) {
+      characteristics.push("Unusual Character Encoding: Uses multiple percent-encodings to conceal the destination address.");
+    } else if (code.includes("INVALID_OR_MALFORMED_URL")) {
+      characteristics.push("Malformed Address: Web address uses an unsupported or malformed protocol.");
+    }
+  }
+
+  if (characteristics.length === 0 && risk?.reasons && risk.reasons.length > 0) {
+    for (const r of risk.reasons) {
+      if (!r.includes("No elevated risk signals")) {
+        characteristics.push(r);
+      }
+    }
+  }
+
+  if (characteristics.length === 0) {
+    characteristics.push("Heuristic check: Unverified website structure detected during page evaluation.");
+  }
+
+  const isProtected = decision?.response === ResponseAction.PROTECT;
+
+  return {
+    domain,
+    targetUrl: sanitizeUrlForDiagnostics(targetCandidate) || undefined,
+    source: "LOCAL_HEURISTIC",
+    sourceDisclaimer:
+      "Local Safety Heuristic: Detected by local browser page inspection. No external reputation service was contacted; this is an automated heuristic, not a verified blacklist feed.",
+    actionStatus: isProtected ? "HELD_IN_STAGING" : "WARNED_NOT_HELD",
+    actionStatusExplanation: isProtected
+      ? "Action Status: Held in Staging Mode. Normal page execution was paused by Guardrail to protect your account. Continuation requires trusted contact approval."
+      : "Action Status: Advisory Notice (Action Was Not Blocked or Held). The webpage was not modified. You can safely cancel, or continue if you trust this site.",
+    detectedCharacteristics: Object.freeze(characteristics),
+    riskImpactExplanation:
+      "Why Guardrail considers this risky: Deceptive websites frequently imitate legitimate login pages or trusted companies to collect passwords, payment cards, or personal data. Because this website displays identity or structural inconsistencies, submitting information or continuing may expose your account credentials to unverified parties.",
+    safeNextSteps: Object.freeze([
+      "1. Cancel this action (Leave Page): Click Cancel to stay safe and close this warning dialog.",
+      "2. Check your browser address bar: Confirm that the domain name exactly matches your official provider.",
+      "3. Navigate independently: Open a new tab and type the official website address directly rather than following links.",
+      "4. Continue at your own risk: If you know and independently trust this website, you may choose to continue (continuing does not certify safety).",
+    ]),
+    continuationDisclaimer:
+      "Continuing does not guarantee or certify that this website is safe. Please proceed only if you have independently verified this destination.",
+  };
+}
+
 export function explainRiskDecision(
   decision: Readonly<ResponseDecision>,
   risk?: Readonly<RiskAssessment>,
@@ -324,6 +460,78 @@ export function explainRiskDecision(
           matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
         }),
         isSecurityThreat: false,
+      };
+    }
+
+    case 'POLICY_WARN_PHISHING_INDICATOR':
+    case 'RULE_PHISHING_INDICATOR':
+    case 'POLICY_PHISHING_INDICATOR': {
+      const webCtx = extractWebsiteSecurityContext(action, risk, decision);
+      return {
+        decision: ResponseAction.WARN,
+        nature: 'OPERATIONAL_PRECAUTION',
+        categoryBadge: 'Deceptive Website Notice',
+        headline: 'Review Website Before Entering Information',
+        userSummary:
+          'Guardrail detected characteristics on this page commonly associated with deceptive websites or brand imitation. Please verify that this is your intended website before entering passwords or personal details.',
+        whyFlagged: Object.freeze(
+          webCtx.detectedCharacteristics.length > 0
+            ? webCtx.detectedCharacteristics
+            : [
+                'Website displays characteristics associated with deceptive page branding or unverified credential collection.',
+                'This advisory is an automated local safety check, not a confirmed security threat.',
+              ]
+        ),
+        recoveryGuidance: Object.freeze(webCtx.safeNextSteps),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_AUTHENTICATION_BOUNDARY_POLICY',
+          reasonCode: 'POLICY_WARN_PHISHING_INDICATOR',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.HIGH,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+        websiteContext: webCtx,
+      };
+    }
+
+    case 'POLICY_WARN_SUSPICIOUS_URL':
+    case 'RULE_SUSPICIOUS_URL':
+    case 'POLICY_SUSPICIOUS_URL': {
+      const webCtx = extractWebsiteSecurityContext(action, risk, decision);
+      return {
+        decision: ResponseAction.WARN,
+        nature: 'OPERATIONAL_PRECAUTION',
+        categoryBadge: 'Suspicious Address Advisory',
+        headline: 'Unusual Web Address Detected',
+        userSummary:
+          'This link or website uses an unusual web address structure (such as a numerical IP address, multiple subdomains, or lookalike characters). Please review the destination before proceeding.',
+        whyFlagged: Object.freeze(
+          webCtx.detectedCharacteristics.length > 0
+            ? webCtx.detectedCharacteristics
+            : [
+                'Web address displays unusual hostname patterns or domain anomalies.',
+                'This advisory is an automated local safety check, not a verified blacklist feed.',
+              ]
+        ),
+        recoveryGuidance: Object.freeze(webCtx.safeNextSteps),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_EXTERNAL_NAVIGATION_POLICY',
+          reasonCode: 'POLICY_WARN_SUSPICIOUS_URL',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.MEDIUM,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+        websiteContext: webCtx,
       };
     }
 
