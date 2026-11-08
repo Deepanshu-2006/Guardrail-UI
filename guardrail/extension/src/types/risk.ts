@@ -63,6 +63,9 @@ export enum RiskSignalId {
 
   /** Action targets a suspicious URL, lookalike domain, IP host, or deceptive address */
   SUSPICIOUS_URL = 'SUSPICIOUS_URL',
+
+  /** Action occurs on a page or targets a form with deceptive branding, identity inconsistencies, or suspicious credential harvesting */
+  PHISHING_INDICATOR = 'PHISHING_INDICATOR',
 }
 
 /**
@@ -74,7 +77,8 @@ export type RiskSignalIdString =
   | 'AUTHENTICATION_ACTION'
   | 'DOWNLOAD_ACTION'
   | 'EXTERNAL_NAVIGATION'
-  | 'SUSPICIOUS_URL';
+  | 'SUSPICIOUS_URL'
+  | 'PHISHING_INDICATOR';
 
 /**
  * Declarative definition and configuration for a risk signal.

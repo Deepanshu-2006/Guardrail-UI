@@ -222,7 +222,10 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
     if (action.category === ActionCategory.EXTERNAL_NAVIGATION) return true;
     if (
       assessment?.matchedRules?.some(
-        (r) => r.ruleId === 'RISK_RULE_EXTERNAL_NAVIGATION' || r.ruleId === 'RISK_RULE_SUSPICIOUS_URL'
+        (r) =>
+          r.ruleId === 'RISK_RULE_EXTERNAL_NAVIGATION' ||
+          r.ruleId === 'RISK_RULE_SUSPICIOUS_URL' ||
+          r.ruleId === 'RISK_RULE_PHISHING_INDICATOR'
       )
     ) {
       return true;
@@ -253,16 +256,25 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
       return { matched: false };
     }
 
+    const phishingRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR');
     const suspiciousRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_SUSPICIOUS_URL');
-    const explanation = suspiciousRule?.reason
-      ? `Suspicious URL advisory: ${suspiciousRule.reason}`
-      : EXTERNAL_NAVIGATION_POLICY.userExplanation;
+
+    let reasonCode = 'POLICY_WARN_EXTERNAL_NAVIGATION';
+    let explanation = EXTERNAL_NAVIGATION_POLICY.userExplanation;
+
+    if (phishingRule) {
+      reasonCode = 'POLICY_WARN_PHISHING_INDICATOR';
+      explanation = `Deceptive website advisory: ${phishingRule.reason}`;
+    } else if (suspiciousRule) {
+      reasonCode = 'POLICY_WARN_SUSPICIOUS_URL';
+      explanation = `Suspicious URL advisory: ${suspiciousRule.reason}`;
+    }
 
     return {
       matched: true,
       decision: ResponseAction.WARN,
       ruleId: 'RULE_EXTERNAL_NAVIGATION_POLICY',
-      reasonCode: suspiciousRule ? 'POLICY_WARN_SUSPICIOUS_URL' : 'POLICY_WARN_EXTERNAL_NAVIGATION',
+      reasonCode,
       explanation,
       downstreamBehavior: EXTERNAL_NAVIGATION_POLICY.downstreamBehavior,
     };
@@ -281,7 +293,7 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
     'Identifies interactions targeting login portals, password fields, and session boundaries. Operates strictly on structural DOM metadata without accessing input text or credentials.',
   supportedActionTypes: [ActionType.CLICK, ActionType.INPUT, ActionType.SUBMIT],
   evidenceRequirement:
-    'Target element is an INPUT with type="password", or target element / form contains explicit authentication keywords ("login", "signin", "authenticate", "password", "2fa"), or category AUTHENTICATION.',
+    'Target element is an INPUT with type="password", or target element / form contains explicit authentication keywords ("login", "signin", "authenticate", "password", "2fa"), or category AUTHENTICATION, or matched phishing indicator.',
   decision: ResponseAction.WARN,
   userExplanation:
     'User advisory recommended: Action interacts with authentication, credential, or session boundaries.',
@@ -306,7 +318,13 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
     }
 
     if (action.category === ActionCategory.AUTHENTICATION) return true;
-    if (assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_AUTHENTICATION')) return true;
+    if (
+      assessment?.matchedRules?.some(
+        (r) => r.ruleId === 'RISK_RULE_AUTHENTICATION' || r.ruleId === 'RISK_RULE_PHISHING_INDICATOR'
+      )
+    ) {
+      return true;
+    }
 
     const tokens = extractTokens(action);
     return hasAnyToken(tokens, ['login', 'log in', 'sign in', 'signin', 'authenticate', 'password', '2fa']);
@@ -315,12 +333,18 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
     if (!AUTHENTICATION_BOUNDARY_POLICY.appliesTo(action, assessment)) {
       return { matched: false };
     }
+
+    const phishingRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR');
+    const explanation = phishingRule?.reason
+      ? `Deceptive website advisory: ${phishingRule.reason}`
+      : AUTHENTICATION_BOUNDARY_POLICY.userExplanation;
+
     return {
       matched: true,
       decision: ResponseAction.WARN,
       ruleId: 'RULE_AUTHENTICATION_BOUNDARY_POLICY',
-      reasonCode: 'POLICY_WARN_AUTHENTICATION',
-      explanation: AUTHENTICATION_BOUNDARY_POLICY.userExplanation,
+      reasonCode: phishingRule ? 'POLICY_WARN_PHISHING_INDICATOR' : 'POLICY_WARN_AUTHENTICATION',
+      explanation,
       downstreamBehavior: AUTHENTICATION_BOUNDARY_POLICY.downstreamBehavior,
     };
   },

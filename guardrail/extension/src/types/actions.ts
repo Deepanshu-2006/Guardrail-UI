@@ -83,6 +83,18 @@ export interface ActionElementInfo {
 
   /** Destination URL or link target if element is an anchor or actionable link */
   targetUrl?: string;
+
+  /** Form submission destination URL if element is a form or form submission trigger */
+  formAction?: string;
+
+  /** HTTP method of the enclosing form (e.g. 'POST', 'GET') */
+  formMethod?: string;
+
+  /** Structural indicator: true if the enclosing form or element contains a password input control (strictly without value) */
+  hasPasswordField?: boolean;
+
+  /** Structural indicator: true if the enclosing form or element contains username/email/account input controls */
+  hasUsernameField?: boolean;
 }
 
 /**
@@ -97,6 +109,15 @@ export interface ActionPageInfo {
 
   /** Referrer or previous URL before navigation occurred (if safely available) */
   previousUrl?: string;
+
+  /** Indicates whether the webpage execution environment is a secure context (HTTPS / local loopback) */
+  isSecureContext?: boolean;
+
+  /** Safely extracted icon URL from link[rel~="icon"] metadata if present */
+  faviconUrl?: string;
+
+  /** Safely extracted website branding title from meta[property="og:site_name"] or meta[name="application-name"] */
+  metaBranding?: string;
 }
 
 /**

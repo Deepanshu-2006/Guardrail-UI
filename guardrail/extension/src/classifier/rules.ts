@@ -104,6 +104,11 @@ export const PaymentRule: ClassificationRule = {
   category: ActionCategory.PAYMENT,
   description: 'Matches keywords related to payments, billing, checkout, and money transfers',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    // Actions with credential entry controls (password fields) are strictly AUTHENTICATION
+    if (action.element?.hasPasswordField) {
+      return { matched: false };
+    }
+
     const tokens = extractSearchableTokens(action);
     const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...PAYMENT_KEYWORDS]);
     if (matched) {
@@ -131,8 +136,15 @@ export const AUTH_KEYWORDS: readonly string[] = [
 export const AuthenticationRule: ClassificationRule = {
   id: 'RULE_AUTH_KEYWORDS',
   category: ActionCategory.AUTHENTICATION,
-  description: 'Matches keywords related to user sign-in, login, and identity verification',
+  description: 'Matches keywords or structural inputs related to user sign-in, login, and identity verification',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    if (action.element?.hasPasswordField) {
+      return {
+        matched: true,
+        reason: 'Action interacts with credential authentication control (password input field present)',
+      };
+    }
+
     const tokens = extractSearchableTokens(action);
     const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...AUTH_KEYWORDS]);
     if (matched) {

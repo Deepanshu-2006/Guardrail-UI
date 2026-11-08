@@ -16,6 +16,7 @@ import { ActionClassificationResult } from '../types/classification.js';
 import { RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
 import { getRiskSignalDefinition, INITIAL_RISK_SIGNALS, RiskSignalOverrides } from './signals.js';
 import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
+import { evaluatePhishingIndicators } from '../utils/phishing-detector.js';
 
 /**
  * Context provided to a risk rule for evaluation.
@@ -175,6 +176,52 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
           scoreContribution: config.scoreContribution,
           reason: config.reason,
         };
+      }
+
+      return { matched: false };
+    },
+  },
+
+  /**
+   * Rule: Phishing & Deceptive Website Indicators
+   * Score contribution: +35
+   * Priority: 85
+   */
+  {
+    id: 'RISK_RULE_PHISHING_INDICATOR',
+    signalId: RiskSignalId.PHISHING_INDICATOR,
+    priority: 85,
+    description: 'Triggers PHISHING_INDICATOR signal when action occurs on a page with identity inconsistencies, insecure login contexts, or cross-origin form exfiltration.',
+    evaluate: (context, signalConfig) => {
+      const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.PHISHING_INDICATOR];
+      const pageUrl = context.action.page?.url;
+
+      if (pageUrl) {
+        const phishingResult = evaluatePhishingIndicators({
+          pageUrl,
+          pageTitle: context.action.page?.title,
+          pageMetaBranding: context.action.page?.metaBranding,
+          faviconUrl: context.action.page?.faviconUrl,
+          formAction: context.action.element?.formAction,
+          formMethod: context.action.element?.formMethod,
+          hasPasswordField: context.action.element?.hasPasswordField,
+          hasUsernameField: context.action.element?.hasUsernameField,
+          targetUrl: context.action.element?.targetUrl,
+          isSecureContext: context.action.page?.isSecureContext,
+        });
+
+        if (phishingResult.isPhishingSuspected) {
+          const detailReason = phishingResult.reasons.length > 0
+            ? phishingResult.reasons.join('; ')
+            : config.reason;
+          return {
+            matched: true,
+            ruleId: 'RISK_RULE_PHISHING_INDICATOR',
+            signalId: RiskSignalId.PHISHING_INDICATOR,
+            scoreContribution: config.scoreContribution,
+            reason: detailReason,
+          };
+        }
       }
 
       return { matched: false };

@@ -274,6 +274,11 @@ export const DEFAULT_SIGNAL_SETTINGS: Readonly<Record<RiskSignalId, Configurable
     enabled: true,
     scoreContribution: 25,
   }),
+  [RiskSignalId.PHISHING_INDICATOR]: Object.freeze({
+    id: RiskSignalId.PHISHING_INDICATOR,
+    enabled: true,
+    scoreContribution: 35,
+  }),
 });
 
 /**

@@ -46,6 +46,7 @@ import {
 export function determineSignalSeverity(signalId: RiskSignalId): RiskLevel {
   switch (signalId) {
     case RiskSignalId.DESTRUCTIVE_ACTION:
+    case RiskSignalId.PHISHING_INDICATOR:
       return RiskLevel.HIGH;
     case RiskSignalId.PAYMENT_ACTION:
     case RiskSignalId.SUSPICIOUS_URL:

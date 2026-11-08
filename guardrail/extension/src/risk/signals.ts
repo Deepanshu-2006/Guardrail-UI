@@ -76,6 +76,14 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
     reason: 'Action navigates to or targets a URL with deceptive domain patterns, raw IP address, homoglyphs, or suspicious characteristics.',
     description: 'Triggered when an action targets a URL displaying IP hostnames, homoglyphs, embedded credentials, or deceptive subdomain patterns.',
   },
+
+  [RiskSignalId.PHISHING_INDICATOR]: {
+    id: RiskSignalId.PHISHING_INDICATOR,
+    name: 'Phishing & Deceptive Website Indicator',
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.PHISHING_INDICATOR].scoreContribution,
+    reason: 'Action occurs on a page or targets a form with deceptive branding, identity inconsistencies, or suspicious credential harvesting.',
+    description: 'Triggered when multi-indicator heuristics detect brand identity mismatches, insecure login contexts, or cross-origin form exfiltration.',
+  },
 });
 
 /**

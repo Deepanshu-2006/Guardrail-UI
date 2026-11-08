@@ -280,6 +280,75 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
     }
   }
 
+  // Safe extraction of structural form and submission metadata (strictly value-free)
+  try {
+    let enclosingForm: HTMLFormElement | null = null;
+    if (element instanceof HTMLFormElement) {
+      enclosingForm = element;
+    } else if (typeof element.closest === 'function') {
+      enclosingForm = element.closest('form');
+    }
+
+    if (!enclosingForm && 'form' in element && (element as HTMLButtonElement | HTMLInputElement).form instanceof HTMLFormElement) {
+      enclosingForm = (element as HTMLButtonElement | HTMLInputElement).form;
+    }
+
+    if (enclosingForm) {
+      // Resolve form action target safely
+      let rawAction = '';
+      if (typeof element.getAttribute === 'function' && element.hasAttribute('formaction')) {
+        rawAction = element.getAttribute('formaction') || '';
+      } else if (enclosingForm.action) {
+        rawAction = enclosingForm.action;
+      } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.hasAttribute('action')) {
+        rawAction = enclosingForm.getAttribute('action') || '';
+      }
+
+      if (rawAction && rawAction.trim().length > 0) {
+        try {
+          const base = typeof window !== 'undefined' && window.location ? window.location.href : 'http://localhost';
+          elementInfo.formAction = new URL(rawAction, base).href;
+        } catch {
+          elementInfo.formAction = rawAction;
+        }
+
+        if (!elementInfo.targetUrl) {
+          elementInfo.targetUrl = elementInfo.formAction;
+        }
+      }
+
+      // Safe extraction of HTTP submission method
+      let rawMethod = '';
+      if (typeof element.getAttribute === 'function' && element.hasAttribute('formmethod')) {
+        rawMethod = element.getAttribute('formmethod') || '';
+      } else if (enclosingForm.method) {
+        rawMethod = enclosingForm.method;
+      }
+      elementInfo.formMethod = rawMethod ? rawMethod.toUpperCase() : 'GET';
+
+      // Safe structural detection of password field presence in form (strictly boolean, zero value extraction)
+      if (typeof enclosingForm.querySelector === 'function') {
+        const pwdInput = enclosingForm.querySelector('input[type="password"]');
+        elementInfo.hasPasswordField = Boolean(pwdInput);
+
+        const usernameInput = enclosingForm.querySelector(
+          'input[type="text"], input[type="email"], input[autocomplete*="username"], input[name*="user"], input[name*="login"], input[name*="email"]'
+        );
+        elementInfo.hasUsernameField = Boolean(usernameInput);
+      }
+    } else if (element instanceof HTMLInputElement) {
+      if (element.type?.toLowerCase() === 'password') {
+        elementInfo.hasPasswordField = true;
+      }
+      const name = (element.name || element.id || '').toLowerCase();
+      if (['text', 'email'].includes(element.type?.toLowerCase() || '') && (name.includes('user') || name.includes('login') || name.includes('email'))) {
+        elementInfo.hasUsernameField = true;
+      }
+    }
+  } catch {
+    // Non-critical: Ignore structural form extraction failures gracefully
+  }
+
   return elementInfo;
 }
 
@@ -303,6 +372,29 @@ export function extractPageInfo(previousUrl?: string): ActionPageInfo {
 
   if (resolvedPrevious && resolvedPrevious !== url) {
     pageInfo.previousUrl = resolvedPrevious;
+  }
+
+  if (typeof window !== 'undefined') {
+    pageInfo.isSecureContext = typeof window.isSecureContext === 'boolean'
+      ? window.isSecureContext
+      : (window.location?.protocol === 'https:' || window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1');
+  }
+
+  if (typeof document !== 'undefined') {
+    try {
+      const iconEl = document.querySelector('link[rel~="icon"]') as HTMLLinkElement | null;
+      if (iconEl && iconEl.href) {
+        pageInfo.faviconUrl = iconEl.href;
+      }
+
+      const metaBrandingEl = document.querySelector('meta[property="og:site_name"]') || document.querySelector('meta[name="application-name"]');
+      const brandingContent = metaBrandingEl?.getAttribute('content')?.trim();
+      if (brandingContent) {
+        pageInfo.metaBranding = brandingContent;
+      }
+    } catch {
+      // Safe fallback
+    }
   }
 
   return pageInfo;
