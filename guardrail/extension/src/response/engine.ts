@@ -405,10 +405,10 @@ export function evaluateActionPipeline(
     const warnPolicy = policyResults.find((p) => p.decision === ResponseAction.WARN);
     const allowPolicy = policyResults.find((p) => p.decision === ResponseAction.ALLOW);
 
-    if (protectPolicy && decision.response !== ResponseAction.PROTECT) {
+    if (protectPolicy) {
       const reasons = [
         protectPolicy.explanation || 'Protective policy requirement satisfied.',
-        ...decision.reasons,
+        ...decision.reasons.filter((r) => r !== protectPolicy.explanation),
       ];
       const structuredReasons = [
         {
@@ -417,7 +417,7 @@ export function evaluateActionPipeline(
           ruleId: protectPolicy.ruleId,
           severity: RiskLevel.CRITICAL,
         },
-        ...(decision.structuredReasons || []),
+        ...(decision.structuredReasons || []).filter((sr) => sr.code !== protectPolicy.reasonCode),
       ];
       decision = {
         ...decision,

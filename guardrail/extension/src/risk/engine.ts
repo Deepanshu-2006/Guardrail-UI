@@ -245,6 +245,7 @@ export class RiskEngine {
       RiskSignalId,
       { scoreContribution: number; reason: string; ruleId: string }
     >();
+    const indicatorStructuredReasons: EvaluationReason[] = [];
 
     // 2. Evaluate applicable risk rules safely in deterministic priority order
     const orderedRules = [...this.rules].sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
@@ -274,6 +275,11 @@ export class RiskEngine {
           reason,
           description: rule.description,
         });
+
+        // Collect granular indicator-level structured reasons if provided by the rule
+        if (result.structuredReasons && Array.isArray(result.structuredReasons)) {
+          indicatorStructuredReasons.push(...result.structuredReasons);
+        }
 
         // Deduplicate signals: if multiple rules flag the same signal, retain the highest contribution
         const existing = triggeredSignals.get(result.signalId);
@@ -305,6 +311,15 @@ export class RiskEngine {
         severity: determineSignalSeverity(sigId),
         scoreContribution: signal.scoreContribution,
       });
+    }
+
+    // Append granular indicator-level structured reasons (deduplicating by code)
+    const seenCodes = new Set(structuredReasons.map((sr) => sr.code));
+    for (const indReason of indicatorStructuredReasons) {
+      if (!seenCodes.has(indReason.code)) {
+        seenCodes.add(indReason.code);
+        structuredReasons.push(indReason);
+      }
     }
 
     // 4. Clamp total score strictly to [0, 100]

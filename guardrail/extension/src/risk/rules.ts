@@ -13,7 +13,7 @@
 
 import { ActionCategory, GuardrailAction } from '../types/actions.js';
 import { ActionClassificationResult } from '../types/classification.js';
-import { RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
+import { EvaluationReason, RiskLevel, RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
 import { getRiskSignalDefinition, INITIAL_RISK_SIGNALS, RiskSignalOverrides } from './signals.js';
 import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 import { evaluatePhishingIndicators } from '../utils/phishing-detector.js';
@@ -47,6 +47,12 @@ export interface RiskRuleResult {
 
   /** Human-readable explanation of why the risk signal was triggered */
   reason?: string;
+
+  /** Discrete human-readable reasons if multiple indicators matched */
+  reasons?: readonly string[];
+
+  /** Structured indicator reasons providing fine-grained machine-readable codes */
+  structuredReasons?: readonly EvaluationReason[];
 }
 
 /**
@@ -197,30 +203,49 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       const pageUrl = context.action.page?.url;
 
       if (pageUrl) {
-        const phishingResult = evaluatePhishingIndicators({
-          pageUrl,
-          pageTitle: context.action.page?.title,
-          pageMetaBranding: context.action.page?.metaBranding,
-          faviconUrl: context.action.page?.faviconUrl,
-          formAction: context.action.element?.formAction,
-          formMethod: context.action.element?.formMethod,
-          hasPasswordField: context.action.element?.hasPasswordField,
-          hasUsernameField: context.action.element?.hasUsernameField,
-          targetUrl: context.action.element?.targetUrl,
-          isSecureContext: context.action.page?.isSecureContext,
-        });
+        try {
+          const phishingResult = evaluatePhishingIndicators({
+            pageUrl,
+            pageTitle: context.action.page?.title,
+            pageMetaBranding: context.action.page?.metaBranding,
+            faviconUrl: context.action.page?.faviconUrl,
+            formAction: context.action.element?.formAction,
+            formMethod: context.action.element?.formMethod,
+            hasPasswordField: context.action.element?.hasPasswordField,
+            hasUsernameField: context.action.element?.hasUsernameField,
+            targetUrl: context.action.element?.targetUrl,
+            isSecureContext: context.action.page?.isSecureContext,
+          });
 
-        if (phishingResult.isPhishingSuspected) {
-          const detailReason = phishingResult.reasons.length > 0
-            ? phishingResult.reasons.join('; ')
-            : config.reason;
-          return {
-            matched: true,
-            ruleId: 'RISK_RULE_PHISHING_INDICATOR',
-            signalId: RiskSignalId.PHISHING_INDICATOR,
-            scoreContribution: config.scoreContribution,
-            reason: detailReason,
-          };
+          if (phishingResult.isPhishingSuspected) {
+            const detailReason = phishingResult.reasons.length > 0
+              ? phishingResult.reasons.join('; ')
+              : config.reason;
+
+            const structuredReasons: EvaluationReason[] = (phishingResult.structuredReasons || []).map((ind) => ({
+              code: `INDICATOR_${ind.code}`,
+              message: ind.reason,
+              ruleId: 'RISK_RULE_PHISHING_INDICATOR',
+              signalId: RiskSignalId.PHISHING_INDICATOR,
+              severity: ind.scoreContribution >= 50 ? RiskLevel.HIGH : ind.scoreContribution >= 25 ? RiskLevel.MEDIUM : RiskLevel.LOW,
+              scoreContribution: ind.scoreContribution,
+            }));
+
+            // Scale score dynamically based on compound indicators when enabled, respecting disabled overrides (0)
+            const scoreContribution = config.scoreContribution;
+
+            return {
+              matched: true,
+              ruleId: 'RISK_RULE_PHISHING_INDICATOR',
+              signalId: RiskSignalId.PHISHING_INDICATOR,
+              scoreContribution,
+              reason: detailReason,
+              reasons: phishingResult.reasons,
+              structuredReasons,
+            };
+          }
+        } catch {
+          return { matched: false };
         }
       }
 
@@ -320,18 +345,37 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       const targetCandidate = context.action.element?.targetUrl || context.action.page?.url;
 
       if (targetCandidate) {
-        const evalResult = evaluateSuspiciousUrl(targetCandidate);
-        if (evalResult.isSuspicious) {
-          const detailReason = evalResult.reasons.length > 0
-            ? evalResult.reasons.join('; ')
-            : config.reason;
-          return {
-            matched: true,
-            ruleId: 'RISK_RULE_SUSPICIOUS_URL',
-            signalId: RiskSignalId.SUSPICIOUS_URL,
-            scoreContribution: config.scoreContribution,
-            reason: detailReason,
-          };
+        try {
+          const evalResult = evaluateSuspiciousUrl(targetCandidate);
+          if (evalResult.isSuspicious) {
+            const detailReason = evalResult.reasons.length > 0
+              ? evalResult.reasons.join('; ')
+              : config.reason;
+
+            const structuredReasons: EvaluationReason[] = (evalResult.structuredReasons || []).map((ind) => ({
+              code: `INDICATOR_${ind.code}`,
+              message: ind.reason,
+              ruleId: 'RISK_RULE_SUSPICIOUS_URL',
+              signalId: RiskSignalId.SUSPICIOUS_URL,
+              severity: ind.scoreContribution >= 40 ? RiskLevel.HIGH : ind.scoreContribution >= 20 ? RiskLevel.MEDIUM : RiskLevel.LOW,
+              scoreContribution: ind.scoreContribution,
+            }));
+
+            // Scale score dynamically based on corroborating indicators when enabled, respecting disabled overrides (0)
+            const scoreContribution = config.scoreContribution;
+
+            return {
+              matched: true,
+              ruleId: 'RISK_RULE_SUSPICIOUS_URL',
+              signalId: RiskSignalId.SUSPICIOUS_URL,
+              scoreContribution,
+              reason: detailReason,
+              reasons: evalResult.reasons,
+              structuredReasons,
+            };
+          }
+        } catch {
+          return { matched: false };
         }
       }
 
