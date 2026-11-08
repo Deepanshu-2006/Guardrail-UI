@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="application-name" content="Apex Cloud Services">
+  <meta property="og:site_name" content="Apex Cloud Services">
+  <title>Apex Cloud Services - Customer Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4);">
+          Scenario 1: Normal Legitimate Website
+        </div>
+        <h1 id="page-title">Apex Cloud Services</h1>
+        <p class="description">
+          Synthetic verified legitimate customer portal with authentic brand metadata and same-origin form handling.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <h2 class="section-title">Legitimate Authentication &amp; Profile</h2>
+
+        <div id="status-display" style="padding: 12px; margin-bottom: 16px; border-radius: 8px; background: rgba(148, 163, 184, 0.1); border: 1px solid #475569; font-size: 13px;">
+          Status: Ready (Awaiting action)
+        </div>
+
+        <form id="legitimate-form" action="/api/account/update" method="POST" style="margin-bottom: 20px;">
+          <div class="field-group" style="margin-bottom: 12px;">
+            <label for="legit-email" class="field-label">Email Address</label>
+            <input type="email" id="legit-email" name="user_email" class="input-control" placeholder="user@apexservices.internal" value="alice@apexservices.internal">
+          </div>
+          <div class="field-group" style="margin-bottom: 16px;">
+            <label for="legit-password" class="field-label">Account Password</label>
+            <input type="password" id="legit-password" name="password" class="input-control" placeholder="Enter secure password" value="synthetic_user_pass_123">
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="legit-submit-btn" type="submit" class="btn btn-primary">
+              Update Profile (Legitimate Form Submit)
+            </button>
+            <button id="legit-test-btn" type="button" class="btn btn-secondary" data-guardrail-test-action="test-allow">
+              Verified Action (Controlled ALLOW)
+            </button>
+          </div>
+        </form>
+
+        <div style="margin-top: 16px; font-size: 13px;">
+          <a id="nav-secondary-link" href="page2.html" class="test-link">&rarr; Navigate to Secondary View</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+  <script>
+    (function() {
+      const form = document.getElementById('legitimate-form');
+      const statusDisplay = document.getElementById('status-display');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (window.__TEST_COUNTERS__) {
+            window.__TEST_COUNTERS__.formSubmissions++;
+          }
+          if (statusDisplay) {
+            statusDisplay.textContent = 'Form submitted safely on legitimate portal: /api/account/update';
+            statusDisplay.style.background = 'rgba(16, 185, 129, 0.2)';
+            statusDisplay.style.color = '#34d399';
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

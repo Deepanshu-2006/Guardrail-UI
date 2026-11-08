@@ -255,16 +255,15 @@ export async function launchControlledChrome(
         const start = Date.now();
         while (Date.now() - start < 5000) {
           if (loadFired) break;
-          try {
-            const ready = await evaluate<string>('document.readyState');
-            if (ready === 'complete') break;
-          } catch {}
           await new Promise((r) => setTimeout(r, 100));
         }
 
         ws.removeEventListener('message', loadListener);
         // Brief settle time for DOM scripts to complete execution
         await new Promise((r) => setTimeout(r, 300));
+        try {
+          await evaluate<string>('document.readyState');
+        } catch {}
       },
       evaluate,
       click: async (selector: string) => {

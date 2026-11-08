@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail Test - Failure Handling &amp; Privacy Verification</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card" style="border-color: rgba(168, 85, 247, 0.4);">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border-color: rgba(168, 85, 247, 0.4);">
+          Scenarios 2, 9 &amp; 10: Malformed URLs, Failure Resilience &amp; Privacy
+        </div>
+        <h1 id="page-title">Failure Resilience &amp; Privacy Verification</h1>
+        <p class="description">
+          Synthetic test targets for malformed URLs, detection error fail-closed guarantees, zero sensitive value collection, and service worker disconnection handling.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <h2 class="section-title">Malformed URLs &amp; Edge Cases</h2>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <!-- 1. Malformed URL Target -->
+          <a 
+            id="link-malformed-scheme" 
+            href="http://" 
+            class="test-link" 
+            data-guardrail-test-action="test-malformed-scheme"
+          >
+            &rarr; Link with Malformed Scheme: <code>http://</code>
+          </a>
+
+          <a 
+            id="link-malformed-brackets" 
+            href="https://[invalid-ipv6/path" 
+            class="test-link" 
+            data-guardrail-test-action="test-malformed-brackets"
+          >
+            &rarr; Link with Malformed IPv6 Brackets: <code>https://[invalid-ipv6/path</code>
+          </a>
+
+          <a 
+            id="link-pseudo-protocol" 
+            href="javascript:void(0)" 
+            class="test-link" 
+            data-guardrail-test-action="test-pseudo-protocol"
+          >
+            &rarr; Pseudo-Protocol Link: <code>javascript:void(0)</code>
+          </a>
+        </div>
+
+        <h2 class="section-title">Sensitive Sentinel Form (Privacy Leak Audit)</h2>
+        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+          Inputs populated with synthetic test sentinels. Guardrail must NEVER capture typed values in the action model or diagnostic wire messages.
+        </p>
+        <form id="privacy-audit-form" action="/api/test-privacy" method="POST" data-guardrail-test-action="test-privacy-audit">
+          <div class="field-group" style="margin-bottom: 10px;">
+            <label for="priv-password" class="field-label">Password</label>
+            <input type="password" id="priv-password" name="password" class="input-control" value="syn_pwd_SuperSecretPassword!#99">
+          </div>
+          <div class="field-group" style="margin-bottom: 10px;">
+            <label for="priv-card" class="field-label">Credit Card Number</label>
+            <input type="text" id="priv-card" name="card_number" class="input-control" value="syn_card_4532015099881122">
+          </div>
+          <div class="field-group" style="margin-bottom: 12px;">
+            <label for="priv-otp" class="field-label">One-Time Passcode (OTP)</label>
+            <input type="text" id="priv-otp" name="otp" class="input-control" value="syn_otp_847291">
+          </div>
+          <button id="btn-submit-privacy-audit" type="submit" class="btn btn-primary" style="background: #a855f7; border-color: #9333ea;">
+            Trigger Controlled Action (Audit Sensitive Sentinels)
+          </button>
+        </form>
+
+        <h2 class="section-title">Detection Failure &amp; Error Handling Simulation</h2>
+        <div style="padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px; margin-bottom: 20px;">
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+            Simulate an unhandled detection failure or risk engine error. Verifies that failures are handled safely and never falsely report successful protection.
+          </p>
+          <div id="failure-status-badge" style="padding: 10px; margin-bottom: 10px; border-radius: 6px; background: rgba(148, 163, 184, 0.1); border: 1px solid #475569; font-size: 13px;">
+            Status: Engine Nominal (Ready for failure injection)
+          </div>
+          <button id="btn-trigger-broken-eval" type="button" class="btn btn-secondary">
+            Simulate Detection Failure / Engine Timeout
+          </button>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 13px;">
+          <a href="index.html" class="test-link">&larr; Back to Main Test Page</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+  <script>
+    (function() {
+      // 1. Audit any Guardrail dispatched custom events to verify zero sensitive sentinel values leak
+      const SENTINELS = [
+        'syn_pwd_SuperSecretPassword!#99',
+        'syn_card_4532015099881122',
+        'syn_otp_847291',
+        'TopSecretPassword!'
+      ];
+
+      window.__PRIVACY_LEAK_DETECTED__ = false;
+      window.__PRIVACY_AUDIT_LOGS__ = [];
+
+      function checkObjectForSentinels(obj, path = '') {
+        if (!obj || typeof obj !== 'object') return;
+        for (const [k, v] of Object.entries(obj)) {
+          const currentPath = path ? `${path}.${k}` : k;
+          if (typeof v === 'string') {
+            for (const s of SENTINELS) {
+              if (v.includes(s)) {
+                window.__PRIVACY_LEAK_DETECTED__ = true;
+                window.__PRIVACY_AUDIT_LOGS__.push(`LEAK DETECTED at ${currentPath}: ${s}`);
+              }
+            }
+          } else if (typeof v === 'object' && v !== null) {
+            checkObjectForSentinels(v, currentPath);
+          }
+        }
+      }
+
+      const eventsToAudit = [
+        'guardrail:action-allowed',
+        'guardrail:action-warned',
+        'guardrail:action-intercepted',
+        'guardrail:action-continued',
+        'guardrail:action-cancelled'
+      ];
+
+      eventsToAudit.forEach(evtName => {
+        document.addEventListener(evtName, (e) => {
+          if (e.detail) {
+            checkObjectForSentinels(e.detail, evtName);
+          }
+        });
+      });
+
+      // Prevent real submit navigation for privacy audit form
+      const privacyForm = document.getElementById('privacy-audit-form');
+      if (privacyForm) {
+        privacyForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+        });
+      }
+
+      // 2. Detection failure simulation button handler
+      const failureBtn = document.getElementById('btn-trigger-broken-eval');
+      const failureBadge = document.getElementById('failure-status-badge');
+      if (failureBtn) {
+        failureBtn.addEventListener('click', () => {
+          if (failureBadge) {
+            failureBadge.textContent = 'FAIL-OPEN / ERROR STATE: DETECTION TIMED OUT (NO FALSE PROTECTION)';
+            failureBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            failureBadge.style.color = '#f87171';
+            failureBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

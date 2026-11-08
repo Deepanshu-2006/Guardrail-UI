@@ -19,7 +19,7 @@ export type ActionHandler = (action: GuardrailAction) => void;
 export type InterceptHandler = (
   action: GuardrailAction,
   element: HTMLElement,
-  event: MouseEvent
+  event: Event
 ) => void;
 
 export class ActionDetector {
@@ -176,6 +176,38 @@ export class ActionDetector {
     }
 
     if (!formElement) {
+      return;
+    }
+
+    // Controlled Action Interception for explicitly marked forms
+    const controlledTestAction = findControlledTestAction(formElement);
+    if (controlledTestAction) {
+      if (!controlledTestAction.isConnected) {
+        try {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        } catch {
+          // Ignore if detached
+        }
+        return;
+      }
+      const action = createGuardrailAction(ActionType.SUBMIT, controlledTestAction);
+
+      if (this.onIntercept) {
+        try {
+          this.onIntercept(action, controlledTestAction, event);
+        } catch {
+          console.error('[Guardrail Detector] Form action interception handler failed; supported event was suppressed.');
+          try {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          } catch {
+            // Ignore
+          }
+        }
+      } else {
+        this.emitAction(action);
+      }
       return;
     }
 

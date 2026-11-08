@@ -266,11 +266,13 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
   }
 
   // Safe extraction of destination URL for links (without live DOM or form inputs)
-  if (element instanceof HTMLAnchorElement && element.href) {
+  if (typeof HTMLAnchorElement !== 'undefined' && element instanceof HTMLAnchorElement && element.href) {
     elementInfo.targetUrl = element.href;
-  } else if (typeof element.getAttribute === 'function' && element.hasAttribute('href')) {
+  } else if ('href' in element && typeof (element as any).href === 'string' && (element as any).href) {
+    elementInfo.targetUrl = (element as any).href;
+  } else if (typeof element.getAttribute === 'function') {
     const rawAttr = element.getAttribute('href');
-    if (rawAttr && !rawAttr.startsWith('#')) {
+    if (rawAttr && typeof rawAttr === 'string' && !rawAttr.startsWith('#')) {
       try {
         const base = typeof window !== 'undefined' && window.location ? window.location.href : 'http://localhost';
         elementInfo.targetUrl = new URL(rawAttr, base).href;
@@ -282,25 +284,31 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
 
   // Safe extraction of structural form and submission metadata (strictly value-free)
   try {
-    let enclosingForm: HTMLFormElement | null = null;
-    if (element instanceof HTMLFormElement) {
+    let enclosingForm: HTMLFormElement | any | null = null;
+    const isForm = (el: any): boolean => {
+      if (!el) return false;
+      if (typeof HTMLFormElement !== 'undefined' && el instanceof HTMLFormElement) return true;
+      return el.tagName === 'FORM';
+    };
+
+    if (isForm(element)) {
       enclosingForm = element;
     } else if (typeof element.closest === 'function') {
       enclosingForm = element.closest('form');
     }
 
-    if (!enclosingForm && 'form' in element && (element as HTMLButtonElement | HTMLInputElement).form instanceof HTMLFormElement) {
-      enclosingForm = (element as HTMLButtonElement | HTMLInputElement).form;
+    if (!enclosingForm && 'form' in element && isForm((element as any).form)) {
+      enclosingForm = (element as any).form;
     }
 
     if (enclosingForm) {
       // Resolve form action target safely
       let rawAction = '';
-      if (typeof element.getAttribute === 'function' && element.hasAttribute('formaction')) {
+      if (typeof element.getAttribute === 'function' && element.getAttribute('formaction')) {
         rawAction = element.getAttribute('formaction') || '';
       } else if (enclosingForm.action) {
         rawAction = enclosingForm.action;
-      } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.hasAttribute('action')) {
+      } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.getAttribute('action')) {
         rawAction = enclosingForm.getAttribute('action') || '';
       }
 

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail Test - Suspicious Hostnames &amp; Lookalike Domains</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card" style="border-color: rgba(245, 158, 11, 0.4);">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);">
+          Scenarios 3 &amp; 4: Suspicious Hostnames &amp; Lookalike Domains
+        </div>
+        <h1 id="page-title">Suspicious Hostname &amp; Domain Verification</h1>
+        <p class="description">
+          Synthetic test cases for raw public IP addresses, hyphen stuffing, excessive subdomains, and deceptive brand lookalike domains.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <h2 class="section-title">Synthetic Test Targets</h2>
+        
+        <div id="host-test-status" style="padding: 12px; margin-bottom: 16px; border-radius: 8px; background: rgba(148, 163, 184, 0.1); border: 1px solid #475569; font-size: 13px;">
+          Select a test target to evaluate Guardrail suspicious URL detection.
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- 1. Raw Public IPv4 Address Target -->
+          <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+            <div style="font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">1. Raw Public IP Address Target</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Target: <code>http://198.51.100.24:8080/secure-banking</code></div>
+            <a 
+              id="link-ip-hostname" 
+              href="http://198.51.100.24:8080/secure-banking" 
+              class="test-link"
+              data-guardrail-test-action="test-ip-url"
+            >
+              &rarr; Navigate to Raw IP Target (Controlled)
+            </a>
+          </div>
+
+          <!-- 2. Hyphen-Stuffed Hostname with Security Terms -->
+          <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+            <div style="font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">2. Hyphen-Stuffed Hostname</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Target: <code>https://secure-login-account-update-verify.com/portal</code></div>
+            <a 
+              id="link-hyphen-stuffed" 
+              href="https://secure-login-account-update-verify.com/portal" 
+              class="test-link"
+              data-guardrail-test-action="test-hyphen-url"
+            >
+              &rarr; Navigate to Hyphen-Stuffed Target (Controlled)
+            </a>
+          </div>
+
+          <!-- 3. Deceptive Lookalike Domain (Brand Subdomain on Unrelated Root) -->
+          <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+            <div style="font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">3. Lookalike Domain (PayPal on Unrelated Root)</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Target: <code>https://paypal.com.account-update.xyz/signin</code></div>
+            <a 
+              id="link-lookalike-paypal" 
+              href="https://paypal.com.account-update.xyz/signin" 
+              class="test-link"
+              data-guardrail-test-action="test-lookalike-url"
+            >
+              &rarr; Navigate to PayPal Lookalike Target (Controlled)
+            </a>
+          </div>
+
+          <!-- 4. Excessive Subdomains Target -->
+          <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+            <div style="font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">4. Excessive Stacked Subdomains</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Target: <code>https://login.security.update.verify.bank.service.example.net/auth</code></div>
+            <a 
+              id="link-excessive-subdomains" 
+              href="https://login.security.update.verify.bank.service.example.net/auth" 
+              class="test-link"
+              data-guardrail-test-action="test-subdomains-url"
+            >
+              &rarr; Navigate to Stacked Subdomains (Controlled)
+            </a>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 13px;">
+          <a id="nav-home-link" href="index.html" class="test-link">&larr; Back to Main Test Page</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+  <script>
+    (function() {
+      const links = document.querySelectorAll('a[data-guardrail-test-action]');
+      links.forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          const status = document.getElementById('host-test-status');
+          if (status) {
+            status.textContent = 'Controlled synthetic target evaluated: ' + (link.getAttribute('href') || '');
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

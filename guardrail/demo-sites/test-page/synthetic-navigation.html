@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail Test - Navigation Between Test Pages</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card" style="border-color: rgba(14, 165, 233, 0.4);">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border-color: rgba(14, 165, 233, 0.4);">
+          Scenario 8: Navigation Between Test Pages
+        </div>
+        <h1 id="page-title">Page Navigation &amp; Transition Hub</h1>
+        <p class="description">
+          Verifies Guardrail's NAVIGATION action observer, transition state, previousUrl resolution, and cross-page content script re-initialization.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <div id="nav-status-display" style="padding: 12px; margin-bottom: 16px; border-radius: 8px; background: rgba(148, 163, 184, 0.1); border: 1px solid #475569; font-size: 13px;">
+          Navigation status: Active hub loaded.
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <a id="nav-to-legit" href="synthetic-legitimate.html" class="test-link" style="font-size: 14px;">
+            &rarr; Navigate to Legitimate Portal (Clean Context)
+          </a>
+          <a id="nav-to-phish" href="synthetic-phishing-login.html" class="test-link" style="font-size: 14px; color: #f87171;">
+            &rarr; Navigate to Synthetic Phishing Login (Risk Transition)
+          </a>
+          <a id="nav-to-hosts" href="synthetic-suspicious-host.html" class="test-link" style="font-size: 14px; color: #fbbf24;">
+            &rarr; Navigate to Suspicious Hostnames (Domain Indicators)
+          </a>
+          <a id="nav-to-page2" href="page2.html" class="test-link" style="font-size: 14px;">
+            &rarr; Navigate to Secondary View (Page 2)
+          </a>
+        </div>
+
+        <div style="margin-top: 20px; font-size: 13px;">
+          <a href="index.html" class="test-link">&larr; Back to Main Test Page</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

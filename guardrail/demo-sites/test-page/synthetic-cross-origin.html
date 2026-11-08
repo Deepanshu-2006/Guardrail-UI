@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guardrail Test - Cross-Origin Form Behavior</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-container">
+    <div class="card" style="border-color: rgba(99, 102, 241, 0.4);">
+      <header class="card-header">
+        <div class="badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8; border-color: rgba(99, 102, 241, 0.4);">
+          Scenario 7: Cross-Origin Form Behavior &amp; Limitations
+        </div>
+        <h1 id="page-title">Cross-Origin Form Interception &amp; Boundaries</h1>
+        <p class="description">
+          Demonstrates supported capturing-phase suppression for marked controlled test actions vs. architectural sensor limitations on ambient unmarked forms.
+        </p>
+      </header>
+
+      <section class="test-section">
+        <!-- Architectural Truthfulness Notice -->
+        <div style="padding: 12px; margin-bottom: 20px; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; font-size: 13px; color: #fde68a; line-height: 1.5;">
+          <strong>Security Boundary &amp; Platform Constraint Notice:</strong>
+          <br>
+          Browser extensions execute in user-space and <em>cannot universally undo JavaScript handlers or network requests that have already occurred</em>.
+          Guardrail does <strong>not</strong> claim universal interception or guaranteed rollback.
+          Synchronous pre-execution halting is supported on controlled test targets via capturing-phase listeners; ambient unmarked forms emit advisory warnings without false claims of interception.
+        </div>
+
+        <!-- 1. Supported Controlled Cross-Origin Form -->
+        <div style="margin-bottom: 20px; padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+          <h3 style="font-size: 14px; color: #f1f5f9; margin-bottom: 6px;">1. Supported Controlled Cross-Origin Form (Synchronous Suppression)</h3>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+            Target: <code>https://untrusted-partner.external.net/auth</code> (Marked with <code>data-guardrail-test-action="test-cross-origin-protect"</code>).
+          </p>
+          <form id="form-cross-origin-controlled" action="https://untrusted-partner.external.net/auth" method="POST" data-guardrail-test-action="test-cross-origin-protect">
+            <div class="field-group" style="margin-bottom: 10px;">
+              <label for="co-username" class="field-label">Account</label>
+              <input type="text" id="co-username" name="user" class="input-control" value="alice@test.internal">
+            </div>
+            <div class="field-group" style="margin-bottom: 12px;">
+              <label for="co-password" class="field-label">Password</label>
+              <input type="password" id="co-password" name="pwd" class="input-control" value="syn_pwd_SuperSecretPassword!#99">
+            </div>
+            <button id="btn-submit-controlled-co" type="submit" class="btn btn-primary" style="background: #ef4444; border-color: #dc2626;">
+              Submit Cross-Origin Form (Controlled: Synchronous Interception)
+            </button>
+          </form>
+        </div>
+
+        <!-- 2. Ambient Unmarked Cross-Origin Form (Limitation Demonstration) -->
+        <div style="margin-bottom: 20px; padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px;">
+          <h3 style="font-size: 14px; color: #f1f5f9; margin-bottom: 6px;">2. Ambient Unmarked Form (Documented Platform Boundary)</h3>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+            Unmarked form. Guardrail detects cross-origin credentials and emits advisory logs, but does <strong>not</strong> falsely claim the request was cancelled or held.
+          </p>
+          <form id="form-cross-origin-ambient" action="https://untrusted-partner.external.net/auth" method="POST">
+            <div class="field-group" style="margin-bottom: 12px;">
+              <input type="password" id="ambient-co-password" name="pwd" class="input-control" value="syn_pwd_AmbientTest99">
+            </div>
+            <button id="btn-submit-ambient-co" type="submit" class="btn btn-secondary">
+              Submit Ambient Cross-Origin (Documented Limitation Test)
+            </button>
+          </form>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 13px;">
+          <a href="index.html" class="test-link">&larr; Back to Main Test Page</a>
+        </div>
+      </section>
+
+      <div id="event-log" class="event-log">
+        <div class="log-placeholder">Page activity will be logged here...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../extension/dist/content.js"></script>
+  <script src="script.js"></script>
+  <script>
+    (function() {
+      const controlledForm = document.getElementById('form-cross-origin-controlled');
+      if (controlledForm) {
+        controlledForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+        });
+      }
+      const ambientForm = document.getElementById('form-cross-origin-ambient');
+      if (ambientForm) {
+        ambientForm.addEventListener('submit', function(e) {
+          // Prevent real navigation away in test environment, but record ambient execution
+          e.preventDefault();
+          if (window.__TEST_COUNTERS__) {
+            window.__TEST_COUNTERS__.ambientUnmarkedHandlerCalls++;
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
