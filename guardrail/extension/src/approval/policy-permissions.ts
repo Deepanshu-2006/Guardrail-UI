@@ -210,6 +210,11 @@ export type UserPolicyView = WardFullPolicyResponse | TrustedContactPolicyRespon
 // =============================================================================
 
 /**
+ * Classification of policy change origins to distinguish user agency from system defaults.
+ */
+export type PolicyChangeSource = 'USER_CHANGE' | 'SYSTEM_DEFAULT' | 'SYSTEM_RESET';
+
+/**
  * Authoritative record of a user's protection policy stored on the backend.
  */
 export interface UserPolicyRecord {
@@ -219,6 +224,7 @@ export interface UserPolicyRecord {
   readonly updatedAt: string;
   readonly updatedBy: string;
   readonly config: GuardrailPolicyConfig;
+  readonly isSystemDefault?: boolean;
 }
 
 /**
@@ -234,6 +240,9 @@ export interface PolicyAuditRecord {
   /** Authoritative actor who initiated the change */
   readonly updatedBy: string;
 
+  /** Role of the actor responsible for the change */
+  readonly actorRole?: ActorRole | 'USER' | 'TRUSTED_CONTACT' | 'ADMIN' | 'SYSTEM';
+
   /** ISO 8601 UTC timestamp of change */
   readonly timestamp: string;
 
@@ -248,6 +257,15 @@ export interface PolicyAuditRecord {
 
   /** Human-readable change summary */
   readonly changeSummary: string;
+
+  /** Distinguishes user-initiated customizations from system defaults and automated resets */
+  readonly changeSource?: PolicyChangeSource;
+
+  /** True if the resulting configuration represents default system recommendations */
+  readonly isSystemDefault?: boolean;
+
+  /** Clear explanation of the practical security and user interaction impact of the change */
+  readonly impactSummary?: string;
 }
 
 /**
@@ -265,6 +283,12 @@ export interface UpdateUserPolicyInput {
 
   /** Optional non-sensitive reason for the change */
   readonly changeReason?: string;
+
+  /** Optional explicit change source flag */
+  readonly changeSource?: PolicyChangeSource;
+
+  /** Optional system default flag */
+  readonly isSystemDefault?: boolean;
 }
 
 // =============================================================================
@@ -460,11 +484,109 @@ export function computePolicyDiff(
     : 'No structural changes detected';
 
   const fieldPaths = changes.map((c) => c.split(' ')[0]);
+  const impactSummary = explainAllPolicyImpacts(fieldPaths, oldConfig, newConfig);
 
   return Object.freeze({
     changedFields: Object.freeze(fieldPaths),
     summary,
+    impactSummary,
   });
+}
+
+/**
+ * Explains the practical security and interaction impact of a specific policy setting modification.
+ */
+export function explainPolicySettingImpact(
+  fieldPath: string,
+  oldConfig?: GuardrailPolicyConfig,
+  newConfig?: GuardrailPolicyConfig
+): string {
+  if (fieldPath.startsWith('thresholds.lowMax')) {
+    const oldVal = oldConfig?.thresholds.lowMax;
+    const newVal = newConfig?.thresholds.lowMax;
+    if (oldVal !== undefined && newVal !== undefined) {
+      return newVal < oldVal
+        ? `Low-risk threshold lowered (${oldVal} -> ${newVal}): Routine interactions will trigger warnings earlier.`
+        : `Low-risk threshold raised (${oldVal} -> ${newVal}): More routine interactions will proceed without warning prompts.`;
+    }
+    return 'Low-risk boundary adjustment: Influences which routine interactions require initial warning confirmation.';
+  }
+
+  if (fieldPath.startsWith('thresholds.mediumMax')) {
+    const oldVal = oldConfig?.thresholds.mediumMax;
+    const newVal = newConfig?.thresholds.mediumMax;
+    if (oldVal !== undefined && newVal !== undefined) {
+      return `Medium-risk boundary adjusted (${oldVal} -> ${newVal}): Shifts boundary between self-confirmation and trusted-contact review.`;
+    }
+    return 'Medium-risk boundary adjustment: Determines when actions escalate from self-confirmation to trusted-contact approval.';
+  }
+
+  if (fieldPath.startsWith('thresholds.highMax')) {
+    const oldVal = oldConfig?.thresholds.highMax;
+    const newVal = newConfig?.thresholds.highMax;
+    if (oldVal !== undefined && newVal !== undefined) {
+      return `High-risk boundary adjusted (${oldVal} -> ${newVal}): Critical threshold for mandatory protection shifted.`;
+    }
+    return 'High-risk threshold adjustment: Defines critical ceiling where interactions require mandatory approval or protection.';
+  }
+
+  if (fieldPath.includes('CONTROLLED_DESTRUCTIVE')) {
+    return 'Destructive action guard: Irreversible operations (account deletion, data wipe) remain permanently locked to PROTECT.';
+  }
+
+  if (fieldPath.includes('UNSUPPORTED_BOUNDARY_GUARD')) {
+    return 'Boundary integrity guard: Untrusted execution contexts and boundary bypass attempts remain permanently locked to PROTECT.';
+  }
+
+  if (fieldPath.includes('CONTROLLED_PAYMENT')) {
+    const rule = newConfig?.policies.find((p) => p.id === RiskPolicyId.CONTROLLED_PAYMENT);
+    const decision = rule?.decision ?? 'PROTECT';
+    return `Payment checkout protection (${decision}): E-commerce checkout and financial transactions require ${decision === ResponseAction.PROTECT ? 'trusted contact approval before execution' : 'warning review'}.`;
+  }
+
+  if (fieldPath.includes('FORM_SUBMISSION') || fieldPath.includes('AUTHENTICATION_BOUNDARY')) {
+    return 'Sensitive data guard: Monitors form submissions to prevent credential harvesting and unauthorized personal data collection.';
+  }
+
+  if (fieldPath.includes('EXTERNAL_NAVIGATION')) {
+    return 'Navigation boundary protection: Intercepts transitions to unknown external third-party domains.';
+  }
+
+  if (fieldPath.startsWith('trustedDomains')) {
+    const count = newConfig?.trustedDomains.length ?? 0;
+    return `Exempt domains allowlist updated (${count} domains): Specified hostnames bypass inspection prompts for streamlined browsing without logging URLs.`;
+  }
+
+  if (fieldPath.startsWith('timeouts.approvalTtlSeconds')) {
+    const ttl = newConfig?.timeouts.approvalTtlSeconds;
+    return `Review TTL updated (${ttl ? `${ttl}s` : 'custom'}): Pending requests will automatically expire after this duration if unreviewed.`;
+  }
+
+  if (fieldPath.startsWith('timeouts.dashboardPollIntervalMs')) {
+    const ms = newConfig?.timeouts.dashboardPollIntervalMs;
+    return `Dashboard polling cadence updated (${ms ? `${ms}ms` : 'custom'}): Adjusts refresh frequency of review queue.`;
+  }
+
+  return `Configuration setting \"${fieldPath}\" updated: Modifies runtime browser protection policy behavior.`;
+}
+
+/**
+ * Aggregates practical security impact explanations for a list of modified fields.
+ */
+export function explainAllPolicyImpacts(
+  changedFields: readonly string[],
+  oldConfig?: GuardrailPolicyConfig,
+  newConfig?: GuardrailPolicyConfig
+): string {
+  if (!changedFields || changedFields.length === 0) {
+    return 'No policy settings modified; operational protection state remains unchanged.';
+  }
+
+  const explanations = changedFields
+    .map((field) => explainPolicySettingImpact(field, oldConfig, newConfig))
+    .filter(Boolean);
+
+  return explanations.join(' ');
 }
 
 /**

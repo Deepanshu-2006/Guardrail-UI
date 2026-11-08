@@ -137,6 +137,11 @@ export class DashboardShell {
       wardPolicySummary: options.initialWardPolicy ?? null,
       wardPolicyStatus: options.initialWardPolicy ? 'idle' : 'empty',
       wardPolicyError: null,
+      wardPolicyAuditHistory: options.initialPolicyAuditHistory ?? null,
+      wardPolicyAuditStatus: options.initialPolicyAuditHistory ? 'idle' : 'empty',
+      wardPolicyAuditError: null,
+      hasPendingSync: false,
+      pendingSyncChanges: [],
     };
 
     // Pre-seed in-memory detail cache with authoritative initial records
@@ -569,6 +574,11 @@ export class DashboardShell {
       wardPolicySummary: this.state.wardPolicySummary,
       wardPolicyStatus: this.state.wardPolicyStatus,
       wardPolicyError: this.state.wardPolicyError,
+      wardPolicyAuditHistory: this.state.wardPolicyAuditHistory,
+      wardPolicyAuditStatus: this.state.wardPolicyAuditStatus,
+      wardPolicyAuditError: this.state.wardPolicyAuditError,
+      hasPendingSync: this.state.hasPendingSync,
+      pendingSyncChanges: this.state.pendingSyncChanges,
       isSubmittingRelationshipAction: this.state.isSubmittingRelationshipAction,
       relationshipActionMessage: this.state.relationshipActionMessage,
       onCreateInvitation: this.apiClient ? (payload) => this.createInvitation(payload) : undefined,
@@ -1826,6 +1836,31 @@ export class DashboardShell {
           this.state.wardPolicyStatus = 'idle';
           this.state.wardPolicyError = null;
         }
+
+        // Authoritatively fetch policy audit history if supported and caller is authorized
+        if (typeof this.apiClient.getPolicyAuditHistory === 'function') {
+          try {
+            const auditRes = await this.apiClient.getPolicyAuditHistory(wardId);
+            if (auditRes.success) {
+              this.state.wardPolicyAuditHistory = auditRes.data;
+              this.state.wardPolicyAuditStatus = auditRes.data.length === 0 ? 'empty' : 'idle';
+              this.state.wardPolicyAuditError = null;
+            } else {
+              // If contact is forbidden (403), audit history is restricted as expected by ward sovereignty
+              if (auditRes.statusCode === 403) {
+                this.state.wardPolicyAuditHistory = null;
+                this.state.wardPolicyAuditStatus = 'idle';
+                this.state.wardPolicyAuditError = null;
+              } else {
+                this.state.wardPolicyAuditStatus = 'error';
+                this.state.wardPolicyAuditError = auditRes.error?.message ?? 'Failed to retrieve policy audit history.';
+              }
+            }
+          } catch (auditErr: unknown) {
+            this.state.wardPolicyAuditStatus = 'error';
+            this.state.wardPolicyAuditError = auditErr instanceof Error ? auditErr.message : String(auditErr);
+          }
+        }
       } else {
         this.state.wardPolicyStatus = 'error';
         this.state.wardPolicyError = res.error?.message || 'Failed to retrieve ward policy.';
@@ -1838,6 +1873,36 @@ export class DashboardShell {
         this.render();
       }
     }
+  }
+
+  /**
+   * Sets the policy audit history directly in dashboard state.
+   */
+  public setWardPolicyAuditHistory(history: readonly PolicyAuditRecord[] | null): void {
+    this.state.wardPolicyAuditHistory = history;
+    this.state.wardPolicyAuditStatus = !history || history.length === 0 ? 'empty' : 'idle';
+    this.state.wardPolicyAuditError = null;
+    this.render();
+  }
+
+  /**
+   * Updates real-time policy synchronization status (e.g. pending synchronization indicator).
+   */
+  public setPolicySyncState(syncState: {
+    hasPendingSync?: boolean;
+    pendingChanges?: readonly string[];
+    status?: string;
+  }): void {
+    if (syncState.hasPendingSync !== undefined) {
+      this.state.hasPendingSync = syncState.hasPendingSync;
+    }
+    if (syncState.pendingChanges !== undefined) {
+      this.state.pendingChanges = syncState.pendingChanges;
+    }
+    if (syncState.status === 'PENDING_SYNC' || syncState.status === 'pending_sync') {
+      this.state.hasPendingSync = true;
+    }
+    this.render();
   }
 
   /**

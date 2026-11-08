@@ -22,11 +22,15 @@ interface AuditRow {
   readonly id: string;
   readonly user_id: string;
   readonly updated_by: string;
+  readonly actor_role?: string | null;
   readonly timestamp: string;
   readonly previous_version: string;
   readonly new_version: string;
   readonly changed_fields_json: string;
   readonly summary: string;
+  readonly change_source?: string | null;
+  readonly is_system_default?: number | null;
+  readonly impact_summary?: string | null;
 }
 
 function parsePolicyRecord(row: PolicyRow): UserPolicyRecord {
@@ -57,11 +61,15 @@ function parseAuditRecord(row: AuditRow): PolicyAuditRecord {
     id: row.id,
     userId: row.user_id,
     updatedBy: row.updated_by,
+    actorRole: (row.actor_role as any) ?? 'USER',
     timestamp: row.timestamp,
     previousPolicyVersion: row.previous_version,
     newPolicyVersion: row.new_version,
     changedFields: Object.freeze(changedFields),
     changeSummary: row.summary,
+    changeSource: (row.change_source as any) ?? (row.new_version === '1.0.0' ? 'SYSTEM_DEFAULT' : 'USER_CHANGE'),
+    isSystemDefault: Boolean(row.is_system_default),
+    impactSummary: row.impact_summary ?? '',
   });
 }
 
@@ -106,15 +114,35 @@ export class SqlitePolicyRepository implements PolicyRepository {
           id TEXT PRIMARY KEY NOT NULL,
           user_id TEXT NOT NULL,
           updated_by TEXT NOT NULL,
+          actor_role TEXT,
           timestamp TEXT NOT NULL,
           previous_version TEXT NOT NULL,
           new_version TEXT NOT NULL,
           changed_fields_json TEXT NOT NULL CHECK(json_valid(changed_fields_json)),
-          summary TEXT NOT NULL
+          summary TEXT NOT NULL,
+          change_source TEXT,
+          is_system_default INTEGER DEFAULT 0,
+          impact_summary TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_policy_audit_user_time
           ON user_policy_audit_log(user_id, timestamp);
       `);
+
+      // Safe schema migrations for existing databases
+      const auditCols = database.prepare('PRAGMA table_info(user_policy_audit_log)').all() as Array<{ name: string }>;
+      const auditColNames = new Set(auditCols.map((c) => c.name));
+      if (!auditColNames.has('actor_role')) {
+        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN actor_role TEXT;');
+      }
+      if (!auditColNames.has('change_source')) {
+        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN change_source TEXT;');
+      }
+      if (!auditColNames.has('is_system_default')) {
+        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN is_system_default INTEGER DEFAULT 0;');
+      }
+      if (!auditColNames.has('impact_summary')) {
+        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN impact_summary TEXT;');
+      }
 
       if (resolved !== ':memory:') {
         try {
@@ -217,7 +245,7 @@ export class SqlitePolicyRepository implements PolicyRepository {
       .prepare(
         `SELECT * FROM user_policy_audit_log
          WHERE user_id = ?
-         ORDER BY timestamp DESC
+         ORDER BY timestamp DESC, rowid DESC
          LIMIT ?`
       )
       .all(userId, Math.max(1, limit)) as AuditRow[];
@@ -228,18 +256,22 @@ export class SqlitePolicyRepository implements PolicyRepository {
     this.database
       .prepare(
         `INSERT INTO user_policy_audit_log
-         (id, user_id, updated_by, timestamp, previous_version, new_version, changed_fields_json, summary)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (id, user_id, updated_by, actor_role, timestamp, previous_version, new_version, changed_fields_json, summary, change_source, is_system_default, impact_summary)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         audit.id,
         audit.userId,
         audit.updatedBy,
+        audit.actorRole ?? 'USER',
         audit.timestamp,
         audit.previousPolicyVersion,
         audit.newPolicyVersion,
         JSON.stringify(audit.changedFields),
-        audit.changeSummary
+        audit.changeSummary,
+        audit.changeSource ?? 'USER_CHANGE',
+        audit.isSystemDefault ? 1 : 0,
+        audit.impactSummary ?? null
       );
   }
 

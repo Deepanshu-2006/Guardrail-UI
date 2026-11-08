@@ -86,11 +86,14 @@ export class InMemoryPolicyRepository implements PolicyRepository {
     limit: number = 50
   ): Promise<readonly PolicyAuditRecord[]> {
     const logs = this.auditLogs.get(userId) ?? [];
-    // Sort descending by timestamp
-    const sorted = [...logs].sort(
-      (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)
-    );
-    return Object.freeze(sorted.slice(0, Math.max(1, limit)));
+    // Sort descending by timestamp, tie-break by latest insertion first
+    const indexed = logs.map((log, index) => ({ log, index }));
+    indexed.sort((a, b) => {
+      const diff = Date.parse(b.log.timestamp) - Date.parse(a.log.timestamp);
+      if (diff !== 0) return diff;
+      return b.index - a.index;
+    });
+    return Object.freeze(indexed.slice(0, Math.max(1, limit)).map((item) => item.log));
   }
 
   public async recordAudit(audit: PolicyAuditRecord): Promise<void> {

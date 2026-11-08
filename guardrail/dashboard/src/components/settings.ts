@@ -7,6 +7,7 @@
  */
 
 import {
+  PolicyAuditRecord,
   TrustedContact,
   TrustedContactInvitation,
   TrustedContactPolicySummary,
@@ -32,6 +33,11 @@ export interface SettingsProps {
   wardPolicySummary?: TrustedContactPolicySummary | null;
   wardPolicyStatus?: ViewStatus;
   wardPolicyError?: string | null;
+  wardPolicyAuditHistory?: readonly PolicyAuditRecord[] | null;
+  wardPolicyAuditStatus?: ViewStatus;
+  wardPolicyAuditError?: string | null;
+  hasPendingSync?: boolean;
+  pendingSyncChanges?: readonly string[];
   isSubmittingRelationshipAction?: boolean;
   relationshipActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
   onCreateInvitation?: (payload: {
@@ -181,6 +187,9 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     if (props.isBackendUnavailable) {
       pBadge.className = 'gd-settings-badge gd-badge-danger';
       pBadge.textContent = 'Sync Offline';
+    } else if (props.hasPendingSync || props.wardPolicyStatus === ('pending_sync' as any)) {
+      pBadge.className = 'gd-settings-badge gd-badge-warning';
+      pBadge.textContent = 'Pending Sync';
     } else if (props.wardPolicyStatus === 'loading') {
       pBadge.className = 'gd-settings-badge gd-badge-neutral';
       pBadge.textContent = 'Syncing...';
@@ -281,6 +290,35 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     policyCard.appendChild(catList);
 
+    if (props.hasPendingSync) {
+      const pendingBanner = document.createElement('div');
+      pendingBanner.className = 'gd-pending-sync-banner';
+      pendingBanner.id = 'gd-ward-pending-sync-banner';
+      pendingBanner.setAttribute('role', 'status');
+
+      const pStrong = document.createElement('strong');
+      pStrong.textContent = 'Configuration Changes Pending Synchronization:';
+      pendingBanner.appendChild(pStrong);
+
+      if (props.pendingSyncChanges && props.pendingSyncChanges.length > 0) {
+        const ul = document.createElement('ul');
+        ul.className = 'gd-pending-sync-list';
+        for (const ch of props.pendingSyncChanges) {
+          const li = document.createElement('li');
+          li.textContent = ch;
+          ul.appendChild(li);
+        }
+        pendingBanner.appendChild(ul);
+      }
+
+      const pNotice = document.createElement('p');
+      pNotice.className = 'gd-pending-sync-subtext';
+      pNotice.textContent = 'Modifications are staged in local browser storage and awaiting remote backend synchronization.';
+      pendingBanner.appendChild(pNotice);
+
+      policyCard.appendChild(pendingBanner);
+    }
+
     const notice = document.createElement('p');
     notice.className = 'gd-settings-notice';
     notice.textContent =
@@ -288,6 +326,126 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     policyCard.appendChild(notice);
 
     section.appendChild(policyCard);
+
+    // Card 2c: Protection Policy History & Transparency
+    const historyCard = document.createElement('div');
+    historyCard.className = 'gd-card gd-settings-card';
+    historyCard.id = 'gd-card-policy-history';
+
+    const hHeader = document.createElement('div');
+    hHeader.className = 'gd-settings-card-header';
+
+    const hTitle = document.createElement('h2');
+    hTitle.className = 'gd-section-title';
+    hTitle.textContent = 'Protection Policy History & Transparency';
+
+    const hBadge = document.createElement('span');
+    hBadge.className = 'gd-settings-badge gd-badge-neutral';
+    hBadge.textContent = 'Durable Audit Trail';
+    hHeader.appendChild(hTitle);
+    hHeader.appendChild(hBadge);
+    historyCard.appendChild(hHeader);
+
+    const hSub = document.createElement('p');
+    hSub.className = 'gd-section-subtitle';
+    hSub.textContent = 'Non-sensitive audit log of policy modifications, responsible actors, version progression, and practical security impact.';
+    historyCard.appendChild(hSub);
+
+    if (props.wardPolicyAuditStatus === 'loading') {
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'gd-settings-loading';
+      loadingEl.textContent = 'Loading policy change history...';
+      historyCard.appendChild(loadingEl);
+    } else if (props.wardPolicyAuditStatus === 'error') {
+      const errEl = document.createElement('div');
+      errEl.className = 'gd-settings-error-banner';
+      errEl.textContent = props.wardPolicyAuditError || 'Unable to retrieve policy change history.';
+      historyCard.appendChild(errEl);
+    } else if (!props.wardPolicyAuditHistory || props.wardPolicyAuditHistory.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'gd-settings-notice gd-settings-empty';
+      emptyEl.textContent = 'No historical policy modifications recorded yet. The system is operating on initial default safety protections.';
+      historyCard.appendChild(emptyEl);
+    } else {
+      const auditList = document.createElement('div');
+      auditList.className = 'gd-policy-audit-timeline';
+
+      for (const record of props.wardPolicyAuditHistory) {
+        const item = document.createElement('div');
+        item.className = 'gd-policy-audit-item';
+
+        const topRow = document.createElement('div');
+        topRow.className = 'gd-policy-audit-top';
+
+        const versionBadge = document.createElement('span');
+        versionBadge.className = 'gd-policy-version-pill';
+        versionBadge.textContent = record.previousPolicyVersion && record.previousPolicyVersion !== '0.0.0'
+          ? `v${record.previousPolicyVersion} \u2192 v${record.newPolicyVersion}`
+          : `Initial v${record.newPolicyVersion}`;
+        topRow.appendChild(versionBadge);
+
+        const sourceBadge = document.createElement('span');
+        const isSys = record.isSystemDefault || record.changeSource === 'SYSTEM_DEFAULT' || record.changeSource === 'SYSTEM_RESET';
+        sourceBadge.className = `gd-settings-badge ${isSys ? 'gd-badge-neutral' : 'gd-badge-active'}`;
+        sourceBadge.textContent = record.changeSource === 'SYSTEM_RESET'
+          ? 'System Reset'
+          : isSys
+          ? 'System Default'
+          : 'User Customization';
+        topRow.appendChild(sourceBadge);
+
+        const timeSpan = document.createElement('time');
+        timeSpan.className = 'gd-policy-audit-time';
+        timeSpan.dateTime = record.timestamp;
+        timeSpan.title = record.timestamp;
+        timeSpan.textContent = new Date(record.timestamp).toLocaleString();
+        topRow.appendChild(timeSpan);
+
+        item.appendChild(topRow);
+
+        const actorRow = document.createElement('div');
+        actorRow.className = 'gd-policy-audit-actor';
+        const actorStrong = document.createElement('strong');
+        actorStrong.textContent = 'Responsible Actor: ';
+        const actorVal = document.createElement('span');
+        actorVal.className = 'gd-mono';
+        actorVal.textContent = `${record.updatedBy} (${record.actorRole || 'USER'})`;
+        actorRow.appendChild(actorStrong);
+        actorRow.appendChild(actorVal);
+        item.appendChild(actorRow);
+
+        if (record.changeSummary) {
+          const summaryRow = document.createElement('div');
+          summaryRow.className = 'gd-policy-audit-summary';
+          summaryRow.textContent = record.changeSummary;
+          item.appendChild(summaryRow);
+        }
+
+        if (record.impactSummary) {
+          const impactBox = document.createElement('div');
+          impactBox.className = 'gd-policy-impact-box';
+          const impactTitle = document.createElement('strong');
+          impactTitle.textContent = 'Practical Security Impact: ';
+          const impactText = document.createElement('span');
+          impactText.textContent = record.impactSummary;
+          impactBox.appendChild(impactTitle);
+          impactBox.appendChild(impactText);
+          item.appendChild(impactBox);
+        }
+
+        auditList.appendChild(item);
+      }
+
+      historyCard.appendChild(auditList);
+    }
+
+    const auditPrivacyNotice = document.createElement('p');
+    auditPrivacyNotice.className = 'gd-settings-notice';
+    auditPrivacyNotice.textContent =
+      'Privacy-Preserving Audit Guarantee: Audit records contain strictly non-sensitive configuration metadata (timestamps, version progression, actor role, and field names). Passwords, form entries, card numbers, OTPs, and private URLs are never recorded.';
+    historyCard.appendChild(auditPrivacyNotice);
+
+    section.appendChild(historyCard);
   }
 
   // Card 3: Backend Connection & Runtime Environment

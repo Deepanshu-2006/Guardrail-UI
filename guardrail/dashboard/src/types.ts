@@ -32,7 +32,10 @@ import {
   ApiClientErrorCodes,
   SubmitDecisionPayload,
 } from '../../extension/src/approval/client.js';
-import { TrustedContactPolicySummary } from '../../extension/src/approval/policy-permissions.js';
+import {
+  PolicyAuditRecord,
+  TrustedContactPolicySummary,
+} from '../../extension/src/approval/policy-permissions.js';
 import {
   ApprovalStatusSyncClient,
   ApprovalStatusResult,
@@ -189,6 +192,16 @@ export interface DashboardShellState {
   wardPolicyStatus?: ViewStatus;
   /** Error message when fetching ward policy fails */
   wardPolicyError?: string | null;
+  /** Policy audit history for transparent change review */
+  wardPolicyAuditHistory?: readonly PolicyAuditRecord[] | null;
+  /** Loading/error status for policy audit history */
+  wardPolicyAuditStatus?: ViewStatus;
+  /** Error message when fetching policy audit history fails */
+  wardPolicyAuditError?: string | null;
+  /** Whether local policy modifications are staged and pending synchronization */
+  hasPendingSync?: boolean;
+  /** Staged changes pending synchronization with backend */
+  pendingSyncChanges?: readonly string[];
 }
 
 /**
@@ -207,6 +220,8 @@ export interface DashboardShellOptions {
   initialHistoryRequests?: readonly ApprovalRequest[];
   /** Initial sanitized ward policy summary */
   initialWardPolicy?: TrustedContactPolicySummary | null;
+  /** Initial policy audit history (if preloaded) */
+  initialPolicyAuditHistory?: readonly PolicyAuditRecord[] | null;
   /** Initial loading/error status for decision history list */
   initialHistoryStatus?: ViewStatus;
   /** Initial list of connected users or trusted contacts */

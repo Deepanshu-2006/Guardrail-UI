@@ -32,6 +32,7 @@ import {
   PolicyAccessDeniedError,
   PolicyAdministrationDeniedError,
   PolicyAuditRecord,
+  PolicyChangeSource,
   PolicyInvariantViolationError,
   PolicyVersionConflictError,
   UpdateUserPolicyInput,
@@ -232,15 +233,24 @@ export class PolicyService {
     const baseConfig = existing ? existing.config : DEFAULT_GUARDRAIL_POLICY_CONFIG;
     const diff = computePolicyDiff(baseConfig, candidateConfig);
 
+    const isReset = input.isSystemDefault ?? (input.changeReason?.toLowerCase().includes('reset to canonical') || false);
+    const changeSource: PolicyChangeSource = input.changeSource ?? (isReset ? 'SYSTEM_RESET' : 'USER_CHANGE');
+    const isSystemDefault = isReset;
+    const actorRole = authContext.role ?? ActorRole.USER;
+
     const auditRecord: PolicyAuditRecord = Object.freeze({
       id: generateActionId('pol_aud'),
       userId: normalizedUserId,
       updatedBy: authContext.actorId,
+      actorRole,
       timestamp: nowIso,
       previousPolicyVersion: existing ? existing.policyVersion : '0.0.0',
       newPolicyVersion: candidateConfig.policyVersion,
       changedFields: diff.changedFields,
       changeSummary: input.changeReason?.trim() || diff.summary,
+      changeSource,
+      isSystemDefault,
+      impactSummary: diff.impactSummary,
     });
 
     const updatedRecord: UserPolicyRecord = Object.freeze({
@@ -253,6 +263,7 @@ export class PolicyService {
         ...candidateConfig,
         updatedAt: nowIso,
       }),
+      isSystemDefault,
     });
 
     // 6. Save Atomically
@@ -299,7 +310,16 @@ export class PolicyService {
     authContext: AuthContext,
     targetUserId: string
   ): Promise<UserPolicyRecord> {
-    const defaultVersion = `1.0.${Date.now()}`;
+    const existing = await this.policyRepository.getPolicy(targetUserId.trim());
+    let defaultVersion = '1.0.1';
+    if (existing?.policyVersion) {
+      const parts = existing.policyVersion.split('.');
+      if (parts.length >= 3 && !isNaN(Number(parts[2]))) {
+        defaultVersion = `${parts[0]}.${parts[1]}.${Number(parts[2]) + 1}`;
+      } else {
+        defaultVersion = `${existing.policyVersion}.1`;
+      }
+    }
     const resetConfig: GuardrailPolicyConfig = {
       ...DEFAULT_GUARDRAIL_POLICY_CONFIG,
       policyVersion: defaultVersion,
@@ -308,6 +328,8 @@ export class PolicyService {
     return this.updateUserPolicy(authContext, targetUserId, {
       config: resetConfig,
       changeReason: 'Reset to canonical default protection settings.',
+      changeSource: 'SYSTEM_RESET',
+      isSystemDefault: true,
     });
   }
 
@@ -324,8 +346,9 @@ export class PolicyService {
       policyVersion: CURRENT_ARCHITECTURE_POLICY_VERSION,
       schemaVersion: CURRENT_ARCHITECTURE_SCHEMA_VERSION,
       updatedAt: generateTimestamp(),
-      updatedBy: userId,
+      updatedBy: 'SYSTEM',
       config: DEFAULT_GUARDRAIL_POLICY_CONFIG,
+      isSystemDefault: true,
     });
   }
 }

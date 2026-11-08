@@ -50,7 +50,10 @@ import {
   UserPolicyRecord,
   UserPolicyView,
 } from '../approval/client.js';
-import { TrustedContactPolicySummary } from '../approval/policy-permissions.js';
+import {
+  computePolicyDiff,
+  TrustedContactPolicySummary,
+} from '../approval/policy-permissions.js';
 
 // =============================================================================
 // Status & State Definitions
@@ -66,6 +69,8 @@ export enum PolicySyncStatus {
   SYNCING = 'SYNCING',
   /** Authoritatively synchronized and verified with backend */
   SYNCED = 'SYNCED',
+  /** Local policy changes staged, pending remote synchronization */
+  PENDING_SYNC = 'PENDING_SYNC',
   /** Backend offline or network failed; safe local configuration preserved fail-closed */
   OFFLINE_FALLBACK = 'OFFLINE_FALLBACK',
   /** Optimistic concurrency version mismatch detected (stale update rejected) */
@@ -97,11 +102,17 @@ export interface PolicySyncState {
   readonly activePolicyVersion: string;
   /** Last confirmed remote policy version from backend */
   readonly remotePolicyVersion: string | null;
+  /** True if local configuration modifications are staged and pending synchronization */
+  readonly hasPendingSync: boolean;
+  /** Human-readable list of staged changes pending upload */
+  readonly pendingChanges?: readonly string[];
   /** Conflict metadata if status is CONFLICT */
   readonly conflictDetails?: {
     readonly expectedVersion: string;
     readonly remoteVersion?: string;
   };
+  /** Transparent, actionable guidance for recovering from errors */
+  readonly recoveryGuidance?: string | null;
 }
 
 /**
@@ -116,6 +127,8 @@ export interface PolicySyncResult {
   readonly offlineFallback?: boolean;
   readonly conflict?: boolean;
   readonly error?: string;
+  readonly errorType?: 'CONFLICT' | 'INVARIANT_VIOLATION' | 'OFFLINE_FALLBACK' | 'UNAUTHORIZED' | 'VALIDATION' | 'INTERNAL';
+  readonly recoveryGuidance?: string;
   readonly isMockService: boolean;
 }
 
@@ -147,7 +160,7 @@ export class PolicySyncManager {
   private readonly userIdProvider: string | (() => string | undefined);
   private readonly logger: PolicySyncManagerOptions['logger'];
   private readonly listeners: Set<(state: PolicySyncState) => void> = new Set();
-
+  private stagedConfig: GuardrailPolicyConfig | null = null;
   private state: PolicySyncState;
 
   constructor(options: PolicySyncManagerOptions) {
@@ -167,6 +180,8 @@ export class PolicySyncManager {
       isMockService: this.apiClient.isMockService(),
       activePolicyVersion: initialConfig.policyVersion ?? '1.0.0',
       remotePolicyVersion: null,
+      hasPendingSync: false,
+      recoveryGuidance: null,
     });
   }
 
@@ -186,6 +201,72 @@ export class PolicySyncManager {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /**
+   * Stages candidate configuration changes locally without immediately committing to backend.
+   * Validates schema and mandatory security invariants before marking PENDING_SYNC.
+   */
+  public stagePolicyChange(candidate: GuardrailPolicyConfig): {
+    readonly success: boolean;
+    readonly pendingChanges: readonly string[];
+    readonly errors?: readonly string[];
+  } {
+    const validation = validatePolicyConfig(candidate);
+    if (!validation.valid || !validation.config) {
+      const errors = validation.errors.map((e) => e.message);
+      return { success: false, pendingChanges: [], errors };
+    }
+
+    const invariantError = this.checkMandatoryInvariants(validation.config);
+    if (invariantError) {
+      return { success: false, pendingChanges: [], errors: [invariantError] };
+    }
+
+    const currentConfig = this.registry.getConfig();
+    const diff = computePolicyDiff(currentConfig, validation.config);
+
+    this.stagedConfig = validation.config;
+    this.updateState({
+      status: PolicySyncStatus.PENDING_SYNC,
+      hasPendingSync: true,
+      pendingChanges: diff.changedFields,
+      lastError: null,
+      recoveryGuidance: null,
+    });
+
+    return {
+      success: true,
+      pendingChanges: diff.changedFields,
+    };
+  }
+
+  /**
+   * Discards staged local policy changes and restores synced or idle status.
+   */
+  public discardPendingChanges(): void {
+    this.stagedConfig = null;
+    this.updateState({
+      status: this.state.lastSyncedAt ? PolicySyncStatus.SYNCED : PolicySyncStatus.IDLE,
+      hasPendingSync: false,
+      pendingChanges: undefined,
+      lastError: null,
+      recoveryGuidance: null,
+    });
+  }
+
+  /**
+   * Returns true if there are staged policy changes pending synchronization with the backend.
+   */
+  public hasPendingChanges(): boolean {
+    return Boolean(this.stagedConfig && this.state.hasPendingSync);
+  }
+
+  /**
+   * Returns staged candidate configuration if present.
+   */
+  public getStagedConfig(): GuardrailPolicyConfig | null {
+    return this.stagedConfig ? { ...this.stagedConfig } : null;
   }
 
   /**
@@ -330,6 +411,7 @@ export class PolicySyncManager {
 
       // Persist authoritatively to local registry and storage
       await this.registry.saveToStorage(validation.config);
+      this.stagedConfig = null;
 
       this.updateState({
         status: PolicySyncStatus.SYNCED,
@@ -339,6 +421,9 @@ export class PolicySyncManager {
         isMockService: isMock,
         activePolicyVersion: validation.config.policyVersion,
         remotePolicyVersion: validation.config.policyVersion,
+        hasPendingSync: false,
+        pendingChanges: undefined,
+        recoveryGuidance: null,
       });
 
       return {
@@ -358,6 +443,9 @@ export class PolicySyncManager {
         serviceType,
         isMockService: isMock,
         remotePolicyVersion: payload.summary.policyVersion,
+        hasPendingSync: false,
+        pendingChanges: undefined,
+        recoveryGuidance: null,
       });
 
       return {
@@ -372,11 +460,14 @@ export class PolicySyncManager {
     this.updateState({
       status: PolicySyncStatus.ERROR,
       lastError: unknownViewErr,
+      recoveryGuidance: 'Contact support if policy document format is unrecognized.',
     });
     return {
       success: false,
       status: PolicySyncStatus.ERROR,
       error: unknownViewErr,
+      errorType: 'INTERNAL',
+      recoveryGuidance: 'Contact support if policy document format is unrecognized.',
       isMockService: isMock,
     };
   }
@@ -385,38 +476,46 @@ export class PolicySyncManager {
    * Pushes a local policy update up to the authoritative backend with Optimistic
    * Concurrency Control (OCC) to prevent stale overwrites.
    *
-   * @param candidate Candidate policy configuration (defaults to registry active config)
+   * @param candidate Candidate policy configuration (defaults to staged config or active config)
    */
   public async syncUp(candidate?: GuardrailPolicyConfig): Promise<PolicySyncResult> {
     const userId = this.resolveUserId();
     if (!userId) {
       const err = 'User identifier is required to persist protection policy changes.';
+      const recovery = 'Ensure user is authenticated before attempting to synchronize policy changes.';
       this.updateState({
         status: PolicySyncStatus.ERROR,
         lastError: err,
+        recoveryGuidance: recovery,
       });
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: err,
+        errorType: 'UNAUTHORIZED',
+        recoveryGuidance: recovery,
         isMockService: this.apiClient.isMockService(),
       };
     }
 
-    const configToSave = candidate ?? this.registry.getConfig();
+    const configToSave = candidate ?? this.stagedConfig ?? this.registry.getConfig();
 
     // 1. Client-side schema validation
     const validation = validatePolicyConfig(configToSave);
     if (!validation.valid || !validation.config) {
       const err = `Policy validation failed: ${validation.errors.map((e) => e.message).join('; ')}`;
+      const recovery = 'Verify all threshold numbers and policy rule structures match schema constraints.';
       this.updateState({
         status: PolicySyncStatus.ERROR,
         lastError: err,
+        recoveryGuidance: recovery,
       });
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: err,
+        errorType: 'VALIDATION',
+        recoveryGuidance: recovery,
         isMockService: this.apiClient.isMockService(),
       };
     }
@@ -424,14 +523,18 @@ export class PolicySyncManager {
     // 2. Pre-flight enforcement of mandatory invariants
     const invariantError = this.checkMandatoryInvariants(validation.config);
     if (invariantError) {
+      const recovery = 'Non-configurable protections (CONTROLLED_DESTRUCTIVE, UNSUPPORTED_BOUNDARY_GUARD) must remain enabled and set to PROTECT.';
       this.updateState({
         status: PolicySyncStatus.ERROR,
         lastError: invariantError,
+        recoveryGuidance: recovery,
       });
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: invariantError,
+        errorType: 'INVARIANT_VIOLATION',
+        recoveryGuidance: recovery,
         isMockService: this.apiClient.isMockService(),
       };
     }
@@ -439,6 +542,7 @@ export class PolicySyncManager {
     this.updateState({
       status: PolicySyncStatus.SYNCING,
       lastError: null,
+      recoveryGuidance: null,
     });
 
     const isMock = this.apiClient.isMockService();
@@ -464,6 +568,7 @@ export class PolicySyncManager {
         const conflictMsg =
           `Policy version conflict: Remote configuration was updated concurrently (expected v${expectedPolicyVersion}). ` +
           (result.error?.message ? `Details: ${result.error.message}` : '');
+        const recovery = 'Reload remote policy via syncDown() to merge or re-apply modifications against the active version.';
         this.logger?.warn?.(conflictMsg, { userId, expectedPolicyVersion });
 
         this.updateState({
@@ -472,6 +577,7 @@ export class PolicySyncManager {
           conflictDetails: {
             expectedVersion: expectedPolicyVersion,
           },
+          recoveryGuidance: recovery,
         });
 
         return {
@@ -479,6 +585,8 @@ export class PolicySyncManager {
           status: PolicySyncStatus.CONFLICT,
           conflict: true,
           error: conflictMsg,
+          errorType: 'CONFLICT',
+          recoveryGuidance: recovery,
           isMockService: isMock,
         };
       }
@@ -486,12 +594,14 @@ export class PolicySyncManager {
       // 5. Handle network failure / offline backend
       if (result.isNetworkError || result.isTimeout || result.statusCode === 0 || (result.statusCode && result.statusCode >= 500)) {
         const offlineMsg = `Backend unavailable; policy update could not be committed (HTTP ${result.statusCode ?? 'OFFLINE'}).`;
+        const recovery = 'Safe local configuration preserved fail-closed. Your changes remain staged locally until network connectivity is restored.';
         this.logger?.warn?.(offlineMsg, { userId });
 
         this.updateState({
           status: PolicySyncStatus.OFFLINE_FALLBACK,
           lastError: offlineMsg,
           serviceType: 'local_only',
+          recoveryGuidance: recovery,
         });
 
         return {
@@ -499,21 +609,29 @@ export class PolicySyncManager {
           status: PolicySyncStatus.OFFLINE_FALLBACK,
           offlineFallback: true,
           error: offlineMsg,
+          errorType: 'OFFLINE_FALLBACK',
+          recoveryGuidance: recovery,
           isMockService: isMock,
         };
       }
 
       // 6. Generic or authorization failure
       const errorMsg = result.error?.message || `Policy update failed (HTTP ${result.statusCode}).`;
+      const recovery = result.statusCode === 403
+        ? 'Trusted contacts hold zero policy administration authority. Policy settings belong exclusively to the ward.'
+        : 'Ensure your user session is valid and candidate settings adhere to security requirements.';
       this.updateState({
         status: PolicySyncStatus.ERROR,
         lastError: errorMsg,
+        recoveryGuidance: recovery,
       });
 
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: errorMsg,
+        errorType: result.statusCode === 403 ? 'UNAUTHORIZED' : 'INTERNAL',
+        recoveryGuidance: recovery,
         isMockService: isMock,
       };
     }
@@ -525,17 +643,21 @@ export class PolicySyncManager {
       this.updateState({
         status: PolicySyncStatus.ERROR,
         lastError: err,
+        recoveryGuidance: 'Please retry synchronization or inspect server logs.',
       });
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: err,
+        errorType: 'INTERNAL',
+        recoveryGuidance: 'Please retry synchronization or inspect server logs.',
         isMockService: isMock,
       };
     }
 
     // Persist confirmed update locally
     await this.registry.saveToStorage(record.config);
+    this.stagedConfig = null;
 
     this.updateState({
       status: PolicySyncStatus.SYNCED,
@@ -545,7 +667,10 @@ export class PolicySyncManager {
       isMockService: isMock,
       activePolicyVersion: record.policyVersion,
       remotePolicyVersion: record.policyVersion,
+      hasPendingSync: false,
+      pendingChanges: undefined,
       conflictDetails: undefined,
+      recoveryGuidance: null,
     });
 
     return {
@@ -564,10 +689,13 @@ export class PolicySyncManager {
     const userId = this.resolveUserId();
     if (!userId) {
       const err = 'User identifier is required to reset protection policy.';
+      const recovery = 'Authenticate as the target ward before resetting policy.';
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: err,
+        errorType: 'UNAUTHORIZED',
+        recoveryGuidance: recovery,
         isMockService: this.apiClient.isMockService(),
       };
     }
@@ -575,6 +703,7 @@ export class PolicySyncManager {
     this.updateState({
       status: PolicySyncStatus.SYNCING,
       lastError: null,
+      recoveryGuidance: null,
     });
 
     const isMock = this.apiClient.isMockService();
@@ -583,20 +712,25 @@ export class PolicySyncManager {
     const result = await this.apiClient.resetUserPolicy(userId);
     if (!result.success) {
       const err = result.error?.message || `Failed to reset policy (HTTP ${result.statusCode}).`;
+      const recovery = 'Check backend connectivity and authentication session.';
       this.updateState({
         status: PolicySyncStatus.ERROR,
         lastError: err,
+        recoveryGuidance: recovery,
       });
       return {
         success: false,
         status: PolicySyncStatus.ERROR,
         error: err,
+        errorType: result.statusCode === 403 ? 'UNAUTHORIZED' : 'INTERNAL',
+        recoveryGuidance: recovery,
         isMockService: isMock,
       };
     }
 
     const record = result.data;
     await this.registry.saveToStorage(record.config);
+    this.stagedConfig = null;
 
     this.updateState({
       status: PolicySyncStatus.SYNCED,
@@ -606,6 +740,10 @@ export class PolicySyncManager {
       isMockService: isMock,
       activePolicyVersion: record.policyVersion,
       remotePolicyVersion: record.policyVersion,
+      hasPendingSync: false,
+      pendingChanges: undefined,
+      conflictDetails: undefined,
+      recoveryGuidance: null,
     });
 
     return {
