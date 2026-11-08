@@ -265,6 +265,21 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
     elementInfo.className = className;
   }
 
+  // Safe extraction of destination URL for links (without live DOM or form inputs)
+  if (element instanceof HTMLAnchorElement && element.href) {
+    elementInfo.targetUrl = element.href;
+  } else if (typeof element.getAttribute === 'function' && element.hasAttribute('href')) {
+    const rawAttr = element.getAttribute('href');
+    if (rawAttr && !rawAttr.startsWith('#')) {
+      try {
+        const base = typeof window !== 'undefined' && window.location ? window.location.href : 'http://localhost';
+        elementInfo.targetUrl = new URL(rawAttr, base).href;
+      } catch {
+        elementInfo.targetUrl = rawAttr;
+      }
+    }
+  }
+
   return elementInfo;
 }
 

@@ -68,6 +68,14 @@ export const INITIAL_RISK_SIGNALS: Readonly<Record<RiskSignalId, RiskSignalDefin
     reason: 'Action navigates away from the current trusted domain to an external destination.',
     description: 'Triggered when a link or form submission redirects to an untrusted or third-party origin.',
   },
+
+  [RiskSignalId.SUSPICIOUS_URL]: {
+    id: RiskSignalId.SUSPICIOUS_URL,
+    name: 'Suspicious URL',
+    scoreContribution: DEFAULT_GUARDRAIL_POLICY_CONFIG.signals[RiskSignalId.SUSPICIOUS_URL].scoreContribution,
+    reason: 'Action navigates to or targets a URL with deceptive domain patterns, raw IP address, homoglyphs, or suspicious characteristics.',
+    description: 'Triggered when an action targets a URL displaying IP hostnames, homoglyphs, embedded credentials, or deceptive subdomain patterns.',
+  },
 });
 
 /**

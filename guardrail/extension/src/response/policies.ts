@@ -220,7 +220,13 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
 
     // Check explicit classification or assessment
     if (action.category === ActionCategory.EXTERNAL_NAVIGATION) return true;
-    if (assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_EXTERNAL_NAVIGATION')) return true;
+    if (
+      assessment?.matchedRules?.some(
+        (r) => r.ruleId === 'RISK_RULE_EXTERNAL_NAVIGATION' || r.ruleId === 'RISK_RULE_SUSPICIOUS_URL'
+      )
+    ) {
+      return true;
+    }
 
     // Check origin boundary if URLs are available
     if (action.page?.url && action.page?.previousUrl) {
@@ -246,12 +252,18 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
     if (!EXTERNAL_NAVIGATION_POLICY.appliesTo(action, assessment)) {
       return { matched: false };
     }
+
+    const suspiciousRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_SUSPICIOUS_URL');
+    const explanation = suspiciousRule?.reason
+      ? `Suspicious URL advisory: ${suspiciousRule.reason}`
+      : EXTERNAL_NAVIGATION_POLICY.userExplanation;
+
     return {
       matched: true,
       decision: ResponseAction.WARN,
       ruleId: 'RULE_EXTERNAL_NAVIGATION_POLICY',
-      reasonCode: 'POLICY_WARN_EXTERNAL_NAVIGATION',
-      explanation: EXTERNAL_NAVIGATION_POLICY.userExplanation,
+      reasonCode: suspiciousRule ? 'POLICY_WARN_SUSPICIOUS_URL' : 'POLICY_WARN_EXTERNAL_NAVIGATION',
+      explanation,
       downstreamBehavior: EXTERNAL_NAVIGATION_POLICY.downstreamBehavior,
     };
   },

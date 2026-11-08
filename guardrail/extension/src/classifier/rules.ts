@@ -5,7 +5,8 @@
  * Guardrail actions into semantic categories based on safe metadata.
  */
 
-import { ActionCategory, GuardrailAction } from '../types/actions.js';
+import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
+import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 
 /**
  * Result returned from evaluating a single classification rule against an action.
@@ -240,6 +241,34 @@ export const ExternalNavigationRule: ClassificationRule = {
         }
       } catch {
         // Ignore invalid URL parse attempts
+      }
+    }
+
+    // 3. Link explicitly targeting an external origin
+    if (action.element?.targetUrl) {
+      try {
+        const targetOrigin = new URL(action.element.targetUrl).origin;
+        const currentOrigin = action.page?.url ? new URL(action.page.url).origin : '';
+        if (targetOrigin && currentOrigin && targetOrigin !== currentOrigin && targetOrigin !== 'null') {
+          return {
+            matched: true,
+            reason: `Link targets external origin: ${targetOrigin}`,
+          };
+        }
+      } catch {
+        // Ignore invalid URL
+      }
+    }
+
+    // 4. Suspicious URL patterns on targetUrl or navigation page url
+    const candidateUrl = action.element?.targetUrl || (action.type === ActionType.NAVIGATION ? action.page.url : undefined);
+    if (candidateUrl) {
+      const evalResult = evaluateSuspiciousUrl(candidateUrl);
+      if (evalResult.isSuspicious) {
+        return {
+          matched: true,
+          reason: `Detected suspicious URL indicator: ${evalResult.reasons[0] || 'Unverified host characteristics'}`,
+        };
       }
     }
 

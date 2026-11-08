@@ -48,6 +48,7 @@ export function determineSignalSeverity(signalId: RiskSignalId): RiskLevel {
     case RiskSignalId.DESTRUCTIVE_ACTION:
       return RiskLevel.HIGH;
     case RiskSignalId.PAYMENT_ACTION:
+    case RiskSignalId.SUSPICIOUS_URL:
       return RiskLevel.MEDIUM;
     case RiskSignalId.AUTHENTICATION_ACTION:
     case RiskSignalId.EXTERNAL_NAVIGATION:

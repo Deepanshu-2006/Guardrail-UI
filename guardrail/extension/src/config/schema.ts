@@ -269,6 +269,11 @@ export const DEFAULT_SIGNAL_SETTINGS: Readonly<Record<RiskSignalId, Configurable
     enabled: true,
     scoreContribution: 10,
   }),
+  [RiskSignalId.SUSPICIOUS_URL]: Object.freeze({
+    id: RiskSignalId.SUSPICIOUS_URL,
+    enabled: true,
+    scoreContribution: 25,
+  }),
 });
 
 /**

@@ -60,6 +60,9 @@ export enum RiskSignalId {
 
   /** Action navigates away from the trusted origin or application to an external domain */
   EXTERNAL_NAVIGATION = 'EXTERNAL_NAVIGATION',
+
+  /** Action targets a suspicious URL, lookalike domain, IP host, or deceptive address */
+  SUSPICIOUS_URL = 'SUSPICIOUS_URL',
 }
 
 /**
@@ -70,7 +73,8 @@ export type RiskSignalIdString =
   | 'DESTRUCTIVE_ACTION'
   | 'AUTHENTICATION_ACTION'
   | 'DOWNLOAD_ACTION'
-  | 'EXTERNAL_NAVIGATION';
+  | 'EXTERNAL_NAVIGATION'
+  | 'SUSPICIOUS_URL';
 
 /**
  * Declarative definition and configuration for a risk signal.

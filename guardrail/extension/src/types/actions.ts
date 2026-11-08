@@ -80,6 +80,9 @@ export interface ActionElementInfo {
 
   /** Element CSS class attribute string if present (e.g., 'btn btn-primary') */
   className?: string;
+
+  /** Destination URL or link target if element is an anchor or actionable link */
+  targetUrl?: string;
 }
 
 /**

@@ -15,6 +15,7 @@ import { ActionCategory, GuardrailAction } from '../types/actions.js';
 import { ActionClassificationResult } from '../types/classification.js';
 import { RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
 import { getRiskSignalDefinition, INITIAL_RISK_SIGNALS, RiskSignalOverrides } from './signals.js';
+import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 
 /**
  * Context provided to a risk rule for evaluation.
@@ -251,6 +252,40 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
           scoreContribution: config.scoreContribution,
           reason: config.reason,
         };
+      }
+
+      return { matched: false };
+    },
+  },
+
+  /**
+   * Rule: Suspicious URL / Hostname
+   * Score contribution: +25
+   * Priority: 75
+   */
+  {
+    id: 'RISK_RULE_SUSPICIOUS_URL',
+    signalId: RiskSignalId.SUSPICIOUS_URL,
+    priority: 75,
+    description: 'Triggers SUSPICIOUS_URL signal when action targets a URL displaying deceptive domain patterns, raw IP address, homoglyphs, or suspicious characteristics.',
+    evaluate: (context, signalConfig) => {
+      const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.SUSPICIOUS_URL];
+      const targetCandidate = context.action.element?.targetUrl || context.action.page?.url;
+
+      if (targetCandidate) {
+        const evalResult = evaluateSuspiciousUrl(targetCandidate);
+        if (evalResult.isSuspicious) {
+          const detailReason = evalResult.reasons.length > 0
+            ? evalResult.reasons.join('; ')
+            : config.reason;
+          return {
+            matched: true,
+            ruleId: 'RISK_RULE_SUSPICIOUS_URL',
+            signalId: RiskSignalId.SUSPICIOUS_URL,
+            scoreContribution: config.scoreContribution,
+            reason: detailReason,
+          };
+        }
       }
 
       return { matched: false };
