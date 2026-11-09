@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="application-name" content="Controlled Form &amp; Download Test Harness">
+  <meta property="og:site_name" content="Guardrail Test Lab">
+  <title>Guardrail Form &amp; Download Protection Test Lab</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .test-box {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .test-box h3 {
+      margin-top: 0;
+      color: #38bdf8;
+      font-size: 15px;
+    }
+    .field-row {
+      margin-bottom: 12px;
+    }
+    .field-row label {
+      display: block;
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .input-field {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 12px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      color: #f8fafc;
+      font-size: 14px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+    }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-warning { background: #d97706; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-secondary { background: #475569; color: white; }
+    .dl-link {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      color: #38bdf8;
+      text-decoration: none;
+      font-size: 13px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .dl-link:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body>
+  <main class="page-container" style="max-width: 900px; margin: 0 auto; padding: 24px;">
+    <header class="card-header" style="margin-bottom: 24px;">
+      <div class="badge" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4); padding: 4px 8px; border-radius: 4px; display: inline-block; font-size: 12px;">
+        Day 28: Controlled Browser Integration Testing
+      </div>
+      <h1 id="page-title" style="margin-top: 8px; color: #f8fafc;">Form &amp; Download Safety Integration Lab</h1>
+      <p class="description" style="color: #94a3b8; font-size: 14px;">
+        Controlled local test environment with synthetic forms and harmless test files.
+        Verifies risk detection, warning UI, staging boundaries, and strict security/privacy invariants.
+      </p>
+    </header>
+
+    <div id="status-display" style="padding: 12px; margin-bottom: 20px; border-radius: 8px; background: rgba(148, 163, 184, 0.1); border: 1px solid #475569; font-size: 13px; color: #cbd5e1;">
+      Status: Ready (Awaiting action)
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 1: FORM PROTECTION SCENARIOS                                   -->
+    <!-- ===================================================================== -->
+    <h2 style="color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 8px;">Part 1: Form Protection Scenarios</h2>
+
+    <!-- Scenario 1: Legitimate Same-Origin Form -->
+    <div class="test-box" id="box-legit-form">
+      <h3>Scenario 1: Legitimate Same-Origin Form</h3>
+      <form id="form-same-origin" action="/api/account/profile" method="POST">
+        <div class="field-row">
+          <label for="input-profile-name">Username</label>
+          <input type="text" id="input-profile-name" name="username" class="input-field" value="alice_developer">
+        </div>
+        <div class="btn-group">
+          <button type="submit" id="btn-submit-same-origin" class="btn btn-primary">Submit Profile (Same-Origin)</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Scenario 2: Cross-Origin Form Destination -->
+    <div class="test-box" id="box-cross-origin-form">
+      <h3>Scenario 2: Cross-Origin Form Destination</h3>
+      <form id="form-cross-origin" action="https://untrusted-external-harvest.org/collector" method="POST">
+        <div class="field-row">
+          <label for="input-cross-user">Account ID</label>
+          <input type="text" id="input-cross-user" name="account_id" class="input-field" value="usr_84920">
+        </div>
+        <div class="btn-group">
+          <button type="submit" id="btn-submit-cross-origin" class="btn btn-warning">Submit to External Destination</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Scenario 3: Missing or Malformed Destination -->
+    <div class="test-box" id="box-missing-dest-form">
+      <h3>Scenario 3: Missing Destination on Credential Form</h3>
+      <form id="form-missing-dest" action="" method="POST">
+        <div class="field-row">
+          <label for="input-missing-pwd">Password</label>
+          <input type="password" id="input-missing-pwd" name="password" class="input-field" value="test_pwd_val">
+        </div>
+        <div class="btn-group">
+          <button type="submit" id="btn-submit-missing-dest" class="btn btn-warning">Submit Empty Action Form</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Scenario 4: Suspicious Synthetic Exfiltration Destination -->
+    <div class="test-box" id="box-exfil-form">
+      <h3>Scenario 4: Suspicious Exfiltration Sink</h3>
+      <form id="form-exfil-sink" action="https://formspree.io/f/test-harvest-token" method="POST">
+        <div class="field-row">
+          <label for="input-exfil-login">Email</label>
+          <input type="email" id="input-exfil-login" name="login_email" class="input-field" value="victim@example.com">
+        </div>
+        <div class="field-row">
+          <label for="input-exfil-pwd">Security Password</label>
+          <input type="password" id="input-exfil-pwd" name="password" class="input-field" value="syn_pwd_SuperSecretPassword!#99">
+        </div>
+        <div class="btn-group">
+          <button type="submit" id="btn-submit-exfil" class="btn btn-danger">Submit to Exfiltration Sink</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Scenario 5: Password & Sensitive Input Fields -->
+    <div class="test-box" id="box-sensitive-form">
+      <h3>Scenario 5: Password &amp; Sensitive Fields (Privacy Sentinel Verification)</h3>
+      <form id="form-sensitive-inputs" action="/api/checkout/verify" method="POST">
+        <div class="field-row">
+          <label for="input-card-number">Card Number</label>
+          <input type="text" id="input-card-number" name="card_number" class="input-field" data-sensitive-type="card" value="syn_card_4532015099881122">
+        </div>
+        <div class="field-row">
+          <label for="input-card-otp">Verification OTP</label>
+          <input type="text" id="input-card-otp" name="otp" class="input-field" data-sensitive-type="otp" value="syn_otp_847291">
+        </div>
+        <div class="btn-group">
+          <button type="submit" id="btn-submit-sensitive" class="btn btn-warning">Process Payment Information</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Scenario 6: Dynamic Form Insertion Container -->
+    <div class="test-box" id="box-dynamic-form-container">
+      <h3>Scenario 6: Dynamically Inserted Form</h3>
+      <div id="dynamic-insert-slot">
+        <p style="color: #94a3b8; font-size: 13px;">No dynamic form inserted yet.</p>
+      </div>
+      <div class="btn-group" style="margin-top: 10px;">
+        <button type="button" id="btn-insert-dynamic-form" class="btn btn-secondary">Insert Dynamic Credential Form</button>
+      </div>
+    </div>
+
+    <!-- Scenario 7: Modified Destination & FormAction Override -->
+    <div class="test-box" id="box-override-form">
+      <h3>Scenario 7: Button FormAction Override &amp; Runtime Modification</h3>
+      <form id="form-override-target" action="/api/safe-destination" method="POST">
+        <div class="field-row">
+          <label for="input-override-user">Account</label>
+          <input type="text" id="input-override-user" name="user" class="input-field" value="test_user">
+        </div>
+        <div class="btn-group">
+          <button type="submit" id="btn-normal-dest" class="btn btn-primary">Standard Submit</button>
+          <button type="submit" id="btn-override-dest" class="btn btn-danger" formaction="https://override-harvest-endpoint.org/steal">
+            Submit with FormAction Override
+          </button>
+          <button type="button" id="btn-mutate-action" class="btn btn-secondary">Mutate Form Action via JS</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Scenario 8 & 9: Controlled Test Staging & Cancellation -->
+    <div class="test-box" id="box-staging-form">
+      <h3>Scenario 8 &amp; 9: Controlled Staging, Duplicate Prevention &amp; Cancellation</h3>
+      <form id="form-controlled-staging" action="/api/danger/delete-data" method="POST" data-guardrail-test-action="test-protect">
+        <p style="color: #fca5a5; font-size: 13px; margin-top: 0;">
+          Controlled high-risk test form marked with <code>data-guardrail-test-action="test-protect"</code>.
+        </p>
+        <div class="btn-group">
+          <button type="submit" id="btn-submit-controlled-protect" class="btn btn-danger">
+            Trigger Controlled Protected Submission
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 2: DOWNLOAD PROTECTION SCENARIOS                             -->
+    <!-- ===================================================================== -->
+    <h2 style="color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-top: 36px;">
+      Part 2: Download Protection Scenarios (Harmless Static Files)
+    </h2>
+
+    <div class="test-box" id="box-downloads">
+      <h3>Download Verification Links</h3>
+      <p style="color: #94a3b8; font-size: 13px;">
+        All targets are harmless local plain-text or image files served over the controlled test server.
+        Downloaded files are <strong>NEVER</strong> automatically opened or executed.
+      </p>
+
+      <div style="margin-bottom: 12px;">
+        <strong style="color: #cbd5e1; font-size: 13px; display: block; margin-bottom: 6px;">Scenario 11: Normal Downloads (ALLOW)</strong>
+        <a id="dl-normal-text" href="/downloads/sample-document.txt" download="sample-document.txt" class="dl-link">
+          Download Text Document (.txt)
+        </a>
+        <a id="dl-normal-image" href="/downloads/sample-image.png" download="sample-image.png" class="dl-link">
+          Download PNG Image (.png)
+        </a>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <strong style="color: #cbd5e1; font-size: 13px; display: block; margin-bottom: 6px;">Scenario 12: Harmless Executable Extension (WARN)</strong>
+        <a id="dl-harmless-exe" href="/downloads/harmless-utility.bin" download="harmless-test-tool.exe" class="dl-link" style="color: #fbbf24; border-color: #d97706;">
+          Harmless Test Tool (.exe)
+        </a>
+        <a id="dl-harmless-pkg" href="/downloads/sample-document.txt" download="installer-package.pkg" class="dl-link" style="color: #fbbf24; border-color: #d97706;">
+          Harmless Package (.pkg)
+        </a>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <strong style="color: #cbd5e1; font-size: 13px; display: block; margin-bottom: 6px;">Scenario 13: Misleading Double Extension (CRITICAL PAUSE)</strong>
+        <a id="dl-double-ext" href="/downloads/sample-document.txt" download="Quarterly_Report.pdf.exe" class="dl-link" style="color: #f87171; border-color: #dc2626;">
+          Deceptive Double Extension (Quarterly_Report.pdf.exe)
+        </a>
+        <a id="dl-script-double-ext" href="/downloads/sample-document.txt" download="Urgent_Invoice.docx.vbs" class="dl-link" style="color: #f87171; border-color: #dc2626;">
+          Script Double Extension (Urgent_Invoice.docx.vbs)
+        </a>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <strong style="color: #cbd5e1; font-size: 13px; display: block; margin-bottom: 6px;">Scenario 14: MIME-Type Mismatch Test</strong>
+        <a id="dl-mime-mismatch" href="/downloads/sample-image.png" download="update.exe" class="dl-link" style="color: #fbbf24;">
+          MIME Mismatch (Executable with Image MIME)
+        </a>
+      </div>
+    </div>
+
+    <!-- Hidden fixtures for architectural boundary and download lifecycle verification -->
+    <form id="form-direct-submit" action="/api/direct" method="POST" style="display:none;"></form>
+    <div id="dl-interrupted-container" data-state="interrupted" style="display:none;"></div>
+    <div id="dl-cancellation-container" data-supported-action="CANCEL" style="display:none;"></div>
+    <a id="link-dl-streaming" href="/api/stream/download" style="display:none;">Streaming</a>
+
+    <!-- Activity Log for Real-Browser Automated Test Inspection -->
+    <div id="event-log" class="event-log" style="background: #0f172a; border: 1px solid #1e293b; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #a5f3fc; max-height: 200px; overflow-y: auto;">
+      <div id="log-initial">Test environment ready.</div>
+    </div>
+  </main>
+
+  <script>
+    window.__TEST_COUNTERS__ = {
+      formSubmissions: 0,
+      linkClicks: 0,
+      controlledContinuationExecutions: 0,
+      actionAllowedEvents: 0,
+      actionWarnedEvents: 0,
+      actionInterceptedEvents: 0,
+      actionCancelledEvents: 0
+    };
+
+    // Test helper to log page activity
+    function logMsg(msg) {
+      var log = document.getElementById('event-log');
+      var item = document.createElement('div');
+      item.textContent = '[' + new Date().toISOString().substring(11, 19) + '] ' + msg;
+      log.appendChild(item);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Dynamic form insertion button logic
+    document.getElementById('btn-insert-dynamic-form').addEventListener('click', function() {
+      var slot = document.getElementById('dynamic-insert-slot');
+      slot.innerHTML =
+        '<form id="form-dynamically-inserted" action="https://dynamic-collector.org/api" method="POST" style="margin-top: 10px;">' +
+        '  <div class="field-row">' +
+        '    <label for="dyn-password">Dynamic Password Field</label>' +
+        '    <input type="password" id="dyn-password" name="password" class="input-field" value="dyn_pass_secret">' +
+        '  </div>' +
+        '  <button type="submit" id="btn-submit-dynamic" class="btn btn-warning">Submit Dynamically Inserted Form</button>' +
+        '</form>';
+      var dynForm = document.getElementById('form-dynamically-inserted');
+      if (dynForm) {
+        dynForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          window.__TEST_COUNTERS__.formSubmissions++;
+          logMsg('Native submit event fired on #' + dynForm.id);
+        });
+      }
+      logMsg('Dynamically inserted form #form-dynamically-inserted into DOM.');
+    });
+
+    // Mutate action button logic
+    document.getElementById('btn-mutate-action').addEventListener('click', function() {
+      var form = document.getElementById('form-override-target');
+      form.setAttribute('data-guardrail-initial-action', form.action);
+      form.action = 'https://mutated-untrusted-sink.test/steal';
+      logMsg('Mutated form.action to https://mutated-untrusted-sink.test/steal');
+    });
+
+    // Prevent default on synthetic test form submits to avoid navigation during test runs
+    document.querySelectorAll('form').forEach(function(f) {
+      f.addEventListener('submit', function(e) {
+        e.preventDefault();
+        window.__TEST_COUNTERS__.formSubmissions++;
+        logMsg('Native submit event fired on #' + (f.id || 'form') + ' targeting ' + f.action);
+      });
+    });
+
+    document.querySelectorAll('.dl-link').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        window.__TEST_COUNTERS__.linkClicks++;
+        logMsg('Download link clicked: #' + a.id);
+      });
+    });
+  </script>
+  <script src="/extension/dist/content.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

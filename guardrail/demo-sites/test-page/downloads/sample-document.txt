@@ -1,0 +1,2 @@
+Synthetic harmless test document for Guardrail download protection testing.
+This file contains zero executable code or sensitive payload.

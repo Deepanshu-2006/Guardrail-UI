@@ -1,0 +1,3 @@
+HARMELESS_DIAGNOSTIC_TEST_PAYLOAD
+This is a harmless plain-text diagnostic payload used exclusively for Guardrail MIME-type and extension testing.
+It contains no executable machine code, macros, or scripts.

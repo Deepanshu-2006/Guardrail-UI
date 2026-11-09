@@ -54,6 +54,8 @@ const MIME_TYPES: Record<string, string> = {
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.txt': 'text/plain; charset=utf-8',
+  '.bin': 'application/octet-stream',
 };
 
 export function findTestPageDir(): string {
