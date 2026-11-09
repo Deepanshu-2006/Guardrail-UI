@@ -719,7 +719,46 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       return false;
     }
 
-    // 8. Unsupported message type
+    // 8. Cancel a download
+    if (raw.type === 'GUARDRAIL_CANCEL_DOWNLOAD') {
+      const downloadId = typeof raw.downloadId === 'number' ? raw.downloadId : -1;
+      backgroundDownloadManager.cancelDownload(downloadId)
+        .then((success) => {
+          sendResponse({ success, downloadId });
+        })
+        .catch(() => {
+          sendResponse({ success: false, downloadId, error: 'CANCEL_FAILED' });
+        });
+      return true;
+    }
+
+    // 9. Pause a download
+    if (raw.type === 'GUARDRAIL_PAUSE_DOWNLOAD') {
+      const downloadId = typeof raw.downloadId === 'number' ? raw.downloadId : -1;
+      backgroundDownloadManager.pauseDownload(downloadId)
+        .then((success) => {
+          sendResponse({ success, downloadId });
+        })
+        .catch(() => {
+          sendResponse({ success: false, downloadId, error: 'PAUSE_FAILED' });
+        });
+      return true;
+    }
+
+    // 10. Resume a download
+    if (raw.type === 'GUARDRAIL_RESUME_DOWNLOAD') {
+      const downloadId = typeof raw.downloadId === 'number' ? raw.downloadId : -1;
+      backgroundDownloadManager.resumeDownload(downloadId)
+        .then((success) => {
+          sendResponse({ success, downloadId });
+        })
+        .catch(() => {
+          sendResponse({ success: false, downloadId, error: 'RESUME_FAILED' });
+        });
+      return true;
+    }
+
+    // 11. Unsupported message type
     sendResponse({
       success: false,
       error: 'Unsupported message type.',

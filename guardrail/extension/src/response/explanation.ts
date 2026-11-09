@@ -600,6 +600,54 @@ export function explainRiskDecision(
       };
     }
 
+    case 'POLICY_WARN_DOWNLOAD':
+    case 'POLICY_PROTECT_DOWNLOAD':
+    case 'RULE_DOWNLOAD_SAFETY':
+    case 'RISK_RULE_DOWNLOAD':
+    case 'DOWNLOAD_ACTION': {
+      const isProtected = decision?.response === ResponseAction.PROTECT;
+      const downloadCandidateName =
+        action?.download?.filename ||
+        action?.element?.downloadAttribute ||
+        targetLabel ||
+        'Downloaded file';
+
+      const reasonsList =
+        risk?.reasons && risk.reasons.length > 0
+          ? risk.reasons
+          : ['Download initiates transfer of an executable program, script, or unverified file format.'];
+
+      return {
+        decision: isProtected ? ResponseAction.PROTECT : ResponseAction.WARN,
+        nature: 'OPERATIONAL_PRECAUTION',
+        categoryBadge: 'Download Safety Advisory',
+        headline: isProtected
+          ? 'Protected Action: High-Risk File Download'
+          : 'Safety Advisory: Review Download Before Opening',
+        userSummary:
+          'Guardrail evaluated this file download. To protect your computer, review the file details and source address before opening or running it.',
+        whyFlagged: Object.freeze(reasonsList),
+        recoveryGuidance: Object.freeze([
+          '1. If you did not intend to download this file, cancel or discard it.',
+          '2. Check the website address in the browser bar to confirm your official provider.',
+          '3. Do not open or run executable files directly; scan with your local antivirus first.',
+          '4. Click Continue if you trust this provider and intentionally requested this file.',
+        ]),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RISK_RULE_DOWNLOAD',
+          reasonCode: primaryCode || 'RISK_RULE_DOWNLOAD',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.MEDIUM,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel: downloadCandidateName,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || ['RISK_RULE_DOWNLOAD'],
+        }),
+        isSecurityThreat: false,
+      };
+    }
+
     case 'POLICY_ALLOW_ROUTINE':
     case 'RULE_ROUTINE_ALLOW':
     case 'POLICY_ROUTINE_INTERACTION': {

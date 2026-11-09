@@ -296,9 +296,7 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
               }
             }
 
-            const baseScore = config.scoreContribution;
-            const scoreContribution =
-              baseScore === 0 ? 0 : Math.max(baseScore, formResult?.score ?? baseScore);
+            const scoreContribution = config.scoreContribution;
 
             return {
               matched: true,
@@ -484,6 +482,27 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
 
       // Check if concrete download metadata is present or can be synthesized from targetUrl/page
       const downloadPayload = context.action.download || context.action.element?.downloadInfo;
+      const hasExecutableTarget = Boolean(
+        targetCandidate &&
+        /\.(exe|msi|dmg|pkg|zip|tar|gz|7z|iso|img|vhd|bat|cmd|sh|ps1|vbs|scr|hta)(\?.*)?$/i.test(targetCandidate)
+      );
+      const hasConcreteDownload = Boolean(
+        downloadPayload ||
+        Boolean(context.action.element?.downloadAttribute) ||
+        hasExecutableTarget
+      );
+
+      if (!hasConcreteDownload) {
+        // Routine keyword match without concrete download transfer metadata yet
+        return {
+          matched: true,
+          ruleId: 'RISK_RULE_DOWNLOAD',
+          signalId: RiskSignalId.DOWNLOAD_ACTION,
+          scoreContribution: config.scoreContribution,
+          reason: config.reason,
+        };
+      }
+
       const downloadCandidate = downloadPayload ?? {
         url: targetCandidate || context.action.page?.url,
         finalUrl: targetCandidate,

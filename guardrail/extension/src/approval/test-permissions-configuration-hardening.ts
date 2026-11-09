@@ -83,10 +83,14 @@ async function runTests(): Promise<void> {
     manifestContent.permissions.includes('storage'),
     'Manifest declares required "storage" permission for policy/token persistence'
   );
+  assert(
+    manifestContent.permissions.includes('downloads'),
+    'Manifest declares required "downloads" permission for download monitoring'
+  );
   assertEquals(
     manifestContent.permissions.length,
-    1,
-    'Manifest permissions are strictly minimal (only ["storage"] declared)'
+    2,
+    'Manifest permissions are strictly minimal (only ["storage", "downloads"] declared)'
   );
 
   // Prohibited broad or sensitive permissions

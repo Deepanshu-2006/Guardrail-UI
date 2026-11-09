@@ -324,6 +324,27 @@ export class BrowserDownloadManager {
   }
 
   /**
+   * Manually resumes a paused download.
+   */
+  public async resumeDownload(downloadId: number): Promise<boolean> {
+    if (!this.api?.resume) return false;
+    return new Promise((resolve) => {
+      try {
+        this.api!.resume!(downloadId, () => {
+          const cached = this.assessments.get(downloadId);
+          if (cached) {
+            (cached as any).item.paused = false;
+            cached.lastUpdatedAt = Date.now();
+          }
+          resolve(true);
+        });
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  /**
    * Cleans up in-memory history cache.
    */
   public clearHistory(): void {

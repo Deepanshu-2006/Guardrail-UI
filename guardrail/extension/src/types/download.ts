@@ -227,3 +227,122 @@ export interface DownloadSafetyEvaluation {
   /** Timestamp when evaluation completed */
   readonly evaluatedAt: string;
 }
+
+/**
+ * Observable lifecycle display state for browser downloads in the UI.
+ */
+export type DownloadLifecycleDisplayState =
+  | 'in_progress'
+  | 'paused'
+  | 'cancelled'
+  | 'interrupted'
+  | 'complete';
+
+/**
+ * Intelligence source classification for download risk assessments.
+ */
+export type DownloadIntelligenceSource =
+  | 'LOCAL_HEURISTIC'
+  | 'VERIFIED_THREAT_INTEL';
+
+/**
+ * Structured security and user-facing presentation context for download warnings.
+ */
+export interface DownloadSecurityContext {
+  /** Download ID or identifier */
+  readonly downloadId: number | string;
+
+  /** Sanitized basename of the target file */
+  readonly filename: string;
+
+  /** Primary normalized extension (e.g. 'exe', 'vbs', 'pdf') */
+  readonly extension: string;
+
+  /** Human-readable categorical label for the file type (e.g. 'Executable Program', 'Script File') */
+  readonly fileTypeLabel: string;
+
+  /** Human-formatted file size (e.g. '14.2 MB', 'Unknown size / streaming') */
+  readonly fileSizeFormatted: string;
+
+  /** Declared or inferred MIME type */
+  readonly declaredMime?: string;
+
+  /** Origin domain or IP hostname where the download originated */
+  readonly originDomain: string;
+
+  /** Full sanitized download URL */
+  readonly downloadUrl: string;
+
+  /** Referrer domain where available */
+  readonly referrerDomain?: string;
+
+  /** Whether origin is a raw IP address */
+  readonly isRawIp: boolean;
+
+  /** Whether download transport is unencrypted HTTP */
+  readonly isInsecureTransport: boolean;
+
+  /** Assessment source: local safety heuristics vs verified browser SafeBrowsing */
+  readonly intelligenceSource: DownloadIntelligenceSource;
+
+  /** Plain-language explanation of assessment source (clarifying scope and limitations) */
+  readonly intelligenceDisclaimer: string;
+
+  /** Indicates whether the file was confirmed dangerous by browser SafeBrowsing (vs heuristic suspicion) */
+  readonly isConfirmedMalicious: boolean;
+
+  /** High-level severity badge label (e.g. 'Confirmed Dangerous', 'Suspicious File', 'Advisory Notice') */
+  readonly severityLabel: string;
+
+  /** Current observable download lifecycle status */
+  readonly lifecycleState: DownloadLifecycleDisplayState;
+
+  /** Plain-language explanation of current lifecycle state */
+  readonly lifecycleExplanation: string;
+
+  /** Interruption error if lifecycleState is 'interrupted' */
+  readonly interruptionError?: string;
+
+  /** List of detected risk indicators formulated in understandable non-technical language */
+  readonly detectedIndicators: readonly string[];
+
+  /** Non-frightening explanation of why Guardrail considers this download risky */
+  readonly riskExplanation: string;
+
+  /** Which protective actions are genuinely supported by the browser API */
+  readonly supportedActions: {
+    readonly canCancel: boolean;
+    readonly canResume: boolean;
+    readonly canInspectSafely: boolean;
+  };
+
+  /** Practical, actionable steps for safely handling or inspecting the file */
+  readonly safeHandlingGuidance: readonly string[];
+
+  /** Explicit disclaimer warning shown before supported continuation */
+  readonly continuationWarning: string;
+}
+
+/**
+ * Message requesting browser download cancellation.
+ */
+export interface GuardrailCancelDownloadMessage {
+  readonly type: 'GUARDRAIL_CANCEL_DOWNLOAD';
+  readonly downloadId: number;
+}
+
+/**
+ * Message requesting browser download pause.
+ */
+export interface GuardrailPauseDownloadMessage {
+  readonly type: 'GUARDRAIL_PAUSE_DOWNLOAD';
+  readonly downloadId: number;
+}
+
+/**
+ * Message requesting browser download resumption.
+ */
+export interface GuardrailResumeDownloadMessage {
+  readonly type: 'GUARDRAIL_RESUME_DOWNLOAD';
+  readonly downloadId: number;
+}

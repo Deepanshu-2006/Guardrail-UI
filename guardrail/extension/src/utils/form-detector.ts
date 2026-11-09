@@ -354,8 +354,11 @@ export function evaluateFormSafety(
     ? context.rawActionAttribute
     : context.formAction;
 
-  const isRawActionMissing = rawActionAttr === undefined || rawActionAttr === null || rawActionAttr.trim() === '';
-  const isHashOnlyAction = rawActionAttr !== undefined && rawActionAttr.trim() === '#';
+  const isRawActionMissing =
+    context.rawActionAttribute !== undefined
+      ? (context.rawActionAttribute === null || context.rawActionAttribute.trim() === '')
+      : (context.formAction !== undefined && context.formAction.trim() === '');
+  const isHashOnlyAction = Boolean(rawActionAttr && rawActionAttr.trim() === '#');
 
   let isMissingDestination = false;
   if (isRawActionMissing || isHashOnlyAction) {
@@ -392,7 +395,7 @@ export function evaluateFormSafety(
   // ---------------------------------------------------------------------------
   // 3. Destination URL Parsing, Resolution & Origin Comparison
   // ---------------------------------------------------------------------------
-  const targetActionUrl = context.formAction || context.rawActionAttribute || '';
+  const targetActionUrl = context.formAction || context.rawActionAttribute || context.pageUrl || '';
   let formParsed = normalizeUrlComponents(targetActionUrl);
   let isDestinationUndetermined = false;
 

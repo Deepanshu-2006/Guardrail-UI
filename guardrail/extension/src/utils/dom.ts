@@ -302,8 +302,13 @@ export function extractElementInfo(
   }
 
   // Safe extraction of download attribute if present
-  if (typeof element.getAttribute === 'function' && element.hasAttribute('download')) {
-    elementInfo.downloadAttribute = element.getAttribute('download') || '';
+  if (typeof element.getAttribute === 'function') {
+    const hasDownload = typeof (element as any).hasAttribute === 'function'
+      ? (element as any).hasAttribute('download')
+      : element.getAttribute('download') !== null && element.getAttribute('download') !== undefined;
+    if (hasDownload) {
+      elementInfo.downloadAttribute = element.getAttribute('download') || '';
+    }
   }
 
   // Safe extraction of structural form and submission metadata (strictly value-free)
