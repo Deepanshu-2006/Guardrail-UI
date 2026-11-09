@@ -840,15 +840,8 @@ export class ApprovalService {
   private persistExpiration(request: ApprovalRequest): ApprovalRequest {
     const expired = expireApprovalRequest(request, this.timeProvider);
     const binding = this.repository.findBindingByRequestId(request.id);
-    if (binding && binding.state !== ApprovalActionBindingState.BOUND) {
-      throw new ApprovalBindingStateTransitionError(
-        binding.id,
-        binding.state,
-        ApprovalActionBindingState.EXPIRED,
-      );
-    }
     let transitioned: boolean;
-    if (binding) {
+    if (binding && binding.state === ApprovalActionBindingState.BOUND) {
       const expiredBinding = transitionBindingState(binding, ApprovalActionBindingState.EXPIRED, {
         resolvedAt: expired.resolvedAt,
         timeProvider: this.timeProvider,
@@ -1263,19 +1256,6 @@ export class ApprovalService {
     const actionId = input.actionId.trim();
     const serverTime = resolveTimestamp(this.timeProvider);
 
-    // Check if continuation authorization has already been consumed
-    if (this.consumedContinuations.has(actionId)) {
-      const existing = this.consumedContinuations.get(actionId)!;
-      return {
-        authorized: false,
-        actionId,
-        requestId: input.requestId,
-        serverTime,
-        error: `Continuation authorization for action "${actionId}" was already consumed at "${existing.consumedAt}". Duplicate reuse rejected.`,
-        errorCode: 'ALREADY_CONSUMED',
-      };
-    }
-
     // Verify ownership
     const isActionOwner =
       authContext.role === ActorRole.ADMIN ||
@@ -1297,6 +1277,21 @@ export class ApprovalService {
 
     if (binding.requesterId !== authContext.actorId && authContext.role !== ActorRole.ADMIN) {
       throw new ApprovalAccessDeniedError();
+    }
+
+    // Check if continuation authorization has already been consumed (in-memory or durable binding state)
+    if (this.consumedContinuations.has(actionId) || binding.state === ApprovalActionBindingState.CONSUMED) {
+      const existing = this.consumedContinuations.get(actionId);
+      const consumedAtMsg = existing ? ` at "${existing.consumedAt}"` : '';
+      return {
+        authorized: false,
+        actionId,
+        requestId: input.requestId ?? binding.requestId,
+        bindingId: binding.id,
+        serverTime,
+        error: `Continuation authorization for action "${actionId}" was already consumed${consumedAtMsg}. Duplicate reuse rejected.`,
+        errorCode: 'ALREADY_CONSUMED',
+      };
     }
 
     if (input.requestId && input.requestId.trim() !== binding.requestId) {
@@ -1489,6 +1484,23 @@ export class ApprovalService {
       };
     }
 
+    // Active trusted-contact relationship check: Reviewer must still be an active contact (or admin)
+    const reviewerId = request.decision.decidedBy;
+    const isReviewerActive =
+      reviewerId === 'admin' ||
+      (reviewerId ? this.contactRegistry.isTrustedContactForUser(reviewerId, request.requesterId) : false);
+    if (!isReviewerActive) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: request.id,
+        bindingId: binding.id,
+        serverTime,
+        error: `Reviewer "${reviewerId}" is no longer an active trusted contact for requester "${request.requesterId}".`,
+        errorCode: 'REQUEST_NOT_APPROVED',
+      };
+    }
+
     // Page context verification (if provided)
     if (input.pageContext?.origin || input.pageContext?.url) {
       let candidateOrigin = input.pageContext.origin;
@@ -1552,7 +1564,7 @@ export class ApprovalService {
     const actionId = input.actionId.trim();
     const serverTime = resolveTimestamp(this.timeProvider);
 
-    // Atomic CAS check
+    // Check fast-path in-memory record
     if (this.consumedContinuations.has(actionId)) {
       const existing = this.consumedContinuations.get(actionId)!;
       return {
@@ -1566,7 +1578,72 @@ export class ApprovalService {
       };
     }
 
-    // Atomic write
+    // Persist consumption transition in repository
+    const binding = this.repository.findBindingByActionId(actionId);
+    if (!binding) {
+      return {
+        authorized: false,
+        actionId,
+        serverTime,
+        error: `No approval action binding found for action "${actionId}".`,
+        errorCode: 'BINDING_NOT_FOUND',
+      };
+    }
+
+    if (binding.state === ApprovalActionBindingState.CONSUMED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: validation.requestId,
+        bindingId: validation.bindingId,
+        serverTime,
+        error: `Continuation authorization for action "${actionId}" was already consumed. Duplicate reuse rejected.`,
+        errorCode: 'ALREADY_CONSUMED',
+      };
+    }
+
+    if (binding.state !== ApprovalActionBindingState.APPROVED) {
+      return {
+        authorized: false,
+        actionId,
+        requestId: validation.requestId,
+        bindingId: validation.bindingId,
+        serverTime,
+        error: `Action binding "${binding.id}" is in state "${binding.state}" (expected APPROVED).`,
+        errorCode: 'BINDING_NOT_APPROVED',
+      };
+    }
+
+    const consumedBinding = transitionBindingState(
+      binding,
+      ApprovalActionBindingState.CONSUMED,
+      {
+        resolvedAt: serverTime,
+        reason: 'Continuation authorization consumed',
+        timeProvider: this.timeProvider,
+      }
+    );
+
+    const transitioned = this.repository.atomicTransitionBinding(
+      binding.id,
+      ApprovalActionBindingState.APPROVED,
+      consumedBinding
+    );
+
+    if (!transitioned) {
+      // Competitor won the CAS race (concurrent continuation consumption)
+      return {
+        authorized: false,
+        actionId,
+        requestId: validation.requestId,
+        bindingId: validation.bindingId,
+        serverTime,
+        error: `Continuation authorization for action "${actionId}" was already consumed. Duplicate reuse rejected.`,
+        errorCode: 'ALREADY_CONSUMED',
+      };
+    }
+
+    // Commit to in-memory index
     this.consumedContinuations.set(actionId, {
       actionId,
       requestId: validation.requestId || '',
@@ -1579,6 +1656,7 @@ export class ApprovalService {
       requestId: validation.requestId,
       requesterId: authContext.actorId,
       status: 'CONSUMED',
+      bindingId: binding.id,
     });
 
     return {
@@ -1589,9 +1667,14 @@ export class ApprovalService {
 
   /**
    * Checks whether a continuation authorization has already been consumed.
+   * Checks both in-memory and persisted binding state to ensure consistency across restarts.
    */
   public isContinuationConsumed(actionId: string): boolean {
-    return this.consumedContinuations.has(actionId?.trim());
+    const trimmed = actionId?.trim();
+    if (!trimmed) return false;
+    if (this.consumedContinuations.has(trimmed)) return true;
+    const binding = this.repository.findBindingByActionId(trimmed);
+    return binding?.state === ApprovalActionBindingState.CONSUMED;
   }
 
   /**

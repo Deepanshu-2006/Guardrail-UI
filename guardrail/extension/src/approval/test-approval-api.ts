@@ -1150,6 +1150,82 @@ async function runAllTests(): Promise<void> {
     });
     assertEquals(malformedTokenInviteRes.statusCode, 404, 'Malformed invitation code rejected with 404 Not Found');
     assertEquals((malformedTokenInviteRes.body as any).error?.code, 'NOT_FOUND_OR_DENIED', 'Error code is NOT_FOUND_OR_DENIED');
+
+    // 13.8 Continuation Consumption API endpoint & Duplicate Replay Rejection
+    const consumeActionId = 'act_consume_route_test';
+    const createConsumeReqRes = await env.router.dispatch({
+      method: 'POST',
+      url: '/api/v1/approval-requests',
+      headers: {
+        authorization: 'Bearer alice-token',
+        'content-type': 'application/json',
+      },
+      body: makeValidPayload(consumeActionId),
+    });
+    assertEquals(createConsumeReqRes.statusCode, 201, 'Created approval request for continuation consumption test');
+    const consumeReqId = (createConsumeReqRes.body.data as any).id;
+
+    // Carol approves request
+    const approveRes = await env.router.dispatch({
+      method: 'POST',
+      url: `/api/v1/approvals/${consumeReqId}/decide`,
+      headers: {
+        authorization: 'Bearer carol-token',
+        'content-type': 'application/json',
+      },
+      body: { decision: 'APPROVED' },
+    });
+    assertEquals(approveRes.statusCode, 200, 'Carol approved request');
+
+    // First consumption succeeds
+    const firstConsumeRes = await env.router.dispatch({
+      method: 'POST',
+      url: `/api/v1/actions/${consumeActionId}/consume-continuation`,
+      headers: {
+        authorization: 'Bearer alice-token',
+        'content-type': 'application/json',
+      },
+      body: { requestId: consumeReqId },
+    });
+    assertEquals(firstConsumeRes.statusCode, 200, 'First consume-continuation call succeeds with 200 OK');
+    assertEquals((firstConsumeRes.body as any).data?.authorized, true, 'First consumption is authorized');
+
+    // Second consumption is rejected with 409 Conflict & ALREADY_CONSUMED
+    const duplicateConsumeRes = await env.router.dispatch({
+      method: 'POST',
+      url: `/api/v1/actions/${consumeActionId}/consume-continuation`,
+      headers: {
+        authorization: 'Bearer alice-token',
+        'content-type': 'application/json',
+      },
+      body: { requestId: consumeReqId },
+    });
+    assertEquals(duplicateConsumeRes.statusCode, 409, 'Duplicate consume-continuation returns 409 Conflict');
+    assertEquals((duplicateConsumeRes.body as any).data?.authorized, false, 'Duplicate consumption is not authorized');
+    assertEquals((duplicateConsumeRes.body as any).data?.errorCode, 'ALREADY_CONSUMED', 'Error code is ALREADY_CONSUMED');
+
+    // Unauthenticated caller is rejected with 401
+    const unauthConsumeRes = await env.router.dispatch({
+      method: 'POST',
+      url: `/api/v1/actions/${consumeActionId}/consume-continuation`,
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: {},
+    });
+    assertEquals(unauthConsumeRes.statusCode, 401, 'Unauthenticated consume-continuation returns 401');
+
+    // Unrelated user (Bob) is rejected with 404 opaque denial
+    const bobConsumeRes = await env.router.dispatch({
+      method: 'POST',
+      url: `/api/v1/actions/${consumeActionId}/consume-continuation`,
+      headers: {
+        authorization: 'Bearer bob-token',
+        'content-type': 'application/json',
+      },
+      body: {},
+    });
+    assertEquals(bobConsumeRes.statusCode, 404, 'Bob consuming Alice action returns 404 NOT_FOUND_OR_DENIED');
   }
 
   // ---------------------------------------------------------------------------
