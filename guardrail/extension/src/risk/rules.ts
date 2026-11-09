@@ -11,12 +11,13 @@
  * 3. BOUNDED SCORING: Output scores must be bounded between 0 and 100.
  */
 
-import { ActionCategory, GuardrailAction } from '../types/actions.js';
+import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
 import { ActionClassificationResult } from '../types/classification.js';
 import { EvaluationReason, RiskLevel, RiskSignalDefinition, RiskSignalId } from '../types/risk.js';
 import { getRiskSignalDefinition, INITIAL_RISK_SIGNALS, RiskSignalOverrides } from './signals.js';
 import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 import { evaluatePhishingIndicators } from '../utils/phishing-detector.js';
+import { evaluateFormSafety, FormSafetyEvaluation } from '../utils/form-detector.js';
 
 /**
  * Context provided to a risk rule for evaluation.
@@ -172,6 +173,7 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       const isPayment =
         context.classification?.category === ActionCategory.PAYMENT ||
         context.action.category === ActionCategory.PAYMENT ||
+        context.action.element?.sensitiveFieldTypes?.includes('payment_card') === true ||
         hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer']);
 
       if (isPayment) {
@@ -217,22 +219,85 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
             isSecureContext: context.action.page?.isSecureContext,
           });
 
-          if (phishingResult.isPhishingSuspected) {
-            const detailReason = phishingResult.reasons.length > 0
-              ? phishingResult.reasons.join('; ')
+          // Also evaluate form safety if the element or action interacts with a form or submission
+          const element = context.action.element;
+          const isFormRelated =
+            Boolean(element?.formAction) ||
+            Boolean(element?.rawFormAction) ||
+            Boolean(element?.isFormActionMissing) ||
+            Boolean(element?.hasSensitiveField) ||
+            Boolean(element?.hasPasswordField) ||
+            Boolean(element?.hasFormActionOverride) ||
+            context.action.type === ActionType.SUBMIT ||
+            element?.tagName === 'FORM' ||
+            element?.tagName === 'INPUT' ||
+            element?.tagName === 'BUTTON';
+
+          let formResult: FormSafetyEvaluation | undefined;
+          if (isFormRelated) {
+            formResult = evaluateFormSafety({
+              pageUrl,
+              formAction: element?.formAction,
+              rawActionAttribute: element?.rawFormAction,
+              formMethod: element?.formMethod,
+              hasPasswordField: element?.hasPasswordField,
+              hasUsernameField: element?.hasUsernameField,
+              hasSensitiveField: element?.hasSensitiveField,
+              sensitiveFieldTypes: element?.sensitiveFieldTypes,
+              initialFormAction: element?.formInitialAction,
+              hasFormActionOverride: element?.hasFormActionOverride,
+              submitButtonText: element?.visibleText,
+              isSecureContext: context.action.page?.isSecureContext,
+            });
+          }
+
+          const isPhishingSuspected = phishingResult.isPhishingSuspected;
+          const isFormSuspicious = Boolean(formResult?.isSuspicious);
+
+          if (isPhishingSuspected || isFormSuspicious) {
+            const combinedReasons: string[] = [];
+            if (formResult?.reasons && formResult.reasons.length > 0) {
+              combinedReasons.push(...formResult.reasons);
+            }
+            if (phishingResult.reasons && phishingResult.reasons.length > 0) {
+              for (const r of phishingResult.reasons) {
+                if (!combinedReasons.includes(r)) {
+                  combinedReasons.push(r);
+                }
+              }
+            }
+
+            const detailReason = combinedReasons.length > 0
+              ? combinedReasons.join('; ')
               : config.reason;
 
-            const structuredReasons: EvaluationReason[] = (phishingResult.structuredReasons || []).map((ind) => ({
-              code: `INDICATOR_${ind.code}`,
-              message: ind.reason,
-              ruleId: 'RISK_RULE_PHISHING_INDICATOR',
-              signalId: RiskSignalId.PHISHING_INDICATOR,
-              severity: ind.scoreContribution >= 50 ? RiskLevel.HIGH : ind.scoreContribution >= 25 ? RiskLevel.MEDIUM : RiskLevel.LOW,
-              scoreContribution: ind.scoreContribution,
-            }));
+            const structuredReasons: EvaluationReason[] = [];
 
-            // Scale score dynamically based on compound indicators when enabled, respecting disabled overrides (0)
-            const scoreContribution = config.scoreContribution;
+            if (formResult?.structuredReasons) {
+              structuredReasons.push(
+                ...formResult.structuredReasons.map((sr) => ({
+                  ...sr,
+                  ruleId: 'RISK_RULE_PHISHING_INDICATOR',
+                  signalId: RiskSignalId.PHISHING_INDICATOR,
+                }))
+              );
+            }
+
+            if (phishingResult.structuredReasons) {
+              for (const sr of phishingResult.structuredReasons) {
+                if (!structuredReasons.some((existing) => existing.code === sr.code)) {
+                  structuredReasons.push({
+                    ...sr,
+                    ruleId: 'RISK_RULE_PHISHING_INDICATOR',
+                    signalId: RiskSignalId.PHISHING_INDICATOR,
+                  });
+                }
+              }
+            }
+
+            const baseScore = config.scoreContribution;
+            const scoreContribution =
+              baseScore === 0 ? 0 : Math.max(baseScore, formResult?.score ?? baseScore);
 
             return {
               matched: true,
@@ -240,7 +305,7 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
               signalId: RiskSignalId.PHISHING_INDICATOR,
               scoreContribution,
               reason: detailReason,
-              reasons: phishingResult.reasons,
+              reasons: combinedReasons,
               structuredReasons,
             };
           }
@@ -269,6 +334,8 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       const isAuth =
         context.classification?.category === ActionCategory.AUTHENTICATION ||
         context.action.category === ActionCategory.AUTHENTICATION ||
+        context.action.element?.hasPasswordField === true ||
+        context.action.element?.sensitiveFieldTypes?.includes('password') === true ||
         hasAnyToken(tokens, ['login', 'log in', 'sign in', 'signin', 'authenticate', 'password', '2fa']);
 
       if (isAuth) {
@@ -458,6 +525,8 @@ export function evaluateAllRiskRules(
           signalId: result.signalId,
           scoreContribution,
           reason: result.reason ?? config.reason,
+          reasons: result.reasons,
+          structuredReasons: result.structuredReasons,
         });
       }
     } catch {

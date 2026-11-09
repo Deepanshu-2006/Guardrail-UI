@@ -198,9 +198,9 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
   name: 'External Navigation & Origin Boundary Policy',
   description:
     'Detects navigations or link transitions that cross origin boundaries to external domains, presenting an advisory warning before domain shift.',
-  supportedActionTypes: [ActionType.NAVIGATION, ActionType.CLICK],
+  supportedActionTypes: [ActionType.NAVIGATION, ActionType.CLICK, ActionType.SUBMIT],
   evidenceRequirement:
-    'Action is a link CLICK or page NAVIGATION where both current URL and previous URL have valid HTTP/HTTPS origins and the origins strictly differ (currentOrigin !== previousOrigin).',
+    'Action is a link CLICK, page NAVIGATION, or form SUBMIT where current URL and destination URL have valid HTTP/HTTPS origins and the origins strictly differ (currentOrigin !== destinationOrigin).',
   decision: ResponseAction.WARN,
   userExplanation:
     'User advisory recommended: Navigation redirects to an external origin across domain boundaries.',
@@ -216,7 +216,13 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
       'A URL hostname alone does not prove or disprove legitimacy. Browser extension content scripts cannot synchronously cancel native top-level window.location assignments without DeclarativeNetRequest rules.',
   },
   appliesTo: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): boolean => {
-    if (action.type !== ActionType.NAVIGATION && action.type !== ActionType.CLICK) return false;
+    if (
+      action.type !== ActionType.NAVIGATION &&
+      action.type !== ActionType.CLICK &&
+      action.type !== ActionType.SUBMIT
+    ) {
+      return false;
+    }
 
     // Check explicit classification or assessment
     if (action.category === ActionCategory.EXTERNAL_NAVIGATION) return true;
@@ -245,6 +251,22 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
         }
       } catch {
         return false;
+      }
+    }
+
+    // Check form submission cross-origin boundary
+    if (action.page?.url && action.element?.formAction) {
+      try {
+        const curOrigin = new URL(action.page.url).origin;
+        const destOrigin = new URL(action.element.formAction).origin;
+        if (curOrigin !== destOrigin && curOrigin !== 'null' && destOrigin !== 'null') {
+          if (isTrustedDomain(destOrigin)) {
+            return false;
+          }
+          return true;
+        }
+      } catch {
+        // Ignore
       }
     }
 
@@ -360,7 +382,7 @@ export const ROUTINE_INTERACTION_POLICY: RiskPolicyDefinition = Object.freeze({
   name: 'Routine Interaction Policy',
   description:
     'Permits standard, non-sensitive page interactions (navigation, safe clicks, document exports) to proceed seamlessly without intervention.',
-  supportedActionTypes: [ActionType.CLICK, ActionType.NAVIGATION],
+  supportedActionTypes: [ActionType.CLICK, ActionType.NAVIGATION, ActionType.SUBMIT],
   evidenceRequirement:
     'Action involves standard interaction controls with no matched destructive, financial, or authentication signals, evaluating to LOW risk level (score < 25).',
   decision: ResponseAction.ALLOW,
@@ -394,7 +416,11 @@ export const ROUTINE_INTERACTION_POLICY: RiskPolicyDefinition = Object.freeze({
     if (EXTERNAL_NAVIGATION_POLICY.appliesTo(action, assessment)) return false;
     if (AUTHENTICATION_BOUNDARY_POLICY.appliesTo(action, assessment)) return false;
 
-    return action.type === ActionType.CLICK || action.type === ActionType.NAVIGATION;
+    return (
+      action.type === ActionType.CLICK ||
+      action.type === ActionType.NAVIGATION ||
+      action.type === ActionType.SUBMIT
+    );
   },
   evaluate: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): PolicyEvaluationResult => {
     if (!ROUTINE_INTERACTION_POLICY.appliesTo(action, assessment)) {

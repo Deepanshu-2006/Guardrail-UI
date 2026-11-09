@@ -95,6 +95,24 @@ export interface ActionElementInfo {
 
   /** Structural indicator: true if the enclosing form or element contains username/email/account input controls */
   hasUsernameField?: boolean;
+
+  /** Structural indicator: true if form contains sensitive inputs (password, card, OTP, SSN) strictly without values */
+  hasSensitiveField?: boolean;
+
+  /** Categorical types of sensitive inputs present in the form (e.g. ['password', 'payment_card']) */
+  sensitiveFieldTypes?: readonly string[];
+
+  /** Initial form action declared in HTML when form was first observed in DOM (for detecting dynamic modifications) */
+  formInitialAction?: string;
+
+  /** True if submit trigger specifies a formaction attribute that overrides the enclosing form's action */
+  hasFormActionOverride?: boolean;
+
+  /** True if form action attribute was missing or empty string */
+  isFormActionMissing?: boolean;
+
+  /** Raw unnormalized form action attribute value before URL resolution */
+  rawFormAction?: string;
 }
 
 /**

@@ -133,6 +133,10 @@ export function findFormInputElement(target: EventTarget | null): HTMLElement | 
   return target.closest<HTMLElement>(FORM_INPUT_SELECTOR) || null;
 }
 
+function isTag(element: any, tag: string): boolean {
+  return Boolean(element && typeof element.tagName === 'string' && element.tagName.toUpperCase() === tag.toUpperCase());
+}
+
 /**
  * Checks if a clicked element is a form submit button/trigger.
  *
@@ -142,13 +146,15 @@ export function findFormInputElement(target: EventTarget | null): HTMLElement | 
 export function isFormSubmitTrigger(element: HTMLElement | null): boolean {
   if (!element) return false;
 
-  if (element instanceof HTMLButtonElement) {
-    // Buttons inside forms default to type="submit" unless type="button"
-    return (element.type === 'submit' || !element.type) && Boolean(element.form);
+  const isButton = (typeof HTMLButtonElement !== 'undefined' && element instanceof HTMLButtonElement) || isTag(element, 'BUTTON');
+  if (isButton) {
+    const btnType = (element as any).type;
+    return (btnType === 'submit' || !btnType) && Boolean((element as any).form);
   }
 
-  if (element instanceof HTMLInputElement) {
-    return element.type === 'submit' && Boolean(element.form);
+  const isInput = (typeof HTMLInputElement !== 'undefined' && element instanceof HTMLInputElement) || isTag(element, 'INPUT');
+  if (isInput) {
+    return (element as any).type === 'submit' && Boolean((element as any).form);
   }
 
   return false;
@@ -164,33 +170,43 @@ export function isFormSubmitTrigger(element: HTMLElement | null): boolean {
 function extractVisibleText(element: HTMLElement | Element): string | undefined {
   let rawText = '';
 
-  if (element instanceof HTMLFormElement) {
+  const isForm = (typeof HTMLFormElement !== 'undefined' && element instanceof HTMLFormElement) || isTag(element, 'FORM');
+  if (isForm) {
     // For forms, never concatenate inner text of inputs or labels
     return undefined;
   }
 
-  if (element instanceof HTMLInputElement) {
+  const isInput = (typeof HTMLInputElement !== 'undefined' && element instanceof HTMLInputElement) || isTag(element, 'INPUT');
+  if (isInput) {
+    const el = element as any;
+    const inputType = (el.type || 'text').toLowerCase();
     // For button-like inputs, value is the visible label on the button (e.g. <input type="submit" value="Submit Form" />)
-    if (['submit', 'button', 'reset'].includes(element.type.toLowerCase()) && element.value) {
-      rawText = element.value;
-    } else if (element.placeholder) {
+    if (['submit', 'button', 'reset'].includes(inputType) && el.value) {
+      rawText = el.value;
+    } else if (el.placeholder) {
       // For text/data inputs, ONLY extract the placeholder (e.g., "Enter your email"), NEVER typed input values!
-      rawText = element.placeholder;
+      rawText = el.placeholder;
     }
-  } else if (element instanceof HTMLTextAreaElement) {
-    // For textareas, ONLY extract the placeholder, NEVER typed content
-    if (element.placeholder) {
-      rawText = element.placeholder;
+  } else {
+    const isTextArea = (typeof HTMLTextAreaElement !== 'undefined' && element instanceof HTMLTextAreaElement) || isTag(element, 'TEXTAREA');
+    if (isTextArea) {
+      // For textareas, ONLY extract the placeholder, NEVER typed content
+      if ((element as any).placeholder) {
+        rawText = (element as any).placeholder;
+      }
+    } else {
+      const isSelect = (typeof HTMLSelectElement !== 'undefined' && element instanceof HTMLSelectElement) || isTag(element, 'SELECT');
+      if (isSelect) {
+        // For select dropdowns, do not extract user-selected option values
+        rawText = '';
+      } else if ('innerText' in element && typeof (element as HTMLElement).innerText === 'string') {
+        // innerText reflects what is rendered on screen for standard DOM elements
+        rawText = (element as HTMLElement).innerText;
+      } else if (element.textContent) {
+        // Fallback to textContent for non-HTML elements
+        rawText = element.textContent;
+      }
     }
-  } else if (element instanceof HTMLSelectElement) {
-    // For select dropdowns, do not extract user-selected option values
-    rawText = '';
-  } else if ('innerText' in element && typeof (element as HTMLElement).innerText === 'string') {
-    // innerText reflects what is rendered on screen for standard DOM elements
-    rawText = (element as HTMLElement).innerText;
-  } else if (element.textContent) {
-    // Fallback to textContent for non-HTML elements
-    rawText = element.textContent;
   }
 
   const trimmed = rawText.replace(/\s+/g, ' ').trim();
@@ -304,15 +320,26 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
     if (enclosingForm) {
       // Resolve form action target safely
       let rawAction = '';
-      if (typeof element.getAttribute === 'function' && element.getAttribute('formaction')) {
-        rawAction = element.getAttribute('formaction') || '';
-      } else if (enclosingForm.action) {
-        rawAction = enclosingForm.action;
-      } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.getAttribute('action')) {
-        rawAction = enclosingForm.getAttribute('action') || '';
+      let formAttrAction = '';
+      if (typeof enclosingForm.getAttribute === 'function') {
+        formAttrAction = enclosingForm.getAttribute('action') || '';
       }
 
-      if (rawAction && rawAction.trim().length > 0) {
+      const hasButtonOverride = typeof element.getAttribute === 'function' && Boolean(element.getAttribute('formaction'));
+      if (hasButtonOverride) {
+        rawAction = element.getAttribute('formaction') || '';
+        elementInfo.hasFormActionOverride = true;
+      } else if (formAttrAction) {
+        rawAction = formAttrAction;
+      } else if (typeof enclosingForm.action === 'string' && enclosingForm.action) {
+        rawAction = enclosingForm.action;
+      }
+
+      elementInfo.rawFormAction = rawAction;
+
+      if (!rawAction || rawAction.trim().length === 0) {
+        elementInfo.isFormActionMissing = true;
+      } else {
         try {
           const base = typeof window !== 'undefined' && window.location ? window.location.href : 'http://localhost';
           elementInfo.formAction = new URL(rawAction, base).href;
@@ -325,16 +352,29 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
         }
       }
 
+      // Track initial action if recorded on the form DOM
+      if (typeof enclosingForm.getAttribute === 'function') {
+        const recordedInitial = enclosingForm.getAttribute('data-guardrail-initial-action');
+        if (recordedInitial !== null) {
+          elementInfo.formInitialAction = recordedInitial;
+        } else if (typeof enclosingForm.setAttribute === 'function') {
+          enclosingForm.setAttribute('data-guardrail-initial-action', formAttrAction);
+          elementInfo.formInitialAction = formAttrAction;
+        }
+      }
+
       // Safe extraction of HTTP submission method
       let rawMethod = '';
       if (typeof element.getAttribute === 'function' && element.hasAttribute('formmethod')) {
         rawMethod = element.getAttribute('formmethod') || '';
-      } else if (enclosingForm.method) {
+      } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.getAttribute('method')) {
+        rawMethod = enclosingForm.getAttribute('method') || '';
+      } else if (typeof enclosingForm.method === 'string') {
         rawMethod = enclosingForm.method;
       }
       elementInfo.formMethod = rawMethod ? rawMethod.toUpperCase() : 'GET';
 
-      // Safe structural detection of password field presence in form (strictly boolean, zero value extraction)
+      // Safe structural detection of sensitive input fields (strictly boolean, zero value extraction)
       if (typeof enclosingForm.querySelector === 'function') {
         const pwdInput = enclosingForm.querySelector('input[type="password"]');
         elementInfo.hasPasswordField = Boolean(pwdInput);
@@ -343,13 +383,46 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
           'input[type="text"], input[type="email"], input[autocomplete*="username"], input[name*="user"], input[name*="login"], input[name*="email"]'
         );
         elementInfo.hasUsernameField = Boolean(usernameInput);
+
+        const cardInput = enclosingForm.querySelector(
+          'input[autocomplete*="cc-"], input[name*="card"], input[name*="credit"], input[name*="cvv"], input[name*="cvc"], input[id*="card"], input[id*="cvv"]'
+        );
+        const otpInput = enclosingForm.querySelector(
+          'input[autocomplete*="one-time-code"], input[name*="otp"], input[name*="2fa"], input[name*="token"], input[id*="otp"], input[id*="2fa"]'
+        );
+        const ssnInput = enclosingForm.querySelector(
+          'input[name*="ssn"], input[name*="tax"], input[id*="ssn"]'
+        );
+
+        const sensitiveTypes: string[] = [];
+        if (pwdInput) sensitiveTypes.push('password');
+        if (cardInput) sensitiveTypes.push('payment_card');
+        if (otpInput) sensitiveTypes.push('otp');
+        if (ssnInput) sensitiveTypes.push('ssn');
+
+        if (sensitiveTypes.length > 0) {
+          elementInfo.hasSensitiveField = true;
+          elementInfo.sensitiveFieldTypes = Object.freeze(sensitiveTypes);
+        }
       }
-    } else if (element instanceof HTMLInputElement) {
-      if (element.type?.toLowerCase() === 'password') {
+    } else if ((typeof HTMLInputElement !== 'undefined' && element instanceof HTMLInputElement) || isTag(element, 'INPUT')) {
+      const el = element as any;
+      const inputType = el.type?.toLowerCase() || '';
+      const name = (el.name || el.id || '').toLowerCase();
+
+      if (inputType === 'password') {
         elementInfo.hasPasswordField = true;
+        elementInfo.hasSensitiveField = true;
+        elementInfo.sensitiveFieldTypes = Object.freeze(['password']);
+      } else if (name.includes('card') || name.includes('credit') || name.includes('cvv')) {
+        elementInfo.hasSensitiveField = true;
+        elementInfo.sensitiveFieldTypes = Object.freeze(['payment_card']);
+      } else if (name.includes('otp') || name.includes('2fa') || name.includes('token')) {
+        elementInfo.hasSensitiveField = true;
+        elementInfo.sensitiveFieldTypes = Object.freeze(['otp']);
       }
-      const name = (element.name || element.id || '').toLowerCase();
-      if (['text', 'email'].includes(element.type?.toLowerCase() || '') && (name.includes('user') || name.includes('login') || name.includes('email'))) {
+
+      if (['text', 'email'].includes(inputType) && (name.includes('user') || name.includes('login') || name.includes('email'))) {
         elementInfo.hasUsernameField = true;
       }
     }

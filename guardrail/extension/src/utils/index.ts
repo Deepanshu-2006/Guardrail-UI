@@ -8,3 +8,4 @@ export * from './messaging.js';
 export * from './privacy.js';
 export * from './url-detector.js';
 export * from './phishing-detector.js';
+export * from './form-detector.js';
