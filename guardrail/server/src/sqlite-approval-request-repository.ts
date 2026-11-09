@@ -62,9 +62,28 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
 
   public readonly databasePath: string;
 
-  public static open(databasePath = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'):
-    SqliteApprovalRequestRepository {
-    const resolvedPath = databasePath === ':memory:' ? databasePath : resolve(databasePath);
+  public getDatabase(): Database.Database {
+    return this.database;
+  }
+
+  public static open(
+    databaseOrPath: string | Database.Database = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'
+  ): SqliteApprovalRequestRepository {
+    if (typeof databaseOrPath !== 'string') {
+      const database = databaseOrPath;
+      try {
+        database.pragma('foreign_keys = ON');
+        database.pragma('journal_mode = WAL');
+        database.pragma('synchronous = FULL');
+        database.pragma('busy_timeout = 5000');
+        SqliteApprovalRequestRepository.migrate(database);
+        return new SqliteApprovalRequestRepository(database, database.name);
+      } catch (error) {
+        throw new ApprovalDatabaseUnavailableError(error);
+      }
+    }
+
+    const resolvedPath = databaseOrPath === ':memory:' ? databaseOrPath : resolve(databaseOrPath);
     let database: Database.Database | undefined;
     try {
       if (resolvedPath !== ':memory:') {

@@ -22,12 +22,13 @@ export interface PersistentApprovalServiceOptions
 export function createPersistentApprovalService(options: PersistentApprovalServiceOptions = {}) {
   const databasePath = options.databasePath ?? process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite';
   const repository = SqliteApprovalRequestRepository.open(databasePath);
-  const contactRegistry = options.contactRegistry ?? SqliteTrustedContactRegistry.open(databasePath);
-  const policyRepository = SqlitePolicyRepository.open(databasePath);
+  const sharedDb = repository.getDatabase();
+  const contactRegistry = options.contactRegistry ?? SqliteTrustedContactRegistry.open(sharedDb);
+  const policyRepository = SqlitePolicyRepository.open(sharedDb);
   const policyService = new PolicyService({
     policyRepository,
     contactRegistry,
-    timeProvider: options.timeProvider,
+    timeProvider: options.timeProvider ? () => new Date(options.timeProvider!()) : undefined,
   });
   const service = new ApprovalService({
     repository,
@@ -45,9 +46,13 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
     policyRepository,
     policyService,
     healthCheck: () => {
-      if (!repository.healthCheck()) return false;
-      if (!policyRepository.healthCheck()) return false;
-      return !(contactRegistry instanceof SqliteTrustedContactRegistry) || contactRegistry.healthCheck();
+      try {
+        if (!repository.healthCheck()) return false;
+        if (!policyRepository.healthCheck()) return false;
+        return !(contactRegistry instanceof SqliteTrustedContactRegistry) || contactRegistry.healthCheck();
+      } catch {
+        return false;
+      }
     },
     service,
     close: () => {

@@ -62,7 +62,44 @@ export class ActionAlreadyRegisteredError extends Error {
  * In-memory lifecycle controller for intercepted actions.
  */
 export class InterceptionController {
+  public static readonly DEFAULT_MAX_RECORDS = 500;
   private readonly records: Map<string, InterceptionRecord> = new Map();
+  private readonly maxRecords: number;
+
+  constructor(maxRecords: number = InterceptionController.DEFAULT_MAX_RECORDS) {
+    this.maxRecords = Math.max(10, maxRecords);
+  }
+
+  /**
+   * Prunes records when capacity is reached.
+   * Priority: terminal records (CANCELLED, CONTINUED, EXPIRED, INVALIDATED) are evicted first,
+   * oldest insertion order first.
+   */
+  private pruneRecords(): void {
+    if (this.records.size < this.maxRecords) return;
+
+    // Phase 1: Evict terminal records first
+    for (const [id, record] of this.records.entries()) {
+      if (isTerminalInterceptionState(record.state)) {
+        this.records.delete(id);
+        if (this.records.size < this.maxRecords) return;
+      }
+    }
+
+    // Phase 2: If still at capacity, evict oldest non-held records
+    for (const [id, record] of this.records.entries()) {
+      if (record.state !== InterceptionState.HELD) {
+        this.records.delete(id);
+        if (this.records.size < this.maxRecords) return;
+      }
+    }
+
+    // Phase 3: Absolute oldest fallback to enforce hard cap
+    for (const [id] of this.records.entries()) {
+      this.records.delete(id);
+      if (this.records.size < this.maxRecords) return;
+    }
+  }
 
   /**
    * Registers a new intercepted action in the DETECTED state.
@@ -86,6 +123,8 @@ export class InterceptionController {
     if (this.records.has(actionId)) {
       throw new ActionAlreadyRegisteredError(actionId);
     }
+
+    this.pruneRecords();
 
     const record = createInterceptionRecord(actionId, reason);
     this.records.set(actionId, record);

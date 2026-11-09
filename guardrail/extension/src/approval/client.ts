@@ -253,6 +253,10 @@ export interface RequestOptions {
   readonly timeoutMs?: number;
   /** Optional external AbortSignal */
   readonly signal?: AbortSignal;
+  /** Optional maximum retry attempts for safe idempotent read operations (GET only) */
+  readonly maxRetries?: number;
+  /** Optional delay in ms between retries (defaults to 100ms) */
+  readonly retryDelayMs?: number;
 }
 
 export interface VerifiedIdentitySummary {
@@ -1589,10 +1593,103 @@ export class ApprovalApiClient {
   // ===========================================================================
 
   /**
+   * Health and readiness probe checking backend availability.
+   * Probes /ready (or /health) without requiring a token.
+   */
+  public async checkHealth(options?: RequestOptions): Promise<{ available: boolean; status?: string; statusCode?: number }> {
+    let resolvedBaseUrl = this.baseUrl;
+    if (!this.hasExplicitBaseUrl) {
+      try {
+        resolvedBaseUrl = await resolveApiBaseUrl({ environment: this.environment });
+      } catch {
+        return { available: false, statusCode: 0 };
+      }
+    }
+    const url = `${resolvedBaseUrl}/ready`;
+    try {
+      const response = await this.fetchFn(url, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: options?.signal,
+      });
+      let status: string | undefined;
+      try {
+        const json = (await response.json()) as { status?: string };
+        status = json?.status;
+      } catch {
+        // non-json body
+      }
+      return {
+        available: response.ok,
+        status,
+        statusCode: response.status,
+      };
+    } catch {
+      return { available: false, statusCode: 0 };
+    }
+  }
+
+  /**
    * Core request dispatcher handling HTTP transport, authentication, timeouts,
-   * safe parsing, and error mapping without crashing the extension runtime.
+   * safe parsing, safe retries for idempotent reads, and error mapping.
    */
   private async dispatchRequest<T>(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    options?: RequestOptions
+  ): Promise<ApiClientResult<T>> {
+    // Only idempotent read operations (GET) are eligible for automatic retry.
+    // Consequential operations (POST, PUT) are NEVER retried blindly.
+    const maxRetries = method === 'GET' ? Math.min(Math.max(0, options?.maxRetries ?? 0), 3) : 0;
+    const baseDelayMs = Math.max(10, options?.retryDelayMs ?? 100);
+
+    let attempt = 0;
+    while (true) {
+      const result = await this.executeSingleRequest<T>(method, path, body, options);
+      if (result.success) {
+        return result;
+      }
+
+      const isTransient =
+        result.isNetworkError ||
+        result.statusCode === 502 ||
+        result.statusCode === 503 ||
+        result.statusCode === 504;
+
+      if (attempt < maxRetries && isTransient && !options?.signal?.aborted) {
+        attempt++;
+        this.logger.info('Retrying idempotent read request following transient failure', {
+          method,
+          path,
+          attempt,
+          maxRetries,
+          statusCode: result.statusCode,
+          isNetworkError: result.isNetworkError,
+        });
+        const backoff = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        if (options?.signal?.aborted) {
+          return {
+            success: false,
+            error: {
+              code: ApiClientErrorCodes.TIMEOUT,
+              message: 'Request aborted by caller signal during retry backoff.',
+              statusCode: 408,
+            },
+            statusCode: 408,
+            isTimeout: true,
+            isNetworkError: false,
+          };
+        }
+        continue;
+      }
+
+      return result;
+    }
+  }
+
+  private async executeSingleRequest<T>(
     method: 'GET' | 'POST' | 'PUT',
     path: string,
     body?: unknown,

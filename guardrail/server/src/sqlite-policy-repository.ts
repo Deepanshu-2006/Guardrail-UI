@@ -83,10 +83,73 @@ export class SqlitePolicyRepository implements PolicyRepository {
     public readonly databasePath: string
   ) {}
 
+  private static migrate(database: Database.Database): void {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS user_policies (
+        user_id TEXT PRIMARY KEY NOT NULL,
+        policy_version TEXT NOT NULL,
+        schema_version TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        updated_by TEXT NOT NULL,
+        payload_json TEXT NOT NULL CHECK(json_valid(payload_json))
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_policies_version
+        ON user_policies(user_id, policy_version);
+
+      CREATE TABLE IF NOT EXISTS user_policy_audit_log (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT NOT NULL,
+        updated_by TEXT NOT NULL,
+        actor_role TEXT,
+        timestamp TEXT NOT NULL,
+        previous_version TEXT NOT NULL,
+        new_version TEXT NOT NULL,
+        changed_fields_json TEXT NOT NULL CHECK(json_valid(changed_fields_json)),
+        summary TEXT NOT NULL,
+        change_source TEXT,
+        is_system_default INTEGER DEFAULT 0,
+        impact_summary TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_policy_audit_user_time
+        ON user_policy_audit_log(user_id, timestamp);
+    `);
+
+    // Safe schema migrations for existing databases
+    const auditCols = database.prepare('PRAGMA table_info(user_policy_audit_log)').all() as Array<{ name: string }>;
+    const auditColNames = new Set(auditCols.map((c) => c.name));
+    if (!auditColNames.has('actor_role')) {
+      database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN actor_role TEXT;');
+    }
+    if (!auditColNames.has('change_source')) {
+      database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN change_source TEXT;');
+    }
+    if (!auditColNames.has('is_system_default')) {
+      database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN is_system_default INTEGER DEFAULT 0;');
+    }
+    if (!auditColNames.has('impact_summary')) {
+      database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN impact_summary TEXT;');
+    }
+  }
+
   public static open(
-    databasePath = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'
+    databaseOrPath: string | Database.Database = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'
   ): SqlitePolicyRepository {
-    const resolved = databasePath === ':memory:' ? databasePath : resolve(databasePath);
+    if (typeof databaseOrPath !== 'string') {
+      const database = databaseOrPath;
+      try {
+        database.pragma('foreign_keys = ON');
+        database.pragma('journal_mode = WAL');
+        database.pragma('synchronous = FULL');
+        database.pragma('secure_delete = ON');
+        database.pragma('busy_timeout = 5000');
+        SqlitePolicyRepository.migrate(database);
+        return new SqlitePolicyRepository(database, database.name);
+      } catch (error) {
+        throw new Error('Policy database is unavailable.', { cause: error });
+      }
+    }
+
+    const resolved = databaseOrPath === ':memory:' ? databaseOrPath : resolve(databaseOrPath);
     let database: Database.Database | undefined;
     try {
       if (resolved !== ':memory:') {
@@ -97,52 +160,8 @@ export class SqlitePolicyRepository implements PolicyRepository {
       database.pragma('journal_mode = WAL');
       database.pragma('synchronous = FULL');
       database.pragma('secure_delete = ON');
-
-      database.exec(`
-        CREATE TABLE IF NOT EXISTS user_policies (
-          user_id TEXT PRIMARY KEY NOT NULL,
-          policy_version TEXT NOT NULL,
-          schema_version TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          updated_by TEXT NOT NULL,
-          payload_json TEXT NOT NULL CHECK(json_valid(payload_json))
-        );
-        CREATE INDEX IF NOT EXISTS idx_user_policies_version
-          ON user_policies(user_id, policy_version);
-
-        CREATE TABLE IF NOT EXISTS user_policy_audit_log (
-          id TEXT PRIMARY KEY NOT NULL,
-          user_id TEXT NOT NULL,
-          updated_by TEXT NOT NULL,
-          actor_role TEXT,
-          timestamp TEXT NOT NULL,
-          previous_version TEXT NOT NULL,
-          new_version TEXT NOT NULL,
-          changed_fields_json TEXT NOT NULL CHECK(json_valid(changed_fields_json)),
-          summary TEXT NOT NULL,
-          change_source TEXT,
-          is_system_default INTEGER DEFAULT 0,
-          impact_summary TEXT
-        );
-        CREATE INDEX IF NOT EXISTS idx_policy_audit_user_time
-          ON user_policy_audit_log(user_id, timestamp);
-      `);
-
-      // Safe schema migrations for existing databases
-      const auditCols = database.prepare('PRAGMA table_info(user_policy_audit_log)').all() as Array<{ name: string }>;
-      const auditColNames = new Set(auditCols.map((c) => c.name));
-      if (!auditColNames.has('actor_role')) {
-        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN actor_role TEXT;');
-      }
-      if (!auditColNames.has('change_source')) {
-        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN change_source TEXT;');
-      }
-      if (!auditColNames.has('is_system_default')) {
-        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN is_system_default INTEGER DEFAULT 0;');
-      }
-      if (!auditColNames.has('impact_summary')) {
-        database.exec('ALTER TABLE user_policy_audit_log ADD COLUMN impact_summary TEXT;');
-      }
+      database.pragma('busy_timeout = 5000');
+      SqlitePolicyRepository.migrate(database);
 
       if (resolved !== ':memory:') {
         try {

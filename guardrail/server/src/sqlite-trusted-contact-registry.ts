@@ -76,18 +76,8 @@ function parseContact(json: string): TrustedContact {
 export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
   private constructor(private readonly database: Database.Database) {}
 
-  public static open(databasePath = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'):
-    SqliteTrustedContactRegistry {
-    const resolved = databasePath === ':memory:' ? databasePath : resolve(databasePath);
-    let database: Database.Database | undefined;
-    try {
-      if (resolved !== ':memory:') mkdirSync(dirname(resolved), { recursive: true, mode: 0o700 });
-      database = new Database(resolved, { timeout: 5000 });
-      database.pragma('foreign_keys = ON');
-      database.pragma('journal_mode = WAL');
-      database.pragma('synchronous = FULL');
-      database.pragma('secure_delete = ON');
-      database.exec(`
+  private static migrate(database: Database.Database): void {
+    database.exec(`
         CREATE TABLE IF NOT EXISTS trusted_contact_invitations (
           id TEXT PRIMARY KEY NOT NULL,
           user_id TEXT NOT NULL,
@@ -119,8 +109,8 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       `);
       const migrateTrustedContactSchema = database.transaction(() => {
       const ensureColumn = (table: string, name: string, definition: string) => {
-        const columns = database!.pragma(`table_info(${table})`) as { name: string }[];
-        if (!columns.some((column) => column.name === name)) database!.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+        const columns = database.pragma(`table_info(${table})`) as { name: string }[];
+        if (!columns.some((column) => column.name === name)) database.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
       };
       ensureColumn('trusted_contact_invitations', 'recipient_actor_id', 'TEXT');
       ensureColumn('trusted_contact_invitations', 'created_at', 'TEXT');
@@ -187,6 +177,37 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       `);
       });
       migrateTrustedContactSchema.immediate();
+  }
+
+  public static open(
+    databaseOrPath: string | Database.Database = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'
+  ): SqliteTrustedContactRegistry {
+    if (typeof databaseOrPath !== 'string') {
+      const database = databaseOrPath;
+      try {
+        database.pragma('foreign_keys = ON');
+        database.pragma('journal_mode = WAL');
+        database.pragma('synchronous = FULL');
+        database.pragma('secure_delete = ON');
+        database.pragma('busy_timeout = 5000');
+        SqliteTrustedContactRegistry.migrate(database);
+        return new SqliteTrustedContactRegistry(database);
+      } catch (error) {
+        throw new Error('Trusted-contact database is unavailable.', { cause: error });
+      }
+    }
+
+    const resolved = databaseOrPath === ':memory:' ? databaseOrPath : resolve(databaseOrPath);
+    let database: Database.Database | undefined;
+    try {
+      if (resolved !== ':memory:') mkdirSync(dirname(resolved), { recursive: true, mode: 0o700 });
+      database = new Database(resolved, { timeout: 5000 });
+      database.pragma('foreign_keys = ON');
+      database.pragma('journal_mode = WAL');
+      database.pragma('synchronous = FULL');
+      database.pragma('secure_delete = ON');
+      database.pragma('busy_timeout = 5000');
+      SqliteTrustedContactRegistry.migrate(database);
       if (resolved !== ':memory:') chmodSync(resolved, 0o600);
       return new SqliteTrustedContactRegistry(database);
     } catch (error) {
@@ -195,11 +216,22 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     }
   }
 
-  public close(): void { this.database.close(); }
+  public close(): void {
+    try {
+      if (this.database.open) this.database.close();
+    } catch {
+      // already closed
+    }
+  }
 
   public healthCheck(): boolean {
-    const result = this.database.prepare('SELECT 1 AS ok').get() as { ok: number } | undefined;
-    return Number(result?.ok) === 1;
+    try {
+      if (!this.database.open) return false;
+      const result = this.database.prepare('SELECT 1 AS ok').get() as { ok: number } | undefined;
+      return Number(result?.ok) === 1;
+    } catch {
+      return false;
+    }
   }
 
   public isTrustedContactForUser(contactId: string, userId: string): boolean {

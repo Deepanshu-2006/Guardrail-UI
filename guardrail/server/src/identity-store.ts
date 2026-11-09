@@ -19,17 +19,8 @@ interface IdentityRow {
 export class SqliteIdentityStore {
   private constructor(private readonly database: Database.Database, public readonly databasePath: string) {}
 
-  public static open(databasePath = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'): SqliteIdentityStore {
-    const resolved = databasePath === ':memory:' ? databasePath : resolve(databasePath);
-    let database: Database.Database | undefined;
-    try {
-      if (resolved !== ':memory:') mkdirSync(dirname(resolved), { recursive: true, mode: 0o700 });
-      database = new Database(resolved, { timeout: 5000 });
-      database.pragma('foreign_keys = ON');
-      database.pragma('journal_mode = WAL');
-      database.pragma('synchronous = FULL');
-      database.pragma('busy_timeout = 5000');
-      database.exec(`
+  private static migrate(database: Database.Database): void {
+    database.exec(`
         CREATE TABLE IF NOT EXISTS guardrail_identity_schema (
           singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
           version INTEGER NOT NULL
@@ -54,10 +45,39 @@ export class SqliteIdentityStore {
         );
         CREATE INDEX IF NOT EXISTS idx_guardrail_revoked_tokens_expiry ON guardrail_revoked_tokens(expires_at);
       `);
-      const userColumns = database.pragma('table_info(guardrail_users)') as { name: string }[];
-      if (!userColumns.some((column) => column.name === 'verified_email')) {
-        database.exec('ALTER TABLE guardrail_users ADD COLUMN verified_email TEXT');
+    const userColumns = database.pragma('table_info(guardrail_users)') as { name: string }[];
+    if (!userColumns.some((column) => column.name === 'verified_email')) {
+      database.exec('ALTER TABLE guardrail_users ADD COLUMN verified_email TEXT');
+    }
+  }
+
+  public static open(
+    databaseOrPath: string | Database.Database = process.env.GUARDRAIL_DB_PATH ?? 'data/guardrail.sqlite'
+  ): SqliteIdentityStore {
+    if (typeof databaseOrPath !== 'string') {
+      const database = databaseOrPath;
+      try {
+        database.pragma('foreign_keys = ON');
+        database.pragma('journal_mode = WAL');
+        database.pragma('synchronous = FULL');
+        database.pragma('busy_timeout = 5000');
+        SqliteIdentityStore.migrate(database);
+        return new SqliteIdentityStore(database, database.name);
+      } catch (error) {
+        throw new Error('Identity database is unavailable.', { cause: error });
       }
+    }
+
+    const resolved = databaseOrPath === ':memory:' ? databaseOrPath : resolve(databaseOrPath);
+    let database: Database.Database | undefined;
+    try {
+      if (resolved !== ':memory:') mkdirSync(dirname(resolved), { recursive: true, mode: 0o700 });
+      database = new Database(resolved, { timeout: 5000 });
+      database.pragma('foreign_keys = ON');
+      database.pragma('journal_mode = WAL');
+      database.pragma('synchronous = FULL');
+      database.pragma('busy_timeout = 5000');
+      SqliteIdentityStore.migrate(database);
       if (resolved !== ':memory:') chmodSync(resolved, 0o600);
       return new SqliteIdentityStore(database, resolved);
     } catch (error) {
@@ -135,5 +155,11 @@ export class SqliteIdentityStore {
     return Number(result?.ok) === 1;
   }
 
-  public close(): void { this.database.close(); }
+  public close(): void {
+    try {
+      if (this.database.open) this.database.close();
+    } catch {
+      // already closed
+    }
+  }
 }

@@ -49,9 +49,22 @@ export class DashboardShell {
   private activeFetchPromise: Promise<void> | null = null;
   private readonly activeDetailFetchPromises: Map<string, Promise<ApprovalRequest | null>> = new Map();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  public static readonly MAX_CACHE_ENTRIES = 100;
   private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
   private isDetailLoading: boolean = false;
   private detailErrorMessage: string | null = null;
+
+  private setCachedRequest(id: string, req: ApprovalRequest): void {
+    if (this.detailedRequestsCache.has(id)) {
+      this.detailedRequestsCache.delete(id);
+    } else if (this.detailedRequestsCache.size >= DashboardShell.MAX_CACHE_ENTRIES) {
+      const oldestKey = this.detailedRequestsCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.detailedRequestsCache.delete(oldestKey);
+      }
+    }
+    this.detailedRequestsCache.set(id, req);
+  }
   private isSubmittingDecision: boolean = false;
   private isDestroyed: boolean = false;
   private isPollingHaltedDueToAuth: boolean = false;
@@ -146,10 +159,10 @@ export class DashboardShell {
 
     // Pre-seed in-memory detail cache with authoritative initial records
     for (const req of initialRequests) {
-      this.detailedRequestsCache.set(req.id, req);
+      this.setCachedRequest(req.id, req);
     }
     for (const req of initialHistory) {
-      this.detailedRequestsCache.set(req.id, req);
+      this.setCachedRequest(req.id, req);
     }
 
     this.init();
@@ -748,7 +761,7 @@ export class DashboardShell {
           if (cached && cached.status !== ApprovalStatus.PENDING) {
             continue;
           }
-          this.detailedRequestsCache.set(req.id, req);
+          this.setCachedRequest(req.id, req);
           reconciledPending.push(req);
         }
 
@@ -942,7 +955,7 @@ export class DashboardShell {
       this.lastAppliedDetailSeqByRequestId.set(trimmedId, seq);
 
       if (result.success) {
-        this.detailedRequestsCache.set(trimmedId, result.data);
+        this.setCachedRequest(trimmedId, result.data);
         this.detailErrorMessage = null;
         return result.data;
       } else {
@@ -1073,7 +1086,7 @@ export class DashboardShell {
         this.isBackendUnavailable = false;
 
         // Update detailed cache with authoritative updated record
-        this.detailedRequestsCache.set(trimmedId, updatedRecord);
+        this.setCachedRequest(trimmedId, updatedRecord);
 
         // Prepend to authoritative history archive
         this.state.historyRequests = [
@@ -1312,7 +1325,7 @@ export class DashboardShell {
             if (!seenIds.has(trimmed)) {
               seenIds.add(trimmed);
               fetchedRecords.push(req);
-              this.detailedRequestsCache.set(trimmed, req);
+              this.setCachedRequest(trimmed, req);
             }
           }
         }
@@ -1408,7 +1421,7 @@ export class DashboardShell {
     if (!request || typeof request !== 'object' || typeof request.id !== 'string') {
       return;
     }
-    this.detailedRequestsCache.set(request.id, request);
+    this.setCachedRequest(request.id, request);
     this.state.historyRequests = [
       request,
       ...this.state.historyRequests.filter((r) => r.id !== request.id),

@@ -378,22 +378,10 @@ export async function handleBackgroundApprovalStatusLookup(
 
   const { requestId, actionId } = validation;
 
-  // If actionId is supplied, verify it is tracked in the controller
-  if (actionId) {
-    const record = controller.getRecord(actionId);
-    if (!record) {
-      return {
-        success: false,
-        requestId,
-        isAuthoritative: true,
-        error: {
-          code: 'ACTION_NOT_FOUND',
-          message: `Action "${actionId}" is not actively tracked by Guardrail coordinator.`,
-          statusCode: 404,
-        },
-      };
-    }
-  }
+  // If actionId is supplied, check whether it is tracked in the controller.
+  // In MV3 service worker environment, transient in-memory state is cleared on idle wake.
+  // We allow authoritative backend verification to recover and restore the held action if it matches.
+  const actionWasTrackedInMemory = actionId ? controller.hasRecord(actionId) : true;
 
   const syncClient =
     options?.syncClient ??
@@ -410,6 +398,18 @@ export async function handleBackgroundApprovalStatusLookup(
         (actionId !== undefined && result.request.actionId !== actionId) ||
         result.status !== result.request.status
       ) {
+        if (actionId && !actionWasTrackedInMemory && result.request.actionId !== actionId) {
+          return {
+            success: false,
+            requestId,
+            isAuthoritative: true,
+            error: {
+              code: 'ACTION_NOT_FOUND',
+              message: `Action "${actionId}" is not actively tracked by Guardrail coordinator.`,
+              statusCode: 404,
+            },
+          };
+        }
         return {
           success: false,
           requestId,
@@ -420,6 +420,19 @@ export async function handleBackgroundApprovalStatusLookup(
           },
         };
       }
+
+      // Service worker restart recovery: restore held action record upon authoritative confirmation
+      if (actionId && !controller.hasRecord(actionId)) {
+        controller.register(
+          actionId,
+          `Restored held action following service worker restart for request ${requestId}.`
+        );
+        controller.holdAction(
+          actionId,
+          `Restored held action following service worker restart for request ${requestId}.`
+        );
+      }
+
       return {
         success: true,
         requestId,
@@ -428,6 +441,18 @@ export async function handleBackgroundApprovalStatusLookup(
         isAuthoritative: true,
       };
     } else {
+      if (actionId && !actionWasTrackedInMemory) {
+        return {
+          success: false,
+          requestId,
+          isAuthoritative: true,
+          error: {
+            code: 'ACTION_NOT_FOUND',
+            message: `Action "${actionId}" is not actively tracked by Guardrail coordinator.`,
+            statusCode: 404,
+          },
+        };
+      }
       return {
         success: false,
         requestId,
@@ -440,6 +465,18 @@ export async function handleBackgroundApprovalStatusLookup(
       };
     }
   } catch {
+    if (actionId && !actionWasTrackedInMemory) {
+      return {
+        success: false,
+        requestId,
+        isAuthoritative: true,
+        error: {
+          code: 'ACTION_NOT_FOUND',
+          message: `Action "${actionId}" is not actively tracked by Guardrail coordinator.`,
+          statusCode: 404,
+        },
+      };
+    }
     return {
       success: false,
       requestId,
