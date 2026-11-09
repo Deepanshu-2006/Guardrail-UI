@@ -301,6 +301,11 @@ export function extractElementInfo(
     }
   }
 
+  // Safe extraction of download attribute if present
+  if (typeof element.getAttribute === 'function' && element.hasAttribute('download')) {
+    elementInfo.downloadAttribute = element.getAttribute('download') || '';
+  }
+
   // Safe extraction of structural form and submission metadata (strictly value-free)
   try {
     let enclosingForm: HTMLFormElement | any | null = null;

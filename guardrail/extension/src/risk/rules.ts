@@ -18,6 +18,7 @@ import { getRiskSignalDefinition, INITIAL_RISK_SIGNALS, RiskSignalOverrides } fr
 import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 import { evaluatePhishingIndicators } from '../utils/phishing-detector.js';
 import { evaluateFormSafety, FormSafetyEvaluation } from '../utils/form-detector.js';
+import { evaluateDownloadSafety } from '../utils/download-detector.js';
 
 /**
  * Context provided to a risk rule for evaluation.
@@ -452,33 +453,80 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
 
   /**
    * Rule: Download Action
-   * Score contribution: +10
+   * Score contribution: +10 (baseline, scaled on suspicious indicators)
    * Priority: 60
    */
   {
     id: 'RISK_RULE_DOWNLOAD',
     signalId: RiskSignalId.DOWNLOAD_ACTION,
     priority: 60,
-    description: 'Triggers DOWNLOAD_ACTION signal when action initiates file downloads or document exports.',
+    description: 'Triggers DOWNLOAD_ACTION signal when action initiates file downloads, document exports, or binary transfers.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.DOWNLOAD_ACTION];
       const tokens = extractActionTokens(context.action);
-      const isDownload =
+      const isExplicitDownload =
         context.classification?.category === ActionCategory.DOWNLOAD ||
         context.action.category === ActionCategory.DOWNLOAD ||
+        context.action.download !== undefined ||
+        context.action.element?.downloadInfo !== undefined ||
+        context.action.element?.downloadAttribute !== undefined ||
         hasAnyToken(tokens, ['download', 'export', 'save file']);
 
-      if (isDownload) {
+      const targetCandidate = context.action.element?.targetUrl;
+      const hasDownloadTarget = Boolean(
+        targetCandidate &&
+        /\.(exe|msi|dmg|pkg|zip|tar|gz|7z|iso|img|vhd|bat|cmd|sh|ps1|vbs|scr|hta|pdf|docx|xlsx|csv)(\?.*)?$/i.test(targetCandidate)
+      );
+
+      if (!isExplicitDownload && !hasDownloadTarget) {
+        return { matched: false };
+      }
+
+      // Check if concrete download metadata is present or can be synthesized from targetUrl/page
+      const downloadPayload = context.action.download || context.action.element?.downloadInfo;
+      const downloadCandidate = downloadPayload ?? {
+        url: targetCandidate || context.action.page?.url,
+        finalUrl: targetCandidate,
+        filename: context.action.element?.downloadAttribute || undefined,
+        referrer: context.action.page?.url,
+      };
+
+      const safetyEval = evaluateDownloadSafety(downloadCandidate);
+
+      if (safetyEval.isSuspicious) {
+        const baseScore = config.scoreContribution;
+        const scoreContribution =
+          baseScore === 0 ? 0 : Math.max(baseScore, safetyEval.score);
+
+        const structuredReasons: EvaluationReason[] = (safetyEval.structuredReasons || []).map((sr) => ({
+          ...sr,
+          ruleId: 'RISK_RULE_DOWNLOAD',
+          signalId: RiskSignalId.DOWNLOAD_ACTION,
+        }));
+
+        const detailReason = safetyEval.reasons.length > 0
+          ? safetyEval.reasons.join('; ')
+          : config.reason;
+
         return {
           matched: true,
           ruleId: 'RISK_RULE_DOWNLOAD',
           signalId: RiskSignalId.DOWNLOAD_ACTION,
-          scoreContribution: config.scoreContribution,
-          reason: config.reason,
+          scoreContribution,
+          reason: detailReason,
+          reasons: safetyEval.reasons,
+          structuredReasons,
         };
       }
 
-      return { matched: false };
+      // Routine download
+      return {
+        matched: true,
+        ruleId: 'RISK_RULE_DOWNLOAD',
+        signalId: RiskSignalId.DOWNLOAD_ACTION,
+        scoreContribution: config.scoreContribution,
+        reason: config.reason,
+      };
     },
   },
 ]);

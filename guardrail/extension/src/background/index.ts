@@ -35,6 +35,10 @@ import {
   reloadPolicyConfig,
 } from '../config/index.js';
 import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
+import {
+  backgroundDownloadManager,
+  BrowserDownloadManager,
+} from './download-manager.js';
 
 const manifest =
   typeof chrome !== 'undefined' && chrome.runtime?.getManifest
@@ -504,6 +508,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     });
   }
 
+  // Initialize browser download monitoring if chrome.downloads API is available
+  if (typeof chrome !== 'undefined' && chrome.downloads) {
+    const initialized = backgroundDownloadManager.initialize();
+    if (initialized) {
+      console.log('[Guardrail] Browser download monitoring initialized with supported chrome.downloads listeners.');
+    }
+  }
+
   // Extension Message Listener: Receives messages from content scripts and returns an acknowledgement
   if (chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener(
@@ -686,7 +698,28 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       return false;
     }
 
-    // 6. Unsupported message type
+    // 6. Query download assessment
+    if (raw.type === 'GUARDRAIL_GET_DOWNLOAD_ASSESSMENT') {
+      const downloadId = typeof raw.downloadId === 'number' ? raw.downloadId : -1;
+      const assessment = backgroundDownloadManager.getAssessment(downloadId);
+      sendResponse({
+        success: Boolean(assessment),
+        assessment,
+      });
+      return false;
+    }
+
+    // 7. Query active downloads
+    if (raw.type === 'GUARDRAIL_GET_ACTIVE_DOWNLOADS') {
+      const active = backgroundDownloadManager.getActiveAssessments();
+      sendResponse({
+        success: true,
+        downloads: active,
+      });
+      return false;
+    }
+
+    // 8. Unsupported message type
     sendResponse({
       success: false,
       error: 'Unsupported message type.',
@@ -697,3 +730,5 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 );
   }
 }
+
+export { backgroundDownloadManager, BrowserDownloadManager };

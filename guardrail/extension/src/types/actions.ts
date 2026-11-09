@@ -6,6 +6,8 @@
  * action classifiers, service worker coordinator, and future policy/risk evaluation engines.
  */
 
+import type { DownloadItemMetadata } from './download.js';
+
 /**
  * Canonical interaction types recognized by Guardrail.
  * Describes the physical/DOM mechanism through which an interaction occurred.
@@ -116,6 +118,12 @@ export interface ActionElementInfo {
 
   /** Visible text or label on the clicked submit button/trigger */
   submitButtonText?: string;
+
+  /** Value of download attribute if element is an anchor with download specified */
+  downloadAttribute?: string;
+
+  /** Associated download item metadata if element triggered or represents a download */
+  downloadInfo?: DownloadItemMetadata;
 }
 
 /**
@@ -156,6 +164,9 @@ export interface GuardrailAction {
 
   /** Detailed metadata about the targeted DOM element (omitted for global page events like navigation) */
   element?: ActionElementInfo;
+
+  /** Associated browser download metadata if action corresponds to a download event */
+  download?: DownloadItemMetadata;
 
   /** Contextual information about the active webpage */
   page: ActionPageInfo;

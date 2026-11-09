@@ -11,6 +11,7 @@ export * from './staging.js';
 export * from './approval.js';
 export * from './policy.js';
 export * from './config.js';
+export * from './download.js';
 
 export interface ExtensionManifestInfo {
   name: string;

@@ -198,8 +198,25 @@ export const DOWNLOAD_KEYWORDS: readonly string[] = [
 export const DownloadRule: ClassificationRule = {
   id: 'RULE_DOWNLOAD_KEYWORDS',
   category: ActionCategory.DOWNLOAD,
-  description: 'Matches keywords related to file downloads, data exports, and file saving',
+  description: 'Matches keywords, download attributes, file extensions, or download models related to file downloads and exports',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    // 1. Explicit download payload or metadata present
+    if (action.download || action.element?.downloadInfo) {
+      return {
+        matched: true,
+        reason: 'Action contains verified browser download metadata',
+      };
+    }
+
+    // 2. Anchor with download attribute
+    if (action.element?.downloadAttribute !== undefined) {
+      return {
+        matched: true,
+        reason: 'Action targeted link element with download attribute',
+      };
+    }
+
+    // 3. Keyword matching in action metadata
     const tokens = extractSearchableTokens(action);
     const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...DOWNLOAD_KEYWORDS]);
     if (matched) {
@@ -208,6 +225,24 @@ export const DownloadRule: ClassificationRule = {
         reason: `Matched download keyword "${matchedKeyword}" in action metadata`,
       };
     }
+
+    // 4. Target URL pathname ends with a recognized file extension
+    const target = action.element?.targetUrl;
+    if (target) {
+      try {
+        const parsed = new URL(target, 'http://localhost');
+        const pathname = parsed.pathname.toLowerCase();
+        if (/\.(exe|msi|dmg|pkg|zip|tar|gz|7z|iso|bat|sh|ps1|vbs|pdf|docx|xlsx|csv)(\?.*)?$/i.test(pathname)) {
+          return {
+            matched: true,
+            reason: `Action destination targets downloadable file asset (${pathname})`,
+          };
+        }
+      } catch {
+        // Ignore URL parsing errors
+      }
+    }
+
     return { matched: false };
   },
 };
