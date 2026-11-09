@@ -253,6 +253,13 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     ).get(userId));
   }
 
+  public getWardIdsForContact(contactId: string): readonly string[] {
+    const rows = this.database.prepare(
+      "SELECT DISTINCT user_id FROM trusted_contacts WHERE id = ? AND status = 'ACTIVE'"
+    ).all(contactId) as { user_id: string }[];
+    return Object.freeze(rows.map((r) => r.user_id));
+  }
+
   public createInvitation(userId: string, options?: CreateInvitationOptions): TrustedContactInvitation {
     if (!userId?.trim()) throw new Error('userId is required to create a trusted contact invitation.');
     const recipientActorId = options?.recipientActorId?.trim();

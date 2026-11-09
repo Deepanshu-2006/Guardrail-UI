@@ -340,6 +340,12 @@ export interface TrustedContactRegistry {
    * Revokes an active trusted contact relationship.
    */
   revokeTrustedContact(contactId: string, userId: string): boolean;
+
+  /**
+   * Retrieves all active ward user IDs assigned to a trusted contact.
+   * Enables indexed query filtering without full-table scans.
+   */
+  getWardIdsForContact?(contactId: string): readonly string[];
 }
 
 /**
@@ -407,6 +413,16 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
 
   public hasActiveTrustedContact(userId: string): boolean {
     return this.getTrustedContactsForUser(userId).length > 0;
+  }
+
+  public getWardIdsForContact(contactId: string): readonly string[] {
+    const wardIds = new Set<string>();
+    for (const contact of this.contacts.values()) {
+      if ((contact.id === contactId || contact.contactId === contactId) && contact.status === TrustedContactStatus.ACTIVE) {
+        wardIds.add(contact.userId);
+      }
+    }
+    return Object.freeze(Array.from(wardIds));
   }
 
   public createInvitation(

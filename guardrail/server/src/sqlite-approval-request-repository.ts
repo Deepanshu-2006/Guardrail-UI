@@ -418,6 +418,39 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
     return Object.freeze(rows.map((row) => this.readRequest(row.payload_json)));
   }
 
+  public findPendingRequests(): readonly ApprovalRequest[] {
+    const rows = this.database.prepare(
+      "SELECT payload_json FROM approval_requests WHERE status = 'PENDING' ORDER BY created_at DESC, rowid DESC"
+    ).all() as JsonRow[];
+    return Object.freeze(rows.map((row) => this.readRequest(row.payload_json)));
+  }
+
+  public findHistoryByRequesterIds(
+    requesterIds: readonly string[],
+    options?: { status?: ApprovalStatus; riskLevel?: RiskLevel; limit?: number; offset?: number }
+  ): readonly ApprovalRequest[] {
+    if (requesterIds.length === 0) return Object.freeze([]);
+    const placeholders = requesterIds.map(() => '?').join(',');
+    const params: any[] = [...requesterIds];
+
+    let sql = `SELECT payload_json FROM approval_requests WHERE status != 'PENDING' AND requester_id IN (${placeholders})`;
+
+    if (options?.status) {
+      sql += ' AND status = ?';
+      params.push(options.status);
+    }
+    sql += ' ORDER BY created_at DESC, rowid DESC';
+
+    if (options?.limit && options.limit > 0) {
+      const offset = Math.max(0, options.offset ?? 0);
+      sql += ' LIMIT ? OFFSET ?';
+      params.push(options.limit, offset);
+    }
+
+    const rows = this.database.prepare(sql).all(...params) as JsonRow[];
+    return Object.freeze(rows.map((row) => this.readRequest(row.payload_json)));
+  }
+
   public findAll(): readonly ApprovalRequest[] {
     const rows = this.database.prepare(
       'SELECT payload_json FROM approval_requests ORDER BY created_at DESC, rowid DESC'

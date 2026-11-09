@@ -543,20 +543,37 @@ export class ApprovalService {
       throw new ApprovalAccessDeniedError();
     }
 
-    const all = this.repository.findAll();
+    if (authContext.role === ActorRole.ADMIN) {
+      const all = typeof (this.repository as any).findPendingRequests === 'function'
+        ? (this.repository as any).findPendingRequests()
+        : this.repository.findAll().filter((r) => r.status === ApprovalStatus.PENDING);
+      return Object.freeze(
+        all.filter((r) => !isRequestExpired(r, this.timeProvider))
+      );
+    }
+
+    // Role is TRUSTED_CONTACT:
+    // Fast path: Query indexed ward IDs, avoiding full table scans and N+1 queries
+    const wardIds = typeof (this.contactRegistry as any).getWardIdsForContact === 'function'
+      ? (this.contactRegistry as any).getWardIdsForContact(authContext.actorId)
+      : undefined;
+
+    let pending: readonly ApprovalRequest[];
+    if (wardIds && Array.isArray(wardIds)) {
+      if (wardIds.length === 0) return Object.freeze([]);
+      pending = this.repository.findPendingByRequesterIds(wardIds);
+    } else {
+      // Fallback for registry implementations lacking getWardIdsForContact
+      const all = typeof (this.repository as any).findPendingRequests === 'function'
+        ? (this.repository as any).findPendingRequests()
+        : this.repository.findAll().filter((r) => r.status === ApprovalStatus.PENDING);
+      pending = all.filter(
+        (r) => this.contactRegistry.isTrustedContactForUser(authContext.actorId, r.requesterId)
+      );
+    }
+
     return Object.freeze(
-      all.filter((r) => {
-        if (r.status !== ApprovalStatus.PENDING) {
-          return false;
-        }
-        if (isRequestExpired(r, this.timeProvider)) {
-          return false;
-        }
-        return this.contactRegistry.isTrustedContactForUser(
-          authContext.actorId,
-          r.requesterId
-        );
-      })
+      pending.filter((r) => !isRequestExpired(r, this.timeProvider))
     );
   }
 
@@ -597,16 +614,36 @@ export class ApprovalService {
     // Proactively transition any stale pending requests whose deadline has passed
     this.checkAndExpireStaleRequests();
 
-    const all = this.repository.findAll();
+    const isContact = authContext.role === ActorRole.TRUSTED_CONTACT || authContext.role === ActorRole.ADMIN;
+    const isUser = authContext.role === ActorRole.USER;
+
+    let candidates: readonly ApprovalRequest[];
+
+    if (isUser) {
+      // User role: query directly by requesterId using database index
+      candidates = this.repository.findByRequesterId(authContext.actorId, options?.status);
+    } else if (authContext.role === ActorRole.TRUSTED_CONTACT && typeof (this.contactRegistry as any).getWardIdsForContact === 'function') {
+      const wardIds: readonly string[] = (this.contactRegistry as any).getWardIdsForContact(authContext.actorId);
+      if (wardIds.length === 0) {
+        return Object.freeze([]);
+      }
+      if (typeof (this.repository as any).findHistoryByRequesterIds === 'function') {
+        candidates = (this.repository as any).findHistoryByRequesterIds(wardIds, options);
+      } else {
+        const wardSet = new Set(wardIds);
+        const all = this.repository.findAll();
+        candidates = all.filter((r) => wardSet.has(r.requesterId));
+      }
+    } else {
+      candidates = this.repository.findAll();
+    }
+
     // Sort descending by resolution or creation timestamp (newest first)
-    const sorted = [...all].sort((a, b) => {
+    const sorted = [...candidates].sort((a, b) => {
       const timeA = new Date(a.resolvedAt || a.expiresAt || a.createdAt).getTime();
       const timeB = new Date(b.resolvedAt || b.expiresAt || b.createdAt).getTime();
       return timeB - timeA;
     });
-
-    const isContact = authContext.role === ActorRole.TRUSTED_CONTACT || authContext.role === ActorRole.ADMIN;
-    const isUser = authContext.role === ActorRole.USER;
 
     const filtered = sorted.filter((r) => {
       // 1. Multi-tenant authorization check
@@ -822,8 +859,10 @@ export class ApprovalService {
    */
   public checkAndExpireStaleRequests(): number {
     let count = 0;
-    const all = this.repository.findAll();
-    for (const req of all) {
+    const pending = typeof (this.repository as any).findPendingRequests === 'function'
+      ? (this.repository as any).findPendingRequests()
+      : this.repository.findAll().filter((r) => r.status === ApprovalStatus.PENDING);
+    for (const req of pending) {
       if (req.status === ApprovalStatus.PENDING && isRequestExpired(req, this.timeProvider)) {
         const expired = this.persistExpiration(req);
         if (expired.status === ApprovalStatus.EXPIRED) count++;

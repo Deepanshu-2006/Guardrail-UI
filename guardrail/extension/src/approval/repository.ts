@@ -29,6 +29,7 @@ import {
   ApprovalRequest,
   ApprovalStatus,
 } from '../types/approval.js';
+import { RiskLevel } from '../types/risk.js';
 import {
   ApprovalBindingConflictError,
   ApprovalBindingReassignmentError,
@@ -144,6 +145,21 @@ export interface ApprovalRequestRepository {
    * @param requesterIds Array of ward user IDs
    */
   findPendingByRequesterIds(requesterIds: readonly string[]): readonly ApprovalRequest[];
+
+  /**
+   * Retrieves all active PENDING requests in the repository.
+   * Enables targeted expiration scans without scanning entire database history.
+   */
+  findPendingRequests?(): readonly ApprovalRequest[];
+
+  /**
+   * Retrieves historical (non-PENDING) requests for a set of designated ward user IDs.
+   * Enables indexed query filtering and pagination.
+   */
+  findHistoryByRequesterIds?(
+    requesterIds: readonly string[],
+    options?: { status?: ApprovalStatus; riskLevel?: RiskLevel; limit?: number; offset?: number }
+  ): readonly ApprovalRequest[];
 
   /**
    * Retrieves all approval requests in the repository.
@@ -362,6 +378,47 @@ export class DevelopmentInMemoryApprovalRequestRepository implements ApprovalReq
       if (req.status === ApprovalStatus.PENDING && idSet.has(req.requesterId)) {
         results.push(req);
       }
+    }
+    return Object.freeze(results);
+  }
+
+  /**
+   * Retrieves all active PENDING requests.
+   */
+  public findPendingRequests(): readonly ApprovalRequest[] {
+    const results: ApprovalRequest[] = [];
+    for (const req of this.requests.values()) {
+      if (req.status === ApprovalStatus.PENDING) {
+        results.push(req);
+      }
+    }
+    return Object.freeze(results);
+  }
+
+  /**
+   * Retrieves historical (non-PENDING) requests for a set of designated ward user IDs.
+   */
+  public findHistoryByRequesterIds(
+    requesterIds: readonly string[],
+    options?: { status?: ApprovalStatus; riskLevel?: RiskLevel; limit?: number; offset?: number }
+  ): readonly ApprovalRequest[] {
+    const idSet = new Set(requesterIds);
+    let results: ApprovalRequest[] = [];
+    for (const req of this.requests.values()) {
+      if (req.status !== ApprovalStatus.PENDING && idSet.has(req.requesterId)) {
+        if (options?.status && req.status !== options.status) continue;
+        if (options?.riskLevel && req.riskLevel !== options.riskLevel) continue;
+        results.push(req);
+      }
+    }
+    results.sort((a, b) => {
+      const timeA = new Date(a.resolvedAt || a.expiresAt || a.createdAt).getTime();
+      const timeB = new Date(b.resolvedAt || b.expiresAt || b.createdAt).getTime();
+      return timeB - timeA;
+    });
+    if (options?.limit && options.limit > 0) {
+      const offset = Math.max(0, options.offset ?? 0);
+      results = results.slice(offset, offset + options.limit);
     }
     return Object.freeze(results);
   }
