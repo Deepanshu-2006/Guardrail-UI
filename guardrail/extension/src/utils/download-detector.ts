@@ -22,13 +22,17 @@
 
 import {
   DownloadExtensionCategory,
+  DownloadIntelligenceSource,
   DownloadItemMetadata,
+  DownloadLifecycleDisplayState,
   DownloadSafetyEvaluation,
   DownloadSafetyIndicator,
   DownloadSafetyIndicatorCode,
+  DownloadSecurityContext,
   NormalizedFilenameInfo,
 } from '../types/download.js';
 import { EvaluationReason, RiskLevel } from '../types/risk.js';
+import { sanitizeUrlForDiagnostics } from './privacy.js';
 import {
   evaluateSuspiciousUrl,
   extractDomainParts,
@@ -784,4 +788,295 @@ export function evaluateDownloadSafety(
       evaluatedAt,
     };
   }
+}
+
+// =============================================================================
+// Download Security Context & Plain-Language UX Generator
+// =============================================================================
+
+/**
+ * Compiles a comprehensive, non-technical, accessible security context for download warnings.
+ *
+ * ARCHITECTURAL PRINCIPLES:
+ * 1. PLAIN LANGUAGE: Uses clear, non-frightening vocabulary for everyday users.
+ * 2. HEURISTIC VS VERIFIED DISTINCTION: Truthfully distinguishes local structural heuristics
+ *    from confirmed browser SafeBrowsing malware flags.
+ * 3. ACCURATE LIFECYCLE: Accurately reflects whether the download is ongoing, paused, cancelled,
+ *    interrupted, or completed.
+ * 4. SAFE RECOVERY GUIDANCE: For completed downloads, explains safe inspection (antivirus scan,
+ *    no execution) without falsely claiming Guardrail blocked or deleted the file.
+ * 5. CONTROLLED ACTIONS: Surfaces whether cancellation or continuation is genuinely supported.
+ */
+export function extractDownloadSecurityContext(
+  evaluation: DownloadSafetyEvaluation,
+  item?: Partial<DownloadItemMetadata>
+): DownloadSecurityContext {
+  const downloadId = item?.id ?? 'unknown';
+  const rawCandidateName =
+    evaluation.normalizedFile?.sanitizedBasename ||
+    item?.filename ||
+    (item?.url ? extractBasename(item.url) : '') ||
+    'unnamed-download';
+
+  const filename = rawCandidateName || 'unnamed-download';
+  const extCategory = evaluation.normalizedFile?.extensionCategory || 'unknown';
+  const primaryExt = evaluation.normalizedFile?.primaryExtension || '';
+  const extension = primaryExt ? `.${primaryExt}` : 'unknown';
+
+  // Human-friendly file type labels
+  let fileTypeLabel = 'Unknown File Type';
+  switch (extCategory) {
+    case 'executable':
+      fileTypeLabel = 'Executable Program';
+      break;
+    case 'script':
+      fileTypeLabel = 'Command Script or Macro';
+      break;
+    case 'archive':
+      fileTypeLabel = 'Compressed Archive or Disk Image';
+      break;
+    case 'document':
+      fileTypeLabel = 'Document File';
+      break;
+    case 'media':
+      fileTypeLabel = 'Media / Graphic File';
+      break;
+    case 'web':
+      fileTypeLabel = 'Web File';
+      break;
+    default:
+      fileTypeLabel = 'Unrecognized File Type';
+  }
+
+  // Format file size
+  let fileSizeFormatted = 'Unknown size (streaming transfer)';
+  if (typeof item?.fileSize === 'number' && item.fileSize > 0) {
+    if (item.fileSize < 1024) {
+      fileSizeFormatted = `${item.fileSize} B`;
+    } else if (item.fileSize < 1024 * 1024) {
+      fileSizeFormatted = `${(item.fileSize / 1024).toFixed(1)} KB`;
+    } else {
+      fileSizeFormatted = `${(item.fileSize / (1024 * 1024)).toFixed(1)} MB`;
+    }
+  }
+
+  // Origin domain and URL sanitization
+  const rawUrl = item?.finalUrl || item?.url || '';
+  let originDomain = 'Unknown Origin';
+  if (rawUrl) {
+    try {
+      originDomain = new URL(rawUrl).hostname || 'Unknown Origin';
+    } catch {
+      originDomain = rawUrl.split('/')[0] || 'Unknown Origin';
+    }
+  }
+  const downloadUrl = sanitizeUrlForDiagnostics(rawUrl) || rawUrl;
+
+  let referrerDomain: string | undefined;
+  if (item?.referrer) {
+    try {
+      referrerDomain = new URL(item.referrer).hostname;
+    } catch {
+      referrerDomain = undefined;
+    }
+  }
+
+  const isRawIp = Boolean(evaluation.originAnalysis?.isRawIp);
+  const isInsecureTransport = Boolean(evaluation.originAnalysis?.isPlainHttp);
+
+  // Intelligence source classification
+  const isDangerFlagged = Boolean(evaluation.browserDangerDetail?.isDangerFlagged);
+  const isConfirmedMalicious =
+    isDangerFlagged && evaluation.browserDangerDetail?.dangerType !== 'uncommon';
+  const intelligenceSource: DownloadIntelligenceSource = isDangerFlagged
+    ? 'VERIFIED_THREAT_INTEL'
+    : 'LOCAL_HEURISTIC';
+
+  const intelligenceDisclaimer = isDangerFlagged
+    ? "Verified Threat Intelligence: This download was flagged directly by your browser's SafeBrowsing security service as dangerous or potentially malicious."
+    : "Local Safety Heuristic: Evaluated on your computer by Guardrail based on structural file and address characteristics. No external scanning service was contacted; this is an automated safety precaution, not a certified malware scan.";
+
+  // High-level severity badge label
+  let severityLabel = 'Advisory Notice';
+  if (isConfirmedMalicious) {
+    severityLabel = 'Confirmed Dangerous';
+  } else if (evaluation.riskLevel === RiskLevel.CRITICAL) {
+    severityLabel = 'High Risk Download';
+  } else if (evaluation.riskLevel === RiskLevel.HIGH) {
+    severityLabel = 'Suspicious File';
+  } else if (evaluation.riskLevel === RiskLevel.MEDIUM) {
+    severityLabel = 'Elevated Risk';
+  }
+
+  // Observable download lifecycle state
+  let lifecycleState: DownloadLifecycleDisplayState = 'in_progress';
+  if (item?.state === 'interrupted') {
+    lifecycleState = 'interrupted';
+  } else if (item?.state === 'complete') {
+    lifecycleState = 'complete';
+  } else if (item?.paused) {
+    lifecycleState = 'paused';
+  } else {
+    lifecycleState = 'in_progress';
+  }
+
+  const interruptionError = item?.error || evaluation.interruptionDetail?.error;
+
+  let lifecycleExplanation = 'Download is currently transferring bytes to your computer.';
+  if (lifecycleState === 'paused') {
+    lifecycleExplanation = 'Download has been safely paused by Guardrail to allow review before file write.';
+  } else if (lifecycleState === 'cancelled') {
+    lifecycleExplanation = 'Download was stopped and cancelled. Incomplete file data was discarded.';
+  } else if (lifecycleState === 'interrupted') {
+    lifecycleExplanation = interruptionError
+      ? `Download was halted by the browser (${interruptionError}). No complete file was saved.`
+      : 'Download was interrupted before completion. No complete file was saved.';
+  } else if (lifecycleState === 'complete') {
+    lifecycleExplanation = 'File has finished downloading to your Downloads folder. Note: Completed downloads cannot be blocked retroactively.';
+  }
+
+  // Translate detected indicators into non-technical, accessible explanations
+  const detectedIndicators: string[] = [];
+  if (evaluation.indicators.length > 0) {
+    for (const ind of evaluation.indicators) {
+      switch (ind.code) {
+        case DownloadSafetyIndicatorCode.SUSPICIOUS_EXECUTABLE_EXTENSION:
+          detectedIndicators.push(
+            `Executable program format (.${primaryExt}): Contains native computer programs that can run directly on your operating system.`
+          );
+          break;
+        case DownloadSafetyIndicatorCode.SCRIPT_BASED_DOWNLOAD:
+          detectedIndicators.push(
+            `Automated script format (.${primaryExt}): Contains commands or scripts that can execute terminal or shell instructions.`
+          );
+          break;
+        case DownloadSafetyIndicatorCode.DISK_IMAGE_OR_ARCHIVE:
+          detectedIndicators.push(
+            `Archive or disk package (.${primaryExt}): May bundle executable programs inside compressed storage.`
+          );
+          break;
+        case DownloadSafetyIndicatorCode.MISLEADING_DOUBLE_EXTENSION:
+          if (evaluation.normalizedFile?.isDoubleExtension) {
+            detectedIndicators.push(
+              `Disguised double extension: File ends with ".${evaluation.normalizedFile.secondaryExtension}.${primaryExt}", which may mislead you into thinking it is a document rather than a program.`
+            );
+          } else {
+            detectedIndicators.push(
+              'Deceptive filename characteristics: Contains hidden control characters or trailing spaces used to disguise file types.'
+            );
+          }
+          break;
+        case DownloadSafetyIndicatorCode.MIME_TYPE_MISMATCH:
+          detectedIndicators.push(
+            `File type contradiction: The web server declared this file as "${evaluation.mimeAnalysis?.declaredMime || 'unknown'}", but the extension is ".${primaryExt}".`
+          );
+          break;
+        case DownloadSafetyIndicatorCode.SUSPICIOUS_DOWNLOAD_ORIGIN:
+          if (isRawIp) {
+            detectedIndicators.push(
+              `Numerical web address: Originates from a raw IP address (${originDomain}) rather than a registered, verified domain name.`
+            );
+          } else {
+            detectedIndicators.push(
+              `Unusual download origin: Originates from an unverified or suspicious domain structure (${originDomain}).`
+            );
+          }
+          break;
+        case DownloadSafetyIndicatorCode.INSECURE_DOWNLOAD_TRANSPORT:
+          detectedIndicators.push(
+            'Unencrypted connection (HTTP): This file is transferring over plain HTTP, which lacks encryption and could allow tampering by network intermediaries.'
+          );
+          break;
+        case DownloadSafetyIndicatorCode.UNEXPECTED_DOWNLOAD_SCHEME:
+          detectedIndicators.push(
+            'Unexpected download protocol: Initiated from a non-standard protocol scheme (e.g. data: or blob:).'
+          );
+          break;
+        case DownloadSafetyIndicatorCode.UNAVAILABLE_DOWNLOAD_METADATA:
+          detectedIndicators.push(
+            'Undetermined file details: The destination filename or extension was not verified before transfer.'
+          );
+          break;
+        case DownloadSafetyIndicatorCode.BROWSER_DANGER_FLAGGED:
+          detectedIndicators.push(ind.reason);
+          break;
+        case DownloadSafetyIndicatorCode.INTERRUPTED_DOWNLOAD:
+          detectedIndicators.push(ind.reason);
+          break;
+        default:
+          detectedIndicators.push(ind.reason);
+      }
+    }
+  } else if (evaluation.reasons.length > 0) {
+    detectedIndicators.push(...evaluation.reasons);
+  } else {
+    detectedIndicators.push('Routine download: No elevated risk indicators observed.');
+  }
+
+  // Plain-language, reassuring risk impact explanation
+  const riskExplanation = isConfirmedMalicious
+    ? 'Why this is critical: Your browser identified this download as confirmed dangerous or unwanted software. Running or keeping this file could compromise your system security or personal accounts.'
+    : 'Why Guardrail flagged this: Files downloaded from the web that can execute programs or scripts carry higher risk if their origin, filename, or file type is unexpected. Guardrail provides this advisory so you can review the file before opening it.';
+
+  // Genuinely supported protective actions
+  const canCancel = lifecycleState === 'in_progress' || lifecycleState === 'paused';
+  const canResume = lifecycleState === 'paused';
+  const canInspectSafely = lifecycleState === 'complete';
+
+  // Safe handling guidance
+  let safeHandlingGuidance: readonly string[];
+  if (lifecycleState === 'complete') {
+    safeHandlingGuidance = Object.freeze([
+      '1. Do not double-click or open the file directly from your browser shelf.',
+      '2. Open your computer\'s Downloads folder to view the file without executing it.',
+      '3. Scan the downloaded file with your computer\'s installed antivirus software before use.',
+      '4. If you did not intentionally request this download, delete the file from your Downloads folder.',
+    ]);
+  } else if (isConfirmedMalicious) {
+    safeHandlingGuidance = Object.freeze([
+      '1. Click Cancel Download to stop the transfer and discard dangerous data.',
+      '2. Do not attempt to bypass browser warnings for confirmed dangerous files.',
+      '3. Leave the website that initiated this transfer.',
+    ]);
+  } else {
+    safeHandlingGuidance = Object.freeze([
+      '1. If you did not intend to download this file, click Cancel Download to stop the transfer.',
+      '2. Check the website domain in your address bar to ensure it is your legitimate provider.',
+      '3. If you trust this provider and intended to download this software, you may confirm continuation to resume.',
+      '4. Once downloaded, scan the file with your local antivirus before opening.',
+    ]);
+  }
+
+  const continuationWarning =
+    'Continuing will allow this file to download to your computer. Guardrail does not certify or guarantee file safety. Proceed only if you independently trust this source.';
+
+  return {
+    downloadId,
+    filename,
+    extension,
+    fileTypeLabel,
+    fileSizeFormatted,
+    declaredMime: item?.mime || evaluation.mimeAnalysis?.declaredMime,
+    originDomain,
+    downloadUrl,
+    referrerDomain,
+    isRawIp,
+    isInsecureTransport,
+    intelligenceSource,
+    intelligenceDisclaimer,
+    isConfirmedMalicious,
+    severityLabel,
+    lifecycleState,
+    lifecycleExplanation,
+    interruptionError,
+    detectedIndicators: Object.freeze(detectedIndicators),
+    riskExplanation,
+    supportedActions: Object.freeze({
+      canCancel,
+      canResume,
+      canInspectSafely,
+    }),
+    safeHandlingGuidance,
+    continuationWarning,
+  };
 }
