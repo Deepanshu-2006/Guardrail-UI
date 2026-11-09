@@ -9,6 +9,7 @@
  */
 
 import { ActionElementInfo, ActionPageInfo } from '../types/index.js';
+import { redactSensitiveText } from './privacy.js';
 
 /**
  * CSS selector matching relevant clickable/interactive elements for generic click detection.
@@ -216,11 +217,14 @@ function extractVisibleText(element: HTMLElement | Element): string | undefined 
     return undefined;
   }
 
+  // Redact any payment cards, OTPs, credentials, or tokens in visible text
+  const redacted = redactSensitiveText(trimmed);
+
   // Cap length to prevent gigantic text payloads
   const MAX_TEXT_LENGTH = 200;
-  return trimmed.length > MAX_TEXT_LENGTH
-    ? `${trimmed.substring(0, MAX_TEXT_LENGTH)}...`
-    : trimmed;
+  return redacted.length > MAX_TEXT_LENGTH
+    ? `${redacted.substring(0, MAX_TEXT_LENGTH)}...`
+    : redacted;
 }
 
 /**
@@ -394,10 +398,10 @@ export function extractElementInfo(
 
       // Safe extraction of HTTP submission method
       let rawMethod = '';
-      if (submitter && typeof submitter.getAttribute === 'function' && submitter.hasAttribute('formmethod')) {
-        rawMethod = submitter.getAttribute('formmethod') || '';
-      } else if (typeof element.getAttribute === 'function' && element.hasAttribute('formmethod')) {
-        rawMethod = element.getAttribute('formmethod') || '';
+      if (submitter && typeof (submitter as any).getAttribute === 'function' && typeof (submitter as any).hasAttribute === 'function' && (submitter as any).hasAttribute('formmethod')) {
+        rawMethod = (submitter as any).getAttribute('formmethod') || '';
+      } else if (typeof (element as any).getAttribute === 'function' && typeof (element as any).hasAttribute === 'function' && (element as any).hasAttribute('formmethod')) {
+        rawMethod = (element as any).getAttribute('formmethod') || '';
       } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.getAttribute('method')) {
         rawMethod = enclosingForm.getAttribute('method') || '';
       } else if (typeof enclosingForm.method === 'string') {
@@ -424,12 +428,20 @@ export function extractElementInfo(
         const ssnInput = enclosingForm.querySelector(
           'input[name*="ssn"], input[name*="tax"], input[id*="ssn"]'
         );
+        const bankInput = enclosingForm.querySelector(
+          'input[name*="account"], input[name*="routing"], input[name*="iban"], input[id*="iban"], input[id*="routing"]'
+        );
+        const identityInput = enclosingForm.querySelector(
+          'input[name*="passport"], input[name*="national_id"], input[id*="passport"]'
+        );
 
         const sensitiveTypes: string[] = [];
         if (pwdInput) sensitiveTypes.push('password');
         if (cardInput) sensitiveTypes.push('payment_card');
         if (otpInput) sensitiveTypes.push('otp');
         if (ssnInput) sensitiveTypes.push('ssn');
+        if (bankInput) sensitiveTypes.push('bank_account');
+        if (identityInput) sensitiveTypes.push('identity_document');
 
         if (sensitiveTypes.length > 0) {
           elementInfo.hasSensitiveField = true;
@@ -451,6 +463,12 @@ export function extractElementInfo(
       } else if (name.includes('otp') || name.includes('2fa') || name.includes('token')) {
         elementInfo.hasSensitiveField = true;
         elementInfo.sensitiveFieldTypes = Object.freeze(['otp']);
+      } else if (name.includes('ssn') || name.includes('tax')) {
+        elementInfo.hasSensitiveField = true;
+        elementInfo.sensitiveFieldTypes = Object.freeze(['ssn']);
+      } else if (name.includes('iban') || name.includes('routing') || name.includes('account')) {
+        elementInfo.hasSensitiveField = true;
+        elementInfo.sensitiveFieldTypes = Object.freeze(['bank_account']);
       }
 
       if (['text', 'email'].includes(inputType) && (name.includes('user') || name.includes('login') || name.includes('email'))) {

@@ -94,6 +94,8 @@ export const FORBIDDEN_PROPERTY_PATTERNS: readonly RegExp[] = Object.freeze([
   /authtoken/i,
   /bearer/i,
   /cookie/i,
+  /session[-_]?id/i,
+  /\bsession\b/i,
   /form[-_]?value/i,
   /input[-_]?value/i,
   /form[-_]?data/i,

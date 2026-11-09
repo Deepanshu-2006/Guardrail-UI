@@ -43,6 +43,36 @@ export const FORBIDDEN_SENSITIVE_KEY_PATTERNS: readonly RegExp[] = Object.freeze
 ]);
 
 /**
+ * Patterns matching sensitive secrets, credentials, cards, OTPs, and tokens in raw text.
+ */
+export const SENSITIVE_TEXT_PATTERNS: readonly { pattern: RegExp; replacement: string }[] = Object.freeze([
+  // Payment card numbers: 13 to 19 digits (with optional spaces or dashes)
+  { pattern: /\b(?:\d[ -]*?){13,19}\b/g, replacement: '[REDACTED_CARD]' },
+  // Passwords / credentials labeled in text
+  { pattern: /\b(?:password|passwd|pwd|passphrase)\s*[:=]\s*[^\s,;]+/gi, replacement: 'password: [REDACTED]' },
+  // OTP / 2FA codes labeled in text
+  { pattern: /\b(?:otp|totp|pin|mfa|2fa|(?:auth(?:entication)?|verification|one-time|security)\s*code|code)\s*[:=]\s*[0-9]{4,8}\b/gi, replacement: 'code: [REDACTED]' },
+  // Secret / API key labeled in text
+  { pattern: /\b(?:secret|api_?key|auth_?token|access_?token|bearer)\s*[:=]\s*[^\s,;]+/gi, replacement: 'secret: [REDACTED]' },
+  // JWT tokens (Bearer eyJ...)
+  { pattern: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]+)?\b/g, replacement: '[REDACTED_TOKEN]' },
+  // Social Security Numbers (US SSN format)
+  { pattern: /\b\d{3}-\d{2}-\d{4}\b/g, replacement: '[REDACTED_SSN]' },
+]);
+
+/**
+ * Redacts sensitive credentials, payment card numbers, OTPs, and auth tokens from raw text strings.
+ */
+export function redactSensitiveText(text: string | undefined | null): string {
+  if (!text || typeof text !== 'string') return '';
+  let result = text;
+  for (const { pattern, replacement } of SENSITIVE_TEXT_PATTERNS) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
+/**
  * Strips query parameters and URL fragments/hashes that may contain sensitive tokens,
  * passwords, session identifiers, or PII.
  *

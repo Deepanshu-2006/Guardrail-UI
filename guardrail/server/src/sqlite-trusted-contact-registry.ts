@@ -382,4 +382,23 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     return Number(this.database.prepare("UPDATE trusted_contacts SET status='REVOKED',revoked_at=?,payload_json=? WHERE id=? AND user_id=? AND status='ACTIVE'")
       .run(revoked.revokedAt, JSON.stringify(revoked), contactId, userId).changes) === 1;
   }
+
+  /**
+   * Data Retention Pruning: Safely purges terminal invitations (EXPIRED, REVOKED, ACCEPTED)
+   * that concluded prior to the specified ISO timestamp cutoff.
+   *
+   * @param olderThanIsoDate ISO-8601 timestamp cutoff
+   * @returns Number of purged invitations
+   */
+  public pruneTerminalInvitations(olderThanIsoDate: string): number {
+    if (!olderThanIsoDate || typeof olderThanIsoDate !== 'string') {
+      throw new Error('A valid ISO cutoff timestamp is required for invitation retention pruning.');
+    }
+    const result = this.database.prepare(`
+      DELETE FROM trusted_contact_invitations
+      WHERE status IN ('EXPIRED', 'REVOKED', 'ACCEPTED')
+        AND (expired_at < ? OR revoked_at < ? OR accepted_at < ?)
+    `).run(olderThanIsoDate, olderThanIsoDate, olderThanIsoDate);
+    return Number(result.changes);
+  }
 }

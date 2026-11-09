@@ -21,6 +21,7 @@ import {
   DownloadSafetyEvaluation,
 } from '../types/download.js';
 import { evaluateDownloadSafety } from '../utils/download-detector.js';
+import { sanitizeUrlForDiagnostics } from '../utils/privacy.js';
 
 /**
  * Minimal Chrome Downloads API interface for dependency injection.
@@ -352,7 +353,8 @@ export class BrowserDownloadManager {
   }
 
   /**
-   * Normalizes raw API objects into safe DownloadItemMetadata models.
+   * Normalizes raw API objects into safe DownloadItemMetadata models, stripping
+   * any sensitive URL query parameters (e.g. download tokens, signed S3 parameters).
    */
   private normalizeDownloadItem(raw: any): DownloadItemMetadata {
     if (!raw || typeof raw !== 'object') {
@@ -362,17 +364,21 @@ export class BrowserDownloadManager {
       };
     }
 
+    const rawUrl = typeof raw.url === 'string' ? raw.url : '';
+    const rawFinalUrl = typeof raw.finalUrl === 'string' ? raw.finalUrl : undefined;
+    const rawReferrer = typeof raw.referrer === 'string' ? raw.referrer : undefined;
+
     return {
       id: typeof raw.id === 'number' ? raw.id : -1,
-      url: typeof raw.url === 'string' ? raw.url : '',
-      finalUrl: typeof raw.finalUrl === 'string' ? raw.finalUrl : undefined,
+      url: sanitizeUrlForDiagnostics(rawUrl) || rawUrl,
+      finalUrl: rawFinalUrl ? (sanitizeUrlForDiagnostics(rawFinalUrl) || rawFinalUrl) : undefined,
       filename: typeof raw.filename === 'string' ? raw.filename : undefined,
       mime: typeof raw.mime === 'string' ? raw.mime : undefined,
       fileSize: typeof raw.fileSize === 'number' ? raw.fileSize : undefined,
       state: raw.state || 'in_progress',
       danger: typeof raw.danger === 'string' ? raw.danger : 'safe',
       paused: Boolean(raw.paused),
-      referrer: typeof raw.referrer === 'string' ? raw.referrer : undefined,
+      referrer: rawReferrer ? (sanitizeUrlForDiagnostics(rawReferrer) || rawReferrer) : undefined,
       startTime: typeof raw.startTime === 'string' ? raw.startTime : undefined,
       error: typeof raw.error === 'string' ? raw.error : undefined,
       byExtensionId: typeof raw.byExtensionId === 'string' ? raw.byExtensionId : undefined,
@@ -380,10 +386,13 @@ export class BrowserDownloadManager {
   }
 
   /**
-   * Records an evaluation in the bounded in-memory cache, enforcing LRU bounds.
+   * Records an evaluation in the bounded in-memory cache, enforcing LRU bounds and pruning expired records.
    */
   private recordAssessment(item: DownloadItemMetadata, evaluation: DownloadSafetyEvaluation): void {
     const now = Date.now();
+
+    // Actively purge any expired entries before capacity check
+    this.pruneExpiredEntries();
 
     // If cache is at maximum capacity, evict oldest entry
     if (this.assessments.size >= this.maxCacheSize && !this.assessments.has(item.id)) {

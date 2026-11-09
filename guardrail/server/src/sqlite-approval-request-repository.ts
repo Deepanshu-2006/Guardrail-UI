@@ -75,6 +75,7 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
         database.pragma('foreign_keys = ON');
         database.pragma('journal_mode = WAL');
         database.pragma('synchronous = FULL');
+        database.pragma('secure_delete = ON');
         database.pragma('busy_timeout = 5000');
         SqliteApprovalRequestRepository.migrate(database);
         return new SqliteApprovalRequestRepository(database, database.name);
@@ -93,6 +94,7 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
       database.pragma('foreign_keys = ON');
       database.pragma('journal_mode = WAL');
       database.pragma('synchronous = FULL');
+      database.pragma('secure_delete = ON');
       database.pragma('busy_timeout = 5000');
       SqliteApprovalRequestRepository.migrate(database);
       if (resolvedPath !== ':memory:') chmodSync(resolvedPath, 0o600);
@@ -519,6 +521,32 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
       this.database.exec('DELETE FROM approval_bindings; DELETE FROM approval_requests;');
     });
     transaction.immediate();
+  }
+
+  /**
+   * Data Retention Pruning: Safely purges terminal approval records (EXPIRED, CANCELLED, REJECTED, APPROVED)
+   * that concluded prior to the specified ISO timestamp cutoff.
+   *
+   * Foreign keys with ON DELETE CASCADE cleanly delete corresponding approval_bindings rows.
+   * Active PENDING records are never purged regardless of age.
+   *
+   * @param olderThanIsoDate ISO-8601 timestamp cutoff
+   * @returns Number of purged approval requests
+   */
+  public pruneTerminalRequests(olderThanIsoDate: string): number {
+    this.assertOpen();
+    if (!olderThanIsoDate || typeof olderThanIsoDate !== 'string') {
+      throw new Error('A valid ISO cutoff timestamp is required for retention pruning.');
+    }
+    const transaction = this.database.transaction(() => {
+      const result = this.database.prepare(`
+        DELETE FROM approval_requests
+        WHERE status IN ('EXPIRED', 'CANCELLED', 'REJECTED', 'APPROVED')
+          AND expires_at < ?
+      `).run(olderThanIsoDate);
+      return Number(result.changes);
+    });
+    return transaction.immediate();
   }
 
   public close(): void {

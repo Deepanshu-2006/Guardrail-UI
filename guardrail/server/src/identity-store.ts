@@ -60,6 +60,7 @@ export class SqliteIdentityStore {
         database.pragma('foreign_keys = ON');
         database.pragma('journal_mode = WAL');
         database.pragma('synchronous = FULL');
+        database.pragma('secure_delete = ON');
         database.pragma('busy_timeout = 5000');
         SqliteIdentityStore.migrate(database);
         return new SqliteIdentityStore(database, database.name);
@@ -76,6 +77,7 @@ export class SqliteIdentityStore {
       database.pragma('foreign_keys = ON');
       database.pragma('journal_mode = WAL');
       database.pragma('synchronous = FULL');
+      database.pragma('secure_delete = ON');
       database.pragma('busy_timeout = 5000');
       SqliteIdentityStore.migrate(database);
       if (resolved !== ':memory:') chmodSync(resolved, 0o600);

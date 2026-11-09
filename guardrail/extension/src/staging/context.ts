@@ -24,6 +24,7 @@ import { ResponseAction } from '../types/response.js';
 import { RiskLevel } from '../types/risk.js';
 import { CreateStagingContextInput, StagingActionContext } from '../types/staging.js';
 import { ApprovalRequestIntent } from '../types/approval.js';
+import { redactSensitiveText } from '../utils/privacy.js';
 
 /**
  * Maximum character length allowed for element label extracts in descriptions.
@@ -31,17 +32,19 @@ import { ApprovalRequestIntent } from '../types/approval.js';
 const MAX_LABEL_LENGTH = 80;
 
 /**
- * Normalizes and cleans element labels, stripping excessive whitespace and control characters.
+ * Normalizes and cleans element labels, stripping excessive whitespace, control characters,
+ * and redacting sensitive credentials, card numbers, OTPs, or tokens.
  *
  * @param raw Raw text extracted from element
- * @returns Cleaned label string
+ * @returns Cleaned and redacted label string
  */
 function sanitizeLabel(raw: string): string {
   const cleaned = raw.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
-  if (cleaned.length > MAX_LABEL_LENGTH) {
-    return `${cleaned.slice(0, MAX_LABEL_LENGTH)}...`;
+  const redacted = redactSensitiveText(cleaned);
+  if (redacted.length > MAX_LABEL_LENGTH) {
+    return `${redacted.slice(0, MAX_LABEL_LENGTH)}...`;
   }
-  return cleaned;
+  return redacted;
 }
 
 /**

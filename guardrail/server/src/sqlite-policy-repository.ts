@@ -294,6 +294,22 @@ export class SqlitePolicyRepository implements PolicyRepository {
       );
   }
 
+  /**
+   * Data Retention Pruning: Safely purges historical policy audit logs older than the threshold.
+   *
+   * @param olderThanIsoDate ISO-8601 timestamp cutoff
+   * @returns Number of purged audit records
+   */
+  public pruneAuditHistory(olderThanIsoDate: string): number {
+    if (!olderThanIsoDate || typeof olderThanIsoDate !== 'string') {
+      throw new Error('A valid ISO cutoff timestamp is required for audit retention pruning.');
+    }
+    const result = this.database
+      .prepare('DELETE FROM user_policy_audit_log WHERE timestamp < ?')
+      .run(olderThanIsoDate);
+    return Number(result.changes);
+  }
+
   public close(): void {
     try {
       this.database.close();

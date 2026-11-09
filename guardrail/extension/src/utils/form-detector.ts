@@ -22,6 +22,7 @@
  */
 
 import { EvaluationReason, RiskLevel } from '../types/risk.js';
+import { sanitizeUrlForDiagnostics } from './privacy.js';
 import {
   evaluateSuspiciousUrl,
   extractDomainParts,
@@ -369,7 +370,7 @@ export function evaluateFormSafety(
         severity: 'MEDIUM',
         scoreWeight: 25,
         description: 'Form collecting credentials or sensitive data lacks an explicit submission destination.',
-        evidence: `rawAction=${String(rawActionAttr)}`,
+        evidence: `rawAction=${sanitizeUrlForDiagnostics(String(rawActionAttr)) || String(rawActionAttr)}`,
       });
     }
   }
@@ -408,7 +409,7 @@ export function evaluateFormSafety(
         severity: 'MEDIUM',
         scoreWeight: 25,
         description: 'Form submission destination URL is malformed or could not be reliably resolved by standard Web parsers.',
-        evidence: `targetUrl=${targetActionUrl}`,
+        evidence: `targetUrl=${sanitizeUrlForDiagnostics(targetActionUrl) || targetActionUrl}`,
       });
     }
   }
