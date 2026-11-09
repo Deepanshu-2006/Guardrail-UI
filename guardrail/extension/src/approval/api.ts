@@ -893,10 +893,6 @@ export class ApprovalApiRouter {
   ): Promise<ApiResponse<ApprovalRequest>> {
     this.validateContentType(request.headers);
     const authContext = await this.authenticate(request.headers);
-    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
-      throw new ApprovalAccessDeniedError();
-    }
-
     const body = request.body as Record<string, unknown>;
     if (!body || typeof body !== 'object') {
       throw new ApprovalValidationError(['Decision request body must be a JSON object.']);

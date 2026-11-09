@@ -949,7 +949,8 @@ export class ApprovalService {
     }
 
     // 2. Authorization check: Must be an active designated trusted contact (or admin)
-    const isAuthorizedContact = this.contactRegistry.isTrustedContactForUser(
+    const isContactRole = authContext.role === ActorRole.TRUSTED_CONTACT || authContext.role === ActorRole.ADMIN;
+    const isAuthorizedContact = isContactRole && this.contactRegistry.isTrustedContactForUser(
       authContext.actorId,
       request.requesterId
     );
