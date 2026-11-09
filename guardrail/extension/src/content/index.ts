@@ -252,7 +252,11 @@ function updateControlledTestPageDisplay(
         detailsEl.style.display = 'block';
       }
       if (devMessageEl) {
-        devMessageEl.innerHTML = `<strong>🛡️ Guardrail Development Notice:</strong> Action <code>${escapeHtml(action.id)}</code> has been intercepted and transitioned to <strong>HELD</strong>. This action is waiting for a protection decision. Use the controls below to Continue or Cancel.`;
+        const isFormSubmit = action.type === ActionType.SUBMIT;
+        const formDestText = isFormSubmit && action.element?.formAction ? ` to <code>${escapeHtml(action.element.formAction)}</code>` : '';
+        const actionDesc = isFormSubmit ? `Form submission${formDestText} (Action <code>${escapeHtml(action.id)}</code>)` : `Action <code>${escapeHtml(action.id)}</code>`;
+        const extraNote = isFormSubmit ? ' Form submission was halted. Sensitive form values are never collected or stored. Form will not be automatically resubmitted upon approval.' : '';
+        devMessageEl.innerHTML = `<strong>🛡️ Guardrail Development Notice:</strong> ${actionDesc} has been intercepted and transitioned to <strong>HELD</strong>. This action is waiting for a protection decision.${extraNote} Use the controls below to Continue or Cancel.`;
         devMessageEl.style.display = 'block';
         devMessageEl.style.background = 'rgba(239, 68, 68, 0.1)';
         devMessageEl.style.borderLeftColor = '#ef4444';
@@ -590,7 +594,7 @@ function bootstrap(): void {
                   console.warn('[Guardrail Content] Failed to dispatch controlled handler executed event.');
                 }
               },
-              () => element.isConnected && document.getElementById(element.id) === element
+              () => element.isConnected && (!element.id || document.getElementById(element.id) === element)
             );
 
             updateControlledTestPageDisplay(action, {

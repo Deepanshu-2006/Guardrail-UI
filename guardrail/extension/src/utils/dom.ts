@@ -251,7 +251,10 @@ function extractClassName(element: HTMLElement | Element): string | undefined {
  * @param element The target DOM element to inspect
  * @returns A plain, serializable ActionElementInfo object
  */
-export function extractElementInfo(element: HTMLElement | Element): ActionElementInfo {
+export function extractElementInfo(
+  element: HTMLElement | Element,
+  submitterElement?: HTMLElement | Element | null
+): ActionElementInfo {
   // Safe extraction of tag name in standard uppercase
   const tagName = element.tagName ? element.tagName.toUpperCase() : 'UNKNOWN';
 
@@ -318,6 +321,8 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
     }
 
     if (enclosingForm) {
+      const submitter = submitterElement || (element !== enclosingForm ? element : null);
+
       // Resolve form action target safely
       let rawAction = '';
       let formAttrAction = '';
@@ -325,9 +330,15 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
         formAttrAction = enclosingForm.getAttribute('action') || '';
       }
 
-      const hasButtonOverride = typeof element.getAttribute === 'function' && Boolean(element.getAttribute('formaction'));
-      if (hasButtonOverride) {
-        rawAction = element.getAttribute('formaction') || '';
+      let formactionOverride: string | null = null;
+      if (submitter && typeof submitter.getAttribute === 'function' && submitter.getAttribute('formaction')) {
+        formactionOverride = submitter.getAttribute('formaction');
+      } else if (typeof element.getAttribute === 'function' && element.getAttribute('formaction')) {
+        formactionOverride = element.getAttribute('formaction');
+      }
+
+      if (formactionOverride) {
+        rawAction = formactionOverride;
         elementInfo.hasFormActionOverride = true;
       } else if (formAttrAction) {
         rawAction = formAttrAction;
@@ -336,6 +347,14 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
       }
 
       elementInfo.rawFormAction = rawAction;
+
+      // Safe extraction of submit button text / label
+      if (submitter) {
+        const btnText = extractVisibleText(submitter);
+        if (btnText) {
+          elementInfo.submitButtonText = btnText;
+        }
+      }
 
       if (!rawAction || rawAction.trim().length === 0) {
         elementInfo.isFormActionMissing = true;
@@ -365,7 +384,9 @@ export function extractElementInfo(element: HTMLElement | Element): ActionElemen
 
       // Safe extraction of HTTP submission method
       let rawMethod = '';
-      if (typeof element.getAttribute === 'function' && element.hasAttribute('formmethod')) {
+      if (submitter && typeof submitter.getAttribute === 'function' && submitter.hasAttribute('formmethod')) {
+        rawMethod = submitter.getAttribute('formmethod') || '';
+      } else if (typeof element.getAttribute === 'function' && element.hasAttribute('formmethod')) {
         rawMethod = element.getAttribute('formmethod') || '';
       } else if (typeof enclosingForm.getAttribute === 'function' && enclosingForm.getAttribute('method')) {
         rawMethod = enclosingForm.getAttribute('method') || '';

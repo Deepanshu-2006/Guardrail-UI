@@ -27,6 +27,7 @@ export class ActionDetector {
   private onAction: ActionHandler;
   private onIntercept?: InterceptHandler;
   private isRunning: boolean = false;
+  private activeSubmitTrigger: HTMLElement | null = null;
 
   constructor(onAction: ActionHandler, onIntercept?: InterceptHandler) {
     this.onAction = onAction;
@@ -55,6 +56,7 @@ export class ActionDetector {
   public stop(): void {
     if (!this.isRunning) return;
     this.isRunning = false;
+    this.activeSubmitTrigger = null;
 
     document.removeEventListener('click', this.handleClick, true);
     document.removeEventListener('change', this.handleChange, true);
@@ -99,7 +101,18 @@ export class ActionDetector {
    * Handles generic click events via event delegation.
    */
   private handleClick = (event: MouseEvent): void => {
-    // 1. Controlled Action Interception (Day 8 Integration):
+    // 1. Check for form submit trigger:
+    // When a submit button or submit input is clicked, defer to handleSubmit.
+    // This prevents duplicate handling (emitting both a CLICK action and a SUBMIT action),
+    // and preserves submitter button metadata (formaction, formmethod, text) for evaluation.
+    const targetElement = event.target instanceof Element ? event.target : null;
+    const submitTrigger = targetElement?.closest<HTMLElement>('button, input[type="submit"]');
+    if (submitTrigger && isFormSubmitTrigger(submitTrigger)) {
+      this.activeSubmitTrigger = submitTrigger;
+      return;
+    }
+
+    // 2. Controlled Action Interception (Day 8 Integration):
     // If the element is explicitly marked with data-guardrail-test-action,
     // route directly to interception handler passing the action, element, and original event.
     // The decision to halt execution or permit it is governed by the Response Engine integration.
@@ -136,7 +149,7 @@ export class ActionDetector {
       return;
     }
 
-    // 2. Ambient Interactive Element Detection:
+    // 3. Ambient Interactive Element Detection:
     const interactiveElement = findInteractiveElement(event.target);
     if (!interactiveElement) {
       return;
@@ -176,13 +189,29 @@ export class ActionDetector {
     }
 
     if (!formElement) {
+      this.activeSubmitTrigger = null;
       return;
     }
 
-    // Controlled Action Interception for explicitly marked forms
-    const controlledTestAction = findControlledTestAction(formElement);
+    // Resolve submitter element (native submitter or recorded activeSubmitTrigger)
+    const submitterCandidate = (event as any).submitter;
+    const submitter =
+      ((typeof HTMLElement !== 'undefined' && submitterCandidate instanceof HTMLElement) ||
+       (typeof Element !== 'undefined' && submitterCandidate instanceof Element) ||
+       (submitterCandidate && submitterCandidate.tagName)
+        ? (submitterCandidate as HTMLElement)
+        : null) ||
+      this.activeSubmitTrigger ||
+      null;
+    this.activeSubmitTrigger = null;
+
+    // Check if either the submitter button or enclosing form is marked as a controlled test action
+    const controlledTestAction =
+      (submitter ? findControlledTestAction(submitter) : null) ||
+      findControlledTestAction(formElement);
+
     if (controlledTestAction) {
-      if (!controlledTestAction.isConnected) {
+      if (!controlledTestAction.isConnected || !formElement.isConnected) {
         try {
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -191,7 +220,7 @@ export class ActionDetector {
         }
         return;
       }
-      const action = createGuardrailAction(ActionType.SUBMIT, controlledTestAction);
+      const action = createGuardrailAction(ActionType.SUBMIT, formElement, undefined, submitter);
 
       if (this.onIntercept) {
         try {
@@ -211,7 +240,7 @@ export class ActionDetector {
       return;
     }
 
-    const action = createGuardrailAction(ActionType.SUBMIT, formElement);
+    const action = createGuardrailAction(ActionType.SUBMIT, formElement, undefined, submitter);
     this.emitAction(action);
   };
 

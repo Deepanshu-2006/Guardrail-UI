@@ -113,6 +113,9 @@ export interface ActionElementInfo {
 
   /** Raw unnormalized form action attribute value before URL resolution */
   rawFormAction?: string;
+
+  /** Visible text or label on the clicked submit button/trigger */
+  submitButtonText?: string;
 }
 
 /**

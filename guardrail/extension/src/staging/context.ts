@@ -155,6 +155,8 @@ export function generateSafeActionDescription(
   let labelPart = '';
   if (element?.visibleText && element.visibleText.trim()) {
     labelPart = `"${sanitizeLabel(element.visibleText)}"`;
+  } else if (element?.submitButtonText && element.submitButtonText.trim()) {
+    labelPart = `"${sanitizeLabel(element.submitButtonText)}"`;
   } else if (element?.id && element.id.trim()) {
     labelPart = `#${sanitizeLabel(element.id)}`;
   } else if (element?.tagName) {

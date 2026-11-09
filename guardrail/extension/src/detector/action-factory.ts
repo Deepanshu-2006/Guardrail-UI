@@ -19,7 +19,8 @@ import { createActionMetadata, extractElementInfo, extractPageInfo } from '../ut
 export function createGuardrailAction(
   type: ActionType,
   targetElement?: HTMLElement | Element | null,
-  previousUrl?: string
+  previousUrl?: string,
+  submitterElement?: HTMLElement | Element | null
 ): GuardrailAction {
   // 1. Generate unique action ID and synchronized ISO timestamp
   const metadata = createActionMetadata('act');
@@ -28,7 +29,7 @@ export function createGuardrailAction(
   const pageInfo = extractPageInfo(previousUrl);
 
   // 3. Extract element metadata if a target DOM element is provided
-  const elementInfo = targetElement ? extractElementInfo(targetElement) : undefined;
+  const elementInfo = targetElement ? extractElementInfo(targetElement, submitterElement) : undefined;
 
   // 4. Assemble the complete normalized model
   const action: GuardrailAction = {
