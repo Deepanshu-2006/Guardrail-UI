@@ -122,6 +122,7 @@ export interface ApiRequest {
   readonly url: string;
   readonly headers?: Record<string, string | string[] | undefined>;
   readonly body?: unknown;
+  readonly clientIp?: string;
 }
 
 /**
@@ -140,6 +141,7 @@ export interface HttpRequestLike {
   readonly method?: string;
   readonly url?: string;
   readonly headers?: Record<string, string | string[] | undefined>;
+  readonly socket?: { readonly remoteAddress?: string };
   on(event: 'data', listener: (chunk: unknown) => void): this;
   on(event: 'end', listener: () => void): this;
   on(event: 'error', listener: (err: unknown) => void): this;
@@ -204,10 +206,12 @@ export class InMemoryRateLimiter implements RateLimiter {
   private readonly requests: Map<string, number[]> = new Map();
   private readonly maxRequests: number;
   private readonly windowMs: number;
+  private readonly maxTrackedKeys: number;
 
-  constructor(maxRequests: number = 60, windowSeconds: number = 60) {
+  constructor(maxRequests: number = 60, windowSeconds: number = 60, maxTrackedKeys: number = 10000) {
     this.maxRequests = maxRequests;
     this.windowMs = windowSeconds * 1000;
+    this.maxTrackedKeys = maxTrackedKeys;
   }
 
   public checkRateLimit(key: string): { allowed: boolean; retryAfterSeconds?: number } {
@@ -220,13 +224,29 @@ export class InMemoryRateLimiter implements RateLimiter {
     if (valid.length >= this.maxRequests) {
       const oldest = valid[0];
       const retryAfterMs = this.windowMs - (now - oldest);
-      const retryAfterSeconds = Math.ceil(retryAfterMs / 1000);
+      const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
       return { allowed: false, retryAfterSeconds };
     }
 
     valid.push(now);
     this.requests.set(key, valid);
+
+    if (this.requests.size > this.maxTrackedKeys) {
+      this.pruneExpired(now);
+    }
+
     return { allowed: true };
+  }
+
+  private pruneExpired(now: number): void {
+    for (const [k, ts] of this.requests.entries()) {
+      const active = ts.filter((t) => now - t < this.windowMs);
+      if (active.length === 0) {
+        this.requests.delete(k);
+      } else {
+        this.requests.set(k, active);
+      }
+    }
   }
 
   public clear(): void {
@@ -244,7 +264,7 @@ export interface ApprovalApiRouterConfig {
   /** Maximum request body size in bytes. Default: 16384 (16 KB) */
   readonly maxBodySizeBytes?: number;
 
-  /** Rate limiter instance. Default: InMemoryRateLimiter(100 req / minute) */
+  /** Rate limiter instance. Default: InMemoryRateLimiter(120 req / 60 seconds) */
   readonly rateLimiter?: RateLimiter;
 
   /** Optional server secret */
@@ -311,7 +331,7 @@ export class ApprovalApiRouter {
     this.tokenVerifier = tokenVerifier;
     this.allowedOrigins = new Set(config?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
     this.maxBodySizeBytes = config?.maxBodySizeBytes ?? DEFAULT_MAX_BODY_SIZE_BYTES;
-    this.rateLimiter = config?.rateLimiter;
+    this.rateLimiter = config?.rateLimiter !== undefined ? config.rateLimiter : new InMemoryRateLimiter(120, 60);
     this.serviceType = config?.serviceType ?? 'in_memory';
     this.invitationDelivery = config?.invitationDelivery;
   }
@@ -365,7 +385,7 @@ export class ApprovalApiRouter {
 
     // 2. Rate Limiting Check
     if (this.rateLimiter) {
-      const clientIp = this.extractHeader(request.headers, 'x-forwarded-for') || '127.0.0.1';
+      const clientIp = this.extractClientIp(request);
       const rateCheck = this.rateLimiter.checkRateLimit(clientIp);
       if (!rateCheck.allowed) {
         headers['retry-after'] = String(rateCheck.retryAfterSeconds ?? 60);
@@ -655,6 +675,7 @@ export class ApprovalApiRouter {
       url: req.url || '/',
       headers: rawHeaders,
       body: rawBody,
+      clientIp: req.socket?.remoteAddress,
     };
 
     const apiResponse = await this.dispatch(apiRequest);
@@ -674,6 +695,9 @@ export class ApprovalApiRouter {
   ): Promise<ApiResponse<ApprovalRequest>> {
     this.validateContentType(request.headers);
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
 
     const body = request.body as ClientApprovalRequestPayload;
     if (!body || typeof body !== 'object') {
@@ -750,6 +774,9 @@ export class ApprovalApiRouter {
   ): Promise<ApiResponse<ApprovalRequest>> {
     this.validateContentType(request.headers);
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
 
     let reason: string | undefined;
     let idempotent: boolean | undefined;
@@ -789,6 +816,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<readonly ApprovalRequest[]>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const list = this.service.listPendingRequestsForContact(authContext);
 
     return {
@@ -856,6 +886,9 @@ export class ApprovalApiRouter {
   ): Promise<ApiResponse<ApprovalRequest>> {
     this.validateContentType(request.headers);
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
 
     const body = request.body as Record<string, unknown>;
     if (!body || typeof body !== 'object') {
@@ -945,6 +978,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<ApprovalActionBinding>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const body = (request.body as { reason?: string } | undefined) ?? {};
     const reason =
       typeof body.reason === 'string'
@@ -972,6 +1008,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<BackendContinuationValidationResult>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const body = (request.body as {
       requestId?: string;
       pageContext?: { url?: string; origin?: string };
@@ -1005,6 +1044,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<ApprovalActionBinding>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const body = (request.body as { reason?: string } | undefined) ?? {};
     const reason =
       typeof body.reason === 'string'
@@ -1032,6 +1074,9 @@ export class ApprovalApiRouter {
   ): Promise<ApiResponse<TrustedContactInvitation>> {
     this.validateContentType(request.headers);
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
 
     const body = (request.body as Record<string, unknown> | undefined) ?? {};
     let relationshipLabel: string | undefined;
@@ -1050,6 +1095,10 @@ export class ApprovalApiRouter {
       throw new ApprovalValidationError(['Field "recipientActorId" must identify a registered Guardrail user.']);
     }
     recipientActorId = body.recipientActorId;
+
+    if (recipientActorId === authContext.actorId) {
+      throw new SelfInvitationProhibitedError(authContext.actorId, 'new-invitation');
+    }
 
     if (body.code !== undefined || body.customCode !== undefined) {
       throw new ApprovalValidationError(['Invitation tokens are generated by the backend and cannot be client supplied.']);
@@ -1092,6 +1141,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<readonly TrustedContactInvitation[]>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const invitations = this.service.listInvitationsForUser(authContext);
 
     return {
@@ -1113,6 +1165,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<TrustedContactInvitation>> {
     const authContext = await this.authenticate(request.headers);
+    if (!identifier || identifier.length > 128 || /[\r\n\t\0]/.test(identifier)) {
+      throw new ApprovalAccessDeniedError();
+    }
     const invitation = this.service.getInvitation(identifier, authContext);
 
     return {
@@ -1134,6 +1189,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<{ invitation: TrustedContactInvitation; contact: TrustedContact }>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.TRUSTED_CONTACT && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const body = (request.body as Record<string, unknown> | undefined) ?? {};
     const candidate = pathCode ?? body.code;
     const validation = validateInvitationCode(candidate);
@@ -1160,6 +1218,12 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<TrustedContactInvitation>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
+    if (!/^inv_[a-zA-Z0-9_-]{1,124}$/.test(invitationId)) {
+      throw new ApprovalAccessDeniedError();
+    }
     const revoked = this.service.revokeInvitation(invitationId, authContext);
 
     return {
@@ -1180,6 +1244,9 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<readonly TrustedContact[]>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
     const contacts = this.service.getTrustedContactsForUser(authContext);
 
     return {
@@ -1201,6 +1268,12 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<{ revoked: boolean; contactId: string }>> {
     const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
+    if (!/^(tc_|usr_)[a-zA-Z0-9_-]{1,124}$/.test(contactId)) {
+      throw new ApprovalAccessDeniedError();
+    }
     const revoked = this.service.revokeTrustedContact(contactId, authContext);
 
     if (!revoked) {
@@ -1240,6 +1313,10 @@ export class ApprovalApiRouter {
     }
 
     const token = parts[1];
+    if (!token || token.length > 16384 || !/^[A-Za-z0-9_.\-+=/]+$/.test(token)) {
+      throw new UnauthenticatedError('Invalid or expired authentication token.');
+    }
+
     const authContext: unknown = await this.tokenVerifier.verifyToken(token);
     if (!this.isValidAuthContext(authContext)) {
       throw new UnauthenticatedError('Invalid or expired authentication token.');
@@ -1252,13 +1329,20 @@ export class ApprovalApiRouter {
   private isValidAuthContext(value: unknown): value is AuthContext {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const context = value as Record<string, unknown>;
-    return typeof context.actorId === 'string' &&
+    return (
+      typeof context.actorId === 'string' &&
       context.actorId.trim().length > 0 &&
+      context.actorId.length <= 256 &&
+      !/[\r\n\t\0]/.test(context.actorId) &&
       context.isAuthenticated === true &&
       typeof context.role === 'string' &&
       Object.values(ActorRole).includes(context.role as ActorRole) &&
       (context.sessionId === undefined ||
-        (typeof context.sessionId === 'string' && context.sessionId.trim().length > 0));
+        (typeof context.sessionId === 'string' &&
+          context.sessionId.trim().length > 0 &&
+          context.sessionId.length <= 256 &&
+          !/[\r\n\t\0]/.test(context.sessionId)))
+    );
   }
 
   /**
@@ -1367,6 +1451,9 @@ export class ApprovalApiRouter {
     userId: string,
     headers: Record<string, string>
   ): Promise<ApiResponse<UserPolicyView>> {
+    if (!/^usr_[a-zA-Z0-9_-]{1,128}$/.test(userId)) {
+      throw new PolicyAccessDeniedError();
+    }
     const authContext = await this.authenticate(request.headers);
     const result = await this.policyService.getUserPolicy(authContext, userId);
     return {
@@ -1387,6 +1474,9 @@ export class ApprovalApiRouter {
     userId: string,
     headers: Record<string, string>
   ): Promise<ApiResponse<UserPolicyRecord>> {
+    if (!/^usr_[a-zA-Z0-9_-]{1,128}$/.test(userId)) {
+      throw new PolicyAccessDeniedError();
+    }
     this.validateContentType(request.headers);
     const authContext = await this.authenticate(request.headers);
     const body = request.body as UpdateUserPolicyInput;
@@ -1412,6 +1502,9 @@ export class ApprovalApiRouter {
     userId: string,
     headers: Record<string, string>
   ): Promise<ApiResponse<readonly PolicyAuditRecord[]>> {
+    if (!/^usr_[a-zA-Z0-9_-]{1,128}$/.test(userId)) {
+      throw new PolicyAccessDeniedError();
+    }
     const authContext = await this.authenticate(request.headers);
     const result = await this.policyService.getPolicyAuditHistory(authContext, userId);
     return {
@@ -1432,6 +1525,9 @@ export class ApprovalApiRouter {
     userId: string,
     headers: Record<string, string>
   ): Promise<ApiResponse<UserPolicyRecord>> {
+    if (!/^usr_[a-zA-Z0-9_-]{1,128}$/.test(userId)) {
+      throw new PolicyAccessDeniedError();
+    }
     const authContext = await this.authenticate(request.headers);
     const result = await this.policyService.resetPolicyToDefaults(authContext, userId);
     return {
@@ -1858,6 +1954,23 @@ export class ApprovalApiRouter {
       return val[0];
     }
     return val;
+  }
+
+  private extractClientIp(request: ApiRequest): string {
+    if (request.clientIp && typeof request.clientIp === 'string') {
+      const cleanSocketIp = request.clientIp.trim().replace(/^::ffff:/, '');
+      if (/^[0-9a-fA-F:.]+$/.test(cleanSocketIp) && cleanSocketIp.length <= 45) {
+        return cleanSocketIp;
+      }
+    }
+    const forwarded = this.extractHeader(request.headers, 'x-forwarded-for');
+    if (forwarded) {
+      const candidate = forwarded.split(',')[0].trim().replace(/^::ffff:/, '');
+      if (/^[0-9a-fA-F:.]+$/.test(candidate) && candidate.length <= 45) {
+        return candidate;
+      }
+    }
+    return '127.0.0.1';
   }
 }
 

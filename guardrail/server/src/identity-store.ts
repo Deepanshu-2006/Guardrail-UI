@@ -25,6 +25,7 @@ export class SqliteIdentityStore {
     try {
       if (resolved !== ':memory:') mkdirSync(dirname(resolved), { recursive: true, mode: 0o700 });
       database = new Database(resolved, { timeout: 5000 });
+      database.pragma('foreign_keys = ON');
       database.pragma('journal_mode = WAL');
       database.pragma('synchronous = FULL');
       database.pragma('busy_timeout = 5000');

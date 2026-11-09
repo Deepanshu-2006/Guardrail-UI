@@ -1048,6 +1048,111 @@ async function runAllTests(): Promise<void> {
   }
 
   // ---------------------------------------------------------------------------
+  // 13. Security Hardening & Regression Suite (Day 29 Hardening)
+  // ---------------------------------------------------------------------------
+  console.log('\n--- 13. Security Hardening & Regression Suite ---');
+  {
+    const env = createTestEnvironment();
+
+    // 13.1 Self-invitation rejection at API boundary
+    const selfInviteRes = await env.router.dispatch({
+      method: 'POST',
+      url: '/api/v1/invitations',
+      headers: {
+        authorization: 'Bearer alice-token',
+        'content-type': 'application/json',
+      },
+      body: {
+        recipientActorId: 'usr_alice',
+        relationshipLabel: 'Self',
+      },
+    });
+    assertEquals(selfInviteRes.statusCode, 403, 'Self-invitation rejected with 403 Forbidden');
+    assertEquals((selfInviteRes.body as any).error?.code, 'SELF_INVITATION_PROHIBITED', 'Error code is SELF_INVITATION_PROHIBITED');
+
+    // 13.2 Trusted contacts cannot create approval requests (opaque 404 anti-enumeration)
+    const contactCreateRes = await env.router.dispatch({
+      method: 'POST',
+      url: '/api/v1/approval-requests',
+      headers: {
+        authorization: 'Bearer carol-token',
+        'content-type': 'application/json',
+      },
+      body: makeValidPayload('act_forbidden_by_contact'),
+    });
+    assertEquals(contactCreateRes.statusCode, 404, 'Trusted contact creating approval request rejected with 404 Not Found');
+    assertEquals((contactCreateRes.body as any).error?.code, 'NOT_FOUND_OR_DENIED', 'Error code is NOT_FOUND_OR_DENIED');
+
+    // 13.3 Wards cannot inspect pending approvals intended for trusted contacts (opaque 404 anti-enumeration)
+    const wardPendingRes = await env.router.dispatch({
+      method: 'GET',
+      url: '/api/v1/approvals/pending',
+      headers: {
+        authorization: 'Bearer alice-token',
+      },
+    });
+    assertEquals(wardPendingRes.statusCode, 404, 'Ward reading pending approvals rejected with 404 Not Found');
+    assertEquals((wardPendingRes.body as any).error?.code, 'NOT_FOUND_OR_DENIED', 'Error code is NOT_FOUND_OR_DENIED');
+
+    // 13.4 Oversized bearer token is rejected early
+    const oversizedTokenRes = await env.router.dispatch({
+      method: 'GET',
+      url: '/api/v1/identity',
+      headers: {
+        authorization: 'Bearer ' + 'A'.repeat(20000),
+      },
+    });
+    assertEquals(oversizedTokenRes.statusCode, 401, 'Oversized bearer token (>16KB) rejected with 401 Unauthorized');
+    assertEquals((oversizedTokenRes.body as any).error?.code, 'UNAUTHENTICATED', 'Error code is UNAUTHENTICATED');
+
+    // 13.5 Injected CRLF/control characters in token rejected
+    const crlfTokenRes = await env.router.dispatch({
+      method: 'GET',
+      url: '/api/v1/identity',
+      headers: {
+        authorization: 'Bearer token-with-\r\n-injected-header',
+      },
+    });
+    assertEquals(crlfTokenRes.statusCode, 401, 'Token containing CRLF rejected with 401 Unauthorized');
+
+    // 13.6 Rate limiting on public policy validation endpoint
+    const rateLimitedEnv = createTestEnvironment(2);
+    const pubVal1 = await rateLimitedEnv.router.dispatch({
+      method: 'POST',
+      url: '/api/v1/policy-config/validate',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.195' },
+      body: { policy: {} },
+    });
+    const pubVal2 = await rateLimitedEnv.router.dispatch({
+      method: 'POST',
+      url: '/api/v1/policy-config/validate',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.195' },
+      body: { policy: {} },
+    });
+    const pubVal3 = await rateLimitedEnv.router.dispatch({
+      method: 'POST',
+      url: '/api/v1/policy-config/validate',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.195' },
+      body: { policy: {} },
+    });
+    assertEquals(pubVal1.statusCode, 400, 'First validate request evaluated (400 for empty body)');
+    assertEquals(pubVal2.statusCode, 400, 'Second validate request evaluated');
+    assertEquals(pubVal3.statusCode, 429, 'Third validate request rate limited with 429');
+    assertEquals((pubVal3.body as any).error?.code, 'RATE_LIMIT_EXCEEDED', 'Error code is RATE_LIMIT_EXCEEDED');
+
+    // 13.7 Malformed invitation token format rejected (opaque 404 anti-enumeration)
+    const malformedTokenInviteRes = await env.router.dispatch({
+      method: 'GET',
+      url: '/api/v1/invitations/inv_with$illegal*chars',
+      headers: {
+        authorization: 'Bearer carol-token',
+      },
+    });
+    assertEquals(malformedTokenInviteRes.statusCode, 404, 'Malformed invitation code rejected with 404 Not Found');
+    assertEquals((malformedTokenInviteRes.body as any).error?.code, 'NOT_FOUND_OR_DENIED', 'Error code is NOT_FOUND_OR_DENIED');
+  }
+
+  // ---------------------------------------------------------------------------
   // Summary
   // ---------------------------------------------------------------------------
   console.log('\n======================================================');

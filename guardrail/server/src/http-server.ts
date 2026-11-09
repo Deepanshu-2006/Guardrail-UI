@@ -1,5 +1,5 @@
 import { createServer, Server } from 'node:http';
-import { ApprovalApiRouter, ApprovalApiRouterConfig, DEFAULT_ALLOWED_ORIGINS, InvitationDeliveryHandler, TokenVerifier } from '../../extension/src/approval/api.js';
+import { ApprovalApiRouter, ApprovalApiRouterConfig, DEFAULT_ALLOWED_ORIGINS, InMemoryRateLimiter, InvitationDeliveryHandler, TokenVerifier } from '../../extension/src/approval/api.js';
 import { ActionOwnershipRegistry, TrustedContactRegistry } from '../../extension/src/approval/authorization.js';
 import { createPersistentApprovalService } from './persistent-approval-service.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
@@ -41,8 +41,10 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
     contactRegistry: options.contactRegistry,
     actionOwnershipRegistry: options.actionOwnershipRegistry,
   });
+  const rateLimiter = options.routerConfig?.rateLimiter ?? new InMemoryRateLimiter(120, 60);
   const router = new ApprovalApiRouter(runtime.service, options.tokenVerifier, {
     ...options.routerConfig,
+    rateLimiter,
     ...(options.invitationDelivery ? { invitationDelivery: options.invitationDelivery } : {}),
     policyService: runtime.policyService,
     allowedOrigins: config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS),
