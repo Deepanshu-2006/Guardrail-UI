@@ -116,11 +116,14 @@ export const VALID_BINDING_TRANSITIONS: Readonly<
     ApprovalActionBindingState.CANCELLED,
     ApprovalActionBindingState.INVALIDATED,
   ]),
-  [ApprovalActionBindingState.APPROVED]: Object.freeze([]),
+  [ApprovalActionBindingState.APPROVED]: Object.freeze([
+    ApprovalActionBindingState.CONSUMED,
+  ]),
   [ApprovalActionBindingState.REJECTED]: Object.freeze([]),
   [ApprovalActionBindingState.EXPIRED]: Object.freeze([]),
   [ApprovalActionBindingState.CANCELLED]: Object.freeze([]),
   [ApprovalActionBindingState.INVALIDATED]: Object.freeze([]),
+  [ApprovalActionBindingState.CONSUMED]: Object.freeze([]),
 });
 
 /**
@@ -132,7 +135,8 @@ export function isTerminalBindingState(state: ApprovalActionBindingState): boole
     state === ApprovalActionBindingState.REJECTED ||
     state === ApprovalActionBindingState.EXPIRED ||
     state === ApprovalActionBindingState.CANCELLED ||
-    state === ApprovalActionBindingState.INVALIDATED
+    state === ApprovalActionBindingState.INVALIDATED ||
+    state === ApprovalActionBindingState.CONSUMED
   );
 }
 
@@ -566,7 +570,7 @@ export function validateApprovalActionBinding(data: unknown): ApprovalValidation
   const validStates = Object.values(ApprovalActionBindingState) as unknown[];
   if (!validStates.includes(rec.state)) {
     errors.push(
-      `Field "state" must be a valid ApprovalActionBindingState (BOUND, APPROVED, REJECTED, EXPIRED, CANCELLED, INVALIDATED). Received "${String(rec.state)}".`
+      `Field "state" must be a valid ApprovalActionBindingState (BOUND, APPROVED, REJECTED, EXPIRED, CANCELLED, INVALIDATED, CONSUMED). Received "${String(rec.state)}".`
     );
   }
 

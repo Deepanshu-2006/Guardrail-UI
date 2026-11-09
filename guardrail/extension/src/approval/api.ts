@@ -464,6 +464,13 @@ export class ApprovalApiRouter {
         return await this.handleValidateContinuation(request, actionId, headers);
       }
 
+      // Route 5d: POST /api/v1/actions/:actionId/consume-continuation
+      const consumeContinuationMatch = path.match(/^\/api\/v1\/actions\/([^/]+)\/consume-continuation$/);
+      if (method === 'POST' && consumeContinuationMatch) {
+        const actionId = decodeURIComponent(consumeContinuationMatch[1]);
+        return await this.handleConsumeContinuation(request, actionId, headers);
+      }
+
       // Route 6: GET /api/v1/approvals/pending
       if (method === 'GET' && path === '/api/v1/approvals/pending') {
         return await this.handleListPending(request, headers);
@@ -1031,6 +1038,51 @@ export class ApprovalApiRouter {
       body: {
         success: true,
         data: result,
+      },
+    };
+  }
+
+  /**
+   * POST /api/v1/actions/:actionId/consume-continuation
+   */
+  private async handleConsumeContinuation(
+    request: ApiRequest,
+    actionId: string,
+    headers: Record<string, string>
+  ): Promise<ApiResponse<BackendContinuationValidationResult>> {
+    const authContext = await this.authenticate(request.headers);
+    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+      throw new ApprovalAccessDeniedError();
+    }
+    const body = (request.body as {
+      requestId?: string;
+      pageContext?: { url?: string; origin?: string };
+    } | undefined) ?? {};
+
+    const result = this.service.consumeContinuationAuthorization(
+      {
+        actionId,
+        requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
+        pageContext: body.pageContext && typeof body.pageContext === 'object' ? body.pageContext : undefined,
+      },
+      authContext
+    );
+
+    const statusCode = result.authorized ? 200 : (result.errorCode === 'ALREADY_CONSUMED' ? 409 : 403);
+
+    return {
+      statusCode,
+      headers,
+      body: {
+        success: result.authorized,
+        data: result,
+        ...(result.authorized ? {} : {
+          error: {
+            code: result.errorCode ?? 'CONTINUATION_DENIED',
+            message: result.error ?? 'Continuation authorization failed.',
+            statusCode,
+          },
+        }),
       },
     };
   }

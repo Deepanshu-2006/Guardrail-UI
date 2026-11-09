@@ -57,7 +57,7 @@ import {
   isLocalhost,
   resolveApiBaseUrl,
 } from '../config/environment.js';
-import { TrustedContact, TrustedContactInvitation } from './authorization.js';
+import type { TrustedContact, TrustedContactInvitation } from './authorization.js';
 import {
   PolicyAuditRecord,
   UpdateUserPolicyInput,
@@ -876,6 +876,47 @@ export class ApprovalApiClient {
     return await this.dispatchRequest<BackendContinuationValidationResult>(
       'POST',
       `/api/v1/actions/${sanitizedId}/validate-continuation`,
+      body,
+      options
+    );
+  }
+
+  /**
+   * Authoritatively and atomically consumes an approved continuation authorization exactly once.
+   *
+   * @param actionId Canonical action identifier
+   * @param pageContext Optional active page context (URL, origin)
+   * @param options Request options
+   * @returns Typed ApiClientResult with BackendContinuationValidationResult
+   */
+  public async consumeContinuationAuthorization(
+    actionId: string,
+    pageContext?: { url?: string; origin?: string },
+    options?: RequestOptions
+  ): Promise<ApiClientResult<BackendContinuationValidationResult>> {
+    const idValidation = validateActionId(actionId);
+    if (!idValidation.valid) {
+      return {
+        success: false,
+        error: {
+          code: ApiClientErrorCodes.VALIDATION_ERROR,
+          message: idValidation.errors[0] || 'Invalid actionId format.',
+          statusCode: 400,
+          details: idValidation.errors,
+        },
+        statusCode: 400,
+      };
+    }
+
+    const sanitizedId = encodeURIComponent(actionId.trim());
+    const body: Record<string, unknown> = {};
+    if (pageContext) {
+      body.pageContext = pageContext;
+    }
+
+    return await this.dispatchRequest<BackendContinuationValidationResult>(
+      'POST',
+      `/api/v1/actions/${sanitizedId}/consume-continuation`,
       body,
       options
     );

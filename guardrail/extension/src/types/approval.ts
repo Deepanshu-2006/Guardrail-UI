@@ -108,6 +108,11 @@ export enum ApprovalActionBindingState {
    * The binding was invalidated (e.g., page reload, navigation, or DOM context drift).
    */
   INVALIDATED = 'INVALIDATED',
+
+  /**
+   * The continuation authorization was authoritatively consumed for execution.
+   */
+  CONSUMED = 'CONSUMED',
 }
 
 /**
@@ -119,7 +124,8 @@ export type ApprovalActionBindingStateString =
   | 'REJECTED'
   | 'EXPIRED'
   | 'CANCELLED'
-  | 'INVALIDATED';
+  | 'INVALIDATED'
+  | 'CONSUMED';
 
 /**
  * Canonical Action Fingerprint Descriptor capturing non-sensitive structural attributes of an action.

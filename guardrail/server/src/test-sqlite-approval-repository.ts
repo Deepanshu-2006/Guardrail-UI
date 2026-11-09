@@ -292,6 +292,145 @@ try {
   assert.equal(finalRepository.findById(created.id)?.status, ApprovalStatus.APPROVED);
   finalRepository.close();
 
+  // Continuation consumption persistence and post-restart replay prevention
+  const continuationRuntime = openRuntime(databasePath);
+  const contValidation = continuationRuntime.service.validateContinuationAuthorization(
+    { actionId: payload.actionId },
+    auth
+  );
+  assert.equal(contValidation.authorized, true, 'valid approved request authorises continuation');
+
+  const contConsume = continuationRuntime.service.consumeContinuationAuthorization(
+    { actionId: payload.actionId },
+    auth
+  );
+  assert.equal(contConsume.authorized, true, 'first continuation consumption succeeds');
+  assert.equal(continuationRuntime.service.isContinuationConsumed(payload.actionId), true);
+
+  // Duplicate consumption attempt in same process is rejected
+  const duplicateConsume = continuationRuntime.service.consumeContinuationAuthorization(
+    { actionId: payload.actionId },
+    auth
+  );
+  assert.equal(duplicateConsume.authorized, false);
+  assert.equal(duplicateConsume.errorCode, 'ALREADY_CONSUMED', 'duplicate consumption returns ALREADY_CONSUMED');
+
+  // Post-consumption validation returns ALREADY_CONSUMED
+  const postConsumeValidation = continuationRuntime.service.validateContinuationAuthorization(
+    { actionId: payload.actionId },
+    auth
+  );
+  assert.equal(postConsumeValidation.authorized, false);
+  assert.equal(postConsumeValidation.errorCode, 'ALREADY_CONSUMED');
+
+  // Verify binding in SQLite database was persisted in CONSUMED state
+  const consumedBindingRecord = continuationRuntime.repository.findBindingByActionId(payload.actionId);
+  assert.equal(consumedBindingRecord?.state, ApprovalActionBindingState.CONSUMED);
+  continuationRuntime.close();
+
+  // Process restart: Verify that CONSUMED binding state persists durably across server restarts
+  const postRestartRuntime = openRuntime(databasePath);
+  assert.equal(
+    postRestartRuntime.repository.findBindingByActionId(payload.actionId)?.state,
+    ApprovalActionBindingState.CONSUMED,
+    'consumed binding state persists durably across SQLite restarts'
+  );
+  assert.equal(
+    postRestartRuntime.service.isContinuationConsumed(payload.actionId),
+    true,
+    'service recognizes continuation was consumed after restart'
+  );
+  const restartValidation = postRestartRuntime.service.validateContinuationAuthorization(
+    { actionId: payload.actionId },
+    auth
+  );
+  assert.equal(restartValidation.authorized, false);
+  assert.equal(restartValidation.errorCode, 'ALREADY_CONSUMED', 'restarted service rejects replaying consumed continuation');
+
+  const restartConsume = postRestartRuntime.service.consumeContinuationAuthorization(
+    { actionId: payload.actionId },
+    auth
+  );
+  assert.equal(restartConsume.authorized, false);
+  assert.equal(restartConsume.errorCode, 'ALREADY_CONSUMED');
+  postRestartRuntime.close();
+
+  // Reviewer revocation invalidates continuation even after prior approval
+  const revocationContactRegistry = new InMemoryTrustedContactRegistry();
+  revocationContactRegistry.addContact({
+    id: 'tc_revokable_reviewer',
+    userId: auth.actorId,
+    status: TrustedContactStatus.ACTIVE,
+    createdAt,
+  });
+  const revocationRuntime = createPersistentApprovalService({
+    databasePath: join(root, 'revocation.sqlite'),
+    timeProvider: () => new Date().toISOString(),
+    contactRegistry: revocationContactRegistry,
+    actionOwnershipRegistry: new InMemoryActionOwnershipRegistry(),
+  });
+
+  const revokableTarget = revocationRuntime.service.createRequest(
+    { ...payload, actionId: 'act_sqlite_revoked_reviewer_cont' },
+    auth,
+    { id: 'apr_sqlite_revoked_reviewer_cont', createdAt, expiresAt }
+  );
+  revocationRuntime.service.approveRequest(
+    revokableTarget.id,
+    undefined,
+    { actorId: 'tc_revokable_reviewer', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true }
+  );
+  // Before revocation: continuation is authorized
+  const beforeRevoke = revocationRuntime.service.validateContinuationAuthorization(
+    { actionId: 'act_sqlite_revoked_reviewer_cont' },
+    auth
+  );
+  assert.equal(beforeRevoke.authorized, true);
+
+  // Revoke the trusted contact relationship
+  revocationContactRegistry.revokeTrustedContact('tc_revokable_reviewer', auth.actorId);
+
+  // After revocation: continuation must be refused server-side
+  const afterRevokeValidation = revocationRuntime.service.validateContinuationAuthorization(
+    { actionId: 'act_sqlite_revoked_reviewer_cont' },
+    auth
+  );
+  assert.equal(afterRevokeValidation.authorized, false);
+  assert.equal(afterRevokeValidation.errorCode, 'REQUEST_NOT_APPROVED', 'revoked reviewer invalidates continuation');
+
+  const afterRevokeConsume = revocationRuntime.service.consumeContinuationAuthorization(
+    { actionId: 'act_sqlite_revoked_reviewer_cont' },
+    auth
+  );
+  assert.equal(afterRevokeConsume.authorized, false);
+  assert.equal(afterRevokeConsume.errorCode, 'REQUEST_NOT_APPROVED');
+  revocationRuntime.close();
+
+  // Cross-connection continuation race: exactly one caller consumes, competitor receives ALREADY_CONSUMED
+  const raceRuntime1 = openRuntime(join(root, 'cont_race.sqlite'));
+  const raceTargetReq = raceRuntime1.service.createRequest(
+    { ...payload, actionId: 'act_sqlite_cont_race' },
+    auth,
+    { id: 'apr_sqlite_cont_race', createdAt, expiresAt }
+  );
+  raceRuntime1.service.approveRequest(
+    raceTargetReq.id,
+    undefined,
+    { actorId: 'tc_synthetic_reviewer', role: ActorRole.TRUSTED_CONTACT, isAuthenticated: true }
+  );
+
+  const raceRuntime2 = openRuntime(join(root, 'cont_race.sqlite'));
+  const raceResults = await Promise.all([
+    Promise.resolve().then(() => raceRuntime1.service.consumeContinuationAuthorization({ actionId: 'act_sqlite_cont_race' }, auth)),
+    Promise.resolve().then(() => raceRuntime2.service.consumeContinuationAuthorization({ actionId: 'act_sqlite_cont_race' }, auth)),
+  ]);
+  const raceSuccessCount = raceResults.filter(r => r.authorized === true).length;
+  const raceConsumedConflictCount = raceResults.filter(r => r.authorized === false && r.errorCode === 'ALREADY_CONSUMED').length;
+  assert.equal(raceSuccessCount, 1, 'exactly one concurrent continuation consumption succeeds');
+  assert.equal(raceConsumedConflictCount, 1, 'losing concurrent continuation receives ALREADY_CONSUMED');
+  raceRuntime1.close();
+  raceRuntime2.close();
+
   // Simulate a corrupt record written outside the repository, then verify it is rejected on read.
   const rawDatabase = new Database(databasePath);
   rawDatabase.prepare('UPDATE approval_requests SET payload_json = ? WHERE id = ?').run(

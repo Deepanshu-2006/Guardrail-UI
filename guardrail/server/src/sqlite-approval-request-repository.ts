@@ -21,7 +21,7 @@ import {
   isValidApprovalTransition,
 } from '../../extension/src/approval/model.js';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export class ApprovalDatabaseUnavailableError extends Error {
   public readonly code = 'APPROVAL_DATABASE_UNAVAILABLE';
@@ -112,49 +112,75 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
     if (currentVersion === SCHEMA_VERSION) return;
 
     const migration = database.transaction(() => {
-      database.exec(`
-        CREATE TABLE IF NOT EXISTS approval_requests (
-          id TEXT PRIMARY KEY NOT NULL CHECK (id GLOB 'apr_*'),
-          requester_id TEXT NOT NULL CHECK (length(trim(requester_id)) > 0),
-          action_id TEXT NOT NULL CHECK (action_id GLOB 'act_*' OR action_id GLOB 'act-*'),
-          status TEXT NOT NULL CHECK (status IN ('PENDING','APPROVED','REJECTED','EXPIRED','CANCELLED')),
-          created_at TEXT NOT NULL,
-          expires_at TEXT NOT NULL,
-          payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
-          CHECK (expires_at > created_at),
-          UNIQUE (id, requester_id, action_id)
-        );
+      if (currentVersion === 0) {
+        database.exec(`
+          CREATE TABLE IF NOT EXISTS approval_requests (
+            id TEXT PRIMARY KEY NOT NULL CHECK (id GLOB 'apr_*'),
+            requester_id TEXT NOT NULL CHECK (length(trim(requester_id)) > 0),
+            action_id TEXT NOT NULL CHECK (action_id GLOB 'act_*' OR action_id GLOB 'act-*'),
+            status TEXT NOT NULL CHECK (status IN ('PENDING','APPROVED','REJECTED','EXPIRED','CANCELLED')),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+            CHECK (expires_at > created_at),
+            UNIQUE (id, requester_id, action_id)
+          );
 
-        CREATE INDEX IF NOT EXISTS idx_approval_requests_requester_created
-          ON approval_requests(requester_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_approval_requests_pending_owner
-          ON approval_requests(status, requester_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_approval_requests_action
-          ON approval_requests(action_id, created_at DESC);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_requests_active_user_action
-          ON approval_requests(requester_id, action_id) WHERE status = 'PENDING';
+          CREATE INDEX IF NOT EXISTS idx_approval_requests_requester_created
+            ON approval_requests(requester_id, created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_approval_requests_pending_owner
+            ON approval_requests(status, requester_id, created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_approval_requests_action
+            ON approval_requests(action_id, created_at DESC);
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_requests_active_user_action
+            ON approval_requests(requester_id, action_id) WHERE status = 'PENDING';
 
-        CREATE TABLE IF NOT EXISTS approval_bindings (
-          id TEXT PRIMARY KEY NOT NULL CHECK (id GLOB 'bnd_*' OR id GLOB 'bnd-*'),
-          request_id TEXT NOT NULL CHECK (request_id GLOB 'apr_*'),
-          requester_id TEXT NOT NULL CHECK (length(trim(requester_id)) > 0),
-          action_id TEXT NOT NULL CHECK (action_id GLOB 'act_*' OR action_id GLOB 'act-*'),
-          state TEXT NOT NULL CHECK (state IN ('BOUND','APPROVED','REJECTED','EXPIRED','CANCELLED','INVALIDATED')),
-          created_at TEXT NOT NULL,
-          payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
-          FOREIGN KEY (request_id, requester_id, action_id)
-            REFERENCES approval_requests(id, requester_id, action_id) ON DELETE CASCADE
-        );
+          CREATE TABLE IF NOT EXISTS approval_bindings (
+            id TEXT PRIMARY KEY NOT NULL CHECK (id GLOB 'bnd_*' OR id GLOB 'bnd-*'),
+            request_id TEXT NOT NULL CHECK (request_id GLOB 'apr_*'),
+            requester_id TEXT NOT NULL CHECK (length(trim(requester_id)) > 0),
+            action_id TEXT NOT NULL CHECK (action_id GLOB 'act_*' OR action_id GLOB 'act-*'),
+            state TEXT NOT NULL CHECK (state IN ('BOUND','APPROVED','REJECTED','EXPIRED','CANCELLED','INVALIDATED','CONSUMED')),
+            created_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+            FOREIGN KEY (request_id, requester_id, action_id)
+              REFERENCES approval_requests(id, requester_id, action_id) ON DELETE CASCADE
+          );
 
-        CREATE INDEX IF NOT EXISTS idx_approval_bindings_request
-          ON approval_bindings(request_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_approval_bindings_action
-          ON approval_bindings(action_id, created_at DESC);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_bindings_active_action
-          ON approval_bindings(action_id) WHERE state = 'BOUND';
+          CREATE INDEX IF NOT EXISTS idx_approval_bindings_request
+            ON approval_bindings(request_id, created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_approval_bindings_action
+            ON approval_bindings(action_id, created_at DESC);
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_bindings_active_action
+            ON approval_bindings(action_id) WHERE state = 'BOUND';
+        `);
+      } else if (currentVersion === 1) {
+        database.exec(`
+          CREATE TABLE approval_bindings_v2 (
+            id TEXT PRIMARY KEY NOT NULL CHECK (id GLOB 'bnd_*' OR id GLOB 'bnd-*'),
+            request_id TEXT NOT NULL CHECK (request_id GLOB 'apr_*'),
+            requester_id TEXT NOT NULL CHECK (length(trim(requester_id)) > 0),
+            action_id TEXT NOT NULL CHECK (action_id GLOB 'act_*' OR action_id GLOB 'act-*'),
+            state TEXT NOT NULL CHECK (state IN ('BOUND','APPROVED','REJECTED','EXPIRED','CANCELLED','INVALIDATED','CONSUMED')),
+            created_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+            FOREIGN KEY (request_id, requester_id, action_id)
+              REFERENCES approval_requests(id, requester_id, action_id) ON DELETE CASCADE
+          );
 
-        PRAGMA user_version = ${SCHEMA_VERSION};
-      `);
+          INSERT INTO approval_bindings_v2 SELECT * FROM approval_bindings;
+          DROP TABLE approval_bindings;
+          ALTER TABLE approval_bindings_v2 RENAME TO approval_bindings;
+
+          CREATE INDEX IF NOT EXISTS idx_approval_bindings_request
+            ON approval_bindings(request_id, created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_approval_bindings_action
+            ON approval_bindings(action_id, created_at DESC);
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_bindings_active_action
+            ON approval_bindings(action_id) WHERE state = 'BOUND';
+        `);
+      }
+      database.pragma(`user_version = ${SCHEMA_VERSION}`);
     });
     migration.immediate();
   }
@@ -344,7 +370,7 @@ export class SqliteApprovalRequestRepository implements ApprovalRequestRepositor
         updatedBinding.actionId
       );
       if (Number(requestResult.changes) !== 1 || Number(bindingResult.changes) !== 1) {
-        throw new Error('Approval transition lost its compare-and-swap condition.');
+        return false;
       }
       return true;
     });
