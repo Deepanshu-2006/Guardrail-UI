@@ -78,9 +78,11 @@ In Prompt 1, a comprehensive release-readiness audit was performed across the en
   - Verified data minimization, credential redaction, authorization enforcement, and anti-replay bindings.
   - Confirmed atomic CAS state transitions, non-execution across failures, and DOM boundary isolation.
   - Documented browser architectural boundaries, test evidence, and remaining limitations.
-- [ ] **Prompt 6: Operational Runbooks, Administrator Manuals & Final Sign-Off**
-  - Document deployment guide, database backup runbook, and onboarding procedures.
-  - Final release report and formal release sign-off.
+- [x] **Prompt 6: Accurate User-Facing and Developer-Facing Documentation**
+  - Updated root `guardrail/README.md` with complete architectural overview, 9-stage workflow, and setup instructions.
+  - Documented supported browser actions, known interception boundaries, and troubleshooting matrix.
+  - Authored verified end-to-end demonstration procedure in `guardrail/demo-sites/README.md`.
+  - Audited environment variables, security considerations, and mock vs. live service labels.
 
 ---
 
@@ -509,3 +511,68 @@ In Prompt 5, a comprehensive, focused final regression pass was executed across 
    - Guardrail monitors download events via `chrome.downloads.onCreated` and detects high-risk attributes (suspicious extensions, double extensions, MIME mismatches, unencrypted transports). It does not claim or attempt to provide host-level antivirus file scanning, kernel sandbox enforcement, or content inspection of encrypted payloads.
 4. **Local Single-Node Concurrency Scope**:
    - Compare-and-swap (CAS) transitions and in-memory deduplication guarantees are enforced locally within the active service instance. Clustered multi-instance server deployments require distributed transactional locking (e.g., PostgreSQL row locks or Redis tokens) to prevent cross-node replay races.
+
+---
+
+## Prompt 6 Execution Summary: Accurate User-Facing and Developer-Facing Documentation
+
+### Overview
+In Prompt 6, comprehensive user-facing and developer-facing documentation was authored, updated, and verified to accurately reflect the true state of Guardrail UI. Existing accurate documentation was preserved, while outdated "Day 1 foundation" scaffolding documentation was updated to describe the fully integrated 9-stage protection and approval system. All documentation strictly adheres to reporting integrity: no simulated live integrations are presented as real services, all environment variables are documented by name and purpose only without secrets, and known browser architectural limitations are explicitly highlighted.
+
+---
+
+### Documentation Coverage Across 14 Required Areas
+
+| Area # | Documentation Requirement | Documented Location & Key Sections | Implementation Truthfulness |
+| :--- | :--- | :--- | :--- |
+| **1** | **What Guardrail UI does & target users** | `guardrail/README.md` (Sec. 1) | Clarifies purpose for vulnerable individuals, older adults, and caregivers. Explains protective friction and separation of duties. |
+| **2** | **Supported protection & approval workflow** | `guardrail/README.md` (Sec. 3) | 9-stage sequence diagram and phase-by-phase trace from detection to atomic single-use continuation. |
+| **3** | **Supported browser actions & limitations** | `guardrail/README.md` (Sec. 4) | Details supported clicks, forms, downloads, and navigation. Discloses programmatic `form.submit()` bypass, page state drift, and lack of universal resume. |
+| **4** | **Trusted contact setup & permissions** | `guardrail/README.md` (Sec. 5) | Outlines invitation token hashing, acceptance flow, ward revocation, and strict server-side anti-self-approval enforcement. |
+| **5** | **Extension installation & configuration** | `guardrail/README.md` (Sec. 8.1, 10) | Chrome unpacked developer mode loading, MV3 background service worker, and Shadow DOM isolation. |
+| **6** | **Dashboard setup & access** | `guardrail/README.md` (Sec. 8.2, 10) | Starting `npm run dev` (port 5173), URL hash routing (`#overview`, `#pending`, `#history`), and responsive drawer navigation. |
+| **7** | **Required environment variables** | `guardrail/README.md` (Sec. 6) | Full matrix of 13 variables (`GUARDRAIL_ENV`, `GUARDRAIL_API_BASE_URL`, `GUARDRAIL_DB_PATH`, `GUARDRAIL_ALLOWED_ORIGINS`, OIDC JWKS, etc.) described by name and purpose only. |
+| **8** | **Backend & authentication prerequisites** | `guardrail/README.md` (Sec. 7) | Node.js 20+, SQLite with `PRAGMA secure_delete = 1`, OIDC RS256 token verification, and HTTPS enforcement. |
+| **9** | **Build & package commands** | `guardrail/README.md` (Sec. 8) | Exact commands for dev, pilot (`build:pilot`, `package:pilot`), and production (`build:prod`) across all 3 subsystems. |
+| **10** | **Running automated tests** | `guardrail/README.md` (Sec. 9) | Comprehensive command list for all server, extension, and dashboard automated test suites. |
+| **11** | **Controlled end-to-end demonstration** | `guardrail/README.md` (Sec. 10) & `guardrail/demo-sites/README.md` | Deterministic 8-step demonstration procedure using `test-page/index.html` covering ALLOW, PROTECT, review, continuation, and offline failure. |
+| **12** | **Troubleshooting common failures** | `guardrail/README.md` (Sec. 11) | Diagnostic table covering missing origins, insecure pilot URLs, 401/403/404/409 errors, offline banners, and context drift. |
+| **13** | **Current limitations & unsupported scenarios** | `guardrail/README.md` (Sec. 4, 12) | Explains that Guardrail is not an antivirus scanner, cannot reverse prior network side effects, and requires transactional row locking for cluster scaling. |
+| **14** | **Security & privacy considerations** | `guardrail/README.md` (Sec. 12) | Zero credential storage, wire data minimization, server-side clock authority, DOM boundary hardening, and audit trail retention. |
+
+---
+
+### Controlled Demonstration Procedure Verified
+
+The demonstration procedure documented in `guardrail/README.md` and `guardrail/demo-sites/README.md` was verified using only actual implemented capabilities:
+1. **Scenario A (Normal Supported Action — `ALLOW`)**:
+   - Element: `🟢 Test ALLOW (View Dashboard)` (`test-allow`).
+   - Evaluates to Score 0. Native event default is not prevented. Page click handler executes immediately.
+2. **Scenario B (Action Requiring Approval — `PROTECT`)**:
+   - Element: `🛑 Test PROTECT (Delete All Data, Cancel Billing, and Export)` (`test-protect`).
+   - Evaluates to Critical risk (Score 90). Capturing-phase listener halts event propagation synchronously via `preventDefault()` and `stopImmediatePropagation()`. Normal page handler is blocked. Action held in `InterceptionController` (`HELD`).
+   - User reviews Staging Modal in closed Shadow DOM and clicks **Request Approval**. Request `apr_...` is submitted to the local server over real HTTP.
+3. **Scenario C (Trusted Contact Response in Dashboard)**:
+   - Contact opens `http://localhost:5173/#pending`.
+   - Inspects structured reasons, origin, and high-impact category.
+   - Clicks **Approve Action** with reviewer note.
+   - Server transitions record to `APPROVED`. In the ward's tab, action remains strictly held; zero automatic executions or simulated clicks occur.
+4. **Scenario D (User-Controlled Continuation Decision)**:
+   - Extension status polling loop retrieves confirmed `APPROVED` status.
+   - Staging modal enables **Continue Action**.
+   - User physically clicks **Continue Action**. `ContinuationValidationService` validates 10 eligibility conditions.
+   - Registered test handler executes **exactly once**. Zero synthetic DOM events replayed. Modal unmounts. Replay attempts fail closed (`ALREADY_CONSUMED`).
+5. **Scenario E (Unavailable Service / Offline Failure)**:
+   - Stopping the backend server causes requests to fail with `ECONNREFUSED`.
+   - Staging modal cleanly displays non-technical notice: *"Cannot reach Guardrail safety service. Your action remains safely paused."*
+   - Action remains strictly `HELD`; continuation is never triggered or assumed.
+
+---
+
+### Record of Files Changed
+
+| File | Type of Change | Rationale |
+| :--- | :--- | :--- |
+| [`guardrail/README.md`](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/README.md) | **Major Overhaul** | Replaced initial Day 1 scaffolding text with complete, authoritative user and developer documentation covering architecture, 9-stage workflow, environment variables, build commands, automated tests, demonstration guide, and troubleshooting. |
+| [`guardrail/demo-sites/README.md`](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/demo-sites/README.md) | **Update & Enhancement** | Updated demo-sites directory guide with an inventory of all synthetic test pages and a complete, step-by-step demonstration walkthrough for testers and evaluators. |
+| [`guardrail/docs/development/PRODUCT_PROGRESS.md`](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/docs/development/PRODUCT_PROGRESS.md) | **Progress Update** | Recorded execution summary of Prompt 6, detailing the 14 documentation requirements, demonstration scenarios, and file modification inventory. |
