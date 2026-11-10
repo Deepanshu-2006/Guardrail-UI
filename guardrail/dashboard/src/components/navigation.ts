@@ -1,11 +1,13 @@
 /**
  * Guardrail Trusted-Contact Dashboard - Navigation Component
  *
- * Implements the responsive brand header and sidebar navigation.
- * Uses semantic `<nav>`, `<header>`, and accessible buttons with `aria-current`.
+ * Implements the responsive brand header and sidebar navigation according to
+ * the Quiet Assurance design system.
+ * Uses crisp Lucide SVG icons, semantic `<nav>`, `<aside>`, and accessible buttons with `aria-current`.
  */
 
 import { DashboardView } from '../types.js';
+import { createIcon, IconName } from './icons.js';
 
 export interface NavigationProps {
   activeView: DashboardView;
@@ -29,7 +31,7 @@ export function renderNavigation(props: NavigationProps): HTMLElement {
   const badge = document.createElement('div');
   badge.className = 'gd-brand-badge';
   badge.setAttribute('aria-hidden', 'true');
-  badge.textContent = '🛡️';
+  badge.appendChild(createIcon('shield', 'gd-brand-icon'));
 
   const brandText = document.createElement('div');
   brandText.className = 'gd-brand-text';
@@ -56,11 +58,11 @@ export function renderNavigation(props: NavigationProps): HTMLElement {
   const navList = document.createElement('ul');
   navList.className = 'gd-nav-list';
 
-  const items: Array<{ view: DashboardView; label: string; icon: string; count?: number }> = [
-    { view: 'overview', label: 'Overview', icon: '📊' },
-    { view: 'pending', label: 'Pending Approvals', icon: '⏳', count: props.pendingCount },
-    { view: 'history', label: 'Decision History', icon: '📜' },
-    { view: 'settings', label: 'Settings', icon: '⚙️' },
+  const items: Array<{ view: DashboardView; label: string; icon: IconName; count?: number }> = [
+    { view: 'overview', label: 'Overview', icon: 'layout-dashboard' },
+    { view: 'pending', label: 'Pending Approvals', icon: 'clock', count: props.pendingCount },
+    { view: 'history', label: 'Decision History', icon: 'history' },
+    { view: 'settings', label: 'Settings', icon: 'settings' },
   ];
 
   for (const item of items) {
@@ -76,9 +78,10 @@ export function renderNavigation(props: NavigationProps): HTMLElement {
     const iconSpan = document.createElement('span');
     iconSpan.className = 'gd-nav-icon';
     iconSpan.setAttribute('aria-hidden', 'true');
-    iconSpan.textContent = item.icon;
+    iconSpan.appendChild(createIcon(item.icon));
 
     const labelSpan = document.createElement('span');
+    labelSpan.className = 'gd-nav-label';
     labelSpan.textContent = item.label;
 
     link.appendChild(iconSpan);

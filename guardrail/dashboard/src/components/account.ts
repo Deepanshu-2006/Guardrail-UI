@@ -3,9 +3,11 @@
  *
  * Displays the authenticated trusted contact profile or an intentional unauthenticated placeholder.
  * Strictly avoids fabricated user data or storing credentials in client memory.
+ * Uses crisp Lucide SVG icons instead of emojis.
  */
 
 import { TrustedContactProfile } from '../types.js';
+import { createIcon } from './icons.js';
 
 export interface AccountProps {
   profile: TrustedContactProfile | null;
@@ -55,7 +57,7 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
       ? `Contact for ${props.profile.assignedWardId}`
       : 'Trusted Contact';
   } else {
-    avatar.textContent = '🔒';
+    avatar.appendChild(createIcon('lock', 'gd-avatar-icon'));
     name.textContent = 'Not Authenticated';
     role.textContent = 'Standalone Shell';
   }
@@ -70,7 +72,7 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
     const settingsIcon = document.createElement('span');
     settingsIcon.className = 'gd-account-settings-icon';
     settingsIcon.setAttribute('aria-hidden', 'true');
-    settingsIcon.textContent = '⚙️';
+    settingsIcon.appendChild(createIcon('settings'));
     card.appendChild(settingsIcon);
   }
 

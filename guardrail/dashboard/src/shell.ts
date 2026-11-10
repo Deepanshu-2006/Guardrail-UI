@@ -377,7 +377,7 @@ export class DashboardShell {
     mobileToggle.setAttribute('aria-label', 'Open navigation menu');
     mobileToggle.setAttribute('aria-controls', 'gd-primary-sidebar');
     mobileToggle.setAttribute('aria-expanded', 'false');
-    mobileToggle.textContent = '☰';
+    mobileToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>';
     mobileToggle.addEventListener('click', () => this.toggleMobileSidebar());
 
     this.headerTitleEl = document.createElement('h1');
