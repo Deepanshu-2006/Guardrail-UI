@@ -120,11 +120,16 @@ export function renderProtectionSettings(
     container.appendChild(header);
 
     // -------------------------------------------------------------------------
-    // Quick Section Anchor Navigation (Pills)
+    // Quick Section Anchor Navigation (Pills with Cinematic Sliding Indicator)
     // -------------------------------------------------------------------------
     const navBar = document.createElement('nav');
     navBar.className = 'gd-settings-nav';
     navBar.setAttribute('aria-label', 'Settings Sections');
+
+    const navIndicator = document.createElement('div');
+    navIndicator.className = 'gd-nav-indicator';
+    navIndicator.setAttribute('aria-hidden', 'true');
+    navBar.appendChild(navIndicator);
 
     const navItems = [
       { id: 'card-overall-status', label: 'Status & Scope' },
@@ -136,12 +141,64 @@ export function renderProtectionSettings(
       { id: 'card-policy-specifications', label: 'Specifications' },
     ];
 
-    for (const item of navItems) {
+    const navButtons: { id: string; btn: any }[] = [];
+
+    const updateIndicatorPosition = (btnEl: any) => {
+      if (!navIndicator || !btnEl) return;
+      if (typeof btnEl.offsetLeft === 'number' && typeof btnEl.offsetWidth === 'number' && btnEl.offsetWidth > 0) {
+        navIndicator.style.transform = `translate3d(${btnEl.offsetLeft}px, ${btnEl.offsetTop}px, 0)`;
+        navIndicator.style.width = `${btnEl.offsetWidth}px`;
+        navIndicator.style.height = `${btnEl.offsetHeight}px`;
+        navIndicator.style.opacity = '1';
+      }
+    };
+
+    const setActiveNav = (activeId: string) => {
+      let activeBtn: any = null;
+      for (const item of navButtons) {
+        if (item.id === activeId) {
+          item.btn.classList.add('active');
+          activeBtn = item.btn;
+        } else {
+          item.btn.classList.remove('active');
+        }
+      }
+
+      if (activeBtn) {
+        updateIndicatorPosition(activeBtn);
+      }
+
+      // Update section numbers and cards:
+      // When reached, highlight the section number and card
+      for (const item of navItems) {
+        const sec = container.querySelector(`#${item.id}`) as any;
+        if (sec) {
+          const numEl = sec.querySelector('.gd-section-number') as any;
+          if (item.id === activeId) {
+            sec.classList.add('gd-section-active');
+            if (numEl) {
+              numEl.classList.add('active');
+            }
+          } else {
+            sec.classList.remove('gd-section-active');
+            if (numEl) {
+              numEl.classList.remove('active');
+            }
+          }
+        }
+      }
+    };
+
+    for (let i = 0; i < navItems.length; i++) {
+      const item = navItems[i];
       const navBtn = document.createElement('button');
       navBtn.type = 'button';
-      navBtn.className = 'gd-nav-pill';
+      navBtn.className = `gd-nav-pill${i === 0 ? ' active' : ''}`;
       navBtn.textContent = item.label;
+      navButtons.push({ id: item.id, btn: navBtn });
+
       navBtn.addEventListener('click', () => {
+        setActiveNav(item.id);
         const target = container.querySelector(`#${item.id}`);
         if (target && typeof (target as any).scrollIntoView === 'function') {
           (target as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -150,6 +207,52 @@ export function renderProtectionSettings(
       navBar.appendChild(navBtn);
     }
     container.appendChild(navBar);
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      const onWindowScroll = () => {
+        const offset = 180;
+        let currentActiveId = navItems[0].id;
+        const docEl = document.documentElement;
+        const scrollBottom = window.innerHeight + window.scrollY;
+        const scrollHeight = docEl ? docEl.scrollHeight : (document.body ? document.body.scrollHeight : 0);
+        if (scrollHeight > 0 && scrollBottom >= scrollHeight - 60) {
+          currentActiveId = navItems[navItems.length - 1].id;
+        } else {
+          for (const item of navItems) {
+            const sec = container.querySelector(`#${item.id}`) as any;
+            if (sec && typeof sec.getBoundingClientRect === 'function') {
+              const rect = sec.getBoundingClientRect();
+              if (rect.top <= offset) {
+                currentActiveId = item.id;
+              }
+            }
+          }
+        }
+        setActiveNav(currentActiveId);
+      };
+
+      window.addEventListener('scroll', onWindowScroll, { passive: true });
+      window.addEventListener('resize', () => {
+        const activeItem = navButtons.find((b) => b.btn.classList.contains('active'));
+        if (activeItem) {
+          updateIndicatorPosition(activeItem.btn);
+        }
+      }, { passive: true });
+
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location && window.location.hash) {
+          const target = container.querySelector(window.location.hash);
+          if (target && typeof (target as any).scrollIntoView === 'function') {
+            (target as any).scrollIntoView({ behavior: 'auto', block: 'start' });
+          }
+        }
+        onWindowScroll();
+        const activeItem = navButtons.find((b) => b.btn.classList.contains('active')) || navButtons[0];
+        if (activeItem) {
+          updateIndicatorPosition(activeItem.btn);
+        }
+      }, 60);
+    }
 
     // -------------------------------------------------------------------------
     // Banners: Feedback, Dirty State, Errors
@@ -911,6 +1014,7 @@ export function renderProtectionSettings(
     mainGrid.appendChild(cardSpecs);
 
     container.appendChild(mainGrid);
+    setActiveNav(navItems[0].id);
   }
 
   controller.subscribe(() => {
