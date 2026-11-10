@@ -88,7 +88,7 @@ export function renderPopupStatus(
   if (serviceVal) {
     serviceVal.textContent = report.isMockService ? 'Mock (In-Memory)' : 'Live Backend';
     if (report.isMockService) {
-      serviceVal.style.color = '#f59e0b';
+      serviceVal.style.color = '#B45309';
     }
   }
 
@@ -99,19 +99,30 @@ export function renderPopupStatus(
   const statusExplanation = document.getElementById('ext-status-explanation');
 
   if (statusTitle) statusTitle.textContent = report.statusTitle;
-  if (statusExplanation) statusExplanation.textContent = report.statusDescription;
+  if (statusExplanation) {
+    statusExplanation.textContent = report.status === 'DEGRADED'
+      ? 'Operating on safety defaults for designated test actions.'
+      : report.status === 'ACTIVE'
+      ? 'Protecting designated pilot test actions.'
+      : report.statusDescription;
+  }
 
   if (indicator) {
     indicator.textContent = report.status === 'ACTIVE' ? 'Active' : report.status;
+    indicator.style.borderRadius = '9999px';
+    indicator.style.padding = '3px 10px';
     if (report.status === 'ACTIVE') {
-      indicator.style.color = '#34d399';
-      indicator.style.borderColor = 'rgba(52, 211, 153, 0.3)';
+      indicator.style.color = '#2E6F40';
+      indicator.style.borderColor = 'rgba(46, 111, 64, 0.25)';
+      indicator.style.backgroundColor = 'rgba(46, 111, 64, 0.08)';
     } else if (report.status === 'DEGRADED') {
-      indicator.style.color = '#fbbf24';
-      indicator.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+      indicator.style.color = '#B45309';
+      indicator.style.borderColor = 'rgba(180, 83, 9, 0.25)';
+      indicator.style.backgroundColor = 'rgba(180, 83, 9, 0.08)';
     } else {
-      indicator.style.color = '#f87171';
-      indicator.style.borderColor = 'rgba(248, 113, 113, 0.3)';
+      indicator.style.color = '#C53030';
+      indicator.style.borderColor = 'rgba(197, 48, 48, 0.25)';
+      indicator.style.backgroundColor = 'rgba(197, 48, 48, 0.08)';
     }
   }
 
@@ -129,7 +140,7 @@ export function renderPopupStatus(
   const policyHealthEl = document.getElementById('ext-policy-health');
   const rulesVal = document.getElementById('ext-rules-val');
   if (policyHealthEl) policyHealthEl.textContent = `${report.policyHealth} (v${report.policyVersion})`;
-  if (rulesVal) rulesVal.textContent = `${report.activeRulesCount} rules active`;
+  if (rulesVal) rulesVal.textContent = `${report.activeRulesCount} active`;
 
   // 5. Onboarding Status Banner
   const onboardingBanner = document.getElementById('onboarding-banner');
@@ -139,15 +150,15 @@ export function renderPopupStatus(
 
   if (onboardingState && onboardingState.isCompleted) {
     if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
-    if (onboardingTitle) onboardingTitle.textContent = 'Pilot Setup: Complete ✓';
-    if (onboardingDesc) onboardingDesc.textContent = 'Ready for controlled test actions';
-    if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Review Guide →';
+    if (onboardingTitle) onboardingTitle.textContent = 'Pilot Setup';
+    if (onboardingDesc) onboardingDesc.textContent = 'Complete ✓';
+    if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Review →';
   } else {
     const count = onboardingState?.completedSteps.length ?? 0;
     if (onboardingBanner) onboardingBanner.className = 'onboarding-banner';
-    if (onboardingTitle) onboardingTitle.textContent = 'Pilot Setup: Action Needed';
-    if (onboardingDesc) onboardingDesc.textContent = `${count}/7 steps reviewed`;
-    if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Complete Setup →';
+    if (onboardingTitle) onboardingTitle.textContent = 'Pilot Setup';
+    if (onboardingDesc) onboardingDesc.textContent = `${count} of 7 steps`;
+    if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Setup →';
   }
 }
 

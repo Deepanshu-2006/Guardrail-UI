@@ -504,10 +504,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     backendGrid.appendChild(item);
   };
 
-  addBackendItem('API Endpoint Origin', originVal, true);
+  addBackendItem('API Endpoint', originVal, true);
   addBackendItem('Deployment Environment', (props.environment ?? 'development').toUpperCase());
-  addBackendItem('Service Architecture', props.isMockService ? 'Development Fixture / In-Memory' : 'Authoritative Pilot Backend');
-  addBackendItem('Polling Cadence', `${(props.pollIntervalMs ?? 10000) / 1000}s interval (auto-pauses when tab hidden)`);
+  addBackendItem('Architecture', props.isMockService ? 'Development Fixture' : 'Pilot Backend');
+  addBackendItem('Polling Cadence', `${(props.pollIntervalMs ?? 10000) / 1000}s interval (auto-pauses in background)`);
   addBackendItem('Last Synchronized', formatLastSync(props.lastSynchronizedAt));
 
   backendCard.appendChild(backendGrid);

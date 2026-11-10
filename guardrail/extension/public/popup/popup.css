@@ -1,33 +1,29 @@
+/* =============================================================================
+   Guardrail Browser Extension - Refined Warm Theme Popup Styles
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
 :root {
-  --bg-primary: #090d16;
-  --bg-secondary: #111827;
-  --bg-surface: #1e293b;
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --gd-bg-canvas: #F5F3EA;
+  --gd-deep-olive: #243324;
+  --gd-accent-olive: #4A5D4A;
+  --gd-light-olive: #EDE6D6;
 
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --gd-text-primary: #1C1C1A;
+  --gd-text-secondary: #596052;
+  --gd-text-muted: #7D8471;
 
-  --accent-cyan: #0ea5e9;
-  --accent-cyan-hover: #0284c7;
-  --accent-cyan-glow: rgba(14, 165, 233, 0.2);
+  --gd-status-active: #2E6F40;
+  --gd-status-warn: #B45309;
+  --gd-status-error: #C53030;
 
-  --badge-bg: rgba(16, 185, 129, 0.15);
-  --badge-text: #34d399;
-  --badge-border: rgba(52, 211, 153, 0.3);
+  --gd-border-hairline: rgba(43, 62, 43, 0.16);
+  --gd-tint-subtle: rgba(43, 62, 43, 0.04);
 
-  --status-warn-bg: rgba(245, 158, 11, 0.15);
-  --status-warn-text: #fbbf24;
-  --status-warn-border: rgba(251, 191, 36, 0.3);
-
-  --status-error-bg: rgba(239, 68, 68, 0.15);
-  --status-error-text: #f87171;
-  --status-error-border: rgba(248, 113, 113, 0.3);
-
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --gd-font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --gd-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --gd-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -37,59 +33,76 @@
 }
 
 body {
-  width: 340px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-family);
+  width: 350px;
+  background-color: var(--gd-bg-canvas);
+  color: var(--gd-text-primary);
+  font-family: var(--gd-font-sans);
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .popup-container {
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 12px;
+  padding: 18px 18px 16px;
+  gap: 14px;
+  background-color: var(--gd-bg-canvas);
 }
+
+/* -----------------------------------------------------------------------------
+   Header: Minimal Editorial Masthead (No Separator Lines)
+   ----------------------------------------------------------------------------- */
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
 }
 
 .logo-badge {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50% !important;
+  background-color: var(--gd-deep-olive);
+  color: var(--gd-light-olive);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--gd-font-display);
   font-weight: 700;
-  font-size: 14px;
-  color: #ffffff;
-  box-shadow: 0 0 12px var(--accent-cyan-glow);
+  font-size: 15px;
+  box-shadow: 0 1px 3px rgba(36, 51, 36, 0.15);
+  flex-shrink: 0;
 }
 
 .title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-family: var(--gd-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gd-text-primary);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 .subtitle {
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-family: var(--gd-font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gd-accent-olive);
+  line-height: 1.2;
+  margin-top: 2px;
 }
 
 .header-badges {
@@ -99,51 +112,55 @@ body {
 }
 
 .badge-env {
+  font-family: var(--gd-font-display);
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(14, 165, 233, 0.15);
-  color: var(--accent-cyan);
-  border: 1px solid rgba(14, 165, 233, 0.3);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 9999px !important;
+  background-color: rgba(43, 62, 43, 0.07);
+  color: var(--gd-accent-olive);
+  border: 1px solid rgba(43, 62, 43, 0.18);
+  display: inline-flex;
+  align-items: center;
 }
 
 .status-indicator {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: var(--badge-bg);
-  color: var(--badge-text);
-  border: 1px solid var(--badge-border);
+  font-family: var(--gd-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 9999px !important;
+  border: 1px solid transparent;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
 }
+
+/* -----------------------------------------------------------------------------
+   Content Layout
+   ----------------------------------------------------------------------------- */
 
 .content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-/* Status Card */
+/* -----------------------------------------------------------------------------
+   Live Status Section (Pure Typography - Zero Boxes)
+   ----------------------------------------------------------------------------- */
+
 .status-card {
-  background: rgba(16, 185, 129, 0.05);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.status-card.warn {
-  background: rgba(245, 158, 11, 0.05);
-  border-color: rgba(245, 158, 11, 0.25);
-}
-
-.status-card.error {
-  background: rgba(239, 68, 68, 0.05);
-  border-color: rgba(239, 68, 68, 0.25);
+  gap: 4px;
 }
 
 .status-card-header {
@@ -153,194 +170,272 @@ body {
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background-color: #10b981;
+  background-color: var(--gd-status-active);
+  flex-shrink: 0;
 }
 
 .status-card.warn .status-dot {
-  background-color: #f59e0b;
+  background-color: var(--gd-status-warn);
 }
 
 .status-card.error .status-dot {
-  background-color: #ef4444;
+  background-color: var(--gd-status-error);
 }
 
 .status-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-family: var(--gd-font-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--gd-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .status-explanation {
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.4;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--gd-text-secondary);
+  line-height: 1.5;
+  margin-top: 2px;
 }
 
-/* Onboarding Banner */
+/* -----------------------------------------------------------------------------
+   Pilot Setup Banner (Soft Tint, Clean Spacing)
+   ----------------------------------------------------------------------------- */
+
 .onboarding-banner {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(37, 99, 235, 0.08) 100%);
-  border: 1px solid rgba(14, 165, 233, 0.25);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background-color: rgba(43, 62, 43, 0.045);
+  border: 1px solid rgba(43, 62, 43, 0.12);
+  border-radius: 9999px !important;
+  padding: 8px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .onboarding-banner.completed {
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.2);
+  background-color: rgba(46, 111, 64, 0.05);
+  border-color: rgba(46, 111, 64, 0.2);
 }
 
 .onboarding-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .onboarding-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-family: var(--gd-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gd-deep-olive);
 }
 
 .onboarding-desc {
-  font-size: 10px;
-  color: var(--text-secondary);
+  font-family: var(--gd-font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gd-text-secondary);
 }
 
 .btn-action {
-  background: var(--accent-cyan);
-  color: #ffffff;
+  background-color: var(--gd-deep-olive);
+  color: #FFFFFF;
   border: none;
-  border-radius: 4px;
-  padding: 5px 9px;
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: 9999px !important;
+  padding: 6px 14px;
+  font-family: var(--gd-font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
-  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(36, 51, 36, 0.12);
 }
 
 .btn-action:hover {
-  background: var(--accent-cyan-hover);
-  box-shadow: 0 0 8px var(--accent-cyan-glow);
+  background-color: #1e2c1e;
+  transform: translateY(-1px);
 }
 
-/* Info Card */
+/* -----------------------------------------------------------------------------
+   Configuration Info (Zero Boxes, Clean Definition Grid)
+   ----------------------------------------------------------------------------- */
+
 .info-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
+  margin-top: 2px;
 }
 
 .card-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  padding: 3px 0;
 }
 
 .label {
-  color: var(--text-secondary);
+  font-family: var(--gd-font-display);
   font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gd-accent-olive);
 }
 
 .value {
-  font-weight: 500;
-  font-size: 11px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--gd-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+  text-align: right;
 }
 
-/* Boundary Card */
+/* -----------------------------------------------------------------------------
+   Protection Scope Boundary (Zero Boxes, Bold Typographic Hierarchy)
+   ----------------------------------------------------------------------------- */
+
 .boundary-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px 12px;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 11px;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .boundary-title {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-family: var(--gd-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--gd-accent-olive);
   margin-bottom: 2px;
 }
 
 .boundary-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--text-secondary);
+  gap: 8px;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gd-text-secondary);
 }
 
 .check-icon {
-  color: #34d399;
-  font-weight: bold;
+  color: var(--gd-status-active);
+  font-weight: 700;
+  font-size: 13px;
 }
 
 .cross-icon {
-  color: #f87171;
-  font-weight: bold;
+  color: #8C5817;
+  font-weight: 700;
+  font-size: 12px;
 }
 
-/* Actions Section */
+/* -----------------------------------------------------------------------------
+   Actions Section
+   ----------------------------------------------------------------------------- */
+
 .actions-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
+  margin-top: 4px;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
+  gap: 8px;
+  padding: 0 20px;
+  border-radius: 9999px !important;
+  font-family: var(--gd-font-display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
-  border: 1px solid transparent;
+  transition: all 0.16s ease;
   text-decoration: none;
+  box-sizing: border-box;
+}
+
+.btn-primary {
+  height: 42px;
+  background-color: var(--gd-deep-olive);
+  color: #FFFFFF;
+  border: none;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(36, 51, 36, 0.14);
+}
+
+.btn-primary:hover {
+  background-color: #1e2c1e;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(36, 51, 36, 0.18);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(36, 51, 36, 0.12);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary);
-  border-color: var(--border-color);
+  height: 40px;
+  background-color: transparent;
+  color: var(--gd-deep-olive);
+  border: 1px solid rgba(43, 62, 43, 0.24);
+  font-size: 11.5px;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background-color: rgba(43, 62, 43, 0.05);
+  border-color: rgba(43, 62, 43, 0.4);
 }
 
 .btn-full {
   width: 100%;
 }
 
+.btn-icon {
+  flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Footer: Discreet Architectural Disclaimer (No Separator Line)
+   ----------------------------------------------------------------------------- */
+
 .footer {
-  padding-top: 8px;
-  border-top: 1px solid var(--border-color);
+  padding-top: 2px;
+  border-top: none;
   text-align: center;
 }
 
 .footer-text {
-  font-size: 10px;
-  color: var(--text-muted);
+  font-family: var(--gd-font-display);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--gd-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
