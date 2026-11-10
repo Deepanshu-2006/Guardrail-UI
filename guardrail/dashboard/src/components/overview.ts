@@ -407,8 +407,11 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     errText.className = 'gd-error-banner-text';
     errText.textContent = props.errorMessage || 'Unable to retrieve approval requests. Check your connection and retry.';
 
-    errBox.appendChild(errIcon);
-    errBox.appendChild(errText);
+    const errContent = document.createElement('div');
+    errContent.className = 'gd-error-content';
+    errContent.appendChild(errIcon);
+    errContent.appendChild(errText);
+    errBox.appendChild(errContent);
 
     if (props.onRefresh) {
       const retryBtn = document.createElement('button');

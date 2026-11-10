@@ -66,12 +66,12 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const title = document.createElement('h1');
   title.id = 'settings-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Account & Trusted Contact Settings';
+  title.textContent = 'Settings';
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
-    'Review authenticated session parameters, authorized ward scoping, safety invariants, and backend connection details.';
+    'Manage your trusted contact profile, connected wards, and security preferences.';
 
   header.appendChild(title);
   header.appendChild(subtitle);
@@ -144,7 +144,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const tenantNotice = document.createElement('p');
   tenantNotice.className = 'gd-settings-notice';
   tenantNotice.textContent =
-    'Tenant Isolation Boundary: Guardrail enforces strict multi-tenant authorization. You are authorized to assist only the designated ward indicated above. Requests or browsing data belonging to other users are strictly isolated and inaccessible.';
+    'Scoped to your designated ward. Other accounts and browser sessions are strictly isolated.';
   identityCard.appendChild(tenantNotice);
 
   section.appendChild(identityCard);
@@ -442,7 +442,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     const auditPrivacyNotice = document.createElement('p');
     auditPrivacyNotice.className = 'gd-settings-notice';
     auditPrivacyNotice.textContent =
-      'Privacy-Preserving Audit Guarantee: Audit records contain strictly non-sensitive configuration metadata (timestamps, version progression, actor role, and field names). Passwords, form entries, card numbers, OTPs, and private URLs are never recorded.';
+      'Privacy-Preserving Audit Guarantee: Audit records contain strictly non-sensitive configuration metadata (timestamps, version progression, actor role, and field names). Credentials, form entries, card numbers, OTPs, and private URLs are never recorded.';
     historyCard.appendChild(auditPrivacyNotice);
 
     section.appendChild(historyCard);
@@ -519,7 +519,12 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     const syncBtn = document.createElement('button');
     syncBtn.type = 'button';
     syncBtn.className = 'gd-btn-refresh';
-    syncBtn.textContent = '🔄 Test Connection & Sync Now';
+    syncBtn.innerHTML = `
+      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+      </svg>
+      <span>Test Connection & Sync Now</span>
+    `;
     syncBtn.addEventListener('click', () => {
       props.onRefresh?.();
     });
@@ -559,19 +564,19 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   addInvariant(
     'Decoupled Action Execution',
-    'Submitting an approval decision records your authorized consent on the backend. It strictly never remotely executes the browser action. The user in Staging Mode retains final agency to confirm or cancel.'
+    'Approving records server consent, but never automatically executes actions in the browser.'
   );
   addInvariant(
     'Strict Multi-Tenant Boundary',
-    'Requests are cryptographically authenticated and scoped exclusively to authorized contacts. Attempts to query or inspect actions from unassigned users yield opaque 404/403 responses.'
+    'Access is authenticated and restricted solely to your assigned ward.'
   );
   addInvariant(
     'Zero-Trust Data Scrubbing',
-    'High-risk actions containing sensitive credentials, payment card details, security codes, and authentication tokens are scrubbed before reaching the backend or dashboard. Secrets are never exposed in UI or memory.'
+    'Credentials, payment cards, and authentication tokens are scrubbed before reaching this dashboard.'
   );
   addInvariant(
     'Ward Policy Authority Separation',
-    'Protection policies, risk thresholds, and staging rules are strictly configured by the protected user through their extension settings interface. Trusted contacts hold zero authority to weaken, disable, or alter ward policies.'
+    'Protection policies are set by the protected user; trusted contacts cannot alter security rules.'
   );
 
   invariantsCard.appendChild(invList);
@@ -588,7 +593,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const sessDesc = document.createElement('p');
   sessDesc.className = 'gd-settings-desc';
   sessDesc.textContent =
-    'Clear the active trusted contact session to test unauthenticated workflows or disconnect this browser from the current identity.';
+    'Sign out or disconnect this browser from your current profile.';
 
   const sessActions = document.createElement('div');
   sessActions.className = 'gd-settings-action-row';

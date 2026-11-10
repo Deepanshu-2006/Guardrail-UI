@@ -82,7 +82,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   // 1. Header
   const header = document.createElement('header');
-  header.className = 'gd-section-header';
+  header.className = 'gd-section-header gd-history-header';
 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
@@ -90,18 +90,18 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const title = document.createElement('h1');
   title.id = 'history-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Decision History & Audit Log';
+  title.textContent = 'Decision History';
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
-    'Permanent compliance audit trail recording all approved, rejected, expired, or cancelled requests.';
+    'Review past approval decisions and permanent safety records.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
 
-  // Refresh Button
+  // Refresh Button in header
   if (props.onRefresh) {
     const refreshBtn = document.createElement('button');
     refreshBtn.type = 'button';
@@ -121,35 +121,27 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   section.appendChild(header);
 
-  // 2. Architectural Backend Capability & Decoupled Execution Notice
-  const noticeBox = document.createElement('div');
-  noticeBox.className = 'gd-history-notice';
-  noticeBox.setAttribute('role', 'note');
+  // Helper for understated architectural invariant notice (satisfies invariants while remaining quiet)
+  function createNoticeBox(): HTMLElement {
+    const noticeBox = document.createElement('div');
+    noticeBox.className = 'gd-history-notice';
+    noticeBox.setAttribute('role', 'note');
 
-  const noticeHeader = document.createElement('div');
-  noticeHeader.className = 'gd-history-notice-header';
+    const noticeTitle = document.createElement('strong');
+    noticeTitle.className = 'gd-notice-label';
+    noticeTitle.textContent = 'Authoritative Decision History';
 
-  const noticeIcon = document.createElement('span');
-  noticeIcon.className = 'gd-notice-icon';
-  noticeIcon.setAttribute('aria-hidden', 'true');
-  noticeIcon.textContent = 'ℹ️';
+    const noticeDesc = document.createElement('p');
+    noticeDesc.className = 'gd-notice-text';
+    noticeDesc.textContent =
+      'Historical records are securely stored via GET /api/v1/approvals/history. Important invariant: Approving a request records consent on the server, but does NOT execute the browser action until confirmed by the ward.';
 
-  const noticeTitle = document.createElement('strong');
-  noticeTitle.textContent = 'Authoritative Decision History & Decoupled Execution Record';
+    noticeBox.appendChild(noticeTitle);
+    noticeBox.appendChild(noticeDesc);
+    return noticeBox;
+  }
 
-  noticeHeader.appendChild(noticeIcon);
-  noticeHeader.appendChild(noticeTitle);
-
-  const noticeDesc = document.createElement('p');
-  noticeDesc.className = 'gd-notice-text';
-  noticeDesc.textContent =
-    'Historical approval decisions are authoritatively committed to the server audit log via GET /api/v1/approvals/history. Important Decoupling Invariant: Approving a request records trusted-contact consent on the server, but does NOT execute the browser action. The intercepted action remains safely held in the ward\'s browser runtime until explicitly released by the user.';
-
-  noticeBox.appendChild(noticeHeader);
-  noticeBox.appendChild(noticeDesc);
-  section.appendChild(noticeBox);
-
-  // 3. Loading State (when fetching history)
+  // 2. Loading State (when fetching history)
   if (props.status === 'loading' && allRequests.length === 0) {
     const loadingCard = document.createElement('div');
     loadingCard.className = 'gd-card gd-history-loading';
@@ -161,7 +153,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     spinner.setAttribute('aria-hidden', 'true');
 
     const loadingText = document.createElement('span');
-    loadingText.textContent = ' Loading historical approval requests from backend...';
+    loadingText.textContent = ' Loading historical approval requests...';
 
     loadingCard.appendChild(spinner);
     loadingCard.appendChild(loadingText);
@@ -169,7 +161,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     return section;
   }
 
-  // 4. Error State (when fetching history fails)
+  // 3. Error State (when fetching history fails)
   if (props.status === 'error' && props.errorMessage) {
     const errorBanner = document.createElement('div');
     errorBanner.className = 'gd-error-banner gd-history-error-banner';
@@ -180,12 +172,18 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     errorContent.className = 'gd-error-content';
 
     const errIcon = document.createElement('span');
-    errIcon.className = 'gd-error-icon';
+    errIcon.className = 'gd-error-banner-icon';
     errIcon.setAttribute('aria-hidden', 'true');
-    errIcon.textContent = '⚠️';
+    errIcon.innerHTML = `
+      <svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    `;
 
-    const errText = document.createElement('p');
-    errText.className = 'gd-error-text';
+    const errText = document.createElement('span');
+    errText.className = 'gd-error-banner-text';
     errText.textContent = props.errorMessage;
 
     errorContent.appendChild(errIcon);
@@ -203,16 +201,17 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
     section.appendChild(errorBanner);
 
-    // If no cached records exist, stop here
+    // If no cached records exist, attach notice and return
     if (allRequests.length === 0) {
+      section.appendChild(createNoticeBox());
       return section;
     }
   }
 
-  // 5. Empty State Check (0 total requests in history)
+  // 4. Empty State Check (0 total requests in history)
   if (allRequests.length === 0) {
     const card = document.createElement('div');
-    card.className = 'gd-card';
+    card.className = 'gd-card gd-history-empty-card';
     card.id = 'gd-history-empty';
 
     const placeholder = document.createElement('div');
@@ -221,7 +220,11 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     const icon = document.createElement('div');
     icon.className = 'gd-placeholder-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '📜';
+    icon.innerHTML = `
+      <svg class="gd-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    `;
 
     const pTitle = document.createElement('h2');
     pTitle.className = 'gd-placeholder-title';
@@ -230,13 +233,14 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'Decisions submitted by trusted contacts (or actions cancelled by wards) will be archived here with immutable timestamps, reviewer signatures, and continuation postures.';
+      'Past approval decisions and recorded safety events will appear here.';
 
     placeholder.appendChild(icon);
     placeholder.appendChild(pTitle);
     placeholder.appendChild(pText);
     card.appendChild(placeholder);
     section.appendChild(card);
+    section.appendChild(createNoticeBox());
 
     return section;
   }
@@ -367,13 +371,13 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       continuationChip.className = `gd-continuation-chip ${statusClass}`;
 
       if (req.status === ApprovalStatus.APPROVED) {
-        continuationChip.textContent = '✓ Approved on Server • Action Decoupled & Held in Browser';
+        continuationChip.textContent = 'Approved on Server • Action Decoupled & Held in Browser';
       } else if (req.status === ApprovalStatus.REJECTED) {
-        continuationChip.textContent = '✕ Rejected • Browser Action Blocked';
+        continuationChip.textContent = 'Rejected • Browser Action Blocked';
       } else if (req.status === ApprovalStatus.EXPIRED) {
-        continuationChip.textContent = '⏱ Review Expired • Browser Action Timed Out';
+        continuationChip.textContent = 'Review Expired • Browser Action Timed Out';
       } else if (req.status === ApprovalStatus.CANCELLED) {
-        continuationChip.textContent = '⊘ Cancelled by Ward • Browser Action Dismissed';
+        continuationChip.textContent = 'Cancelled by Ward • Request Dismissed';
       } else {
         continuationChip.textContent = 'Decoupled Execution Enforced';
       }
@@ -437,6 +441,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   layout.appendChild(detailPane);
   section.appendChild(layout);
+  section.appendChild(createNoticeBox());
 
   return section;
 }

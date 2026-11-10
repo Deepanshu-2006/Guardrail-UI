@@ -93,8 +93,11 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     const icon = document.createElement('span');
     icon.className = 'gd-feedback-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent =
-      props.actionMessage.type === 'success' ? '✅' : props.actionMessage.type === 'error' ? '⚠️' : 'ℹ️';
+    icon.innerHTML = props.actionMessage.type === 'success'
+      ? `<svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+      : props.actionMessage.type === 'error'
+      ? `<svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`
+      : `<svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 
     const text = document.createElement('span');
     text.className = 'gd-feedback-text';
@@ -132,7 +135,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   const usersSubtitle = document.createElement('p');
   usersSubtitle.className = 'gd-section-subtitle';
   usersSubtitle.textContent =
-    'Authoritative list of users and trusted contacts permitted to evaluate browser actions or receive protection under this account.';
+    'Users and trusted contacts associated with your account.';
   usersCard.appendChild(usersSubtitle);
 
   // Status handling for connected users
@@ -145,9 +148,31 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     usersCard.appendChild(loadingEl);
   } else if (props.connectedUsersStatus === 'error' && props.connectedUsersError) {
     const errorEl = document.createElement('div');
-    errorEl.className = 'gd-relationships-error-banner';
+    errorEl.className = 'gd-error-banner gd-relationships-error-banner';
     errorEl.setAttribute('role', 'alert');
-    errorEl.textContent = `Backend error: ${props.connectedUsersError}`;
+
+    const errContent = document.createElement('div');
+    errContent.className = 'gd-error-content';
+
+    const errIcon = document.createElement('span');
+    errIcon.className = 'gd-error-banner-icon';
+    errIcon.setAttribute('aria-hidden', 'true');
+    errIcon.innerHTML = `
+      <svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    `;
+
+    const errText = document.createElement('span');
+    errText.className = 'gd-error-banner-text';
+    errText.textContent = `Backend error: ${props.connectedUsersError}`;
+
+    errContent.appendChild(errIcon);
+    errContent.appendChild(errText);
+    errorEl.appendChild(errContent);
+
     if (props.onRefresh) {
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
@@ -166,7 +191,14 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     const empIcon = document.createElement('div');
     empIcon.className = 'gd-placeholder-icon';
     empIcon.setAttribute('aria-hidden', 'true');
-    empIcon.textContent = '👥';
+    empIcon.innerHTML = `
+      <svg class="gd-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+    `;
 
     const empTitle = document.createElement('h3');
     empTitle.className = 'gd-placeholder-title';
@@ -455,7 +487,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   const invitesSubtitle = document.createElement('p');
   invitesSubtitle.className = 'gd-section-subtitle';
   invitesSubtitle.textContent =
-    'Cryptographic pairing codes and recipient-bound invitations for designating new trusted contacts.';
+    'Active invitation codes and pending pairings.';
   invitesCard.appendChild(invitesSubtitle);
 
   // Invitations Status
@@ -468,9 +500,30 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     invitesCard.appendChild(loadingEl);
   } else if (props.invitationsStatus === 'error' && props.invitationsError) {
     const errorEl = document.createElement('div');
-    errorEl.className = 'gd-relationships-error-banner';
+    errorEl.className = 'gd-error-banner gd-relationships-error-banner';
     errorEl.setAttribute('role', 'alert');
-    errorEl.textContent = `Backend error: ${props.invitationsError}`;
+
+    const errContent = document.createElement('div');
+    errContent.className = 'gd-error-content';
+
+    const errIcon = document.createElement('span');
+    errIcon.className = 'gd-error-banner-icon';
+    errIcon.setAttribute('aria-hidden', 'true');
+    errIcon.innerHTML = `
+      <svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    `;
+
+    const errText = document.createElement('span');
+    errText.className = 'gd-error-banner-text';
+    errText.textContent = `Backend error: ${props.invitationsError}`;
+
+    errContent.appendChild(errIcon);
+    errContent.appendChild(errText);
+    errorEl.appendChild(errContent);
     invitesCard.appendChild(errorEl);
   } else if (props.invitations.length === 0) {
     const emptyEl = document.createElement('div');
@@ -480,7 +533,12 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     const empIcon = document.createElement('div');
     empIcon.className = 'gd-placeholder-icon';
     empIcon.setAttribute('aria-hidden', 'true');
-    empIcon.textContent = '✉️';
+    empIcon.innerHTML = `
+      <svg class="gd-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+      </svg>
+    `;
 
     const empTitle = document.createElement('h3');
     empTitle.className = 'gd-placeholder-title';
@@ -705,7 +763,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     const createDesc = document.createElement('p');
     createDesc.className = 'gd-section-subtitle';
     createDesc.textContent =
-      'Designate an authorized trusted-contact recipient actor ID to generate a cryptographically bound pairing code.';
+      'Generate a secure pairing code to invite a trusted contact.';
 
     createSection.appendChild(createTitle);
     createSection.appendChild(createDesc);
