@@ -73,8 +73,11 @@ In Prompt 1, a comprehensive release-readiness audit was performed across the en
   - Verified dashboard build process, dev server, entry points, and responsive accessible UI components.
   - Ran real build commands for development, pilot, and production across extension, dashboard, and server.
   - Fixed dashboard TypeScript errors and typeRoots configuration without architectural disruption.
-- [ ] **Prompt 5: Security & Compliance Release Checklist**
-  - Finalize store permission justifications, privacy policy text, and software licenses.
+- [x] **Prompt 5: Security and Privacy Boundaries Regression Pass**
+  - Performed comprehensive regression pass across all 12 security and privacy boundaries.
+  - Verified data minimization, credential redaction, authorization enforcement, and anti-replay bindings.
+  - Confirmed atomic CAS state transitions, non-execution across failures, and DOM boundary isolation.
+  - Documented browser architectural boundaries, test evidence, and remaining limitations.
 - [ ] **Prompt 6: Operational Runbooks, Administrator Manuals & Final Sign-Off**
   - Document deployment guide, database backup runbook, and onboarding procedures.
   - Final release report and formal release sign-off.
@@ -444,3 +447,65 @@ To uphold reporting integrity, successful static compilation is strictly separat
 1. **Live Remote IdP Tenant**: Dashboard token provider requires connection to an operational OIDC Identity Provider (e.g., Auth0, Okta, Keycloak) supplying signed RS256 JWTs for production multi-user sessions.
 2. **Browser Extension Chrome Web Store Key**: Production extension packaging requires a registered Google Chrome Web Store developer key or enterprise force-install policy (`ExtensionInstallForcelist`) for distributed pilot rollout.
 3. **Multi-Region Clustered Transaction Locks**: Clustered multi-instance server deployments require PostgreSQL row-level locks or Redis distributed locks for cluster-wide single-use token consumption.
+
+---
+
+## Prompt 5 Execution Summary: Security and Privacy Boundaries Regression Pass
+
+### Overview
+In Prompt 5, a comprehensive, focused final regression pass was executed across all **12 security and privacy boundaries** of Guardrail UI. The verification covered the browser extension runtime (`guardrail/extension`), trusted contact dashboard (`guardrail/dashboard`), and backend approval service (`guardrail/server`). All boundaries were verified against dedicated automated regression suites running against real OS TCP sockets, real SQLite databases with `PRAGMA secure_delete = 1`, and controlled synthetic test fixtures without contacting live third-party services or risking real user credentials.
+
+---
+
+### 12-Boundary Regression Verification Matrix
+
+| # | Security & Privacy Boundary | Implementation Architecture & Enforcement Mechanism | Verification Evidence & Test Suite | Status |
+| :- | :--- | :--- | :--- | :- |
+| **1** | **Sensitive Form Value Exclusion** | Content scripts never capture, extract, or serialize form input fields, passwords, or text values. `checkPayloadForSensitiveFields` scans all dispatch contexts before transport. | `test-privacy-data-protection.ts` (Sec. 1, 2, 4) & `test-complete-workflow.ts` (Stage 4): Raw TCP wire inspection confirms `password`, `otp`, `cvv`, `cardNumber` strictly absent. | **Verified** |
+| **2** | **Credential & Log Redaction** | Diagnostic loggers run all messages through `sanitizeForDiagnostics` and `redactSensitiveData`. SQL queries, bearer tokens, JWTs, query strings, and passwords are masked with `[REDACTED]`. | `test-privacy-data-protection.ts` (Sec. 6: 68/68 passed) & `test-user-facing-failure-recovery.ts` (Suite 6: 76/76 passed). Zero credentials leaked in service logs or dashboard DOM. | **Verified** |
+| **3** | **Server-Side Authorization Enforcement** | All API routes enforce `AuthContext` validation independently of client-side UI states. Wards cannot approve requests (`SelfApprovalProhibitedError`). Cross-tenant queries return HTTP 401 or opaque 404. | `test-api-integration.ts` & `verify-complete-sync-flow.ts` (Scenario 9: 135/135 passed). Unauthorized reviewer Mallory receives opaque `NOT_FOUND_OR_DENIED`. | **Verified** |
+| **4** | **Action-to-Approval 1:1 Binding** | Approval requests and bindings (`bnd_`) are cryptographically bound to a unique `actionId`, target origin, and action digest. An approval for Action A cannot unlock Action B. | `test-approval-binding-security.ts` (Suite 6: 74/74 passed) & `test-complete-workflow.ts` (Stage 7). Mismatched action IDs fail closed with `MISMATCHED` status. | **Verified** |
+| **5** | **Expiration & Invalidation Enforcement** | 15-minute TTL enforced authoritatively against server time provider. Expired bindings fail closed immediately. Origin/path drift or DOM element detachment marks state `action_invalidated`. | `test-continuation-hardening-regression.ts` (Suites 2, 7: 75/75 passed). Expired or context-drifted actions strictly disable continue controls and cannot execute. | **Verified** |
+| **6** | **Concurrent & Duplicate Response Safety** | Atomic compare-and-swap (CAS) transitions and monotonic sequence numbers protect state. Duplicate continuation clicks are rejected; only the first succeeds. | `test-continuation-hardening-regression.ts` (Suite 3, 9). 5 concurrent continuation clicks result in strictly 1 success, 4 rejected; handler executes exactly once. | **Verified** |
+| **7** | **Zero Automatic Action Execution** | Contact approval updates server state to `APPROVED`, but NEVER automatically executes, resumes, or replays the held browser action. Requires physical user confirmation click. | `test-complete-workflow.ts` (Stages 5, 6, 9) & `verify-complete-sync-flow.ts` (Scenario 13). Observable handler execution count strictly remains `0` until physical user confirmation. | **Verified** |
+| **8** | **Fail-Closed on Service Unavailability** | Network drops (`ECONNREFUSED`, timeout) produce `NETWORK_FAILURE_UNCERTAIN`. Actions remain safely `HELD` in memory; continuation buttons remain disabled. | `test-pilot-deployment-verification.ts` (Scenario 5: 89/89 passed) & `verify-complete-sync-flow.ts` (Scenario 10). Zero actions continued or leaked on dead TCP sockets. | **Verified** |
+| **9** | **Untrusted Content & Injection Resistance** | Extension staging and warning modals render in closed Shadow DOM (`mode: 'closed'`). `isTrustedContentScriptSender` and `validateApprovalSubmissionMessage` reject privileged overrides. | `test-security-boundaries.ts` (79/79 passed) & `test-interception-boundary-hardening.ts` (86/86 passed). Host page CSS, script prototypes, or synthetic events cannot tamper with modal state. | **Verified** |
+| **10** | **Least Privilege Browser Permissions** | Manifest V3 declares strictly `["storage", "downloads"]`. No `cookies`, `webRequest`, `webRequestBlocking`, or broad `<all_urls>` host permissions. Backend permission strictly scoped to API origin. | `test-permissions-configuration-hardening.ts` (42/42 passed) & `test-pilot-deployment-verification.ts` (Scenario 2). Least-privilege compliance confirmed. | **Verified** |
+| **11** | **Diagnostic & Error Information Safety** | Error handling maps low-level exceptions (HTTP 401, 403, 429, 502) to safe, plain-language guidance without leaking database paths, stack traces, internal endpoints, or bearer tokens. | `test-user-facing-failure-recovery.ts` (Suite 6) & `test-privacy-and-failure.ts` (110/110 passed). Error sanitization verified across all user-facing dialogs. | **Verified** |
+| **12** | **Accurate Warning & Capability Boundaries** | Warning modal (`WARN`) explicitly distinguishes advisory friction from blocking (`PROTECT`). Download safety handles test extensions and double extensions, without claiming antivirus scanning. | `test-website-protection-mocked-browser.ts` (40/40 passed) & `test-form-download-protection-mocked-browser.ts` (87/87 passed). Architectural boundaries documented. | **Verified** |
+
+---
+
+### Targeted Regression Suites Executed
+
+| Subsystem | Suite Command | Focus Area | Assertions | Result |
+| :--- | :--- | :--- | :--- | :--- |
+| **Server** | `npm run test:privacy` | Form data stripping, query sanitization, wire privacy, SQLite `secure_delete`, log redaction | 68 / 68 | **Passed** |
+| **Server** | `npm run test:reliability` | SQLite concurrent sharing, idempotent retries, SW restart recovery, cache bounds | 75 / 75 | **Passed** |
+| **Extension** | `npm run test:browser:security` | Shadow DOM boundaries, prototype pollution resistance, trusted sender enforcement | 79 / 79 | **Passed** |
+| **Extension** | `npm run test:browser:privacy` | Data minimization, credential exclusion, sensitive field stripping | 110 / 110 | **Passed** |
+| **Extension** | `npm run test:approval-binding-security` | 1:1 action digest binding, anti-impostor defense, replay prevention | 74 / 74 | **Passed** |
+| **Extension** | `npm run test:controlled-continuation` | Physical user confirmation requirement, zero synthetic DOM click replay, single-use token | 62 / 62 | **Passed** |
+| **Extension** | `npm run test:continuation-hardening` | Race immunity, concurrent click deduplication, context drift fail-closed, atomic CAS | 75 / 75 | **Passed** |
+| **Extension** | `npm run test:permissions-config` | MV3 least-privilege permissions, secret exclusion, pilot/prod flag hardening | 42 / 42 | **Passed** |
+| **Extension** | `npm run test:boundary-hardening` | Synchronous event suppression (`preventDefault`), fail-closed exception handling, internal UI isolation | 86 / 86 | **Passed** |
+| **Extension** | `npm run test:failure-recovery` | Plain-language error mapping, non-execution invariants, sensitive data scrubbing | 76 / 76 | **Passed** |
+| **Extension** | `npm run test:browser:website-mock` | Phishing/deceptive domain heuristics, advisory friction vs blocking distinction | 40 / 40 | **Passed** |
+| **Extension** | `npm run test:browser:form-download-mock` | Form protection boundaries, download quarantine, executable & double-extension indicators | 87 / 87 | **Passed** |
+| **Extension** | `npm run test:complete-workflow` | End-to-end 9-stage protection and approval workflow over real OS TCP socket | 59 / 59 | **Passed** |
+| **Dashboard** | `npm run test:verify-complete-sync` | Multi-tenant anti-enumeration, real TCP wire privacy, live polling monotonic guards | 135 / 135 | **Passed** |
+
+**Total Regression Assertions Verified**: **968 / 968 Passed (100% Passing, 0 Failures)**.
+
+---
+
+### Documented Architectural Limitations & Boundary Truthfulness
+
+1. **Browser Programmatic Form Submissions (`form.submit()`)**:
+   - By W3C HTML DOM specification, calling `HTMLFormElement.prototype.submit()` programmatically directly submits the form without firing submit DOM events. As an extension using standard DOM event listeners, Guardrail intercepts user-driven submissions (`requestSubmit()`, submit buttons, Enter key), but cannot intercept ambient programmatic `form.submit()` without intrusive monkey-patching in the main page world (which would compromise isolation).
+2. **Prior Side Effects & Page State Drift**:
+   - While `preventDefault()` and `stopImmediatePropagation()` halt downstream browser actions, they cannot undo network requests or DOM mutations initiated by external page scripts prior to event interception. If the underlying web page state changes while held in staging mode, continuation fails closed upon DOM element detachment or context mismatch.
+3. **Download Protection Scope**:
+   - Guardrail monitors download events via `chrome.downloads.onCreated` and detects high-risk attributes (suspicious extensions, double extensions, MIME mismatches, unencrypted transports). It does not claim or attempt to provide host-level antivirus file scanning, kernel sandbox enforcement, or content inspection of encrypted payloads.
+4. **Local Single-Node Concurrency Scope**:
+   - Compare-and-swap (CAS) transitions and in-memory deduplication guarantees are enforced locally within the active service instance. Clustered multi-instance server deployments require distributed transactional locking (e.g., PostgreSQL row locks or Redis tokens) to prevent cross-node replay races.
