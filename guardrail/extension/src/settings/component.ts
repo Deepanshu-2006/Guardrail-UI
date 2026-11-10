@@ -58,11 +58,11 @@ export function renderProtectionSettings(
     logoBadge.setAttribute('aria-hidden', 'true');
     logoBadge.innerHTML = `
       <svg class="gd-brand-icon-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#273121" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#273121" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <rect x="22" y="34" width="56" height="32" rx="16" fill="#273121"/>
-        <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#EDE6D6" stroke-width="4.5" stroke-linecap="round"/>
-        <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#EDE6D6" stroke="#273121" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#EDE6D6" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#EDE6D6" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="22" y="34" width="56" height="32" rx="16" fill="#EDE6D6"/>
+        <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#273121" stroke-width="4.5" stroke-linecap="round"/>
+        <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#273121" stroke="#EDE6D6" stroke-width="3" stroke-linejoin="round"/>
       </svg>
     `;
 
@@ -197,6 +197,9 @@ export function renderProtectionSettings(
       }
     };
 
+    let isClickScrolling = false;
+    let clickScrollTimer: any = null;
+
     for (let i = 0; i < navItems.length; i++) {
       const item = navItems[i];
       const navBtn = document.createElement('button');
@@ -206,40 +209,62 @@ export function renderProtectionSettings(
       navButtons.push({ id: item.id, btn: navBtn });
 
       navBtn.addEventListener('click', () => {
+        isClickScrolling = true;
+        if (clickScrollTimer) clearTimeout(clickScrollTimer);
         setActiveNav(item.id);
+
         const target = container.querySelector(`#${item.id}`);
         if (target && typeof (target as any).scrollIntoView === 'function') {
           (target as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+
+        clickScrollTimer = setTimeout(() => {
+          isClickScrolling = false;
+        }, 850);
       });
       navBar.appendChild(navBtn);
     }
     container.appendChild(navBar);
 
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      let scrollRafId: number | null = null;
       const onWindowScroll = () => {
-        const offset = 180;
-        let currentActiveId = navItems[0].id;
-        const docEl = document.documentElement;
-        const scrollBottom = window.innerHeight + window.scrollY;
-        const scrollHeight = docEl ? docEl.scrollHeight : (document.body ? document.body.scrollHeight : 0);
-        if (scrollHeight > 0 && scrollBottom >= scrollHeight - 60) {
-          currentActiveId = navItems[navItems.length - 1].id;
-        } else {
-          for (const item of navItems) {
-            const sec = container.querySelector(`#${item.id}`) as any;
-            if (sec && typeof sec.getBoundingClientRect === 'function') {
-              const rect = sec.getBoundingClientRect();
-              if (rect.top <= offset) {
-                currentActiveId = item.id;
+        if (isClickScrolling) return;
+        if (scrollRafId !== null) return;
+        scrollRafId = window.requestAnimationFrame(() => {
+          scrollRafId = null;
+          if (isClickScrolling) return;
+          const offset = 180;
+          let currentActiveId = navItems[0].id;
+          const docEl = document.documentElement;
+          const scrollBottom = window.innerHeight + window.scrollY;
+          const scrollHeight = docEl ? docEl.scrollHeight : (document.body ? document.body.scrollHeight : 0);
+          if (scrollHeight > 0 && scrollBottom >= scrollHeight - 60) {
+            currentActiveId = navItems[navItems.length - 1].id;
+          } else {
+            for (const item of navItems) {
+              const sec = container.querySelector(`#${item.id}`) as any;
+              if (sec && typeof sec.getBoundingClientRect === 'function') {
+                const rect = sec.getBoundingClientRect();
+                if (rect.top <= offset) {
+                  currentActiveId = item.id;
+                }
               }
             }
           }
-        }
-        setActiveNav(currentActiveId);
+          setActiveNav(currentActiveId);
+        });
       };
 
       window.addEventListener('scroll', onWindowScroll, { passive: true });
+      if ('onscrollend' in window) {
+        window.addEventListener('scrollend', () => {
+          if (isClickScrolling) {
+            if (clickScrollTimer) clearTimeout(clickScrollTimer);
+            isClickScrolling = false;
+          }
+        }, { passive: true });
+      }
       window.addEventListener('resize', () => {
         const activeItem = navButtons.find((b) => b.btn.classList.contains('active'));
         if (activeItem) {
@@ -755,10 +780,56 @@ export function renderProtectionSettings(
     ttlRange.max = '86400';
     ttlRange.step = '60';
     ttlRange.value = String(ttlSeconds);
+
+    const updateSliderFill = (val: number) => {
+      const min = 60;
+      const max = 86400;
+      const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+      ttlRange.style.background = `linear-gradient(to right, var(--gd-deep-olive) 0%, var(--gd-deep-olive) ${pct}%, rgba(39, 49, 33, 0.16) ${pct}%, rgba(39, 49, 33, 0.16) 100%)`;
+      const mins = Math.round(val / 60);
+      ttlLabel.textContent = `Approval Request Expiration TTL: ${mins}m (${val}s)`;
+    };
+
+    updateSliderFill(ttlSeconds);
+
+    let ttlDebounceTimer: any = null;
     ttlRange.addEventListener('input', () => {
+      const v = parseInt(ttlRange.value, 10);
+      updateSliderFill(v);
+      if (ttlDebounceTimer) clearTimeout(ttlDebounceTimer);
+      ttlDebounceTimer = setTimeout(() => {
+        controller.updateOperationalTimeouts({ approvalTtlSeconds: v });
+      }, 160);
+    });
+
+    ttlRange.addEventListener('change', () => {
+      if (ttlDebounceTimer) clearTimeout(ttlDebounceTimer);
       const v = parseInt(ttlRange.value, 10);
       controller.updateOperationalTimeouts({ approvalTtlSeconds: v });
     });
+
+    const quickChips = document.createElement('div');
+    quickChips.className = 'gd-slider-quick-chips';
+    const presetTtls = [
+      { label: '15m', sec: 900 },
+      { label: '30m', sec: 1800 },
+      { label: '1h', sec: 3600 },
+      { label: '4h', sec: 14400 },
+      { label: '12h', sec: 43200 },
+      { label: '24h', sec: 86400 },
+    ];
+    for (const p of presetTtls) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `gd-slider-chip${ttlSeconds === p.sec ? ' active' : ''}`;
+      chip.textContent = p.label;
+      chip.addEventListener('click', () => {
+        ttlRange.value = String(p.sec);
+        updateSliderFill(p.sec);
+        controller.updateOperationalTimeouts({ approvalTtlSeconds: p.sec });
+      });
+      quickChips.appendChild(chip);
+    }
 
     const ttlHelper = document.createElement('small');
     ttlHelper.className = 'gd-field-helper';
@@ -766,6 +837,7 @@ export function renderProtectionSettings(
 
     ttlGroup.appendChild(ttlLabel);
     ttlGroup.appendChild(ttlRange);
+    ttlGroup.appendChild(quickChips);
     ttlGroup.appendChild(ttlHelper);
     timeoutsGrid.appendChild(ttlGroup);
 
