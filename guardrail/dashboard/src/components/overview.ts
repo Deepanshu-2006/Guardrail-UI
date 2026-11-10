@@ -513,7 +513,8 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     pendingSection.appendChild(emptyBox);
   }
 
-  section.appendChild(pendingSection);
+  // Operational section: Pending Approvals (will be mounted in primary column)
+  let wardOversightSection: HTMLElement;
 
   // =========================================================================
   // SECTION E: TRUSTED CONTACT / WARD CONNECTION
@@ -668,7 +669,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     });
 
     setupCard.appendChild(form);
-    section.appendChild(setupCard);
+    wardOversightSection = setupCard;
   } else {
     // Linked State: Active Ward Association Card
     const wardCard = document.createElement('div');
@@ -804,7 +805,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     }
 
     wardCard.appendChild(wardActions);
-    section.appendChild(wardCard);
+    wardOversightSection = wardCard;
   }
 
   // =========================================================================
@@ -835,7 +836,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   calloutContent.appendChild(calloutText);
   callout.appendChild(calloutIcon);
   callout.appendChild(calloutContent);
-  section.appendChild(callout);
 
   // =========================================================================
   // SECTION G: RECENT ACTIVITY
@@ -935,7 +935,27 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     }
   }
 
-  section.appendChild(activitySection);
+  // =========================================================================
+  // TWO-COLUMN ASYMMETRIC GRID (7/12 Primary Column, 5/12 Secondary Column)
+  // =========================================================================
+  const mainGrid = document.createElement('div');
+  mainGrid.className = 'gd-overview-main-grid';
+
+  // Primary operational column (7/12): Pending Approvals + Recent Activity
+  const colPrimary = document.createElement('div');
+  colPrimary.className = 'gd-overview-col-primary';
+  colPrimary.appendChild(pendingSection);
+  colPrimary.appendChild(activitySection);
+
+  // Secondary supporting column (5/12): Connect a Ward + Decoupled Architecture
+  const colSecondary = document.createElement('div');
+  colSecondary.className = 'gd-overview-col-secondary';
+  colSecondary.appendChild(wardOversightSection);
+  colSecondary.appendChild(callout);
+
+  mainGrid.appendChild(colPrimary);
+  mainGrid.appendChild(colSecondary);
+  section.appendChild(mainGrid);
 
   return section;
 }
