@@ -1,118 +1,125 @@
 /**
- * GUARDRAIL — THIRD DESIGN ITERATION
- * Art Direction: Olive Editorial / Premium Product Interface
+ * GUARDRAIL — BOLD LETTER-SPACED MINIMALISM
+ * Direction: Architectural, Warm Non-White Canvas, Unboxed Typography-First
  *
  * Typography System:
- * - Instrument Serif (Main page heading 52px, section headings 29px)
- * - DM Sans (Navigation 14px, body 14px, metric values 46px 700, labels, buttons)
- * - IBM Plex Mono (Technical identifiers, invitation codes, timestamps, metadata 11px)
+ * - Space Grotesk (700 Bold Display, Headings, Big Numbers, Letter-Spaced Eyebrows)
+ * - Plus Jakarta Sans (600/700 Bold UI, Body Text, Navigation, Controls)
+ * - IBM Plex Mono (Technical Identifiers, Pairing Codes, Timestamps)
  *
  * Color Palette:
- * - Main Workspace Canvas: #F5F3EA (warm ivory)
- * - Sidebar Background: #394532 (deep olive)
- * - Sidebar Primary Text: #F5F3EA (warm white)
- * - Sidebar Secondary Text: #C2C9B6 (muted sage)
- * - Primary Text: #242820 (warm near-black)
- * - Secondary Text: #74786B (warm muted grey)
- * - Muted Olive Accent: #687A4E
- * - Soft Sage Surface: #E9EDDF
- * - Light Sage Surface: #EFF1E8
- * - White Surface: #FFFEFA (selective for forms & inputs)
- * - Subtle Border: #E4E3D9
+ * - Canvas Background: #EDE6D6 (Rich, noticeably warm linen/stone, definitely NOT white)
+ * - Input/Focused Surface: #F7F3EA (Crisp warm ivory surface)
+ * - Sidebar Background: #273121 (Deepest rich forest olive)
+ * - Primary Text: #1B2117 (Strong near-black)
+ * - Secondary Text: #5F6656 (Warm muted olive-grey)
+ * - Fine Hairlines: #DDD5C2 (Unboxed, quiet architectural hairlines)
+ *
+ * Principle: ZERO BOX CONTAINERS. No tinted rectangular cards.
+ * Everything breathes openly on the warm canvas with strong bold typography and tracking.
  */
 
 :root {
-  /* Warm Editorial Workspace */
-  --gd-bg-canvas: #F5F3EA;
-  --gd-bg-surface: #FFFEFA;
-  --gd-bg-sage-soft: #E9EDDF;
-  --gd-bg-sage-light: #EFF1E8;
-  --gd-bg-subtle: #EFF1E8;
-  --gd-bg-card: transparent;
-  --gd-bg-hover: #ECECE4;
-  --gd-bg-active: #E2E1D7;
+  /* Warm Non-White Architectural Canvas */
+  --gd-bg-canvas: #EDE6D6;
+  --gd-bg-surface: #FAF7F0;
 
-  /* Typography Colors */
-  --gd-text-primary: #242820;
-  --gd-text-secondary: #74786B;
-  --gd-text-muted: #959A8B;
-  --gd-text-caption: #B4B8AA;
+  /* Olive Box Container System */
+  --gd-olive-box-bg: #DFE7D4;
+  --gd-olive-box-bg-subtle: #E6ECE0;
+  --gd-olive-box-bg-active: #D5DEC7;
+  --gd-olive-box-border: #CCD6C0;
+  --gd-olive-box-border-subtle: #D8E2CF;
+  --gd-olive-box-radius: 8px;
 
-  /* Deep Olive Brand (Sidebar & Primary Buttons) */
-  --gd-deep-olive: #394532;
-  --gd-deep-olive-hover: #2d3827;
-  --gd-deep-olive-active: #242d1f;
+  --gd-bg-sage-soft: var(--gd-olive-box-bg);
+  --gd-bg-sage-light: var(--gd-olive-box-bg-subtle);
+  --gd-bg-subtle: #E4DCCB;
+  --gd-bg-card: var(--gd-olive-box-bg);
+  --gd-bg-hover: #D7E0CC;
+  --gd-bg-active: #CAD4BF;
+
+  /* Strong, Bold Typography Colors */
+  --gd-text-primary: #1B2117;
+  --gd-text-secondary: #5F6656;
+  --gd-text-muted: #88907E;
+  --gd-text-caption: #A4AC9A;
+
+  /* Deep Forest Olive Brand (Sidebar & Primary Buttons) */
+  --gd-deep-olive: #273121;
+  --gd-deep-olive-hover: #1A2215;
+  --gd-deep-olive-active: #131A10;
 
   /* Sidebar Palette */
-  --gd-sidebar-bg: #394532;
-  --gd-sidebar-primary: #F5F3EA;
-  --gd-sidebar-secondary: #C2C9B6;
-  --gd-sidebar-hover-bg: rgba(255, 255, 255, 0.07);
-  --gd-sidebar-active-bg: rgba(255, 255, 255, 0.13);
-  --gd-sidebar-border: rgba(255, 255, 255, 0.12);
+  --gd-sidebar-bg: #273121;
+  --gd-sidebar-primary: #EDE6D6;
+  --gd-sidebar-secondary: #B4BFAB;
+  --gd-sidebar-hover-bg: rgba(237, 230, 214, 0.08);
+  --gd-sidebar-active-bg: rgba(237, 230, 214, 0.15);
+  --gd-sidebar-border: rgba(237, 230, 214, 0.12);
 
-  /* Subtle Borders & Dividers */
-  --gd-border-subtle: #E4E3D9;
-  --gd-border-hairline: #E4E3D9;
-  --gd-border-strong: #D5D4C7;
+  /* Clean Hairline Dividers */
+  --gd-border-subtle: #D8D0BD;
+  --gd-border-hairline: #DDD5C2;
+  --gd-border-strong: #BFB6A1;
 
-  /* Restrained Olive Accent (#687A4E) */
-  --gd-accent-olive: #687A4E;
-  --gd-accent-olive-hover: #566640;
-  --gd-accent-olive-tint: #EFF1E8;
-  --gd-accent-olive-border: #CCD3C2;
+  /* Restrained Olive Accent */
+  --gd-accent-olive: #54683E;
+  --gd-accent-olive-hover: #435431;
+  --gd-accent-olive-tint: #E2DAC8;
+  --gd-accent-olive-border: #C4BAA3;
 
   /* Backward Compatibility Tokens for Dev Server & Tests */
   --gd-green-primary: var(--gd-accent-olive);
   --gd-green-hover: var(--gd-accent-olive-hover);
-  --gd-green-active: #475435;
-  --gd-green-bg: var(--gd-bg-sage-light);
+  --gd-green-active: #384628;
+  --gd-green-bg: var(--gd-accent-olive-tint);
   --gd-green-border: var(--gd-border-subtle);
   --gd-green-text: var(--gd-accent-olive);
 
   /* Semantic Palettes (Restrained, Muted, No Large Colored Blocks) */
   --gd-warning-primary: #A15C07;
-  --gd-warning-bg: #FBF8EE;
+  --gd-warning-bg: transparent;
   --gd-warning-border: #ECDDBA;
   --gd-warning-text: #8A4D04;
 
   --gd-critical-primary: #B93838;
-  --gd-critical-bg: #FDF5F5;
+  --gd-critical-bg: transparent;
   --gd-critical-border: #F3C7C7;
   --gd-critical-text: #962828;
 
   --gd-info-primary: #525B62;
-  --gd-info-bg: #F4F6F8;
+  --gd-info-bg: transparent;
   --gd-info-border: #D8DEE4;
   --gd-info-text: #373E44;
 
   /* Risk Semantics (Restrained Indicators) */
   --gd-risk-low-text: #4D6B27;
-  --gd-risk-low-bg: #F5F9EE;
-  --gd-risk-low-border: #DCE7CA;
+  --gd-risk-low-bg: #EAE6D8;
+  --gd-risk-low-border: #D0CBB8;
 
   --gd-risk-med-text: #8A4D04;
-  --gd-risk-med-bg: #FBF8EE;
-  --gd-risk-med-border: #ECDDBA;
+  --gd-risk-med-bg: #EAE6D8;
+  --gd-risk-med-border: #D0CBB8;
 
   --gd-risk-high-text: #A84813;
-  --gd-risk-high-bg: #FAF3EE;
-  --gd-risk-high-border: #EED4C2;
+  --gd-risk-high-bg: #EAE6D8;
+  --gd-risk-high-border: #D0CBB8;
 
   --gd-risk-crit-text: #962828;
-  --gd-risk-crit-bg: #FDF5F5;
-  --gd-risk-crit-border: #F3C7C7;
+  --gd-risk-crit-bg: #EAE6D8;
+  --gd-risk-crit-border: #D0CBB8;
 
   /* Zero Shadows — Purity of line and grid */
   --gd-shadow-sm: none;
   --gd-shadow-md: none;
   --gd-shadow-lg: none;
 
-  /* Typography Hierarchy */
-  --gd-font-editorial: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --gd-font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Typography Hierarchy: Strong, Bold, Letter-Spaced */
+  --gd-font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --gd-font-editorial: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --gd-font-sans: 'Plus Jakarta Sans', 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --gd-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-  --gd-font-display: var(--gd-font-editorial);
 
   /* Focus & Accessibility */
   --gd-focus-outline: 2px solid var(--gd-accent-olive);
@@ -243,20 +250,20 @@ textarea:focus-visible,
 }
 
 .gd-brand-name {
-  font-family: var(--gd-font-editorial);
-  font-size: 28px;
-  font-weight: 400;
+  font-family: var(--gd-font-display);
+  font-size: 24px;
+  font-weight: 700;
   color: var(--gd-sidebar-primary);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
   line-height: 1.1;
 }
 
 .gd-brand-tag {
-  font-family: var(--gd-font-sans);
-  font-size: 10px;
+  font-family: var(--gd-font-display);
+  font-size: 9.5px;
   color: var(--gd-sidebar-secondary);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   line-height: 1.2;
   margin-top: 4px;
@@ -264,23 +271,24 @@ textarea:focus-visible,
 
 .gd-nav-list {
   list-style: none;
-  padding: 12px 14px;
+  padding: 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .gd-nav-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
+  padding: 10px 14px;
   border-radius: 4px;
   color: var(--gd-sidebar-secondary);
   text-decoration: none;
   font-family: var(--gd-font-sans);
-  font-weight: 400;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
   transition: color 0.15s ease, background-color 0.15s ease;
   border-left: 3px solid transparent;
 }
@@ -295,8 +303,8 @@ textarea:focus-visible,
   background-color: var(--gd-sidebar-active-bg);
   color: var(--gd-sidebar-primary);
   border-left-color: var(--gd-sidebar-primary);
-  font-weight: 500;
-  padding-left: 9px;
+  font-weight: 700;
+  padding-left: 11px;
 }
 
 .gd-nav-icon {
@@ -539,59 +547,60 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Typography: Instrument Serif & DM Sans Art Direction
+   Typography: Space Grotesk & Plus Jakarta Sans (Strong, Bold, Letter-Spaced)
    ----------------------------------------------------------------------------- */
 
 .gd-section-header {
   margin-bottom: 36px;
 }
 
-/* Page Intro: 52px Instrument Serif visual anchor */
+/* Page Intro: 50px Space Grotesk Bold */
 .gd-section-title {
-  font-family: var(--gd-font-editorial);
-  font-size: 52px;
-  font-weight: 400;
+  font-family: var(--gd-font-display);
+  font-size: 50px;
+  font-weight: 700;
   color: var(--gd-text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.035em;
   line-height: 1.05;
   margin-bottom: 8px;
 }
 
-/* Major Section Headings: 29px Instrument Serif */
+/* Major Section Headings: 26px Space Grotesk Bold */
 .gd-card .gd-section-title,
 .gd-overview-pending-header .gd-section-title,
 .gd-setup-header .gd-section-title,
 .gd-recent-activity-header .gd-section-title {
-  font-family: var(--gd-font-editorial);
-  font-size: 29px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
-  line-height: 1.15;
-  margin-bottom: 4px;
+  font-family: var(--gd-font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin-bottom: 6px;
   color: var(--gd-text-primary);
 }
 
 .gd-section-subtitle {
   font-family: var(--gd-font-sans);
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 14.5px;
+  font-weight: 600;
   color: var(--gd-text-secondary);
   line-height: 1.5;
-  max-width: 540px;
+  letter-spacing: 0.005em;
+  max-width: 560px;
 }
 
 /* =============================================================================
-   REMOVING EXCESS BOXES: Strategic Sage Surfaces & Natural Editorial Flow
+   OLIVE BACKGROUND BOX SYSTEM: Cohesive Editorial Containers Without Separators
    ============================================================================= */
 
-/* All base cards on Overview are stripped of default boxing */
+/* Overview cards use warm olive-tinted containers with soft borders */
 #view-overview .gd-card {
-  background-color: transparent;
-  border: none;
-  border-radius: 0;
+  background-color: var(--gd-olive-box-bg);
+  border: 1px solid var(--gd-olive-box-border);
+  border-radius: var(--gd-olive-box-radius);
   box-shadow: none;
-  padding: 0;
-  margin-bottom: 0;
+  padding: 26px 28px;
+  margin-bottom: 24px;
 }
 
 /* Generic .gd-card for settings/modals remains clean and flat */
@@ -606,15 +615,16 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section B — Compact Soft-Sage Service Connection Status
+   Overview: Section B — Service Status (Olive Background Box, No Separator Lines)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-protection-status-card {
-  background-color: var(--gd-bg-sage-soft);
-  border: 1px solid var(--gd-border-subtle);
-  border-radius: 4px;
-  padding: 20px 24px;
-  margin-bottom: 32px;
+  background-color: var(--gd-olive-box-bg) !important;
+  border: 1px solid var(--gd-olive-box-border) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 24px 28px !important;
+  margin-bottom: 24px !important;
+  box-shadow: none !important;
 }
 
 .gd-protection-header {
@@ -636,21 +646,22 @@ textarea:focus-visible,
 }
 
 .gd-protection-title {
-  font-family: var(--gd-font-sans);
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--gd-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--gd-text-primary);
   margin-bottom: 0;
 }
 
 .gd-protection-desc {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 400;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
   line-height: 1.45;
-  max-width: 600px;
-  margin-top: 2px;
+  max-width: 620px;
+  margin-top: 3px;
 }
 
 .gd-protection-actions {
@@ -664,9 +675,11 @@ textarea:focus-visible,
   background: none;
   border: none;
   color: var(--gd-deep-olive);
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--gd-font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   padding: 0;
   cursor: pointer;
   text-decoration: underline;
@@ -679,14 +692,14 @@ textarea:focus-visible,
 }
 
 .gd-protection-badge {
-  font-family: var(--gd-font-mono);
+  font-family: var(--gd-font-display);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--gd-text-secondary);
   background: transparent;
   border: none;
   padding: 0;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -696,11 +709,11 @@ textarea:focus-visible,
 
 .gd-protection-chips-row {
   display: flex;
-  align-items: baseline;
-  gap: 32px;
+  align-items: center;
+  gap: 12px;
   padding-top: 14px;
-  margin-top: 14px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  margin-top: 16px;
+  border-top: none; /* No separator line */
   flex-wrap: wrap;
 }
 
@@ -710,9 +723,10 @@ textarea:focus-visible,
   gap: 6px;
   font-size: 12px;
   color: var(--gd-text-secondary);
-  background: transparent;
-  border: none;
-  padding: 0;
+  background-color: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--gd-olive-box-border-subtle);
+  border-radius: 4px;
+  padding: 4px 10px;
 }
 
 .gd-chip-icon {
@@ -720,9 +734,11 @@ textarea:focus-visible,
 }
 
 .gd-chip-label {
-  font-family: var(--gd-font-sans);
-  font-size: 12px;
-  font-weight: 400;
+  font-family: var(--gd-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   color: var(--gd-text-secondary);
 }
 
@@ -732,55 +748,56 @@ textarea:focus-visible,
 
 .gd-chip-val {
   font-family: var(--gd-font-sans);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--gd-text-primary);
 }
 
 .gd-chip-val.gd-mono {
   font-family: var(--gd-font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--gd-text-secondary);
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section C — Metrics (One Cohesive Light-Sage Section, 3 Columns)
+   Overview: Section C — Metrics (Individual Olive Background Boxes, No Bottom Line)
    ----------------------------------------------------------------------------- */
 
 .gd-overview-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  background-color: var(--gd-bg-sage-light);
-  border: 1px solid var(--gd-border-subtle);
-  border-radius: 4px;
-  padding: 24px 28px;
-  margin-bottom: 44px;
+  gap: 20px;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 28px !important;
 }
 
 @media (max-width: 860px) {
   .gd-overview-grid {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 16px;
   }
 }
 
 .gd-metric-card {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  box-shadow: none;
+  background-color: var(--gd-olive-box-bg) !important;
+  border: 1px solid var(--gd-olive-box-border) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 22px 24px !important;
+  box-shadow: none !important;
   display: flex;
   flex-direction: column;
 }
 
 .gd-metric-card:not(:first-child) {
-  padding-left: 0;
+  padding-left: 22px;
 }
 
 .gd-metric-card:not(:last-child) {
-  border-right: none; /* No vertical dividing lines between metrics! */
+  border-right: 1px solid var(--gd-olive-box-border);
 }
 
 .gd-metric-header {
@@ -791,30 +808,30 @@ textarea:focus-visible,
 }
 
 .gd-metric-label {
-  font-family: var(--gd-font-sans);
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--gd-font-display);
+  font-size: 11.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   color: var(--gd-text-secondary);
 }
 
 .gd-metric-badge {
-  display: none; /* No status pills */
+  display: none;
 }
 
 .gd-metric-value {
-  font-family: var(--gd-font-sans);
-  font-size: 46px;
+  font-family: var(--gd-font-display);
+  font-size: 52px;
   font-weight: 700;
   color: var(--gd-text-primary);
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  margin: 6px 0 0;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 8px 0 0;
 }
 
 .gd-metric-desc {
-  display: none; /* Removed explanatory paragraphs beneath every metric */
+  display: none;
 }
 
 /* =============================================================================
@@ -846,24 +863,27 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section D — Pending Approvals (Primary Column Top)
+   Overview: Section D — Pending Approvals (Olive Background Box)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-overview-pending-section {
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 48px;
+  background-color: var(--gd-olive-box-bg) !important;
+  border: 1px solid var(--gd-olive-box-border) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 26px 28px !important;
+  margin-bottom: 24px !important;
+  box-shadow: none !important;
 }
 
 .gd-overview-pending-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .gd-overview-pending-header .gd-section-title {
-  font-family: var(--gd-font-editorial);
-  font-size: 29px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-family: var(--gd-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   color: var(--gd-text-primary);
   margin-bottom: 4px;
 }
@@ -871,18 +891,18 @@ textarea:focus-visible,
 .gd-overview-pending-list {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--gd-border-subtle);
+  border-top: none !important;
+  gap: 10px;
 }
 
 .gd-overview-pending-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
-  background-color: transparent;
-  border: none;
-  border-bottom: 1px solid var(--gd-border-subtle);
-  border-radius: 0;
+  padding: 14px 18px !important;
+  background-color: var(--gd-bg-surface) !important;
+  border: 1px solid var(--gd-olive-box-border-subtle) !important;
+  border-radius: 6px !important;
   gap: 16px;
   transition: background-color 0.15s ease;
 }
@@ -904,13 +924,15 @@ textarea:focus-visible,
 .gd-overview-pending-desc {
   font-family: var(--gd-font-sans);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--gd-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .gd-overview-pending-meta {
   font-family: var(--gd-font-mono);
   font-size: 11px;
+  font-weight: 600;
   color: var(--gd-text-secondary);
 }
 
@@ -918,14 +940,16 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px 14px;
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gd-text-primary);
-  background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-border-subtle);
-  border-radius: 3px;
+  padding: 8px 16px;
+  font-family: var(--gd-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gd-sidebar-primary);
+  background-color: var(--gd-deep-olive);
+  border: 1px solid var(--gd-deep-olive);
+  border-radius: 5px;
   cursor: pointer;
   white-space: nowrap;
   box-shadow: none;
@@ -933,14 +957,14 @@ textarea:focus-visible,
 }
 
 .gd-btn-overview-review:hover {
-  background-color: var(--gd-deep-olive);
-  border-color: var(--gd-deep-olive);
-  color: var(--gd-sidebar-primary);
+  background-color: var(--gd-deep-olive-hover);
+  border-color: var(--gd-deep-olive-hover);
 }
 
 /* Empty State on Canvas */
 .gd-overview-empty-pending {
-  padding: 8px 0 0;
+  padding: 6px 0 0;
+  border: none !important;
 }
 
 .gd-overview-empty-pending .gd-placeholder-icon {
@@ -948,38 +972,44 @@ textarea:focus-visible,
 }
 
 .gd-overview-empty-pending .gd-placeholder-title {
-  font-family: var(--gd-font-sans);
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--gd-font-display);
+  font-size: 15px;
+  font-weight: 700;
   color: var(--gd-text-primary);
   margin-bottom: 4px;
 }
 
 .gd-overview-empty-pending .gd-placeholder-text {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
   line-height: 1.5;
   max-width: 520px;
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section G — Recent Activity (Primary Column Bottom)
+   Overview: Section G — Recent Activity (Olive Background Box)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-recent-activity-card {
-  margin-bottom: 0;
+  background-color: var(--gd-olive-box-bg) !important;
+  border: 1px solid var(--gd-olive-box-border) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 26px 28px !important;
+  margin-bottom: 0 !important;
+  box-shadow: none !important;
 }
 
 .gd-recent-activity-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .gd-recent-activity-header .gd-section-title {
-  font-family: var(--gd-font-editorial);
-  font-size: 29px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-family: var(--gd-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   color: var(--gd-text-primary);
   margin-bottom: 4px;
 }
@@ -987,16 +1017,18 @@ textarea:focus-visible,
 .gd-recent-activity-list {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--gd-border-subtle);
+  border-top: none !important;
+  gap: 8px;
 }
 
 .gd-recent-activity-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--gd-border-subtle);
-  background: transparent;
+  padding: 12px 16px !important;
+  border: 1px solid var(--gd-olive-box-border-subtle) !important;
+  border-radius: 6px !important;
+  background: var(--gd-bg-surface) !important;
 }
 
 .gd-recent-activity-left {
@@ -1008,44 +1040,47 @@ textarea:focus-visible,
 .gd-recent-activity-desc {
   font-family: var(--gd-font-sans);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--gd-text-primary);
 }
 
 .gd-recent-activity-meta {
   font-family: var(--gd-font-mono);
   font-size: 11px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section E — Connect a Ward (Secondary Column Top, Soft-Sage Surface)
+   Overview: Section E — Connect a Ward (Olive Background Box)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-setup-card {
-  background-color: var(--gd-bg-sage-soft);
-  border: 1px solid var(--gd-border-subtle);
-  border-radius: 4px;
-  padding: 28px 24px;
-  margin-bottom: 24px;
+  background-color: var(--gd-olive-box-bg) !important;
+  border: 1px solid var(--gd-olive-box-border) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 26px 28px !important;
+  margin-bottom: 24px !important;
+  box-shadow: none !important;
 }
 
 .gd-setup-header {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .gd-setup-header .gd-section-title {
-  font-family: var(--gd-font-editorial);
-  font-size: 29px;
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-family: var(--gd-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   color: var(--gd-text-primary);
   margin-bottom: 4px;
 }
 
 .gd-setup-subtitle {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
   line-height: 1.45;
 }
@@ -1055,30 +1090,32 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin: 16px 0 24px;
+  margin: 14px 0 20px;
   padding: 0;
 }
 
 .gd-setup-step {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
   line-height: 1.45;
 }
 
 .gd-setup-step strong {
   color: var(--gd-text-primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .gd-setup-step code {
   font-family: var(--gd-font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--gd-text-primary);
   background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-border-subtle);
-  padding: 2px 6px;
-  border-radius: 3px;
+  border: 1px solid var(--gd-olive-box-border-subtle);
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
 .gd-setup-input-group {
@@ -1088,12 +1125,12 @@ textarea:focus-visible,
 }
 
 .gd-setup-label {
-  font-family: var(--gd-font-sans);
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--gd-font-display);
+  font-size: 11px;
+  font-weight: 700;
   color: var(--gd-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.14em;
 }
 
 .gd-setup-input-wrap {
@@ -1104,15 +1141,15 @@ textarea:focus-visible,
 
 .gd-setup-input {
   flex: 1;
-  padding: 9px 12px;
+  padding: 10px 14px;
   font-family: var(--gd-font-mono);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   color: var(--gd-text-primary);
   background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-border-subtle);
-  border-radius: 3px;
+  border: 1px solid var(--gd-olive-box-border);
+  border-radius: 6px;
   transition: border-color 0.15s ease;
 }
 
@@ -1129,14 +1166,16 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 18px;
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 600;
+  padding: 10px 20px;
+  font-family: var(--gd-font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--gd-sidebar-primary);
   background-color: var(--gd-deep-olive);
   border: none;
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
   box-shadow: none;
   transition: background-color 0.15s ease;
@@ -1178,19 +1217,20 @@ textarea:focus-visible,
   color: var(--gd-text-secondary);
 }
 
-/* Active Ward Card (When Ward Linked) */
+/* Active Ward Card (When Ward Linked, Olive Background Box) */
 #view-overview .gd-active-ward-card {
-  background-color: var(--gd-bg-sage-soft);
-  border: 1px solid var(--gd-border-subtle);
-  border-radius: 4px;
-  padding: 28px 24px;
-  margin-bottom: 24px;
+  background-color: var(--gd-olive-box-bg) !important;
+  border: 1px solid var(--gd-olive-box-border) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 26px 28px !important;
+  margin-bottom: 24px !important;
+  box-shadow: none !important;
 }
 
 .gd-ward-meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
+  gap: 16px;
   margin: 18px 0;
   padding: 0;
   background-color: transparent;
@@ -1201,43 +1241,54 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 3px;
+  background-color: var(--gd-bg-surface);
+  border: 1px solid var(--gd-olive-box-border-subtle);
+  border-radius: 6px;
+  padding: 12px 14px;
 }
 
 .gd-ward-meta-label {
-  font-family: var(--gd-font-sans);
+  font-family: var(--gd-font-display);
   font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: var(--gd-text-secondary);
 }
 
 .gd-ward-meta-value {
   font-family: var(--gd-font-sans);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--gd-text-primary);
 }
 
 .gd-ward-meta-value.gd-mono {
   font-family: var(--gd-font-mono);
   font-size: 13px;
+  font-weight: 600;
   color: var(--gd-text-primary);
 }
 
 .gd-ward-meta-badge {
   display: inline-block;
   align-self: flex-start;
-  font-family: var(--gd-font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 1px 6px;
-  border-radius: 2px;
-  background-color: var(--gd-bg-surface);
+  font-family: var(--gd-font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background-color: var(--gd-olive-box-bg);
   color: var(--gd-text-primary);
-  border: 1px solid var(--gd-border-subtle);
+  border: 1px solid var(--gd-olive-box-border);
 }
 
 .gd-ward-duty-notice {
   font-family: var(--gd-font-sans);
   font-size: 13px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
   line-height: 1.5;
   padding-top: 8px;
@@ -1245,16 +1296,16 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section F — Execution Architecture (Secondary Column Bottom)
+   Overview: Section F — Execution Architecture (Olive Callout Box)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-callout {
-  background: transparent;
-  border: none;
-  border-left: 2px solid var(--gd-accent-olive);
-  border-radius: 0;
-  padding: 4px 0 4px 14px;
-  margin: 0;
+  background-color: #D6DFCC !important;
+  border: 1px solid #C2CEB6 !important;
+  border-left: 4px solid var(--gd-deep-olive) !important;
+  border-radius: var(--gd-olive-box-radius) !important;
+  padding: 20px 24px !important;
+  margin: 0 !important;
   display: block;
 }
 
@@ -1267,11 +1318,11 @@ textarea:focus-visible,
 }
 
 .gd-callout-title {
-  font-family: var(--gd-font-sans);
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--gd-font-display);
+  font-size: 11.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.14em;
   color: var(--gd-text-primary);
   margin-bottom: 4px;
 }
@@ -1279,7 +1330,7 @@ textarea:focus-visible,
 .gd-callout-text {
   font-family: var(--gd-font-sans);
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--gd-text-secondary);
   line-height: 1.55;
 }
@@ -1389,17 +1440,15 @@ textarea:focus-visible,
 .gd-notification-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-radius: 0;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: var(--gd-olive-box-radius);
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.45;
-  margin-bottom: 32px;
-  background-color: transparent;
-  border: none;
-  border-top: 1px solid var(--gd-border-hairline);
-  border-bottom: 1px solid var(--gd-border-hairline);
+  margin-bottom: 24px;
+  background-color: var(--gd-olive-box-bg);
+  border: 1px solid var(--gd-olive-box-border);
 }
 
 .gd-notif-icon {
@@ -1407,7 +1456,7 @@ textarea:focus-visible,
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--gd-text-secondary);
+  color: var(--gd-deep-olive);
 }
 
 .gd-notif-content {
@@ -1417,30 +1466,32 @@ textarea:focus-visible,
 .gd-notif-text {
   margin: 0;
   color: var(--gd-text-primary);
-  font-size: 13px;
+  font-size: 13.5px;
 }
 
 .gd-notif-text strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .gd-btn-notif-action {
-  font-family: var(--gd-font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 2px;
+  font-family: var(--gd-font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
-  background-color: transparent;
-  border: 1px solid var(--gd-border-hairline);
-  color: var(--gd-text-primary);
+  background-color: var(--gd-deep-olive);
+  border: 1px solid var(--gd-deep-olive);
+  color: var(--gd-sidebar-primary);
+  transition: all 0.15s ease;
 }
 
 .gd-btn-notif-action:hover {
-  background-color: #FFFFFF;
-  border-color: var(--gd-accent-olive);
-  color: var(--gd-accent-olive);
+  background-color: var(--gd-deep-olive-hover);
+  border-color: var(--gd-deep-olive-hover);
 }
 
 /* -----------------------------------------------------------------------------
