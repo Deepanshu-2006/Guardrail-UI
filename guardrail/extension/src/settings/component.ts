@@ -55,7 +55,7 @@ export function renderProtectionSettings(
 
     const logoBadge = document.createElement('div');
     logoBadge.className = 'gd-brand-badge';
-    logoBadge.textContent = '🛡️';
+    logoBadge.textContent = 'G';
     logoBadge.setAttribute('aria-hidden', 'true');
 
     const titleGroup = document.createElement('div');
@@ -66,7 +66,7 @@ export function renderProtectionSettings(
     const subtitle = document.createElement('p');
     subtitle.className = 'gd-page-subtitle';
     subtitle.textContent =
-      'Understand and configure supported browser protection policies, risk sensitivity, and safety invariants.';
+      'Configure browser protection policies, risk sensitivity thresholds, and safety rules.';
 
     titleGroup.appendChild(title);
     titleGroup.appendChild(subtitle);
@@ -166,7 +166,7 @@ export function renderProtectionSettings(
     cardStatusHeader.className = 'gd-card-header';
     const statusTitle = document.createElement('h2');
     statusTitle.className = 'gd-card-title';
-    statusTitle.textContent = '1. Overall Protection Status & Scope';
+    statusTitle.textContent = 'Protection Status & Scope';
     cardStatusHeader.appendChild(statusTitle);
     cardStatus.appendChild(cardStatusHeader);
 
@@ -247,7 +247,7 @@ export function renderProtectionSettings(
     cardPolHeader.className = 'gd-card-header';
     const polTitle = document.createElement('h2');
     polTitle.className = 'gd-card-title';
-    polTitle.textContent = '2. Supported Action Protection Categories';
+    polTitle.textContent = 'Action Protection Policies';
     cardPolHeader.appendChild(polTitle);
     cardPolicies.appendChild(cardPolHeader);
 
@@ -257,7 +257,7 @@ export function renderProtectionSettings(
     const polIntro = document.createElement('p');
     polIntro.className = 'gd-card-intro';
     polIntro.textContent =
-      'Configure how Guardrail responds when intercepting different action categories. Mandatory security policies cannot be disabled or weakened.';
+      'Configure response actions for supported categories. Mandatory safety rules cannot be relaxed.';
     polBody.appendChild(polIntro);
 
     const rulesList = document.createElement('div');
@@ -387,7 +387,7 @@ export function renderProtectionSettings(
     cardSensHeader.className = 'gd-card-header';
     const sensTitle = document.createElement('h2');
     sensTitle.className = 'gd-card-title';
-    sensTitle.textContent = '3. Risk Sensitivity & Threshold Configuration';
+    sensTitle.textContent = 'Risk Sensitivity & Thresholds';
     cardSensHeader.appendChild(sensTitle);
     cardSens.appendChild(cardSensHeader);
 
@@ -397,7 +397,7 @@ export function renderProtectionSettings(
     const sensIntro = document.createElement('p');
     sensIntro.className = 'gd-card-intro';
     sensIntro.textContent =
-      'Risk scores range from 0 (benign) to 100 (critical). Adjust the boundary thresholds for each risk tier or select a preset.';
+      'Risk scores range from 0 to 100. Select a sensitivity preset or set custom boundaries.';
     sensBody.appendChild(sensIntro);
 
     // Preset selector buttons
@@ -544,7 +544,7 @@ export function renderProtectionSettings(
     cardStgHeader.className = 'gd-card-header';
     const stgTitle = document.createElement('h2');
     stgTitle.className = 'gd-card-title';
-    stgTitle.textContent = '4. Staging Mode & Operational Timeouts';
+    stgTitle.textContent = 'Staging Mode & Timeouts';
     cardStgHeader.appendChild(stgTitle);
     cardStaging.appendChild(cardStgHeader);
 
@@ -554,10 +554,8 @@ export function renderProtectionSettings(
     const stgNotice = document.createElement('div');
     stgNotice.className = 'gd-settings-notice-box';
     stgNotice.innerHTML = `
-      <strong>🔒 Staging Mode Invariant:</strong>
-      Destructive browser actions (e.g., account deletion, irreversible purging) ALWAYS enter Staging Mode.
-      In Staging Mode, execution is frozen in memory while a cryptographic approval request is dispatched to your trusted contact.
-      No toggle can disable this fundamental safety guarantee.
+      <strong>🔒 Staging Mode:</strong>
+      Destructive browser actions enter staging mode and freeze execution until your trusted contact confirms approval.
     `;
     stgBody.appendChild(stgNotice);
 
@@ -572,7 +570,7 @@ export function renderProtectionSettings(
     const ttlLabel = document.createElement('label');
     ttlLabel.htmlFor = 'input-approval-ttl';
     ttlLabel.className = 'gd-field-label';
-    ttlLabel.textContent = `Approval Request Expiration TTL: ${ttlMinutes} minutes (${ttlSeconds}s)`;
+    ttlLabel.textContent = `Approval Request Expiration TTL: ${ttlMinutes}m (${ttlSeconds}s)`;
 
     const ttlRange = document.createElement('input');
     ttlRange.type = 'range';
@@ -589,7 +587,7 @@ export function renderProtectionSettings(
 
     const ttlHelper = document.createElement('small');
     ttlHelper.className = 'gd-field-helper';
-    ttlHelper.textContent = 'Valid range: 60 seconds (1 minute) to 86,400 seconds (24 hours). Staged actions expire if undecided within this window.';
+    ttlHelper.textContent = 'Staged actions expire if undecided within this window (1 min to 24 hours).';
 
     ttlGroup.appendChild(ttlLabel);
     ttlGroup.appendChild(ttlRange);
@@ -611,7 +609,7 @@ export function renderProtectionSettings(
     cardCtHeader.className = 'gd-card-header';
     const ctTitle = document.createElement('h2');
     ctTitle.className = 'gd-card-title';
-    ctTitle.textContent = '5. Trusted Contact Relationship Visibility';
+    ctTitle.textContent = 'Trusted Contact Relationship';
     cardCtHeader.appendChild(ctTitle);
     cardContacts.appendChild(cardCtHeader);
 
@@ -687,7 +685,7 @@ export function renderProtectionSettings(
     cardDomHeader.className = 'gd-card-header';
     const domTitle = document.createElement('h2');
     domTitle.className = 'gd-card-title';
-    domTitle.textContent = '6. Trusted Domains Allowlist';
+    domTitle.textContent = 'Trusted Domains Allowlist';
     cardDomHeader.appendChild(domTitle);
     cardDomains.appendChild(cardDomHeader);
 
@@ -697,7 +695,7 @@ export function renderProtectionSettings(
     const domIntro = document.createElement('p');
     domIntro.className = 'gd-card-intro';
     domIntro.textContent =
-      'Actions occurring entirely within trusted domains bypass external navigation warnings. Destructive actions on trusted domains still trigger Staging Mode.';
+      'Actions on trusted domains bypass navigation warnings. Staged approvals remain active for destructive actions.';
     domBody.appendChild(domIntro);
 
     // Domain Add Form
@@ -779,7 +777,7 @@ export function renderProtectionSettings(
     cardSpecHeader.className = 'gd-card-header';
     const specTitle = document.createElement('h2');
     specTitle.className = 'gd-card-title';
-    specTitle.textContent = '7. Available Policy Explanations & Security Implications';
+    specTitle.textContent = 'Policy Explanations & Specifications';
     cardSpecHeader.appendChild(specTitle);
     cardSpecs.appendChild(cardSpecHeader);
 
@@ -789,7 +787,7 @@ export function renderProtectionSettings(
     const specIntro = document.createElement('p');
     specIntro.className = 'gd-card-intro';
     specIntro.textContent =
-      'Every policy setting enforced by Guardrail carries documented operational and security implications:';
+      'Reference details and security implications for all policy configuration settings:';
     specBody.appendChild(specIntro);
 
     const specDetailsList = document.createElement('div');
