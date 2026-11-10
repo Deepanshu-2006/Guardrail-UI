@@ -28,7 +28,7 @@
  *    - Dynamic content rendered securely without HTML injection.
  */
 
-declare const process: { exit: (code: number) => void; exitCode?: number; cwd?: () => string };
+declare const process: { exit: (code: number) => void; exitCode?: number; cwd: () => string };
 
 // Minimal DOM simulation for Node.js test environment
 class MockDOMTokenList {

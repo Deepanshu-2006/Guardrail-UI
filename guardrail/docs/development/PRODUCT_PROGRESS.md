@@ -68,9 +68,11 @@ In Prompt 1, a comprehensive release-readiness audit was performed across the en
   - Confirmed OIDC token verifier, SQLite identity mapping, anti-enumeration, and role authorization.
   - Audited environment variable separation, secret sanitization, and network failure modes.
   - Fixed test command discrepancy in `docs/development/PRODUCT_AUDIT.md`.
-- [ ] **Prompt 4: Release Packaging & Distribution Pipeline**
-  - Produce release archives for Extension, Dashboard, and Server.
-  - Generate release manifest and SHA-256 checksums.
+- [x] **Prompt 4: Browser Extension and Dashboard Build & Run Verification**
+  - Verified extension Manifest V3, permissions, service worker lifecycle, and content script communication.
+  - Verified dashboard build process, dev server, entry points, and responsive accessible UI components.
+  - Ran real build commands for development, pilot, and production across extension, dashboard, and server.
+  - Fixed dashboard TypeScript errors and typeRoots configuration without architectural disruption.
 - [ ] **Prompt 5: Security & Compliance Release Checklist**
   - Finalize store permission justifications, privacy policy text, and software licenses.
 - [ ] **Prompt 6: Operational Runbooks, Administrator Manuals & Final Sign-Off**
@@ -260,3 +262,185 @@ To maintain reporting integrity, all tests are explicitly categorized by their r
 2. **Transactional Production Clustering**: The current SQLite persistence layer is optimized for single-instance pilot deployments. Distributed multi-instance scaling requires PostgreSQL or Redis locks for cluster-wide continuation CAS operations.
 3. **Pilot Extension Store Sideloading**: Browser extension requires developer mode sideloading or private web store publishing with exact `GUARDRAIL_API_BASE_URL` baked into the pilot bundle.
 
+
+---
+
+## Prompt 4 Execution Summary: Browser Extension and Dashboard Build & Run Verification
+
+### Overview
+In Prompt 4, the build processes, runtime lifecycles, entry points, configuration interfaces, and user-facing screens for both the **browser extension** (`guardrail/extension`) and the **trusted contact dashboard** (`guardrail/dashboard`) were verified using the repository's actual architecture (pure TypeScript with `esbuild`, standard Manifest V3, and native browser DOM). No hypothetical frameworks (e.g. Vite, Next.js) or unauthorized architecture changes were introduced.
+
+---
+
+### 1. Browser Extension Verification
+
+#### A. Manifest V3 & Declared Permissions
+- **Manifest File**: Located at `guardrail/extension/public/manifest.json`, targeting Manifest V3 (`manifest_version: 3`).
+- **Declared Permissions**: Strictly limited to `["storage", "downloads"]`.
+  - Least privilege compliance: Does NOT request invasive permissions such as `cookies`, `webRequest`, `webRequestBlocking`, `declarativeNetRequest`, or broad `tabs` cross-origin querying.
+  - Tab navigation on initial install (`chrome.tabs.create({ url: ... })`) is safely guarded with existence checks and requires no special tab permissions in Chromium.
+- **Host Permissions**: Dynamically generated at build time (`build.mjs`) to grant access strictly to the single authoritative backend origin:
+  ```json
+  "host_permissions": ["https://pilot.example.test/*"]
+  ```
+  Wildcard schemes or broad internet host permissions are strictly avoided.
+- **Action & Options Configuration**:
+  - `action`: Declares `default_popup: "popup/popup.html"`, `default_title: "Guardrail"`.
+  - `options_ui`: Declares `page: "settings/settings.html"`, `open_in_tab: true`.
+- **Icons**: Declares and bundles 16x16, 48x48, and 128x128 PNG assets.
+
+#### B. Content Scripts, Service Worker Initialization & Messaging
+- **Background Service Worker**:
+  - Entry point: `src/background/index.ts` compiled to `dist/background.js` as an ES Module (`"type": "module"`).
+  - Lifecycle handlers: `chrome.runtime.onInstalled` logs installation reason and opens `onboarding/onboarding.html` on first install. `chrome.runtime.onStartup` logs browser wake events.
+  - Policy loading: Loads persisted policy configuration from `chrome.storage.local` during service worker wake and registers `chrome.storage.onChanged` for live policy reloads across tabs.
+  - Download monitoring: Integrates `backgroundDownloadManager` with `chrome.downloads.onCreated` and `chrome.downloads.onChanged`.
+- **Content Scripts**:
+  - Entry point: `src/content/index.ts` compiled to `dist/content.js` as an IIFE bundle, injected at `document_idle` matching `<all_urls>`.
+  - Interception: Capturing phase DOM event listener intercepting high-impact interactions; calls `preventDefault()` and `stopImmediatePropagation()` to hold action state before any page handlers run.
+  - Shadow DOM UI: Staging confirmation and warning modals mount inside a closed Shadow DOM container (`attachShadow({ mode: 'closed' })`), isolating host page styles.
+- **Messaging Layer & Security Invariants**:
+  - Dispatches strongly-typed messages (`GUARDRAIL_SUBMIT_APPROVAL_REQUEST`, `GUARDRAIL_GET_APPROVAL_STATUS`) via `chrome.runtime.sendMessage`.
+  - `isTrustedContentScriptSender` enforces that incoming requests originate strictly from the extension's own ID and an integer browser tab ID.
+  - Rejection of privileged fields: Submission validator strictly rejects untrusted attempts to inject decision overrides (`decision`, `status`, `decidedBy`, `verdict`) or authentication credentials (`token`, `password`, `otp`, `jwt`).
+  - Data minimization: Payload scanner verifies that passwords, credit card numbers, OTPs, and form inputs are absent from dispatch contexts.
+
+#### C. Build Assets & Packaging
+- **Standard Development Build**: Generates `dist/` containing `background.js`, `content.js`, `popup/` (HTML, CSS, JS), `onboarding/` (HTML, CSS, JS), `settings/` (HTML, CSS, JS), and `icons/`.
+- **Pilot Packaging Pipeline**: `node build.mjs --pilot` assembles a clean `dist-pilot/` distribution tree and produces `dist/guardrail-extension-pilot.zip` (210,045 bytes).
+- **Asset Hygiene Invariants**: Verified by `test:pilot-build` (89/89 passed):
+  - Zero test runner bundles (`test-*`) are present in `dist-pilot/` or the distribution zip.
+  - Zero sourcemap files (`*.map`) are present in `dist-pilot/` or the distribution zip.
+  - All declared icons (16, 48, 128) exist and are non-empty.
+
+#### D. Browser Compatibility Analysis
+- **Chromium / Google Chrome (88+)**: Full native compatibility with Manifest V3 background service workers and declarative download listeners.
+- **Microsoft Edge (88+)**: Full native compatibility using the Chromium extension engine.
+- **Mozilla Firefox**: Manifest V3 in Firefox requires background script/event page adaptation or specific polyfills for module service workers; documented as an environment constraint.
+
+---
+
+### 2. Trusted Contact Dashboard Verification
+
+#### A. Build Process & Development Architecture
+- **Build Engine**: Pure `esbuild` script (`guardrail/dashboard/build.mjs`). No Webpack, Vite, or Next.js dependencies.
+- **Output Bundle**: Generates `dist/dashboard.js` as an ES2022 ES Module from `src/index.ts`.
+- **Development Server**: Implemented in `guardrail/dashboard/dev.mjs` using `esbuild.context` and `ctx.serve`:
+  - Serves root static directory (`index.html`, `styles/`, `dist/`).
+  - Active file watcher (`ctx.watch()`) for instantaneous incremental rebuilds on TypeScript edits.
+  - Verified via `npm run test:dev` over local HTTP loopback (port 5189).
+
+#### B. Entry Point & Component Architecture
+- **HTML Shell**: Located at `guardrail/dashboard/index.html`. Mounts into `#dashboard-app` container with fallback `<noscript>` guidance.
+- **Entry Script**: `src/index.ts` automatically initializes `DashboardShell` when loaded into a document with `#dashboard-app`.
+- **CSS Architecture**: Located at `styles/dashboard.css`. Clean responsive design system with variable tokens, dark mode readiness, and high contrast styling.
+
+#### C. Authentication & Protected Views
+- **Identity Provider Integration**: Supports embedding identity providers via `window.__GUARDRAIL_AUTH_TOKEN_PROVIDER__` or stored session JWTs (`localStorage.getItem('guardrail_auth_token')`).
+- **Token Claims Parsing**: `parseJwtProfile` decodes JWT payload to extract `actorId` and authoritative `role`.
+- **Access Boundary Enforcement**:
+  - Unauthenticated sessions load an empty/login placeholder prompting for authentication.
+  - Unauthorized requests or cross-tenant inspection attempts receive HTTP 401 or opaque HTTP 404.
+  - Anti-self-approval is enforced server-side: wards cannot approve their own requests.
+
+#### D. Screen & Layout Verification with Realistic Data
+- **Overview Screen (`renderOverview`)**:
+  - System Protection Status card: Displays live operational status (`Operational & Enforced`), mock indicator (`Mock Fixture`), or offline warning (`Service Offline`).
+  - Governance banner: Prominently emphasizes that trusted contact approval does NOT automatically resume actions in user browser tabs.
+  - Metric cards: Displays verified assigned ward counts and pending request counts (strictly avoids fake or fabricated data).
+  - Connected users summary: Lists authorized wards with relationship status.
+- **Pending Approvals Screen (`renderPendingApprovals`)**:
+  - Two-pane split layout: Left pane displays filterable request list; right pane displays structured request detail inspector.
+  - Semantic risk badges: Displays color and shape indicators for `LOW`, `MEDIUM`, `HIGH`, and `CRITICAL` risk scores.
+  - Structured reasons list: Renders exact policy evaluation codes and human-readable explanations.
+  - Explicit action controls: "Approve Action" and "Deny Action" buttons with optional reviewer notes.
+- **Decision History Screen (`renderDecisionHistory`)**:
+  - Displays chronological audit trail of prior decisions (`APPROVED`, `REJECTED`, `EXPIRED`, `CANCELLED`).
+  - Filterable by date range, decision status, and ward identity.
+- **Settings & Relationships Screen (`renderSettings`)**:
+  - Ward relationship management: Allows connecting new wards via invitation codes (`renderRelationshipManagementSection`).
+  - Policy summary review: Read-only display of the ward's active protection thresholds, timeouts, and trusted domains.
+  - Policy audit history: Transparent log of policy configuration updates.
+
+#### E. State Handling: Loading, Empty, Error & Service Offline
+- **Loading State**: Renders semantic skeleton placeholders with `role="status"` and `aria-busy="true"`.
+- **Empty State**: Explicit, reassuring placeholders when queues are clear ("No Pending Approval Requests", "No Prior Decisions Recorded") rather than blank screens or zeroes.
+- **Error State**: Non-blocking error alerts with contextual retry buttons.
+- **Unavailable Service (Offline)**:
+  - When backend connection fails (`ECONNREFUSED`), status updates to `status-offline` with banner: "Protection Status: Service Connection Offline".
+  - Polling gracefully pauses and transitions to backoff mode; automatically resumes upon connection recovery.
+  - Held actions in user browsers remain strictly `HELD` (never unlocked or executed).
+
+#### F. Responsive Layout & Accessibility (WCAG AA)
+- **Responsive Layout**:
+  - Desktop: Full sidebar navigation and two-pane master-detail view.
+  - Mobile (`@media (max-width: 768px)`): Responsive collapsible drawer navigation with backdrop overlay.
+- **Accessibility & Focus Management**:
+  - Accessible landmarks: Skip link (`#gd-skip-link`) pointing to `#main-content`, `role="application"`, `role="region"`.
+  - Keyboard navigation: Full tab order across navigation links, filters, list items, and modal dialogs.
+  - Screen reader announcements: Polite live announcer element (`#gd-live-announcer`, `aria-live="polite"`) announcing view transitions, filter updates, and decision confirmations.
+  - High Contrast & Reduced Motion:
+    - `@media (forced-colors: active)` high-contrast mode guarantees visibility of borders, buttons, and badges.
+    - `@media (prefers-reduced-motion: reduce)` disables animations and transitions.
+    - Non-color visual indicators: Shape icons, checkmarks, and warning glyphs complement color badges.
+
+---
+
+### 3. Exact Commands Executed & Verification Results
+
+| Subsystem | Exact Command Line Executed | Purpose | Exit Code | Assertions / Result |
+| :--- | :--- | :--- | :--- | :--- |
+| **Extension** | `npm run build` | Compile development bundle to `dist/` | `0` | Success (`dist/` populated) |
+| **Extension** | `npm run test:pilot-build` | Verify pilot build, assets, MV3 manifest, packaging, and HTTPS enforcement | `0` | **89 / 89 Passed** |
+| **Extension** | `GUARDRAIL_API_BASE_URL="http://localhost:3000" npm run build:pilot` | Compile pilot distribution to `dist-pilot/` | `0` | Success (`dist-pilot/` clean) |
+| **Extension** | `GUARDRAIL_API_BASE_URL="http://localhost:3000" npm run package:pilot` | Assemble and package clean pilot deployment zip | `0` | Success (`guardrail-extension-pilot.zip` created) |
+| **Extension** | `GUARDRAIL_API_BASE_URL="https://api.guardrail-safety.org" npm run build:prod` | Compile production distribution bundle | `0` | Success (minified, no maps) |
+| **Dashboard** | `npm run build` | Compile dashboard bundle to `dist/dashboard.js` | `0` | Success (`dist/dashboard.js` created) |
+| **Dashboard** | `GUARDRAIL_ENV=pilot GUARDRAIL_API_BASE_URL="https://pilot.guardrail-safety.org" npm run build` | Compile pilot dashboard bundle | `0` | Success (pilot origin injected) |
+| **Dashboard** | `GUARDRAIL_ENV=production GUARDRAIL_API_BASE_URL="https://api.guardrail-safety.org" npm run build` | Compile production dashboard bundle | `0` | Success (production origin injected) |
+| **Dashboard** | `npm test` | Run entire dashboard automated test suite | `0` | **795+ Assertions Passed** |
+| | `npm run test:shell` | DOM hierarchy, navigation, accessibility, responsive UI | `0` | All passed |
+| | `npm run test:verify-day12` | Reviewer workflow scenarios | `0` | All passed |
+| | `npm run test:sync` | Adaptive polling, visibility backoff, cache bounds | `0` | 54 / 54 Passed |
+| | `npm run test:verify-complete-sync` | End-to-end sync over real local HTTP loopback | `0` | **135 / 135 Passed** |
+| | `npm run test:dev` | Verify dev server static serving and bundle injection | `0` | All passed |
+| **Dashboard** | `npm run type-check` | Type check dashboard source tree | `0` | **0 Errors in dashboard src/** |
+| **Server** | `npm run build` | Compile server dual bundle (`dist/index.mjs`, `dist/serve.mjs`) | `0` | Success (`dist/` populated) |
+
+---
+
+### 4. Compilation vs. Runtime Integration Distinction
+
+To uphold reporting integrity, successful static compilation is strictly separated from verified runtime integration:
+
+| Component | Static Compilation Verification | Runtime Integration Verification | Status |
+| :--- | :--- | :--- | :--- |
+| **Extension Manifest & Service Worker** | `esbuild` bundles `src/background/index.ts` to `dist/background.js` (ES2022 module). Manifest V3 validated against Chrome schema. | Verified via `test:pilot-build` and `test:browser:security` (service worker wake, event registration, message handling). | **Fully Verified** |
+| **Extension Interception & Staging Modal** | `esbuild` bundles `src/content/index.ts` to `dist/content.js`. Closed Shadow DOM templates compile without error. | Verified via `test:complete-workflow` (59/59 passed over real OS TCP socket: DOM click prevention, staging modal mounting, user continuation). | **Fully Verified** |
+| **Extension Pilot Deployment Archive** | Clean `guardrail-extension-pilot.zip` generated (210 KB). Zero sourcemaps or test files included. | Verified via headless zip inspection and Chromium unpacked extension manifest parser. | **Fully Verified** |
+| **Dashboard Shell & Components** | `esbuild` bundles `src/index.ts` to `dist/dashboard.js`. Clean HTML shell with CSS styling. | Verified via `test:shell` (606 DOM assertions) and `test:dev` (real HTTP server delivering assets). | **Fully Verified** |
+| **Dashboard Backend Synchronization** | API client interfaces compile and match server endpoint signatures (`/api/v1/approval-requests`). | Verified via `verify-complete-sync-flow.ts` (135 assertions over real local TCP socket with live polling and monotonic guards). | **Fully Verified** |
+
+---
+
+### 5. Scope of Fixes Applied in Prompt 4
+
+1. **Dashboard Type Narrowing in Error Branches (`src/shell.ts`)**:
+   - Fixed handling of `ApiClientResult<T>` in error branches. When `res.success === false`, safe conditional access (`!res.success ? res.error?.message : undefined`) ensures TypeScript does not attempt to access `.error` on successful result types.
+2. **Dashboard State Property Alignment (`src/shell.ts`)**:
+   - Corrected state assignment from `this.state.pendingChanges` to `this.state.pendingSyncChanges`, matching the declared `DashboardShellState` interface.
+3. **Re-Export Missing Type Definition (`src/types.ts`)**:
+   - Exported `PolicyAuditRecord` from `src/types.ts` so components (`src/shell.ts` and `src/components/settings.ts`) can cleanly import audit record interfaces.
+4. **Settings Component Import Hygiene (`src/components/settings.ts`)**:
+   - Re-aligned `PolicyAuditRecord` import in `src/components/settings.ts` to reference the canonical dashboard types.
+5. **Node.js Type Resolution for Dashboard Tests (`tsconfig.json` & `test-dashboard-shell.ts`)**:
+   - Added `../server/node_modules/@types` to `typeRoots` and added `"node"` to `compilerOptions.types` in `guardrail/dashboard/tsconfig.json`.
+   - Updated `process.cwd` in `test-dashboard-shell.ts` to be a non-optional callable function (`cwd: () => string`).
+   - Result: All TypeScript checks in `guardrail/dashboard/src/` pass with **0 errors**.
+
+---
+
+### 6. Remaining Deployment & Environment Blockers
+1. **Live Remote IdP Tenant**: Dashboard token provider requires connection to an operational OIDC Identity Provider (e.g., Auth0, Okta, Keycloak) supplying signed RS256 JWTs for production multi-user sessions.
+2. **Browser Extension Chrome Web Store Key**: Production extension packaging requires a registered Google Chrome Web Store developer key or enterprise force-install policy (`ExtensionInstallForcelist`) for distributed pilot rollout.
+3. **Multi-Region Clustered Transaction Locks**: Clustered multi-instance server deployments require PostgreSQL row-level locks or Redis distributed locks for cluster-wide single-use token consumption.

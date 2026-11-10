@@ -57,6 +57,7 @@ export type {
   StatusSyncListener,
   StatusSyncSubscription,
   AppEnvironment,
+  PolicyAuditRecord,
   TrustedContact,
   TrustedContactInvitation,
   TrustedContactPolicySummary,

@@ -11,8 +11,8 @@
     "noUnusedParameters": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "typeRoots": ["../extension/node_modules/@types"],
-    "types": ["chrome"]
+    "typeRoots": ["../extension/node_modules/@types", "../server/node_modules/@types"],
+    "types": ["chrome", "node"]
   },
   "include": [
     "src/**/*"

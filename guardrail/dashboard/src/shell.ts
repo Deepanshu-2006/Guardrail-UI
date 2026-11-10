@@ -18,6 +18,7 @@ import {
   DashboardShellOptions,
   DashboardShellState,
   DashboardView,
+  PolicyAuditRecord,
   RequestFilters,
   RiskLevel,
   TrustedContactInvitation,
@@ -1876,7 +1877,8 @@ export class DashboardShell {
         }
       } else {
         this.state.wardPolicyStatus = 'error';
-        this.state.wardPolicyError = res.error?.message || 'Failed to retrieve ward policy.';
+        const errorMsg = !res.success ? res.error?.message : undefined;
+        this.state.wardPolicyError = errorMsg || 'Failed to retrieve ward policy.';
       }
     } catch (err) {
       this.state.wardPolicyStatus = 'error';
@@ -1910,7 +1912,7 @@ export class DashboardShell {
       this.state.hasPendingSync = syncState.hasPendingSync;
     }
     if (syncState.pendingChanges !== undefined) {
-      this.state.pendingChanges = syncState.pendingChanges;
+      this.state.pendingSyncChanges = syncState.pendingChanges;
     }
     if (syncState.status === 'PENDING_SYNC' || syncState.status === 'pending_sync') {
       this.state.hasPendingSync = true;
