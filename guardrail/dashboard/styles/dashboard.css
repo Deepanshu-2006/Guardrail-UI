@@ -424,7 +424,7 @@ textarea:focus-visible,
   height: 54px;
   min-height: 54px;
   background-color: var(--gd-bg-canvas);
-  border-bottom: 1px solid var(--gd-border-subtle);
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -551,56 +551,56 @@ textarea:focus-visible,
    ----------------------------------------------------------------------------- */
 
 .gd-section-header {
-  margin-bottom: 36px;
+  margin-bottom: 64px;
 }
 
-/* Page Intro: 50px Space Grotesk Bold */
+/* Page Intro: 52px Space Grotesk Bold */
 .gd-section-title {
   font-family: var(--gd-font-display);
-  font-size: 50px;
+  font-size: 52px;
   font-weight: 700;
   color: var(--gd-text-primary);
   letter-spacing: -0.035em;
   line-height: 1.05;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
-/* Major Section Headings: 26px Space Grotesk Bold */
+/* Major Section Headings: 28px Space Grotesk Bold */
 .gd-card .gd-section-title,
 .gd-overview-pending-header .gd-section-title,
 .gd-setup-header .gd-section-title,
 .gd-recent-activity-header .gd-section-title {
   font-family: var(--gd-font-display);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   color: var(--gd-text-primary);
 }
 
 .gd-section-subtitle {
   font-family: var(--gd-font-sans);
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
   letter-spacing: 0.005em;
-  max-width: 560px;
+  max-width: 580px;
 }
 
 /* =============================================================================
-   OLIVE BACKGROUND BOX SYSTEM: Cohesive Editorial Containers Without Separators
+   PURE EDITORIAL TYPOGRAPHY: Zero Boxes, Zero Separator Lines, Open Spatial Rhythm
    ============================================================================= */
 
-/* Overview cards use warm olive-tinted containers with soft borders */
+/* Overview cards: completely unboxed, no borders, natural spatial flow */
 #view-overview .gd-card {
-  background-color: var(--gd-olive-box-bg);
-  border: 1px solid var(--gd-olive-box-border);
-  border-radius: var(--gd-olive-box-radius);
-  box-shadow: none;
-  padding: 26px 28px;
-  margin-bottom: 24px;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 /* Generic .gd-card for settings/modals remains clean and flat */
@@ -615,15 +615,15 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section B — Service Status (Olive Background Box, No Separator Lines)
+   Overview: Section B — Service Status (Typographic, Zero Boxes, Zero Lines)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-protection-status-card {
-  background-color: var(--gd-olive-box-bg) !important;
-  border: 1px solid var(--gd-olive-box-border) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 24px 28px !important;
-  margin-bottom: 24px !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 72px !important;
   box-shadow: none !important;
 }
 
@@ -631,7 +631,8 @@ textarea:focus-visible,
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 20px;
+  gap: 28px;
+  margin-bottom: 0;
 }
 
 .gd-protection-icon {
@@ -642,26 +643,26 @@ textarea:focus-visible,
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .gd-protection-title {
   font-family: var(--gd-font-display);
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   color: var(--gd-text-primary);
   margin-bottom: 0;
 }
 
 .gd-protection-desc {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.45;
-  max-width: 620px;
-  margin-top: 3px;
+  line-height: 1.6;
+  max-width: 660px;
+  margin-top: 2px;
 }
 
 .gd-protection-actions {
@@ -678,12 +679,12 @@ textarea:focus-visible,
   font-family: var(--gd-font-display);
   font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0;
   cursor: pointer;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
   transition: color 0.15s ease;
 }
 
@@ -699,7 +700,7 @@ textarea:focus-visible,
   background: transparent;
   border: none;
   padding: 0;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
@@ -708,25 +709,18 @@ textarea:focus-visible,
 }
 
 .gd-protection-chips-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-top: 14px;
-  margin-top: 16px;
-  border-top: none; /* No separator line */
-  flex-wrap: wrap;
+  display: none !important;
 }
 
 .gd-protection-chip {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 12.5px;
   color: var(--gd-text-secondary);
-  background-color: rgba(255, 255, 255, 0.55);
-  border: 1px solid var(--gd-olive-box-border-subtle);
-  border-radius: 4px;
-  padding: 4px 10px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
 }
 
 .gd-chip-icon {
@@ -738,7 +732,7 @@ textarea:focus-visible,
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   color: var(--gd-text-secondary);
 }
 
@@ -748,71 +742,71 @@ textarea:focus-visible,
 
 .gd-chip-val {
   font-family: var(--gd-font-sans);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--gd-text-primary);
 }
 
 .gd-chip-val.gd-mono {
   font-family: var(--gd-font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--gd-text-secondary);
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section C — Metrics (Individual Olive Background Boxes, No Bottom Line)
+   Overview: Section C — Metrics (Pure Scaled Typography, Zero Containers)
    ----------------------------------------------------------------------------- */
 
 .gd-overview-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  background-color: transparent !important;
+  gap: 64px;
+  background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  margin-bottom: 28px !important;
+  margin-bottom: 88px !important;
 }
 
 @media (max-width: 860px) {
   .gd-overview-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 40px;
   }
 }
 
 .gd-metric-card {
-  background-color: var(--gd-olive-box-bg) !important;
-  border: 1px solid var(--gd-olive-box-border) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 22px 24px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   box-shadow: none !important;
   display: flex;
   flex-direction: column;
 }
 
 .gd-metric-card:not(:first-child) {
-  padding-left: 22px;
+  padding-left: 0 !important;
 }
 
 .gd-metric-card:not(:last-child) {
-  border-right: 1px solid var(--gd-olive-box-border);
+  border-right: none !important;
 }
 
 .gd-metric-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 14px;
 }
 
 .gd-metric-label {
   font-family: var(--gd-font-display);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.20em;
   color: var(--gd-text-secondary);
 }
 
@@ -822,12 +816,12 @@ textarea:focus-visible,
 
 .gd-metric-value {
   font-family: var(--gd-font-display);
-  font-size: 52px;
+  font-size: 68px;
   font-weight: 700;
   color: var(--gd-text-primary);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   line-height: 1;
-  margin: 8px 0 0;
+  margin: 0;
 }
 
 .gd-metric-desc {
@@ -841,14 +835,14 @@ textarea:focus-visible,
 .gd-overview-main-grid {
   display: grid;
   grid-template-columns: 7fr 5fr;
-  gap: 48px;
+  gap: 80px;
   align-items: start;
 }
 
 @media (max-width: 960px) {
   .gd-overview-main-grid {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: 48px;
   }
 }
 
@@ -863,48 +857,48 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section D — Pending Approvals (Olive Background Box)
+   Overview: Section D — Pending Approvals (Pure Typography, Spacing-First)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-overview-pending-section {
-  background-color: var(--gd-olive-box-bg) !important;
-  border: 1px solid var(--gd-olive-box-border) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 26px 28px !important;
-  margin-bottom: 24px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 56px !important;
   box-shadow: none !important;
 }
 
 .gd-overview-pending-header {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .gd-overview-pending-header .gd-section-title {
   font-family: var(--gd-font-display);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
   color: var(--gd-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .gd-overview-pending-list {
   display: flex;
   flex-direction: column;
-  border-top: none !important;
-  gap: 10px;
+  border: none !important;
+  gap: 20px;
 }
 
 .gd-overview-pending-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px !important;
-  background-color: var(--gd-bg-surface) !important;
-  border: 1px solid var(--gd-olive-box-border-subtle) !important;
-  border-radius: 6px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
   gap: 16px;
-  transition: background-color 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 
 .gd-overview-pending-left {
@@ -931,7 +925,7 @@ textarea:focus-visible,
 
 .gd-overview-pending-meta {
   font-family: var(--gd-font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--gd-text-secondary);
 }
@@ -940,15 +934,15 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 8px 18px;
   font-family: var(--gd-font-display);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gd-sidebar-primary);
   background-color: var(--gd-deep-olive);
-  border: 1px solid var(--gd-deep-olive);
+  border: none;
   border-radius: 5px;
   cursor: pointer;
   white-space: nowrap;
@@ -958,12 +952,11 @@ textarea:focus-visible,
 
 .gd-btn-overview-review:hover {
   background-color: var(--gd-deep-olive-hover);
-  border-color: var(--gd-deep-olive-hover);
 }
 
 /* Empty State on Canvas */
 .gd-overview-empty-pending {
-  padding: 6px 0 0;
+  padding: 0 !important;
   border: none !important;
 }
 
@@ -973,62 +966,62 @@ textarea:focus-visible,
 
 .gd-overview-empty-pending .gd-placeholder-title {
   font-family: var(--gd-font-display);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--gd-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .gd-overview-empty-pending .gd-placeholder-text {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.5;
+  line-height: 1.6;
   max-width: 520px;
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section G — Recent Activity (Olive Background Box)
+   Overview: Section G — Recent Activity (Pure Typography, Spacing-First)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-recent-activity-card {
-  background-color: var(--gd-olive-box-bg) !important;
-  border: 1px solid var(--gd-olive-box-border) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 26px 28px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   margin-bottom: 0 !important;
   box-shadow: none !important;
 }
 
 .gd-recent-activity-header {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .gd-recent-activity-header .gd-section-title {
   font-family: var(--gd-font-display);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
   color: var(--gd-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .gd-recent-activity-list {
   display: flex;
   flex-direction: column;
-  border-top: none !important;
-  gap: 8px;
+  border: none !important;
+  gap: 16px;
 }
 
 .gd-recent-activity-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px !important;
-  border: 1px solid var(--gd-olive-box-border-subtle) !important;
-  border-radius: 6px !important;
-  background: var(--gd-bg-surface) !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
 }
 
 .gd-recent-activity-left {
@@ -1039,67 +1032,67 @@ textarea:focus-visible,
 
 .gd-recent-activity-desc {
   font-family: var(--gd-font-sans);
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--gd-text-primary);
 }
 
 .gd-recent-activity-meta {
   font-family: var(--gd-font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--gd-text-secondary);
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section E — Connect a Ward (Olive Background Box)
+   Overview: Section E — Connect a Ward (Pure Typography, Spacing-First)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-setup-card {
-  background-color: var(--gd-olive-box-bg) !important;
-  border: 1px solid var(--gd-olive-box-border) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 26px 28px !important;
-  margin-bottom: 24px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 56px !important;
   box-shadow: none !important;
 }
 
 .gd-setup-header {
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .gd-setup-header .gd-section-title {
   font-family: var(--gd-font-display);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
   color: var(--gd-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .gd-setup-subtitle {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .gd-setup-steps {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 14px 0 20px;
+  gap: 14px;
+  margin: 20px 0 32px;
   padding: 0;
 }
 
 .gd-setup-step {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.45;
+  line-height: 1.55;
 }
 
 .gd-setup-step strong {
@@ -1109,11 +1102,11 @@ textarea:focus-visible,
 
 .gd-setup-step code {
   font-family: var(--gd-font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--gd-text-primary);
-  background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-olive-box-border-subtle);
+  background-color: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   padding: 2px 7px;
   border-radius: 4px;
 }
@@ -1121,7 +1114,7 @@ textarea:focus-visible,
 .gd-setup-input-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .gd-setup-label {
@@ -1130,25 +1123,25 @@ textarea:focus-visible,
   font-weight: 700;
   color: var(--gd-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
 }
 
 .gd-setup-input-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .gd-setup-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: 12px 16px;
   font-family: var(--gd-font-mono);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--gd-text-primary);
   background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-olive-box-border);
+  border: 1.5px solid var(--gd-border-strong);
   border-radius: 6px;
   transition: border-color 0.15s ease;
 }
@@ -1166,7 +1159,7 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
+  padding: 12px 22px;
   font-family: var(--gd-font-display);
   font-size: 12.5px;
   font-weight: 700;
@@ -1217,21 +1210,21 @@ textarea:focus-visible,
   color: var(--gd-text-secondary);
 }
 
-/* Active Ward Card (When Ward Linked, Olive Background Box) */
+/* Active Ward Card (When Ward Linked, Pure Typography) */
 #view-overview .gd-active-ward-card {
-  background-color: var(--gd-olive-box-bg) !important;
-  border: 1px solid var(--gd-olive-box-border) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 26px 28px !important;
-  margin-bottom: 24px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 56px !important;
   box-shadow: none !important;
 }
 
 .gd-ward-meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin: 18px 0;
+  gap: 24px;
+  margin: 20px 0;
   padding: 0;
   background-color: transparent;
   border: none;
@@ -1240,11 +1233,10 @@ textarea:focus-visible,
 .gd-ward-meta-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-olive-box-border-subtle);
-  border-radius: 6px;
-  padding: 12px 14px;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .gd-ward-meta-label {
@@ -1252,20 +1244,20 @@ textarea:focus-visible,
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: var(--gd-text-secondary);
 }
 
 .gd-ward-meta-value {
   font-family: var(--gd-font-sans);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--gd-text-primary);
 }
 
 .gd-ward-meta-value.gd-mono {
   font-family: var(--gd-font-mono);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--gd-text-primary);
 }
@@ -1280,31 +1272,30 @@ textarea:focus-visible,
   text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 3px;
-  background-color: var(--gd-olive-box-bg);
+  background-color: rgba(0, 0, 0, 0.05);
   color: var(--gd-text-primary);
-  border: 1px solid var(--gd-olive-box-border);
+  border: none;
 }
 
 .gd-ward-duty-notice {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.5;
+  line-height: 1.55;
   padding-top: 8px;
   max-width: 620px;
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section F — Execution Architecture (Olive Callout Box)
+   Overview: Section F — Execution Architecture (Pure Typographic Note)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-callout {
-  background-color: #D6DFCC !important;
-  border: 1px solid #C2CEB6 !important;
-  border-left: 4px solid var(--gd-deep-olive) !important;
-  border-radius: var(--gd-olive-box-radius) !important;
-  padding: 20px 24px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   margin: 0 !important;
   display: block;
 }
@@ -1322,17 +1313,17 @@ textarea:focus-visible,
   font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--gd-text-primary);
-  margin-bottom: 4px;
+  letter-spacing: 0.16em;
+  color: var(--gd-deep-olive);
+  margin-bottom: 6px;
 }
 
 .gd-callout-text {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--gd-text-secondary);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1499,19 +1490,17 @@ textarea:focus-visible,
    ----------------------------------------------------------------------------- */
 
 .gd-error-banner {
-  background-color: transparent;
-  border: none;
-  border-top: 1px solid var(--gd-border-hairline);
-  border-bottom: 1px solid var(--gd-border-hairline);
+  background-color: transparent !important;
+  border: none !important;
   color: var(--gd-text-primary);
   border-radius: 0;
-  padding: 14px 0;
-  font-size: 13px;
+  padding: 0 !important;
+  font-size: 13.5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
-  gap: 16px;
+  gap: 14px;
 }
 
 .gd-error-banner-icon {
@@ -1524,25 +1513,30 @@ textarea:focus-visible,
 .gd-error-banner-text {
   color: var(--gd-text-primary);
   font-family: var(--gd-font-sans);
+  font-weight: 500;
   flex: 1;
 }
 
 .gd-btn-retry {
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: var(--gd-font-sans);
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: var(--gd-font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   background-color: transparent;
-  border: 1px solid var(--gd-border-hairline);
+  border: 1px solid var(--gd-border-strong);
   color: var(--gd-text-primary);
-  border-radius: 2px;
+  border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
 .gd-btn-retry:hover {
-  background-color: #FFFFFF;
-  border-color: var(--gd-border-strong);
+  background-color: var(--gd-deep-olive);
+  border-color: var(--gd-deep-olive);
+  color: var(--gd-sidebar-primary);
 }
 
 .gd-stale-banner {

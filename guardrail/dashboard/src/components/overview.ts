@@ -100,7 +100,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protBadge.textContent = 'Service Connection Offline';
     protTitle.textContent = 'Approval service unavailable';
     protDesc.textContent =
-      'Live approval synchronization is paused. Last verified data may be stale.';
+      'Approval synchronization is temporarily paused. Check your connection and retry.';
 
     protActions.appendChild(protBadge);
 
@@ -118,28 +118,28 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protectionCard.classList.add('status-mock');
     protIcon.appendChild(createIcon('flask', 'gd-status-icon-mock'));
     protBadge.className = 'gd-protection-badge badge-mock';
-    protBadge.textContent = 'Mock Fixture';
-    protTitle.textContent = 'Protection Status: Development Fixture Active';
+    protBadge.textContent = 'Development Fixture Active';
+    protTitle.textContent = 'Development Fixture Active';
     protDesc.textContent =
-      'Operating against an in-memory fixture service. Decisions are recorded in local memory and are not enforced on a production Guardrail cluster.';
+      'Operating in local preview mode. Changes are saved for testing.';
     protActions.appendChild(protBadge);
   } else if (props.profile?.isAuthenticated) {
     protectionCard.classList.add('status-operational');
     protIcon.appendChild(createIcon('shield-check', 'gd-status-icon-operational'));
     protBadge.className = 'gd-protection-badge badge-active';
-    protBadge.textContent = 'Operational & Enforced';
-    protTitle.textContent = 'Protection Status: Live Guardrail Protection Active';
+    protBadge.textContent = 'Live Guardrail Protection Active';
+    protTitle.textContent = 'Live Guardrail Protection Active';
     protDesc.textContent =
-      'Connected to authoritative Guardrail safety backend. Intercepted actions from your authorized ward are evaluated under strict separation of duties.';
+      'Connected and actively protecting your contacts. Any approval requests will appear below.';
     protActions.appendChild(protBadge);
   } else {
     protectionCard.classList.add('status-standalone');
     protIcon.appendChild(createIcon('lock', 'gd-status-icon-standalone'));
     protBadge.className = 'gd-protection-badge badge-standalone';
-    protBadge.textContent = 'Standalone Shell';
-    protTitle.textContent = 'Protection Status: Standalone Preview Mode';
+    protBadge.textContent = 'Standalone Preview Mode';
+    protTitle.textContent = 'Standalone Preview Mode';
     protDesc.textContent =
-      'Running in decoupled client preview. Connect with an authorized trusted contact session to evaluate real browser actions.';
+      'Running in preview mode. Connect a contact below using an invitation code to begin.';
     protActions.appendChild(protBadge);
   }
 
@@ -217,8 +217,8 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const wardDesc = document.createElement('span');
   wardDesc.className = 'gd-metric-desc';
   wardDesc.textContent = props.profile?.assignedWardId
-    ? `Designated reviewer for ward ${props.profile.assignedWardId}`
-    : 'No wards linked. Establish a trusted contact relationship to begin.';
+    ? `Designated reviewer for ${props.profile.assignedWardId}`
+    : 'No accounts linked yet. Enter an invitation code below to begin.';
 
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValue);
@@ -248,7 +248,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   pendingDesc.className = 'gd-metric-desc';
   pendingDesc.textContent =
     props.pendingCount > 0
-      ? 'Intercepted actions currently held in browser runtime waiting for evaluation.'
+      ? 'Requests waiting for your review and approval.'
       : 'No actions currently waiting for approval.';
 
   pendingCard.appendChild(pendingHeader);
@@ -278,8 +278,8 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const statusDesc = document.createElement('span');
   statusDesc.className = 'gd-metric-desc';
   statusDesc.textContent = props.profile?.isAuthenticated
-    ? 'Authenticated with server-enforced multi-tenant authorization.'
-    : 'Running in decoupled frontend shell mode. Connect backend for live streaming.';
+    ? 'Active and protecting your assigned contacts.'
+    : 'Running in preview mode. Connect a contact to get started.';
 
   statusCard.appendChild(statusHeader);
   statusCard.appendChild(statusValue);
@@ -370,7 +370,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const pendingSecSub = document.createElement('p');
   pendingSecSub.className = 'gd-section-subtitle';
-  pendingSecSub.textContent = 'Browser actions awaiting your safety determination.';
+  pendingSecSub.textContent = 'Requests waiting for your review and approval.';
 
   pendingSecHeader.appendChild(pendingSecTitle);
   pendingSecHeader.appendChild(pendingSecSub);
@@ -505,7 +505,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const empText = document.createElement('p');
     empText.className = 'gd-placeholder-text';
     empText.textContent =
-      'No browser actions are currently held in Staging Mode waiting for evaluation. When an authorized ward initiates a high-risk action, it will appear here.';
+      'No actions are currently waiting for your review. When a request needs approval, it will appear here.';
 
     emptyBox.appendChild(empIcon);
     emptyBox.appendChild(empTitle);
@@ -546,17 +546,17 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const step1 = document.createElement('li');
     step1.className = 'gd-setup-step';
     step1.innerHTML =
-      '<strong>Step 1:</strong> Your ward generates an invitation code (e.g. <code>GR-INV-A1B2-C3D4</code>) in their Guardrail extension.';
+      '<strong>Step 1:</strong> Your contact generates an invitation code (e.g. <code>GR-INV-A1B2-C3D4</code>) in their Guardrail extension.';
 
     const step2 = document.createElement('li');
     step2.className = 'gd-setup-step';
     step2.innerHTML =
-      '<strong>Step 2:</strong> They securely share the code with you through an out-of-band channel.';
+      '<strong>Step 2:</strong> They share the code with you via message, email, or in person.';
 
     const step3 = document.createElement('li');
     step3.className = 'gd-setup-step';
     step3.innerHTML =
-      '<strong>Step 3:</strong> Enter the code below and click <strong>Connect Ward</strong> to establish the authorized oversight relationship.';
+      '<strong>Step 3:</strong> Enter the code below and click <strong>Connect Ward</strong> to link their account.';
 
     stepsList.appendChild(step1);
     stepsList.appendChild(step2);
@@ -825,12 +825,12 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const calloutTitle = document.createElement('h2');
   calloutTitle.className = 'gd-callout-title';
-  calloutTitle.textContent = 'Decoupled Action Execution Architecture';
+  calloutTitle.textContent = 'Safe Approvals Guarantee';
 
   const calloutText = document.createElement('p');
   calloutText.className = 'gd-callout-text';
   calloutText.textContent =
-    'Guardrail strictly decouples approval decisions from browser action execution. Approval records consent on the backend; the user in Staging Mode retains ultimate agency to proceed with or cancel the action.';
+    'Guardrail strictly decouples approval decisions from browser action execution. When you approve an action, you give permission, but your contact always decides whether to proceed or cancel in their browser.';
 
   calloutContent.appendChild(calloutTitle);
   calloutContent.appendChild(calloutText);
@@ -852,7 +852,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const activitySubtitle = document.createElement('p');
   activitySubtitle.className = 'gd-section-subtitle';
-  activitySubtitle.textContent = 'Recorded decisions and safety evaluations.';
+  activitySubtitle.textContent = 'Past approvals and decision records.';
 
   activityHeader.appendChild(activityTitle);
   activityHeader.appendChild(activitySubtitle);
@@ -877,7 +877,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'Recorded decisions will appear here when approval requests are evaluated.';
+      'Past approval decisions will appear here as you review them.';
 
     placeholder.appendChild(icon);
     placeholder.appendChild(pTitle);
