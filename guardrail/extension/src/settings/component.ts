@@ -196,9 +196,12 @@ export function renderProtectionSettings(
 
     const cardStatusHeader = document.createElement('div');
     cardStatusHeader.className = 'gd-card-header';
-    const statusKicker = document.createElement('span');
-    statusKicker.className = 'gd-section-kicker';
-    statusKicker.textContent = '01 / SCOPE & STATE';
+    const statusKicker = document.createElement('div');
+    statusKicker.className = 'gd-section-tag-group';
+    statusKicker.innerHTML = `
+      <span class="gd-section-number">01</span>
+      <span class="gd-section-kicker">SCOPE & STATE</span>
+    `;
     const statusTitle = document.createElement('h2');
     statusTitle.className = 'gd-card-title';
     statusTitle.textContent = 'Protection Status & Scope';
@@ -285,9 +288,12 @@ export function renderProtectionSettings(
 
     const cardPolHeader = document.createElement('div');
     cardPolHeader.className = 'gd-card-header';
-    const polKicker = document.createElement('span');
-    polKicker.className = 'gd-section-kicker';
-    polKicker.textContent = '02 / RULES';
+    const polKicker = document.createElement('div');
+    polKicker.className = 'gd-section-tag-group';
+    polKicker.innerHTML = `
+      <span class="gd-section-number">02</span>
+      <span class="gd-section-kicker">INTERCEPTION RULES</span>
+    `;
     const polTitle = document.createElement('h2');
     polTitle.className = 'gd-card-title';
     polTitle.textContent = 'Action Protection Policies';
@@ -427,9 +433,12 @@ export function renderProtectionSettings(
 
     const cardSensHeader = document.createElement('div');
     cardSensHeader.className = 'gd-card-header';
-    const sensKicker = document.createElement('span');
-    sensKicker.className = 'gd-section-kicker';
-    sensKicker.textContent = '03 / THRESHOLDS';
+    const sensKicker = document.createElement('div');
+    sensKicker.className = 'gd-section-tag-group';
+    sensKicker.innerHTML = `
+      <span class="gd-section-number">03</span>
+      <span class="gd-section-kicker">RISK THRESHOLDS</span>
+    `;
     const sensTitle = document.createElement('h2');
     sensTitle.className = 'gd-card-title';
     sensTitle.textContent = 'Risk Sensitivity & Thresholds';
@@ -586,9 +595,12 @@ export function renderProtectionSettings(
 
     const cardStgHeader = document.createElement('div');
     cardStgHeader.className = 'gd-card-header';
-    const stgKicker = document.createElement('span');
-    stgKicker.className = 'gd-section-kicker';
-    stgKicker.textContent = '04 / TIMEOUTS';
+    const stgKicker = document.createElement('div');
+    stgKicker.className = 'gd-section-tag-group';
+    stgKicker.innerHTML = `
+      <span class="gd-section-number">04</span>
+      <span class="gd-section-kicker">STAGING & TIMEOUTS</span>
+    `;
     const stgTitle = document.createElement('h2');
     stgTitle.className = 'gd-card-title';
     stgTitle.textContent = 'Staging Mode & Timeouts';
@@ -659,9 +671,12 @@ export function renderProtectionSettings(
 
     const cardCtHeader = document.createElement('div');
     cardCtHeader.className = 'gd-card-header';
-    const ctKicker = document.createElement('span');
-    ctKicker.className = 'gd-section-kicker';
-    ctKicker.textContent = '05 / GUARDIANS';
+    const ctKicker = document.createElement('div');
+    ctKicker.className = 'gd-section-tag-group';
+    ctKicker.innerHTML = `
+      <span class="gd-section-number">05</span>
+      <span class="gd-section-kicker">GUARDIAN CONTACTS</span>
+    `;
     const ctTitle = document.createElement('h2');
     ctTitle.className = 'gd-card-title';
     ctTitle.textContent = 'Trusted Contact Relationship';
@@ -743,9 +758,12 @@ export function renderProtectionSettings(
 
     const cardDomHeader = document.createElement('div');
     cardDomHeader.className = 'gd-card-header';
-    const domKicker = document.createElement('span');
-    domKicker.className = 'gd-section-kicker';
-    domKicker.textContent = '06 / ALLOWLIST';
+    const domKicker = document.createElement('div');
+    domKicker.className = 'gd-section-tag-group';
+    domKicker.innerHTML = `
+      <span class="gd-section-number">06</span>
+      <span class="gd-section-kicker">DOMAIN ALLOWLIST</span>
+    `;
     const domTitle = document.createElement('h2');
     domTitle.className = 'gd-card-title';
     domTitle.textContent = 'Trusted Domains Allowlist';
@@ -836,9 +854,12 @@ export function renderProtectionSettings(
 
     const cardSpecHeader = document.createElement('div');
     cardSpecHeader.className = 'gd-card-header';
-    const specKicker = document.createElement('span');
-    specKicker.className = 'gd-section-kicker';
-    specKicker.textContent = '07 / REFERENCE';
+    const specKicker = document.createElement('div');
+    specKicker.className = 'gd-section-tag-group';
+    specKicker.innerHTML = `
+      <span class="gd-section-number">07</span>
+      <span class="gd-section-kicker">POLICY SPECIFICATIONS</span>
+    `;
     const specTitle = document.createElement('h2');
     specTitle.className = 'gd-card-title';
     specTitle.textContent = 'Policy Specifications';
