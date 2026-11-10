@@ -120,6 +120,38 @@ export function renderProtectionSettings(
     container.appendChild(header);
 
     // -------------------------------------------------------------------------
+    // Quick Section Anchor Navigation (Pills)
+    // -------------------------------------------------------------------------
+    const navBar = document.createElement('nav');
+    navBar.className = 'gd-settings-nav';
+    navBar.setAttribute('aria-label', 'Settings Sections');
+
+    const navItems = [
+      { id: 'card-overall-status', label: 'Status & Scope' },
+      { id: 'card-action-categories', label: 'Action Policies' },
+      { id: 'card-risk-sensitivity', label: 'Risk Sensitivity' },
+      { id: 'card-staging-mode', label: 'Timeouts' },
+      { id: 'card-trusted-contacts', label: 'Trusted Contacts' },
+      { id: 'card-trusted-domains', label: 'Allowlist' },
+      { id: 'card-policy-specifications', label: 'Specifications' },
+    ];
+
+    for (const item of navItems) {
+      const navBtn = document.createElement('button');
+      navBtn.type = 'button';
+      navBtn.className = 'gd-nav-pill';
+      navBtn.textContent = item.label;
+      navBtn.addEventListener('click', () => {
+        const target = container.querySelector(`#${item.id}`);
+        if (target && typeof (target as any).scrollIntoView === 'function') {
+          (target as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+      navBar.appendChild(navBtn);
+    }
+    container.appendChild(navBar);
+
+    // -------------------------------------------------------------------------
     // Banners: Feedback, Dirty State, Errors
     // -------------------------------------------------------------------------
     if (state.errorMessage) {
@@ -164,10 +196,18 @@ export function renderProtectionSettings(
 
     const cardStatusHeader = document.createElement('div');
     cardStatusHeader.className = 'gd-card-header';
+    const statusKicker = document.createElement('span');
+    statusKicker.className = 'gd-section-kicker';
+    statusKicker.textContent = '01 / SCOPE & STATE';
     const statusTitle = document.createElement('h2');
     statusTitle.className = 'gd-card-title';
     statusTitle.textContent = 'Protection Status & Scope';
+    const statusDesc = document.createElement('p');
+    statusDesc.className = 'gd-section-desc';
+    statusDesc.textContent = 'Runtime health and pilot boundary guarantees.';
+    cardStatusHeader.appendChild(statusKicker);
     cardStatusHeader.appendChild(statusTitle);
+    cardStatusHeader.appendChild(statusDesc);
     cardStatus.appendChild(cardStatusHeader);
 
     const statusBody = document.createElement('div');
@@ -245,20 +285,22 @@ export function renderProtectionSettings(
 
     const cardPolHeader = document.createElement('div');
     cardPolHeader.className = 'gd-card-header';
+    const polKicker = document.createElement('span');
+    polKicker.className = 'gd-section-kicker';
+    polKicker.textContent = '02 / RULES';
     const polTitle = document.createElement('h2');
     polTitle.className = 'gd-card-title';
     polTitle.textContent = 'Action Protection Policies';
+    const polDesc = document.createElement('p');
+    polDesc.className = 'gd-section-desc';
+    polDesc.textContent = 'Manage interception rules. Mandatory invariants remain locked.';
+    cardPolHeader.appendChild(polKicker);
     cardPolHeader.appendChild(polTitle);
+    cardPolHeader.appendChild(polDesc);
     cardPolicies.appendChild(cardPolHeader);
 
     const polBody = document.createElement('div');
     polBody.className = 'gd-card-body';
-
-    const polIntro = document.createElement('p');
-    polIntro.className = 'gd-card-intro';
-    polIntro.textContent =
-      'Configure response actions for supported categories. Mandatory safety rules cannot be relaxed.';
-    polBody.appendChild(polIntro);
 
     const rulesList = document.createElement('div');
     rulesList.className = 'gd-policy-rules-list';
@@ -385,20 +427,22 @@ export function renderProtectionSettings(
 
     const cardSensHeader = document.createElement('div');
     cardSensHeader.className = 'gd-card-header';
+    const sensKicker = document.createElement('span');
+    sensKicker.className = 'gd-section-kicker';
+    sensKicker.textContent = '03 / THRESHOLDS';
     const sensTitle = document.createElement('h2');
     sensTitle.className = 'gd-card-title';
     sensTitle.textContent = 'Risk Sensitivity & Thresholds';
+    const sensDesc = document.createElement('p');
+    sensDesc.className = 'gd-section-desc';
+    sensDesc.textContent = 'Score boundaries between 0 and 100 for risk evaluation.';
+    cardSensHeader.appendChild(sensKicker);
     cardSensHeader.appendChild(sensTitle);
+    cardSensHeader.appendChild(sensDesc);
     cardSens.appendChild(cardSensHeader);
 
     const sensBody = document.createElement('div');
     sensBody.className = 'gd-card-body';
-
-    const sensIntro = document.createElement('p');
-    sensIntro.className = 'gd-card-intro';
-    sensIntro.textContent =
-      'Risk scores range from 0 to 100. Select a sensitivity preset or set custom boundaries.';
-    sensBody.appendChild(sensIntro);
 
     // Preset selector buttons
     const presetRow = document.createElement('div');
@@ -542,10 +586,18 @@ export function renderProtectionSettings(
 
     const cardStgHeader = document.createElement('div');
     cardStgHeader.className = 'gd-card-header';
+    const stgKicker = document.createElement('span');
+    stgKicker.className = 'gd-section-kicker';
+    stgKicker.textContent = '04 / TIMEOUTS';
     const stgTitle = document.createElement('h2');
     stgTitle.className = 'gd-card-title';
     stgTitle.textContent = 'Staging Mode & Timeouts';
+    const stgDesc = document.createElement('p');
+    stgDesc.className = 'gd-section-desc';
+    stgDesc.textContent = 'Execution freeze windows and approval validity periods.';
+    cardStgHeader.appendChild(stgKicker);
     cardStgHeader.appendChild(stgTitle);
+    cardStgHeader.appendChild(stgDesc);
     cardStaging.appendChild(cardStgHeader);
 
     const stgBody = document.createElement('div');
@@ -554,7 +606,7 @@ export function renderProtectionSettings(
     const stgNotice = document.createElement('div');
     stgNotice.className = 'gd-settings-notice-box';
     stgNotice.innerHTML = `
-      <strong>🔒 Staging Mode:</strong>
+      <strong>🔒 Staging Mode Invariant:</strong>
       Destructive browser actions enter staging mode and freeze execution until your trusted contact confirms approval.
     `;
     stgBody.appendChild(stgNotice);
@@ -607,10 +659,18 @@ export function renderProtectionSettings(
 
     const cardCtHeader = document.createElement('div');
     cardCtHeader.className = 'gd-card-header';
+    const ctKicker = document.createElement('span');
+    ctKicker.className = 'gd-section-kicker';
+    ctKicker.textContent = '05 / GUARDIANS';
     const ctTitle = document.createElement('h2');
     ctTitle.className = 'gd-card-title';
     ctTitle.textContent = 'Trusted Contact Relationship';
+    const ctDesc = document.createElement('p');
+    ctDesc.className = 'gd-section-desc';
+    ctDesc.textContent = 'Configured contacts receiving out-of-band decision requests.';
+    cardCtHeader.appendChild(ctKicker);
     cardCtHeader.appendChild(ctTitle);
+    cardCtHeader.appendChild(ctDesc);
     cardContacts.appendChild(cardCtHeader);
 
     const ctBody = document.createElement('div');
@@ -683,22 +743,23 @@ export function renderProtectionSettings(
 
     const cardDomHeader = document.createElement('div');
     cardDomHeader.className = 'gd-card-header';
+    const domKicker = document.createElement('span');
+    domKicker.className = 'gd-section-kicker';
+    domKicker.textContent = '06 / ALLOWLIST';
     const domTitle = document.createElement('h2');
     domTitle.className = 'gd-card-title';
     domTitle.textContent = 'Trusted Domains Allowlist';
+    const domDesc = document.createElement('p');
+    domDesc.className = 'gd-section-desc';
+    domDesc.textContent = 'Internal hosts exempted from external navigation warnings.';
+    cardDomHeader.appendChild(domKicker);
     cardDomHeader.appendChild(domTitle);
+    cardDomHeader.appendChild(domDesc);
     cardDomains.appendChild(cardDomHeader);
 
     const domBody = document.createElement('div');
     domBody.className = 'gd-card-body';
 
-    const domIntro = document.createElement('p');
-    domIntro.className = 'gd-card-intro';
-    domIntro.textContent =
-      'Actions on trusted domains bypass navigation warnings. Staged approvals remain active for destructive actions.';
-    domBody.appendChild(domIntro);
-
-    // Domain Add Form
     const addDomainRow = document.createElement('div');
     addDomainRow.className = 'gd-inline-form-row';
 
@@ -775,10 +836,18 @@ export function renderProtectionSettings(
 
     const cardSpecHeader = document.createElement('div');
     cardSpecHeader.className = 'gd-card-header';
+    const specKicker = document.createElement('span');
+    specKicker.className = 'gd-section-kicker';
+    specKicker.textContent = '07 / REFERENCE';
     const specTitle = document.createElement('h2');
     specTitle.className = 'gd-card-title';
-    specTitle.textContent = 'Policy Explanations & Specifications';
+    specTitle.textContent = 'Policy Specifications';
+    const specDesc = document.createElement('p');
+    specDesc.className = 'gd-section-desc';
+    specDesc.textContent = 'Canonical schema parameters and security implications.';
+    cardSpecHeader.appendChild(specKicker);
     cardSpecHeader.appendChild(specTitle);
+    cardSpecHeader.appendChild(specDesc);
     cardSpecs.appendChild(cardSpecHeader);
 
     const specBody = document.createElement('div');
