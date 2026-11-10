@@ -90,6 +90,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const protBadge = document.createElement('span');
   protBadge.className = 'gd-protection-badge';
 
+  const protActions = document.createElement('div');
+  protActions.className = 'gd-protection-actions';
+
   if (props.isBackendUnavailable) {
     protectionCard.classList.add('status-offline');
     protIcon.appendChild(createIcon('alert-circle', 'gd-status-icon-offline'));
@@ -99,18 +102,17 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protDesc.textContent =
       'Live approval synchronization is paused. Last verified data may be stale.';
 
+    protActions.appendChild(protBadge);
+
     if (props.onRefresh) {
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
-      retryBtn.className = 'gd-btn-secondary gd-btn-compact';
+      retryBtn.className = 'gd-btn-retry-action';
       retryBtn.textContent = 'Retry connection';
       retryBtn.addEventListener('click', () => {
         props.onRefresh?.();
       });
-      const space = document.createElement('span');
-      space.textContent = ' ';
-      protDesc.appendChild(space);
-      protDesc.appendChild(retryBtn);
+      protActions.appendChild(retryBtn);
     }
   } else if (props.isMockService) {
     protectionCard.classList.add('status-mock');
@@ -120,6 +122,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protTitle.textContent = 'Protection Status: Development Fixture Active';
     protDesc.textContent =
       'Operating against an in-memory fixture service. Decisions are recorded in local memory and are not enforced on a production Guardrail cluster.';
+    protActions.appendChild(protBadge);
   } else if (props.profile?.isAuthenticated) {
     protectionCard.classList.add('status-operational');
     protIcon.appendChild(createIcon('shield-check', 'gd-status-icon-operational'));
@@ -128,6 +131,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protTitle.textContent = 'Protection Status: Live Guardrail Protection Active';
     protDesc.textContent =
       'Connected to authoritative Guardrail safety backend. Intercepted actions from your authorized ward are evaluated under strict separation of duties.';
+    protActions.appendChild(protBadge);
   } else {
     protectionCard.classList.add('status-standalone');
     protIcon.appendChild(createIcon('lock', 'gd-status-icon-standalone'));
@@ -136,13 +140,14 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protTitle.textContent = 'Protection Status: Standalone Preview Mode';
     protDesc.textContent =
       'Running in decoupled client preview. Connect with an authorized trusted contact session to evaluate real browser actions.';
+    protActions.appendChild(protBadge);
   }
 
   protTextGroup.appendChild(protTitle);
   protTextGroup.appendChild(protDesc);
   protHeader.appendChild(protIcon);
   protHeader.appendChild(protTextGroup);
-  protHeader.appendChild(protBadge);
+  protHeader.appendChild(protActions);
   protectionCard.appendChild(protHeader);
 
   // Invariant Posture Chips Row
