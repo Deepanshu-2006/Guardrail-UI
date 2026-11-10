@@ -66,7 +66,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
-    'Review approval requests recorded by the service. The dashboard cannot verify whether an action remains held in a browser tab.';
+    'Review and manage pending browsing approval requests from your contacts.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
@@ -119,7 +119,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   section.appendChild(header);
 
   // Stale Data Notice (Task 3: Displayed when cached requests exist but latest refresh failed)
-  const isStaleData = Boolean(props.isStale || (props.status === 'error' && props.requests.length > 0));
+  const isStaleData = Boolean((props.isStale || props.status === 'error') && props.requests.length > 0);
   if (isStaleData) {
     const staleBanner = document.createElement('div');
     staleBanner.className = 'gd-stale-banner';
@@ -128,7 +128,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const staleIcon = document.createElement('span');
     staleIcon.className = 'gd-error-icon';
     staleIcon.setAttribute('aria-hidden', 'true');
-    staleIcon.textContent = '⚠️';
 
     const staleText = document.createElement('span');
     staleText.className = 'gd-stale-text';
@@ -154,7 +153,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const icon = document.createElement('span');
     icon.className = 'gd-error-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '⚠️';
 
     const errorText = document.createElement('span');
     errorText.className = 'gd-error-text';
@@ -226,7 +224,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const icon = document.createElement('div');
     icon.className = 'gd-placeholder-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '⚠️';
 
     const pTitle = document.createElement('h2');
     pTitle.className = 'gd-placeholder-title';
@@ -267,7 +264,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const icon = document.createElement('div');
     icon.className = 'gd-placeholder-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '🛡️';
 
     const pTitle = document.createElement('h2');
     pTitle.className = 'gd-placeholder-title';
@@ -276,7 +272,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'The service returned no pending approval requests. This does not mean every browser action was evaluated; new requests will appear here after the dashboard synchronizes.';
+      'There are no pending approval requests waiting for review. When an action requires approval, it will appear here.';
 
     emptyPlaceholder.appendChild(icon);
     emptyPlaceholder.appendChild(pTitle);

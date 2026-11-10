@@ -373,7 +373,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const icon = document.createElement('div');
     icon.className = 'gd-placeholder-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '👆';
 
     const pTitle = document.createElement('h2');
     pTitle.className = 'gd-placeholder-title';
@@ -382,7 +381,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const pText = document.createElement('p');
     pText.className = 'gd-placeholder-text';
     pText.textContent =
-      'Select any pending request from the list on the left to inspect its security risk assessment, target website origin, and heuristic analysis.';
+      'Select any pending request from the list on the left to review action details and submit your approval decision.';
 
     placeholder.appendChild(icon);
     placeholder.appendChild(pTitle);

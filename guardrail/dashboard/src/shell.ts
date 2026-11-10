@@ -511,7 +511,7 @@ export class DashboardShell {
       status: this.state.pendingStatus,
       errorMessage: this.state.errorMessage,
       filters: this.state.pendingFilters,
-      isStale: this.isBackendUnavailable || (this.state.pendingStatus === 'error' && this.state.pendingRequests.length > 0),
+      isStale: (this.isBackendUnavailable || this.state.pendingStatus === 'error') && this.state.pendingRequests.length > 0,
       isBackendUnavailable: this.isBackendUnavailable,
       lastSynchronizedAt: this.lastSynchronizedAt,
       isRefreshing: this.isRefreshing,
