@@ -111,7 +111,7 @@ npm install
 npm test
 
 # Run complete end-to-end sync verification over live local HTTP
-node --loader ts-node/esm test/verify-complete-sync-flow.ts
+npm run test:verify-complete-sync
 
 # Build dashboard SPA for production
 npm run build

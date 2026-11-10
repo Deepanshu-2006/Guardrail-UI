@@ -63,14 +63,18 @@ In Prompt 1, a comprehensive release-readiness audit was performed across the en
   - Created and executed comprehensive integration test `test-complete-protection-workflow.ts` over a real local OS TCP socket.
   - Verified all 6 critical security rules, including zero auto-continuation, physical user confirmation requirement, raw TCP wire privacy, single-use token consumption, and context drift defense.
   - Documented browser architectural boundaries and operational limitations.
-- [ ] **Prompt 3: Release Packaging & Distribution Pipeline**
+- [x] **Prompt 3: Real Backend Integration & Authentication Configuration Verification**
+  - Verified extension, dashboard, and server contracts across 10 security & runtime checks.
+  - Confirmed OIDC token verifier, SQLite identity mapping, anti-enumeration, and role authorization.
+  - Audited environment variable separation, secret sanitization, and network failure modes.
+  - Fixed test command discrepancy in `docs/development/PRODUCT_AUDIT.md`.
+- [ ] **Prompt 4: Release Packaging & Distribution Pipeline**
   - Produce release archives for Extension, Dashboard, and Server.
   - Generate release manifest and SHA-256 checksums.
-- [ ] **Prompt 4: Security & Compliance Release Checklist**
+- [ ] **Prompt 5: Security & Compliance Release Checklist**
   - Finalize store permission justifications, privacy policy text, and software licenses.
-- [ ] **Prompt 5: Operational Runbooks & Administrator Manuals**
+- [ ] **Prompt 6: Operational Runbooks, Administrator Manuals & Final Sign-Off**
   - Document deployment guide, database backup runbook, and onboarding procedures.
-- [ ] **Prompt 6: Final Release Sign-Off & Roadmap Completion**
   - Final release report and formal release sign-off.
 
 ---
@@ -208,3 +212,51 @@ In Prompt 2, the complete supported protection and approval workflow was traced,
 ====================================================================
   [REAL OS TCP SERVER] Cleanly closed and stopped listening.
 ```
+
+---
+
+## Prompt 3 Execution Summary: Real Backend Integration & Authentication Configuration Verification
+
+### Overview
+In Prompt 3, the real backend integration, authentication subsystems, multi-tenant boundaries, and environment configurations across `guardrail/server`, `guardrail/extension`, and `guardrail/dashboard` were thoroughly evaluated across the 10 verification dimensions mandated by the release roadmap.
+
+### 10-Area Verification Findings
+
+| Check # | Verification Requirement | Implementation Architecture & Evidence | Status |
+| :--- | :--- | :--- | :--- |
+| **Check 1** | **API Contract Consistency** | `ApprovalApiClient`, `DashboardShell`, and `ApprovalApiRouter` share canonical schemas in `types/approval.ts` (`/api/v1/approval-requests`, `/api/v1/invitations`, `/api/v1/trusted-contacts`, `/health`, `/ready`). Verified over real local HTTP in `test-api-integration.ts` and `verify-complete-sync-flow.ts`. | **Verified** |
+| **Check 2** | **Authentication System & Token Handling** | Verified `OidcTokenVerifier` (`server/src/oidc-token-verifier.ts`) with `jose` RS256 signature checks, strict issuer/audience matching, expiration enforcement, and `SqliteIdentityStore` mapping from (issuer, subject) to canonical `usr_` actors. JTI token revocation verified. | **Verified** |
+| **Check 3** | **Server-Side Authorization Enforcement** | All mutations and queries require authenticated `AuthContext`. Unauthenticated requests yield HTTP 401. Requests, cancellations, and invitations enforce role constraints (`ActorRole.USER` vs `ActorRole.TRUSTED_CONTACT` vs `ActorRole.ADMIN`). | **Verified** |
+| **Check 4** | **Cross-Tenant Data Isolation (Client ID Tampering Defense)** | Authorization is strictly bound to the authenticated JWT identity, never client-submitted query parameters or body claims. Mallory attempting to fetch Alice's request or pending queue receives opaque HTTP 404 (anti-enumeration defense). | **Verified** |
+| **Check 5** | **Trusted Contact Permissions & Ownership** | Relationships are authoritatively checked via `SqliteTrustedContactRegistry`. If a ward revokes a contact, the reviewer's access to pending approvals and ability to submit decisions is immediately invalidated on the server. Self-approval is strictly prohibited (`SelfApprovalProhibitedError`). | **Verified** |
+| **Check 6** | **State Transition Enforcement** | Transitions follow declarative state machine matrices (`VALID_APPROVAL_TRANSITIONS`). Double decisions on terminal states (`APPROVED`, `REJECTED`, `EXPIRED`, `CANCELLED`) fail closed with HTTP 409 Conflict. | **Verified** |
+| **Check 7** | **Invalid/Expired/Missing Token Failure** | Missing, malformed, expired, tampered-signature, or audience-mismatched JWTs fail closed returning `undefined` / HTTP 401 without exposing stack traces or echoing tokens. | **Verified** |
+| **Check 8** | **Network Errors, Timeouts & Service Unavailability** | Verified against dead TCP ports (`ECONNREFUSED`): `ApprovalApiClient` returns `{ success: false, isNetworkError: true, error: { code: 'NETWORK_FAILURE' } }`. Dashboard sets `.status = 'error'`, notifies user with understandable plain copy, and never executes or unlocks held actions. | **Verified** |
+| **Check 9** | **Environment Variables & Zero Secrets** | Scanned all repository files: zero `.env` or secret files are tracked or committed. All 12 `GUARDRAIL_*` variables are documented in `guardrail/docs/environment-and-configuration-management.md`. Forbidden secret keys (`FORBIDDEN_SECRET_KEYS`) are rejected on startup. | **Verified** |
+| **Check 10** | **Environment Isolation (Dev vs. Pilot/Prod)** | `loadGuardrailServerConfig()` enforces strict environment rules: `GUARDRAIL_ENV=production` cannot be paired with non-deployment envs. In pilot/production, `GUARDRAIL_DB_PATH` must be an absolute path (no in-memory), HTTPS is strictly required (no unencrypted HTTP), and wildcard CORS origins (`*`) are strictly prohibited. Mock headers (`x-guardrail-service-type`) trigger a visible `[MOCK BACKEND]` badge in the dashboard. | **Verified** |
+
+### Mock vs. Real Service Classification
+
+To maintain reporting integrity, all tests are explicitly categorized by their runtime dependencies:
+
+| Test Suite | Module | Service Type | Runtime Environment |
+| :--- | :--- | :--- | :--- |
+| `test:api` (`test-api-integration.ts`) | Server | **Real Local HTTP + Real SQLite** | Node.js HTTP server on real TCP loopback with SQLite database; in-memory synthetic token verifier. |
+| `test:oidc` (`test-oidc-token-verifier.ts`) | Server | **Real Cryptographic Verification (Synthetic Keys)** | `jose` RS256 cryptographic verification using ephemeral RSA keypair and SQLite identity store. No live external IdP. |
+| `test:sqlite` (`test-sqlite-approval-repository.ts`) | Server | **Real SQLite Database** | Real SQLite database file testing persistence, concurrent transactions, and `secure_delete`. |
+| `test:privacy` (`test-privacy-data-protection.ts`) | Server | **Real SQLite Database + Real Wire** | SQLite database with `PRAGMA secure_delete = 1` and HTTP stream wire inspection for credential stripping. |
+| `test:reliability` (`test-failure-recovery-reliability.ts`) | Server | **Real SQLite + Mock Failure Injection** | SQLite connection sharing under rapid concurrency; mocked network failures for retry limits. |
+| `test:verify-complete-sync` | Dashboard | **Real Local HTTP + Ephemeral Router** | Real Node.js HTTP server on live TCP socket; ephemeral in-memory router with full event stream. |
+| `test:browser:website-mock` | Extension | **Mocked Browser APIs** | Synthetic DOM and Chrome extension API stubs for headless unit testing. |
+| `test:browser:form-download-mock` | Extension | **Mocked Browser APIs** | Synthetic DOM, `chrome.downloads`, and `chrome.runtime` stubs. |
+| `test:complete-workflow` | Extension | **Real Local HTTP + Real Extension State** | Real Node.js HTTP server over local TCP; real `InterceptionController`, `ApprovalService`, and `ContinuationManager`. |
+
+### Scope of Fixes Applied in Prompt 3
+- **Documentation Fix**: In `guardrail/docs/development/PRODUCT_AUDIT.md`, corrected the dashboard verification command from `node --loader ts-node/esm test/verify-complete-sync-flow.ts` to the supported npm script `npm run test:verify-complete-sync`.
+- **Pre-flight Audit**: Verified zero uncommitted secrets, zero hardcoded tokens, and 100% test passing rate across server, dashboard, and extension test suites.
+
+### Remaining Deployment & Environment Blockers
+1. **Live External OIDC Tenant**: Integration with a live external Identity Provider (e.g. Auth0, Okta, Keycloak) requires deployment credentials (`GUARDRAIL_OIDC_ISSUER`, `GUARDRAIL_OIDC_JWKS_URL`) in the pilot hosting environment.
+2. **Transactional Production Clustering**: The current SQLite persistence layer is optimized for single-instance pilot deployments. Distributed multi-instance scaling requires PostgreSQL or Redis locks for cluster-wide continuation CAS operations.
+3. **Pilot Extension Store Sideloading**: Browser extension requires developer mode sideloading or private web store publishing with exact `GUARDRAIL_API_BASE_URL` baked into the pilot bundle.
+
