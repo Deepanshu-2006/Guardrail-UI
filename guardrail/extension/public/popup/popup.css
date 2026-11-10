@@ -1,25 +1,27 @@
 /* =============================================================================
-   Guardrail Browser Extension - Refined Warm Theme Popup Styles
+   Guardrail Browser Extension - Pure Warm & Olive Popup Styles
+   Strict Theme: Canvas #EDE6D6 & Olive Palette (No White Boxes, No Extra Colors)
    ============================================================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  --gd-bg-canvas: #F5F3EA;
-  --gd-deep-olive: #243324;
-  --gd-accent-olive: #4A5D4A;
-  --gd-light-olive: #EDE6D6;
+  --gd-bg-canvas: #EDE6D6;
+  --gd-card-bg: rgba(39, 49, 33, 0.038);
+  --gd-card-border: rgba(39, 49, 33, 0.12);
+  --gd-card-border-subtle: rgba(39, 49, 33, 0.06);
 
-  --gd-text-primary: #1C1C1A;
-  --gd-text-secondary: #596052;
-  --gd-text-muted: #7D8471;
+  --gd-deep-olive: #273121;
+  --gd-accent-olive: #54683E;
+  --gd-light-olive: #DFE7D4;
 
-  --gd-status-active: #2E6F40;
-  --gd-status-warn: #B45309;
-  --gd-status-error: #C53030;
+  --gd-text-primary: #1C2417;
+  --gd-text-secondary: #54683E;
+  --gd-text-muted: #7E8774;
 
-  --gd-border-hairline: rgba(43, 62, 43, 0.16);
-  --gd-tint-subtle: rgba(43, 62, 43, 0.04);
+  --gd-olive-tint-soft: rgba(39, 49, 33, 0.05);
+  --gd-olive-tint-medium: rgba(39, 49, 33, 0.08);
+  --gd-olive-border-subtle: rgba(39, 49, 33, 0.16);
 
   --gd-font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --gd-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -33,7 +35,7 @@
 }
 
 body {
-  width: 350px;
+  width: 360px;
   background-color: var(--gd-bg-canvas);
   color: var(--gd-text-primary);
   font-family: var(--gd-font-sans);
@@ -47,20 +49,19 @@ body {
   display: flex;
   flex-direction: column;
   padding: 18px 18px 16px;
-  gap: 14px;
+  gap: 12px;
   background-color: var(--gd-bg-canvas);
 }
 
 /* -----------------------------------------------------------------------------
-   Header: Minimal Editorial Masthead (No Separator Lines)
+   Header: Brand Masthead & Badges
    ----------------------------------------------------------------------------- */
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 0;
-  border-bottom: none;
+  padding-bottom: 2px;
 }
 
 .brand {
@@ -70,26 +71,33 @@ body {
 }
 
 .logo-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 50% !important;
-  background-color: var(--gd-deep-olive);
-  color: var(--gd-light-olive);
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--gd-font-display);
-  font-weight: 700;
-  font-size: 15px;
-  box-shadow: 0 1px 3px rgba(36, 51, 36, 0.15);
   flex-shrink: 0;
+  border-radius: 10px;
+  background-color: rgba(39, 49, 33, 0.05);
+  padding: 2px;
+}
+
+.logo-badge .gd-brand-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
 }
 
 .title {
   font-family: var(--gd-font-display);
-  font-size: 17px;
+  font-size: 17.5px;
   font-weight: 700;
-  color: var(--gd-text-primary);
+  color: var(--gd-deep-olive);
   letter-spacing: -0.025em;
   line-height: 1.15;
 }
@@ -98,7 +106,7 @@ body {
   font-family: var(--gd-font-display);
   font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gd-accent-olive);
   line-height: 1.2;
@@ -113,26 +121,28 @@ body {
 
 .badge-env {
   font-family: var(--gd-font-display);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: 9999px !important;
-  background-color: rgba(43, 62, 43, 0.07);
+  background-color: var(--gd-olive-tint-soft);
   color: var(--gd-accent-olive);
-  border: 1px solid rgba(43, 62, 43, 0.18);
+  border: 1px solid var(--gd-olive-border-subtle);
   display: inline-flex;
   align-items: center;
 }
 
 .status-indicator {
   font-family: var(--gd-font-display);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: 9999px !important;
-  border: 1px solid transparent;
+  background-color: var(--gd-olive-tint-soft) !important;
+  border: 1px solid var(--gd-olive-border-subtle) !important;
+  color: var(--gd-deep-olive) !important;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   display: inline-flex;
@@ -146,21 +156,22 @@ body {
 .content {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 /* -----------------------------------------------------------------------------
-   Live Status Section (Pure Typography - Zero Boxes)
+   Card 1: Live Protection Status Card (Tinted Warm Stone)
    ----------------------------------------------------------------------------- */
 
 .status-card {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
+  background: var(--gd-card-bg);
+  border: 1px solid var(--gd-card-border);
+  border-radius: 14px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  transition: all 0.2s ease;
 }
 
 .status-card-header {
@@ -169,57 +180,72 @@ body {
   gap: 8px;
 }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
+.status-dot-ring {
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background-color: var(--gd-status-active);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(84, 104, 62, 0.12);
   flex-shrink: 0;
 }
 
-.status-card.warn .status-dot {
-  background-color: var(--gd-status-warn);
+.status-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background-color: var(--gd-accent-olive);
+  flex-shrink: 0;
 }
 
+.status-card.warn .status-dot-ring,
+.status-card.error .status-dot-ring {
+  background-color: rgba(39, 49, 33, 0.14);
+}
+
+.status-card.warn .status-dot,
 .status-card.error .status-dot {
-  background-color: var(--gd-status-error);
+  background-color: var(--gd-deep-olive);
 }
 
 .status-title {
   font-family: var(--gd-font-display);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--gd-text-primary);
+  color: var(--gd-deep-olive);
   letter-spacing: -0.01em;
 }
 
 .status-explanation {
   font-family: var(--gd-font-sans);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 450;
-  color: var(--gd-text-secondary);
-  line-height: 1.5;
-  margin-top: 2px;
+  color: var(--gd-text-muted);
+  line-height: 1.45;
+  padding-left: 22px;
 }
 
 /* -----------------------------------------------------------------------------
-   Pilot Setup Banner (Soft Tint, Clean Spacing)
+   Card 2: Pilot Setup Module with Warm Progress Bar
    ----------------------------------------------------------------------------- */
 
 .onboarding-banner {
-  background-color: rgba(43, 62, 43, 0.045);
-  border: 1px solid rgba(43, 62, 43, 0.12);
-  border-radius: 9999px !important;
-  padding: 8px 18px;
+  background: var(--gd-card-bg);
+  border: 1px solid var(--gd-card-border);
+  border-radius: 14px;
+  padding: 11px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transition: all 0.2s ease;
+}
+
+.onboarding-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.onboarding-banner.completed {
-  background-color: rgba(46, 111, 64, 0.05);
-  border-color: rgba(46, 111, 64, 0.2);
 }
 
 .onboarding-text {
@@ -230,67 +256,88 @@ body {
 
 .onboarding-title {
   font-family: var(--gd-font-display);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--gd-deep-olive);
+  color: var(--gd-accent-olive);
 }
 
 .onboarding-desc {
   font-family: var(--gd-font-sans);
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--gd-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gd-deep-olive);
+}
+
+.setup-progress-track {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(39, 49, 33, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.setup-progress-fill {
+  height: 100%;
+  background-color: var(--gd-deep-olive);
+  border-radius: 9999px;
+  transition: width 0.35s ease;
 }
 
 .btn-action {
   background-color: var(--gd-deep-olive);
-  color: #FFFFFF;
+  color: var(--gd-bg-canvas);
   border: none;
-  border-radius: 9999px !important;
-  padding: 6px 14px;
+  border-radius: 9999px;
+  padding: 6px 13px;
   font-family: var(--gd-font-display);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.16s ease;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(36, 51, 36, 0.12);
 }
 
 .btn-action:hover {
-  background-color: #1e2c1e;
+  background-color: #172014;
   transform: translateY(-1px);
 }
 
+.btn-action:active {
+  transform: translateY(0);
+}
+
 /* -----------------------------------------------------------------------------
-   Configuration Info (Zero Boxes, Clean Definition Grid)
+   Card 3: Configuration Info Details (Tinted Warm Grid)
    ----------------------------------------------------------------------------- */
 
 .info-card {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
+  background: var(--gd-card-bg);
+  border: 1px solid var(--gd-card-border);
+  border-radius: 14px;
+  padding: 5px 14px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin-top: 2px;
 }
 
 .card-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  padding: 3px 0;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--gd-card-border-subtle);
+}
+
+.card-row:last-child {
+  border-bottom: none;
 }
 
 .label {
   font-family: var(--gd-font-display);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -299,57 +346,98 @@ body {
 
 .value {
   font-family: var(--gd-font-mono);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--gd-text-primary);
+  color: var(--gd-deep-olive) !important;
   text-align: right;
 }
 
 /* -----------------------------------------------------------------------------
-   Protection Scope Boundary (Zero Boxes, Bold Typographic Hierarchy)
+   Card 4: Scope Boundary Card (Theme Colors Only)
    ----------------------------------------------------------------------------- */
 
 .boundary-card {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
+  background: var(--gd-card-bg);
+  border: 1px solid var(--gd-card-border);
+  border-radius: 14px;
+  padding: 11px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 2px;
+  gap: 8px;
+}
+
+.boundary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1px;
 }
 
 .boundary-title {
   font-family: var(--gd-font-display);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gd-accent-olive);
-  margin-bottom: 2px;
 }
 
 .boundary-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-family: var(--gd-font-sans);
   font-size: 12px;
   font-weight: 500;
-  color: var(--gd-text-secondary);
+  color: var(--gd-deep-olive);
 }
 
-.check-icon {
-  color: var(--gd-status-active);
-  font-weight: 700;
-  font-size: 13px;
+.boundary-text {
+  flex: 1;
 }
 
-.cross-icon {
-  color: #8C5817;
+.boundary-icon-wrapper {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
   font-weight: 700;
-  font-size: 12px;
+}
+
+.check-wrapper {
+  background-color: rgba(84, 104, 62, 0.12);
+  color: var(--gd-accent-olive);
+}
+
+.cross-wrapper {
+  background-color: rgba(39, 49, 33, 0.06);
+  color: var(--gd-text-muted);
+}
+
+.boundary-tag {
+  font-family: var(--gd-font-display);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 9999px;
+}
+
+.tag-protected {
+  background-color: var(--gd-olive-tint-soft);
+  color: var(--gd-deep-olive);
+  border: 1px solid var(--gd-olive-border-subtle);
+}
+
+.tag-bypassed {
+  background-color: transparent;
+  color: var(--gd-text-muted);
+  border: 1px solid var(--gd-card-border);
 }
 
 /* -----------------------------------------------------------------------------
@@ -359,8 +447,8 @@ body {
 .actions-section {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .btn {
@@ -368,8 +456,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 20px;
-  border-radius: 9999px !important;
+  padding: 0 18px;
+  border-radius: 9999px;
   font-family: var(--gd-font-display);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -383,34 +471,37 @@ body {
 .btn-primary {
   height: 42px;
   background-color: var(--gd-deep-olive);
-  color: #FFFFFF;
+  color: var(--gd-bg-canvas);
   border: none;
-  font-size: 12px;
-  box-shadow: 0 1px 3px rgba(36, 51, 36, 0.14);
+  font-size: 11.5px;
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.18);
 }
 
 .btn-primary:hover {
-  background-color: #1e2c1e;
+  background-color: #172014;
   transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(36, 51, 36, 0.18);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(36, 51, 36, 0.12);
 }
 
 .btn-secondary {
-  height: 40px;
-  background-color: transparent;
+  height: 38px;
+  background-color: var(--gd-card-bg);
   color: var(--gd-deep-olive);
-  border: 1px solid rgba(43, 62, 43, 0.24);
-  font-size: 11.5px;
+  border: 1px solid rgba(39, 49, 33, 0.2);
+  font-size: 11px;
 }
 
 .btn-secondary:hover {
-  background-color: rgba(43, 62, 43, 0.05);
-  border-color: rgba(43, 62, 43, 0.4);
+  background-color: rgba(39, 49, 33, 0.08);
+  border-color: rgba(39, 49, 33, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
 }
 
 .btn-full {
@@ -422,13 +513,21 @@ body {
 }
 
 /* -----------------------------------------------------------------------------
-   Footer: Discreet Architectural Disclaimer (No Separator Line)
+   Footer: Discreet Architectural Disclaimer
    ----------------------------------------------------------------------------- */
 
 .footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding-top: 2px;
-  border-top: none;
   text-align: center;
+}
+
+.footer-icon {
+  color: var(--gd-text-muted);
+  flex-shrink: 0;
 }
 
 .footer-text {

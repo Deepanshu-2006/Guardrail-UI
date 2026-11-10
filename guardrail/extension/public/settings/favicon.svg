@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="24" fill="#EDE6D6"/>
+  <!-- Top Protective Guardrail -->
+  <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" 
+        stroke="#273121" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Bottom Protective Guardrail -->
+  <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" 
+        stroke="#273121" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Protected Core Pill Button -->
+  <rect x="22" y="34" width="56" height="32" rx="16" fill="#273121"/>
+
+  <!-- Intercepted Safety Mark (x) -->
+  <path d="M 43 45 L 53 55 M 53 45 L 43 55" 
+        stroke="#EDE6D6" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Pointer Cursor arriving at boundary -->
+  <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" 
+        fill="#EDE6D6" stroke="#273121" stroke-width="3" stroke-linejoin="round"/>
+</svg>

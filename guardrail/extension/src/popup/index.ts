@@ -88,7 +88,7 @@ export function renderPopupStatus(
   if (serviceVal) {
     serviceVal.textContent = report.isMockService ? 'Mock (In-Memory)' : 'Live Backend';
     if (report.isMockService) {
-      serviceVal.style.color = '#B45309';
+      serviceVal.style.color = '#54683E';
     }
   }
 
@@ -110,20 +110,10 @@ export function renderPopupStatus(
   if (indicator) {
     indicator.textContent = report.status === 'ACTIVE' ? 'Active' : report.status;
     indicator.style.borderRadius = '9999px';
-    indicator.style.padding = '3px 10px';
-    if (report.status === 'ACTIVE') {
-      indicator.style.color = '#2E6F40';
-      indicator.style.borderColor = 'rgba(46, 111, 64, 0.25)';
-      indicator.style.backgroundColor = 'rgba(46, 111, 64, 0.08)';
-    } else if (report.status === 'DEGRADED') {
-      indicator.style.color = '#B45309';
-      indicator.style.borderColor = 'rgba(180, 83, 9, 0.25)';
-      indicator.style.backgroundColor = 'rgba(180, 83, 9, 0.08)';
-    } else {
-      indicator.style.color = '#C53030';
-      indicator.style.borderColor = 'rgba(197, 48, 48, 0.25)';
-      indicator.style.backgroundColor = 'rgba(197, 48, 48, 0.08)';
-    }
+    indicator.style.padding = '3px 9px';
+    indicator.style.color = '#273121';
+    indicator.style.borderColor = 'rgba(39, 49, 33, 0.18)';
+    indicator.style.backgroundColor = 'rgba(39, 49, 33, 0.06)';
   }
 
   if (statusCard) {
@@ -147,18 +137,24 @@ export function renderPopupStatus(
   const onboardingTitle = document.getElementById('onboarding-status-title');
   const onboardingDesc = document.getElementById('onboarding-status-desc');
   const btnOpenOnboarding = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
+  const progressFill = document.getElementById('setup-progress-fill');
 
   if (onboardingState && onboardingState.isCompleted) {
     if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
     if (onboardingTitle) onboardingTitle.textContent = 'Pilot Setup';
     if (onboardingDesc) onboardingDesc.textContent = 'Complete ✓';
     if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Review →';
+    if (progressFill) progressFill.style.width = '100%';
   } else {
     const count = onboardingState?.completedSteps.length ?? 0;
     if (onboardingBanner) onboardingBanner.className = 'onboarding-banner';
     if (onboardingTitle) onboardingTitle.textContent = 'Pilot Setup';
     if (onboardingDesc) onboardingDesc.textContent = `${count} of 7 steps`;
     if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Setup →';
+    if (progressFill) {
+      const pct = Math.max(8, Math.round((count / 7) * 100));
+      progressFill.style.width = `${pct}%`;
+    }
   }
 }
 
