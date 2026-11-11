@@ -15,6 +15,7 @@ import {
   ViewStatus,
 } from '../types.js';
 import { renderRelationshipManagementSection } from './relationships.js';
+import { setAnimatedHeading } from './icons.js';
 
 export interface SettingsProps {
   profile: TrustedContactProfile | null;
@@ -66,7 +67,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const title = document.createElement('h1');
   title.id = 'settings-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Settings';
+  setAnimatedHeading(title, 'Settings');
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';

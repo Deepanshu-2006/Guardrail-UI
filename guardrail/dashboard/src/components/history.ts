@@ -29,6 +29,7 @@
 import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../types.js';
 import { formatTimestamp, renderRequestDetailView } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
+import { setAnimatedHeading } from './icons.js';
 
 export interface DecisionHistoryProps {
   /** Authoritative historical / resolved requests */
@@ -90,7 +91,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const title = document.createElement('h1');
   title.id = 'history-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Decision History';
+  setAnimatedHeading(title, 'Decision History');
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';

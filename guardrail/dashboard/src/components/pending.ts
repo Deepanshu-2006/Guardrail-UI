@@ -11,6 +11,7 @@
 import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../types.js';
 import { formatExpirationInfo, isRequestExpired, renderRequestDetailView } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
+import { setAnimatedHeading } from './icons.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
@@ -61,7 +62,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const title = document.createElement('h1');
   title.id = 'pending-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Pending Approval Requests';
+  setAnimatedHeading(title, 'Pending Approval Requests');
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';

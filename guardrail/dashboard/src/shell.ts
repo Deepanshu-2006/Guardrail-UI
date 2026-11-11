@@ -84,6 +84,10 @@ export class DashboardShell {
   private lastAppliedHistorySeq: number = 0;
   private activeHistoryFetchPromise: Promise<void> | null = null;
 
+  // Track initial mount so entrance animations (like sidebar slide) only run once
+  private isEntryAnimationActive: boolean = true;
+  private entryTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
       const el = document.querySelector<HTMLElement>(options.container);
@@ -165,6 +169,18 @@ export class DashboardShell {
     for (const req of initialHistory) {
       this.setCachedRequest(req.id, req);
     }
+
+    // Expire initial entry state after cinematic animation completes
+    this.entryTimer = setTimeout(() => {
+      this.isEntryAnimationActive = false;
+      this.entryTimer = null;
+      if (this.appWrapper) {
+        this.appWrapper.classList.remove('gd-initial-load');
+      }
+      if (this.sidebarEl) {
+        this.sidebarEl.classList.remove('gd-sidebar-entry');
+      }
+    }, 1200);
 
     this.init();
   }
@@ -343,7 +359,9 @@ export class DashboardShell {
 
     // App Wrapper
     this.appWrapper = document.createElement('div');
-    this.appWrapper.className = 'gd-dashboard-app';
+    this.appWrapper.className = this.isEntryAnimationActive
+      ? 'gd-dashboard-app gd-initial-load'
+      : 'gd-dashboard-app';
 
     // 1. Sidebar (Navigation + Account Profile)
     this.sidebarEl = renderNavigation({
@@ -352,6 +370,9 @@ export class DashboardShell {
       onViewChange: (view) => this.setActiveView(view),
     });
     this.sidebarEl.id = 'gd-primary-sidebar';
+    if (this.isEntryAnimationActive) {
+      this.sidebarEl.classList.add('gd-sidebar-entry');
+    }
 
     const accountArea = renderAccountArea({
       profile: this.state.contactProfile,
@@ -623,6 +644,12 @@ export class DashboardShell {
    * Switches the active dashboard section.
    */
   public setActiveView(view: DashboardView, updateHash: boolean = true): void {
+    this.isEntryAnimationActive = false;
+    if (this.entryTimer) {
+      clearTimeout(this.entryTimer);
+      this.entryTimer = null;
+    }
+
     if (this.isMobileSidebarOpen) {
       this.toggleMobileSidebar(false);
     }
@@ -1947,6 +1974,11 @@ export class DashboardShell {
   public destroy(): void {
     this.isDestroyed = true;
     this.stopPolling();
+
+    if (this.entryTimer) {
+      clearTimeout(this.entryTimer);
+      this.entryTimer = null;
+    }
 
     if (this.hashChangeHandler && typeof window !== 'undefined') {
       window.removeEventListener('hashchange', this.hashChangeHandler);

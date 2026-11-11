@@ -74,3 +74,27 @@ export function createIcon(name: IconName, extraClass?: string): HTMLElement {
   span.innerHTML = ICONS[name] || '';
   return span;
 }
+
+/**
+ * Applies character-by-character animation spans to heading elements.
+ * Preserves textContent and sets aria-label for accessibility and testing.
+ */
+export function setAnimatedHeading(element: HTMLElement, text: string): void {
+  element.textContent = '';
+  element.setAttribute('aria-label', text);
+  for (let i = 0; i < text.length; i++) {
+    const span = document.createElement('span');
+    span.className = 'gd-char';
+    const styleObj = span.style as Record<string, unknown> | CSSStyleDeclaration | undefined;
+    if (styleObj && typeof (styleObj as CSSStyleDeclaration).setProperty === 'function') {
+      (styleObj as CSSStyleDeclaration).setProperty('--char-idx', String(i));
+    } else if (styleObj) {
+      (styleObj as Record<string, unknown>)['--char-idx'] = String(i);
+    }
+    if (typeof span.setAttribute === 'function') {
+      span.setAttribute('style', `--char-idx: ${i};`);
+    }
+    span.textContent = text[i];
+    element.appendChild(span);
+  }
+}

@@ -15,7 +15,7 @@
  */
 
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
-import { createIcon } from './icons.js';
+import { createIcon, setAnimatedHeading } from './icons.js';
 
 export interface OverviewProps {
   profile: TrustedContactProfile | null;
@@ -53,7 +53,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const title = document.createElement('h1');
   title.id = 'overview-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Overview';
+  setAnimatedHeading(title, 'Overview');
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
