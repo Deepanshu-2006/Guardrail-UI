@@ -55,8 +55,11 @@ export interface WarningModalProps {
   /** Initial view state: warning (default) or loading */
   initialState?: WarningModalViewState;
 
-  /** Callback when user clicks Continue */
+  /** Callback when user clicks Request Approval / Continue */
   onContinue?: () => void;
+
+  /** Callback when user clicks Request Approval */
+  onRequestApproval?: () => void;
 
   /** Callback when user clicks Cancel */
   onCancel?: () => void;
@@ -890,10 +893,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
   sectionD.appendChild(reasonsListEl);
   body.appendChild(sectionD);
 
-  // AREA E — USER GUIDANCE
+  // AREA E — USER GUIDANCE (Caretaker Approval Note)
   const guidanceNote = document.createElement('p');
   guidanceNote.className = 'gr-guidance-note';
-  guidanceNote.textContent = 'Only continue if you recognize and trust this destination.';
+  guidanceNote.textContent = 'To continue to this external website, request approval from your designated caretaker, or cancel to safely leave.';
   body.appendChild(guidanceNote);
 
   // Hidden testing fixtures (Preserving strict assertions of test suite)
@@ -991,14 +994,15 @@ export function showWarningModal(props: WarningModalProps): () => void {
   detailsEl.appendChild(diagBody);
   body.appendChild(detailsEl);
 
-  // AREA 4: ACTION AREA
+  // AREA 4: ACTION AREA (Two Options: Cancel the Action and Leave | Request Approval)
   const footer = document.createElement('div');
   footer.className = 'gr-footer';
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
   cancelBtn.className = 'gr-btn gr-btn-cancel';
-  cancelBtn.textContent = 'Cancel & Stay';
+  cancelBtn.textContent = 'Cancel & Leave';
+  cancelBtn.setAttribute('title', 'Cancel this action and leave the page');
   cancelBtn.addEventListener('click', () => {
     dismissWarningModal();
     if (props.onCancel) {
@@ -1006,19 +1010,22 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
   });
 
-  const continueBtn = document.createElement('button');
-  continueBtn.type = 'button';
-  continueBtn.className = 'gr-btn gr-btn-continue';
-  continueBtn.textContent = 'Continue Anyway';
-  continueBtn.addEventListener('click', () => {
+  const requestApprovalBtn = document.createElement('button');
+  requestApprovalBtn.type = 'button';
+  requestApprovalBtn.className = 'gr-btn gr-btn-continue';
+  requestApprovalBtn.textContent = 'Request Approval';
+  requestApprovalBtn.setAttribute('title', 'Request approval from your caretaker');
+  requestApprovalBtn.addEventListener('click', () => {
     dismissWarningModal();
-    if (props.onContinue) {
+    if (props.onRequestApproval) {
+      props.onRequestApproval();
+    } else if (props.onContinue) {
       props.onContinue();
     }
   });
 
-  // Secondary action first on left, Primary safer action on right
-  footer.appendChild(continueBtn);
+  // Secondary/outline action on left, primary/safer action on right
+  footer.appendChild(requestApprovalBtn);
   footer.appendChild(cancelBtn);
 
   // Assemble Card
@@ -1043,7 +1050,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     window.addEventListener('keydown', activeEscapeHandler);
 
     // Tab Focus Trap
-    const focusableElements = [cancelBtn, continueBtn, closeBtn, summaryToggle];
+    const focusableElements = [cancelBtn, requestApprovalBtn, closeBtn, summaryToggle];
     activeTabTrapHandler = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
       const activeEl = shadow.activeElement || document.activeElement;

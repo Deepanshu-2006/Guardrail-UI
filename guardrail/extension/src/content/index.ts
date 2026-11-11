@@ -361,16 +361,35 @@ function bootstrap(): void {
           break;
 
         case ResponseAction.WARN:
-          console.log(`[Guardrail Response] WARN: Displaying Guardrail warning UI.`);
+          console.log(`[Guardrail Response] WARN: Displaying Guardrail warning UI with Caretaker Approval option.`);
           showWarningModal({
             action,
             risk,
             decision,
-            onContinue: () => {
-              console.log(`[Guardrail UI] User clicked Continue on warning for action: ${action.id}`);
+            onRequestApproval: () => {
+              console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
+              // Build staging context if not already set, and dispatch approval request
+              try {
+                const intent = createApprovalRequestIntent({
+                  actionId: action.id,
+                  actionType: action.type,
+                  riskScore: risk.score,
+                  riskLevel: risk.riskLevel,
+                  domain: action.page?.domain || window.location.hostname,
+                  url: action.page?.url || window.location.href,
+                  targetLabel: action.element?.visibleText || action.page?.domain || 'External Navigation',
+                  decision: decision.response,
+                  timestamp: new Date().toISOString(),
+                });
+                dispatchApprovalRequestToBackground(intent).catch(() => {
+                  console.warn('[Guardrail Content] Background dispatch failed.');
+                });
+              } catch (appErr) {
+                console.warn('[Guardrail UI] Failed to dispatch approval request intent.', appErr);
+              }
             },
             onCancel: () => {
-              console.log(`[Guardrail UI] User clicked Cancel on warning for action: ${action.id}`);
+              console.log(`[Guardrail UI] User clicked Cancel & Leave for action: ${action.id}`);
             },
           });
           break;

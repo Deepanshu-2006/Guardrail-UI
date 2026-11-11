@@ -598,14 +598,16 @@ async function runWarningUITests() {
     let shadow = mockDoc.getElementById(HOST_ELEMENT_ID)!.shadowRoot!;
     let cancelBtn = shadow.querySelector('.gr-btn-cancel');
     assert(
-      cancelBtn?.textContent === 'Cancel & Stay' || cancelBtn?.textContent === 'Cancel (Leave Page)',
+      cancelBtn?.textContent === 'Cancel & Leave' ||
+        cancelBtn?.textContent === 'Cancel & Stay' ||
+        cancelBtn?.textContent === 'Cancel (Leave Page)',
       'Cancel button copy is explicit and clear'
     );
     cancelBtn?.click();
     assert(cancelCalled, 'Cancel callback invoked on cancel button click');
     assert(!isWarningModalActive(), 'Modal dismissed on cancel button click');
 
-    // B: Continue Button
+    // B: Continue / Request Approval Button
     cancelCalled = false;
     continueCalled = false;
     showWarningModal({
@@ -619,7 +621,9 @@ async function runWarningUITests() {
     shadow = mockDoc.getElementById(HOST_ELEMENT_ID)!.shadowRoot!;
     let continueBtn = shadow.querySelector('.gr-btn-continue');
     assert(
-      continueBtn?.textContent === 'Continue Anyway' || continueBtn?.textContent === 'Continue at My Own Risk',
+      continueBtn?.textContent === 'Request Approval' ||
+        continueBtn?.textContent === 'Continue Anyway' ||
+        continueBtn?.textContent === 'Continue at My Own Risk',
       'Continue button copy makes risk consequential'
     );
     continueBtn?.click();
