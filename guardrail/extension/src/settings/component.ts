@@ -161,7 +161,12 @@ export function renderProtectionSettings(
       }
     };
 
-    const setActiveNav = (activeId: string) => {
+    let currentActiveNavId: string = navItems[0].id;
+    const setActiveNav = (activeId: string, force = false) => {
+      if (!force && activeId === currentActiveNavId) {
+        return;
+      }
+      currentActiveNavId = activeId;
       let activeBtn: any = null;
       for (const item of navButtons) {
         if (item.id === activeId) {
@@ -197,8 +202,17 @@ export function renderProtectionSettings(
       }
     };
 
-    let isClickScrolling = false;
-    let clickScrollTimer: any = null;
+    let clickedTargetId: string | null = null;
+    let scrollDebounceTimer: any = null;
+    let safetyTimeoutTimer: any = null;
+
+    const unlockClickScroll = () => {
+      if (clickedTargetId !== null) {
+        clickedTargetId = null;
+        if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
+        if (safetyTimeoutTimer) clearTimeout(safetyTimeoutTimer);
+      }
+    };
 
     for (let i = 0; i < navItems.length; i++) {
       const item = navItems[i];
@@ -209,18 +223,22 @@ export function renderProtectionSettings(
       navButtons.push({ id: item.id, btn: navBtn });
 
       navBtn.addEventListener('click', () => {
-        isClickScrolling = true;
-        if (clickScrollTimer) clearTimeout(clickScrollTimer);
-        setActiveNav(item.id);
+        // Firmly lock to clicked section so scrolling never causes the pill to jump back & forth
+        clickedTargetId = item.id;
+        if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
+        if (safetyTimeoutTimer) clearTimeout(safetyTimeoutTimer);
+
+        setActiveNav(item.id, true);
 
         const target = container.querySelector(`#${item.id}`);
         if (target && typeof (target as any).scrollIntoView === 'function') {
           (target as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        clickScrollTimer = setTimeout(() => {
-          isClickScrolling = false;
-        }, 850);
+        // Safety timeout to ensure lock is always released even if no scroll events occur
+        safetyTimeoutTimer = setTimeout(() => {
+          clickedTargetId = null;
+        }, 1800);
       });
       navBar.appendChild(navBtn);
     }
@@ -229,11 +247,20 @@ export function renderProtectionSettings(
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       let scrollRafId: number | null = null;
       const onWindowScroll = () => {
-        if (isClickScrolling) return;
+        if (clickedTargetId !== null) {
+          // Keep active nav strictly locked to the clicked target while smooth scrolling is active.
+          // Reset debounce timer on every scroll frame until scroll has fully stopped.
+          if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
+          scrollDebounceTimer = setTimeout(() => {
+            clickedTargetId = null;
+          }, 180);
+          return;
+        }
+
         if (scrollRafId !== null) return;
         scrollRafId = window.requestAnimationFrame(() => {
           scrollRafId = null;
-          if (isClickScrolling) return;
+          if (clickedTargetId !== null) return;
           const offset = 180;
           let currentActiveId = navItems[0].id;
           const docEl = document.documentElement;
@@ -258,13 +285,18 @@ export function renderProtectionSettings(
 
       window.addEventListener('scroll', onWindowScroll, { passive: true });
       if ('onscrollend' in window) {
-        window.addEventListener('scrollend', () => {
-          if (isClickScrolling) {
-            if (clickScrollTimer) clearTimeout(clickScrollTimer);
-            isClickScrolling = false;
-          }
-        }, { passive: true });
+        window.addEventListener('scrollend', unlockClickScroll, { passive: true });
       }
+
+      // If user manually interrupts with mousewheel, touch, or keyboard scrolling, unlock immediately
+      window.addEventListener('wheel', unlockClickScroll, { passive: true });
+      window.addEventListener('touchmove', unlockClickScroll, { passive: true });
+      window.addEventListener('keydown', (e: any) => {
+        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e?.key)) {
+          unlockClickScroll();
+        }
+      }, { passive: true });
+
       window.addEventListener('resize', () => {
         const activeItem = navButtons.find((b) => b.btn.classList.contains('active'));
         if (activeItem) {
@@ -1072,16 +1104,46 @@ export function renderProtectionSettings(
 
       const summary = document.createElement('summary');
       summary.className = 'gd-spec-summary';
-      summary.innerHTML = `<strong>${spec.title}</strong> <span class="gd-mono gd-spec-key">(${spec.key})</span> ${
-        spec.isImmutableInvariant ? '<span class="gd-badge-lock">🔒 Immutable Invariant</span>' : ''
-      }`;
+      summary.innerHTML = `
+        <div class="gd-spec-header-lead">
+          <span class="gd-spec-title">${spec.title}</span>
+          <code class="gd-mono gd-spec-key gd-spec-key-badge">${spec.key}</code>
+          ${
+            spec.isImmutableInvariant
+              ? '<span class="gd-badge-lock gd-spec-badge-invariant"><svg class="gd-spec-lock-icon" viewBox="0 0 16 16" width="11" height="11" fill="currentColor"><path d="M4 6V4a4 4 0 0 1 8 0v2h1a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h1zm2 0h4V4a2 2 0 1 0-4 0v2z"/></svg> Immutable Invariant</span>'
+              : ''
+          }
+        </div>
+        <span class="gd-spec-chevron" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </span>
+      `;
 
       const content = document.createElement('div');
       content.className = 'gd-spec-content';
       content.innerHTML = `
-        <p><strong>Description:</strong> ${spec.description}</p>
-        <p><strong>Security Implication:</strong> ${spec.securityImplication}</p>
-        <p class="gd-mono gd-text-muted">Type: ${spec.valueType} | Default: ${JSON.stringify(spec.defaultValue)}</p>
+        <div class="gd-spec-body-grid">
+          <div class="gd-spec-field">
+            <span class="gd-spec-field-kicker">Description</span>
+            <p class="gd-spec-field-text">${spec.description}</p>
+          </div>
+          <div class="gd-spec-field">
+            <span class="gd-spec-field-kicker">Security Implication</span>
+            <p class="gd-spec-field-text">${spec.securityImplication}</p>
+          </div>
+          <div class="gd-spec-meta-bar">
+            <div class="gd-spec-meta-cell">
+              <span class="gd-spec-meta-label">Data Type</span>
+              <span class="gd-spec-meta-val">${spec.valueType}</span>
+            </div>
+            <div class="gd-spec-meta-cell">
+              <span class="gd-spec-meta-label">Default Value</span>
+              <span class="gd-spec-meta-val">${JSON.stringify(spec.defaultValue)}</span>
+            </div>
+          </div>
+        </div>
       `;
 
       specItem.appendChild(summary);
