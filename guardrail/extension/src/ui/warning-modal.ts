@@ -222,26 +222,26 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(30, 36, 26, 0.65);
+      background: rgba(30, 36, 26, 0.55);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px;
       z-index: 2147483647;
       animation: grFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    /* Card: Warm parchment main surface (#F7F4EC) with refined border */
+    /* Modal Dialog: Pure warm parchment sheet, zero boxes inside */
     .gr-card {
       background: #F7F4EC;
       border: 1px solid rgba(39, 49, 33, 0.16);
       border-radius: 16px;
       width: 100%;
-      max-width: 480px;
-      box-shadow: 0 20px 48px -10px rgba(39, 49, 33, 0.28),
-                  0 4px 14px -2px rgba(39, 49, 33, 0.12);
+      max-width: 440px;
+      box-shadow: 0 24px 60px -12px rgba(39, 49, 33, 0.25),
+                  0 4px 16px -2px rgba(39, 49, 33, 0.08);
       font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Segoe UI", Roboto, sans-serif;
       color: #273121;
       overflow: hidden;
@@ -250,11 +250,11 @@ export function showWarningModal(props: WarningModalProps): () => void {
       outline: none;
     }
 
-    /* Header: Deep olive background (#273121) with warm text */
+    /* Masthead: Clean, Typographic, Zero Boxes */
     .gr-header {
-      padding: 16px 22px;
-      background: #273121;
-      border-bottom: 1px solid rgba(237, 230, 214, 0.1);
+      padding: 20px 24px 16px;
+      background: transparent;
+      border-bottom: 1px solid rgba(39, 49, 33, 0.08);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -263,18 +263,18 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-header-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .gr-brand {
       display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 8px;
       font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 700;
-      font-size: 13.5px;
+      font-size: 13px;
       letter-spacing: -0.01em;
-      color: #EDE6D6;
+      color: #273121;
     }
 
     .gr-brand-icon {
@@ -282,150 +282,142 @@ export function showWarningModal(props: WarningModalProps): () => void {
       line-height: 1;
     }
 
+    /* Category Pill: Pure quiet typography, no background box */
     .gr-pill {
       font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.08em;
-      padding: 3px 9px;
-      border-radius: 4px;
-      background: rgba(217, 119, 6, 0.22);
-      border: 1px solid rgba(217, 119, 6, 0.45);
-      color: #FDE68A;
+      letter-spacing: 0.06em;
+      color: #B45309;
       text-transform: uppercase;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
     }
 
     .gr-btn-close {
       background: transparent;
-      border: 1px solid transparent;
-      color: rgba(237, 230, 214, 0.65);
-      font-size: 14px;
+      border: none;
+      color: #717E68;
+      font-size: 15px;
       line-height: 1;
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 6px;
       cursor: pointer;
       padding: 0;
-      transition: all 0.15s ease;
+      transition: color 0.15s ease;
     }
 
     .gr-btn-close:hover, .gr-btn-close:focus-visible {
-      background: rgba(237, 230, 214, 0.12);
-      color: #FFFFFF;
+      color: #273121;
       outline: none;
     }
 
+    /* Content Body: Pure typographic flow, zero colored boxes */
     .gr-body {
-      padding: 24px 26px;
-      max-height: 75vh;
+      padding: 24px;
+      max-height: 72vh;
       overflow-y: auto;
     }
 
-    /* Minimalist Warning Title & Domain Badge */
-    .gr-title-group {
-      margin-bottom: 16px;
-    }
-
-    .gr-title {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 21px;
-      font-weight: 700;
-      color: #1E261B;
-      letter-spacing: -0.02em;
-      line-height: 1.25;
-      margin-bottom: 8px;
-    }
-
-    .gr-domain-callout {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: #55624C;
-      margin-bottom: 16px;
-    }
-
-    .gr-domain-header {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .gr-domain-label {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: #55624C;
-    }
-
-    .gr-domain-value {
-      color: #1E261B;
-      font-weight: 700;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12.5px;
-      background: rgba(39, 49, 33, 0.08);
-      border: 1px solid rgba(39, 49, 33, 0.14);
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-
-    .gr-source-indicator {
-      display: none; /* Keep clean & uncluttered */
-    }
-
-    .gr-summary {
-      font-size: 13.5px;
-      color: #4A5642;
-      line-height: 1.5;
-      margin-bottom: 18px;
-    }
-
-    /* Subtle Notice Banner */
+    /* Advisory Notice: Hairline typography, no box */
     .gr-action-status-banner {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      padding: 10px 14px;
-      border-radius: 6px;
-      margin-bottom: 18px;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .gr-status-advisory {
-      background: rgba(217, 119, 6, 0.08);
-      border: 1px solid rgba(217, 119, 6, 0.22);
-      color: #92400E;
-    }
-
-    .gr-status-held {
-      background: rgba(220, 38, 38, 0.08);
-      border: 1px solid rgba(220, 38, 38, 0.22);
-      color: #991B1B;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #717E68;
+      margin-bottom: 20px;
+      padding: 0 !important;
+      background: transparent !important;
+      border: none !important;
     }
 
     .gr-status-headline {
       font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 700;
-      font-size: 12px;
-      letter-spacing: 0.02em;
+      font-size: 11.5px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #B45309;
+      margin-right: 4px;
     }
 
     .gr-status-subtext {
-      color: inherit;
-      opacity: 0.9;
+      color: #55624C;
     }
 
-    /* Crisp Concise Reasons */
+    /* Main Headline */
+    .gr-title {
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1E261B;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    /* Website Domain: Typographic label, no box */
+    .gr-domain-callout {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 18px;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+
+    .gr-domain-header {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .gr-domain-icon {
+      display: none;
+    }
+
+    .gr-domain-label {
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #717E68;
+    }
+
+    .gr-domain-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #273121;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+
+    .gr-source-indicator {
+      display: none;
+    }
+
+    .gr-summary {
+      font-size: 14px;
+      color: #4A5642;
+      line-height: 1.55;
+      margin-bottom: 22px;
+    }
+
+    /* Detected Characteristics: Clean typographic list */
     .gr-section-title {
       font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #55624C;
+      color: #717E68;
       margin-bottom: 8px;
     }
 
@@ -434,56 +426,66 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
+      padding: 0 !important;
     }
 
     .gr-reason-item {
-      font-size: 12.5px;
-      line-height: 1.4;
+      font-size: 13px;
+      line-height: 1.45;
       color: #273121;
-      background: rgba(39, 49, 33, 0.04);
-      border-left: 3px solid #D97706;
-      padding: 7px 12px;
-      border-radius: 0 4px 4px 0;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 0 0 14px !important;
+      position: relative;
     }
 
+    .gr-reason-item::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #D97706;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    /* Why Considered Risky: Clean prose paragraph */
     .gr-risk-box {
-      background: rgba(39, 49, 33, 0.04);
-      border: 1px solid rgba(39, 49, 33, 0.08);
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
-      font-size: 12.5px;
-      line-height: 1.45;
-      color: #3B4634;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #4A5642;
     }
 
     .gr-risk-box-title {
       font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 700;
-      font-size: 11.5px;
-      letter-spacing: 0.02em;
-      color: #92400E;
-      margin-bottom: 4px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #717E68;
+      margin-bottom: 6px;
     }
 
     .gr-guidance-list {
-      display: none; /* Omit duplicate noise */
+      display: none;
     }
 
     .gr-continuation-disclaimer {
-      font-size: 11.5px;
+      font-size: 12px;
       color: #717E68;
-      margin-bottom: 6px;
-      line-height: 1.4;
+      line-height: 1.45;
+      margin-bottom: 8px;
     }
 
-    /* Technical Diagnostics: Quiet accordion */
+    /* Technical Diagnostics */
     .gr-diagnostics {
-      margin-top: 14px;
-      border-top: 1px solid rgba(39, 49, 33, 0.1);
-      padding-top: 10px;
-      font-size: 11.5px;
+      margin-top: 18px;
+      border-top: 1px solid rgba(39, 49, 33, 0.08);
+      padding-top: 12px;
     }
 
     .gr-diagnostics-summary {
@@ -505,10 +507,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-diagnostics-body {
-      padding: 10px 0 4px;
+      padding: 10px 0 0;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .gr-diag-row {
@@ -530,24 +532,24 @@ export function showWarningModal(props: WarningModalProps): () => void {
       word-break: break-all;
     }
 
-    /* Footer / Controls: Warm stone background with olive tactile button */
+    /* Footer: Pure seamless layout, zero divider box, clear typographic button actions */
     .gr-footer {
-      padding: 14px 24px;
-      background: #ECE7DD;
-      border-top: 1px solid rgba(39, 49, 33, 0.12);
+      padding: 16px 24px 22px;
+      background: transparent;
+      border-top: 1px solid rgba(39, 49, 33, 0.08);
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 12px;
+      gap: 16px;
     }
 
     .gr-btn {
       font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      padding: 9px 18px;
+      padding: 10px 20px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -555,7 +557,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      white-space: nowrap;
     }
 
     .gr-btn:focus-visible {
@@ -568,12 +570,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
       cursor: not-allowed;
     }
 
-    /* Primary Action: Cancel (Leave Page) - Tactile Deep Olive */
+    /* Primary Action: Deep Olive (#273121) tactile pill */
     .gr-btn-cancel {
       background: #273121;
       border: 1px solid #273121;
       color: #EDE6D6;
-      box-shadow: 0 2px 6px rgba(39, 49, 33, 0.2),
+      box-shadow: 0 2px 6px rgba(39, 49, 33, 0.16),
                   inset 0 1px 0 rgba(237, 230, 214, 0.15);
     }
 
@@ -581,7 +583,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: #35422D;
       color: #FFFFFF;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(39, 49, 33, 0.28);
+      box-shadow: 0 4px 12px rgba(39, 49, 33, 0.22);
     }
 
     .gr-btn-cancel:active:not(:disabled) {
@@ -589,25 +591,25 @@ export function showWarningModal(props: WarningModalProps): () => void {
       box-shadow: 0 1px 3px rgba(39, 49, 33, 0.2);
     }
 
-    /* Secondary Action: Continue at My Own Risk - Quiet Outline */
+    /* Secondary Action: Quiet typographic link, zero heavy border */
     .gr-btn-continue {
       background: transparent;
-      border: 1px solid rgba(39, 49, 33, 0.22);
-      color: #55624C;
+      border: none;
+      color: #717E68;
+      padding: 10px 8px;
     }
 
     .gr-btn-continue:hover:not(:disabled) {
-      background: rgba(39, 49, 33, 0.06);
-      border-color: #273121;
       color: #273121;
-      transform: translateY(-1px);
+      text-decoration: underline;
+      text-underline-offset: 4px;
     }
 
     .gr-btn-continue:active:not(:disabled) {
-      transform: translateY(0);
+      color: #1E261B;
     }
 
-    /* Loading Overlay State */
+    /* Loading Overlay */
     .gr-loading-overlay {
       position: absolute;
       inset: 0;
@@ -734,28 +736,18 @@ export function showWarningModal(props: WarningModalProps): () => void {
   const body = document.createElement('div');
   body.className = 'gr-body';
 
-  // 1. Action Status Banner (Requirement 6)
-  const statusBanner = document.createElement('div');
-  statusBanner.className = `gr-action-status-banner ${isAdvisoryOnly ? 'gr-status-advisory' : 'gr-status-held'}`;
-  statusBanner.setAttribute('role', 'note');
+  // Body - Clean, Human Editorial Flow
+  // 1. Headline (Space Grotesk 24px)
+  const title = document.createElement('h2');
+  title.id = 'gr-title-id';
+  title.className = 'gr-title';
+  const cleanHeadline = explanation.headline
+    .replace(/^External Destination:\s*/i, '')
+    .replace(/^Safety Advisory:\s*/i, '');
+  title.textContent = cleanHeadline || 'External Destination Notice';
+  body.appendChild(title);
 
-  const statusHeadline = document.createElement('span');
-  statusHeadline.className = 'gr-status-headline';
-  statusHeadline.textContent = isAdvisoryOnly
-    ? 'Advisory Notice: '
-    : 'Action Held: ';
-
-  const statusSubtext = document.createElement('span');
-  statusSubtext.className = 'gr-status-subtext';
-  // Keep concise: strip any redundant "Action Status: Advisory Notice" prefix
-  const cleanNotice = webCtx.actionStatusExplanation.replace(/^Action Status:\s*Advisory Notice\s*/i, '');
-  statusSubtext.textContent = cleanNotice;
-
-  statusBanner.appendChild(statusHeadline);
-  statusBanner.appendChild(statusSubtext);
-  body.appendChild(statusBanner);
-
-  // 2. Website Domain & Detection Basis Callout (Requirements 1 & 2)
+  // 2. Clear Website Domain line
   const domainCallout = document.createElement('div');
   domainCallout.className = 'gr-domain-callout';
 
@@ -764,11 +756,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
   const domainIcon = document.createElement('span');
   domainIcon.className = 'gr-domain-icon';
-  domainIcon.textContent = '🌐';
 
   const domainLabel = document.createElement('span');
   domainLabel.className = 'gr-domain-label';
-  domainLabel.textContent = 'Website Domain:';
+  domainLabel.textContent = 'Destination:';
 
   const domainValue = document.createElement('span');
   domainValue.className = 'gr-domain-value';
@@ -796,58 +787,77 @@ export function showWarningModal(props: WarningModalProps): () => void {
   domainCallout.appendChild(sourceInd);
   body.appendChild(domainCallout);
 
-  // 3. Headline & Summary
-  const title = document.createElement('h2');
-  title.id = 'gr-title-id';
-  title.className = 'gr-title';
-  title.textContent = explanation.headline;
-
+  // 3. User Summary
   const summary = document.createElement('p');
   summary.id = 'gr-summary-id';
   summary.className = 'gr-summary';
   summary.textContent = explanation.userSummary;
-
-  body.appendChild(title);
   body.appendChild(summary);
 
-  // 4. Detected Characteristics (Requirement 3)
+  // 4. Subtle Advisory Note
+  const statusBanner = document.createElement('div');
+  statusBanner.className = `gr-action-status-banner ${isAdvisoryOnly ? 'gr-status-advisory' : 'gr-status-held'}`;
+  statusBanner.setAttribute('role', 'note');
+
+  const statusHeadline = document.createElement('span');
+  statusHeadline.className = 'gr-status-headline';
+  statusHeadline.textContent = isAdvisoryOnly
+    ? 'Advisory Notice: '
+    : 'Action Held: ';
+
+  const statusSubtext = document.createElement('span');
+  statusSubtext.className = 'gr-status-subtext';
+  const cleanNotice = webCtx.actionStatusExplanation.replace(/^Action Status:\s*Advisory Notice\s*/i, '');
+  statusSubtext.textContent = cleanNotice;
+
+  statusBanner.appendChild(statusHeadline);
+  statusBanner.appendChild(statusSubtext);
+  body.appendChild(statusBanner);
+
+  // 5. Why Considered Risky
+  const riskBox = document.createElement('div');
+  riskBox.className = 'gr-risk-box';
+
+  const riskBoxTitle = document.createElement('div');
+  riskBoxTitle.className = 'gr-risk-box-title';
+  riskBoxTitle.textContent = 'Why Guardrail Considers This Risky';
+
+  const riskBoxContent = document.createElement('div');
+  let humanRisk = webCtx.riskImpactExplanation
+    .replace(/^Why Guardrail considers this risky:\s*/i, '')
+    .replace(/Because this website displays identity or structural inconsistencies,\s*/i, '')
+    .trim();
+  riskBoxContent.textContent = humanRisk;
+
+  riskBox.appendChild(riskBoxTitle);
+  riskBox.appendChild(riskBoxContent);
+  body.appendChild(riskBox);
+
+  // 6. Detected Characteristics (clean bulleted list)
   const reasonsTitle = document.createElement('div');
   reasonsTitle.className = 'gr-section-title';
   reasonsTitle.textContent = 'Detected Characteristics:';
 
   const reasonsListEl = document.createElement('ul');
   reasonsListEl.className = 'gr-reasons-list';
-  const characteristics =
+  const rawCharacteristics =
     webCtx.detectedCharacteristics && webCtx.detectedCharacteristics.length > 0
       ? webCtx.detectedCharacteristics
       : explanation.whyFlagged;
 
-  for (const char of characteristics) {
+  for (const rawChar of rawCharacteristics) {
     const item = document.createElement('li');
     item.className = 'gr-reason-item';
-    item.textContent = char;
+    let humanChar = rawChar
+      .replace(/^Action navigates away from the current trusted domain to an external destination\.?/i, 'Navigating away from the current website to an external destination.')
+      .replace(/^Heuristic check:\s*/i, '')
+      .replace(/^Operational notice:\s*/i, '');
+    item.textContent = humanChar;
     reasonsListEl.appendChild(item);
   }
 
   body.appendChild(reasonsTitle);
   body.appendChild(reasonsListEl);
-
-  // 5. Why Considered Risky (Requirement 4)
-  const riskBox = document.createElement('div');
-  riskBox.className = 'gr-risk-box';
-
-  const riskBoxTitle = document.createElement('div');
-  riskBoxTitle.className = 'gr-risk-box-title';
-  riskBoxTitle.textContent = 'Why Guardrail Considers This Risky:';
-
-  const riskBoxContent = document.createElement('div');
-  // Strip redundant leading prefix like "Why Guardrail considers this risky: "
-  const cleanRisk = webCtx.riskImpactExplanation.replace(/^Why Guardrail considers this risky:\s*/i, '');
-  riskBoxContent.textContent = cleanRisk;
-
-  riskBox.appendChild(riskBoxTitle);
-  riskBox.appendChild(riskBoxContent);
-  body.appendChild(riskBox);
 
   // 6. Safe Next Steps (Requirement 5)
   const guidanceTitle = document.createElement('div');
