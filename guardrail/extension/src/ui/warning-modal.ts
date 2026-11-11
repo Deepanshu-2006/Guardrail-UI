@@ -222,36 +222,38 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(11, 15, 25, 0.82);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(20, 26, 17, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 20px;
       z-index: 2147483647;
-      animation: grFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: grFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     .gr-card {
-      background: #0f172a;
-      border: 1px solid rgba(245, 158, 11, 0.45);
+      background: #1C2318;
+      border: 1px solid rgba(237, 230, 214, 0.12);
       border-radius: 16px;
       width: 100%;
       max-width: 540px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 30px rgba(245, 158, 11, 0.15);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      color: #f8fafc;
+      box-shadow: 0 24px 56px -8px rgba(10, 14, 9, 0.72),
+                  0 4px 16px -2px rgba(10, 14, 9, 0.4),
+                  inset 0 1px 0 rgba(237, 230, 214, 0.14);
+      font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Segoe UI", Roboto, sans-serif;
+      color: #EDE6D6;
       overflow: hidden;
       position: relative;
-      animation: grSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: grSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       outline: none;
     }
 
     .gr-header {
-      padding: 16px 20px;
-      background: rgba(245, 158, 11, 0.08);
-      border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+      padding: 16px 22px;
+      background: linear-gradient(180deg, rgba(42, 54, 36, 0.95) 0%, rgba(32, 41, 27, 0.95) 100%);
+      border-bottom: 1px solid rgba(237, 230, 214, 0.08);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -260,40 +262,43 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-header-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .gr-brand {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.02em;
-      color: #fbbf24;
+      font-size: 13.5px;
+      letter-spacing: -0.01em;
+      color: #EDE6D6;
     }
 
     .gr-brand-icon {
-      font-size: 16px;
+      font-size: 15px;
+      line-height: 1;
     }
 
     .gr-pill {
-      font-size: 11px;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10.5px;
       font-weight: 700;
-      letter-spacing: 0.05em;
-      padding: 3px 8px;
-      border-radius: 9999px;
-      background: rgba(245, 158, 11, 0.2);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      color: #fcd34d;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(217, 119, 6, 0.16);
+      border: 1px solid rgba(217, 119, 6, 0.38);
+      color: #FBBF24;
       text-transform: uppercase;
     }
 
     .gr-btn-close {
       background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-size: 16px;
+      border: 1px solid transparent;
+      color: rgba(237, 230, 214, 0.55);
+      font-size: 14px;
       line-height: 1;
       width: 28px;
       height: 28px;
@@ -307,13 +312,14 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-btn-close:hover, .gr-btn-close:focus-visible {
-      background: rgba(255, 255, 255, 0.12);
-      color: #ffffff;
-      outline: 2px solid #fbbf24;
+      background: rgba(237, 230, 214, 0.08);
+      border-color: rgba(237, 230, 214, 0.15);
+      color: #EDE6D6;
+      outline: none;
     }
 
     .gr-body {
-      padding: 20px;
+      padding: 24px;
       max-height: 75vh;
       overflow-y: auto;
     }
@@ -322,202 +328,222 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-action-status-banner {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
-      padding: 10px 14px;
+      gap: 12px;
+      padding: 12px 16px;
       border-radius: 8px;
-      margin-bottom: 16px;
-      font-size: 12px;
-      line-height: 1.4;
+      margin-bottom: 20px;
+      font-size: 12.5px;
+      line-height: 1.45;
     }
 
     .gr-status-advisory {
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      color: #93c5fd;
+      background: rgba(217, 119, 6, 0.09);
+      border: 1px solid rgba(217, 119, 6, 0.28);
+      color: rgba(237, 230, 214, 0.88);
     }
 
     .gr-status-held {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
+      background: rgba(185, 28, 28, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.32);
+      color: #FCA5A5;
     }
 
     .gr-status-headline {
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 700;
+      font-size: 12.5px;
+      letter-spacing: 0.02em;
       display: block;
-      color: #ffffff;
+      color: #EDE6D6;
       margin-bottom: 2px;
     }
 
     .gr-status-subtext {
-      font-size: 11px;
-      opacity: 0.9;
+      font-size: 11.5px;
+      color: rgba(237, 230, 214, 0.72);
+      line-height: 1.4;
     }
 
     /* Website Domain Callout Box */
     .gr-domain-callout {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 16px;
+      background: rgba(32, 41, 27, 0.6);
+      border: 1px solid rgba(237, 230, 214, 0.08);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
     }
 
     .gr-domain-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13px;
+      font-size: 12.5px;
     }
 
     .gr-domain-label {
-      color: #94a3b8;
+      color: rgba(237, 230, 214, 0.6);
       font-weight: 500;
+      letter-spacing: 0.02em;
     }
 
     .gr-domain-value {
-      color: #38bdf8;
+      color: #EDE6D6;
       font-weight: 700;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 13px;
+      font-size: 12.5px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(237, 230, 214, 0.1);
       word-break: break-all;
     }
 
     .gr-source-indicator {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      padding-top: 4px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      gap: 3px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(237, 230, 214, 0.06);
     }
 
     .gr-source-tag {
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 11px;
-      font-weight: 600;
-      color: #fcd34d;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #FBBF24;
     }
 
     .gr-source-subtext {
       font-size: 11px;
-      color: #94a3b8;
-      line-height: 1.3;
+      color: rgba(237, 230, 214, 0.55);
+      line-height: 1.35;
     }
 
     .gr-title {
-      font-size: 18px;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 20px;
       font-weight: 700;
-      color: #ffffff;
+      color: #EDE6D6;
       margin-bottom: 8px;
-      line-height: 1.3;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
     }
 
     .gr-summary {
       font-size: 13px;
-      color: #cbd5e1;
-      margin-bottom: 16px;
+      color: rgba(237, 230, 214, 0.72);
+      margin-bottom: 20px;
       line-height: 1.5;
     }
 
     .gr-section-title {
-      font-size: 12px;
-      font-weight: 600;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #cbd5e1;
-      margin-bottom: 8px;
+      letter-spacing: 0.08em;
+      color: rgba(237, 230, 214, 0.6);
+      margin-bottom: 10px;
     }
 
     .gr-reasons-list, .gr-guidance-list {
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-bottom: 16px;
+      gap: 8px;
+      margin-bottom: 20px;
     }
 
     .gr-reason-item {
-      font-size: 12px;
+      font-size: 12.5px;
       line-height: 1.45;
-      color: #fcd34d;
-      background: rgba(245, 158, 11, 0.07);
-      border-left: 3px solid #f59e0b;
-      padding: 7px 12px;
+      color: rgba(237, 230, 214, 0.9);
+      background: rgba(217, 119, 6, 0.07);
+      border-left: 3px solid #D97706;
+      padding: 9px 14px;
       border-radius: 0 6px 6px 0;
     }
 
     .gr-risk-box {
-      background: rgba(245, 158, 11, 0.05);
-      border: 1px solid rgba(245, 158, 11, 0.2);
+      background: rgba(26, 33, 22, 0.7);
+      border: 1px solid rgba(237, 230, 214, 0.08);
       border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #e2e8f0;
+      padding: 13px 16px;
+      margin-bottom: 20px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: rgba(237, 230, 214, 0.82);
     }
 
     .gr-risk-box-title {
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 700;
-      color: #fcd34d;
-      margin-bottom: 4px;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      color: #FBBF24;
+      margin-bottom: 5px;
     }
 
     .gr-guidance-item {
-      font-size: 12px;
+      font-size: 12.5px;
       line-height: 1.45;
-      color: #93c5fd;
-      background: rgba(59, 130, 246, 0.06);
-      border-left: 3px solid #3b82f6;
-      padding: 7px 12px;
+      color: #EDE6D6;
+      background: rgba(42, 54, 36, 0.45);
+      border-left: 3px solid #5A744C;
+      padding: 9px 14px;
       border-radius: 0 6px 6px 0;
     }
 
     .gr-continuation-disclaimer {
-      font-size: 11px;
-      color: #94a3b8;
-      background: rgba(0, 0, 0, 0.2);
-      border: 1px dashed rgba(255, 255, 255, 0.15);
+      font-size: 11.5px;
+      color: rgba(237, 230, 214, 0.6);
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px dashed rgba(237, 230, 214, 0.12);
       border-radius: 6px;
-      padding: 8px 12px;
-      margin-bottom: 16px;
-      line-height: 1.4;
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      line-height: 1.45;
     }
 
     .gr-diagnostics {
-      margin-top: 12px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 14px;
+      background: rgba(20, 26, 17, 0.5);
+      border: 1px solid rgba(237, 230, 214, 0.08);
       border-radius: 8px;
       overflow: hidden;
       font-size: 12px;
     }
 
     .gr-diagnostics-summary {
-      padding: 8px 12px;
+      padding: 10px 14px;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 600;
-      color: #94a3b8;
+      font-size: 11.5px;
+      letter-spacing: 0.03em;
+      color: rgba(237, 230, 214, 0.6);
       cursor: pointer;
       user-select: none;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       transition: color 0.15s ease;
     }
 
     .gr-diagnostics-summary:hover, .gr-diagnostics-summary:focus-visible {
-      color: #f1f5f9;
+      color: #EDE6D6;
       outline: none;
     }
 
     .gr-diagnostics-body {
-      padding: 10px 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 12px 14px;
+      border-top: 1px solid rgba(237, 230, 214, 0.06);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
       background: rgba(0, 0, 0, 0.2);
     }
 
@@ -525,25 +551,25 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: 8px;
+      gap: 12px;
     }
 
     .gr-diag-key {
-      color: #64748b;
+      color: rgba(237, 230, 214, 0.45);
       font-size: 11px;
     }
 
     .gr-diag-val {
-      color: #e2e8f0;
+      color: rgba(237, 230, 214, 0.85);
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 11px;
       word-break: break-all;
     }
 
     .gr-footer {
-      padding: 14px 20px;
-      background: rgba(15, 23, 42, 0.6);
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 16px 22px;
+      background: rgba(26, 33, 22, 0.95);
+      border-top: 1px solid rgba(237, 230, 214, 0.08);
       display: flex;
       align-items: center;
       justify-content: flex-end;
@@ -551,63 +577,78 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-btn {
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 9px 18px;
-      border-radius: 8px;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
       outline: none;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
     }
 
     .gr-btn:focus-visible {
-      outline: 2px solid #38bdf8;
+      outline: 2px solid #D97706;
       outline-offset: 2px;
     }
 
     .gr-btn:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
     }
 
+    /* Primary Recommended Action: Cancel (Leave Page) */
     .gr-btn-cancel {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #f1f5f9;
+      background: #2A3624;
+      border: 1px solid rgba(237, 230, 214, 0.16);
+      color: #EDE6D6;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35),
+                  inset 0 1px 0 rgba(237, 230, 214, 0.12);
     }
 
     .gr-btn-cancel:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.3);
-      color: #ffffff;
+      background: #36462E;
+      color: #FFFFFF;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
     }
 
+    .gr-btn-cancel:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Cautionary Secondary Action: Continue at My Own Risk */
     .gr-btn-continue {
-      background: #f59e0b;
-      border: none;
-      color: #0f172a;
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      background: transparent;
+      border: 1px solid rgba(217, 119, 6, 0.45);
+      color: #FBBF24;
+      box-shadow: none;
     }
 
     .gr-btn-continue:hover:not(:disabled) {
-      background: #fbbf24;
+      background: rgba(217, 119, 6, 0.14);
+      border-color: #F59E0B;
+      color: #FDE68A;
       transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
     }
 
     .gr-btn-continue:active:not(:disabled) {
       transform: translateY(0);
+      background: rgba(217, 119, 6, 0.08);
     }
 
     /* Loading Overlay State */
     .gr-loading-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.9);
+      background: rgba(20, 26, 17, 0.94);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -618,18 +659,20 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid rgba(245, 158, 11, 0.2);
-      border-top-color: #fbbf24;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(217, 119, 6, 0.2);
+      border-top-color: #F59E0B;
       border-radius: 50%;
-      animation: grSpin 0.8s linear infinite;
+      animation: grSpin 0.75s linear infinite;
     }
 
     .gr-loading-text {
-      font-size: 14px;
-      color: #e2e8f0;
-      font-weight: 500;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      color: #EDE6D6;
+      font-weight: 600;
     }
 
     @keyframes grSpin {
@@ -644,7 +687,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     @keyframes grSlideUp {
       from {
         opacity: 0;
-        transform: translateY(12px) scale(0.98);
+        transform: translateY(16px) scale(0.97);
       }
       to {
         opacity: 1;
