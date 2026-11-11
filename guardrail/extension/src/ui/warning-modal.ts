@@ -198,10 +198,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
   const isAdvisoryOnly = props.decision.response === ResponseAction.WARN;
 
-  // 5. Construct encapsulated styles
+  // 5. Construct encapsulated styles - Redesigned from scratch
   const style = document.createElement('style');
   style.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@500;600&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@600;700;800&display=swap');
 
     *, *::before, *::after {
       box-sizing: border-box;
@@ -221,13 +221,13 @@ export function showWarningModal(props: WarningModalProps): () => void {
       border: 0;
     }
 
-    /* Dimmed, neutral backdrop with subtle blur */
+    /* Darkened theatrical backdrop focusing all user attention on security alert */
     .gr-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(20, 24, 18, 0.65);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(18, 22, 16, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -236,103 +236,125 @@ export function showWarningModal(props: WarningModalProps): () => void {
       animation: grFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    /* Modal Card: Warm Ivory (#F5F2E8) with refined border (#DAD9CC) */
+    /* Security Modal Card: Pure architectural Warm Ivory (#F5F2E8) with amber alert accent */
     .gr-card {
       background: #F5F2E8;
-      border: 1px solid #DAD9CC;
+      border: 1.5px solid #DAD9CC;
       border-radius: 16px;
       width: 100%;
-      max-width: 560px;
-      box-shadow: 0 20px 50px -10px rgba(37, 41, 31, 0.28),
-                  0 2px 8px rgba(37, 41, 31, 0.08);
+      max-width: 580px;
+      box-shadow: 0 32px 72px -12px rgba(24, 28, 20, 0.38),
+                  0 4px 16px rgba(24, 28, 20, 0.1);
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: #25291F;
       overflow: hidden;
       position: relative;
-      animation: grSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: grSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       outline: none;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* AREA A: Warning Header */
+    /* Top Security Ribbon Accent */
+    .gr-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #A87932 0%, #C49144 50%, #A87932 100%);
+      z-index: 5;
+    }
+
+    /* Top Masthead with prominent warning icon and clean close trigger */
     .gr-header {
-      padding: 26px 32px 14px;
+      padding: 28px 34px 14px;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      border-bottom: 1px solid transparent;
+      gap: 16px;
     }
 
     .gr-header-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
     }
 
-    .gr-warning-icon {
-      display: inline-flex;
+    /* Prominent Amber Security Emblem */
+    .gr-warning-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #F0E8D6;
+      border: 1.5px solid #E2D5BA;
+      display: flex;
       align-items: center;
       justify-content: center;
       color: #A87932;
       flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(168, 121, 50, 0.12);
     }
 
-    .gr-header-labels {
+    .gr-header-titles {
       display: flex;
-      align-items: baseline;
-      gap: 8px;
+      flex-direction: column;
+      gap: 3px;
     }
 
     .gr-header-category {
-      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: #A87932;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .gr-header-context {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
       color: #74776B;
+      letter-spacing: 0.02em;
     }
 
     .gr-btn-close {
       background: transparent;
       border: none;
-      color: #74776B;
+      color: #8C9283;
       font-size: 16px;
       line-height: 1;
-      width: 26px;
-      height: 26px;
+      width: 30px;
+      height: 30px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       padding: 0;
-      border-radius: 4px;
+      border-radius: 8px;
       transition: all 0.15s ease;
+      margin-top: 2px;
     }
 
     .gr-btn-close:hover, .gr-btn-close:focus-visible {
       color: #25291F;
-      background: rgba(37, 41, 31, 0.06);
+      background: rgba(37, 41, 31, 0.08);
       outline: none;
     }
 
-    /* Modal Body */
+    /* Main Content Body */
     .gr-body {
-      padding: 6px 32px 24px;
-      max-height: 70vh;
+      padding: 6px 34px 26px;
+      max-height: 72vh;
       overflow-y: auto;
     }
 
-    /* AREA B: Primary Warning Message */
+    /* Primary Warning Message */
     .gr-title {
       font-family: 'Instrument Serif', Georgia, serif;
       font-size: 38px;
@@ -346,51 +368,95 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-subtitle {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 14.5px;
-      color: #74776B;
-      line-height: 1.5;
+      color: #616658;
+      line-height: 1.55;
       margin-bottom: 22px;
     }
 
-    /* AREA C: Destination Identity Region (Soft-Sage Box) */
+    /* Destination Identity Region: High-contrast dedicated security badge */
     .gr-destination-card {
       background: #E8EBDD;
-      border: 1px solid #DAD9CC;
-      border-radius: 10px;
-      padding: 14px 18px;
+      border: 1.5px solid #CCD4BF;
+      border-radius: 12px;
+      padding: 16px 20px;
       margin-bottom: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+    }
+
+    .gr-destination-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .gr-destination-label {
-      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 10.5px;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.09em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
+      color: #556B3A;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gr-destination-pill {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
+      font-weight: 600;
       color: #687A4E;
-      margin-bottom: 5px;
+      background: rgba(104, 122, 78, 0.12);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .gr-destination-host-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .gr-destination-host {
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, Monaco, monospace;
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 600;
-      color: #25291F;
+      color: #1E2319;
       word-break: break-all;
+      letter-spacing: -0.01em;
     }
 
-    /* AREA D: Why You Are Seeing This Warning */
+    .gr-ext-icon {
+      color: #687A4E;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Why Warning Appeared Section */
     .gr-section {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+      background: #F0E8D6;
+      border: 1px solid #E2D7C0;
+      border-radius: 12px;
+      padding: 14px 18px;
     }
 
     .gr-section-heading {
-      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #74776B;
+      color: #8C6224;
       margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .gr-reasons-list {
@@ -404,9 +470,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 13.5px;
       line-height: 1.45;
-      color: #25291F;
+      color: #2E3326;
       position: relative;
-      padding-left: 16px;
+      padding-left: 18px;
     }
 
     .gr-reason-item::before {
@@ -414,20 +480,21 @@ export function showWarningModal(props: WarningModalProps): () => void {
       position: absolute;
       left: 0;
       color: #A87932;
-      font-size: 15px;
+      font-size: 16px;
       line-height: 1.2;
     }
 
-    /* AREA E: User Guidance Note */
+    /* User Guidance Note */
     .gr-guidance-note {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 13px;
-      color: #74776B;
+      font-size: 13.5px;
+      color: #555A4C;
       line-height: 1.5;
       margin-bottom: 6px;
+      padding: 0 4px;
     }
 
-    /* Hidden elements required by unit tests */
+    /* Hidden elements required by unit test assertions */
     .gr-action-status-banner,
     .gr-risk-box,
     .gr-guidance-list,
@@ -437,7 +504,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: none !important;
     }
 
-    /* Collapsed Technical Diagnostics Disclosure */
+    /* Technical Diagnostics Disclosure */
     .gr-diagnostics {
       margin-top: 14px;
       border-top: 1px solid #DAD9CC;
@@ -488,10 +555,11 @@ export function showWarningModal(props: WarningModalProps): () => void {
       word-break: break-all;
     }
 
-    /* AREA 4: Action Area (Footer) */
+    /* Redesigned Action Area */
     .gr-footer {
-      padding: 18px 32px 24px;
+      padding: 20px 34px 28px;
       border-top: 1px solid #DAD9CC;
+      background: #EFECE1;
       display: flex;
       align-items: center;
       justify-content: flex-end;
@@ -500,9 +568,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-btn {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 600;
-      padding: 10px 20px;
+      padding: 11px 22px;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -512,7 +580,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       justify-content: center;
       white-space: nowrap;
       box-sizing: border-box;
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     .gr-btn:focus-visible {
@@ -527,44 +595,45 @@ export function showWarningModal(props: WarningModalProps): () => void {
       box-shadow: none !important;
     }
 
-    /* Primary Action: Cancel & Stay - Deep Olive (#394532) */
+    /* Primary Safe Action: Deep Olive (#394532) with high contrast ivory */
     .gr-btn-cancel {
       background-color: #394532;
       color: #F5F2E8;
       border: 1px solid #394532;
-      box-shadow: 0 1px 3px rgba(37, 41, 31, 0.15);
+      box-shadow: 0 2px 6px rgba(37, 41, 31, 0.2);
     }
 
     .gr-btn-cancel:hover:not(:disabled) {
-      background-color: #2E3828;
-      border-color: #2E3828;
+      background-color: #2C3626;
+      border-color: #2C3626;
       color: #FFFFFF;
       transform: translateY(-1px);
-      box-shadow: 0 4px 10px rgba(37, 41, 31, 0.22);
+      box-shadow: 0 4px 12px rgba(37, 41, 31, 0.28);
     }
 
     .gr-btn-cancel:active:not(:disabled) {
-      background-color: #25291F;
-      border-color: #25291F;
+      background-color: #222B1E;
+      border-color: #222B1E;
       transform: translateY(0);
     }
 
-    /* Secondary Action: Continue Anyway - Understated Rectangular Button */
+    /* Secondary Action: Continue Anyway - Clean neutral outline */
     .gr-btn-continue {
       background-color: transparent;
-      color: #394532;
-      border: 1px solid #DAD9CC;
+      color: #4D5743;
+      border: 1px solid #CCD2C0;
     }
 
     .gr-btn-continue:hover:not(:disabled) {
-      background-color: rgba(57, 69, 50, 0.05);
+      background-color: rgba(57, 69, 50, 0.08);
       border-color: #394532;
+      color: #25291F;
       transform: translateY(-1px);
     }
 
     .gr-btn-continue:active:not(:disabled) {
       transform: translateY(0);
-      background-color: rgba(57, 69, 50, 0.09);
+      background-color: rgba(57, 69, 50, 0.12);
     }
 
     /* Loading Overlay */
@@ -609,7 +678,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     @keyframes grSlideUp {
       from {
         opacity: 0;
-        transform: translateY(12px) scale(0.985);
+        transform: translateY(14px) scale(0.985);
       }
       to {
         opacity: 1;
@@ -623,16 +692,16 @@ export function showWarningModal(props: WarningModalProps): () => void {
         margin: 12px;
       }
       .gr-header {
-        padding: 20px 22px 12px;
+        padding: 22px 24px 12px;
       }
       .gr-body {
-        padding: 6px 22px 20px;
+        padding: 6px 24px 22px;
       }
       .gr-title {
-        font-size: 30px;
+        font-size: 32px;
       }
       .gr-footer {
-        padding: 16px 22px 20px;
+        padding: 16px 24px 22px;
         flex-direction: column-reverse;
       }
       .gr-btn {
@@ -681,32 +750,32 @@ export function showWarningModal(props: WarningModalProps): () => void {
   const headerLeft = document.createElement('div');
   headerLeft.className = 'gr-header-left';
 
-  // Recognized warning triangle icon with exclamation mark (SVG)
-  const warnIconSpan = document.createElement('span');
-  warnIconSpan.className = 'gr-warning-icon';
+  // Prominent Amber Security Emblem with Shield/Triangle Icon
+  const warnIconSpan = document.createElement('div');
+  warnIconSpan.className = 'gr-warning-badge';
   warnIconSpan.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
       <line x1="12" y1="9" x2="12" y2="13"/>
       <line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
   `;
 
-  const headerLabels = document.createElement('div');
-  headerLabels.className = 'gr-header-labels';
+  const headerTitles = document.createElement('div');
+  headerTitles.className = 'gr-header-titles';
 
   const categoryLabel = document.createElement('span');
   categoryLabel.className = 'gr-header-category';
-  categoryLabel.textContent = 'GUARDRAIL SECURITY WARNING';
+  categoryLabel.innerHTML = `<span>GUARDRAIL SECURITY WARNING</span>`;
 
   const contextLabel = document.createElement('span');
   contextLabel.className = 'gr-header-context';
-  contextLabel.textContent = '• EXTERNAL NAVIGATION';
+  contextLabel.textContent = 'External Navigation Interception';
 
-  headerLabels.appendChild(categoryLabel);
-  headerLabels.appendChild(contextLabel);
+  headerTitles.appendChild(categoryLabel);
+  headerTitles.appendChild(contextLabel);
   headerLeft.appendChild(warnIconSpan);
-  headerLeft.appendChild(headerLabels);
+  headerLeft.appendChild(headerTitles);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -741,29 +810,62 @@ export function showWarningModal(props: WarningModalProps): () => void {
   subtitle.textContent = "This navigation will take you to an external website outside the current website's origin.";
   body.appendChild(subtitle);
 
-  // AREA C — DESTINATION IDENTITY REGION (Soft-Sage Box)
+  // AREA C — DESTINATION IDENTITY REGION (Soft-Sage Box with External Arrow)
   const destCard = document.createElement('div');
   destCard.className = 'gr-destination-card';
+
+  const destHeaderRow = document.createElement('div');
+  destHeaderRow.className = 'gr-destination-header-row';
 
   const destLabel = document.createElement('div');
   destLabel.className = 'gr-destination-label';
   destLabel.textContent = 'DESTINATION WEBSITE';
 
+  const destPill = document.createElement('span');
+  destPill.className = 'gr-destination-pill';
+  destPill.textContent = 'External Domain';
+
+  destHeaderRow.appendChild(destLabel);
+  destHeaderRow.appendChild(destPill);
+
+  const destHostRow = document.createElement('div');
+  destHostRow.className = 'gr-destination-host-row';
+
   const destHost = document.createElement('div');
   destHost.className = 'gr-destination-host gr-domain-value';
   destHost.textContent = webCtx.domain;
 
-  destCard.appendChild(destLabel);
-  destCard.appendChild(destHost);
+  const extIcon = document.createElement('span');
+  extIcon.className = 'gr-ext-icon';
+  extIcon.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  `;
+
+  destHostRow.appendChild(destHost);
+  destHostRow.appendChild(extIcon);
+
+  destCard.appendChild(destHeaderRow);
+  destCard.appendChild(destHostRow);
   body.appendChild(destCard);
 
-  // AREA D — WHY YOU ARE SEEING THIS WARNING
+  // AREA D — WHY YOU ARE SEEING THIS WARNING (Structured Warning Card)
   const sectionD = document.createElement('div');
   sectionD.className = 'gr-section';
 
   const sectionDHeading = document.createElement('div');
   sectionDHeading.className = 'gr-section-heading gr-section-title';
-  sectionDHeading.textContent = 'WHY THIS WARNING APPEARED';
+  sectionDHeading.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+    <span>WHY THIS WARNING APPEARED</span>
+  `;
 
   const reasonsListEl = document.createElement('ul');
   reasonsListEl.className = 'gr-reasons-list';
