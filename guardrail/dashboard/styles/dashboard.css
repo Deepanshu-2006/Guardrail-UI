@@ -39,8 +39,8 @@
   --gd-bg-hover: #D7E0CC;
   --gd-bg-active: #CAD4BF;
 
-  /* Strong, Bold Typography Colors */
-  --gd-text-primary: #1B2117;
+  /* Strong, Bold Typography Colors (Harmonized with settings.html) */
+  --gd-text-primary: #273121;
   --gd-text-secondary: #5F6656;
   --gd-text-muted: #88907E;
   --gd-text-caption: #A4AC9A;
@@ -218,16 +218,23 @@ textarea:focus-visible,
    ----------------------------------------------------------------------------- */
 
 .gd-sidebar {
-  width: 250px;
-  min-width: 250px;
-  max-width: 250px;
-  background-color: var(--gd-sidebar-bg);
-  border-right: none;
+  width: 254px;
+  min-width: 254px;
+  max-width: 254px;
+  background: linear-gradient(180deg, #2A3624 0%, #20291B 100%);
+  border: 1px solid rgba(237, 230, 214, 0.09);
+  margin: 14px 10px 14px 14px;
+  height: calc(100vh - 28px);
+  border-radius: 20px;
+  box-shadow: 0 16px 42px -8px rgba(39, 49, 33, 0.16),
+              0 3px 10px -2px rgba(39, 49, 33, 0.08),
+              inset 0 1px 0 rgba(237, 230, 214, 0.12);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   z-index: 20;
-  transition: transform 0.2s ease;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .gd-sidebar-header {
@@ -303,12 +310,13 @@ textarea:focus-visible,
   letter-spacing: 0.005em;
   background: transparent !important;
   border: none !important;
-  transition: color 0.15s ease;
+  transition: color 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .gd-nav-link:hover {
   color: rgba(237, 230, 214, 0.85);
   background: transparent !important;
+  transform: translateX(3px);
 }
 
 .gd-nav-link[aria-current="page"],
@@ -318,6 +326,7 @@ textarea:focus-visible,
   font-weight: 700;
   padding-left: 0;
   border: none !important;
+  transform: none;
 }
 
 .gd-nav-icon {
@@ -481,11 +490,7 @@ textarea:focus-visible,
 }
 
 .gd-header-title {
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gd-text-secondary);
-  letter-spacing: 0;
+  display: none !important;
 }
 
 .gd-header-actions {
@@ -514,14 +519,54 @@ textarea:focus-visible,
   border-radius: 50%;
   background-color: var(--gd-accent-olive);
   flex-shrink: 0;
+  position: relative;
+  animation: gd-radar-pulse 2.8s infinite cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .gd-status-pill.unavailable .gd-status-dot {
   background-color: var(--gd-critical-primary);
+  animation: gd-radar-pulse-critical 2.8s infinite cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .gd-status-pill.syncing .gd-status-dot {
   background-color: var(--gd-warning-primary);
+  animation: gd-radar-pulse-warning 1.8s infinite cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes gd-radar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(84, 104, 62, 0.65);
+  }
+  65% {
+    box-shadow: 0 0 0 6px rgba(84, 104, 62, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(84, 104, 62, 0);
+  }
+}
+
+@keyframes gd-radar-pulse-critical {
+  0% {
+    box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.6);
+  }
+  65% {
+    box-shadow: 0 0 0 6px rgba(192, 57, 43, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(192, 57, 43, 0);
+  }
+}
+
+@keyframes gd-radar-pulse-warning {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 134, 11, 0.6);
+  }
+  65% {
+    box-shadow: 0 0 0 6px rgba(184, 134, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 134, 11, 0);
+  }
 }
 
 .gd-mock-service-badge {
@@ -566,13 +611,59 @@ textarea:focus-visible,
   margin: 0;
 }
 
-/* Sections visibility toggle */
+/* Sections visibility toggle with smooth entrance transition */
 .gd-view-section {
   display: none;
 }
 
 .gd-view-section.active {
   display: block;
+  animation: gd-view-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes gd-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered cascades within active view */
+.gd-view-section.active .gd-section-header {
+  animation: gd-fade-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gd-view-section.active .gd-protection-status-card {
+  animation: gd-fade-up 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
+}
+
+.gd-view-section.active .gd-overview-grid {
+  animation: gd-fade-up 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+.gd-view-section.active .gd-overview-main-grid {
+  animation: gd-fade-up 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+.gd-view-section.active .gd-settings-grid,
+.gd-view-section.active .gd-request-list,
+.gd-view-section.active .gd-history-list {
+  animation: gd-fade-up 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+
+@keyframes gd-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* -----------------------------------------------------------------------------
@@ -588,7 +679,7 @@ textarea:focus-visible,
   font-family: var(--gd-font-display);
   font-size: 52px;
   font-weight: 700;
-  color: var(--gd-text-primary);
+  color: var(--gd-deep-olive);
   letter-spacing: -0.035em;
   line-height: 1.05;
   margin-bottom: 12px;
@@ -605,7 +696,7 @@ textarea:focus-visible,
   letter-spacing: -0.025em;
   line-height: 1.2;
   margin-bottom: 8px;
-  color: var(--gd-text-primary);
+  color: var(--gd-deep-olive);
 }
 
 .gd-section-subtitle {
@@ -795,7 +886,7 @@ textarea:focus-visible,
   border: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  margin-bottom: 88px !important;
+  margin-bottom: 56px !important;
 }
 
 @media (max-width: 860px) {
@@ -813,6 +904,12 @@ textarea:focus-visible,
   box-shadow: none !important;
   display: flex;
   flex-direction: column;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.gd-metric-card:hover {
+  transform: translateY(-2px);
 }
 
 .gd-metric-card:not(:first-child) {
@@ -827,15 +924,15 @@ textarea:focus-visible,
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .gd-metric-label {
   font-family: var(--gd-font-display);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.20em;
+  letter-spacing: 0.12em;
   color: var(--gd-text-secondary);
 }
 
@@ -845,12 +942,18 @@ textarea:focus-visible,
 
 .gd-metric-value {
   font-family: var(--gd-font-display);
-  font-size: 68px;
+  font-size: 30px;
   font-weight: 700;
-  color: var(--gd-text-primary);
-  letter-spacing: -0.045em;
-  line-height: 1;
+  color: var(--gd-deep-olive);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   margin: 0;
+  white-space: nowrap;
+  transition: color 0.18s ease;
+}
+
+.gd-metric-card:hover .gd-metric-value {
+  color: #171E14;
 }
 
 .gd-metric-desc {
@@ -922,12 +1025,18 @@ textarea:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 !important;
+  padding: 6px 10px !important;
+  margin: -6px -10px;
   background: transparent !important;
   border: none !important;
-  border-radius: 0 !important;
+  border-radius: 8px;
   gap: 16px;
-  transition: opacity 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, opacity 0.15s ease;
+}
+
+.gd-overview-pending-item:hover {
+  transform: translateX(3px);
+  background-color: rgba(39, 49, 33, 0.035) !important;
 }
 
 .gd-overview-pending-left {
@@ -976,11 +1085,18 @@ textarea:focus-visible,
   cursor: pointer;
   white-space: nowrap;
   box-shadow: none;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
 }
 
 .gd-btn-overview-review:hover {
   background-color: var(--gd-deep-olive-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(39, 49, 33, 0.18);
+}
+
+.gd-btn-overview-review:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.12);
 }
 
 /* Empty State on Canvas */
@@ -2502,11 +2618,14 @@ textarea:focus-visible,
 
   .gd-sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    transform: translateX(-100%);
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+    top: 10px;
+    left: 10px;
+    bottom: 10px;
+    height: calc(100vh - 20px);
+    margin: 0;
+    border-radius: 18px;
+    transform: translateX(calc(-100% - 20px));
+    box-shadow: 0 16px 48px rgba(39, 49, 33, 0.35);
   }
 
   .gd-sidebar.open {
