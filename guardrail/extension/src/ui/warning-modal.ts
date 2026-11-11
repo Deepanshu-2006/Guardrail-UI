@@ -201,6 +201,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
   // 5. Construct encapsulated styles
   const style = document.createElement('style');
   style.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -222,9 +224,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(30, 36, 26, 0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(27, 33, 23, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -233,31 +235,48 @@ export function showWarningModal(props: WarningModalProps): () => void {
       animation: grFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    /* Modal Dialog: Pure warm parchment sheet, zero boxes inside */
+    /* Modal Card: Pure architectural canvas matching Settings (#EDE6D6) */
     .gr-card {
-      background: #F7F4EC;
-      border: 1px solid rgba(39, 49, 33, 0.16);
+      background: #EDE6D6;
+      border: 1.5px solid rgba(39, 49, 33, 0.16);
       border-radius: 16px;
       width: 100%;
       max-width: 440px;
-      box-shadow: 0 24px 60px -12px rgba(39, 49, 33, 0.25),
-                  0 4px 16px -2px rgba(39, 49, 33, 0.08);
-      font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Segoe UI", Roboto, sans-serif;
-      color: #273121;
+      box-shadow: 0 24px 64px -12px rgba(27, 33, 23, 0.32),
+                  0 4px 16px -2px rgba(27, 33, 23, 0.1);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #1B2117;
       overflow: hidden;
       position: relative;
-      animation: grSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: grSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       outline: none;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Masthead: Clean, Typographic, Zero Boxes */
+    /* Header Masthead */
     .gr-header {
-      padding: 20px 24px 16px;
+      padding: 22px 28px 14px;
       background: transparent;
-      border-bottom: 1px solid rgba(39, 49, 33, 0.08);
       display: flex;
       align-items: center;
       justify-content: space-between;
+    }
+
+    .gr-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 700;
+      font-size: 13.5px;
+      letter-spacing: -0.01em;
+      color: #273121;
+    }
+
+    .gr-brand-icon {
+      font-size: 16px;
+      line-height: 1;
     }
 
     .gr-header-right {
@@ -266,40 +285,15 @@ export function showWarningModal(props: WarningModalProps): () => void {
       gap: 12px;
     }
 
-    .gr-brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: -0.01em;
-      color: #273121;
-    }
-
-    .gr-brand-icon {
-      font-size: 15px;
-      line-height: 1;
-    }
-
-    /* Category Pill: Pure quiet typography, no background box */
     .gr-pill {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #B45309;
-      text-transform: uppercase;
-      background: transparent !important;
-      border: none !important;
-      padding: 0 !important;
+      display: none !important;
     }
 
     .gr-btn-close {
       background: transparent;
       border: none;
-      color: #717E68;
-      font-size: 15px;
+      color: #88907E;
+      font-size: 18px;
       line-height: 1;
       width: 24px;
       height: 24px;
@@ -312,59 +306,34 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-btn-close:hover, .gr-btn-close:focus-visible {
-      color: #273121;
+      color: #1B2117;
       outline: none;
     }
 
-    /* Content Body: Pure typographic flow, zero colored boxes */
+    /* Body Flow */
     .gr-body {
-      padding: 24px;
+      padding: 0 28px 24px;
       max-height: 72vh;
       overflow-y: auto;
     }
 
-    /* Advisory Notice: Hairline typography, no box */
-    .gr-action-status-banner {
-      font-size: 12.5px;
-      line-height: 1.5;
-      color: #717E68;
-      margin-bottom: 20px;
-      padding: 0 !important;
-      background: transparent !important;
-      border: none !important;
-    }
-
-    .gr-status-headline {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-weight: 700;
-      font-size: 11.5px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: #B45309;
-      margin-right: 4px;
-    }
-
-    .gr-status-subtext {
-      color: #55624C;
-    }
-
-    /* Main Headline */
+    /* Big Bold Display Headline */
     .gr-title {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 24px;
-      font-weight: 700;
-      color: #1E261B;
-      letter-spacing: -0.025em;
-      line-height: 1.2;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: #1B2117;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
       margin-bottom: 8px;
     }
 
-    /* Website Domain: Typographic label, no box */
+    /* Target Web Destination: Typographic metadata row */
     .gr-domain-callout {
       display: flex;
       align-items: baseline;
-      gap: 8px;
-      margin-bottom: 18px;
+      gap: 7px;
+      margin-bottom: 16px;
       background: transparent !important;
       border: none !important;
       padding: 0 !important;
@@ -381,12 +350,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-domain-label {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #717E68;
+      letter-spacing: 0.08em;
+      color: #5F6656;
     }
 
     .gr-domain-value {
@@ -400,24 +369,32 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-source-indicator {
-      display: none;
+      display: none !important;
     }
 
+    /* Primary Explanation (Inter) */
     .gr-summary {
       font-size: 14px;
-      color: #4A5642;
-      line-height: 1.55;
-      margin-bottom: 22px;
+      color: #5F6656;
+      line-height: 1.6;
+      margin-bottom: 18px;
     }
 
-    /* Detected Characteristics: Clean typographic list */
+    /* Hidden noisy elements */
+    .gr-action-status-banner,
+    .gr-risk-box,
+    .gr-guidance-list {
+      display: none !important;
+    }
+
+    /* Detected Characteristics Header & Clean Bullets */
     .gr-section-title {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #717E68;
+      color: #5F6656;
       margin-bottom: 8px;
     }
 
@@ -426,14 +403,14 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       padding: 0 !important;
     }
 
     .gr-reason-item {
-      font-size: 13px;
-      line-height: 1.45;
-      color: #273121;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: #1B2117;
       background: transparent !important;
       border: none !important;
       padding: 0 0 0 14px !important;
@@ -444,56 +421,31 @@ export function showWarningModal(props: WarningModalProps): () => void {
       content: "•";
       position: absolute;
       left: 0;
-      color: #D97706;
+      color: #A15C07;
       font-size: 16px;
       line-height: 1.2;
     }
 
-    /* Why Considered Risky: Clean prose paragraph */
-    .gr-risk-box {
-      background: transparent !important;
-      border: none !important;
-      padding: 0 !important;
-      margin-bottom: 20px;
-      font-size: 13px;
-      line-height: 1.5;
-      color: #4A5642;
-    }
-
-    .gr-risk-box-title {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-weight: 700;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #717E68;
-      margin-bottom: 6px;
-    }
-
-    .gr-guidance-list {
-      display: none;
-    }
-
     .gr-continuation-disclaimer {
       font-size: 12px;
-      color: #717E68;
-      line-height: 1.45;
-      margin-bottom: 8px;
+      color: #88907E;
+      line-height: 1.5;
+      margin-bottom: 4px;
     }
 
-    /* Technical Diagnostics */
+    /* Quiet Technical Diagnostics */
     .gr-diagnostics {
-      margin-top: 18px;
-      border-top: 1px solid rgba(39, 49, 33, 0.08);
-      padding-top: 12px;
+      margin-top: 14px;
+      border-top: 1px solid rgba(39, 49, 33, 0.12);
+      padding-top: 10px;
     }
 
     .gr-diagnostics-summary {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 600;
       font-size: 11px;
       letter-spacing: 0.04em;
-      color: #717E68;
+      color: #88907E;
       cursor: pointer;
       user-select: none;
       display: flex;
@@ -503,7 +455,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-diagnostics-summary:hover {
-      color: #273121;
+      color: #1B2117;
     }
 
     .gr-diagnostics-body {
@@ -521,22 +473,22 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-diag-key {
-      color: #717E68;
+      color: #88907E;
       font-size: 11px;
     }
 
     .gr-diag-val {
-      color: #273121;
+      color: #1B2117;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 11px;
       word-break: break-all;
     }
 
-    /* Footer: Pure seamless layout, zero divider box, clear typographic button actions */
+    /* Action Footer: Perfectly Harmonized with Dashboard & Settings */
     .gr-footer {
-      padding: 16px 24px 22px;
+      padding: 18px 28px 24px;
       background: transparent;
-      border-top: 1px solid rgba(39, 49, 33, 0.08);
+      border-top: 1px solid rgba(39, 49, 33, 0.12);
       display: flex;
       align-items: center;
       justify-content: flex-end;
@@ -544,12 +496,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-btn {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 12px;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12.5px;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-      padding: 10px 20px;
+      padding: 11px 22px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -570,50 +522,52 @@ export function showWarningModal(props: WarningModalProps): () => void {
       cursor: not-allowed;
     }
 
-    /* Primary Action: Deep Olive (#273121) tactile pill */
+    /* Primary Recommended Button: Deep Forest Olive (#273121) */
     .gr-btn-cancel {
       background: #273121;
       border: 1px solid #273121;
       color: #EDE6D6;
-      box-shadow: 0 2px 6px rgba(39, 49, 33, 0.16),
+      box-shadow: 0 2px 6px rgba(27, 33, 23, 0.18),
                   inset 0 1px 0 rgba(237, 230, 214, 0.15);
     }
 
     .gr-btn-cancel:hover:not(:disabled) {
-      background: #35422D;
+      background: #1A2215;
+      border-color: #1A2215;
       color: #FFFFFF;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(39, 49, 33, 0.22);
+      box-shadow: 0 4px 12px rgba(27, 33, 23, 0.26);
     }
 
     .gr-btn-cancel:active:not(:disabled) {
+      background: #131A10;
       transform: translateY(0);
-      box-shadow: 0 1px 3px rgba(39, 49, 33, 0.2);
+      box-shadow: 0 1px 3px rgba(27, 33, 23, 0.2);
     }
 
-    /* Secondary Action: Quiet typographic link, zero heavy border */
+    /* Secondary Action: Quiet Typographic Link */
     .gr-btn-continue {
       background: transparent;
       border: none;
-      color: #717E68;
-      padding: 10px 8px;
+      color: #5F6656;
+      padding: 11px 6px;
     }
 
     .gr-btn-continue:hover:not(:disabled) {
-      color: #273121;
+      color: #1B2117;
       text-decoration: underline;
       text-underline-offset: 4px;
     }
 
     .gr-btn-continue:active:not(:disabled) {
-      color: #1E261B;
+      color: #131A10;
     }
 
     /* Loading Overlay */
     .gr-loading-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(247, 244, 236, 0.94);
+      background: rgba(237, 230, 214, 0.94);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -633,9 +587,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-loading-text {
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 13px;
-      color: #273121;
+      color: #1B2117;
       font-weight: 600;
     }
 
