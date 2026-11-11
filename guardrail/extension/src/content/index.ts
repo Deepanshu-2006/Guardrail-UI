@@ -409,24 +409,46 @@ function bootstrap(): void {
             decision,
             onRequestApproval: () => {
               console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
-              // Build staging context if not already set, and dispatch approval request
               try {
-                const intent = createApprovalRequestIntent({
-                  actionId: action.id,
-                  actionType: action.type,
-                  riskScore: risk.score,
-                  riskLevel: risk.riskLevel,
-                  domain: action.page?.domain || window.location.hostname,
-                  url: action.page?.url || window.location.href,
-                  targetLabel: action.element?.visibleText || action.page?.domain || 'External Navigation',
-                  decision: decision.response,
-                  timestamp: new Date().toISOString(),
+                // 1. Register & hold action in InterceptionController so it is recognized for approval
+                if (!defaultInterceptionController.hasRecord(action.id)) {
+                  defaultInterceptionController.register(action, 'External navigation warned; awaiting caretaker approval.');
+                }
+                const heldRecord = defaultInterceptionController.holdAction(
+                  action.id,
+                  'External navigation intercepted; user requested caretaker approval.'
+                );
+
+                // 2. Build staging context
+                const stagingContext = createStagingActionContext({
+                  action,
+                  interception: heldRecord,
+                  risk,
+                  classification,
+                  decision,
                 });
-                dispatchApprovalRequestToBackground(intent).catch(() => {
-                  console.warn('[Guardrail Content] Background dispatch failed.');
-                });
+                latestStagingContext = stagingContext;
+
+                // 3. Dispatch real backend approval submission to background service worker
+                dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
+                  .then((response) => {
+                    console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
+                  })
+                  .catch((err) => {
+                    console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
+                  });
+
+                // 4. Also dispatch local intent and DOM event for UI synchronization
+                const intent = createApprovalRequestIntent(stagingContext, heldRecord);
+                dispatchApprovalRequestToBackground(intent).catch(() => {});
+                document.dispatchEvent(
+                  new CustomEvent('guardrail:approval-requested', {
+                    detail: { actionId: action.id, intent, isBackendConnected: true },
+                    bubbles: true,
+                  })
+                );
               } catch (appErr) {
-                console.warn('[Guardrail UI] Failed to dispatch approval request intent.', appErr);
+                console.warn('[Guardrail UI] Failed to prepare caretaker approval request.', appErr);
               }
             },
             onCancel: () => {
@@ -558,10 +580,45 @@ function bootstrap(): void {
               action,
               risk,
               decision,
-              onContinue: () => {
-                console.log(
-                  `[Guardrail UI] User clicked Continue on warning for action: ${action.id}. Action was not held; no held state to authorize.`
-                );
+              onRequestApproval: () => {
+                console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
+                try {
+                  if (!defaultInterceptionController.hasRecord(action.id)) {
+                    defaultInterceptionController.register(action, 'External navigation warned; awaiting caretaker approval.');
+                  }
+                  const heldRecord = defaultInterceptionController.holdAction(
+                    action.id,
+                    'External navigation intercepted; user requested caretaker approval.'
+                  );
+
+                  const stagingContext = createStagingActionContext({
+                    action,
+                    interception: heldRecord,
+                    risk,
+                    classification,
+                    decision,
+                  });
+                  latestStagingContext = stagingContext;
+
+                  dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
+                    .then((response) => {
+                      console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
+                    })
+                    .catch((err) => {
+                      console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
+                    });
+
+                  const intent = createApprovalRequestIntent(stagingContext, heldRecord);
+                  dispatchApprovalRequestToBackground(intent).catch(() => {});
+                  document.dispatchEvent(
+                    new CustomEvent('guardrail:approval-requested', {
+                      detail: { actionId: action.id, intent, isBackendConnected: true },
+                      bubbles: true,
+                    })
+                  );
+                } catch (appErr) {
+                  console.warn('[Guardrail UI] Failed to prepare caretaker approval request.', appErr);
+                }
               },
               onCancel: () => {
                 console.log(
