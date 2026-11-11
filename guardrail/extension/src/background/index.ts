@@ -795,7 +795,25 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
       return true;
     }
 
-    // 11. Unsupported message type
+    // 11. Close Current Tab (Cancel & Leave)
+    if (raw.type === 'GUARDRAIL_CLOSE_CURRENT_TAB') {
+      const tabId = sender.tab?.id;
+      if (typeof tabId === 'number' && typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.remove) {
+        chrome.tabs.remove(tabId)
+          .then(() => {
+            sendResponse({ success: true, tabId });
+          })
+          .catch((err) => {
+            console.warn('[Guardrail Background] Failed to remove tab:', err);
+            sendResponse({ success: false, tabId, error: 'TAB_REMOVE_FAILED' });
+          });
+        return true;
+      }
+      sendResponse({ success: false, error: 'NO_TAB_ID_OR_API' });
+      return false;
+    }
+
+    // 12. Unsupported message type
     sendResponse({
       success: false,
       error: 'Unsupported message type.',

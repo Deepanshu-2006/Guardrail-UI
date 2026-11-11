@@ -59,6 +59,47 @@ import { cancelControlledActionUntilPolicyInitialized, isPolicyConfigurationInit
 import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 
 let latestStagingContext: StagingActionContext | null = null;
+
+/**
+ * Safely exits the current site and closes the entire tab when the user chooses "Cancel & Leave".
+ * Sends a message to the background service worker to close the tab via chrome.tabs API,
+ * with fallbacks to window.close() and about:blank.
+ */
+export function performSafeSiteExit(): void {
+  console.log('[Guardrail UI] Executing full tab close (Cancel & Leave)...');
+
+  // 1. Send message to background service worker to close this tab directly
+  if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+    try {
+      chrome.runtime.sendMessage({ type: 'GUARDRAIL_CLOSE_CURRENT_TAB' }, () => {
+        // Callback if acknowledged before closure
+      });
+    } catch {
+      // Ignore if runtime disconnected
+    }
+  }
+
+  if (typeof window === 'undefined') return;
+
+  // 2. Direct DOM window.close() call
+  try {
+    window.close();
+  } catch {
+    // Ignore error if not script-closable
+  }
+
+  // 3. Fallback: navigate away from the current website to an empty safe location
+  setTimeout(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.replace('about:blank');
+      }
+    } catch {
+      window.location.href = 'about:blank';
+    }
+  }, 100);
+}
+
 let cancelHeldAction: (targetActionId?: string) => CancellationResult = (targetActionId) => {
   const held = defaultContinuationManager.getCurrentHeldAction();
   const actionId = targetActionId || held?.action.id;
@@ -390,6 +431,7 @@ function bootstrap(): void {
             },
             onCancel: () => {
               console.log(`[Guardrail UI] User clicked Cancel & Leave for action: ${action.id}`);
+              performSafeSiteExit();
             },
           });
           break;
@@ -523,8 +565,9 @@ function bootstrap(): void {
               },
               onCancel: () => {
                 console.log(
-                  `[Guardrail UI] User clicked Cancel on warning for action: ${action.id}.`
+                  `[Guardrail UI] User clicked Cancel & Leave on warning for action: ${action.id}.`
                 );
+                performSafeSiteExit();
               },
             });
 
