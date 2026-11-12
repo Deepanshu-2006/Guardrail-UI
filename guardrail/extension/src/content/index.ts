@@ -15,7 +15,15 @@
 
 import { ActionDetector } from '../detector/index.js';
 import { evaluateActionPipeline } from '../response/index.js';
-import { showWarningModal, updateWaitingScreenStatus } from '../ui/index.js';
+import {
+  dismissPendingApprovalPill,
+  dismissWarningModal,
+  showPendingApprovalPill,
+  showWarningModal,
+  updatePendingApprovalPill,
+  updateWaitingScreenStatus,
+  type ApprovalWaitingState,
+} from '../ui/index.js';
 import { ApprovalStatus } from '../types/approval.js';
 import { ApprovalStatusSyncClient, type StatusSyncSubscription } from '../approval/sync-client.js';
 import {
@@ -46,6 +54,7 @@ import { StagingActionContext } from '../types/staging.js';
 import {
   dispatchActionToBackground,
   dispatchApprovalRequestToBackground,
+  dispatchCancelApprovalRequestToBackground,
   dispatchSubmitApprovalRequestToBackground,
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
@@ -62,6 +71,19 @@ import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 
 let latestStagingContext: StagingActionContext | null = null;
 let activeWarningSyncSub: StatusSyncSubscription | null = null;
+
+interface ActiveApprovalSession {
+  action: GuardrailAction;
+  risk: RiskAssessment;
+  decision: ResponseDecision;
+  classification?: ActionClassificationResult;
+  requestId: string | null;
+  status: ApprovalWaitingState;
+  hasExecutedContinuation: boolean;
+  submittedAt: string;
+}
+
+let activeApprovalSession: ActiveApprovalSession | null = null;
 
 function stopWarningStatusPolling(): void {
   if (activeWarningSyncSub) {
@@ -81,34 +103,360 @@ function startWaitingStatusPolling(requestId: string, action: GuardrailAction): 
     activeWarningSyncSub = syncClient.startSync(requestId, {
       onStatusChange: (newStatus, result) => {
         console.log(`[Guardrail UI] Status synchronization event for ${requestId}: ${newStatus}`);
+
+        // Security Guard: Ignore status updates for stale or mismatching sessions
+        if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
+          console.warn(`[Guardrail UI] Ignoring status update for inactive session: ${requestId}`);
+          return;
+        }
+
+        // Security Guard: Prevent stale approval responses from releasing cancelled or rejected requests
+        if (
+          activeApprovalSession.status === 'cancelled' ||
+          activeApprovalSession.status === 'rejected' ||
+          activeApprovalSession.hasExecutedContinuation
+        ) {
+          console.warn(
+            `[Guardrail UI] Security Guard: Rejected stale status update [${newStatus}] for request in terminal state [${activeApprovalSession.status}]`
+          );
+          return;
+        }
+
         if (newStatus === ApprovalStatus.APPROVED) {
+          // CRITICAL INVARIANT: Verify authoritative approval decision
+          if (!result.isApproved) {
+            console.warn('[Guardrail UI] Received non-authoritative approval status. Action remains held.');
+            return;
+          }
+
+          activeApprovalSession.status = 'approved';
+          const approver = result.request?.decision?.decidedBy || 'Trusted Contact';
+
+          // Update floating pill if active
+          updatePendingApprovalPill('approved');
+
+          // Update waiting modal UI with verified approval state and Continue button
           updateWaitingScreenStatus('approved', {
             requestId,
-            approver: result.request?.decision?.decidedBy || 'Trusted Contact',
+            approver,
+            submittedAt: activeApprovalSession.submittedAt,
             onProceed: () => {
+              if (!activeApprovalSession || activeApprovalSession.hasExecutedContinuation) {
+                return; // Release at most once
+              }
+              activeApprovalSession.hasExecutedContinuation = true;
+
               stopWarningStatusPolling();
+              dismissPendingApprovalPill();
+              dismissWarningModal();
+
+              console.log(`[Guardrail UI] Releasing held action exactly once for approved request: ${requestId}`);
               try {
                 defaultContinuationManager.continueAction(action.id);
-              } catch {}
+              } catch (contErr) {
+                console.warn('[Guardrail UI] Continuation manager warning:', contErr);
+              }
+
               const destUrl = action.page?.url;
               if (destUrl && typeof window !== 'undefined') {
                 window.location.href = destUrl;
               }
             },
           });
+
+          // Stop polling once authoritative approval is received
           stopWarningStatusPolling();
         } else if (newStatus === ApprovalStatus.REJECTED) {
+          activeApprovalSession.status = 'rejected';
+          stopWarningStatusPolling();
+
+          try {
+            defaultContinuationManager.cancelAction(action.id, 'Request declined by caretaker');
+          } catch {}
+          try {
+            defaultInterceptionController.cancelAction(action.id, 'Request declined by caretaker');
+          } catch {}
+
+          updatePendingApprovalPill('rejected');
           updateWaitingScreenStatus('rejected', {
             requestId,
             reason: result.request?.decision?.reason || 'Declined by caretaker',
+            submittedAt: activeApprovalSession.submittedAt,
           });
+        } else if (newStatus === ApprovalStatus.CANCELLED) {
+          activeApprovalSession.status = 'cancelled';
           stopWarningStatusPolling();
+          dismissPendingApprovalPill();
+
+          try {
+            defaultContinuationManager.cancelAction(action.id, 'Request cancelled');
+          } catch {}
+
+          updateWaitingScreenStatus('cancelled', {
+            requestId,
+            submittedAt: activeApprovalSession.submittedAt,
+          });
+        } else if (newStatus === ApprovalStatus.EXPIRED) {
+          activeApprovalSession.status = 'expired';
+          stopWarningStatusPolling();
+          dismissPendingApprovalPill();
+
+          try {
+            defaultContinuationManager.cancelAction(action.id, 'Approval request expired');
+          } catch {}
+
+          updateWaitingScreenStatus('expired', {
+            requestId,
+            submittedAt: activeApprovalSession.submittedAt,
+          });
+        }
+      },
+
+      onReconnecting: (attempt, maxAttempts, error) => {
+        console.warn(`[Guardrail UI] Real-time sync reconnecting (attempt ${attempt}/${maxAttempts})...`);
+        if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+          updateWaitingScreenStatus(activeApprovalSession.status, {
+            requestId,
+            connectionStatus: 'reconnecting',
+            connectionMessage: `Connection interrupted • Reconnecting (${attempt}/${maxAttempts})...`,
+            submittedAt: activeApprovalSession.submittedAt,
+          });
+          updatePendingApprovalPill('reconnecting');
+        }
+      },
+
+      onReconnected: () => {
+        console.log('[Guardrail UI] Real-time sync restored.');
+        if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+          updateWaitingScreenStatus(activeApprovalSession.status, {
+            requestId,
+            connectionStatus: 'connected',
+            submittedAt: activeApprovalSession.submittedAt,
+          });
+          updatePendingApprovalPill(activeApprovalSession.status);
+        }
+      },
+
+      onError: (error, result) => {
+        console.warn('[Guardrail UI] Real-time sync connection notice:', error?.message);
+        if (!result.isAuthoritative && activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+          updateWaitingScreenStatus(activeApprovalSession.status, {
+            requestId,
+            connectionStatus: 'offline',
+            connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
+            submittedAt: activeApprovalSession.submittedAt,
+          });
+          updatePendingApprovalPill('offline');
         }
       },
     });
   } catch (err) {
     console.warn('[Guardrail UI] Failed to initiate approval status sync:', err);
   }
+}
+
+/**
+ * Minimizes the waiting interface to a floating status pill when the user closes the modal.
+ * Preserves the held navigation and keeps background status synchronization active.
+ */
+function handleCloseWaiting(
+  action: GuardrailAction,
+  risk: RiskAssessment,
+  decision: ResponseDecision,
+  classification?: ActionClassificationResult
+): void {
+  console.log(
+    `[Guardrail UI] Waiting modal closed (minimized to floating pill). Approval request [${activeApprovalSession?.requestId || action.id}] remains PENDING and action held.`
+  );
+  showPendingApprovalPill({
+    domain: action.page?.domain || (typeof window !== 'undefined' ? window.location.hostname : 'External Domain'),
+    requestId: activeApprovalSession?.requestId || undefined,
+    status: activeApprovalSession?.status || 'pending',
+    onOpen: () => {
+      dismissPendingApprovalPill();
+      reopenWaitingModal(action, risk, decision, classification);
+    },
+    onCancel: () => {
+      void handleCancelApproval(action);
+    },
+    onDismiss: () => {
+      // Floating pill dismissed; action remains safely held in memory
+    },
+  });
+}
+
+/**
+ * Re-opens the waiting screen modal directly in waiting state when the user clicks the floating pill.
+ */
+function reopenWaitingModal(
+  action: GuardrailAction,
+  risk: RiskAssessment,
+  decision: ResponseDecision,
+  classification?: ActionClassificationResult
+): void {
+  dismissPendingApprovalPill();
+  showWarningModal({
+    action,
+    risk,
+    decision,
+    initialState: 'waiting',
+    onCloseWaiting: () => handleCloseWaiting(action, risk, decision, classification),
+    onCancelRequest: () => {
+      void handleCancelApproval(action);
+    },
+    onCancel: () => {
+      stopWarningStatusPolling();
+      dismissPendingApprovalPill();
+      performSafeSiteExit();
+    },
+  });
+
+  if (activeApprovalSession) {
+    updateWaitingScreenStatus(activeApprovalSession.status, {
+      requestId: activeApprovalSession.requestId || undefined,
+      submittedAt: activeApprovalSession.submittedAt,
+    });
+  }
+}
+
+/**
+ * Explicitly cancels the pending approval request.
+ * Updates backend status to CANCELLED, ensures held action is never executed,
+ * and updates UI to show cancellation confirmation.
+ */
+async function handleCancelApproval(action: GuardrailAction): Promise<void> {
+  console.log(`[Guardrail UI] Cancelling approval request for action: ${action.id}`);
+  stopWarningStatusPolling();
+  dismissPendingApprovalPill();
+
+  const reqId = activeApprovalSession?.requestId;
+  if (activeApprovalSession) {
+    activeApprovalSession.status = 'cancelled';
+  }
+
+  // 1. Dispatch explicit cancellation message to background service worker
+  if (reqId) {
+    try {
+      await dispatchCancelApprovalRequestToBackground(
+        reqId,
+        action.id,
+        'User explicitly cancelled approval request from waiting interface.'
+      );
+    } catch (err) {
+      console.warn('[Guardrail UI] Background cancellation dispatch warning:', err);
+    }
+  }
+
+  // 2. Safely cancel held action in continuation manager and interception controller
+  try {
+    defaultContinuationManager.cancelAction(action.id, 'Approval request cancelled by user.');
+  } catch {}
+  try {
+    defaultInterceptionController.cancelAction(action.id, 'Approval request cancelled by user.');
+  } catch {}
+
+  // 3. Update UI to show cancellation confirmation state
+  updateWaitingScreenStatus('cancelled', {
+    requestId: reqId || undefined,
+    submittedAt: activeApprovalSession?.submittedAt,
+  });
+}
+
+/**
+ * Displays the Guardrail Warning Dialog with comprehensive Caretaker Approval workflow.
+ */
+function presentWarningWithApproval(
+  action: GuardrailAction,
+  risk: RiskAssessment,
+  decision: ResponseDecision,
+  classification?: ActionClassificationResult
+): void {
+  showWarningModal({
+    action,
+    risk,
+    decision,
+    onCloseWaiting: () => handleCloseWaiting(action, risk, decision, classification),
+    onCancelRequest: () => {
+      void handleCancelApproval(action);
+    },
+    onRequestApproval: () => {
+      console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
+      try {
+        // 1. Register & hold action in InterceptionController so it is recognized for approval
+        if (!defaultInterceptionController.hasRecord(action.id)) {
+          defaultInterceptionController.register(action, 'External navigation warned; awaiting caretaker approval.');
+        }
+        const heldRecord = defaultInterceptionController.holdAction(
+          action.id,
+          'External navigation intercepted; user requested caretaker approval.'
+        );
+
+        // 2. Build staging context
+        const stagingContext = createStagingActionContext({
+          action,
+          interception: heldRecord,
+          risk,
+          classification,
+          decision,
+        });
+        latestStagingContext = stagingContext;
+
+        activeApprovalSession = {
+          action,
+          risk,
+          decision,
+          classification,
+          requestId: null,
+          status: 'pending',
+          hasExecutedContinuation: false,
+          submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        };
+
+        // 3. Dispatch real backend approval submission to background service worker
+        dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
+          .then((response) => {
+            console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
+            if (response && response.request && response.request.id) {
+              const reqId = response.request.id;
+              if (activeApprovalSession && activeApprovalSession.action.id === action.id) {
+                activeApprovalSession.requestId = reqId;
+              }
+              updateWaitingScreenStatus('pending', {
+                requestId: reqId,
+                submittedAt: activeApprovalSession?.submittedAt,
+              });
+              startWaitingStatusPolling(reqId, action);
+            }
+          })
+          .catch((err) => {
+            console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
+            updateWaitingScreenStatus('pending', {
+              connectionStatus: 'offline',
+              connectionMessage: 'Sync connection unavailable • Action remains safely held',
+              submittedAt: activeApprovalSession?.submittedAt,
+            });
+          });
+
+        // 4. Also dispatch local intent and DOM event for UI synchronization
+        const intent = createApprovalRequestIntent(stagingContext, heldRecord);
+        dispatchApprovalRequestToBackground(intent).catch(() => {});
+        document.dispatchEvent(
+          new CustomEvent('guardrail:approval-requested', {
+            detail: { actionId: action.id, intent, isBackendConnected: true },
+            bubbles: true,
+          })
+        );
+      } catch (appErr) {
+        console.warn('[Guardrail UI] Failed to prepare caretaker approval request.', appErr);
+      }
+    },
+    onCancel: () => {
+      console.log(`[Guardrail UI] User clicked Cancel & Leave for action: ${action.id}`);
+      stopWarningStatusPolling();
+      dismissPendingApprovalPill();
+      performSafeSiteExit();
+    },
+  });
 }
 
 /**
@@ -454,66 +802,7 @@ function bootstrap(): void {
 
         case ResponseAction.WARN:
           console.log(`[Guardrail Response] WARN: Displaying Guardrail warning UI with Caretaker Approval option.`);
-          showWarningModal({
-            action,
-            risk,
-            decision,
-            onRequestApproval: () => {
-              console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
-              try {
-                // 1. Register & hold action in InterceptionController so it is recognized for approval
-                if (!defaultInterceptionController.hasRecord(action.id)) {
-                  defaultInterceptionController.register(action, 'External navigation warned; awaiting caretaker approval.');
-                }
-                const heldRecord = defaultInterceptionController.holdAction(
-                  action.id,
-                  'External navigation intercepted; user requested caretaker approval.'
-                );
-
-                // 2. Build staging context
-                const stagingContext = createStagingActionContext({
-                  action,
-                  interception: heldRecord,
-                  risk,
-                  classification,
-                  decision,
-                });
-                latestStagingContext = stagingContext;
-
-                // 3. Dispatch real backend approval submission to background service worker
-                dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
-                  .then((response) => {
-                    console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
-                    if (response && response.request && response.request.id) {
-                      updateWaitingScreenStatus('pending', {
-                        requestId: response.request.id,
-                      });
-                      startWaitingStatusPolling(response.request.id, action);
-                    }
-                  })
-                  .catch((err) => {
-                    console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
-                  });
-
-                // 4. Also dispatch local intent and DOM event for UI synchronization
-                const intent = createApprovalRequestIntent(stagingContext, heldRecord);
-                dispatchApprovalRequestToBackground(intent).catch(() => {});
-                document.dispatchEvent(
-                  new CustomEvent('guardrail:approval-requested', {
-                    detail: { actionId: action.id, intent, isBackendConnected: true },
-                    bubbles: true,
-                  })
-                );
-              } catch (appErr) {
-                console.warn('[Guardrail UI] Failed to prepare caretaker approval request.', appErr);
-              }
-            },
-            onCancel: () => {
-              console.log(`[Guardrail UI] User clicked Cancel & Leave for action: ${action.id}`);
-              stopWarningStatusPolling();
-              performSafeSiteExit();
-            },
-          });
+          presentWarningWithApproval(action, risk, decision, classification);
           break;
 
         case ResponseAction.PROTECT:
@@ -634,64 +923,7 @@ function bootstrap(): void {
               decision,
             });
 
-            showWarningModal({
-              action,
-              risk,
-              decision,
-              onRequestApproval: () => {
-                console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
-                try {
-                  if (!defaultInterceptionController.hasRecord(action.id)) {
-                    defaultInterceptionController.register(action, 'External navigation warned; awaiting caretaker approval.');
-                  }
-                  const heldRecord = defaultInterceptionController.holdAction(
-                    action.id,
-                    'External navigation intercepted; user requested caretaker approval.'
-                  );
-
-                  const stagingContext = createStagingActionContext({
-                    action,
-                    interception: heldRecord,
-                    risk,
-                    classification,
-                    decision,
-                  });
-                  latestStagingContext = stagingContext;
-
-                  dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
-                    .then((response) => {
-                      console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
-                      if (response && response.request && response.request.id) {
-                        updateWaitingScreenStatus('pending', {
-                          requestId: response.request.id,
-                        });
-                        startWaitingStatusPolling(response.request.id, action);
-                      }
-                    })
-                    .catch((err) => {
-                      console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
-                    });
-
-                  const intent = createApprovalRequestIntent(stagingContext, heldRecord);
-                  dispatchApprovalRequestToBackground(intent).catch(() => {});
-                  document.dispatchEvent(
-                    new CustomEvent('guardrail:approval-requested', {
-                      detail: { actionId: action.id, intent, isBackendConnected: true },
-                      bubbles: true,
-                    })
-                  );
-                } catch (appErr) {
-                  console.warn('[Guardrail UI] Failed to prepare caretaker approval request.', appErr);
-                }
-              },
-              onCancel: () => {
-                console.log(
-                  `[Guardrail UI] User clicked Cancel & Leave on warning for action: ${action.id}.`
-                );
-                stopWarningStatusPolling();
-                performSafeSiteExit();
-              },
-            });
+            presentWarningWithApproval(action, risk, decision, classification);
 
             // Forward pipeline evaluation to background coordinator (without interception record)
             dispatchActionToBackground(action, classification, risk, decision);
