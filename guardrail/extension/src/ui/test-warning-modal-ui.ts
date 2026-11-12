@@ -333,7 +333,15 @@ import {
   updateWaitingScreenStatus,
   HOST_ELEMENT_ID,
   WarningModalProps,
+  ApprovalWaitingState,
 } from './warning-modal.js';
+import {
+  showPendingApprovalPill,
+  dismissPendingApprovalPill,
+  isPendingApprovalPillActive,
+  updatePendingApprovalPill,
+  PILL_HOST_ELEMENT_ID,
+} from './pending-pill.js';
 import { GuardrailAction, ActionType } from '../types/actions.js';
 import { RiskAssessment, RiskLevel } from '../types/risk.js';
 import { ResponseAction, ResponseDecision } from '../types/response.js';
@@ -866,6 +874,258 @@ async function runWarningUITests() {
     assert(!isWarningModalActive(), 'Modal dismissed after Cancel Request click');
 
     dismissWarningModal();
+  }
+
+  // Test Suite 10: Complete Approval Lifecycle, Differentiated Close vs Cancel, & Real-time Sync
+  console.log('\nSuite 10: Complete Approval Lifecycle, Differentiated Close vs Cancel, & Real-time Sync');
+  {
+    // 10.1: Differentiated Close (X) vs Cancel Request
+    mockDoc.body = new MockDOMElement('BODY');
+    let closeWaitingCalled = false;
+    let cancelRequestCalled = false;
+    let cancelCalled = false;
+
+    showWarningModal({
+      action: createSampleAction('https://portal.internal-bank.com/transfer'),
+      risk: createSampleRisk(RiskLevel.HIGH, 78),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      onCloseWaiting: () => {
+        closeWaitingCalled = true;
+      },
+      onCancelRequest: () => {
+        cancelRequestCalled = true;
+      },
+      onCancel: () => {
+        cancelCalled = true;
+      },
+    });
+
+    const host = mockDoc.getElementById(HOST_ELEMENT_ID);
+    const shadow = host!.shadowRoot!;
+
+    // Transition to waiting view
+    const reqBtn = shadow.querySelector('.gr-btn-continue');
+    reqBtn?.click();
+
+    // Verify Close (X) button triggers onCloseWaiting and NOT onCancel
+    const waitingCloseBtn = shadow.querySelector('.gr-waiting-close');
+    assert(waitingCloseBtn !== null, 'Waiting view Close (X) button present');
+    waitingCloseBtn?.click();
+    assert(closeWaitingCalled, 'Closing waiting view calls onCloseWaiting callback');
+    assert(!cancelCalled, 'Closing waiting view does NOT trigger destructive onCancel');
+    assert(!isWarningModalActive(), 'Modal dismissed after closing waiting view');
+
+    // Reopen in waiting state to test Escape key behavior
+    mockDoc.body = new MockDOMElement('BODY');
+    closeWaitingCalled = false;
+    cancelCalled = false;
+    showWarningModal({
+      action: createSampleAction('https://portal.internal-bank.com/transfer'),
+      risk: createSampleRisk(RiskLevel.HIGH, 78),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      initialState: 'waiting',
+      onCloseWaiting: () => {
+        closeWaitingCalled = true;
+      },
+      onCancel: () => {
+        cancelCalled = true;
+      },
+    });
+
+    // Press Escape while in waiting mode
+    mockWin.dispatchEvent({ type: 'keydown', key: 'Escape' });
+    assert(closeWaitingCalled, 'Pressing Escape in waiting view invokes onCloseWaiting');
+    assert(!cancelCalled, 'Pressing Escape in waiting view does NOT invoke destructive onCancel');
+
+    // Test explicit Cancel Request button triggers onCancelRequest
+    mockDoc.body = new MockDOMElement('BODY');
+    cancelRequestCalled = false;
+    cancelCalled = false;
+    showWarningModal({
+      action: createSampleAction('https://portal.internal-bank.com/transfer'),
+      risk: createSampleRisk(RiskLevel.HIGH, 78),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      initialState: 'waiting',
+      onCancelRequest: () => {
+        cancelRequestCalled = true;
+      },
+      onCancel: () => {
+        cancelCalled = true;
+      },
+    });
+
+    const hostCancel = mockDoc.getElementById(HOST_ELEMENT_ID);
+    const shadowCancel = hostCancel!.shadowRoot!;
+    const cancelReqBtn = shadowCancel.querySelector('.gr-btn-cancel-request');
+    assert(cancelReqBtn !== null, 'Cancel Request button rendered in waiting view');
+    cancelReqBtn?.click();
+    assert(cancelRequestCalled, 'Cancel Request button triggers onCancelRequest callback');
+    assert(!cancelCalled, 'Explicit onCancelRequest overrides fallback onCancel');
+
+    // 10.2: Complete 6 Approval Result States & 3-stage vertical timeline
+    mockDoc.body = new MockDOMElement('BODY');
+    showWarningModal({
+      action: createSampleAction('https://gaiaflix.xyz/#/movies'),
+      risk: createSampleRisk(RiskLevel.MEDIUM, 60),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      initialState: 'waiting',
+    });
+
+    const hostStates = mockDoc.getElementById(HOST_ELEMENT_ID);
+    const shadowStates = hostStates!.shadowRoot!;
+    const card = shadowStates.querySelector('.gr-card');
+    const waitingTitle = shadowStates.querySelector('.gr-waiting-title');
+    const waitingPill = shadowStates.querySelector('.gr-waiting-pill');
+    const stepper = shadowStates.querySelector('.gr-waiting-stepper');
+
+    // State 1: PENDING
+    updateWaitingScreenStatus('pending', {
+      requestId: 'apr_req_001',
+    });
+    assert(waitingTitle?.textContent.includes('Waiting for approval') ?? false, 'Pending state headline correct');
+    assert(waitingPill?.textContent.includes('Pending Review') ?? false, 'Pending state pill correct');
+    assert(stepper?.textContent.includes('Waiting for caretaker decision') ?? false, 'Stage 2 timeline displays waiting for decision');
+    assert(stepper?.textContent.includes('Access Locked') ?? false, 'Stage 3 timeline displays Access Locked');
+
+    // State 2: UNDER_REVIEW
+    updateWaitingScreenStatus('under_review', {
+      requestId: 'apr_req_001',
+    });
+    assert(waitingTitle?.textContent.includes('reviewed') ?? false, 'Under review headline correct');
+    assert(waitingPill?.textContent.includes('Under Review') ?? false, 'Under review pill correct');
+    assert(stepper?.textContent.includes('Caretaker is currently reviewing') ?? false, 'Stage 2 timeline updates to currently reviewing');
+
+    // State 3: APPROVED
+    let proceedTriggered = false;
+    updateWaitingScreenStatus('approved', {
+      requestId: 'apr_req_001',
+      approver: 'Sarah Caretaker',
+      onProceed: () => {
+        proceedTriggered = true;
+      },
+    });
+    assert(card?.classList.contains('gr-card-approved') ?? false, 'Approved card class applied');
+    assert(waitingTitle?.textContent.includes('Request Approved!') ?? false, 'Approved headline correct');
+    assert(waitingPill?.textContent.includes('Approved') ?? false, 'Approved pill correct');
+    assert(stepper?.textContent.includes('Access Granted') ?? false, 'Stage 3 timeline displays Access Granted');
+    const contBtn = shadowStates.querySelector('.gr-btn-continue-nav');
+    assert(contBtn !== null, 'Continue to Website button present in approved state');
+    contBtn?.click();
+    assert(proceedTriggered, 'Continue to Website button triggers onProceed callback');
+
+    // State 4: REJECTED
+    mockDoc.body = new MockDOMElement('BODY');
+    showWarningModal({
+      action: createSampleAction('https://gaiaflix.xyz/#/movies'),
+      risk: createSampleRisk(RiskLevel.MEDIUM, 60),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      initialState: 'waiting',
+    });
+    const hostRej = mockDoc.getElementById(HOST_ELEMENT_ID);
+    const shadowRej = hostRej!.shadowRoot!;
+    const cardRej = shadowRej.querySelector('.gr-card');
+    const titleRej = shadowRej.querySelector('.gr-waiting-title');
+    const pillRej = shadowRej.querySelector('.gr-waiting-pill');
+    const stepperRej = shadowRej.querySelector('.gr-waiting-stepper');
+
+    updateWaitingScreenStatus('rejected', {
+      requestId: 'apr_req_002',
+      reason: 'Domain flagged as unsafe stream site',
+    });
+    assert(cardRej?.classList.contains('gr-card-rejected') ?? false, 'Rejected card class applied');
+    assert(titleRej?.textContent.includes('Request Not Approved') ?? false, 'Rejected headline correct');
+    assert(pillRej?.textContent.includes('Access Denied') ?? false, 'Rejected pill displays Access Denied');
+    assert(stepperRej?.textContent.includes('Access Denied') ?? false, 'Stage 3 timeline displays Access Denied');
+    const leaveBtn = shadowRej.querySelector('.gr-footer-actions .gr-btn-cancel');
+    assert(leaveBtn !== null, 'Leave Website button rendered in rejected state');
+
+    // State 5: CANCELLED
+    updateWaitingScreenStatus('cancelled', {
+      requestId: 'apr_req_002',
+    });
+    assert(cardRej?.classList.contains('gr-card-cancelled') ?? false, 'Cancelled card class applied');
+    assert(titleRej?.textContent.includes('Request Cancelled') ?? false, 'Cancelled headline correct');
+    assert(pillRej?.textContent.includes('Cancelled') ?? false, 'Cancelled pill displays Cancelled');
+    assert(stepperRej?.textContent.includes('Access Cancelled') ?? false, 'Stage 3 timeline displays Access Cancelled');
+
+    // State 6: EXPIRED
+    updateWaitingScreenStatus('expired', {
+      requestId: 'apr_req_002',
+    });
+    assert(cardRej?.classList.contains('gr-card-expired') ?? false, 'Expired card class applied');
+    assert(titleRej?.textContent.includes('Request Expired') ?? false, 'Expired headline correct');
+    assert(pillRej?.textContent.includes('Expired') ?? false, 'Expired pill displays Expired');
+    assert(stepperRej?.textContent.includes('No response received') ?? false, 'Stage 2 timeline displays expired status');
+
+    // 10.3: Expandable Accordion Request Details
+    const detailsEl = shadowRej.querySelector('.gr-waiting-details');
+    assert(detailsEl !== null, 'Expandable accordion details container present');
+    const diagReqId = shadowRej.querySelector('.gr-diag-req-id');
+    assert(diagReqId?.textContent === 'apr_req_002', 'Accordion displays accurate Request ID');
+    const diagDomain = shadowRej.querySelector('.gr-diag-domain');
+    assert(diagDomain?.textContent.includes('gaiaflix.xyz') ?? false, 'Accordion displays requested destination domain');
+    const diagStatus = shadowRej.querySelector('.gr-diag-req-status');
+    assert(diagStatus?.textContent === 'EXPIRED', 'Accordion displays authoritative request status');
+
+    // 10.4: Real-Time Connection States (No fake sync)
+    updateWaitingScreenStatus('pending', {
+      requestId: 'apr_req_003',
+      connectionStatus: 'reconnecting',
+    });
+    const headerSyncReconn = shadowRej.querySelector('.gr-sync-tag');
+    assert(headerSyncReconn?.textContent.includes('Connection interrupted') ?? false, 'Reconnecting state displays explicit connection warning');
+    assert(!headerSyncReconn?.textContent.includes('Live Sync Active'), 'Never falsely claims Live Sync Active during reconnection');
+
+    updateWaitingScreenStatus('pending', {
+      requestId: 'apr_req_003',
+      connectionStatus: 'offline',
+    });
+    const headerSyncOffline = shadowRej.querySelector('.gr-sync-tag');
+    assert(headerSyncOffline?.textContent.includes('Sync offline') ?? false, 'Offline state displays sync offline');
+    assert(!headerSyncOffline?.textContent.includes('Live Sync Active'), 'Never falsely claims Live Sync Active when offline');
+
+    updateWaitingScreenStatus('pending', {
+      requestId: 'apr_req_003',
+      connectionStatus: 'connected',
+    });
+    const headerSyncConn = shadowRej.querySelector('.gr-sync-tag');
+    assert(headerSyncConn?.textContent.includes('Live Sync Active') ?? false, 'Connected state displays Live Sync Active');
+
+    // 10.5: Minimized Floating Status Pill Component
+    dismissWarningModal();
+    let pillOpenTriggered = false;
+    let pillCancelTriggered = false;
+
+    showPendingApprovalPill({
+      domain: 'gaiaflix.xyz',
+      requestId: 'apr_req_003',
+      status: 'pending',
+      onOpen: () => {
+        pillOpenTriggered = true;
+      },
+      onCancel: () => {
+        pillCancelTriggered = true;
+      },
+    });
+
+    assert(isPendingApprovalPillActive(), 'Floating pill is active in DOM');
+    const pillHost = mockDoc.getElementById(PILL_HOST_ELEMENT_ID);
+    assert(pillHost !== null, 'Floating pill host present in DOM');
+    const pillShadow = pillHost!.shadowRoot!;
+    const pillLabel = pillShadow.querySelector('.gr-pill-label');
+    assert(pillLabel?.textContent.includes('Approval Pending') ?? false, 'Pill displays pending label');
+
+    // Real-time update to approved on pill
+    updatePendingApprovalPill('approved');
+    assert(pillLabel?.textContent.includes('Request Approved') ?? false, 'Pill label dynamically updates to Request Approved');
+
+    // Pill click triggers onOpen callback
+    const pillContainer = pillShadow.querySelector('.gr-pill-container');
+    pillContainer?.click();
+    assert(pillOpenTriggered, 'Clicking floating pill triggers onOpen callback');
+
+    dismissPendingApprovalPill();
+    assert(!isPendingApprovalPillActive(), 'Floating pill dismissed from DOM');
   }
 
   console.log(`\n========================================`);
