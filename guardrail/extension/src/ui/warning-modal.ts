@@ -37,7 +37,21 @@ import {
 } from '../response/explanation.js';
 import { sanitizeUrlForDiagnostics } from '../utils/privacy.js';
 
-export type WarningModalViewState = 'warning' | 'loading' | 'dismissed';
+export type WarningModalViewState = 'warning' | 'loading' | 'waiting' | 'approved' | 'rejected' | 'dismissed';
+
+export interface WaitingStatusDetails {
+  /** Optional canonical approval request ID */
+  requestId?: string;
+
+  /** Name or identifier of contact who approved/decided */
+  approver?: string;
+
+  /** Reason provided by contact if rejected */
+  reason?: string;
+
+  /** Callback invoked when user confirms continuation on approval */
+  onProceed?: () => void;
+}
 
 export interface WarningModalProps {
   /** The interaction that triggered the warning */
@@ -52,7 +66,7 @@ export interface WarningModalProps {
   /** Optional pre-computed explanation */
   explanation?: RiskDecisionExplanation;
 
-  /** Initial view state: warning (default) or loading */
+  /** Initial view state: warning (default), loading, or waiting */
   initialState?: WarningModalViewState;
 
   /** Callback when user clicks Request Approval / Continue */
@@ -73,6 +87,7 @@ let previousActiveElement: HTMLElement | null = null;
 let currentModalProps: WarningModalProps | null = null;
 let currentHost: HTMLElement | null = null;
 let currentShadow: ShadowRoot | null = null;
+let currentFocusableElements: HTMLElement[] = [];
 
 /**
  * Checks whether the Guardrail warning modal is currently present in the DOM.
@@ -103,6 +118,7 @@ export function dismissWarningModal(): void {
   currentHost = null;
   currentShadow = null;
   currentModalProps = null;
+  currentFocusableElements = [];
 
   // Restore focus to previous active element upon dismissal
   if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
@@ -116,14 +132,29 @@ export function dismissWarningModal(): void {
 }
 
 /**
- * Updates the view state of an active warning modal (e.g. loading, warning, or dismissed).
+ * Updates the view state of an active warning modal (e.g. loading, warning, waiting, approved, rejected, or dismissed).
  *
  * @param state New view state
  * @param message Optional status or loading message
+ * @param details Optional approval or workflow details
  */
-export function updateWarningModalState(state: WarningModalViewState, message?: string): void {
+export function updateWarningModalState(
+  state: WarningModalViewState,
+  message?: string,
+  details?: WaitingStatusDetails
+): void {
   if (state === 'dismissed') {
     dismissWarningModal();
+    return;
+  }
+
+  if (state === 'waiting') {
+    transitionToWaitingView(details);
+    return;
+  }
+
+  if (state === 'approved' || state === 'rejected') {
+    updateWaitingScreenStatus(state, details);
     return;
   }
 
@@ -268,6 +299,21 @@ export function showWarningModal(props: WarningModalProps): () => void {
       height: 4px;
       background: linear-gradient(90deg, #A87932 0%, #C49144 50%, #A87932 100%);
       z-index: 5;
+    }
+
+    .gr-card.gr-card-waiting::before {
+      background: linear-gradient(90deg, #A87932 0%, #E2B755 25%, #A87932 50%, #E2B755 75%, #A87932 100%);
+      background-size: 200% 100%;
+      animation: grShimmer 2.2s infinite linear;
+    }
+
+    .gr-card.gr-card-approved::before {
+      background: linear-gradient(90deg, #556B3A 0%, #769650 50%, #556B3A 100%);
+    }
+
+    @keyframes grShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
 
     /* Top Masthead with prominent warning icon and clean close trigger */
@@ -689,6 +735,269 @@ export function showWarningModal(props: WarningModalProps): () => void {
       }
     }
 
+    /* Views Slider Container */
+    .gr-views-container {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      transition: height 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .gr-view {
+      width: 100%;
+      box-sizing: border-box;
+      transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.35s ease,
+                  visibility 0.42s;
+      will-change: transform, opacity;
+    }
+
+    .gr-view-warning {
+      transform: translateX(0%);
+      opacity: 1;
+      visibility: visible;
+      position: relative;
+    }
+
+    .gr-view-warning.gr-slide-out {
+      transform: translateX(-100%);
+      opacity: 0;
+      visibility: hidden;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      pointer-events: none;
+    }
+
+    .gr-view-waiting {
+      transform: translateX(100%);
+      opacity: 0;
+      visibility: hidden;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      pointer-events: none;
+    }
+
+    .gr-view-waiting.gr-slide-in {
+      transform: translateX(0%);
+      opacity: 1;
+      visibility: visible;
+      position: relative;
+      pointer-events: auto;
+    }
+
+    /* Waiting Screen Aesthetic Enhancements */
+    .gr-waiting-badge {
+      background: #F0E8D6;
+      border: 1.5px solid #E2D5BA;
+      color: #A87932;
+      position: relative;
+    }
+
+    .gr-waiting-badge::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(168, 121, 50, 0.35);
+      animation: grPulseRing 2.2s infinite cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes grPulseRing {
+      0% {
+        transform: scale(0.92);
+        opacity: 0.8;
+      }
+      50% {
+        transform: scale(1.12);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(0.92);
+        opacity: 0;
+      }
+    }
+
+    .gr-waiting-icon-svg {
+      animation: grClockTick 4s infinite linear;
+      transform-origin: center;
+    }
+
+    @keyframes grClockTick {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .gr-waiting-stepper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .gr-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      position: relative;
+    }
+
+    .gr-step-item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 13px;
+      top: 26px;
+      bottom: -6px;
+      width: 2px;
+      background: #E2D7C0;
+    }
+
+    .gr-step-item.gr-step-done:not(:last-child)::after {
+      background: #556B3A;
+    }
+
+    .gr-step-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 700;
+      z-index: 1;
+    }
+
+    .gr-step-icon-done {
+      background: #556B3A;
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(85, 107, 58, 0.25);
+    }
+
+    .gr-step-icon-active {
+      background: #F0E8D6;
+      border: 2px solid #A87932;
+      color: #A87932;
+      box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.15);
+      animation: grActivePulse 2s infinite ease-in-out;
+    }
+
+    @keyframes grActivePulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.15); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(168, 121, 50, 0.25); }
+    }
+
+    .gr-step-icon-pending {
+      background: #E8E6DA;
+      border: 1.5px solid #CCD2C0;
+      color: #8C9283;
+    }
+
+    .gr-step-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .gr-step-title {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #25291F;
+    }
+
+    .gr-step-desc {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      color: #74776B;
+      line-height: 1.4;
+    }
+
+    .gr-waiting-pill {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8C6224;
+      background: #F7F1E1;
+      border: 1px solid #E2D7C0;
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gr-waiting-pill.gr-pill-approved {
+      color: #364B24;
+      background: #E4ECD8;
+      border-color: #B8C7A5;
+    }
+
+    .gr-waiting-pill.gr-pill-rejected {
+      color: #8F2B2B;
+      background: #FDE8E8;
+      border-color: #F8B4B4;
+    }
+
+    .gr-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #A87932;
+      animation: grDotPulse 1.8s infinite;
+    }
+
+    @keyframes grDotPulse {
+      0% { box-shadow: 0 0 0 0 rgba(168, 121, 50, 0.6); }
+      70% { box-shadow: 0 0 0 6px rgba(168, 121, 50, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(168, 121, 50, 0); }
+    }
+
+    .gr-footer-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: #616658;
+    }
+
+    .gr-pulse-dot-green {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #556B3A;
+      animation: grDotPulseGreen 2s infinite;
+    }
+
+    @keyframes grDotPulseGreen {
+      0% { box-shadow: 0 0 0 0 rgba(85, 107, 58, 0.6); }
+      70% { box-shadow: 0 0 0 6px rgba(85, 107, 58, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(85, 107, 58, 0); }
+    }
+
+    .gr-btn-continue-nav {
+      background-color: #556B3A;
+      color: #FFFFFF;
+      border: 1px solid #556B3A;
+      box-shadow: 0 2px 6px rgba(85, 107, 58, 0.25);
+    }
+
+    .gr-btn-continue-nav:hover:not(:disabled) {
+      background-color: #44562E;
+      border-color: #44562E;
+      color: #FFFFFF;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(85, 107, 58, 0.35);
+    }
+
     @media (max-width: 600px) {
       .gr-card {
         max-width: 100%;
@@ -1016,10 +1325,11 @@ export function showWarningModal(props: WarningModalProps): () => void {
   requestApprovalBtn.textContent = 'Request Approval';
   requestApprovalBtn.setAttribute('title', 'Request approval from your caretaker');
   requestApprovalBtn.addEventListener('click', () => {
-    dismissWarningModal();
     if (props.onRequestApproval) {
+      transitionToWaitingView();
       props.onRequestApproval();
     } else if (props.onContinue) {
+      dismissWarningModal();
       props.onContinue();
     }
   });
@@ -1029,9 +1339,25 @@ export function showWarningModal(props: WarningModalProps): () => void {
   footer.appendChild(cancelBtn);
 
   // Assemble Card
-  card.appendChild(header);
-  card.appendChild(body);
-  card.appendChild(footer);
+  const viewsContainer = document.createElement('div');
+  viewsContainer.className = 'gr-views-container';
+
+  const viewWarning = document.createElement('div');
+  viewWarning.className = 'gr-view gr-view-warning';
+  viewWarning.appendChild(header);
+  viewWarning.appendChild(body);
+  viewWarning.appendChild(footer);
+
+  const { viewWaiting, waitingCancelBtn, waitingCloseBtn } = createWaitingView(
+    props,
+    webCtx,
+    sanitizedUrl
+  );
+
+  viewsContainer.appendChild(viewWarning);
+  viewsContainer.appendChild(viewWaiting);
+
+  card.appendChild(viewsContainer);
   backdrop.appendChild(card);
 
   shadow.appendChild(style);
@@ -1050,21 +1376,21 @@ export function showWarningModal(props: WarningModalProps): () => void {
     window.addEventListener('keydown', activeEscapeHandler);
 
     // Tab Focus Trap
-    const focusableElements = [cancelBtn, requestApprovalBtn, closeBtn, summaryToggle];
+    currentFocusableElements = [cancelBtn, requestApprovalBtn, closeBtn, summaryToggle];
     activeTabTrapHandler = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
       const activeEl = shadow.activeElement || document.activeElement;
-      const currentIndex = focusableElements.indexOf(activeEl as any);
+      const currentIndex = currentFocusableElements.indexOf(activeEl as any);
 
       if (e.shiftKey) {
         if (currentIndex <= 0) {
           e.preventDefault();
-          focusableElements[focusableElements.length - 1].focus();
+          currentFocusableElements[currentFocusableElements.length - 1]?.focus();
         }
       } else {
-        if (currentIndex >= focusableElements.length - 1) {
+        if (currentIndex >= currentFocusableElements.length - 1) {
           e.preventDefault();
-          focusableElements[0].focus();
+          currentFocusableElements[0]?.focus();
         }
       }
     };
@@ -1081,13 +1407,484 @@ export function showWarningModal(props: WarningModalProps): () => void {
     // Non-fatal if focus() is unhandled in mock headless environments
   }
 
-  // If initial state was loading, apply loading state immediately
+  // If initial state was loading or waiting, apply immediately
   if (props.initialState === 'loading') {
     updateWarningModalState('loading', 'Loading safety information...');
+  } else if (props.initialState === 'waiting') {
+    transitionToWaitingView();
   }
 
   // Return programmatic dismiss callback
   return dismissWarningModal;
+}
+
+/**
+ * Builds the waiting screen view displayed after the user clicks "Request Approval".
+ */
+function createWaitingView(
+  props: WarningModalProps,
+  webCtx: WebsiteSecurityContext,
+  sanitizedUrl: string
+): {
+  viewWaiting: HTMLElement;
+  waitingCancelBtn: HTMLButtonElement;
+  waitingCloseBtn: HTMLButtonElement;
+} {
+  const viewWaiting = document.createElement('div');
+  viewWaiting.className = 'gr-view gr-view-waiting';
+
+  // HEADER
+  const waitingHeader = document.createElement('div');
+  waitingHeader.className = 'gr-header gr-waiting-header';
+
+  const headerLeft = document.createElement('div');
+  headerLeft.className = 'gr-header-left';
+
+  const waitingBadge = document.createElement('div');
+  waitingBadge.className = 'gr-warning-badge gr-waiting-badge';
+  waitingBadge.innerHTML = `
+    <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  `;
+
+  const headerTitles = document.createElement('div');
+  headerTitles.className = 'gr-header-titles';
+
+  const categoryLabel = document.createElement('span');
+  categoryLabel.className = 'gr-header-category';
+  categoryLabel.innerHTML = `<span>GUARDRAIL APPROVAL WORKFLOW</span>`;
+
+  const contextLabel = document.createElement('span');
+  contextLabel.className = 'gr-header-context gr-waiting-context';
+  contextLabel.textContent = 'Awaiting Caretaker Review';
+
+  headerTitles.appendChild(categoryLabel);
+  headerTitles.appendChild(contextLabel);
+  headerLeft.appendChild(waitingBadge);
+  headerLeft.appendChild(headerTitles);
+
+  const waitingCloseBtn = document.createElement('button');
+  waitingCloseBtn.type = 'button';
+  waitingCloseBtn.className = 'gr-btn-close gr-waiting-close';
+  waitingCloseBtn.setAttribute('aria-label', 'Cancel request and close dialog');
+  waitingCloseBtn.setAttribute('title', 'Cancel request');
+  waitingCloseBtn.textContent = '✕';
+  waitingCloseBtn.addEventListener('click', () => {
+    dismissWarningModal();
+    if (props.onCancel) {
+      props.onCancel();
+    }
+  });
+
+  waitingHeader.appendChild(headerLeft);
+  waitingHeader.appendChild(waitingCloseBtn);
+  viewWaiting.appendChild(waitingHeader);
+
+  // BODY
+  const waitingBody = document.createElement('div');
+  waitingBody.className = 'gr-body gr-waiting-body';
+
+  const title = document.createElement('h2');
+  title.id = 'gr-waiting-title-id';
+  title.className = 'gr-title gr-waiting-title';
+  title.textContent = 'Waiting for approval...';
+  waitingBody.appendChild(title);
+
+  const subtitle = document.createElement('p');
+  subtitle.id = 'gr-waiting-summary-id';
+  subtitle.className = 'gr-subtitle gr-waiting-subtitle';
+  subtitle.textContent =
+    'Your request to visit this website has been sent to your designated caretaker. This page will remain safely held until they approve.';
+  waitingBody.appendChild(subtitle);
+
+  // Destination Card
+  const destCard = document.createElement('div');
+  destCard.className = 'gr-destination-card';
+
+  const destHeaderRow = document.createElement('div');
+  destHeaderRow.className = 'gr-destination-header-row';
+
+  const destLabel = document.createElement('div');
+  destLabel.className = 'gr-destination-label';
+  destLabel.textContent = 'REQUESTED DESTINATION';
+
+  const destPill = document.createElement('span');
+  destPill.className = 'gr-waiting-pill';
+  destPill.innerHTML = `<span class="gr-pulse-dot"></span><span>Pending Review</span>`;
+
+  destHeaderRow.appendChild(destLabel);
+  destHeaderRow.appendChild(destPill);
+
+  const destHostRow = document.createElement('div');
+  destHostRow.className = 'gr-destination-host-row';
+
+  const destHost = document.createElement('div');
+  destHost.className = 'gr-destination-host gr-waiting-domain-value';
+  destHost.textContent = webCtx.domain;
+
+  const extIcon = document.createElement('span');
+  extIcon.className = 'gr-ext-icon';
+  extIcon.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  `;
+
+  destHostRow.appendChild(destHost);
+  destHostRow.appendChild(extIcon);
+  destCard.appendChild(destHeaderRow);
+  destCard.appendChild(destHostRow);
+  waitingBody.appendChild(destCard);
+
+  // Status Stepper Section
+  const statusSection = document.createElement('div');
+  statusSection.className = 'gr-section gr-waiting-status-card';
+
+  const statusHeading = document.createElement('div');
+  statusHeading.className = 'gr-section-heading';
+  statusHeading.style.display = 'flex';
+  statusHeading.style.alignItems = 'center';
+  statusHeading.style.justifyContent = 'space-between';
+  statusHeading.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="16" x2="12" y2="12"/>
+        <line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+      <span>APPROVAL STATUS</span>
+    </div>
+    <span class="gr-footer-status" style="font-size: 11px; text-transform: none; letter-spacing: normal;">
+      <span class="gr-pulse-dot-green"></span><span>Live Sync Active</span>
+    </span>
+  `;
+
+  const stepper = document.createElement('div');
+  stepper.className = 'gr-waiting-stepper';
+  stepper.innerHTML = `
+    <div class="gr-step-item gr-step-done">
+      <div class="gr-step-icon gr-step-icon-done">✓</div>
+      <div class="gr-step-content">
+        <span class="gr-step-title">Request Sent</span>
+        <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+      </div>
+    </div>
+    <div class="gr-step-item gr-step-active">
+      <div class="gr-step-icon gr-step-icon-active">⟳</div>
+      <div class="gr-step-content">
+        <span class="gr-step-title">Review in Progress</span>
+        <span class="gr-step-desc">Waiting for an authorized contact to review</span>
+      </div>
+    </div>
+    <div class="gr-step-item">
+      <div class="gr-step-icon gr-step-icon-pending">○</div>
+      <div class="gr-step-content">
+        <span class="gr-step-title">Page Access</span>
+        <span class="gr-step-desc">Unlocks automatically once approved</span>
+      </div>
+    </div>
+  `;
+
+  statusSection.appendChild(statusHeading);
+  statusSection.appendChild(stepper);
+  waitingBody.appendChild(statusSection);
+
+  // Guidance Note
+  const guidanceNote = document.createElement('p');
+  guidanceNote.className = 'gr-guidance-note';
+  guidanceNote.textContent =
+    'To protect your safety, this page will remain paused. You can keep this tab open, or cancel this request at any time.';
+  waitingBody.appendChild(guidanceNote);
+
+  // Diagnostics Details
+  const detailsEl = document.createElement('details');
+  detailsEl.className = 'gr-diagnostics';
+
+  const summaryToggle = document.createElement('summary');
+  summaryToggle.className = 'gr-diagnostics-summary';
+  summaryToggle.innerHTML = `<span>Request details</span>`;
+  detailsEl.appendChild(summaryToggle);
+
+  const diagBody = document.createElement('div');
+  diagBody.className = 'gr-diagnostics-body';
+
+  const waitingDiagRows = [
+    { label: 'Requested Website', value: webCtx.domain, cls: '' },
+    { label: 'Request Status', value: 'PENDING', cls: 'gr-diag-req-status' },
+    { label: 'Action Status', value: 'Held in Staging Mode', cls: '' },
+    { label: 'Action ID', value: props.action.id, cls: '' },
+    { label: 'Request ID', value: 'Awaiting coordinator', cls: 'gr-diag-req-id' },
+  ];
+
+  for (const row of waitingDiagRows) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'gr-diag-row';
+
+    const keySpan = document.createElement('span');
+    keySpan.className = 'gr-diag-key';
+    keySpan.textContent = row.label;
+
+    const valCode = document.createElement('code');
+    valCode.className = `gr-diag-val ${row.cls}`.trim();
+    valCode.textContent = row.value;
+
+    rowEl.appendChild(keySpan);
+    rowEl.appendChild(valCode);
+    diagBody.appendChild(rowEl);
+  }
+
+  detailsEl.appendChild(diagBody);
+  waitingBody.appendChild(detailsEl);
+  viewWaiting.appendChild(waitingBody);
+
+  // FOOTER
+  const waitingFooter = document.createElement('div');
+  waitingFooter.className = 'gr-footer gr-waiting-footer';
+  waitingFooter.style.justifyContent = 'space-between';
+
+  const statusLeft = document.createElement('div');
+  statusLeft.className = 'gr-footer-status';
+  statusLeft.innerHTML = `
+    <span class="gr-pulse-dot-green"></span>
+    <span>Safe mode active • Waiting for response</span>
+  `;
+
+  const footerActions = document.createElement('div');
+  footerActions.className = 'gr-footer-actions';
+  footerActions.style.display = 'flex';
+  footerActions.style.alignItems = 'center';
+  footerActions.style.gap = '12px';
+
+  const waitingCancelBtn = document.createElement('button');
+  waitingCancelBtn.type = 'button';
+  waitingCancelBtn.className = 'gr-btn gr-btn-cancel gr-btn-cancel-request';
+  waitingCancelBtn.textContent = 'Cancel Request';
+  waitingCancelBtn.setAttribute('title', 'Cancel this approval request and safely exit');
+  waitingCancelBtn.addEventListener('click', () => {
+    dismissWarningModal();
+    if (props.onCancel) {
+      props.onCancel();
+    }
+  });
+
+  footerActions.appendChild(waitingCancelBtn);
+  waitingFooter.appendChild(statusLeft);
+  waitingFooter.appendChild(footerActions);
+  viewWaiting.appendChild(waitingFooter);
+
+  return { viewWaiting, waitingCancelBtn, waitingCloseBtn };
+}
+
+/**
+ * Triggers the smooth slide-out transition from the warning dialog to the waiting screen.
+ */
+export function transitionToWaitingView(details?: WaitingStatusDetails): void {
+  if (!currentShadow) return;
+
+  const card = currentShadow.querySelector('.gr-card') as HTMLElement | null;
+  const viewsContainer = currentShadow.querySelector('.gr-views-container') as HTMLElement | null;
+  const viewWarning = currentShadow.querySelector('.gr-view-warning') as HTMLElement | null;
+  const viewWaiting = currentShadow.querySelector('.gr-view-waiting') as HTMLElement | null;
+  const srAnnounce = currentShadow.querySelector('.gr-sr-only') as HTMLElement | null;
+  const waitingCancelBtn = currentShadow.querySelector('.gr-btn-cancel-request') as HTMLButtonElement | null;
+  const waitingCloseBtn = currentShadow.querySelector('.gr-waiting-close') as HTMLButtonElement | null;
+
+  if (!viewWarning || !viewWaiting) return;
+
+  if (srAnnounce) {
+    srAnnounce.textContent =
+      'Approval request submitted. Waiting for caretaker decision. Action remains safely held.';
+  }
+
+  if (card) {
+    card.classList.add('gr-card-waiting');
+  }
+
+  // Smooth container height transition if offsets are supported
+  if (viewsContainer && viewWarning.offsetHeight && viewWaiting.offsetHeight) {
+    const currentH = viewWarning.offsetHeight;
+    viewsContainer.style.height = `${currentH}px`;
+    viewWaiting.style.position = 'relative';
+    viewWaiting.style.visibility = 'hidden';
+    const targetH = viewWaiting.offsetHeight;
+    viewWaiting.style.position = 'absolute';
+    viewWaiting.style.visibility = '';
+
+    void viewsContainer.offsetHeight; // Force reflow
+    viewsContainer.style.transition = 'height 0.42s cubic-bezier(0.16, 1, 0.3, 1)';
+    viewsContainer.style.height = `${targetH}px`;
+    setTimeout(() => {
+      if (viewsContainer) {
+        viewsContainer.style.height = '';
+        viewsContainer.style.transition = '';
+      }
+    }, 450);
+  }
+
+  // Slide out warning and slide in waiting screen
+  viewWarning.classList.add('gr-slide-out');
+  viewWaiting.classList.add('gr-slide-in');
+
+  // Update tab focus trap elements
+  if (waitingCancelBtn && waitingCloseBtn) {
+    currentFocusableElements = [waitingCancelBtn, waitingCloseBtn];
+  } else if (waitingCancelBtn) {
+    currentFocusableElements = [waitingCancelBtn];
+  }
+
+  // Safely move focus to safe Cancel button
+  if (waitingCancelBtn && typeof waitingCancelBtn.focus === 'function') {
+    try {
+      waitingCancelBtn.focus();
+    } catch {
+      // Ignore in mock/headless
+    }
+  }
+
+  if (details) {
+    updateWaitingScreenStatus('pending', details);
+  }
+}
+
+/**
+ * Updates the waiting screen with live status (e.g. pending, approved, or rejected).
+ */
+export function updateWaitingScreenStatus(
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled',
+  details?: WaitingStatusDetails
+): void {
+  if (!currentShadow) return;
+
+  const card = currentShadow.querySelector('.gr-card') as HTMLElement | null;
+  const viewWaiting = currentShadow.querySelector('.gr-view-waiting') as HTMLElement | null;
+  if (!viewWaiting) return;
+
+  const pill = viewWaiting.querySelector('.gr-waiting-pill') as HTMLElement | null;
+  const title = viewWaiting.querySelector('.gr-waiting-title') as HTMLElement | null;
+  const subtitle = viewWaiting.querySelector('.gr-waiting-subtitle') as HTMLElement | null;
+  const contextLabel = viewWaiting.querySelector('.gr-waiting-context') as HTMLElement | null;
+  const footerStatus = viewWaiting.querySelector('.gr-footer-status') as HTMLElement | null;
+  const reqIdVal = viewWaiting.querySelector('.gr-diag-req-id') as HTMLElement | null;
+  const reqStatusVal = viewWaiting.querySelector('.gr-diag-req-status') as HTMLElement | null;
+  const stepper = viewWaiting.querySelector('.gr-waiting-stepper') as HTMLElement | null;
+  const footerActions = viewWaiting.querySelector('.gr-footer-actions') as HTMLElement | null;
+
+  if (details?.requestId && reqIdVal) {
+    reqIdVal.textContent = details.requestId;
+  }
+
+  if (status === 'pending') {
+    if (pill) {
+      pill.className = 'gr-waiting-pill';
+      pill.innerHTML = '<span class="gr-pulse-dot"></span><span>Pending Review</span>';
+    }
+    if (reqStatusVal) reqStatusVal.textContent = 'PENDING';
+    if (contextLabel) contextLabel.textContent = 'Awaiting Caretaker Review';
+  } else if (status === 'approved') {
+    if (card) {
+      card.classList.remove('gr-card-waiting');
+      card.classList.add('gr-card-approved');
+    }
+    if (pill) {
+      pill.className = 'gr-waiting-pill gr-pill-approved';
+      pill.innerHTML = '<span>✓</span><span>Approved</span>';
+    }
+    if (contextLabel) contextLabel.textContent = 'Approval Confirmed';
+    if (title) title.textContent = 'Request Approved!';
+    if (subtitle) {
+      const approverName = details?.approver ? `by ${escapeText(details.approver)}` : 'by your designated caretaker';
+      subtitle.textContent = `Your request to visit this website was approved ${approverName}. You can now safely continue.`;
+    }
+    if (reqStatusVal) reqStatusVal.textContent = 'APPROVED';
+    if (footerStatus) {
+      footerStatus.innerHTML = '<span class="gr-pulse-dot-green"></span><span>Approved • Ready to continue</span>';
+    }
+
+    if (stepper) {
+      const items = stepper.querySelectorAll('.gr-step-item');
+      items.forEach((item) => {
+        item.classList.add('gr-step-done');
+        const icon = item.querySelector('.gr-step-icon');
+        if (icon) {
+          icon.className = 'gr-step-icon gr-step-icon-done';
+          icon.textContent = '✓';
+        }
+      });
+    }
+
+    if (footerActions) {
+      footerActions.innerHTML = '';
+      const dismissBtn = document.createElement('button');
+      dismissBtn.type = 'button';
+      dismissBtn.className = 'gr-btn gr-btn-continue';
+      dismissBtn.textContent = 'Dismiss';
+      dismissBtn.addEventListener('click', () => {
+        dismissWarningModal();
+      });
+
+      const continueNavBtn = document.createElement('button');
+      continueNavBtn.type = 'button';
+      continueNavBtn.className = 'gr-btn gr-btn-continue-nav';
+      continueNavBtn.textContent = 'Continue to Website →';
+      continueNavBtn.addEventListener('click', () => {
+        dismissWarningModal();
+        if (details?.onProceed) {
+          details.onProceed();
+        } else if (currentModalProps?.action?.page?.url && typeof window !== 'undefined') {
+          window.location.href = currentModalProps.action.page.url;
+        }
+      });
+
+      footerActions.appendChild(dismissBtn);
+      footerActions.appendChild(continueNavBtn);
+
+      currentFocusableElements = [continueNavBtn, dismissBtn];
+      try {
+        continueNavBtn.focus();
+      } catch {}
+    }
+  } else if (status === 'rejected') {
+    if (card) {
+      card.classList.remove('gr-card-waiting');
+    }
+    if (pill) {
+      pill.className = 'gr-waiting-pill gr-pill-rejected';
+      pill.innerHTML = '<span>✕</span><span>Declined</span>';
+    }
+    if (contextLabel) contextLabel.textContent = 'Request Declined';
+    if (title) title.textContent = 'Request Declined';
+    if (subtitle) {
+      const reasonText = details?.reason ? ` Reason: ${escapeText(details.reason)}` : '';
+      subtitle.textContent = `Your caretaker reviewed and declined the request to visit this website.${reasonText}`;
+    }
+    if (reqStatusVal) reqStatusVal.textContent = 'REJECTED';
+    if (footerStatus) {
+      footerStatus.textContent = 'Request declined by caretaker';
+    }
+
+    if (footerActions) {
+      footerActions.innerHTML = '';
+      const leaveBtn = document.createElement('button');
+      leaveBtn.type = 'button';
+      leaveBtn.className = 'gr-btn gr-btn-cancel';
+      leaveBtn.textContent = 'Leave Website';
+      leaveBtn.addEventListener('click', () => {
+        dismissWarningModal();
+        if (currentModalProps?.onCancel) {
+          currentModalProps.onCancel();
+        }
+      });
+      footerActions.appendChild(leaveBtn);
+      currentFocusableElements = [leaveBtn];
+      try {
+        leaveBtn.focus();
+      } catch {}
+    }
+  }
 }
 
 function escapeText(text: string): string {
