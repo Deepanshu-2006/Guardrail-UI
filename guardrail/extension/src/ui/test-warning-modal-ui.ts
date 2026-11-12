@@ -329,6 +329,8 @@ import {
   dismissWarningModal,
   isWarningModalActive,
   updateWarningModalState,
+  transitionToWaitingView,
+  updateWaitingScreenStatus,
   HOST_ELEMENT_ID,
   WarningModalProps,
 } from './warning-modal.js';
@@ -756,6 +758,112 @@ async function runWarningUITests() {
     assert(steps.length > 0, 'Guidance steps provided');
     const stepsText = steps.map((s) => s.textContent).join(' ');
     assert(stepsText.includes('Check your browser address bar') || stepsText.includes('Cancel this action'), 'Guidance includes actionable safety steps');
+
+    dismissWarningModal();
+  }
+
+  // Test Suite 9: Slide-Out Transition & Waiting Screen Approval Workflow
+  console.log('\nSuite 9: Slide-Out Transition & Waiting Screen Approval Workflow');
+  {
+    mockDoc.body = new MockDOMElement('BODY');
+    let approvalRequested = false;
+    let cancelCalled = false;
+
+    showWarningModal({
+      action: createSampleAction('https://gaiaflix.xyz/#/movies'),
+      risk: createSampleRisk(RiskLevel.MEDIUM, 60),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      onRequestApproval: () => {
+        approvalRequested = true;
+      },
+      onCancel: () => {
+        cancelCalled = true;
+      },
+    });
+
+    const host = mockDoc.getElementById(HOST_ELEMENT_ID);
+    const shadow = host!.shadowRoot!;
+
+    const viewWarning = shadow.querySelector('.gr-view-warning');
+    const viewWaiting = shadow.querySelector('.gr-view-waiting');
+    assert(viewWarning !== null, 'Warning view pane present in card');
+    assert(viewWaiting !== null, 'Waiting view pane present in card');
+    assert(viewWarning?.classList.contains('gr-view-warning') ?? false, 'Warning view has initial base class');
+
+    // Click Request Approval button
+    const requestApprovalBtn = shadow.querySelector('.gr-btn-continue');
+    assert(requestApprovalBtn !== null, 'Request Approval button present in warning view');
+    requestApprovalBtn?.click();
+
+    // Verify modal remains active (did NOT abruptly dismiss)
+    assert(isWarningModalActive(), 'Modal remains active after Request Approval click');
+    assert(approvalRequested, 'onRequestApproval callback invoked');
+
+    // Verify slide-out and slide-in transition classes applied
+    assert(viewWarning?.classList.contains('gr-slide-out') ?? false, 'Warning view has gr-slide-out class applied');
+    assert(viewWaiting?.classList.contains('gr-slide-in') ?? false, 'Waiting view has gr-slide-in class applied');
+
+    // Verify card has waiting status styling
+    const card = shadow.querySelector('.gr-card');
+    assert(card?.classList.contains('gr-card-waiting') ?? false, 'Card has gr-card-waiting class for shimmer ribbon');
+
+    // Verify waiting screen contents
+    const waitingTitle = shadow.querySelector('.gr-waiting-title');
+    assert(waitingTitle !== null, 'Waiting screen title rendered');
+    assert(waitingTitle?.textContent.includes('Waiting for approval') ?? false, 'Waiting screen title communicates pending review');
+
+    const waitingPill = shadow.querySelector('.gr-waiting-pill');
+    assert(waitingPill !== null, 'Waiting status badge pill rendered');
+    assert(waitingPill?.textContent.includes('Pending Review') ?? false, 'Displays Pending Review badge');
+
+    const waitingDomain = shadow.querySelector('.gr-waiting-domain-value');
+    assert(waitingDomain?.textContent.includes('gaiaflix.xyz') ?? false, 'Waiting screen displays target domain');
+
+    const stepper = shadow.querySelector('.gr-waiting-stepper');
+    assert(stepper !== null, 'Waiting screen approval status stepper rendered');
+
+    // Verify live update to APPROVED state
+    let proceeded = false;
+    updateWaitingScreenStatus('approved', {
+      requestId: 'apr_test_12345',
+      approver: 'Sarah Caretaker',
+      onProceed: () => {
+        proceeded = true;
+      },
+    });
+
+    assert(waitingPill?.textContent.includes('Approved') ?? false, 'Badge updated to Approved');
+    assert(waitingTitle?.textContent.includes('Request Approved') ?? false, 'Title updated to Request Approved');
+
+    const continueNavBtn = shadow.querySelector('.gr-btn-continue-nav');
+    assert(continueNavBtn !== null, 'Continue to Website button rendered upon approval');
+    continueNavBtn?.click();
+    assert(proceeded, 'onProceed callback invoked on continue button click');
+    assert(!isWarningModalActive(), 'Modal dismissed after user continues');
+
+    // Test rejection state & cancel button
+    mockDoc.body = new MockDOMElement('BODY');
+    cancelCalled = false;
+    showWarningModal({
+      action: createSampleAction('https://gaiaflix.xyz/#/movies'),
+      risk: createSampleRisk(RiskLevel.MEDIUM, 60),
+      decision: createSampleDecision(ResponseAction.WARN, 'RULE_WARN_SUSPICIOUS_URL'),
+      onRequestApproval: () => {},
+      onCancel: () => {
+        cancelCalled = true;
+      },
+    });
+
+    const host2 = mockDoc.getElementById(HOST_ELEMENT_ID);
+    const shadow2 = host2!.shadowRoot!;
+    const reqBtn2 = shadow2.querySelector('.gr-btn-continue');
+    reqBtn2?.click();
+
+    const cancelReqBtn = shadow2.querySelector('.gr-btn-cancel-request');
+    assert(cancelReqBtn !== null, 'Cancel Request button rendered in waiting view');
+    cancelReqBtn?.click();
+    assert(cancelCalled, 'onCancel callback invoked on Cancel Request click');
+    assert(!isWarningModalActive(), 'Modal dismissed after Cancel Request click');
 
     dismissWarningModal();
   }
