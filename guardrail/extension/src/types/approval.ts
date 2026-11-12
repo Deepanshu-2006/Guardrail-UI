@@ -559,6 +559,34 @@ export interface GuardrailGetApprovalStatusResponse {
 }
 
 /**
+ * Extension message sent from Content Script to Background Service Worker
+ * to explicitly cancel a pending approval request.
+ */
+export interface GuardrailCancelApprovalRequestMessage {
+  readonly type: 'GUARDRAIL_CANCEL_APPROVAL_REQUEST';
+  readonly requestId: string;
+  readonly actionId?: string;
+  readonly reason?: string;
+}
+
+/**
+ * Typed response returned by Background Service Worker for approval cancellation.
+ */
+export interface GuardrailCancelApprovalRequestResponse {
+  readonly success: boolean;
+  readonly requestId: string;
+  readonly status?: ApprovalStatusString;
+  readonly isAuthoritative: boolean;
+  readonly request?: ApprovalRequest;
+  readonly error?: {
+    readonly code: string;
+    readonly message: string;
+    readonly statusCode?: number;
+    readonly details?: readonly string[];
+  };
+}
+
+/**
  * Input for validating whether an action continuation is authorized by the backend.
  */
 export interface BackendContinuationValidationInput {
