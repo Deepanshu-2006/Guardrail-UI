@@ -83,6 +83,7 @@ export const HOST_ELEMENT_ID = 'guardrail-warning-ui-host';
 
 let activeEscapeHandler: ((e: KeyboardEvent) => void) | null = null;
 let activeTabTrapHandler: ((e: KeyboardEvent) => void) | null = null;
+let activeSlideTimer: any = null;
 let previousActiveElement: HTMLElement | null = null;
 let currentModalProps: WarningModalProps | null = null;
 let currentHost: HTMLElement | null = null;
@@ -100,6 +101,10 @@ export function isWarningModalActive(): boolean {
  * Dismisses and cleans up any currently active Guardrail warning modal.
  */
 export function dismissWarningModal(): void {
+  if (activeSlideTimer) {
+    clearTimeout(activeSlideTimer);
+    activeSlideTimer = null;
+  }
   if (typeof window !== 'undefined') {
     if (activeEscapeHandler) {
       window.removeEventListener('keydown', activeEscapeHandler);
@@ -613,6 +618,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
       align-items: center;
       justify-content: flex-end;
       gap: 12px;
+      border-bottom-left-radius: 15px;
+      border-bottom-right-radius: 15px;
     }
 
     .gr-btn {
@@ -747,8 +754,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       width: 100%;
       box-sizing: border-box;
       transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1),
-                  opacity 0.35s ease,
-                  visibility 0.42s;
+                  opacity 0.35s ease;
       will-change: transform, opacity;
     }
 
@@ -757,12 +763,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
       opacity: 1;
       visibility: visible;
       position: relative;
+      pointer-events: auto;
     }
 
     .gr-view-warning.gr-slide-out {
       transform: translateX(-100%);
       opacity: 0;
-      visibility: hidden;
       position: absolute;
       top: 0;
       left: 0;
@@ -785,7 +791,6 @@ export function showWarningModal(props: WarningModalProps): () => void {
       transform: translateX(0%);
       opacity: 1;
       visibility: visible;
-      position: relative;
       pointer-events: auto;
     }
 
@@ -1704,30 +1709,45 @@ export function transitionToWaitingView(details?: WaitingStatusDetails): void {
     card.classList.add('gr-card-waiting');
   }
 
-  // Smooth container height transition if offsets are supported
-  if (viewsContainer && viewWarning.offsetHeight && viewWaiting.offsetHeight) {
-    const currentH = viewWarning.offsetHeight;
-    viewsContainer.style.height = `${currentH}px`;
-    viewWaiting.style.position = 'relative';
-    viewWaiting.style.visibility = 'hidden';
-    const targetH = viewWaiting.offsetHeight;
-    viewWaiting.style.position = 'absolute';
-    viewWaiting.style.visibility = '';
+  // Measure heights before starting transition
+  const currentH = viewWarning.offsetHeight || 0;
+  viewWaiting.style.visibility = 'visible';
+  const targetH = viewWaiting.offsetHeight || 0;
 
+  // Smooth container height transition if heights are measurable
+  if (viewsContainer && currentH > 0 && targetH > 0) {
+    viewsContainer.style.height = `${currentH}px`;
     void viewsContainer.offsetHeight; // Force reflow
     viewsContainer.style.transition = 'height 0.42s cubic-bezier(0.16, 1, 0.3, 1)';
     viewsContainer.style.height = `${targetH}px`;
-    setTimeout(() => {
-      if (viewsContainer) {
-        viewsContainer.style.height = '';
-        viewsContainer.style.transition = '';
-      }
-    }, 450);
   }
 
-  // Slide out warning and slide in waiting screen
+  // Trigger slide transition: warning slides out left, waiting slides in from right
   viewWarning.classList.add('gr-slide-out');
   viewWaiting.classList.add('gr-slide-in');
+
+  if (activeSlideTimer) {
+    clearTimeout(activeSlideTimer);
+    activeSlideTimer = null;
+  }
+
+  // Once slide animation completes, make waiting view the natural in-flow container
+  activeSlideTimer = setTimeout(() => {
+    if (viewWarning && viewWarning.classList.contains('gr-slide-out')) {
+      viewWarning.style.display = 'none';
+    }
+    if (viewWaiting && viewWaiting.classList.contains('gr-slide-in')) {
+      viewWaiting.style.position = 'relative';
+      viewWaiting.style.top = '';
+      viewWaiting.style.left = '';
+      viewWaiting.style.right = '';
+    }
+    if (viewsContainer) {
+      viewsContainer.style.height = '';
+      viewsContainer.style.transition = '';
+    }
+    activeSlideTimer = null;
+  }, 420);
 
   // Update tab focus trap elements
   if (waitingCancelBtn && waitingCloseBtn) {
