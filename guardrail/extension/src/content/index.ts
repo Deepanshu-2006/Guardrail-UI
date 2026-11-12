@@ -15,7 +15,9 @@
 
 import { ActionDetector } from '../detector/index.js';
 import { evaluateActionPipeline } from '../response/index.js';
-import { showWarningModal } from '../ui/index.js';
+import { showWarningModal, updateWaitingScreenStatus } from '../ui/index.js';
+import { ApprovalStatus } from '../types/approval.js';
+import { ApprovalStatusSyncClient, type StatusSyncSubscription } from '../approval/sync-client.js';
 import {
   ActionClassificationResult,
   ApprovalRequestResult,
@@ -59,6 +61,55 @@ import { cancelControlledActionUntilPolicyInitialized, isPolicyConfigurationInit
 import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 
 let latestStagingContext: StagingActionContext | null = null;
+let activeWarningSyncSub: StatusSyncSubscription | null = null;
+
+function stopWarningStatusPolling(): void {
+  if (activeWarningSyncSub) {
+    activeWarningSyncSub.stop();
+    activeWarningSyncSub = null;
+  }
+}
+
+function startWaitingStatusPolling(requestId: string, action: GuardrailAction): void {
+  stopWarningStatusPolling();
+
+  try {
+    const syncClient = new ApprovalStatusSyncClient({
+      defaultIntervalMs: 2000,
+    });
+
+    activeWarningSyncSub = syncClient.startSync(requestId, {
+      onStatusChange: (newStatus, result) => {
+        console.log(`[Guardrail UI] Status synchronization event for ${requestId}: ${newStatus}`);
+        if (newStatus === ApprovalStatus.APPROVED) {
+          updateWaitingScreenStatus('approved', {
+            requestId,
+            approver: result.request?.decision?.decidedBy || 'Trusted Contact',
+            onProceed: () => {
+              stopWarningStatusPolling();
+              try {
+                defaultContinuationManager.continueAction(action.id);
+              } catch {}
+              const destUrl = action.page?.url;
+              if (destUrl && typeof window !== 'undefined') {
+                window.location.href = destUrl;
+              }
+            },
+          });
+          stopWarningStatusPolling();
+        } else if (newStatus === ApprovalStatus.REJECTED) {
+          updateWaitingScreenStatus('rejected', {
+            requestId,
+            reason: result.request?.decision?.reason || 'Declined by caretaker',
+          });
+          stopWarningStatusPolling();
+        }
+      },
+    });
+  } catch (err) {
+    console.warn('[Guardrail UI] Failed to initiate approval status sync:', err);
+  }
+}
 
 /**
  * Safely exits the current site and closes the entire tab when the user chooses "Cancel & Leave".
@@ -433,6 +484,12 @@ function bootstrap(): void {
                 dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
                   .then((response) => {
                     console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
+                    if (response && response.request && response.request.id) {
+                      updateWaitingScreenStatus('pending', {
+                        requestId: response.request.id,
+                      });
+                      startWaitingStatusPolling(response.request.id, action);
+                    }
                   })
                   .catch((err) => {
                     console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
@@ -453,6 +510,7 @@ function bootstrap(): void {
             },
             onCancel: () => {
               console.log(`[Guardrail UI] User clicked Cancel & Leave for action: ${action.id}`);
+              stopWarningStatusPolling();
               performSafeSiteExit();
             },
           });
@@ -603,6 +661,12 @@ function bootstrap(): void {
                   dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
                     .then((response) => {
                       console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
+                      if (response && response.request && response.request.id) {
+                        updateWaitingScreenStatus('pending', {
+                          requestId: response.request.id,
+                        });
+                        startWaitingStatusPolling(response.request.id, action);
+                      }
                     })
                     .catch((err) => {
                       console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
@@ -624,6 +688,7 @@ function bootstrap(): void {
                 console.log(
                   `[Guardrail UI] User clicked Cancel & Leave on warning for action: ${action.id}.`
                 );
+                stopWarningStatusPolling();
                 performSafeSiteExit();
               },
             });
