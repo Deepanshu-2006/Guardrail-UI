@@ -37,7 +37,31 @@ import {
 } from '../response/explanation.js';
 import { sanitizeUrlForDiagnostics } from '../utils/privacy.js';
 
-export type WarningModalViewState = 'warning' | 'loading' | 'waiting' | 'approved' | 'rejected' | 'dismissed';
+export type WarningModalViewState =
+  | 'warning'
+  | 'loading'
+  | 'waiting'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled'
+  | 'expired'
+  | 'failed'
+  | 'reconnecting'
+  | 'offline'
+  | 'dismissed';
+
+export type ApprovalWaitingState =
+  | 'pending'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'cancelled'
+  | 'expired'
+  | 'failed'
+  | 'reconnecting'
+  | 'offline'
+  | 'connected';
 
 export interface WaitingStatusDetails {
   /** Optional canonical approval request ID */
@@ -46,11 +70,26 @@ export interface WaitingStatusDetails {
   /** Name or identifier of contact who approved/decided */
   approver?: string;
 
-  /** Reason provided by contact if rejected */
+  /** Reason provided by contact if rejected, or by user if cancelled */
   reason?: string;
 
   /** Callback invoked when user confirms continuation on approval */
   onProceed?: () => void;
+
+  /** Timestamp recording when the request was submitted */
+  submittedAt?: string | number;
+
+  /** Assigned caretaker name or role */
+  assignedCaretaker?: string;
+
+  /** Custom message for real-time status display */
+  syncStatusMessage?: string;
+
+  /** Current reconnection attempt count */
+  reconnectAttempt?: number;
+
+  /** Max reconnection attempts */
+  maxReconnectAttempts?: number;
 }
 
 export interface WarningModalProps {
@@ -75,8 +114,20 @@ export interface WarningModalProps {
   /** Callback when user clicks Request Approval */
   onRequestApproval?: () => void;
 
-  /** Callback when user clicks Cancel */
+  /** Callback when user clicks Cancel on initial warning */
   onCancel?: () => void;
+
+  /**
+   * Callback when user closes (X) or minimizes the waiting dialog without cancelling.
+   * Closing the interface leaves the approval request actively pending.
+   */
+  onCloseWaiting?: () => void;
+
+  /**
+   * Callback when user explicitly clicks "Cancel Request" on the waiting screen.
+   * Explicitly cancels the request on the backend.
+   */
+  onCancelRequest?: (requestId?: string) => Promise<void> | void;
 }
 
 export const HOST_ELEMENT_ID = 'guardrail-warning-ui-host';
@@ -158,8 +209,17 @@ export function updateWarningModalState(
     return;
   }
 
-  if (state === 'approved' || state === 'rejected') {
-    updateWaitingScreenStatus(state, details);
+  if (
+    state === 'approved' ||
+    state === 'rejected' ||
+    state === 'under_review' ||
+    state === 'cancelled' ||
+    state === 'expired' ||
+    state === 'failed' ||
+    state === 'reconnecting' ||
+    state === 'offline'
+  ) {
+    updateWaitingScreenStatus(state as ApprovalWaitingState, details);
     return;
   }
 
@@ -314,6 +374,18 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-card.gr-card-approved::before {
       background: linear-gradient(90deg, #556B3A 0%, #769650 50%, #556B3A 100%);
+    }
+
+    .gr-card.gr-card-rejected::before {
+      background: linear-gradient(90deg, #8F2B2B 0%, #A83838 50%, #8F2B2B 100%);
+    }
+
+    .gr-card.gr-card-cancelled::before {
+      background: linear-gradient(90deg, #6D7264 0%, #8C9283 50%, #6D7264 100%);
+    }
+
+    .gr-card.gr-card-expired::before {
+      background: linear-gradient(90deg, #966822 0%, #B88536 50%, #966822 100%);
     }
 
     @keyframes grShimmer {
@@ -796,19 +868,68 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     /* Waiting Screen Aesthetic Enhancements */
     .gr-waiting-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
       background: #F0E8D6;
-      border: 1.5px solid #E2D5BA;
-      color: #A87932;
+      border: 1.5px solid #DFCFA8;
+      color: #966822;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
       position: relative;
+      box-shadow: 0 4px 12px rgba(168, 121, 50, 0.16);
+      transition: all 0.25s ease;
     }
 
     .gr-waiting-badge::after {
       content: "";
       position: absolute;
       inset: -4px;
-      border-radius: 16px;
+      border-radius: 18px;
       border: 1.5px solid rgba(168, 121, 50, 0.35);
-      animation: grPulseRing 2.2s infinite cubic-bezier(0.16, 1, 0.3, 1);
+      animation: grPulseRing 2.4s infinite cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .gr-waiting-badge.gr-badge-approved {
+      background: #E5ECD9;
+      border-color: #BFCEA8;
+      color: #4B6331;
+      box-shadow: 0 4px 12px rgba(75, 99, 49, 0.18);
+    }
+    .gr-waiting-badge.gr-badge-approved::after {
+      border-color: rgba(75, 99, 49, 0.35);
+    }
+
+    .gr-waiting-badge.gr-badge-rejected {
+      background: #FDE8E8;
+      border-color: #F8B4B4;
+      color: #8F2B2B;
+      box-shadow: 0 4px 12px rgba(143, 43, 43, 0.18);
+    }
+    .gr-waiting-badge.gr-badge-rejected::after {
+      display: none;
+    }
+
+    .gr-waiting-badge.gr-badge-cancelled {
+      background: #EAE8DE;
+      border-color: #CCC8BA;
+      color: #6D7264;
+      box-shadow: 0 4px 12px rgba(109, 114, 100, 0.15);
+    }
+    .gr-waiting-badge.gr-badge-cancelled::after {
+      display: none;
+    }
+
+    .gr-waiting-badge.gr-badge-expired {
+      background: #F3ECE0;
+      border-color: #DECEB4;
+      color: #8C6224;
+      box-shadow: 0 4px 12px rgba(140, 98, 36, 0.15);
+    }
+    .gr-waiting-badge.gr-badge-expired::after {
+      display: none;
     }
 
     @keyframes grPulseRing {
@@ -864,6 +985,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: #556B3A;
     }
 
+    .gr-step-item.gr-step-rejected:not(:last-child)::after {
+      background: #8F2B2B;
+    }
+
     .gr-step-icon {
       width: 26px;
       height: 26px;
@@ -891,15 +1016,27 @@ export function showWarningModal(props: WarningModalProps): () => void {
       animation: grActivePulse 2s infinite ease-in-out;
     }
 
-    @keyframes grActivePulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.15); }
-      50% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(168, 121, 50, 0.25); }
-    }
-
     .gr-step-icon-pending {
       background: #E8E6DA;
       border: 1.5px solid #CCD2C0;
       color: #8C9283;
+    }
+
+    .gr-step-icon-rejected {
+      background: #FDE8E8;
+      border: 1.5px solid #8F2B2B;
+      color: #8F2B2B;
+    }
+
+    .gr-step-icon-cancelled {
+      background: #EAE8DE;
+      border: 1.5px solid #A0A596;
+      color: #6D7264;
+    }
+
+    @keyframes grActivePulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.15); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(168, 121, 50, 0.25); }
     }
 
     .gr-step-content {
@@ -938,6 +1075,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
       gap: 6px;
     }
 
+    .gr-waiting-pill.gr-pill-under-review {
+      color: #76854A;
+      background: #EEF2E6;
+      border-color: #CAD4BE;
+    }
+
     .gr-waiting-pill.gr-pill-approved {
       color: #364B24;
       background: #E4ECD8;
@@ -948,6 +1091,29 @@ export function showWarningModal(props: WarningModalProps): () => void {
       color: #8F2B2B;
       background: #FDE8E8;
       border-color: #F8B4B4;
+    }
+
+    .gr-waiting-pill.gr-pill-cancelled {
+      color: #6D7264;
+      background: #EAE8DE;
+      border-color: #CCC8BA;
+    }
+
+    .gr-waiting-pill.gr-pill-expired {
+      color: #8C6224;
+      background: #F5EEDB;
+      border-color: #DECEB4;
+    }
+
+    .gr-summary-chevron {
+      font-size: 11px;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      color: #8C9283;
+      display: inline-block;
+    }
+
+    details[open] .gr-summary-chevron {
+      transform: rotate(180deg);
     }
 
     .gr-pulse-dot {
@@ -1372,8 +1538,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
   if (typeof window !== 'undefined') {
     activeEscapeHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        const viewWaiting = currentShadow?.querySelector('.gr-view-waiting') as HTMLElement | null;
+        const isWaiting = viewWaiting && (viewWaiting.classList.contains('gr-slide-in') || (viewWaiting.style.display !== 'none' && !currentShadow?.querySelector('.gr-view-warning')?.offsetParent));
         dismissWarningModal();
-        if (props.onCancel) {
+        if (isWaiting && props.onCloseWaiting) {
+          props.onCloseWaiting();
+        } else if (props.onCancel) {
           props.onCancel();
         }
       }
@@ -1473,13 +1643,13 @@ function createWaitingView(
   const waitingCloseBtn = document.createElement('button');
   waitingCloseBtn.type = 'button';
   waitingCloseBtn.className = 'gr-btn-close gr-waiting-close';
-  waitingCloseBtn.setAttribute('aria-label', 'Cancel request and close dialog');
-  waitingCloseBtn.setAttribute('title', 'Cancel request');
+  waitingCloseBtn.setAttribute('aria-label', 'Close waiting dialog (keeps request pending)');
+  waitingCloseBtn.setAttribute('title', 'Close dialog (keeps request pending)');
   waitingCloseBtn.textContent = '✕';
   waitingCloseBtn.addEventListener('click', () => {
     dismissWarningModal();
-    if (props.onCancel) {
-      props.onCancel();
+    if (props.onCloseWaiting) {
+      props.onCloseWaiting();
     }
   });
 
@@ -1545,7 +1715,7 @@ function createWaitingView(
   destCard.appendChild(destHostRow);
   waitingBody.appendChild(destCard);
 
-  // Status Stepper Section
+  // Status Stepper Section (Stage 1: Submitted, Stage 2: Review, Stage 3: Website Access)
   const statusSection = document.createElement('div');
   statusSection.className = 'gr-section gr-waiting-status-card';
 
@@ -1554,19 +1724,29 @@ function createWaitingView(
   statusHeading.style.display = 'flex';
   statusHeading.style.alignItems = 'center';
   statusHeading.style.justifyContent = 'space-between';
-  statusHeading.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 6px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="16" x2="12" y2="12"/>
-        <line x1="12" y1="8" x2="12.01" y2="8"/>
-      </svg>
-      <span>APPROVAL STATUS</span>
-    </div>
-    <span class="gr-footer-status" style="font-size: 11px; text-transform: none; letter-spacing: normal;">
-      <span class="gr-pulse-dot-green"></span><span>Live Sync Active</span>
-    </span>
+
+  const headingLeft = document.createElement('div');
+  headingLeft.style.display = 'flex';
+  headingLeft.style.alignItems = 'center';
+  headingLeft.style.gap = '6px';
+  headingLeft.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+    <span>APPROVAL STATUS</span>
   `;
+
+  const syncTag = document.createElement('span');
+  syncTag.className = 'gr-sync-tag';
+  syncTag.style.fontSize = '11px';
+  syncTag.style.textTransform = 'none';
+  syncTag.style.letterSpacing = 'normal';
+  syncTag.innerHTML = `<span class="gr-pulse-dot-green"></span><span>Live Sync Active</span>`;
+
+  statusHeading.appendChild(headingLeft);
+  statusHeading.appendChild(syncTag);
 
   const stepper = document.createElement('div');
   stepper.className = 'gr-waiting-stepper';
@@ -1574,22 +1754,22 @@ function createWaitingView(
     <div class="gr-step-item gr-step-done">
       <div class="gr-step-icon gr-step-icon-done">✓</div>
       <div class="gr-step-content">
-        <span class="gr-step-title">Request Sent</span>
+        <span class="gr-step-title">Request Submitted</span>
         <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
       </div>
     </div>
     <div class="gr-step-item gr-step-active">
-      <div class="gr-step-icon gr-step-icon-active">⟳</div>
+      <div class="gr-step-icon gr-step-icon-active"><span class="gr-pulse-dot-amber"></span></div>
       <div class="gr-step-content">
-        <span class="gr-step-title">Review in Progress</span>
-        <span class="gr-step-desc">Waiting for an authorized contact to review</span>
+        <span class="gr-step-title">Caretaker Review</span>
+        <span class="gr-step-desc">Waiting for caretaker decision</span>
       </div>
     </div>
     <div class="gr-step-item">
       <div class="gr-step-icon gr-step-icon-pending">○</div>
       <div class="gr-step-content">
-        <span class="gr-step-title">Page Access</span>
-        <span class="gr-step-desc">Unlocks automatically once approved</span>
+        <span class="gr-step-title">Website Access</span>
+        <span class="gr-step-desc">Access Locked • Unlocks once approved</span>
       </div>
     </div>
   `;
@@ -1602,12 +1782,12 @@ function createWaitingView(
   const guidanceNote = document.createElement('p');
   guidanceNote.className = 'gr-guidance-note';
   guidanceNote.textContent =
-    'To protect your safety, this page will remain paused. You can keep this tab open, or cancel this request at any time.';
+    'To protect your safety, this page will remain paused. You can keep this tab open, close this dialog, or cancel at any time.';
   waitingBody.appendChild(guidanceNote);
 
-  // Diagnostics Details
+  // Diagnostics Details - Clean Expandable Accordion
   const detailsEl = document.createElement('details');
-  detailsEl.className = 'gr-diagnostics';
+  detailsEl.className = 'gr-diagnostics gr-waiting-details';
 
   const summaryToggle = document.createElement('summary');
   summaryToggle.className = 'gr-diagnostics-summary';
@@ -1617,12 +1797,15 @@ function createWaitingView(
   const diagBody = document.createElement('div');
   diagBody.className = 'gr-diagnostics-body';
 
+  const initialTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
   const waitingDiagRows = [
-    { label: 'Requested Website', value: webCtx.domain, cls: '' },
-    { label: 'Request Status', value: 'PENDING', cls: 'gr-diag-req-status' },
-    { label: 'Action Status', value: 'Held in Staging Mode', cls: '' },
-    { label: 'Action ID', value: props.action.id, cls: '' },
     { label: 'Request ID', value: 'Awaiting coordinator', cls: 'gr-diag-req-id' },
+    { label: 'Requested Website', value: webCtx.domain, cls: 'gr-diag-domain' },
+    { label: 'Requested Action', value: props.action.type || 'External Navigation', cls: 'gr-diag-action' },
+    { label: 'Submission Time', value: initialTimeStr, cls: 'gr-diag-time' },
+    { label: 'Assigned Caretaker', value: 'Designated Caretaker', cls: 'gr-diag-approver' },
+    { label: 'Approval Status', value: 'PENDING', cls: 'gr-diag-req-status' },
   ];
 
   for (const row of waitingDiagRows) {
@@ -1670,9 +1853,13 @@ function createWaitingView(
   waitingCancelBtn.textContent = 'Cancel Request';
   waitingCancelBtn.setAttribute('title', 'Cancel this approval request and safely exit');
   waitingCancelBtn.addEventListener('click', () => {
-    dismissWarningModal();
-    if (props.onCancel) {
-      props.onCancel();
+    if (props.onCancelRequest) {
+      props.onCancelRequest();
+    } else {
+      dismissWarningModal();
+      if (props.onCancel) {
+        props.onCancel();
+      }
     }
   });
 
@@ -1771,10 +1958,10 @@ export function transitionToWaitingView(details?: WaitingStatusDetails): void {
 }
 
 /**
- * Updates the waiting screen with live status (e.g. pending, approved, or rejected).
+ * Updates the waiting screen with live status (e.g. pending, under_review, approved, rejected, cancelled, expired).
  */
 export function updateWaitingScreenStatus(
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled',
+  status: ApprovalWaitingState,
   details?: WaitingStatusDetails
 ): void {
   if (!currentShadow) return;
@@ -1790,119 +1977,488 @@ export function updateWaitingScreenStatus(
   const footerStatus = viewWaiting.querySelector('.gr-footer-status') as HTMLElement | null;
   const reqIdVal = viewWaiting.querySelector('.gr-diag-req-id') as HTMLElement | null;
   const reqStatusVal = viewWaiting.querySelector('.gr-diag-req-status') as HTMLElement | null;
+  const approverVal = viewWaiting.querySelector('.gr-diag-approver') as HTMLElement | null;
+  const timeVal = viewWaiting.querySelector('.gr-diag-time') as HTMLElement | null;
   const stepper = viewWaiting.querySelector('.gr-waiting-stepper') as HTMLElement | null;
   const footerActions = viewWaiting.querySelector('.gr-footer-actions') as HTMLElement | null;
+  const waitingBadge = viewWaiting.querySelector('.gr-waiting-badge') as HTMLElement | null;
+  const statusHeadingSync = viewWaiting.querySelector('.gr-sync-tag') as HTMLElement | null;
 
   if (details?.requestId && reqIdVal) {
     reqIdVal.textContent = details.requestId;
   }
+  if (details?.approver && approverVal) {
+    approverVal.textContent = details.approver;
+  }
+  if (details?.submittedAt && timeVal) {
+    timeVal.textContent = details.submittedAt;
+  }
+  if (reqStatusVal) {
+    reqStatusVal.textContent = status.toUpperCase();
+  }
 
-  if (status === 'pending') {
-    if (pill) {
-      pill.className = 'gr-waiting-pill';
-      pill.innerHTML = '<span class="gr-pulse-dot"></span><span>Pending Review</span>';
-    }
-    if (reqStatusVal) reqStatusVal.textContent = 'PENDING';
-    if (contextLabel) contextLabel.textContent = 'Awaiting Caretaker Review';
-  } else if (status === 'approved') {
-    if (card) {
-      card.classList.remove('gr-card-waiting');
-      card.classList.add('gr-card-approved');
-    }
-    if (pill) {
-      pill.className = 'gr-waiting-pill gr-pill-approved';
-      pill.innerHTML = '<span>✓</span><span>Approved</span>';
-    }
-    if (contextLabel) contextLabel.textContent = 'Approval Confirmed';
-    if (title) title.textContent = 'Request Approved!';
-    if (subtitle) {
-      const approverName = details?.approver ? `by ${escapeText(details.approver)}` : 'by your designated caretaker';
-      subtitle.textContent = `Your request to visit this website was approved ${approverName}. You can now safely continue.`;
-    }
-    if (reqStatusVal) reqStatusVal.textContent = 'APPROVED';
-    if (footerStatus) {
-      footerStatus.innerHTML = '<span class="gr-pulse-dot-green"></span><span>Approved • Ready to continue</span>';
+  // Handle connection status overrides
+  const connStatus = details?.connectionStatus;
+  const updateSyncIndicators = (tagHtml: string, footerHtml: string) => {
+    if (statusHeadingSync) statusHeadingSync.innerHTML = tagHtml;
+    if (footerStatus) footerStatus.innerHTML = footerHtml;
+  };
+
+  // Reset card state classes
+  if (card) {
+    card.classList.remove('gr-card-waiting', 'gr-card-approved', 'gr-card-rejected', 'gr-card-cancelled', 'gr-card-expired');
+  }
+  if (waitingBadge) {
+    waitingBadge.classList.remove('gr-badge-approved', 'gr-badge-rejected', 'gr-badge-cancelled', 'gr-badge-expired');
+  }
+
+  switch (status) {
+    case 'pending': {
+      if (card) card.classList.add('gr-card-waiting');
+      if (waitingBadge) {
+        waitingBadge.innerHTML = `
+          <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Awaiting Caretaker Review';
+      if (title) title.textContent = 'Waiting for approval...';
+      if (subtitle) {
+        subtitle.textContent =
+          'Your request to visit this website has been sent to your designated caretaker. This page will remain safely held until they approve.';
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill';
+        pill.innerHTML = '<span class="gr-pulse-dot"></span><span>Pending Review</span>';
+      }
+
+      if (stepper) {
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Submitted</span>
+              <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-active">
+            <div class="gr-step-icon gr-step-icon-active"><span class="gr-pulse-dot-amber"></span></div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Caretaker Review</span>
+              <span class="gr-step-desc">Waiting for caretaker decision</span>
+            </div>
+          </div>
+          <div class="gr-step-item">
+            <div class="gr-step-icon gr-step-icon-pending">○</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Locked • Unlocks once approved</span>
+            </div>
+          </div>
+        `;
+      }
+
+      if (connStatus === 'reconnecting') {
+        updateSyncIndicators(
+          '<span class="gr-pulse-dot-amber"></span><span>Connection interrupted • Retrying...</span>',
+          '<span class="gr-pulse-dot-amber"></span><span>Connection interrupted • Retrying sync...</span>'
+        );
+      } else if (connStatus === 'offline') {
+        updateSyncIndicators(
+          '<span class="gr-dot-muted"></span><span>Sync offline</span>',
+          '<span class="gr-dot-muted"></span><span>Sync offline • Action remains held</span>'
+        );
+      } else {
+        updateSyncIndicators(
+          '<span class="gr-pulse-dot-green"></span><span>Live Sync Active</span>',
+          '<span class="gr-pulse-dot-green"></span><span>Safe mode active • Waiting for response</span>'
+        );
+      }
+      break;
     }
 
-    if (stepper) {
-      const items = stepper.querySelectorAll('.gr-step-item');
-      items.forEach((item) => {
-        item.classList.add('gr-step-done');
-        const icon = item.querySelector('.gr-step-icon');
-        if (icon) {
-          icon.className = 'gr-step-icon gr-step-icon-done';
-          icon.textContent = '✓';
+    case 'under_review': {
+      if (card) card.classList.add('gr-card-waiting');
+      if (waitingBadge) {
+        waitingBadge.innerHTML = `
+          <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Caretaker Reviewing';
+      if (title) title.textContent = 'Your request is being reviewed';
+      if (subtitle) {
+        subtitle.textContent =
+          'Your caretaker is currently reviewing your request. Please wait while a decision is made.';
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill';
+        pill.innerHTML = '<span class="gr-pulse-dot"></span><span>Under Review</span>';
+      }
+
+      if (stepper) {
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Submitted</span>
+              <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-active">
+            <div class="gr-step-icon gr-step-icon-active"><span class="gr-pulse-dot-amber"></span></div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Under Review</span>
+              <span class="gr-step-desc">Caretaker is currently reviewing your request</span>
+            </div>
+          </div>
+          <div class="gr-step-item">
+            <div class="gr-step-icon gr-step-icon-pending">○</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Locked • Unlocks once approved</span>
+            </div>
+          </div>
+        `;
+      }
+
+      if (connStatus === 'reconnecting') {
+        updateSyncIndicators(
+          '<span class="gr-pulse-dot-amber"></span><span>Connection interrupted • Retrying...</span>',
+          '<span class="gr-pulse-dot-amber"></span><span>Connection interrupted • Retrying sync...</span>'
+        );
+      } else if (connStatus === 'offline') {
+        updateSyncIndicators(
+          '<span class="gr-dot-muted"></span><span>Sync offline</span>',
+          '<span class="gr-dot-muted"></span><span>Sync offline • Action remains held</span>'
+        );
+      } else {
+        updateSyncIndicators(
+          '<span class="gr-pulse-dot-green"></span><span>Live Sync Active</span>',
+          '<span class="gr-pulse-dot-green"></span><span>Caretaker actively reviewing</span>'
+        );
+      }
+      break;
+    }
+
+    case 'approved': {
+      if (card) card.classList.add('gr-card-approved');
+      if (waitingBadge) {
+        waitingBadge.classList.add('gr-badge-approved');
+        waitingBadge.innerHTML = `
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Approval Confirmed';
+      if (title) title.textContent = 'Request Approved!';
+      if (subtitle) {
+        const approverName = details?.approver ? `by ${escapeText(details.approver)}` : 'by your designated caretaker';
+        subtitle.textContent = `Your request to visit this website was approved ${approverName}. You can now safely continue.`;
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill gr-pill-approved';
+        pill.innerHTML = '<span>✓</span><span>Approved • Access Granted</span>';
+      }
+
+      if (stepper) {
+        const approverDesc = details?.approver ? `Approved by ${escapeText(details.approver)}` : 'Approved by caretaker';
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Submitted</span>
+              <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Caretaker Review</span>
+              <span class="gr-step-desc">${approverDesc}</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Granted • Ready to continue</span>
+            </div>
+          </div>
+        `;
+      }
+
+      updateSyncIndicators(
+        '<span class="gr-pulse-dot-green"></span><span>Decision Received</span>',
+        '<span class="gr-pulse-dot-green"></span><span>Approved • Ready to continue</span>'
+      );
+
+      if (footerActions) {
+        footerActions.innerHTML = '';
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.className = 'gr-btn gr-btn-cancel';
+        dismissBtn.textContent = 'Dismiss';
+        dismissBtn.addEventListener('click', () => {
+          dismissWarningModal();
+        });
+
+        const continueNavBtn = document.createElement('button');
+        continueNavBtn.type = 'button';
+        continueNavBtn.className = 'gr-btn gr-btn-continue-nav';
+        continueNavBtn.textContent = 'Continue to Website →';
+        continueNavBtn.addEventListener('click', () => {
+          dismissWarningModal();
+          if (details?.onProceed) {
+            details.onProceed();
+          } else if (currentModalProps?.action?.page?.url && typeof window !== 'undefined') {
+            window.location.href = currentModalProps.action.page.url;
+          }
+        });
+
+        footerActions.appendChild(dismissBtn);
+        footerActions.appendChild(continueNavBtn);
+
+        currentFocusableElements = [continueNavBtn, dismissBtn];
+        try {
+          continueNavBtn.focus();
+        } catch {}
+      }
+      break;
+    }
+
+    case 'rejected': {
+      if (card) card.classList.add('gr-card-rejected');
+      if (waitingBadge) {
+        waitingBadge.classList.add('gr-badge-rejected');
+        waitingBadge.innerHTML = `
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Request Declined';
+      if (title) title.textContent = 'Request Not Approved';
+      if (subtitle) {
+        const reasonText = details?.reason ? ` Reason: ${escapeText(details.reason)}.` : '';
+        subtitle.textContent = `Your caretaker has declined this request.${reasonText} Access to the requested destination remains blocked.`;
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill gr-pill-rejected';
+        pill.innerHTML = '<span>✕</span><span>Access Denied</span>';
+      }
+
+      if (stepper) {
+        const declineDesc = details?.reason ? `Declined: ${escapeText(details.reason)}` : 'Declined by caretaker';
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Submitted</span>
+              <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-rejected">
+            <div class="gr-step-icon gr-step-icon-rejected">✕</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Caretaker Review</span>
+              <span class="gr-step-desc">${declineDesc}</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-rejected">
+            <div class="gr-step-icon gr-step-icon-rejected">✕</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Denied • Destination remains blocked</span>
+            </div>
+          </div>
+        `;
+      }
+
+      updateSyncIndicators(
+        '<span class="gr-pulse-dot-red"></span><span>Decision Received</span>',
+        '<span class="gr-pulse-dot-red"></span><span>Request declined by caretaker</span>'
+      );
+
+      if (footerActions) {
+        footerActions.innerHTML = '';
+        const leaveBtn = document.createElement('button');
+        leaveBtn.type = 'button';
+        leaveBtn.className = 'gr-btn gr-btn-cancel';
+        leaveBtn.textContent = 'Leave Website';
+        leaveBtn.addEventListener('click', () => {
+          dismissWarningModal();
+          if (currentModalProps?.onCancel) {
+            currentModalProps.onCancel();
+          }
+        });
+        footerActions.appendChild(leaveBtn);
+        currentFocusableElements = [leaveBtn];
+        try {
+          leaveBtn.focus();
+        } catch {}
+      }
+      break;
+    }
+
+    case 'cancelled': {
+      if (card) card.classList.add('gr-card-cancelled');
+      if (waitingBadge) {
+        waitingBadge.classList.add('gr-badge-cancelled');
+        waitingBadge.innerHTML = `
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Request Cancelled';
+      if (title) title.textContent = 'Request Cancelled';
+      if (subtitle) {
+        subtitle.textContent =
+          'Your approval request has been cancelled. The requested action was not executed.';
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill gr-pill-cancelled';
+        pill.innerHTML = '<span>—</span><span>Cancelled</span>';
+      }
+
+      if (stepper) {
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Submitted</span>
+              <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-cancelled">
+            <div class="gr-step-icon gr-step-icon-cancelled">—</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Caretaker Review</span>
+              <span class="gr-step-desc">Cancelled by user</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-cancelled">
+            <div class="gr-step-icon gr-step-icon-cancelled">—</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Cancelled • Navigation was not executed</span>
+            </div>
+          </div>
+        `;
+      }
+
+      updateSyncIndicators(
+        '<span class="gr-dot-muted"></span><span>Cancelled</span>',
+        '<span class="gr-dot-muted"></span><span>Request cancelled by user</span>'
+      );
+
+      if (footerActions) {
+        footerActions.innerHTML = '';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'gr-btn gr-btn-cancel';
+        closeBtn.textContent = 'Close';
+        closeBtn.addEventListener('click', () => {
+          dismissWarningModal();
+        });
+        footerActions.appendChild(closeBtn);
+        currentFocusableElements = [closeBtn];
+        try {
+          closeBtn.focus();
+        } catch {}
+      }
+      break;
+    }
+
+    case 'expired': {
+      if (card) card.classList.add('gr-card-expired');
+      if (waitingBadge) {
+        waitingBadge.classList.add('gr-badge-expired');
+        waitingBadge.innerHTML = `
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Request Expired';
+      if (title) title.textContent = 'Request Expired';
+      if (subtitle) {
+        subtitle.textContent =
+          'This approval request has expired or could not be completed. Access to the requested destination remains blocked.';
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill gr-pill-expired';
+        pill.innerHTML = '<span>!</span><span>Expired</span>';
+      }
+
+      if (stepper) {
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-done">
+            <div class="gr-step-icon gr-step-icon-done">✓</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Submitted</span>
+              <span class="gr-step-desc">Delivered to your caretaker's Guardrail dashboard</span>
+            </div>
+          </div>
+          <div class="gr-step-item gr-step-expired">
+            <div class="gr-step-icon gr-step-icon-expired">!</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Caretaker Review</span>
+              <span class="gr-step-desc">No response received within timeout period</span>
+            </div>
+          </div>
+          <div class="gr-step-item">
+            <div class="gr-step-icon gr-step-icon-pending">○</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Locked • Action remains blocked</span>
+            </div>
+          </div>
+        `;
+      }
+
+      updateSyncIndicators(
+        '<span class="gr-dot-muted"></span><span>Expired</span>',
+        '<span class="gr-dot-muted"></span><span>Request expired • Action blocked</span>'
+      );
+
+      if (footerActions) {
+        footerActions.innerHTML = '';
+        if (details?.onRetry) {
+          const retryBtn = document.createElement('button');
+          retryBtn.type = 'button';
+          retryBtn.className = 'gr-btn gr-btn-continue';
+          retryBtn.textContent = 'Retry Request';
+          retryBtn.addEventListener('click', () => {
+            details.onRetry!();
+          });
+          footerActions.appendChild(retryBtn);
         }
-      });
-    }
 
-    if (footerActions) {
-      footerActions.innerHTML = '';
-      const dismissBtn = document.createElement('button');
-      dismissBtn.type = 'button';
-      dismissBtn.className = 'gr-btn gr-btn-continue';
-      dismissBtn.textContent = 'Dismiss';
-      dismissBtn.addEventListener('click', () => {
-        dismissWarningModal();
-      });
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'gr-btn gr-btn-cancel';
+        closeBtn.textContent = 'Close';
+        closeBtn.addEventListener('click', () => {
+          dismissWarningModal();
+        });
+        footerActions.appendChild(closeBtn);
 
-      const continueNavBtn = document.createElement('button');
-      continueNavBtn.type = 'button';
-      continueNavBtn.className = 'gr-btn gr-btn-continue-nav';
-      continueNavBtn.textContent = 'Continue to Website →';
-      continueNavBtn.addEventListener('click', () => {
-        dismissWarningModal();
-        if (details?.onProceed) {
-          details.onProceed();
-        } else if (currentModalProps?.action?.page?.url && typeof window !== 'undefined') {
-          window.location.href = currentModalProps.action.page.url;
-        }
-      });
-
-      footerActions.appendChild(dismissBtn);
-      footerActions.appendChild(continueNavBtn);
-
-      currentFocusableElements = [continueNavBtn, dismissBtn];
-      try {
-        continueNavBtn.focus();
-      } catch {}
-    }
-  } else if (status === 'rejected') {
-    if (card) {
-      card.classList.remove('gr-card-waiting');
-    }
-    if (pill) {
-      pill.className = 'gr-waiting-pill gr-pill-rejected';
-      pill.innerHTML = '<span>✕</span><span>Declined</span>';
-    }
-    if (contextLabel) contextLabel.textContent = 'Request Declined';
-    if (title) title.textContent = 'Request Declined';
-    if (subtitle) {
-      const reasonText = details?.reason ? ` Reason: ${escapeText(details.reason)}` : '';
-      subtitle.textContent = `Your caretaker reviewed and declined the request to visit this website.${reasonText}`;
-    }
-    if (reqStatusVal) reqStatusVal.textContent = 'REJECTED';
-    if (footerStatus) {
-      footerStatus.textContent = 'Request declined by caretaker';
-    }
-
-    if (footerActions) {
-      footerActions.innerHTML = '';
-      const leaveBtn = document.createElement('button');
-      leaveBtn.type = 'button';
-      leaveBtn.className = 'gr-btn gr-btn-cancel';
-      leaveBtn.textContent = 'Leave Website';
-      leaveBtn.addEventListener('click', () => {
-        dismissWarningModal();
-        if (currentModalProps?.onCancel) {
-          currentModalProps.onCancel();
-        }
-      });
-      footerActions.appendChild(leaveBtn);
-      currentFocusableElements = [leaveBtn];
-      try {
-        leaveBtn.focus();
-      } catch {}
+        currentFocusableElements = details?.onRetry ? [footerActions.children[0] as any, closeBtn] : [closeBtn];
+        try {
+          closeBtn.focus();
+        } catch {}
+      }
+      break;
     }
   }
 }
