@@ -28,6 +28,9 @@ import { checkPayloadForSensitiveFields, ApprovalApiClient } from '../approval/c
 import { ApprovalStatusSyncClient } from '../approval/sync-client.js';
 import { validateApprovalRequestId } from '../approval/model.js';
 import {
+  ApprovalStatus,
+  GuardrailCancelApprovalRequestMessage,
+  GuardrailCancelApprovalRequestResponse,
   GuardrailGetApprovalStatusResponse,
 } from '../types/approval.js';
 import {
@@ -490,6 +493,87 @@ export async function handleBackgroundApprovalStatusLookup(
   }
 }
 
+/**
+ * Handles explicit cancellation of a pending approval request from a content script.
+ *
+ * @param message Message payload containing target requestId and optional reason
+ * @param controller Controller tracking in-memory held action records
+ * @param options Transport configuration overrides
+ */
+export async function handleBackgroundApprovalCancellation(
+  message: unknown,
+  controller: InterceptionController = backgroundInterceptionController,
+  options?: { apiClient?: ApprovalApiClient }
+): Promise<GuardrailCancelApprovalRequestResponse> {
+  if (!message || typeof message !== 'object') {
+    return {
+      success: false,
+      requestId: '',
+      isAuthoritative: true,
+      error: { code: 'VALIDATION_ERROR', message: 'Message must be a non-null object.' },
+    };
+  }
+
+  const raw = message as Record<string, unknown>;
+  const rawId = typeof raw.requestId === 'string' ? raw.requestId.trim() : '';
+  const validation = validateApprovalRequestId(rawId);
+  if (!validation.valid) {
+    return {
+      success: false,
+      requestId: rawId,
+      isAuthoritative: true,
+      error: { code: 'VALIDATION_ERROR', message: validation.errors[0] || 'Invalid requestId format.' },
+    };
+  }
+
+  const actionId = typeof raw.actionId === 'string' ? raw.actionId : undefined;
+  const reason = typeof raw.reason === 'string' ? raw.reason : 'User cancelled request';
+  const apiClient = options?.apiClient ?? new ApprovalApiClient();
+
+  try {
+    const result = await apiClient.cancelApprovalRequest(rawId, reason);
+    if (actionId && controller.hasRecord(actionId)) {
+      try {
+        controller.cancelAction(actionId, reason);
+      } catch {
+        // Record may already be terminal
+      }
+    }
+
+    if (result.success && result.data) {
+      return {
+        success: true,
+        requestId: rawId,
+        status: result.data.status,
+        request: result.data,
+        isAuthoritative: true,
+      };
+    }
+
+    return {
+      success: false,
+      requestId: rawId,
+      isAuthoritative: true,
+      error: {
+        code: result.error?.code || 'CANCELLATION_FAILED',
+        message: result.error?.message || 'Failed to cancel approval request.',
+        statusCode: result.statusCode,
+      },
+    };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      requestId: rawId,
+      isAuthoritative: false,
+      error: {
+        code: 'DISPATCH_ERROR',
+        message: err instanceof Error ? err.message : 'Cancellation dispatch failed.',
+      },
+    };
+  }
+}
+
+
 // Top-level execution log whenever Chrome wakes or starts the service worker
 console.log(
   '%c[Guardrail Background]%c Service worker initialized',
@@ -570,7 +654,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
     const approvalMessage =
       raw.type === 'GUARDRAIL_SUBMIT_APPROVAL_REQUEST' ||
-      raw.type === 'GUARDRAIL_GET_APPROVAL_STATUS';
+      raw.type === 'GUARDRAIL_GET_APPROVAL_STATUS' ||
+      raw.type === 'GUARDRAIL_CANCEL_APPROVAL_REQUEST';
     if (
       approvalMessage &&
       !isTrustedContentScriptSender(sender, chrome.runtime.id)
@@ -637,6 +722,26 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
             error: {
               code: 'DISPATCH_ERROR',
               message: 'Approval status lookup failed.',
+            },
+          });
+        });
+      return true; // Keep message channel open for async sendResponse
+    }
+
+    // 4. Handle GUARDRAIL_CANCEL_APPROVAL_REQUEST (Explicit cancellation)
+    if (raw.type === 'GUARDRAIL_CANCEL_APPROVAL_REQUEST') {
+      handleBackgroundApprovalCancellation(message, backgroundInterceptionController)
+        .then((response) => {
+          sendResponse(response);
+        })
+        .catch((err) => {
+          sendResponse({
+            success: false,
+            requestId: typeof raw.requestId === 'string' ? raw.requestId : '',
+            isAuthoritative: false,
+            error: {
+              code: 'DISPATCH_ERROR',
+              message: 'Approval cancellation dispatch failed.',
             },
           });
         });
