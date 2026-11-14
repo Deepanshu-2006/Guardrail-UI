@@ -137,8 +137,8 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
     else score = 15;
   }
 
-  // Radius = 26, Circumference = 2 * PI * 26 ≈ 163.36
-  const radius = 26;
+  // Radius = 30, Circumference = 2 * PI * 30 ≈ 188.50
+  const radius = 30;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
@@ -146,23 +146,42 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
   chartWrap.className = 'gd-risk-chart-wrap';
 
   chartWrap.innerHTML = `
-    <svg class="gd-risk-circular-svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Risk Score: ${score} out of 100 (${riskLevel})">
+    <svg class="gd-risk-circular-svg" width="76" height="76" viewBox="0 0 76 76" role="img" aria-label="Risk Score: ${score} out of 100 (${riskLevel})">
+      <defs>
+        <linearGradient id="gd-risk-grad-low" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#4F7A36"/>
+          <stop offset="100%" stop-color="#284617"/>
+        </linearGradient>
+        <linearGradient id="gd-risk-grad-medium" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#D98E18"/>
+          <stop offset="100%" stop-color="#995E05"/>
+        </linearGradient>
+        <linearGradient id="gd-risk-grad-high" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#DE5331"/>
+          <stop offset="100%" stop-color="#A8280D"/>
+        </linearGradient>
+        <linearGradient id="gd-risk-grad-critical" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#C73838"/>
+          <stop offset="100%" stop-color="#781414"/>
+        </linearGradient>
+      </defs>
       <circle
         class="gd-risk-circle-bg"
-        cx="32"
-        cy="32"
+        cx="38"
+        cy="38"
         r="${radius}"
         fill="transparent"
         stroke="rgba(39, 49, 33, 0.08)"
-        stroke-width="4.5"
+        stroke-width="5.5"
       />
       <circle
         class="gd-risk-circle-fill ${riskClass}"
-        cx="32"
-        cy="32"
+        cx="38"
+        cy="38"
         r="${radius}"
         fill="transparent"
-        stroke-width="4.5"
+        stroke="url(#gd-risk-grad-${riskClass})"
+        stroke-width="5.5"
         stroke-linecap="round"
         stroke-dasharray="${circumference.toFixed(1)}"
         stroke-dashoffset="${circumference.toFixed(1)}"
@@ -180,7 +199,10 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
 
   const levelTag = document.createElement('div');
   levelTag.className = `gd-risk-level-tag ${riskClass}`;
-  levelTag.textContent = `${riskLevel} RISK EVALUATION`;
+  levelTag.innerHTML = `
+    <span class="gd-risk-tag-dot"></span>
+    <span class="gd-risk-tag-text">${riskLevel} OPERATIONAL RISK</span>
+  `;
 
   const plainText = document.createElement('p');
   plainText.className = 'gd-risk-explanation';
@@ -495,7 +517,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       iconWrap.className = 'gd-empty-icon';
       iconWrap.setAttribute('aria-hidden', 'true');
       iconWrap.innerHTML = `
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           <path d="m9 12 2 2 4-4"/>
         </svg>
@@ -503,7 +525,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
       const emptyKicker = document.createElement('span');
       emptyKicker.className = 'gd-empty-kicker';
-      emptyKicker.textContent = 'SYSTEM POSTURE · ALL CLEAR';
+      emptyKicker.textContent = 'SYSTEM POSTURE // ALL CLEAR';
 
       const emptyHeadline = document.createElement('h2');
       emptyHeadline.className = 'gd-empty-title gd-placeholder-title';
@@ -1154,11 +1176,11 @@ function renderProtocolSidebar(): HTMLElement {
 
   const sideTag = document.createElement('span');
   sideTag.className = 'gd-sidebar-console-tag';
-  sideTag.textContent = 'PROTOCOL CONSOLE';
+  sideTag.textContent = 'PROTOCOL SPECIFICATION // 01';
 
   const sideConsoleTitle = document.createElement('h2');
   sideConsoleTitle.className = 'gd-sidebar-console-title';
-  sideConsoleTitle.textContent = 'Security & Oversight';
+  sideConsoleTitle.textContent = 'Security Governance & Review Protocols';
 
   sideHeaderLeft.appendChild(sideTag);
   sideHeaderLeft.appendChild(sideConsoleTitle);
@@ -1168,7 +1190,7 @@ function renderProtocolSidebar(): HTMLElement {
   sideHeaderRight.className = 'gd-sidebar-header-right';
   sideHeaderRight.innerHTML = `
     <span class="gd-status-dot"></span>
-    <span class="gd-sidebar-live-text">STANDARDS & SAFEGUARDS ACTIVE</span>
+    <span class="gd-sidebar-live-text">ACTIVE SAFEGUARDS · REAL-TIME ENFORCEMENT</span>
   `;
   sideHeader.appendChild(sideHeaderRight);
 
@@ -1184,7 +1206,7 @@ function renderProtocolSidebar(): HTMLElement {
 
   const gBadge = document.createElement('span');
   gBadge.className = 'gd-sidebar-block-badge';
-  gBadge.textContent = 'INVIOLABLE SAFETY GUARANTEE';
+  gBadge.textContent = 'PROTOCOL 01 // ARCHITECTURAL GUARANTEE';
 
   const gTitle = document.createElement('h3');
   gTitle.className = 'gd-sidebar-block-title';
@@ -1200,11 +1222,11 @@ function renderProtocolSidebar(): HTMLElement {
 
   const cp1 = document.createElement('div');
   cp1.className = 'gd-contrast-item';
-  cp1.innerHTML = '<span class="gd-contrast-kicker">REVIEWER ROLE</span><strong class="gd-contrast-value">Audit Consent Only</strong>';
+  cp1.innerHTML = '<span class="gd-contrast-kicker">REVIEWER ROLE</span><span class="gd-contrast-value">Audit Consent Only</span>';
 
   const cp2 = document.createElement('div');
   cp2.className = 'gd-contrast-item';
-  cp2.innerHTML = '<span class="gd-contrast-kicker">BROWSER EXECUTION</span><strong class="gd-contrast-value">Ward Local Authority</strong>';
+  cp2.innerHTML = '<span class="gd-contrast-kicker">BROWSER EXECUTION</span><span class="gd-contrast-value">Ward Local Authority</span>';
 
   contrastPair.appendChild(cp1);
   contrastPair.appendChild(cp2);
@@ -1221,7 +1243,7 @@ function renderProtocolSidebar(): HTMLElement {
 
   const guideBadge = document.createElement('span');
   guideBadge.className = 'gd-sidebar-block-badge';
-  guideBadge.textContent = 'EVALUATION CHECKLIST';
+  guideBadge.textContent = 'PROTOCOL 02 // REVIEW STANDARDS';
 
   const guideTitle = document.createElement('h3');
   guideTitle.className = 'gd-sidebar-block-title';
@@ -1233,7 +1255,7 @@ function renderProtocolSidebar(): HTMLElement {
   const g1 = document.createElement('li');
   g1.className = 'gd-sidebar-guideline-item';
   g1.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm the target hostname and origin match the expected web application and do not spoof trusted services.</p>';
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm target hostname and origin match the expected web application and do not spoof trusted services.</p>';
 
   const g2 = document.createElement('li');
   g2.className = 'gd-sidebar-guideline-item';
@@ -1260,30 +1282,30 @@ function renderProtocolSidebar(): HTMLElement {
 
   const pBadge = document.createElement('span');
   pBadge.className = 'gd-sidebar-block-badge';
-  pBadge.textContent = 'RUNTIME TELEMETRY';
+  pBadge.textContent = 'PROTOCOL 03 // RUNTIME TELEMETRY';
 
   const pTitle = document.createElement('h3');
   pTitle.className = 'gd-sidebar-block-title';
-  pTitle.textContent = 'Session Protection';
+  pTitle.textContent = 'Session Protection Invariants';
 
   const pMeta = document.createElement('div');
   pMeta.className = 'gd-sidebar-posture-meta';
 
   const pm1 = document.createElement('div');
   pm1.className = 'gd-sidebar-meta-row';
-  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception</span> <span class="gd-sidebar-meta-val">Staging Mode Active</span>';
+  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception</span> <span class="gd-sidebar-meta-val">[ STAGING MODE ACTIVE ]</span>';
 
   const pm2 = document.createElement('div');
   pm2.className = 'gd-sidebar-meta-row';
-  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Consent Signature</span> <span class="gd-sidebar-meta-val">Ed25519 Cryptographic</span>';
+  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Consent Signature</span> <span class="gd-sidebar-meta-val">[ ED25519 CRYPTOGRAPHIC ]</span>';
 
   const pm3 = document.createElement('div');
   pm3.className = 'gd-sidebar-meta-row';
-  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Boundary</span> <span class="gd-sidebar-meta-val">Strict Multi-Tenant</span>';
+  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Boundary</span> <span class="gd-sidebar-meta-val">[ STRICT MULTI-TENANT ]</span>';
 
   const pm4 = document.createElement('div');
   pm4.className = 'gd-sidebar-meta-row';
-  pm4.innerHTML = '<span class="gd-sidebar-meta-label">Local Execution</span> <span class="gd-sidebar-meta-val">Decoupled (0 Actions)</span>';
+  pm4.innerHTML = '<span class="gd-sidebar-meta-label">Local Execution</span> <span class="gd-sidebar-meta-val">[ DECOUPLED // 0 ACTIONS ]</span>';
 
   pMeta.appendChild(pm1);
   pMeta.appendChild(pm2);
