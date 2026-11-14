@@ -150,12 +150,37 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
   underline.className = 'gd-search-underline';
   underline.setAttribute('aria-hidden', 'true');
 
-  searchInput.addEventListener('input', (e) => {
-    const val = (e?.target as HTMLInputElement)?.value ?? searchInput.value;
+  let searchDebounceTimer: any = null;
+
+  const triggerSearch = (query: string) => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = null;
+    }
     options.onFiltersChange({
       ...options.filters,
-      searchQuery: val,
+      searchQuery: query,
     });
+  };
+
+  searchInput.addEventListener('input', (e) => {
+    const val = (e?.target as HTMLInputElement)?.value ?? searchInput.value;
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+    }
+    searchDebounceTimer = setTimeout(() => {
+      triggerSearch(val);
+    }, 150);
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      triggerSearch(searchInput.value);
+    }
+  });
+
+  searchInput.addEventListener('search', () => {
+    triggerSearch(searchInput.value);
   });
 
   searchWrap.appendChild(searchIcon);
@@ -167,10 +192,37 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
   const controlsRow = document.createElement('div');
   controlsRow.className = 'gd-filter-controls-row';
 
-  // Helper to wrap select with custom chevron and animated underline
-  function createSelectWrapper(selectEl: HTMLSelectElement): HTMLElement {
+  // Helper to wrap select with custom dropdown UI and synchronized native select
+  function createCustomSelect(
+    selectEl: HTMLSelectElement,
+    items: Array<{ value: string; label: string }>,
+    currentValue: string,
+    onChange: (val: string) => void
+  ): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'gd-select-wrap';
+
+    // Synchronized native select (for tests and accessibility)
+    selectEl.style.position = 'absolute';
+    selectEl.style.opacity = '0';
+    selectEl.style.pointerEvents = 'none';
+    selectEl.style.width = '1px';
+    selectEl.style.height = '1px';
+    selectEl.setAttribute('tabindex', '-1');
+    wrap.appendChild(selectEl);
+
+    // Custom Trigger Button
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'gd-select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', selectEl.getAttribute('aria-label') || 'Filter selection');
+
+    const selectedItem = items.find((i) => i.value === currentValue) || items[0];
+    const valueText = document.createElement('span');
+    valueText.className = 'gd-select-value-text';
+    valueText.textContent = selectedItem ? selectedItem.label : '';
 
     const chevron = document.createElement('span');
     chevron.className = 'gd-select-chevron';
@@ -181,13 +233,84 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       </svg>
     `;
 
-    const selectUnderline = document.createElement('span');
-    selectUnderline.className = 'gd-select-underline';
-    selectUnderline.setAttribute('aria-hidden', 'true');
+    const underline = document.createElement('span');
+    underline.className = 'gd-select-underline';
+    underline.setAttribute('aria-hidden', 'true');
 
-    wrap.appendChild(selectEl);
-    wrap.appendChild(chevron);
-    wrap.appendChild(selectUnderline);
+    trigger.appendChild(valueText);
+    trigger.appendChild(chevron);
+    trigger.appendChild(underline);
+    wrap.appendChild(trigger);
+
+    // Custom Menu
+    const menu = document.createElement('div');
+    menu.className = 'gd-select-menu';
+    menu.setAttribute('role', 'listbox');
+
+    const closeDropdown = () => {
+      wrap.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+    };
+
+    const openDropdown = () => {
+      if (typeof document !== 'undefined') {
+        const openWraps = document.querySelectorAll('.gd-select-wrap.is-open');
+        for (let i = 0; i < openWraps.length; i++) {
+          if (openWraps[i] !== wrap) {
+            openWraps[i].classList.remove('is-open');
+            openWraps[i].querySelector('.gd-select-trigger')?.setAttribute('aria-expanded', 'false');
+          }
+        }
+      }
+      wrap.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+    };
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (wrap.classList.contains('is-open')) {
+        closeDropdown();
+      } else {
+        openDropdown();
+      }
+    });
+
+    items.forEach((item) => {
+      const optEl = document.createElement('div');
+      optEl.className = `gd-select-option ${item.value === currentValue ? 'selected' : ''}`;
+      optEl.setAttribute('role', 'option');
+      optEl.setAttribute('aria-selected', item.value === currentValue ? 'true' : 'false');
+      optEl.textContent = item.label;
+
+      optEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        valueText.textContent = item.label;
+        selectEl.value = item.value;
+        closeDropdown();
+        onChange(item.value);
+      });
+
+      menu.appendChild(optEl);
+    });
+
+    wrap.appendChild(menu);
+
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      const handleOutsideClick = (e: any) => {
+        if (wrap.classList && wrap.classList.contains && wrap.classList.contains('is-open') && typeof wrap.contains === 'function' && !wrap.contains(e.target)) {
+          closeDropdown();
+        }
+      };
+      document.addEventListener('click', handleOutsideClick);
+
+      trigger.addEventListener('keydown', (e: any) => {
+        if (e.key === 'Escape') {
+          closeDropdown();
+          if (typeof trigger.focus === 'function') trigger.focus();
+        }
+      });
+    }
+
     return wrap;
   }
 
@@ -215,14 +338,15 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       statusSelect.appendChild(opt);
     }
 
-    statusSelect.addEventListener('change', () => {
+    const currentStatus = options.filters.status || 'ALL';
+    const statusWrap = createCustomSelect(statusSelect, statuses, currentStatus, (newVal) => {
       options.onFiltersChange({
         ...options.filters,
-        status: statusSelect.value,
+        status: newVal as any,
       });
     });
 
-    controlsRow.appendChild(createSelectWrapper(statusSelect));
+    controlsRow.appendChild(statusWrap);
   }
 
   // Risk Level Filter Select
@@ -249,14 +373,15 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       riskSelect.appendChild(opt);
     }
 
-    riskSelect.addEventListener('change', () => {
+    const currentRisk = options.filters.riskLevel || 'ALL';
+    const riskWrap = createCustomSelect(riskSelect, risks, currentRisk, (newVal) => {
       options.onFiltersChange({
         ...options.filters,
-        riskLevel: riskSelect.value,
+        riskLevel: newVal as any,
       });
     });
 
-    controlsRow.appendChild(createSelectWrapper(riskSelect));
+    controlsRow.appendChild(riskWrap);
   }
 
   // Date Range Filter Select
@@ -282,14 +407,15 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       dateSelect.appendChild(opt);
     }
 
-    dateSelect.addEventListener('change', () => {
+    const currentDate = (options.filters.dateRange as string) || 'ALL';
+    const dateWrap = createCustomSelect(dateSelect, ranges, currentDate, (newVal) => {
       options.onFiltersChange({
         ...options.filters,
-        dateRange: dateSelect.value as any,
+        dateRange: newVal as any,
       });
     });
 
-    controlsRow.appendChild(createSelectWrapper(dateSelect));
+    controlsRow.appendChild(dateWrap);
   }
 
   // Clear Filters Button & Live Count Indicator

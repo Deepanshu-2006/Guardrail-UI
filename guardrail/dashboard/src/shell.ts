@@ -387,6 +387,32 @@ export class DashboardShell {
    * Renders the complete dashboard DOM structure.
    */
   public render(): void {
+    // Preserve active form element (e.g. search input) across render
+    const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
+    let restoreSelector: string | null = null;
+    let cursorStart: number | null = null;
+    let cursorEnd: number | null = null;
+
+    const isInput =
+      activeEl &&
+      ((typeof HTMLInputElement !== 'undefined' && activeEl instanceof HTMLInputElement) ||
+        (activeEl as any).tagName === 'input' ||
+        (activeEl as any).tagName === 'INPUT');
+
+    if (isInput && activeEl) {
+      if (activeEl.classList?.contains('gd-search-input')) {
+        const parentView = activeEl.closest?.('.gd-view-section');
+        const viewId = parentView ? parentView.id : null;
+        restoreSelector = viewId ? `#${viewId} .gd-search-input` : '.gd-search-input';
+        try {
+          cursorStart = (activeEl as any).selectionStart;
+          cursorEnd = (activeEl as any).selectionEnd;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     // Clear root container
     while (this.rootContainer.firstChild) {
       this.rootContainer.removeChild(this.rootContainer.firstChild);
@@ -714,6 +740,21 @@ export class DashboardShell {
     this.appWrapper.appendChild(workspace);
 
     this.rootContainer.appendChild(this.appWrapper);
+
+    // Restore focus and cursor position after re-render
+    if (restoreSelector && typeof document !== 'undefined') {
+      const inputToFocus = this.rootContainer.querySelector(restoreSelector) as HTMLInputElement | null;
+      if (inputToFocus) {
+        inputToFocus.focus();
+        if (cursorStart !== null && cursorEnd !== null && typeof inputToFocus.setSelectionRange === 'function') {
+          try {
+            inputToFocus.setSelectionRange(cursorStart, cursorEnd);
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -1640,11 +1681,21 @@ export class DashboardShell {
    * Updates decision history filters and refreshes if apiClient is available.
    */
   public setHistoryFilters(filters: Partial<RequestFilters>): void {
+    const prevStatus = this.state.historyFilters?.status;
+    const prevRisk = this.state.historyFilters?.riskLevel;
+
     this.state.historyFilters = {
       ...this.state.historyFilters,
       ...filters,
     };
-    if (this.apiClient) {
+
+    // If only searchQuery changed, search is client-side in the dashboard component
+    const onlySearchChanged =
+      filters.searchQuery !== undefined &&
+      (filters.status === undefined || filters.status === prevStatus) &&
+      (filters.riskLevel === undefined || filters.riskLevel === prevRisk);
+
+    if (this.apiClient && !onlySearchChanged) {
       void this.fetchHistoryRequests({ isBackground: false, page: 0 });
     } else {
       this.render();
