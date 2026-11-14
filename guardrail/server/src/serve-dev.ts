@@ -49,6 +49,9 @@ async function main(): Promise<void> {
     contactRegistry,
     identities,
     oidcConfig,
+    routerConfig: {
+      allowedOrigins: ['*'],
+    },
   });
 
   process.stdout.write(`\n======================================================\n`);

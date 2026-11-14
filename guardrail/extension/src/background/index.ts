@@ -25,6 +25,8 @@ import {
   SubmitApprovalRequestOptions,
 } from '../approval/submit-operation.js';
 import { checkPayloadForSensitiveFields, ApprovalApiClient } from '../approval/client.js';
+import { getStoredWardToken } from '../approval/auth-manager.js';
+import { resolveEnvironmentConfig } from '../config/environment.js';
 import { ApprovalStatusSyncClient } from '../approval/sync-client.js';
 import { validateApprovalRequestId } from '../approval/model.js';
 import {
@@ -235,7 +237,13 @@ export async function handleBackgroundApprovalSubmission(
   }
 
   // Trigger the real API submission operation (Requirement 6)
-  const submitResult = await submitApprovalRequest(context, controller, options);
+  const apiClient = options?.apiClient ?? new ApprovalApiClient({
+    tokenProvider: () => getStoredWardToken(),
+  });
+  const submitResult = await submitApprovalRequest(context, controller, {
+    apiClient,
+    ...options,
+  });
 
   if (submitResult.success) {
     return {
@@ -386,9 +394,12 @@ export async function handleBackgroundApprovalStatusLookup(
   // We allow authoritative backend verification to recover and restore the held action if it matches.
   const actionWasTrackedInMemory = actionId ? controller.hasRecord(actionId) : true;
 
+  const apiClient = options?.apiClient ?? new ApprovalApiClient({
+    tokenProvider: () => getStoredWardToken(),
+  });
   const syncClient =
     options?.syncClient ??
-    new ApprovalStatusSyncClient({ apiClient: options?.apiClient });
+    new ApprovalStatusSyncClient({ apiClient });
 
   try {
     const result = await syncClient.getStatus(requestId, {
@@ -528,7 +539,9 @@ export async function handleBackgroundApprovalCancellation(
 
   const actionId = typeof raw.actionId === 'string' ? raw.actionId : undefined;
   const reason = typeof raw.reason === 'string' ? raw.reason : 'User cancelled request';
-  const apiClient = options?.apiClient ?? new ApprovalApiClient();
+  const apiClient = options?.apiClient ?? new ApprovalApiClient({
+    tokenProvider: () => getStoredWardToken(),
+  });
 
   try {
     const result = await apiClient.cancelApprovalRequest(rawId, reason);
@@ -635,6 +648,20 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     if (initialized) {
       console.log('[Guardrail] Browser download monitoring initialized with supported chrome.downloads listeners.');
     }
+  }
+
+  // Ensure ward dev token is seeded in local development
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    try {
+      chrome.storage.local.get(['guardrailAuthToken'], (items: Record<string, unknown>) => {
+        if (!items?.guardrailAuthToken) {
+          const env = resolveEnvironmentConfig();
+          if (env.environment === 'development') {
+            chrome.storage.local.set({ guardrailAuthToken: 'test-ward-token' });
+          }
+        }
+      });
+    } catch {}
   }
 
   // Extension Message Listener: Receives messages from content scripts and returns an acknowledgement

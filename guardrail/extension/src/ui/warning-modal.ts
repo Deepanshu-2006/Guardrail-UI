@@ -1433,7 +1433,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
   const summaryToggle = document.createElement('summary');
   summaryToggle.className = 'gr-diagnostics-summary';
-  summaryToggle.innerHTML = `<span>Technical details</span>`;
+  summaryToggle.textContent = 'Technical Diagnostics';
+  summaryToggle.innerHTML = `<span>Technical Diagnostics</span>`;
   detailsEl.appendChild(summaryToggle);
 
   const diagBody = document.createElement('div');

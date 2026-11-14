@@ -39,48 +39,69 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
     ...(options.databasePath !== undefined ? { databasePath: options.databasePath } : {}),
     ...(options.host !== undefined ? { host: options.host } : {}),
     ...(options.port !== undefined ? { port: options.port } : {}),
-    ...(options.routerConfig?.allowedOrigins !== undefined ? { allowedOrigins: options.routerConfig.allowedOrigins } : {}),
+    ...(options.routerConfig?.allowedOrigins !== undefined && !options.routerConfig.allowedOrigins.includes('*')
+      ? { allowedOrigins: options.routerConfig.allowedOrigins }
+      : {}),
   });
   const runtime = createPersistentApprovalService({
     databasePath: config.databasePath,
     contactRegistry: options.contactRegistry,
     actionOwnershipRegistry: options.actionOwnershipRegistry,
   });
+  const configuredAllowedOrigins = options.routerConfig?.allowedOrigins ?? (
+    config.allowedOrigins.length > 0
+      ? config.allowedOrigins
+      : (config.environment === 'development' || config.environment === 'test' ? ['*'] : DEFAULT_ALLOWED_ORIGINS)
+  );
+
+  const isOriginAllowed = (originHeader?: string): boolean => {
+    if (!originHeader) return false;
+    return (
+      configuredAllowedOrigins.includes(originHeader) ||
+      configuredAllowedOrigins.includes('*') ||
+      config.environment === 'development' ||
+      config.environment === 'test'
+    );
+  };
+
+  const applyCorsHeaders = (res: import('node:http').ServerResponse, originHeader?: string): void => {
+    if (originHeader && isOriginAllowed(originHeader)) {
+      res.setHeader('access-control-allow-origin', originHeader);
+      res.setHeader('vary', 'Origin');
+    }
+  };
+
   const rateLimiter = options.routerConfig?.rateLimiter ?? new InMemoryRateLimiter(120, 60);
   const router = new ApprovalApiRouter(runtime.service, options.tokenVerifier, {
     ...options.routerConfig,
     rateLimiter,
     ...(options.invitationDelivery ? { invitationDelivery: options.invitationDelivery } : {}),
     policyService: runtime.policyService,
-    allowedOrigins: config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS),
+    allowedOrigins: configuredAllowedOrigins,
     serviceType: 'live',
   });
   const server = createServer((request, response) => {
     const requestPath = new URL(request.url ?? '/', 'http://localhost').pathname.replace(/\/+$/, '') || '/';
-    // 1. CORS Preflight for Auth & Standard Endpoints
-    if (request.method === 'OPTIONS' && (requestPath.startsWith('/api/v1/auth/') || requestPath === '/api/v1/auth/me' || requestPath === '/api/v1/auth/config')) {
+    // 1. CORS Preflight for All API Endpoints
+    if (request.method === 'OPTIONS') {
       const originHeader = request.headers.origin;
-      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
-      if (originHeader && (allowedOrigins.includes(originHeader) || allowedOrigins.includes('*'))) {
+      const allowed = isOriginAllowed(originHeader);
+      if (originHeader && allowed) {
         response.setHeader('access-control-allow-origin', originHeader);
         response.setHeader('vary', 'Origin');
       }
-      response.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
-      response.setHeader('access-control-allow-headers', 'authorization, content-type');
+      response.setHeader('access-control-allow-methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      response.setHeader('access-control-allow-headers', 'authorization, content-type, x-guardrail-service-type');
+      response.setHeader('access-control-expose-headers', 'x-guardrail-service-type, Retry-After');
       response.setHeader('access-control-max-age', '86400');
-      response.statusCode = 204;
+      response.statusCode = allowed || !originHeader ? 204 : 403;
       response.end();
       return;
     }
 
     // 2. Health & Readiness Probes
     if (request.method === 'GET' && (requestPath === '/health' || requestPath === '/ready')) {
-      const originHeader = request.headers.origin;
-      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
-      if (originHeader && allowedOrigins.includes(originHeader)) {
-        response.setHeader('access-control-allow-origin', originHeader);
-        response.setHeader('vary', 'Origin');
-      }
+      applyCorsHeaders(response, request.headers.origin);
       response.setHeader('content-type', 'application/json; charset=utf-8');
       response.setHeader('cache-control', 'no-store');
       response.setHeader('x-content-type-options', 'nosniff');
@@ -98,12 +119,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
     // 3. Public Auth Configuration Discovery (OIDC Provider URLs & Client IDs)
     if (request.method === 'GET' && requestPath === '/api/v1/auth/config') {
-      const originHeader = request.headers.origin;
-      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
-      if (originHeader && (allowedOrigins.includes(originHeader) || allowedOrigins.includes('*'))) {
-        response.setHeader('access-control-allow-origin', originHeader);
-        response.setHeader('vary', 'Origin');
-      }
+      applyCorsHeaders(response, request.headers.origin);
       response.setHeader('content-type', 'application/json; charset=utf-8');
       response.setHeader('cache-control', 'no-store');
       response.setHeader('x-content-type-options', 'nosniff');
@@ -128,12 +144,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
     // 4. Authenticated Actor Identity Verification (/api/v1/auth/me)
     if (request.method === 'GET' && requestPath === '/api/v1/auth/me') {
-      const originHeader = request.headers.origin;
-      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
-      if (originHeader && (allowedOrigins.includes(originHeader) || allowedOrigins.includes('*'))) {
-        response.setHeader('access-control-allow-origin', originHeader);
-        response.setHeader('vary', 'Origin');
-      }
+      applyCorsHeaders(response, request.headers.origin);
       response.setHeader('content-type', 'application/json; charset=utf-8');
       response.setHeader('cache-control', 'no-store');
       response.setHeader('x-content-type-options', 'nosniff');
@@ -217,12 +228,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
     const eventsMatch = requestPath.match(/^\/api\/v1\/approval-requests\/([^/]+)\/events$/);
     const dashboardStreamMatch = requestPath === '/api/v1/approvals/stream';
     if (request.method === 'GET' && (eventsMatch || dashboardStreamMatch)) {
-      const originHeader = request.headers.origin;
-      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
-      if (originHeader && allowedOrigins.includes(originHeader)) {
-        response.setHeader('access-control-allow-origin', originHeader);
-        response.setHeader('vary', 'Origin');
-      }
+      applyCorsHeaders(response, request.headers.origin);
       response.setHeader('content-type', 'text/event-stream; charset=utf-8');
       response.setHeader('cache-control', 'no-cache, no-transform');
       response.setHeader('connection', 'keep-alive');

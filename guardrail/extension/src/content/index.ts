@@ -55,6 +55,7 @@ import {
   dispatchActionToBackground,
   dispatchApprovalRequestToBackground,
   dispatchCancelApprovalRequestToBackground,
+  dispatchGetApprovalStatusToBackground,
   dispatchSubmitApprovalRequestToBackground,
   extractPageInfo,
   GUARDRAIL_TEST_ACTION_ATTR,
@@ -68,6 +69,7 @@ import {
 } from '../config/index.js';
 import { cancelControlledActionUntilPolicyInitialized, isPolicyConfigurationInitialized } from '../config/readiness.js';
 import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
+import { getStoredWardToken } from '../approval/auth-manager.js';
 
 let latestStagingContext: StagingActionContext | null = null;
 let activeWarningSyncSub: StatusSyncSubscription | null = null;
@@ -98,6 +100,7 @@ function startWaitingStatusPolling(requestId: string, action: GuardrailAction): 
   try {
     const syncClient = new ApprovalStatusSyncClient({
       defaultIntervalMs: 2000,
+      tokenProvider: () => getStoredWardToken(),
     });
 
     activeWarningSyncSub = syncClient.startSync(requestId, {
@@ -240,13 +243,63 @@ function startWaitingStatusPolling(requestId: string, action: GuardrailAction): 
       onError: (error, result) => {
         console.warn('[Guardrail UI] Real-time sync connection notice:', error?.message);
         if (!result.isAuthoritative && activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
-          updateWaitingScreenStatus(activeApprovalSession.status, {
-            requestId,
-            connectionStatus: 'offline',
-            connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
-            submittedAt: activeApprovalSession.submittedAt,
+          // Attempt authoritative status verification via background service worker fallback
+          void dispatchGetApprovalStatusToBackground(requestId, action.id).then((bgResponse) => {
+            if (bgResponse.success && bgResponse.request) {
+              const bgStatus = bgResponse.request.status;
+              if (bgStatus === ApprovalStatus.APPROVED) {
+                console.log('[Guardrail UI] Background fallback verified authoritative approval for:', requestId);
+                activeApprovalSession!.status = 'approved';
+                const approver = bgResponse.request.decision?.decidedBy || 'Trusted Contact';
+                updatePendingApprovalPill('approved');
+                updateWaitingScreenStatus('approved', {
+                  requestId,
+                  approver,
+                  submittedAt: activeApprovalSession!.submittedAt,
+                  onProceed: () => {
+                    if (!activeApprovalSession || activeApprovalSession.hasExecutedContinuation) {
+                      return;
+                    }
+                    activeApprovalSession.hasExecutedContinuation = true;
+                    stopWarningStatusPolling();
+                    dismissPendingApprovalPill();
+                    dismissWarningModal();
+                    console.log(`[Guardrail UI] Releasing held action exactly once for approved request: ${requestId}`);
+                    try {
+                      defaultContinuationManager.continueAction(action.id);
+                    } catch (contErr) {
+                      console.warn('[Guardrail UI] Continuation manager warning:', contErr);
+                    }
+                    const destUrl = action.page?.url;
+                    if (destUrl && typeof window !== 'undefined') {
+                      window.location.href = destUrl;
+                    }
+                  },
+                });
+                stopWarningStatusPolling();
+                return;
+              }
+            }
+            if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+              updateWaitingScreenStatus(activeApprovalSession.status, {
+                requestId,
+                connectionStatus: 'offline',
+                connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
+                submittedAt: activeApprovalSession.submittedAt,
+              });
+              updatePendingApprovalPill('offline');
+            }
+          }).catch(() => {
+            if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+              updateWaitingScreenStatus(activeApprovalSession.status, {
+                requestId,
+                connectionStatus: 'offline',
+                connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
+                submittedAt: activeApprovalSession.submittedAt,
+              });
+              updatePendingApprovalPill('offline');
+            }
           });
-          updatePendingApprovalPill('offline');
         }
       },
     });

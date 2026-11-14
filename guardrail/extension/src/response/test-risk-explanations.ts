@@ -478,11 +478,11 @@ assertEquals(alertCard?.getAttribute('aria-labelledby'), 'gr-title-id', 'Card po
 assertEquals(alertCard?.getAttribute('aria-describedby'), 'gr-summary-id', 'Card points to aria-describedby="gr-summary-id"');
 
 // Verify separated Technical Diagnostics section
-const diagDetails = findInTree(shadowRoot, (el) => el.tagName === 'DETAILS');
+const diagDetails = findInTree(shadowRoot, (el) => el.tagName === 'DETAILS' && (el.className?.includes('gr-diagnostics') || el.textContent.includes('Technical Diagnostics')));
 assert(diagDetails !== null, 'Modal includes separated <details> for technical diagnostics');
 
-const diagSummary = findInTree(shadowRoot, (el) => el.tagName === 'SUMMARY');
-assert(diagSummary?.textContent.includes('Technical Diagnostics') || false, 'Summary clearly labels Technical Diagnostics');
+const diagSummary = findInTree(shadowRoot, (el) => el.tagName === 'SUMMARY' && el.textContent.includes('Technical Diagnostics'));
+assert(diagSummary !== null, 'Summary clearly labels Technical Diagnostics');
 
 // Dismissal cleanup
 assertEquals(cancelInvoked, false, 'Cancel callback not prematurely called');

@@ -352,7 +352,10 @@ export class ApprovalApiRouter {
 
     // 1. CORS Validation
     const origin = this.extractHeader(request.headers, 'origin');
-    if (origin && this.allowedOrigins.has(origin)) {
+    const isOriginAllowed = Boolean(
+      origin && (this.allowedOrigins.has(origin) || this.allowedOrigins.has('*'))
+    );
+    if (origin && isOriginAllowed) {
       headers['access-control-allow-origin'] = origin;
       headers['access-control-allow-methods'] = 'GET, POST, OPTIONS';
       headers['access-control-allow-headers'] = 'Authorization, Content-Type, ' + GUARDRAIL_SERVICE_TYPE_HEADER;
@@ -362,7 +365,7 @@ export class ApprovalApiRouter {
 
     // Handle OPTIONS Preflight
     if (request.method.toUpperCase() === 'OPTIONS') {
-      if (origin && !this.allowedOrigins.has(origin)) {
+      if (origin && !isOriginAllowed) {
         return {
           statusCode: 403,
           headers,
