@@ -673,6 +673,7 @@ textarea:focus-visible,
 .gd-content-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 48px 48px 80px;
 }
 
@@ -1235,14 +1236,16 @@ textarea:focus-visible,
 
 .gd-overview-main-grid {
   display: grid;
-  grid-template-columns: 7fr 5fr;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: 80px;
   align-items: start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-width: 960px) {
   .gd-overview-main-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 48px;
   }
 }
@@ -1250,11 +1253,15 @@ textarea:focus-visible,
 .gd-overview-col-primary {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .gd-overview-col-secondary {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1409,6 +1416,8 @@ textarea:focus-visible,
   margin-top: 36px !important;
   margin-bottom: 48px !important;
   box-shadow: none !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .gd-recent-activity-header {
@@ -1439,6 +1448,8 @@ textarea:focus-visible,
   border-bottom: none !important;
   background: transparent !important;
   gap: 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .gd-recent-activity-item {
@@ -1454,6 +1465,8 @@ textarea:focus-visible,
   box-shadow: none !important;
   cursor: pointer;
   transition: opacity 0.15s ease;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .gd-recent-activity-item:hover {
@@ -1473,6 +1486,9 @@ textarea:focus-visible,
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0%;
+  overflow: hidden;
 }
 
 .gd-recent-activity-title,
@@ -1486,6 +1502,8 @@ textarea:focus-visible,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 
 .gd-recent-activity-meta {
@@ -1496,6 +1514,10 @@ textarea:focus-visible,
   font-size: 13px;
   font-weight: 500;
   color: var(--gd-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .gd-recent-activity-host {
@@ -2292,61 +2314,63 @@ textarea:focus-visible,
 
 .gd-sidebar-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(39, 49, 33, 0.10);
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.12);
   flex-wrap: wrap;
 }
 
 .gd-sidebar-header-left {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .gd-sidebar-header-right {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding-bottom: 2px;
 }
 
 .gd-sidebar-live-text {
   font-family: var(--gd-font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gd-accent-olive);
-  background: rgba(39, 49, 33, 0.04);
-  padding: 3px 8px;
-  border: 1px solid rgba(39, 49, 33, 0.10);
-  border-radius: 3px;
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 .gd-sidebar-console-tag {
   font-family: var(--gd-font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gd-accent-olive);
 }
 
 .gd-sidebar-console-title {
   font-family: var(--gd-font-display);
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--gd-deep-olive);
   margin: 0;
+  line-height: 1.25;
 }
 
 .gd-protocols-grid {
   display: grid;
   grid-template-columns: 1.15fr 1fr 1fr;
-  gap: 36px;
+  gap: 40px;
   align-items: stretch;
 }
 
@@ -2361,7 +2385,7 @@ textarea:focus-visible,
 
 .gd-protocols-grid .gd-pending-sidebar-block:not(:last-child) {
   border-right: 1px solid rgba(39, 49, 33, 0.10);
-  padding-right: 36px;
+  padding-right: 40px;
 }
 
 .gd-pending-sidebar-block {
@@ -2374,18 +2398,18 @@ textarea:focus-visible,
 
 .gd-sidebar-block-badge {
   font-family: var(--gd-font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gd-accent-olive);
 }
 
 .gd-sidebar-block-title {
   font-family: var(--gd-font-display);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
   color: var(--gd-deep-olive);
   margin: 0;
 }
@@ -2393,51 +2417,52 @@ textarea:focus-visible,
 .gd-sidebar-block-text {
   font-family: var(--gd-font-sans);
   font-size: 13px;
-  font-weight: 450;
+  font-weight: 400;
   color: var(--gd-text-secondary);
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
 }
 
 .gd-sidebar-contrast-pair {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-  padding-top: 10px;
+  margin-top: 10px;
+  padding-top: 4px;
   border-top: 1px solid rgba(39, 49, 33, 0.08);
 }
 
 .gd-contrast-item {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  font-family: var(--gd-font-mono);
-  font-size: 10.5px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.06);
   background: transparent;
-  padding: 0;
-  border: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
 }
 
 .gd-contrast-kicker {
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--gd-accent-olive);
-  text-transform: uppercase;
-  font-size: 9.5px;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gd-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .gd-contrast-value {
-  font-family: var(--gd-font-mono);
-  font-size: 10.5px;
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--gd-deep-olive);
-  background: rgba(39, 49, 33, 0.04);
-  padding: 2px 7px;
-  border-radius: 3px;
-  border: 1px solid rgba(39, 49, 33, 0.08);
-  letter-spacing: 0.02em;
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  letter-spacing: -0.01em;
 }
 
 .gd-sidebar-guidelines-list {
@@ -2446,13 +2471,13 @@ textarea:focus-visible,
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .gd-sidebar-guideline-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .gd-guideline-header {
@@ -2463,14 +2488,14 @@ textarea:focus-visible,
 
 .gd-guideline-num {
   font-family: var(--gd-font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--gd-accent-olive);
 }
 
 .gd-guideline-title {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--gd-deep-olive);
@@ -2479,8 +2504,8 @@ textarea:focus-visible,
 .gd-guideline-desc {
   font-family: var(--gd-font-sans);
   font-size: 12px;
-  font-weight: 450;
-  line-height: 1.5;
+  font-weight: 400;
+  line-height: 1.55;
   color: var(--gd-text-secondary);
   margin: 0;
   padding-left: 20px;
@@ -2489,36 +2514,35 @@ textarea:focus-visible,
 .gd-sidebar-posture-meta {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   margin-top: 4px;
 }
 
 .gd-sidebar-meta-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
   border-bottom: 1px solid rgba(39, 49, 33, 0.06);
-  padding-bottom: 6px;
+  padding: 8px 0;
 }
 
 .gd-sidebar-meta-label {
   font-family: var(--gd-font-sans);
   font-size: 12px;
   font-weight: 500;
-  color: var(--gd-text-secondary);
+  color: var(--gd-text-muted);
 }
 
 .gd-sidebar-meta-val {
-  font-family: var(--gd-font-mono);
-  font-size: 10.5px;
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
   color: var(--gd-deep-olive);
-  background: rgba(39, 49, 33, 0.04);
-  padding: 2px 7px;
-  border-radius: 3px;
-  border: 1px solid rgba(39, 49, 33, 0.08);
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 @media (max-width: 1024px) {
@@ -3180,7 +3204,7 @@ textarea:focus-visible,
 }
 
 .gd-empty-state {
-  padding: 48px 20px 32px;
+  padding: 56px 20px 48px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -3190,71 +3214,42 @@ textarea:focus-visible,
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  gap: 12px;
-  max-width: 580px;
+  gap: 8px;
+  max-width: 440px;
   margin: 0 auto;
 }
 
 .gd-empty-icon {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: rgba(39, 49, 33, 0.04);
-  border: 1px solid rgba(39, 49, 33, 0.10);
+  border: 1px solid rgba(39, 49, 33, 0.08);
   color: var(--gd-deep-olive);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 2px;
-}
-
-.gd-empty-kicker {
-  font-family: var(--gd-font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--gd-accent-olive);
+  margin-bottom: 4px;
 }
 
 .gd-empty-title {
   font-family: var(--gd-font-display);
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   color: var(--gd-deep-olive);
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .gd-empty-desc {
   font-family: var(--gd-font-sans);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 450;
   color: var(--gd-text-secondary);
-  max-width: 460px;
+  max-width: 360px;
   margin: 0 auto;
-  line-height: 1.6;
-}
-
-.gd-empty-assurance-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 8px;
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-}
-
-.gd-empty-assurance-text {
-  font-family: var(--gd-font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: #697860;
-  text-transform: uppercase;
+  line-height: 1.5;
 }
 
 .gd-history-card {

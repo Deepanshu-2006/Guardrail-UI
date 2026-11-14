@@ -939,6 +939,12 @@ export function renderOverview(props: OverviewProps): HTMLElement {
         }
       }
 
+      // Truncate excessively long action titles with an ellipsis so they fit gracefully without causing horizontal scroll
+      const MAX_TITLE_LEN = 36;
+      if (actionTitle.length > MAX_TITLE_LEN) {
+        actionTitle = actionTitle.slice(0, MAX_TITLE_LEN).trim() + '...';
+      }
+
       // Ward Display Name
       let wardDisplayName = '';
       if (req.requesterId && typeof req.requesterId === 'string') {
@@ -948,10 +954,11 @@ export function renderOverview(props: OverviewProps): HTMLElement {
         }
       }
 
-      // 1. Primary Action Title (Display Typography)
+      // 1. Primary Action Title (Display Typography with native tooltip on hover)
       const desc = document.createElement('div');
       desc.className = 'gd-recent-activity-desc gd-recent-activity-title';
       desc.textContent = actionTitle;
+      desc.title = rawDesc;
       itemLeft.appendChild(desc);
 
       // 2. Metadata Subline: Hostname · Requester/Ward · Resolved Timestamp

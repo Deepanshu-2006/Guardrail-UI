@@ -517,15 +517,10 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       iconWrap.className = 'gd-empty-icon';
       iconWrap.setAttribute('aria-hidden', 'true');
       iconWrap.innerHTML = `
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          <path d="m9 12 2 2 4-4"/>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       `;
-
-      const emptyKicker = document.createElement('span');
-      emptyKicker.className = 'gd-empty-kicker';
-      emptyKicker.textContent = 'SYSTEM POSTURE // ALL CLEAR';
 
       const emptyHeadline = document.createElement('h2');
       emptyHeadline.className = 'gd-empty-title gd-placeholder-title';
@@ -533,21 +528,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
       const emptyDesc = document.createElement('p');
       emptyDesc.className = 'gd-empty-desc gd-placeholder-text';
-      emptyDesc.textContent =
-        'All browsing actions have been reviewed. There are no high-impact requests currently awaiting your evaluation.';
-
-      const emptyAssurance = document.createElement('div');
-      emptyAssurance.className = 'gd-empty-assurance-badge';
-      emptyAssurance.innerHTML = `
-        <span class="gd-status-dot"></span>
-        <span class="gd-empty-assurance-text">Real-time sync active · 15-minute review window ready</span>
-      `;
+      emptyDesc.textContent = 'All actions have been evaluated. You are completely caught up.';
 
       emptyPlaceholder.appendChild(iconWrap);
-      emptyPlaceholder.appendChild(emptyKicker);
       emptyPlaceholder.appendChild(emptyHeadline);
       emptyPlaceholder.appendChild(emptyDesc);
-      emptyPlaceholder.appendChild(emptyAssurance);
       listPane.appendChild(emptyPlaceholder);
 
       layout.appendChild(listPane);
@@ -1176,7 +1161,7 @@ function renderProtocolSidebar(): HTMLElement {
 
   const sideTag = document.createElement('span');
   sideTag.className = 'gd-sidebar-console-tag';
-  sideTag.textContent = 'PROTOCOL SPECIFICATION // 01';
+  sideTag.textContent = 'PROTOCOL SPECIFICATION';
 
   const sideConsoleTitle = document.createElement('h2');
   sideConsoleTitle.className = 'gd-sidebar-console-title';
@@ -1190,7 +1175,7 @@ function renderProtocolSidebar(): HTMLElement {
   sideHeaderRight.className = 'gd-sidebar-header-right';
   sideHeaderRight.innerHTML = `
     <span class="gd-status-dot"></span>
-    <span class="gd-sidebar-live-text">ACTIVE SAFEGUARDS · REAL-TIME ENFORCEMENT</span>
+    <span class="gd-sidebar-live-text">Active Safeguards Enforced</span>
   `;
   sideHeader.appendChild(sideHeaderRight);
 
@@ -1206,7 +1191,7 @@ function renderProtocolSidebar(): HTMLElement {
 
   const gBadge = document.createElement('span');
   gBadge.className = 'gd-sidebar-block-badge';
-  gBadge.textContent = 'PROTOCOL 01 // ARCHITECTURAL GUARANTEE';
+  gBadge.textContent = '01 · ARCHITECTURAL GUARANTEE';
 
   const gTitle = document.createElement('h3');
   gTitle.className = 'gd-sidebar-block-title';
@@ -1222,11 +1207,11 @@ function renderProtocolSidebar(): HTMLElement {
 
   const cp1 = document.createElement('div');
   cp1.className = 'gd-contrast-item';
-  cp1.innerHTML = '<span class="gd-contrast-kicker">REVIEWER ROLE</span><span class="gd-contrast-value">Audit Consent Only</span>';
+  cp1.innerHTML = '<span class="gd-contrast-kicker">Reviewer Role</span><span class="gd-contrast-value">Audit Consent Only</span>';
 
   const cp2 = document.createElement('div');
   cp2.className = 'gd-contrast-item';
-  cp2.innerHTML = '<span class="gd-contrast-kicker">BROWSER EXECUTION</span><span class="gd-contrast-value">Ward Local Authority</span>';
+  cp2.innerHTML = '<span class="gd-contrast-kicker">Browser Execution</span><span class="gd-contrast-value">Ward Local Authority</span>';
 
   contrastPair.appendChild(cp1);
   contrastPair.appendChild(cp2);
@@ -1243,7 +1228,7 @@ function renderProtocolSidebar(): HTMLElement {
 
   const guideBadge = document.createElement('span');
   guideBadge.className = 'gd-sidebar-block-badge';
-  guideBadge.textContent = 'PROTOCOL 02 // REVIEW STANDARDS';
+  guideBadge.textContent = '02 · REVIEW STANDARDS';
 
   const guideTitle = document.createElement('h3');
   guideTitle.className = 'gd-sidebar-block-title';
@@ -1255,12 +1240,12 @@ function renderProtocolSidebar(): HTMLElement {
   const g1 = document.createElement('li');
   g1.className = 'gd-sidebar-guideline-item';
   g1.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm target hostname and origin match the expected web application and do not spoof trusted services.</p>';
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm target hostname and origin match expected application and do not spoof trusted services.</p>';
 
   const g2 = document.createElement('li');
   g2.className = 'gd-sidebar-guideline-item';
   g2.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">02</span><strong class="gd-guideline-title">Evaluate Intent</strong></div><p class="gd-guideline-desc">Review the action trigger and initiating context to ensure it reflects intentional browsing activity.</p>';
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">02</span><strong class="gd-guideline-title">Evaluate Intent</strong></div><p class="gd-guideline-desc">Review action trigger and initiating context to ensure it reflects intentional browsing activity.</p>';
 
   const g3 = document.createElement('li');
   g3.className = 'gd-sidebar-guideline-item';
@@ -1282,30 +1267,30 @@ function renderProtocolSidebar(): HTMLElement {
 
   const pBadge = document.createElement('span');
   pBadge.className = 'gd-sidebar-block-badge';
-  pBadge.textContent = 'PROTOCOL 03 // RUNTIME TELEMETRY';
+  pBadge.textContent = '03 · RUNTIME TELEMETRY';
 
   const pTitle = document.createElement('h3');
   pTitle.className = 'gd-sidebar-block-title';
-  pTitle.textContent = 'Session Protection Invariants';
+  pTitle.textContent = 'Session Invariants';
 
   const pMeta = document.createElement('div');
   pMeta.className = 'gd-sidebar-posture-meta';
 
   const pm1 = document.createElement('div');
   pm1.className = 'gd-sidebar-meta-row';
-  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception</span> <span class="gd-sidebar-meta-val">[ STAGING MODE ACTIVE ]</span>';
+  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception</span><span class="gd-sidebar-meta-val">Staging Mode Active</span>';
 
   const pm2 = document.createElement('div');
   pm2.className = 'gd-sidebar-meta-row';
-  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Consent Signature</span> <span class="gd-sidebar-meta-val">[ ED25519 CRYPTOGRAPHIC ]</span>';
+  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Consent Signature</span><span class="gd-sidebar-meta-val">Ed25519 Cryptographic</span>';
 
   const pm3 = document.createElement('div');
   pm3.className = 'gd-sidebar-meta-row';
-  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Boundary</span> <span class="gd-sidebar-meta-val">[ STRICT MULTI-TENANT ]</span>';
+  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Boundary</span><span class="gd-sidebar-meta-val">Strict Multi-Tenant</span>';
 
   const pm4 = document.createElement('div');
   pm4.className = 'gd-sidebar-meta-row';
-  pm4.innerHTML = '<span class="gd-sidebar-meta-label">Local Execution</span> <span class="gd-sidebar-meta-val">[ DECOUPLED // 0 ACTIONS ]</span>';
+  pm4.innerHTML = '<span class="gd-sidebar-meta-label">Local Execution</span><span class="gd-sidebar-meta-val">Decoupled · 0 Actions</span>';
 
   pMeta.appendChild(pm1);
   pMeta.appendChild(pm2);
