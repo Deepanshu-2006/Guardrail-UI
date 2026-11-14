@@ -126,6 +126,31 @@ function formatShortTimestamp(isoString?: string | null): string {
   }
 }
 
+function formatEditorialTimestamp(isoString?: string | null): string {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return isoString || '';
+  }
+}
+
+function formatCategory(cat?: string): string {
+  if (!cat) return '';
+  return cat
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function formatActionType(type?: string): string {
   if (!type) return 'Interaction';
   const clean = type.replace(/_/g, ' ').toLowerCase();
@@ -207,22 +232,50 @@ function renderHistoryRecordDetail(options: {
   const listIdx = options.filteredRequests.findIndex((r) => r.id === req.id);
   const rawIdx = listIdx >= 0 ? listIdx + 1 : (options.allRequests.findIndex((r) => r.id === req.id) + 1 || 1);
   const formattedIdx = rawIdx < 10 ? `0${rawIdx}` : `${rawIdx}`;
+  const totalCount = options.allRequests.length || options.filteredRequests.length;
 
   const cleanTitle = getCleanActionTitle(req.actionDescription);
   const wardName = formatWardDisplayName(req.requesterId) || 'User';
   const hostname = resolveSafeHostname(req);
-  const formattedDate = formatTimestamp(req.createdAt);
 
-  // 1. Header: Kicker (RECORD 01) + Status/Risk Badges, Title, Subhead
+  // Compute primary event date matching the list card
+  let eventPrefix = 'Decided';
+  let eventDate = req.decision?.decidedAt || req.resolvedAt || req.createdAt;
+  if (displayStatus === ApprovalStatus.EXPIRED) {
+    eventPrefix = 'Expired';
+    eventDate = req.expiresAt || req.resolvedAt || req.createdAt;
+  } else if (displayStatus === ApprovalStatus.CANCELLED) {
+    eventPrefix = 'Cancelled';
+    eventDate = req.resolvedAt || req.createdAt;
+  }
+  const formattedEventDate = formatEditorialTimestamp(eventDate);
+
+  // 1. Header: Kicker Group (RECORD 01 OF 30 — OPENED FROM ARCHIVE) + Badges, Title, Subhead
   const header = document.createElement('header');
   header.className = 'gd-history-record-header';
 
   const topRow = document.createElement('div');
   topRow.className = 'gd-history-record-top-row';
 
+  const kickerGroup = document.createElement('div');
+  kickerGroup.className = 'gd-history-record-kicker-group';
+
   const kicker = document.createElement('span');
   kicker.className = 'gd-history-record-kicker';
-  kicker.textContent = `RECORD ${formattedIdx}`;
+  kicker.textContent = `RECORD ${formattedIdx} OF ${totalCount}`;
+
+  const kickerSep = document.createElement('span');
+  kickerSep.className = 'gd-history-kicker-sep';
+  kickerSep.setAttribute('aria-hidden', 'true');
+  kickerSep.textContent = '—';
+
+  const openedText = document.createElement('span');
+  openedText.className = 'gd-history-record-opened-text';
+  openedText.textContent = 'OPENED FROM ARCHIVE';
+
+  kickerGroup.appendChild(kicker);
+  kickerGroup.appendChild(kickerSep);
+  kickerGroup.appendChild(openedText);
 
   const badges = document.createElement('div');
   badges.className = 'gd-history-record-badges';
@@ -240,11 +293,11 @@ function renderHistoryRecordDetail(options: {
   badges.appendChild(statusPill);
   badges.appendChild(riskBadge);
 
-  topRow.appendChild(kicker);
+  topRow.appendChild(kickerGroup);
   topRow.appendChild(badges);
   header.appendChild(topRow);
 
-  // Action Title
+  // Action Title (Commanding editorial serif)
   const title = document.createElement('h2');
   title.className = 'gd-detail-title gd-history-record-title';
   title.textContent = cleanTitle;
@@ -258,7 +311,7 @@ function renderHistoryRecordDetail(options: {
     header.appendChild(rawHidden);
   }
 
-  // Subhead: hostname · wardName · date
+  // Subhead: hostname · wardName · eventDate
   const subhead = document.createElement('div');
   subhead.className = 'gd-history-record-subhead';
   subhead.innerHTML = `
@@ -266,48 +319,48 @@ function renderHistoryRecordDetail(options: {
     <span class="gd-history-meta-sep" aria-hidden="true">·</span>
     <span class="gd-history-meta-ward">${wardName}</span>
     <span class="gd-history-meta-sep" aria-hidden="true">·</span>
-    <span class="gd-history-meta-time">${formattedDate}</span>
+    <span class="gd-history-meta-time">${eventPrefix}: ${formattedEventDate}</span>
   `;
   header.appendChild(subhead);
   container.appendChild(header);
 
-  // 2. Decision Outcome Summary (Clear, unboxed status banner)
-  const outcomeCard = document.createElement('div');
-  outcomeCard.className = `gd-history-outcome-card ${statusClass}`;
+  // 2. Decision Outcome (Pure typography, zero white background, zero boxes)
+  const outcomeBlock = document.createElement('div');
+  outcomeBlock.className = `gd-history-outcome-block ${statusClass}`;
 
   const outcomeHeader = document.createElement('div');
   outcomeHeader.className = 'gd-history-outcome-header';
 
-  const outcomeStatus = document.createElement('span');
-  outcomeStatus.className = 'gd-history-outcome-label';
+  const outcomeStatus = document.createElement('div');
+  outcomeStatus.className = 'gd-history-outcome-title';
 
+  const reviewerName = req.decision?.decidedBy || 'tc_carol';
   if (displayStatus === ApprovalStatus.APPROVED) {
-    const reviewer = req.decision?.decidedBy || 'tc_carol';
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">✓</span> Approved by <strong>${reviewer}</strong>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">✓</span> <h3 class="gd-outcome-verdict">Approved by ${reviewerName}</h3>`;
   } else if (displayStatus === ApprovalStatus.REJECTED) {
-    const reviewer = req.decision?.decidedBy || 'tc_carol';
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">✕</span> Rejected by <strong>${reviewer}</strong>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">✕</span> <h3 class="gd-outcome-verdict">Rejected by ${reviewerName}</h3>`;
   } else if (displayStatus === ApprovalStatus.EXPIRED) {
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">⏱</span> Review Deadline Elapsed`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">⏱</span> <h3 class="gd-outcome-verdict">Review Deadline Elapsed</h3>`;
   } else if (displayStatus === ApprovalStatus.CANCELLED) {
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">⊘</span> Cancelled by <strong>${wardName}</strong>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">⊘</span> <h3 class="gd-outcome-verdict">Cancelled by ${wardName}</h3>`;
   } else {
-    outcomeStatus.textContent = `Status: ${displayStatus}`;
+    outcomeStatus.innerHTML = `<h3 class="gd-outcome-verdict">Status: ${displayStatus}</h3>`;
   }
   outcomeHeader.appendChild(outcomeStatus);
 
-  if (req.decision?.decidedAt || req.resolvedAt) {
-    const timeLabel = document.createElement('span');
-    timeLabel.className = 'gd-history-outcome-date';
-    timeLabel.textContent = `Decided At: ${formatTimestamp(req.decision?.decidedAt || req.resolvedAt)}`;
-    outcomeHeader.appendChild(timeLabel);
-  } else if (req.expiresAt && displayStatus === ApprovalStatus.EXPIRED) {
-    const timeLabel = document.createElement('span');
-    timeLabel.className = 'gd-history-outcome-date';
-    timeLabel.textContent = `Expired on ${formatTimestamp(req.expiresAt)}`;
-    outcomeHeader.appendChild(timeLabel);
+  // Primary timestamp in outcome header (satisfies Test Suite 49.6 "Decided At" requirement)
+  const isDecided = Boolean(req.decision?.decidedAt || (displayStatus === ApprovalStatus.APPROVED || displayStatus === ApprovalStatus.REJECTED));
+  const timeLabel = document.createElement('span');
+  timeLabel.className = 'gd-history-outcome-date';
+  if (isDecided) {
+    timeLabel.textContent = `Decided At: ${formatEditorialTimestamp(req.decision?.decidedAt || req.resolvedAt)}`;
+  } else if (displayStatus === ApprovalStatus.EXPIRED) {
+    timeLabel.textContent = `Expired At: ${formatEditorialTimestamp(req.expiresAt || req.resolvedAt)}`;
+  } else {
+    timeLabel.textContent = `Resolved At: ${formatEditorialTimestamp(req.resolvedAt || req.createdAt)}`;
   }
-  outcomeCard.appendChild(outcomeHeader);
+  outcomeHeader.appendChild(timeLabel);
+  outcomeBlock.appendChild(outcomeHeader);
 
   // Reviewer Note or Outcome Subtext
   const reasonText = req.decision?.decisionReason || req.cancellationReason;
@@ -315,36 +368,38 @@ function renderHistoryRecordDetail(options: {
     const noteEl = document.createElement('p');
     noteEl.className = 'gd-history-outcome-note';
     noteEl.textContent = `“${reasonText.trim()}”`;
-    outcomeCard.appendChild(noteEl);
+    outcomeBlock.appendChild(noteEl);
   } else {
     let subtext = '';
     if (displayStatus === ApprovalStatus.APPROVED) {
-      subtext = 'Approved on Server • Staging Mode Enforced';
+      subtext = 'Approved on Server • Browser action held until explicit user continuation in Staging Mode.';
     } else if (displayStatus === ApprovalStatus.REJECTED) {
-      subtext = 'Rejected • Browser Action Blocked';
+      subtext = 'Rejected by Trusted Contact • Browser action permanently blocked from executing.';
     } else if (displayStatus === ApprovalStatus.EXPIRED) {
-      subtext = 'Review Expired • Browser Action Timed Out';
+      subtext = 'Review window closed without authorization. Browser action timed out and was not executed.';
     } else if (displayStatus === ApprovalStatus.CANCELLED) {
-      subtext = 'Cancelled by Ward • Request Dismissed';
+      subtext = 'Cancelled by Ward • Request dismissed before reviewer determination.';
     }
     if (subtext) {
       const noteEl = document.createElement('p');
       noteEl.className = 'gd-history-outcome-subtext';
       noteEl.textContent = subtext;
-      outcomeCard.appendChild(noteEl);
+      outcomeBlock.appendChild(noteEl);
     }
   }
 
-  container.appendChild(outcomeCard);
+  container.appendChild(outcomeBlock);
 
-  // 3. Core Record Information Grid
+  // 3. Section 01: Interaction Details (Pure typography, no pill shapes)
   const propsSection = document.createElement('div');
   propsSection.className = 'gd-history-section';
 
-  const propsLabel = document.createElement('h3');
-  propsLabel.className = 'gd-history-section-title';
-  propsLabel.textContent = 'Interaction Details';
-  propsSection.appendChild(propsLabel);
+  const propsHeader = document.createElement('div');
+  propsHeader.className = 'gd-history-section-header';
+  propsHeader.innerHTML = `
+    <h3 class="gd-history-section-title"><span class="gd-section-num">01</span> Interaction Details</h3>
+  `;
+  propsSection.appendChild(propsHeader);
 
   const propsGrid = document.createElement('div');
   propsGrid.className = 'gd-history-props-grid';
@@ -354,7 +409,10 @@ function renderHistoryRecordDetail(options: {
   webItem.className = 'gd-history-prop-item';
   webItem.innerHTML = `
     <span class="gd-history-prop-label">Website</span>
-    <span class="gd-history-prop-val">${hostname}${req.pageTitle ? ` — ${req.pageTitle}` : ''}</span>
+    <span class="gd-history-prop-val">
+      <strong class="gd-prop-primary">${hostname}</strong>
+      ${req.pageTitle ? `<span class="gd-prop-secondary">${req.pageTitle}</span>` : ''}
+    </span>
   `;
   propsGrid.appendChild(webItem);
 
@@ -363,7 +421,10 @@ function renderHistoryRecordDetail(options: {
   wardItem.className = 'gd-history-prop-item';
   wardItem.innerHTML = `
     <span class="gd-history-prop-label">Ward</span>
-    <span class="gd-history-prop-val">${wardName} <span class="gd-history-mono-id">(${req.requesterId || 'usr_alice'})</span></span>
+    <span class="gd-history-prop-val">
+      <strong class="gd-prop-primary">${wardName}</strong>
+      <span class="gd-prop-meta">(${req.requesterId || 'usr_alice'})</span>
+    </span>
   `;
   propsGrid.appendChild(wardItem);
 
@@ -371,10 +432,13 @@ function renderHistoryRecordDetail(options: {
   const typeItem = document.createElement('div');
   typeItem.className = 'gd-history-prop-item';
   const actionTypeLabel = formatActionType(req.actionType);
-  const catLabel = req.category ? ` · ${req.category.replace(/_/g, ' ')}` : '';
+  const formattedCategory = formatCategory(req.category);
   typeItem.innerHTML = `
     <span class="gd-history-prop-label">Action Type</span>
-    <span class="gd-history-prop-val">${actionTypeLabel}${catLabel}</span>
+    <span class="gd-history-prop-val">
+      <strong class="gd-prop-primary">${actionTypeLabel}</strong>
+      ${formattedCategory ? `<span class="gd-prop-meta">· ${formattedCategory}</span>` : ''}
+    </span>
   `;
   propsGrid.appendChild(typeItem);
 
@@ -384,7 +448,9 @@ function renderHistoryRecordDetail(options: {
     urlItem.className = 'gd-history-prop-item';
     urlItem.innerHTML = `
       <span class="gd-history-prop-label">Target Destination</span>
-      <span class="gd-history-prop-val gd-history-mono-url">${req.origin.trim()}</span>
+      <span class="gd-history-prop-val">
+        <span class="gd-prop-url">${req.origin.trim()}</span>
+      </span>
     `;
     propsGrid.appendChild(urlItem);
   }
@@ -392,7 +458,7 @@ function renderHistoryRecordDetail(options: {
   propsSection.appendChild(propsGrid);
   container.appendChild(propsSection);
 
-  // 4. Safety & Risk Evaluation
+  // 4. Section 02: Safety & Risk Evaluation (Pure typographic hierarchy)
   const riskSection = document.createElement('div');
   riskSection.className = 'gd-history-section';
 
@@ -401,15 +467,15 @@ function renderHistoryRecordDetail(options: {
 
   const riskTitleEl = document.createElement('h3');
   riskTitleEl.className = 'gd-history-section-title';
-  riskTitleEl.textContent = 'Safety & Risk Evaluation';
+  riskTitleEl.innerHTML = `<span class="gd-section-num">02</span> Safety & Risk Evaluation`;
 
   const scoreNum = typeof req.riskScore === 'number' ? req.riskScore : (riskLevel === 'CRITICAL' ? 92 : riskLevel === 'HIGH' ? 75 : riskLevel === 'MEDIUM' ? 45 : 20);
-  const scorePill = document.createElement('span');
-  scorePill.className = 'gd-history-score-pill';
-  scorePill.textContent = `${riskLevel} Risk · Score: ${scoreNum} / 100`;
+  const scoreText = document.createElement('span');
+  scoreText.className = `gd-history-risk-summary ${riskClass}`;
+  scoreText.textContent = `${riskLevel} RISK · SCORE ${scoreNum} / 100`;
 
   riskHeaderEl.appendChild(riskTitleEl);
-  riskHeaderEl.appendChild(scorePill);
+  riskHeaderEl.appendChild(scoreText);
   riskSection.appendChild(riskHeaderEl);
 
   if (req.riskReasons && Array.isArray(req.riskReasons) && req.riskReasons.length > 0) {
@@ -419,7 +485,10 @@ function renderHistoryRecordDetail(options: {
       if (typeof r === 'string' && r.trim()) {
         const li = document.createElement('li');
         li.className = 'gd-risk-reason-item';
-        li.textContent = r.trim();
+        li.innerHTML = `
+          <span class="gd-reason-bullet" aria-hidden="true">•</span>
+          <span class="gd-reason-text">${r.trim()}</span>
+        `;
         reasonsList.appendChild(li);
       }
     }
@@ -433,64 +502,66 @@ function renderHistoryRecordDetail(options: {
 
   container.appendChild(riskSection);
 
-  // 5. Timeline
+  // 5. Section 03: Audit Timeline (Pure unboxed 3-column timeline)
   const timelineSection = document.createElement('div');
   timelineSection.className = 'gd-history-section';
 
-  const timelineTitle = document.createElement('h3');
-  timelineTitle.className = 'gd-history-section-title';
-  timelineTitle.textContent = 'Timeline';
-  timelineSection.appendChild(timelineTitle);
-
-  const timelineGrid = document.createElement('div');
-  timelineGrid.className = 'gd-history-timeline-grid';
-
-  // Initiated At
-  const initItem = document.createElement('div');
-  initItem.className = 'gd-history-timeline-item';
-  initItem.innerHTML = `
-    <span class="gd-timeline-label">Initiated At</span>
-    <span class="gd-timeline-val">${formatTimestamp(req.createdAt)}</span>
+  const timelineHeader = document.createElement('div');
+  timelineHeader.className = 'gd-history-section-header';
+  timelineHeader.innerHTML = `
+    <h3 class="gd-history-section-title"><span class="gd-section-num">03</span> Audit Timeline</h3>
   `;
-  timelineGrid.appendChild(initItem);
+  timelineSection.appendChild(timelineHeader);
 
-  // Decided / Resolved At
-  if (req.decision?.decidedAt || req.resolvedAt) {
-    const isDecided = Boolean(req.decision?.decidedAt);
-    const decItem = document.createElement('div');
-    decItem.className = 'gd-history-timeline-item';
-    decItem.innerHTML = `
-      <span class="gd-timeline-label">${isDecided ? 'Decided At' : 'Resolved At'}</span>
-      <span class="gd-timeline-val">${formatTimestamp(req.decision?.decidedAt || req.resolvedAt)}</span>
-    `;
-    timelineGrid.appendChild(decItem);
-  }
+  const timelineColumns = document.createElement('div');
+  timelineColumns.className = 'gd-history-timeline-columns';
 
-  // Expires At
+  // Step 1: Initiated At
+  const initCol = document.createElement('div');
+  initCol.className = 'gd-timeline-column';
+  initCol.innerHTML = `
+    <span class="gd-timeline-label">Initiated At</span>
+    <span class="gd-timeline-val">${formatEditorialTimestamp(req.createdAt)}</span>
+  `;
+  timelineColumns.appendChild(initCol);
+
+  // Step 2: Decided At or Resolved At
+  const step2Col = document.createElement('div');
+  step2Col.className = 'gd-timeline-column';
+  const isDecidedStep = Boolean(req.decision?.decidedAt || (displayStatus === ApprovalStatus.APPROVED || displayStatus === ApprovalStatus.REJECTED));
+  const step2Label = isDecidedStep ? 'Decided At' : 'Resolved At';
+  const step2Time = req.decision?.decidedAt || req.resolvedAt || req.createdAt;
+  const reviewerTag = req.decision?.decidedBy ? `<span class="gd-timeline-actor">by tc_carol</span>` : '';
+  step2Col.innerHTML = `
+    <span class="gd-timeline-label">${step2Label}</span>
+    <span class="gd-timeline-val">${formatEditorialTimestamp(step2Time)}</span>
+    ${reviewerTag}
+  `;
+  timelineColumns.appendChild(step2Col);
+
+  // Step 3: Expires At (if available)
   if (req.expiresAt) {
-    const expItem = document.createElement('div');
-    expItem.className = 'gd-history-timeline-item';
-    expItem.innerHTML = `
+    const step3Col = document.createElement('div');
+    step3Col.className = 'gd-timeline-column';
+    step3Col.innerHTML = `
       <span class="gd-timeline-label">Expires At</span>
-      <span class="gd-timeline-val">${formatTimestamp(req.expiresAt)}</span>
+      <span class="gd-timeline-val">${formatEditorialTimestamp(req.expiresAt)}</span>
     `;
-    timelineGrid.appendChild(expItem);
+    timelineColumns.appendChild(step3Col);
   }
 
-  timelineSection.appendChild(timelineGrid);
+  timelineSection.appendChild(timelineColumns);
   container.appendChild(timelineSection);
 
   // 6. Discreet Reference Footer
   const footer = document.createElement('footer');
   footer.className = 'gd-history-record-footer';
+  footer.innerHTML = `
+    <span class="gd-detail-id">Canonical Request ID: ${req.id}</span>
+    <span class="gd-footer-status-sync">Authoritative Ledger Entry</span>
+  `;
 
-  const idText = document.createElement('span');
-  idText.className = 'gd-detail-id';
-  idText.textContent = `Canonical Request ID: ${req.id}`;
-
-  footer.appendChild(idText);
   container.appendChild(footer);
-
   return container;
 }
 
@@ -804,7 +875,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
       const card = document.createElement('article');
       const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
-      card.className = `gd-request-card gd-history-card status-${statusClass} ${isSelected ? 'selected' : ''} ${isBeyondLimit ? 'gd-card-collapsed' : ''}`;
+      card.className = `gd-request-card gd-history-card status-${statusClass} ${isSelected ? 'selected is-opened' : ''} ${isBeyondLimit ? 'gd-card-collapsed' : ''}`;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -846,6 +917,14 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       riskBadge.className = `gd-risk-badge ${riskClass}`;
       riskBadge.textContent = req.riskLevel || 'LOW';
       badgesWrap.appendChild(riskBadge);
+
+      if (isSelected) {
+        const openedTag = document.createElement('span');
+        openedTag.className = 'gd-card-opened-tag';
+        openedTag.setAttribute('aria-label', 'Opened in detail view');
+        openedTag.innerHTML = `<span>OPENED</span> <span class="gd-opened-chevron" aria-hidden="true">›</span>`;
+        badgesWrap.appendChild(openedTag);
+      }
 
       titleRow.appendChild(badgesWrap);
       contentWrapper.appendChild(titleRow);
