@@ -499,8 +499,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           ? { ...selectedBaseReq, ...props.selectedRequestDetail }
           : selectedBaseReq;
 
-        // Render Left Column: Clean, Compact Request List (Zero Buttons!)
-        for (const baseReq of filteredRequests) {
+        // Render Left Column: Minimal Unboxed Numbered List with Subheading
+        filteredRequests.forEach((baseReq, index) => {
           const req = (props.selectedRequestDetail && props.selectedRequestDetail.id === baseReq.id)
             ? { ...baseReq, ...props.selectedRequestDetail }
             : baseReq;
@@ -508,7 +508,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const isSelected = selectedReq && req.id === selectedReq.id;
           const isExpired = isRequestExpired(req);
           const wardName = formatWardDisplayName(req.requesterId);
-          const categoryLabel = formatFriendlyCategory(req.category);
           const hostname = resolveSafeHostname(req);
           const riskLevel = req.riskLevel || RiskLevel.LOW;
           const riskClass = riskLevel.toLowerCase();
@@ -520,52 +519,40 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
           card.setAttribute('aria-label', `Review request ${req.id}: ${req.actionDescription}`);
 
-          // 1. Eyebrow Row: Requester identity, category, time, and risk indicator
-          const eyebrow = document.createElement('div');
-          eyebrow.className = 'gd-request-eyebrow';
+          // 1. Numbering prefix (01, 02, etc.)
+          const numStr = (index + 1) < 10 ? `0${index + 1}` : String(index + 1);
+          const numEl = document.createElement('span');
+          numEl.className = 'gd-request-num';
+          numEl.textContent = numStr;
+          numEl.setAttribute('aria-hidden', 'true');
+          card.appendChild(numEl);
 
-          const requesterInfo = document.createElement('div');
-          requesterInfo.className = 'gd-requester-info';
+          // 2. Main content container (Title row + Minimal subheading)
+          const contentWrapper = document.createElement('div');
+          contentWrapper.className = 'gd-request-item-content';
 
-          const wardText = document.createElement('span');
-          wardText.className = 'gd-requester-name';
-          wardText.textContent = `${wardName} is requesting your approval`;
+          // Title Row: Action Description + Risk Badge
+          const titleRow = document.createElement('div');
+          titleRow.className = 'gd-request-title-row';
 
-          const sep = document.createElement('span');
-          sep.className = 'gd-eyebrow-sep';
-          sep.setAttribute('aria-hidden', 'true');
-          sep.textContent = '·';
-
-          const catText = document.createElement('span');
-          catText.className = 'gd-request-category';
-          catText.textContent = categoryLabel;
-
-          requesterInfo.appendChild(wardText);
-          requesterInfo.appendChild(sep);
-          requesterInfo.appendChild(catText);
-          eyebrow.appendChild(requesterInfo);
+          const actionTitle = document.createElement('h3');
+          actionTitle.className = 'gd-request-description';
+          actionTitle.textContent = req.actionDescription;
+          titleRow.appendChild(actionTitle);
 
           const badgesWrap = document.createElement('div');
           badgesWrap.className = 'gd-pending-card-badges';
 
-          const timeStr = req.createdAt
-            ? new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : 'Just now';
-          const timeBadge = document.createElement('span');
-          timeBadge.className = 'gd-request-time';
-          timeBadge.textContent = timeStr;
-          badgesWrap.appendChild(timeBadge);
-
-          if (req.status && req.status !== ApprovalStatus.PENDING) {
-            const statusBadge = document.createElement('span');
-            statusBadge.className = `gd-status-badge ${req.status.toLowerCase()}`;
-            statusBadge.textContent = req.status;
-            badgesWrap.appendChild(statusBadge);
-          } else if (isExpired) {
+          if (isExpired) {
             const expBadge = document.createElement('span');
             expBadge.className = 'gd-status-badge expired';
             expBadge.textContent = 'EXPIRED';
             badgesWrap.appendChild(expBadge);
+          } else if (req.status && req.status !== ApprovalStatus.PENDING) {
+            const statusBadge = document.createElement('span');
+            statusBadge.className = `gd-status-badge ${req.status.toLowerCase()}`;
+            statusBadge.textContent = req.status;
+            badgesWrap.appendChild(statusBadge);
           }
 
           const riskBadge = document.createElement('span');
@@ -573,50 +560,47 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           riskBadge.textContent = riskLevel;
           badgesWrap.appendChild(riskBadge);
 
-          eyebrow.appendChild(badgesWrap);
-          card.appendChild(eyebrow);
+          titleRow.appendChild(badgesWrap);
+          contentWrapper.appendChild(titleRow);
 
-          // 2. Primary Visual Element: Requested Action Description
-          const primaryWrap = document.createElement('div');
-          primaryWrap.className = 'gd-request-primary';
+          // Subheading: Clean, minimal single-line context (Domain · Contact · Expiration)
+          const subheading = document.createElement('p');
+          subheading.className = 'gd-request-subheading';
 
-          const actionTitle = document.createElement('h3');
-          actionTitle.className = 'gd-request-description';
-          actionTitle.textContent = req.actionDescription;
-          primaryWrap.appendChild(actionTitle);
-          card.appendChild(primaryWrap);
+          const hostSpan = document.createElement('span');
+          hostSpan.className = 'gd-context-hostname';
+          hostSpan.textContent = hostname;
+          subheading.appendChild(hostSpan);
 
-          // 3. Context Metadata Row (Compact single-line)
-          const metaRow = document.createElement('div');
-          metaRow.className = 'gd-request-meta gd-request-context-line';
+          const sep1 = document.createElement('span');
+          sep1.className = 'gd-subheading-sep';
+          sep1.setAttribute('aria-hidden', 'true');
+          sep1.textContent = '·';
+          subheading.appendChild(sep1);
 
-          const webLabel = document.createElement('span');
-          webLabel.className = 'gd-context-label';
-          webLabel.textContent = 'DEST';
-
-          const webVal = document.createElement('strong');
-          webVal.className = 'gd-context-value gd-context-hostname';
-          webVal.textContent = hostname;
-
-          metaRow.appendChild(webLabel);
-          metaRow.appendChild(webVal);
+          const wardSpan = document.createElement('span');
+          wardSpan.className = 'gd-requester-name';
+          wardSpan.textContent = wardName;
+          subheading.appendChild(wardSpan);
 
           if (req.expiresAt) {
             const expInfo = formatExpirationInfo(req.expiresAt);
-            const expSep = document.createElement('span');
-            expSep.className = 'gd-eyebrow-sep';
-            expSep.textContent = '·';
-            metaRow.appendChild(expSep);
+            const sep2 = document.createElement('span');
+            sep2.className = 'gd-subheading-sep';
+            sep2.setAttribute('aria-hidden', 'true');
+            sep2.textContent = '·';
+            subheading.appendChild(sep2);
 
             const expSpan = document.createElement('span');
             expSpan.className = expInfo.isPast ? 'gd-card-meta-expired' : 'gd-card-meta-expires';
             expSpan.textContent = expInfo.isPast
               ? 'Expired'
               : `Expires: ${new Date(req.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-            metaRow.appendChild(expSpan);
+            subheading.appendChild(expSpan);
           }
 
-          card.appendChild(metaRow);
+          contentWrapper.appendChild(subheading);
+          card.appendChild(contentWrapper);
 
           // Card Selection Handler (Click & Keyboard)
           const selectAction = () => {
@@ -632,7 +616,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           });
 
           listPane.appendChild(card);
-        }
+        });
 
         // Render Right Column: Top Decision & Inspection Box + Protocols Below
         if (selectedReq) {
