@@ -2561,7 +2561,8 @@ textarea:focus-visible,
 }
 
 @media (max-width: 1024px) {
-  .gd-approvals-layout {
+  .gd-approvals-layout,
+  .gd-history-layout {
     grid-template-columns: 1fr;
     gap: 36px;
   }
@@ -2588,6 +2589,344 @@ textarea:focus-visible,
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* -----------------------------------------------------------------------------
+   Decision History Record Detail Pane (Unboxed Editorial "Opened Record" View)
+   ----------------------------------------------------------------------------- */
+
+.gd-history-detail-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0 0 32px 0;
+}
+
+/* 1. Header: Kicker, Status/Risk Badges, Title, Subhead */
+.gd-history-record-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.12);
+}
+
+.gd-history-record-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.gd-history-record-kicker {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7A705E;
+}
+
+.gd-history-record-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gd-history-record-title {
+  font-family: var(--gd-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--gd-deep-olive);
+  line-height: 1.25;
+  margin: 4px 0 2px 0;
+}
+
+.gd-history-record-subhead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--gd-font-mono);
+  font-size: 12px;
+  color: #6E6452;
+  margin: 0;
+}
+
+.gd-history-meta-host {
+  font-weight: 600;
+  color: var(--gd-deep-olive);
+}
+
+.gd-history-meta-sep {
+  color: rgba(39, 49, 33, 0.28);
+}
+
+.gd-history-meta-ward {
+  color: #5A6454;
+}
+
+.gd-history-meta-time {
+  color: #7A705E;
+}
+
+/* 2. Outcome Summary Card (Refined, unboxed status callout) */
+.gd-history-outcome-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  border-left: 3px solid rgba(39, 49, 33, 0.2);
+  background: rgba(39, 49, 33, 0.025);
+  box-sizing: border-box;
+}
+
+.gd-history-outcome-card.approved {
+  border-left-color: #2F6F44;
+  background: rgba(47, 111, 68, 0.04);
+}
+
+.gd-history-outcome-card.rejected {
+  border-left-color: #A83226;
+  background: rgba(168, 50, 38, 0.04);
+}
+
+.gd-history-outcome-card.expired {
+  border-left-color: #8C6A23;
+  background: rgba(140, 106, 35, 0.04);
+}
+
+.gd-history-outcome-card.cancelled {
+  border-left-color: #7A705E;
+  background: rgba(122, 112, 94, 0.04);
+}
+
+.gd-history-outcome-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.gd-history-outcome-label {
+  font-family: var(--gd-font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--gd-deep-olive);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gd-outcome-mark {
+  font-weight: 700;
+  display: inline-flex;
+}
+
+.gd-history-outcome-card.approved .gd-outcome-mark {
+  color: #2F6F44;
+}
+
+.gd-history-outcome-card.rejected .gd-outcome-mark {
+  color: #A83226;
+}
+
+.gd-history-outcome-card.expired .gd-outcome-mark {
+  color: #8C6A23;
+}
+
+.gd-history-outcome-card.cancelled .gd-outcome-mark {
+  color: #7A705E;
+}
+
+.gd-history-outcome-date {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  color: #7A705E;
+}
+
+.gd-history-outcome-note {
+  margin: 2px 0 0 0;
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.45;
+  color: #3B4636;
+}
+
+.gd-history-outcome-subtext {
+  margin: 2px 0 0 0;
+  font-family: var(--gd-font-mono);
+  font-size: 11.5px;
+  color: #7A705E;
+  letter-spacing: 0.02em;
+}
+
+/* 3. Sections & Property Grids */
+.gd-history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.08);
+}
+
+.gd-history-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gd-history-section-title {
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gd-deep-olive);
+  margin: 0;
+}
+
+.gd-history-props-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+
+.gd-history-prop-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gd-history-prop-label {
+  font-family: var(--gd-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7A705E;
+}
+
+.gd-history-prop-val {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gd-deep-olive);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.gd-history-mono-id,
+.gd-history-mono-url {
+  font-family: var(--gd-font-mono);
+  font-size: 12px;
+  color: #525C4D;
+}
+
+/* 4. Risk Details */
+.gd-history-score-pill {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--gd-deep-olive);
+  background: rgba(39, 49, 33, 0.06);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.gd-history-reasons-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-history-reasons-list .gd-risk-reason-item {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #384233;
+  position: relative;
+  padding-left: 14px;
+}
+
+.gd-history-reasons-list .gd-risk-reason-item::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #7A705E;
+  font-weight: bold;
+}
+
+.gd-history-quiet-text {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gd-text-secondary);
+  margin: 0;
+}
+
+/* 5. Timeline Grid */
+.gd-history-timeline-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+.gd-history-timeline-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gd-timeline-label {
+  font-family: var(--gd-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7A705E;
+}
+
+.gd-timeline-val {
+  font-family: var(--gd-font-mono);
+  font-size: 11.5px;
+  color: var(--gd-deep-olive);
+  line-height: 1.35;
+}
+
+/* 6. Footer Reference ID */
+.gd-history-record-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
+.gd-history-record-footer .gd-detail-id {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  color: #8C806D;
+}
+
+@media (max-width: 640px) {
+  .gd-history-props-grid,
+  .gd-history-timeline-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .gd-list-pane {
