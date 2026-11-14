@@ -283,9 +283,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   listPane.setAttribute('role', 'region');
   listPane.setAttribute('aria-label', 'Pending Requests');
 
-  const rightColumn = document.createElement('div');
-  rightColumn.className = 'gd-pending-right-column';
-
   // Prominent Decision Success / Error Banners (Rendered in listPane so querySelector finds them)
   if (props.decisionErrorMessage) {
     const dErrBanner = document.createElement('div');
@@ -332,6 +329,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   // State A: Loading State
   if (props.status === 'loading') {
+    layout.classList.add('gd-approvals-layout-empty');
+
     const skeletonCard = document.createElement('div');
     skeletonCard.className = 'gd-request-card gd-skeleton-loading';
     skeletonCard.setAttribute('role', 'status');
@@ -350,9 +349,12 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     skeletonCard.appendChild(s3);
     listPane.appendChild(skeletonCard);
 
-    rightColumn.appendChild(renderProtocolSidebar());
+    layout.appendChild(listPane);
+    layout.appendChild(renderProtocolSidebar());
   } else if (props.status === 'error' && props.requests.length === 0) {
     // State B: Backend Unavailable or Load Failure (Empty List)
+    layout.classList.add('gd-approvals-layout-empty');
+
     const errorPlaceholder = document.createElement('div');
     errorPlaceholder.className = 'gd-placeholder gd-error-placeholder';
 
@@ -391,7 +393,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       errorPlaceholder.appendChild(retryBtn);
     }
     listPane.appendChild(errorPlaceholder);
-    rightColumn.appendChild(renderProtocolSidebar());
+
+    layout.appendChild(listPane);
+    layout.appendChild(renderProtocolSidebar());
   } else {
     // Combine pending requests with selectedRequestDetail if provided (e.g. freshly resolved or remote load)
     const displayRequests: ApprovalRequest[] = [...props.requests];
@@ -403,45 +407,52 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     }
 
     if (displayRequests.length === 0) {
-      // State C: Genuinely Empty State ("You're all caught up.")
+      // State C: Genuinely Empty State ("No Pending Approval Requests")
+      layout.classList.add('gd-approvals-layout-empty');
+
       const emptyPlaceholder = document.createElement('div');
       emptyPlaceholder.className = 'gd-placeholder gd-empty-state';
+      emptyPlaceholder.setAttribute('role', 'status');
 
       const iconWrap = document.createElement('div');
       iconWrap.className = 'gd-empty-icon';
       iconWrap.setAttribute('aria-hidden', 'true');
+      iconWrap.innerHTML = `
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      `;
+
+      const emptyKicker = document.createElement('span');
+      emptyKicker.className = 'gd-empty-kicker';
+      emptyKicker.textContent = 'SYSTEM POSTURE · ALL CLEAR';
 
       const emptyHeadline = document.createElement('h2');
-      emptyHeadline.className = 'gd-empty-title';
-      emptyHeadline.textContent = "You're all caught up.";
-
-      // Retain semantic placeholder title element for test contracts
-      const srTitle = document.createElement('span');
-      srTitle.className = 'gd-placeholder-title gd-sr-only';
-      srTitle.textContent = 'No Pending Approval Requests';
+      emptyHeadline.className = 'gd-empty-title gd-placeholder-title';
+      emptyHeadline.textContent = 'No Pending Approval Requests';
 
       const emptyDesc = document.createElement('p');
       emptyDesc.className = 'gd-empty-desc gd-placeholder-text';
-      emptyDesc.textContent = 'There are no browsing approval requests waiting for your review.';
+      emptyDesc.textContent =
+        'All browsing actions have been reviewed. There are no high-impact requests currently awaiting your evaluation.';
+
+      const emptyAssurance = document.createElement('div');
+      emptyAssurance.className = 'gd-empty-assurance-badge';
+      emptyAssurance.innerHTML = `
+        <span class="gd-status-dot"></span>
+        <span class="gd-empty-assurance-text">Real-time sync active · 15-minute review window ready</span>
+      `;
 
       emptyPlaceholder.appendChild(iconWrap);
+      emptyPlaceholder.appendChild(emptyKicker);
       emptyPlaceholder.appendChild(emptyHeadline);
-      emptyPlaceholder.appendChild(srTitle);
       emptyPlaceholder.appendChild(emptyDesc);
+      emptyPlaceholder.appendChild(emptyAssurance);
       listPane.appendChild(emptyPlaceholder);
 
-      // Empty Detail Box on Right
-      const emptyDetail = document.createElement('div');
-      emptyDetail.className = 'gd-detail-pane gd-detail-pane-empty';
-      emptyDetail.innerHTML = `
-        <div class="gd-detail-empty-box">
-          <span class="gd-detail-dossier-kicker">VERIFICATION CONSOLE</span>
-          <h3 class="gd-detail-empty-title">No Request Selected</h3>
-          <p class="gd-detail-empty-text">Select an approval request from the queue to evaluate risk and record decisions.</p>
-        </div>
-      `;
-      rightColumn.appendChild(emptyDetail);
-      rightColumn.appendChild(renderProtocolSidebar());
+      layout.appendChild(listPane);
+      layout.appendChild(renderProtocolSidebar());
     } else {
       // State D: Filterable Approval Items List
       const filteredRequests = filterRequests(displayRequests, activeFilters);
@@ -477,18 +488,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           },
         });
         listPane.appendChild(emptyFilter);
-
-        const emptyDetail = document.createElement('div');
-        emptyDetail.className = 'gd-detail-pane gd-detail-pane-empty';
-        emptyDetail.innerHTML = `
-          <div class="gd-detail-empty-box">
-            <span class="gd-detail-dossier-kicker">VERIFICATION CONSOLE</span>
-            <h3 class="gd-detail-empty-title">No Matching Requests</h3>
-            <p class="gd-detail-empty-text">Adjust your filters to inspect pending approval requests.</p>
-          </div>
-        `;
-        rightColumn.appendChild(emptyDetail);
-        rightColumn.appendChild(renderProtocolSidebar());
+        layout.classList.add('gd-approvals-layout-empty');
+        layout.appendChild(listPane);
+        layout.appendChild(renderProtocolSidebar());
       } else {
         // Find selected request
         const selectedBaseReq = (props.selectedRequestId && filteredRequests.find(r => r.id === props.selectedRequestId))
@@ -1085,16 +1087,14 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           auditDetails.appendChild(auditBody);
           detailPane.appendChild(auditDetails);
 
-          rightColumn.appendChild(detailPane);
+          layout.appendChild(listPane);
+          layout.appendChild(detailPane);
+          layout.appendChild(renderProtocolSidebar());
         }
-
-        rightColumn.appendChild(renderProtocolSidebar());
       }
     }
   }
 
-  layout.appendChild(listPane);
-  layout.appendChild(rightColumn);
   section.appendChild(layout);
   return section;
 }
@@ -1104,12 +1104,15 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
  */
 function renderProtocolSidebar(): HTMLElement {
   const sidePane = document.createElement('aside');
-  sidePane.className = 'gd-pending-sidebar';
+  sidePane.className = 'gd-pending-sidebar gd-pending-protocols-horizontal';
   sidePane.setAttribute('aria-label', 'Review Policies and Security Oversight');
 
   // Console Header
   const sideHeader = document.createElement('div');
   sideHeader.className = 'gd-sidebar-header';
+
+  const sideHeaderLeft = document.createElement('div');
+  sideHeaderLeft.className = 'gd-sidebar-header-left';
 
   const sideTag = document.createElement('span');
   sideTag.className = 'gd-sidebar-console-tag';
@@ -1119,9 +1122,23 @@ function renderProtocolSidebar(): HTMLElement {
   sideConsoleTitle.className = 'gd-sidebar-console-title';
   sideConsoleTitle.textContent = 'Security & Oversight';
 
-  sideHeader.appendChild(sideTag);
-  sideHeader.appendChild(sideConsoleTitle);
+  sideHeaderLeft.appendChild(sideTag);
+  sideHeaderLeft.appendChild(sideConsoleTitle);
+  sideHeader.appendChild(sideHeaderLeft);
+
+  const sideHeaderRight = document.createElement('div');
+  sideHeaderRight.className = 'gd-sidebar-header-right';
+  sideHeaderRight.innerHTML = `
+    <span class="gd-status-dot"></span>
+    <span class="gd-sidebar-live-text">STANDARDS & SAFEGUARDS ACTIVE</span>
+  `;
+  sideHeader.appendChild(sideHeaderRight);
+
   sidePane.appendChild(sideHeader);
+
+  // Horizontal Grid Container for Protocol Blocks
+  const gridContainer = document.createElement('div');
+  gridContainer.className = 'gd-protocols-grid';
 
   // Block 1: Architectural Guarantee
   const guaranteeBlock = document.createElement('div');
@@ -1158,7 +1175,7 @@ function renderProtocolSidebar(): HTMLElement {
   guaranteeBlock.appendChild(gTitle);
   guaranteeBlock.appendChild(gText);
   guaranteeBlock.appendChild(contrastPair);
-  sidePane.appendChild(guaranteeBlock);
+  gridContainer.appendChild(guaranteeBlock);
 
   // Block 2: Review Guidelines
   const guideBlock = document.createElement('div');
@@ -1197,7 +1214,7 @@ function renderProtocolSidebar(): HTMLElement {
   guideBlock.appendChild(guideBadge);
   guideBlock.appendChild(guideTitle);
   guideBlock.appendChild(guideList);
-  sidePane.appendChild(guideBlock);
+  gridContainer.appendChild(guideBlock);
 
   // Block 3: Session Security Posture
   const postureBlock = document.createElement('div');
@@ -1238,7 +1255,8 @@ function renderProtocolSidebar(): HTMLElement {
   postureBlock.appendChild(pBadge);
   postureBlock.appendChild(pTitle);
   postureBlock.appendChild(pMeta);
-  sidePane.appendChild(postureBlock);
+  gridContainer.appendChild(postureBlock);
 
+  sidePane.appendChild(gridContainer);
   return sidePane;
 }
