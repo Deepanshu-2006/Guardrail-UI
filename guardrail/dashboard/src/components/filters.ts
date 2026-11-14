@@ -116,6 +116,140 @@ export function hasActiveFilters(filters: RequestFilters): boolean {
 }
 
 /**
+ * Wraps a native select element with a custom unboxed dropdown UI while keeping
+ * the hidden native select synchronized for tests, forms, and assistive technologies.
+ */
+export function createCustomSelect(
+  selectEl: HTMLSelectElement,
+  items: Array<{ value: string; label: string }>,
+  currentValue: string,
+  onChange: (val: string) => void
+): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'gd-select-wrap';
+
+  // Synchronized native select (for tests and accessibility)
+  selectEl.style.position = 'absolute';
+  selectEl.style.opacity = '0';
+  selectEl.style.pointerEvents = 'none';
+  selectEl.style.width = '1px';
+  selectEl.style.height = '1px';
+  selectEl.setAttribute('tabindex', '-1');
+  wrap.appendChild(selectEl);
+
+  // Custom Trigger Button
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'gd-select-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.setAttribute('aria-label', selectEl.getAttribute('aria-label') || 'Filter selection');
+
+  const selectedItem = items.find((i) => i.value === currentValue) || items[0];
+  const valueText = document.createElement('span');
+  valueText.className = 'gd-select-value-text';
+  valueText.textContent = selectedItem ? selectedItem.label : '';
+
+  const chevron = document.createElement('span');
+  chevron.className = 'gd-select-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.innerHTML = `
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9l6 6 6-6"></path>
+    </svg>
+  `;
+
+  const underline = document.createElement('span');
+  underline.className = 'gd-select-underline';
+  underline.setAttribute('aria-hidden', 'true');
+
+  trigger.appendChild(valueText);
+  trigger.appendChild(chevron);
+  trigger.appendChild(underline);
+  wrap.appendChild(trigger);
+
+  // Custom Menu
+  const menu = document.createElement('div');
+  menu.className = 'gd-select-menu';
+  menu.setAttribute('role', 'listbox');
+
+  const closeDropdown = () => {
+    wrap.classList.remove('is-open');
+    trigger.setAttribute('aria-expanded', 'false');
+  };
+
+  const openDropdown = () => {
+    if (typeof document !== 'undefined') {
+      const openWraps = document.querySelectorAll('.gd-select-wrap.is-open');
+      for (let i = 0; i < openWraps.length; i++) {
+        if (openWraps[i] !== wrap) {
+          openWraps[i].classList.remove('is-open');
+          openWraps[i].querySelector('.gd-select-trigger')?.setAttribute('aria-expanded', 'false');
+        }
+      }
+    }
+    wrap.classList.add('is-open');
+    trigger.setAttribute('aria-expanded', 'true');
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (wrap.classList.contains('is-open')) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  });
+
+  items.forEach((item) => {
+    const optEl = document.createElement('div');
+    optEl.className = `gd-select-option ${item.value === currentValue ? 'selected' : ''}`;
+    optEl.setAttribute('role', 'option');
+    optEl.setAttribute('aria-selected', item.value === currentValue ? 'true' : 'false');
+    optEl.textContent = item.label;
+
+    optEl.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const allOpts = menu.querySelectorAll('.gd-select-option');
+      for (let i = 0; i < allOpts.length; i++) {
+        allOpts[i].classList.remove('selected');
+        allOpts[i].setAttribute('aria-selected', 'false');
+      }
+      optEl.classList.add('selected');
+      optEl.setAttribute('aria-selected', 'true');
+      valueText.textContent = item.label;
+      selectEl.value = item.value;
+      closeDropdown();
+      onChange(item.value);
+    });
+
+    menu.appendChild(optEl);
+  });
+
+  wrap.appendChild(menu);
+
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    const handleOutsideClick = (e: any) => {
+      if (wrap.classList && wrap.classList.contains && wrap.classList.contains('is-open') && typeof wrap.contains === 'function' && !wrap.contains(e.target)) {
+        closeDropdown();
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+
+    trigger.addEventListener('keydown', (e: any) => {
+      if (e.key === 'Escape') {
+        closeDropdown();
+        if (typeof trigger.focus === 'function') trigger.focus();
+      }
+    });
+  }
+
+  return wrap;
+}
+
+/**
  * Renders the accessible search and filter bar for request lists.
  */
 export function renderFilterBar(options: FilterBarOptions): HTMLElement {
@@ -191,128 +325,6 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
   // Filter Controls Row
   const controlsRow = document.createElement('div');
   controlsRow.className = 'gd-filter-controls-row';
-
-  // Helper to wrap select with custom dropdown UI and synchronized native select
-  function createCustomSelect(
-    selectEl: HTMLSelectElement,
-    items: Array<{ value: string; label: string }>,
-    currentValue: string,
-    onChange: (val: string) => void
-  ): HTMLElement {
-    const wrap = document.createElement('div');
-    wrap.className = 'gd-select-wrap';
-
-    // Synchronized native select (for tests and accessibility)
-    selectEl.style.position = 'absolute';
-    selectEl.style.opacity = '0';
-    selectEl.style.pointerEvents = 'none';
-    selectEl.style.width = '1px';
-    selectEl.style.height = '1px';
-    selectEl.setAttribute('tabindex', '-1');
-    wrap.appendChild(selectEl);
-
-    // Custom Trigger Button
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'gd-select-trigger';
-    trigger.setAttribute('aria-haspopup', 'listbox');
-    trigger.setAttribute('aria-expanded', 'false');
-    trigger.setAttribute('aria-label', selectEl.getAttribute('aria-label') || 'Filter selection');
-
-    const selectedItem = items.find((i) => i.value === currentValue) || items[0];
-    const valueText = document.createElement('span');
-    valueText.className = 'gd-select-value-text';
-    valueText.textContent = selectedItem ? selectedItem.label : '';
-
-    const chevron = document.createElement('span');
-    chevron.className = 'gd-select-chevron';
-    chevron.setAttribute('aria-hidden', 'true');
-    chevron.innerHTML = `
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 9l6 6 6-6"></path>
-      </svg>
-    `;
-
-    const underline = document.createElement('span');
-    underline.className = 'gd-select-underline';
-    underline.setAttribute('aria-hidden', 'true');
-
-    trigger.appendChild(valueText);
-    trigger.appendChild(chevron);
-    trigger.appendChild(underline);
-    wrap.appendChild(trigger);
-
-    // Custom Menu
-    const menu = document.createElement('div');
-    menu.className = 'gd-select-menu';
-    menu.setAttribute('role', 'listbox');
-
-    const closeDropdown = () => {
-      wrap.classList.remove('is-open');
-      trigger.setAttribute('aria-expanded', 'false');
-    };
-
-    const openDropdown = () => {
-      if (typeof document !== 'undefined') {
-        const openWraps = document.querySelectorAll('.gd-select-wrap.is-open');
-        for (let i = 0; i < openWraps.length; i++) {
-          if (openWraps[i] !== wrap) {
-            openWraps[i].classList.remove('is-open');
-            openWraps[i].querySelector('.gd-select-trigger')?.setAttribute('aria-expanded', 'false');
-          }
-        }
-      }
-      wrap.classList.add('is-open');
-      trigger.setAttribute('aria-expanded', 'true');
-    };
-
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (wrap.classList.contains('is-open')) {
-        closeDropdown();
-      } else {
-        openDropdown();
-      }
-    });
-
-    items.forEach((item) => {
-      const optEl = document.createElement('div');
-      optEl.className = `gd-select-option ${item.value === currentValue ? 'selected' : ''}`;
-      optEl.setAttribute('role', 'option');
-      optEl.setAttribute('aria-selected', item.value === currentValue ? 'true' : 'false');
-      optEl.textContent = item.label;
-
-      optEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        valueText.textContent = item.label;
-        selectEl.value = item.value;
-        closeDropdown();
-        onChange(item.value);
-      });
-
-      menu.appendChild(optEl);
-    });
-
-    wrap.appendChild(menu);
-
-    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-      const handleOutsideClick = (e: any) => {
-        if (wrap.classList && wrap.classList.contains && wrap.classList.contains('is-open') && typeof wrap.contains === 'function' && !wrap.contains(e.target)) {
-          closeDropdown();
-        }
-      };
-      document.addEventListener('click', handleOutsideClick);
-
-      trigger.addEventListener('keydown', (e: any) => {
-        if (e.key === 'Escape') {
-          closeDropdown();
-          if (typeof trigger.focus === 'function') trigger.focus();
-        }
-      });
-    }
-
-    return wrap;
-  }
 
   // Status Filter Select (if enabled, e.g. in History)
   if (options.showStatusFilter) {
@@ -432,6 +444,7 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
   countEl.appendChild(countText);
 
   if (!isFiltered) {
+    countEl.classList.add('is-hidden');
     countEl.style.display = 'none';
   }
 
