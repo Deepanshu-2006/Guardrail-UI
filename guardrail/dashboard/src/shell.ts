@@ -146,6 +146,7 @@ export class DashboardShell {
       historyError: null,
       historyPage: 0,
       historyLimit: 50,
+      historyDisplayLimit: options.initialHistoryDisplayLimit ?? 10,
       hasMoreHistory: false,
       selectedHistoryRequestId: initialHistory[0]?.id ?? null,
       pendingFilters: defaultPendingFilters,
@@ -392,6 +393,15 @@ export class DashboardShell {
     let restoreSelector: string | null = null;
     let cursorStart: number | null = null;
     let cursorEnd: number | null = null;
+
+    // Preserve scroll position of both content body and window across render
+    const currentContentBody = typeof this.rootContainer?.querySelector === 'function'
+      ? (this.rootContainer.querySelector('.gd-content-body') as HTMLElement | null)
+      : null;
+    const savedContentScrollTop = currentContentBody ? currentContentBody.scrollTop : 0;
+    const savedWindowScrollY = typeof window !== 'undefined'
+      ? (window.scrollY || window.pageYOffset || document.documentElement?.scrollTop || 0)
+      : 0;
 
     const isInput =
       activeEl &&
@@ -672,6 +682,8 @@ export class DashboardShell {
       filters: this.state.historyFilters,
       hasMore: this.state.hasMoreHistory,
       page: this.state.historyPage,
+      displayLimit: this.state.historyDisplayLimit ?? 10,
+      onDisplayLimitChange: (limit) => this.setHistoryDisplayLimit(limit, false),
       onLoadMore: this.apiClient ? () => void this.loadMoreHistory() : undefined,
       onRequestSelect: (id) => this.selectHistoryRequest(id),
       onFiltersChange: (newFilters) => this.setHistoryFilters(newFilters),
@@ -740,6 +752,36 @@ export class DashboardShell {
     this.appWrapper.appendChild(workspace);
 
     this.rootContainer.appendChild(this.appWrapper);
+
+    // Restore scroll position so re-rendering never jumps viewport to top
+    if (savedContentScrollTop > 0) {
+      const newContentBody = typeof this.rootContainer?.querySelector === 'function'
+        ? (this.rootContainer.querySelector('.gd-content-body') as HTMLElement | null)
+        : null;
+      if (newContentBody) {
+        newContentBody.scrollTop = savedContentScrollTop;
+      }
+    }
+    if (typeof window !== 'undefined' && savedWindowScrollY > 0) {
+      window.scrollTo({ top: savedWindowScrollY, behavior: 'instant' as any });
+    }
+    if (typeof window !== 'undefined' && (savedContentScrollTop > 0 || savedWindowScrollY > 0)) {
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          if (savedContentScrollTop > 0) {
+            const newContentBody = typeof this.rootContainer?.querySelector === 'function'
+              ? (this.rootContainer.querySelector('.gd-content-body') as HTMLElement | null)
+              : null;
+            if (newContentBody && Math.abs(newContentBody.scrollTop - savedContentScrollTop) > 2) {
+              newContentBody.scrollTop = savedContentScrollTop;
+            }
+          }
+          if (savedWindowScrollY > 0 && Math.abs((window.scrollY || 0) - savedWindowScrollY) > 2) {
+            window.scrollTo({ top: savedWindowScrollY, behavior: 'instant' as any });
+          }
+        });
+      }
+    }
 
     // Restore focus and cursor position after re-render
     if (restoreSelector && typeof document !== 'undefined') {
@@ -1700,6 +1742,21 @@ export class DashboardShell {
     } else {
       this.render();
     }
+  }
+
+  /**
+   * Sets the number of decision history cards displayed in the list pane before 'View All'.
+   */
+  public setHistoryDisplayLimit(limit: number | 'ALL', rerender: boolean = false): void {
+    if (this.state.historyDisplayLimit === limit) return;
+    this.state.historyDisplayLimit = limit;
+    if (rerender) {
+      this.render();
+    }
+  }
+
+  public getHistoryDisplayLimit(): number | 'ALL' {
+    return this.state.historyDisplayLimit ?? 10;
   }
 
   /**

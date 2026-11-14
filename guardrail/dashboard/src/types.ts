@@ -155,6 +155,8 @@ export interface DashboardShellState {
   historyPage: number;
   /** Maximum number of records requested per history page */
   historyLimit: number;
+  /** Number of historical records displayed in list pane before 'View All' or pagination */
+  historyDisplayLimit?: number | 'ALL';
   /** Whether additional historical records exist on the backend */
   hasMoreHistory: boolean;
   /** Selected request ID in the decision history view */
@@ -227,6 +229,8 @@ export interface DashboardShellOptions {
   initialPolicyAuditHistory?: readonly PolicyAuditRecord[] | null;
   /** Initial loading/error status for decision history list */
   initialHistoryStatus?: ViewStatus;
+  /** Initial number of historical records to display (default: 10) */
+  initialHistoryDisplayLimit?: number | 'ALL';
   /** Initial list of connected users or trusted contacts */
   initialConnectedUsers?: readonly TrustedContact[];
   /** Initial list of invitations */

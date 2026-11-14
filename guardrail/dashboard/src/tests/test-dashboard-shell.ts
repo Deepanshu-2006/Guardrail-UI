@@ -4573,6 +4573,63 @@ async function runDashboardTests() {
     shell.destroy();
   }
 
+  // Test Suite 52: Decision History 10-Item Initial Display & In-Place View All Expansion
+  console.log('\n▶ Test Suite 52: Decision History 10-Item Initial Display & In-Place View All Expansion');
+  {
+    const history30 = Array.from({ length: 30 }, (_, i) => ({
+      id: `apr_test_${i}`,
+      actionId: `act_${i}`,
+      requesterId: 'usr_alice',
+      riskLevel: RiskLevel.LOW,
+      status: ApprovalStatus.EXPIRED,
+      actionDescription: `Click on item ${i + 1}`,
+      createdAt: '2026-11-14T00:00:00Z',
+      updatedAt: '2026-11-14T00:00:00Z',
+    }));
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: history30,
+      autoFetch: false,
+    });
+
+    const cards = rootElement.querySelectorAll('.gd-history-card');
+    assert(cards.length === 30, `All 30 cards mounted in DOM: ${cards.length}`);
+
+    // Verify initial 10-item limit: cards 0..9 do NOT have gd-card-collapsed, cards 10..29 DO
+    const collapsedInitial = cards.filter((c: any) => c.classList.contains('gd-card-collapsed'));
+    assert(collapsedInitial.length === 20, `Exactly 20 cards collapsed beyond initial 10: ${collapsedInitial.length}`);
+
+    const visibleInitial = cards.filter((c: any) => !c.classList.contains('gd-card-collapsed'));
+    assert(visibleInitial.length === 10, `Exactly 10 cards visible initially: ${visibleInitial.length}`);
+
+    const pageInfo = rootElement.querySelector('.gd-history-page-info');
+    assert(pageInfo !== null && pageInfo.textContent === 'Showing 10 of 30 decisions', `Page info indicates showing 10 of 30: ${pageInfo?.textContent}`);
+
+    const viewAllBtn = rootElement.querySelector('.gd-btn-view-all') as any;
+    assert(viewAllBtn !== null, 'Minimal View All button rendered in pagination footer');
+    assert(viewAllBtn.textContent === 'View all 30 decisions', `View All button text is "View all 30 decisions": ${viewAllBtn?.textContent}`);
+
+    // Click to expand in-place
+    viewAllBtn.click();
+
+    const collapsedAfterExpand = cards.filter((c: any) => c.classList.contains('gd-card-collapsed'));
+    assert(collapsedAfterExpand.length === 0, `Zero cards collapsed after View All clicked: ${collapsedAfterExpand.length}`);
+    assert(pageInfo?.textContent === 'Showing all 30 decisions', `Page info updated to "Showing all 30 decisions": ${pageInfo?.textContent}`);
+    assert(viewAllBtn.textContent === 'Show 10 decisions', `Button text toggled to "Show 10 decisions": ${viewAllBtn.textContent}`);
+
+    // Click to collapse back
+    viewAllBtn.click();
+
+    const collapsedAfterCollapse = cards.filter((c: any) => c.classList.contains('gd-card-collapsed'));
+    assert(collapsedAfterCollapse.length === 20, `20 cards collapsed again after collapse click: ${collapsedAfterCollapse.length}`);
+    assert(pageInfo?.textContent === 'Showing 10 of 30 decisions', `Page info restored to "Showing 10 of 30 decisions": ${pageInfo?.textContent}`);
+    assert(viewAllBtn.textContent === 'View all 30 decisions', `Button text restored to "View all 30 decisions": ${viewAllBtn.textContent}`);
+
+    shell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');

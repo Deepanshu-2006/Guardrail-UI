@@ -2629,6 +2629,73 @@ textarea:focus-visible,
   text-transform: uppercase;
 }
 
+.gd-history-pagination-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 4px 10px;
+  border-top: 1px solid rgba(39, 49, 33, 0.08);
+  margin-top: 6px;
+}
+
+.gd-request-card.gd-card-collapsed,
+.gd-history-card.gd-card-collapsed,
+article.gd-card-collapsed,
+.gd-card-collapsed {
+  display: none !important;
+}
+
+.gd-history-page-info {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: #766551;
+  letter-spacing: 0.02em;
+}
+
+.gd-btn-view-all {
+  background: transparent !important;
+  border: none !important;
+  font-family: var(--gd-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--gd-deep-olive) !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px !important;
+  position: relative;
+  transition: color 0.18s ease;
+  text-decoration: none;
+}
+
+.gd-btn-view-all::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  background-color: rgba(39, 49, 33, 0.22);
+  transition: background-color 0.18s ease;
+}
+
+.gd-btn-view-all:hover {
+  color: #141D10 !important;
+}
+
+.gd-btn-view-all:hover::after {
+  background-color: var(--gd-deep-olive);
+}
+
+.gd-btn-view-all:focus-visible {
+  outline: 2px solid var(--gd-accent-olive);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 .gd-request-card {
   background: transparent !important;
   background-color: transparent !important;
@@ -3308,6 +3375,11 @@ textarea:focus-visible,
   margin-bottom: 0 !important;
   width: 100% !important;
   box-sizing: border-box !important;
+}
+
+.gd-history-card.gd-card-collapsed,
+.gd-request-card.gd-card-collapsed {
+  display: none !important;
 }
 
 .gd-history-card:hover {
@@ -4662,6 +4734,10 @@ textarea:focus-visible,
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
+}
+
+.gd-filter-results-count.is-hidden {
+  display: none !important;
 }
 
 .gd-filter-results-text {

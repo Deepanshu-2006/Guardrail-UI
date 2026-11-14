@@ -52,6 +52,10 @@ export interface DecisionHistoryProps {
   hasMore?: boolean;
   /** Current page index for bounded history loading */
   page?: number;
+  /** Number of records to display at once before 'View All' (default: 10) */
+  displayLimit?: number | 'ALL';
+  /** Callback when user changes the display limit or clicks View All */
+  onDisplayLimitChange?: (limit: number | 'ALL') => void;
   /** Callback when user clicks load more */
   onLoadMore?: () => void;
   /** Callback when user selects a request from the list */
@@ -360,24 +364,27 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     emptyFilter.id = 'gd-history-filter-empty';
     listPane.appendChild(emptyFilter);
   } else {
-    // Clean List Header matching Pending Approvals
+    const total = filteredRequests.length;
+    let currentLimit = props.displayLimit ?? 10;
+    const limitNum = currentLimit === 'ALL' ? total : (typeof currentLimit === 'number' ? currentLimit : 10);
+
+    // Clean List Header matching Pending Approvals (Zero dropdown in header)
     const listHeader = document.createElement('div');
     listHeader.className = 'gd-list-header';
 
     const listKicker = document.createElement('span');
     listKicker.className = 'gd-list-kicker';
     listKicker.textContent = 'DECISION ARCHIVE';
+    listHeader.appendChild(listKicker);
 
     const listCountBadge = document.createElement('span');
     listCountBadge.className = 'gd-list-count';
-    const total = filteredRequests.length;
     listCountBadge.textContent = `${total} ${total === 1 ? 'Record' : 'Records'}`;
-
-    listHeader.appendChild(listKicker);
     listHeader.appendChild(listCountBadge);
+
     listPane.appendChild(listHeader);
 
-    // Render History Cards
+    // Render History Cards (all cards mounted in DOM; cards beyond initial limit collapsed via CSS)
     for (let index = 0; index < filteredRequests.length; index++) {
       const req = filteredRequests[index];
       const isSelected = req.id === props.selectedRequestId;
@@ -385,9 +392,11 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       const hostname = resolveSafeHostname(req);
       const cleanTitle = getCleanActionTitle(req.actionDescription);
 
+      const isBeyondLimit = currentLimit !== 'ALL' && index >= limitNum && !isSelected;
+
       const card = document.createElement('article');
       const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
-      card.className = `gd-request-card gd-history-card status-${statusClass} ${isSelected ? 'selected' : ''}`;
+      card.className = `gd-request-card gd-history-card status-${statusClass} ${isSelected ? 'selected' : ''} ${isBeyondLimit ? 'gd-card-collapsed' : ''}`;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -542,6 +551,65 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       });
 
       listPane.appendChild(card);
+    }
+
+    // View Limit / View More Button Footer (Operates in-place with zero scroll jump)
+    if (total > 10) {
+      const paginationFooter = document.createElement('div');
+      paginationFooter.className = 'gd-history-pagination-footer';
+
+      const isShowingAll = currentLimit === 'ALL' || total <= limitNum;
+      const countInfo = document.createElement('span');
+      countInfo.className = 'gd-history-page-info';
+      countInfo.textContent = isShowingAll
+        ? `Showing all ${total} decisions`
+        : `Showing ${limitNum} of ${total} decisions`;
+      paginationFooter.appendChild(countInfo);
+
+      const viewAllBtn = document.createElement('button');
+      viewAllBtn.type = 'button';
+      viewAllBtn.className = 'gd-btn-view-all';
+      viewAllBtn.setAttribute('aria-expanded', isShowingAll ? 'true' : 'false');
+      viewAllBtn.textContent = isShowingAll
+        ? 'Show 10 decisions'
+        : `View all ${total} decisions`;
+
+      viewAllBtn.addEventListener('click', (e) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+
+        const isCurrentlyExpanded = currentLimit === 'ALL' || limitNum >= total;
+        const nextLimit = isCurrentlyExpanded ? 10 : 'ALL';
+        currentLimit = nextLimit;
+        const newLimitNum = nextLimit === 'ALL' ? total : nextLimit;
+
+        // In-place card visibility toggle: ZERO page rebuild, ZERO scroll jump!
+        const cards = listPane.querySelectorAll('.gd-history-card');
+        for (let i = 0; i < cards.length; i++) {
+          if (i < newLimitNum) {
+            cards[i].classList.remove('gd-card-collapsed');
+          } else {
+            cards[i].classList.add('gd-card-collapsed');
+          }
+        }
+
+        const showingAllNow = newLimitNum >= total;
+        countInfo.textContent = showingAllNow
+          ? `Showing all ${total} decisions`
+          : `Showing ${newLimitNum} of ${total} decisions`;
+
+        viewAllBtn.textContent = showingAllNow
+          ? 'Show 10 decisions'
+          : `View all ${total} decisions`;
+
+        viewAllBtn.setAttribute('aria-expanded', showingAllNow ? 'true' : 'false');
+
+        // Notify shell without scrolling
+        props.onDisplayLimitChange?.(nextLimit);
+      });
+
+      paginationFooter.appendChild(viewAllBtn);
+      listPane.appendChild(paginationFooter);
     }
 
     // Bounded Pagination / Load More Control (Requirement 7)
