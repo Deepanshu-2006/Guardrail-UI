@@ -2972,3 +2972,329 @@ textarea:focus-visible,
     transform: none !important;
   }
 }
+
+/* ====================================================================
+   CARETAKER AUTHENTICATION MODAL & DIALOG
+   ==================================================================== */
+.gd-auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(32, 34, 28, 0.65);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 1000;
+  padding: 16px;
+}
+
+.gd-auth-modal-card {
+  width: 100%;
+  max-width: 520px;
+  background-color: #FAF7F0;
+  border: 1px solid #D8D1C2;
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(32, 34, 28, 0.28);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: gdFadeScaleIn 0.18s ease-out;
+}
+
+@keyframes gdFadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.gd-auth-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E5DFD3;
+  background-color: #F4EFE4;
+}
+
+.gd-auth-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gd-auth-modal-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background-color: #DFE7D4;
+  color: #273121;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gd-auth-modal-title {
+  margin: 0;
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  color: #273121;
+}
+
+.gd-auth-modal-subtitle {
+  margin: 3px 0 0 0;
+  font-size: 12px;
+  color: #5F6656;
+}
+
+.gd-auth-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #5F6656;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.gd-auth-modal-close-btn:hover {
+  background-color: rgba(39, 49, 33, 0.08);
+  color: #273121;
+}
+
+.gd-auth-modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+
+.gd-auth-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-auth-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #88907E;
+  text-transform: uppercase;
+}
+
+.gd-auth-session-card {
+  background-color: #DFE7D4;
+  border: 1px solid #CCD6C0;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.gd-auth-session-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.gd-auth-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #273121;
+  color: #FAF7F0;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gd-auth-session-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.gd-auth-session-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #273121;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gd-auth-session-sub {
+  font-size: 11px;
+  color: #5F6656;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gd-auth-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.gd-auth-status-badge.active {
+  background-color: #E2EEDA;
+  color: #2D5A27;
+  border: 1px solid #BED8AF;
+}
+
+.gd-auth-status-badge.inactive {
+  background-color: #EAE5D8;
+  color: #7A7568;
+  border: 1px solid #D8D2C2;
+}
+
+.gd-auth-dev-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gd-auth-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.gd-auth-input {
+  flex: 1;
+  background-color: #FAF7F0;
+  border: 1px solid #CCD6C0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: #273121;
+  outline: none;
+}
+
+.gd-auth-input:focus {
+  border-color: #273121;
+  box-shadow: 0 0 0 2px rgba(39, 49, 33, 0.12);
+}
+
+.gd-auth-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.gd-auth-btn-primary {
+  background-color: #273121;
+  color: #FAF7F0;
+  border: 1px solid #273121;
+}
+
+.gd-auth-btn-primary:hover {
+  background-color: #1A2215;
+}
+
+.gd-auth-btn-secondary {
+  background-color: #FAF7F0;
+  color: #273121;
+  border: 1px solid #CCD6C0;
+}
+
+.gd-auth-btn-secondary:hover {
+  background-color: #EDE6D6;
+  border-color: #B4BFAB;
+}
+
+.gd-auth-btn-danger {
+  background-color: #FBF0EE;
+  color: #A83226;
+  border: 1px solid #E8C1BD;
+}
+
+.gd-auth-btn-danger:hover {
+  background-color: #F7DCD8;
+}
+
+.gd-auth-info-note {
+  background-color: #F0ECE1;
+  border: 1px solid #DDD7C7;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #4A5242;
+  line-height: 1.45;
+}
+
+.gd-auth-error-banner {
+  background-color: #FBF0EE;
+  border: 1px solid #E8C1BD;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #A83226;
+  font-weight: 500;
+}
+
+.gd-auth-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid #E5DFD3;
+  background-color: #F4EFE4;
+}
+
+.gd-account-card.clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.gd-account-card.clickable:hover {
+  background-color: var(--gd-sidebar-hover-bg);
+}
+
+.gd-account-sign-in-btn {
+  background-color: #DFE7D4;
+  color: #273121;
+  border: 1px solid #CCD6C0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 6px;
+  display: inline-block;
+  transition: all 0.15s ease;
+}
+
+.gd-account-sign-in-btn:hover {
+  background-color: #FAF7F0;
+}
+
