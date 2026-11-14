@@ -137,8 +137,8 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
     else score = 15;
   }
 
-  // Radius = 28, Circumference = 2 * PI * 28 ≈ 175.93
-  const radius = 28;
+  // Radius = 26, Circumference = 2 * PI * 26 ≈ 163.36
+  const radius = 26;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
@@ -146,23 +146,23 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
   chartWrap.className = 'gd-risk-chart-wrap';
 
   chartWrap.innerHTML = `
-    <svg class="gd-risk-circular-svg" width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="Risk Score: ${score} out of 100 (${riskLevel})">
+    <svg class="gd-risk-circular-svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Risk Score: ${score} out of 100 (${riskLevel})">
       <circle
         class="gd-risk-circle-bg"
-        cx="36"
-        cy="36"
+        cx="32"
+        cy="32"
         r="${radius}"
         fill="transparent"
-        stroke="rgba(39, 49, 33, 0.10)"
-        stroke-width="5"
+        stroke="rgba(39, 49, 33, 0.08)"
+        stroke-width="4.5"
       />
       <circle
         class="gd-risk-circle-fill ${riskClass}"
-        cx="36"
-        cy="36"
+        cx="32"
+        cy="32"
         r="${radius}"
         fill="transparent"
-        stroke-width="5"
+        stroke-width="4.5"
         stroke-linecap="round"
         stroke-dasharray="${circumference.toFixed(1)}"
         stroke-dashoffset="${circumference.toFixed(1)}"
@@ -180,19 +180,14 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
 
   const levelTag = document.createElement('div');
   levelTag.className = `gd-risk-level-tag ${riskClass}`;
-  levelTag.textContent = `${riskLevel} OPERATIONAL RISK`;
+  levelTag.textContent = `${riskLevel} RISK EVALUATION`;
 
-  const plainText = document.createElement('div');
+  const plainText = document.createElement('p');
   plainText.className = 'gd-risk-explanation';
   plainText.textContent = getHumanReadableRiskExplanation(request);
 
-  const impactDesc = document.createElement('p');
-  impactDesc.className = 'gd-risk-level-desc';
-  impactDesc.textContent = getRiskLevelExplanation(riskLevel);
-
   infoWrap.appendChild(levelTag);
   infoWrap.appendChild(plainText);
-  infoWrap.appendChild(impactDesc);
 
   container.appendChild(chartWrap);
   container.appendChild(infoWrap);
@@ -754,18 +749,35 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           detailTitleEl.textContent = selectedReq.actionDescription;
           dossierHeader.appendChild(detailTitleEl);
 
-          const headerSub = document.createElement('div');
-          headerSub.className = 'gd-detail-header-sub';
+          const headerMeta = document.createElement('div');
+          headerMeta.className = 'gd-detail-header-meta';
 
-          const dId = document.createElement('span');
-          dId.className = 'gd-detail-id';
-          dId.textContent = `Canonical Request ID: ${selectedReq.id}`;
-          headerSub.appendChild(dId);
+          const hostEl = document.createElement('span');
+          hostEl.className = 'gd-context-hostname';
+          hostEl.textContent = hostname;
+          headerMeta.appendChild(hostEl);
 
-          dossierHeader.appendChild(headerSub);
+          if (selectedReq.pageTitle) {
+            const metaSep = document.createElement('span');
+            metaSep.className = 'gd-meta-sep';
+            metaSep.textContent = '·';
+            metaSep.setAttribute('aria-hidden', 'true');
+            headerMeta.appendChild(metaSep);
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'gd-page-title-label';
+            titleSpan.textContent = selectedReq.pageTitle;
+            headerMeta.appendChild(titleSpan);
+          }
+
+          dossierHeader.appendChild(headerMeta);
           detailPane.appendChild(dossierHeader);
 
-          // 2. Decision Controls (Approve & Reject Buttons + Confirmation Flows)
+          // 2. Visual Risk Assessment Widget (Circular Animated Chart & Concise Human Reasons)
+          const riskWidget = renderRiskCircularChart(selectedReq);
+          detailPane.appendChild(riskWidget);
+
+          // 3. Decision Controls (Approve & Reject Buttons + Confirmation Flows)
           const decisionControlsContainer = document.createElement('div');
           decisionControlsContainer.className = 'gd-decision-controls-container';
 
@@ -1012,45 +1024,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             detailPane.appendChild(expiredBanner);
           }
 
-          // 3. Visual Risk Assessment Widget (Circular Animated Chart & Concise Human Reasons)
-          const riskWidget = renderRiskCircularChart(selectedReq);
-          detailPane.appendChild(riskWidget);
-
-          // 4. Compact Context Ledger & Session Timestamps
-          const contextGrid = document.createElement('div');
-          contextGrid.className = 'gd-human-context-grid';
-
-          const ledgerRow = document.createElement('div');
-          ledgerRow.className = 'gd-context-ledger-row';
-
-          const pageTitleItem = document.createElement('div');
-          pageTitleItem.className = 'gd-context-detail-item';
-          const pLabel = document.createElement('span');
-          pLabel.className = 'gd-detail-label';
-          pLabel.textContent = 'Webpage Title';
-          const pVal = document.createElement('span');
-          pVal.className = 'gd-detail-value';
-          pVal.textContent = selectedReq.pageTitle || 'Untitled webpage';
-          pageTitleItem.appendChild(pLabel);
-          pageTitleItem.appendChild(pVal);
-          ledgerRow.appendChild(pageTitleItem);
-
-          const hostItem = document.createElement('div');
-          hostItem.className = 'gd-context-detail-item';
-          const hLabel = document.createElement('span');
-          hLabel.className = 'gd-detail-label';
-          hLabel.textContent = 'Destination';
-          const hVal = document.createElement('span');
-          hVal.className = 'gd-detail-value gd-context-hostname';
-          hVal.textContent = hostname;
-          hostItem.appendChild(hLabel);
-          hostItem.appendChild(hVal);
-          ledgerRow.appendChild(hostItem);
-
-          contextGrid.appendChild(ledgerRow);
-
-          const statusRow = document.createElement('div');
-          statusRow.className = 'gd-context-detail-item gd-context-detail-full gd-context-status-row';
+          // 4. Compact Session Timestamps Bar
+          const footerMeta = document.createElement('div');
+          footerMeta.className = 'gd-detail-footer-bar';
 
           const timestampsInfo = document.createElement('div');
           timestampsInfo.className = 'gd-context-timestamps';
@@ -1070,11 +1046,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           timestampsInfo.appendChild(initSpan);
           timestampsInfo.appendChild(timeSep);
           timestampsInfo.appendChild(expSpan2);
-
-          statusRow.appendChild(timestampsInfo);
-          contextGrid.appendChild(statusRow);
-
-          detailPane.appendChild(contextGrid);
+          footerMeta.appendChild(timestampsInfo);
+          detailPane.appendChild(footerMeta);
 
           // 5. Developer & Security Audit Trail Disclosure (Disclaimers and Decoupled Notices Tucked)
           const auditDetails = document.createElement('details');
@@ -1092,6 +1065,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           idBadge.className = 'gd-detail-id';
           idBadge.textContent = `Canonical Request ID: ${selectedReq.id}`;
           auditBody.appendChild(idBadge);
+
+          const impactDesc = document.createElement('p');
+          impactDesc.className = 'gd-risk-level-desc';
+          impactDesc.textContent = getRiskLevelExplanation(riskLevel);
+          auditBody.appendChild(impactDesc);
 
           const disclaimer = document.createElement('div');
           disclaimer.className = 'gd-risk-disclaimer';
