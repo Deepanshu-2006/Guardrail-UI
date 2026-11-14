@@ -24,7 +24,7 @@ import {
   updateWaitingScreenStatus,
   type ApprovalWaitingState,
 } from '../ui/index.js';
-import { ApprovalStatus } from '../types/approval.js';
+import { ApprovalStatus, type ApprovalRequest } from '../types/approval.js';
 import { ApprovalStatusSyncClient, type StatusSyncSubscription } from '../approval/sync-client.js';
 import {
   ActionClassificationResult,
@@ -73,6 +73,7 @@ import { getStoredWardToken } from '../approval/auth-manager.js';
 
 let latestStagingContext: StagingActionContext | null = null;
 let activeWarningSyncSub: StatusSyncSubscription | null = null;
+let activeBackgroundPollTimer: ReturnType<typeof setInterval> | null = null;
 
 interface ActiveApprovalSession {
   action: GuardrailAction;
@@ -92,6 +93,130 @@ function stopWarningStatusPolling(): void {
     activeWarningSyncSub.stop();
     activeWarningSyncSub = null;
   }
+  if (activeBackgroundPollTimer) {
+    clearInterval(activeBackgroundPollTimer);
+    activeBackgroundPollTimer = null;
+  }
+}
+
+/**
+ * Handles terminal status updates (APPROVED, REJECTED, CANCELLED, EXPIRED) authoritatively.
+ * Decoupled execution invariant: Rejections and cancellations strictly NEVER continue or navigate.
+ */
+function handleAuthoritativeApprovalResolution(
+  requestId: string,
+  action: GuardrailAction,
+  status: ApprovalStatus,
+  request?: ApprovalRequest
+): void {
+  if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
+    return;
+  }
+
+  // Security Guard: Prevent stale approval responses from releasing cancelled or rejected requests
+  if (
+    activeApprovalSession.status === 'cancelled' ||
+    activeApprovalSession.status === 'rejected' ||
+    activeApprovalSession.hasExecutedContinuation
+  ) {
+    console.warn(
+      `[Guardrail UI] Security Guard: Rejected stale status update [${status}] for request in terminal state [${activeApprovalSession.status}]`
+    );
+    return;
+  }
+
+  if (status === ApprovalStatus.APPROVED) {
+    activeApprovalSession.status = 'approved';
+    const approver = request?.decision?.decidedBy || 'Trusted Contact';
+
+    updatePendingApprovalPill('approved');
+    updateWaitingScreenStatus('approved', {
+      requestId,
+      approver,
+      submittedAt: activeApprovalSession.submittedAt,
+      onProceed: () => {
+        if (!activeApprovalSession || activeApprovalSession.hasExecutedContinuation) {
+          return;
+        }
+        activeApprovalSession.hasExecutedContinuation = true;
+
+        stopWarningStatusPolling();
+        dismissPendingApprovalPill();
+        dismissWarningModal();
+
+        console.log(`[Guardrail UI] Releasing held action exactly once for approved request: ${requestId}`);
+        try {
+          defaultContinuationManager.continueAction(action.id);
+        } catch (contErr) {
+          console.warn('[Guardrail UI] Continuation manager warning:', contErr);
+        }
+
+        const destUrl = action.page?.url;
+        if (destUrl && typeof window !== 'undefined') {
+          window.location.href = destUrl;
+        }
+      },
+    });
+
+    stopWarningStatusPolling();
+  } else if (status === ApprovalStatus.REJECTED) {
+    activeApprovalSession.status = 'rejected';
+    const reason =
+      request?.decision?.decisionReason ||
+      (request?.decision as any)?.reason ||
+      'Declined by caretaker';
+
+    console.log(`[Guardrail UI] Authoritative rejection received for ${requestId}. Reason: "${reason}". Action remains safely blocked.`);
+
+    // 1. Update UI FIRST so user immediately sees authoritative Access Denied view
+    updateWaitingScreenStatus('rejected', {
+      requestId,
+      reason,
+      submittedAt: activeApprovalSession.submittedAt,
+    });
+    updatePendingApprovalPill('rejected');
+
+    // 2. Decoupled execution guarantee: explicitly cancel held action in managers
+    try {
+      defaultContinuationManager.cancelAction(action.id, 'Request declined by caretaker');
+    } catch (cancelErr) {
+      console.warn('[Guardrail UI] Continuation cancellation notice:', cancelErr);
+    }
+    try {
+      defaultInterceptionController.cancelAction(action.id, 'Request declined by caretaker');
+    } catch (ctrlErr) {
+      console.warn('[Guardrail UI] Interception cancellation notice:', ctrlErr);
+    }
+
+    // 3. Stop status polling since terminal rejection state reached
+    stopWarningStatusPolling();
+  } else if (status === ApprovalStatus.CANCELLED) {
+    activeApprovalSession.status = 'cancelled';
+    stopWarningStatusPolling();
+    dismissPendingApprovalPill();
+
+    try {
+      defaultContinuationManager.cancelAction(action.id, 'Request cancelled');
+    } catch {}
+
+    updateWaitingScreenStatus('cancelled', {
+      requestId,
+      submittedAt: activeApprovalSession.submittedAt,
+    });
+  } else if (status === ApprovalStatus.EXPIRED) {
+    activeApprovalSession.status = 'expired';
+    stopWarningStatusPolling();
+    dismissPendingApprovalPill();
+
+    try {
+      defaultContinuationManager.cancelAction(action.id, 'Approval request expired');
+    } catch {}
+
+    updateWaitingScreenStatus('expired', {
+      requestId,
+      submittedAt: activeApprovalSession.submittedAt,
+    });
+  }
 }
 
 function startWaitingStatusPolling(requestId: string, action: GuardrailAction): void {
@@ -106,113 +231,12 @@ function startWaitingStatusPolling(requestId: string, action: GuardrailAction): 
     activeWarningSyncSub = syncClient.startSync(requestId, {
       onStatusChange: (newStatus, result) => {
         console.log(`[Guardrail UI] Status synchronization event for ${requestId}: ${newStatus}`);
+        handleAuthoritativeApprovalResolution(requestId, action, newStatus, result.request);
+      },
 
-        // Security Guard: Ignore status updates for stale or mismatching sessions
-        if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
-          console.warn(`[Guardrail UI] Ignoring status update for inactive session: ${requestId}`);
-          return;
-        }
-
-        // Security Guard: Prevent stale approval responses from releasing cancelled or rejected requests
-        if (
-          activeApprovalSession.status === 'cancelled' ||
-          activeApprovalSession.status === 'rejected' ||
-          activeApprovalSession.hasExecutedContinuation
-        ) {
-          console.warn(
-            `[Guardrail UI] Security Guard: Rejected stale status update [${newStatus}] for request in terminal state [${activeApprovalSession.status}]`
-          );
-          return;
-        }
-
-        if (newStatus === ApprovalStatus.APPROVED) {
-          // CRITICAL INVARIANT: Verify authoritative approval decision
-          if (!result.isApproved) {
-            console.warn('[Guardrail UI] Received non-authoritative approval status. Action remains held.');
-            return;
-          }
-
-          activeApprovalSession.status = 'approved';
-          const approver = result.request?.decision?.decidedBy || 'Trusted Contact';
-
-          // Update floating pill if active
-          updatePendingApprovalPill('approved');
-
-          // Update waiting modal UI with verified approval state and Continue button
-          updateWaitingScreenStatus('approved', {
-            requestId,
-            approver,
-            submittedAt: activeApprovalSession.submittedAt,
-            onProceed: () => {
-              if (!activeApprovalSession || activeApprovalSession.hasExecutedContinuation) {
-                return; // Release at most once
-              }
-              activeApprovalSession.hasExecutedContinuation = true;
-
-              stopWarningStatusPolling();
-              dismissPendingApprovalPill();
-              dismissWarningModal();
-
-              console.log(`[Guardrail UI] Releasing held action exactly once for approved request: ${requestId}`);
-              try {
-                defaultContinuationManager.continueAction(action.id);
-              } catch (contErr) {
-                console.warn('[Guardrail UI] Continuation manager warning:', contErr);
-              }
-
-              const destUrl = action.page?.url;
-              if (destUrl && typeof window !== 'undefined') {
-                window.location.href = destUrl;
-              }
-            },
-          });
-
-          // Stop polling once authoritative approval is received
-          stopWarningStatusPolling();
-        } else if (newStatus === ApprovalStatus.REJECTED) {
-          activeApprovalSession.status = 'rejected';
-          stopWarningStatusPolling();
-
-          try {
-            defaultContinuationManager.cancelAction(action.id, 'Request declined by caretaker');
-          } catch {}
-          try {
-            defaultInterceptionController.cancelAction(action.id, 'Request declined by caretaker');
-          } catch {}
-
-          updatePendingApprovalPill('rejected');
-          updateWaitingScreenStatus('rejected', {
-            requestId,
-            reason: result.request?.decision?.reason || 'Declined by caretaker',
-            submittedAt: activeApprovalSession.submittedAt,
-          });
-        } else if (newStatus === ApprovalStatus.CANCELLED) {
-          activeApprovalSession.status = 'cancelled';
-          stopWarningStatusPolling();
-          dismissPendingApprovalPill();
-
-          try {
-            defaultContinuationManager.cancelAction(action.id, 'Request cancelled');
-          } catch {}
-
-          updateWaitingScreenStatus('cancelled', {
-            requestId,
-            submittedAt: activeApprovalSession.submittedAt,
-          });
-        } else if (newStatus === ApprovalStatus.EXPIRED) {
-          activeApprovalSession.status = 'expired';
-          stopWarningStatusPolling();
-          dismissPendingApprovalPill();
-
-          try {
-            defaultContinuationManager.cancelAction(action.id, 'Approval request expired');
-          } catch {}
-
-          updateWaitingScreenStatus('expired', {
-            requestId,
-            submittedAt: activeApprovalSession.submittedAt,
-          });
-        }
+      onTerminal: (terminalStatus, result) => {
+        console.log(`[Guardrail UI] Status synchronization terminal event for ${requestId}: ${terminalStatus}`);
+        handleAuthoritativeApprovalResolution(requestId, action, terminalStatus, result.request);
       },
 
       onReconnecting: (attempt, maxAttempts, error) => {
@@ -242,67 +266,69 @@ function startWaitingStatusPolling(requestId: string, action: GuardrailAction): 
 
       onError: (error, result) => {
         console.warn('[Guardrail UI] Real-time sync connection notice:', error?.message);
-        if (!result.isAuthoritative && activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
-          // Attempt authoritative status verification via background service worker fallback
-          void dispatchGetApprovalStatusToBackground(requestId, action.id).then((bgResponse) => {
-            if (bgResponse.success && bgResponse.request) {
-              const bgStatus = bgResponse.request.status;
-              if (bgStatus === ApprovalStatus.APPROVED) {
-                console.log('[Guardrail UI] Background fallback verified authoritative approval for:', requestId);
-                activeApprovalSession!.status = 'approved';
-                const approver = bgResponse.request.decision?.decidedBy || 'Trusted Contact';
-                updatePendingApprovalPill('approved');
-                updateWaitingScreenStatus('approved', {
-                  requestId,
-                  approver,
-                  submittedAt: activeApprovalSession!.submittedAt,
-                  onProceed: () => {
-                    if (!activeApprovalSession || activeApprovalSession.hasExecutedContinuation) {
-                      return;
-                    }
-                    activeApprovalSession.hasExecutedContinuation = true;
-                    stopWarningStatusPolling();
-                    dismissPendingApprovalPill();
-                    dismissWarningModal();
-                    console.log(`[Guardrail UI] Releasing held action exactly once for approved request: ${requestId}`);
-                    try {
-                      defaultContinuationManager.continueAction(action.id);
-                    } catch (contErr) {
-                      console.warn('[Guardrail UI] Continuation manager warning:', contErr);
-                    }
-                    const destUrl = action.page?.url;
-                    if (destUrl && typeof window !== 'undefined') {
-                      window.location.href = destUrl;
-                    }
-                  },
-                });
-                stopWarningStatusPolling();
-                return;
-              }
+        // Fallback: poll via background service worker to bypass cross-origin/mixed-content limitations
+        void dispatchGetApprovalStatusToBackground(requestId, action.id).then((bgResponse) => {
+          if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
+            return;
+          }
+          if (bgResponse.success && bgResponse.request) {
+            const bgStatus = bgResponse.request.status as ApprovalStatus;
+            if (bgStatus && bgStatus !== ApprovalStatus.PENDING) {
+              handleAuthoritativeApprovalResolution(requestId, action, bgStatus, bgResponse.request);
+              return;
             }
-            if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
-              updateWaitingScreenStatus(activeApprovalSession.status, {
-                requestId,
-                connectionStatus: 'offline',
-                connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
-                submittedAt: activeApprovalSession.submittedAt,
-              });
-              updatePendingApprovalPill('offline');
-            }
-          }).catch(() => {
-            if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
-              updateWaitingScreenStatus(activeApprovalSession.status, {
-                requestId,
-                connectionStatus: 'offline',
-                connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
-                submittedAt: activeApprovalSession.submittedAt,
-              });
-              updatePendingApprovalPill('offline');
-            }
-          });
-        }
+          }
+          if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+            updateWaitingScreenStatus(activeApprovalSession.status, {
+              requestId,
+              connectionStatus: 'offline',
+              connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
+              submittedAt: activeApprovalSession.submittedAt,
+            });
+            updatePendingApprovalPill('offline');
+          }
+        }).catch(() => {
+          if (activeApprovalSession && (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')) {
+            updateWaitingScreenStatus(activeApprovalSession.status, {
+              requestId,
+              connectionStatus: 'offline',
+              connectionMessage: 'Sync temporarily unavailable • Action remains safely held',
+              submittedAt: activeApprovalSession.submittedAt,
+            });
+            updatePendingApprovalPill('offline');
+          }
+        });
       },
     });
+
+    // Fallback background polling timer:
+    // Ensures status synchronization continues unimpeded even if content-script direct fetch/SSE
+    // is blocked by browser mixed-content (HTTPS page connecting to local HTTP backend)
+    activeBackgroundPollTimer = setInterval(() => {
+      if (
+        !activeApprovalSession ||
+        (activeApprovalSession.status !== 'pending' && activeApprovalSession.status !== 'under_review')
+      ) {
+        if (activeBackgroundPollTimer) {
+          clearInterval(activeBackgroundPollTimer);
+          activeBackgroundPollTimer = null;
+        }
+        return;
+      }
+
+      void dispatchGetApprovalStatusToBackground(requestId, action.id).then((bgResponse) => {
+        if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
+          return;
+        }
+        if (bgResponse.success && bgResponse.request) {
+          const bgStatus = bgResponse.request.status as ApprovalStatus;
+          if (bgStatus && bgStatus !== ApprovalStatus.PENDING) {
+            console.log(`[Guardrail UI] Background polling fallback resolved status: ${bgStatus} for ${requestId}`);
+            handleAuthoritativeApprovalResolution(requestId, action, bgStatus, bgResponse.request);
+          }
+        }
+      }).catch(() => {});
+    }, 2000);
   } catch (err) {
     console.warn('[Guardrail UI] Failed to initiate approval status sync:', err);
   }
