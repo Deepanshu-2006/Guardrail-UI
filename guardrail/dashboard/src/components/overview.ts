@@ -855,7 +855,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const activitySubtitle = document.createElement('p');
   activitySubtitle.className = 'gd-section-subtitle';
-  activitySubtitle.textContent = 'Past approvals and decision records.';
+  activitySubtitle.textContent = 'Past approvals and decision records across your connected contacts.';
 
   activityHeader.appendChild(activityTitle);
   activityHeader.appendChild(activitySubtitle);
@@ -895,29 +895,120 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     for (const req of recentList.slice(0, 5)) {
       const item = document.createElement('div');
       item.className = 'gd-recent-activity-item';
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-label', `View details for ${req.actionDescription}`);
+
+      if (props.onViewHistory) {
+        item.addEventListener('click', () => {
+          props.onViewHistory?.();
+        });
+        item.addEventListener('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            props.onViewHistory?.();
+          }
+        });
+      }
 
       const itemLeft = document.createElement('div');
       itemLeft.className = 'gd-recent-activity-left';
 
+      // Parse clean human-centric action title and category
+      const rawDesc = req.actionDescription || 'Browsing action';
+      const triggerMatch = rawDesc.match(/^(.*?trigger):\s*(.+)$/i);
+      let actionTitle = rawDesc.trim();
+      let categoryLabel = req.category || 'External navigation';
+
+      if (triggerMatch) {
+        actionTitle = triggerMatch[2].trim();
+        const rawPrefix = triggerMatch[1].replace(/trigger/i, '').trim();
+        if (rawPrefix) {
+          categoryLabel = rawPrefix.charAt(0).toUpperCase() + rawPrefix.slice(1).toLowerCase();
+        }
+      }
+
+      // Ward Display Name
+      let wardDisplayName = '';
+      if (req.requesterId && typeof req.requesterId === 'string') {
+        const cleanWard = req.requesterId.replace(/^usr_/, '').trim();
+        if (cleanWard) {
+          wardDisplayName = cleanWard.charAt(0).toUpperCase() + cleanWard.slice(1);
+        }
+      }
+
+      // 1. Eyebrow Row: Category · Requester
+      const eyebrow = document.createElement('div');
+      eyebrow.className = 'gd-recent-activity-eyebrow';
+
+      const catSpan = document.createElement('span');
+      catSpan.className = 'gd-activity-cat';
+      catSpan.textContent = categoryLabel;
+      eyebrow.appendChild(catSpan);
+
+      if (wardDisplayName) {
+        const eyeSep = document.createElement('span');
+        eyeSep.className = 'gd-activity-sep';
+        eyeSep.textContent = '·';
+        eyeSep.setAttribute('aria-hidden', 'true');
+        eyebrow.appendChild(eyeSep);
+
+        const wardSpan = document.createElement('span');
+        wardSpan.className = 'gd-activity-ward';
+        wardSpan.textContent = wardDisplayName;
+        eyebrow.appendChild(wardSpan);
+      }
+      itemLeft.appendChild(eyebrow);
+
+      // 2. Primary Action Title (Display Typography)
       const desc = document.createElement('div');
-      desc.className = 'gd-recent-activity-desc';
-      desc.textContent = req.actionDescription;
-
-      const meta = document.createElement('div');
-      meta.className = 'gd-recent-activity-meta gd-mono';
-      const host = req.hostname || 'Local Interaction';
-      const timeStr = req.resolvedAt
-        ? new Date(req.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'Resolved';
-      meta.textContent = `${host} • ${timeStr}`;
-
+      desc.className = 'gd-recent-activity-desc gd-recent-activity-title';
+      desc.textContent = actionTitle;
       itemLeft.appendChild(desc);
+
+      // 3. Metadata Row: Hostname · Resolved Timestamp
+      const meta = document.createElement('div');
+      meta.className = 'gd-recent-activity-meta';
+
+      let safeHost = req.hostname;
+      if (!safeHost && req.origin) {
+        try {
+          safeHost = new URL(req.origin).hostname;
+        } catch {
+          safeHost = req.origin;
+        }
+      }
+      if (!safeHost) safeHost = 'gaiaflix.xyz';
+
+      const hostSpan = document.createElement('span');
+      hostSpan.className = 'gd-recent-activity-host';
+      hostSpan.textContent = safeHost;
+      meta.appendChild(hostSpan);
+
+      const sep = document.createElement('span');
+      sep.className = 'gd-activity-sep';
+      sep.textContent = '·';
+      sep.setAttribute('aria-hidden', 'true');
+      meta.appendChild(sep);
+
+      const timeSource = req.resolvedAt || (req.decision && req.decision.decidedAt) || req.createdAt;
+      const timeStr = timeSource
+        ? new Date(timeSource).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Resolved';
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'gd-recent-activity-time';
+      timeSpan.textContent = timeStr;
+      meta.appendChild(timeSpan);
+
       itemLeft.appendChild(meta);
 
+      // 4. Status Badge (Right aligned)
       const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
       const statusPill = document.createElement('span');
-      statusPill.className = `gd-detail-status-pill ${statusClass}`;
-      statusPill.textContent = req.status || 'RESOLVED';
+      statusPill.className = `gd-detail-status-pill gd-activity-status-pill ${statusClass}`;
+      statusPill.setAttribute('role', 'status');
+      statusPill.textContent = req.status || 'APPROVED';
 
       item.appendChild(itemLeft);
       item.appendChild(statusPill);
@@ -930,7 +1021,18 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       const viewAllBtn = document.createElement('button');
       viewAllBtn.type = 'button';
       viewAllBtn.className = 'gd-btn-view-all-history';
-      viewAllBtn.textContent = 'View Full Decision History & Audit Log →';
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = 'View Full Decision History & Audit Log';
+
+      const arrowSpan = document.createElement('span');
+      arrowSpan.className = 'gd-arrow';
+      arrowSpan.setAttribute('aria-hidden', 'true');
+      arrowSpan.textContent = '→';
+
+      viewAllBtn.appendChild(textSpan);
+      viewAllBtn.appendChild(arrowSpan);
+
       viewAllBtn.addEventListener('click', () => {
         props.onViewHistory?.();
       });

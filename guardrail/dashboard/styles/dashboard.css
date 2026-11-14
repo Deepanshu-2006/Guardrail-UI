@@ -1202,7 +1202,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section G — Recent Activity (Pure Typography, Spacing-First)
+   Overview: Section G — Recent Activity (Editorial, Warm-Surface Hierarchy)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-recent-activity-card {
@@ -1210,58 +1210,150 @@ textarea:focus-visible,
   border: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  margin-bottom: 0 !important;
+  margin-top: 36px !important;
+  margin-bottom: 48px !important;
   box-shadow: none !important;
 }
 
 .gd-recent-activity-header {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .gd-recent-activity-header .gd-section-title {
   font-family: var(--gd-font-display);
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--gd-text-primary);
-  margin-bottom: 6px;
+  letter-spacing: -0.025em;
+  color: var(--gd-deep-olive);
+  margin-bottom: 4px;
+}
+
+.gd-recent-activity-header .gd-section-subtitle {
+  font-family: var(--gd-font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--gd-text-secondary);
+  line-height: 1.5;
 }
 
 .gd-recent-activity-list {
   display: flex;
   flex-direction: column;
-  border: none !important;
-  gap: 16px;
+  gap: 10px;
 }
 
 .gd-recent-activity-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+  gap: 16px;
+  padding: 13px 18px !important;
+  border: 1px solid var(--gd-border-hairline) !important;
+  border-radius: 8px !important;
+  background-color: rgba(247, 243, 234, 0.50) !important;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.gd-recent-activity-item:hover {
+  background-color: rgba(247, 243, 234, 0.90) !important;
+  border-color: var(--gd-border-subtle) !important;
+  transform: translateY(-1px);
+}
+
+.gd-recent-activity-item:focus-visible {
+  outline: 2px solid var(--gd-deep-olive);
+  outline-offset: 2px;
 }
 
 .gd-recent-activity-left {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  min-width: 0;
 }
 
-.gd-recent-activity-desc {
+.gd-recent-activity-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--gd-font-sans);
-  font-size: 14.5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gd-accent-olive);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.gd-recent-activity-title,
+.gd-recent-activity-desc {
+  font-family: var(--gd-font-display);
+  font-size: 15px;
   font-weight: 600;
   color: var(--gd-text-primary);
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gd-recent-activity-meta {
-  font-family: var(--gd-font-mono);
-  font-size: 11.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
   font-weight: 500;
+  color: var(--gd-text-muted);
+}
+
+.gd-recent-activity-host {
+  font-family: var(--gd-font-mono);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--gd-text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.gd-recent-activity-time {
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  color: var(--gd-text-muted);
+}
+
+/* Activity Status Pill Override (Clean, Editorial Badges) */
+.gd-recent-activity-item .gd-detail-status-pill {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.approved {
+  background-color: rgba(84, 104, 62, 0.12);
+  color: #273121;
+  border: 1px solid rgba(84, 104, 62, 0.28);
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.rejected {
+  background-color: rgba(143, 43, 43, 0.08);
+  color: #8F2B2B;
+  border: 1px solid rgba(143, 43, 43, 0.22);
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.expired,
+.gd-recent-activity-item .gd-detail-status-pill.cancelled {
+  background-color: rgba(39, 49, 33, 0.05);
+  color: var(--gd-text-muted);
+  border: 1px solid var(--gd-border-hairline);
 }
 
 /* -----------------------------------------------------------------------------
@@ -1546,51 +1638,6 @@ textarea:focus-visible,
   line-height: 1.6;
 }
 
-/* -----------------------------------------------------------------------------
-   Overview: Section G — Recent Activity (Clean Typographic Flow)
-   ----------------------------------------------------------------------------- */
-
-#view-overview .gd-recent-activity-card {
-  margin-bottom: 56px;
-}
-
-.gd-recent-activity-header {
-  margin-bottom: 24px;
-}
-
-.gd-recent-activity-list {
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--gd-border-hairline);
-}
-
-.gd-recent-activity-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--gd-border-hairline);
-  background: transparent;
-}
-
-.gd-recent-activity-left {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.gd-recent-activity-desc {
-  font-family: var(--gd-font-sans);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--gd-text-primary);
-}
-
-.gd-recent-activity-meta {
-  font-family: var(--gd-font-mono);
-  font-size: 11px;
-  color: var(--gd-text-secondary);
-}
 
 /* Empty State (Quiet, No Boxes, No Illustrations) */
 .gd-placeholder {
