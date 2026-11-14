@@ -231,6 +231,8 @@ export interface DashboardShellOptions {
   initialHistoryStatus?: ViewStatus;
   /** Initial number of historical records to display (default: 10) */
   initialHistoryDisplayLimit?: number | 'ALL';
+  /** Initial selected request ID in decision history (default: null, right pane initially closed) */
+  initialSelectedHistoryRequestId?: string | null;
   /** Initial list of connected users or trusted contacts */
   initialConnectedUsers?: readonly TrustedContact[];
   /** Initial list of invitations */

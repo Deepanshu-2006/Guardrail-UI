@@ -2591,7 +2591,8 @@ async function runDashboardTests() {
     assert(reviewerTag !== null, 'Reviewer attribution tag rendered');
     assertEquals(reviewerTag?.textContent, 'Reviewer: tc_carol', 'Reviewer attribution matches authoritative record');
 
-    // Detail inspector in right pane
+    // Detail inspector in right pane upon selecting record
+    shell.selectHistoryRequest(resolvedRecord.id);
     const detailPane = rootElement.querySelector('#view-history .gd-detail-pane');
     assert(detailPane !== null, 'Detail pane rendered in history view');
     assert(

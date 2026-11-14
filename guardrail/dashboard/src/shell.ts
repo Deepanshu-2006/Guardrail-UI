@@ -148,7 +148,7 @@ export class DashboardShell {
       historyLimit: 50,
       historyDisplayLimit: options.initialHistoryDisplayLimit ?? 10,
       hasMoreHistory: false,
-      selectedHistoryRequestId: initialHistory[0]?.id ?? null,
+      selectedHistoryRequestId: options.initialSelectedHistoryRequestId ?? null,
       pendingFilters: defaultPendingFilters,
       historyFilters: defaultHistoryFilters,
       environment: options.environment ?? (typeof options.apiClient?.getEnvironment === 'function' ? options.apiClient.getEnvironment() : undefined),
@@ -688,6 +688,7 @@ export class DashboardShell {
       onDisplayLimitChange: (limit) => this.setHistoryDisplayLimit(limit, false),
       onLoadMore: this.apiClient ? () => void this.loadMoreHistory() : undefined,
       onRequestSelect: (id) => this.selectHistoryRequest(id),
+      onCloseDetail: () => this.selectHistoryRequest(''),
       onFiltersChange: (newFilters) => this.setHistoryFilters(newFilters),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onRefreshDetail: this.apiClient && this.state.selectedHistoryRequestId
@@ -1683,10 +1684,6 @@ export class DashboardShell {
         this.state.historyPage = page;
         this.state.hasMoreHistory = fetchedRecords.length >= limit;
         this.lastSynchronizedAt = new Date();
-
-        if (!this.state.selectedHistoryRequestId && mergedList.length > 0) {
-          this.state.selectedHistoryRequestId = mergedList[0].id;
-        }
       } else if (!result.success) {
         const err = result.error;
         if (err.statusCode === 401) {
@@ -1764,9 +1761,14 @@ export class DashboardShell {
 
   /**
    * Selects a request in the decision history view for inspection.
+   * Clicking the currently selected request toggles it closed.
    */
   public selectHistoryRequest(requestId: string): void {
-    this.state.selectedHistoryRequestId = requestId;
+    if (this.state.selectedHistoryRequestId === requestId || !requestId) {
+      this.state.selectedHistoryRequestId = null;
+    } else {
+      this.state.selectedHistoryRequestId = requestId;
+    }
     this.render();
   }
 

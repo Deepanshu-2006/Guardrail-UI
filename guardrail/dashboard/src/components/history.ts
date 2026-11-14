@@ -64,6 +64,8 @@ export interface DecisionHistoryProps {
   onLoadMore?: () => void;
   /** Callback when user selects a request from the list */
   onRequestSelect?: (requestId: string) => void;
+  /** Callback when user closes the detail pane */
+  onCloseDetail?: () => void;
   /** Callback when user changes filter settings */
   onFiltersChange?: (filters: RequestFilters) => void;
   /** Optional callback to refresh */
@@ -162,6 +164,7 @@ function renderHistoryRecordDetail(options: {
   isLoading?: boolean;
   errorMessage?: string | null;
   onRefresh?: () => void;
+  onClose?: () => void;
   filteredRequests: readonly ApprovalRequest[];
   allRequests: readonly ApprovalRequest[];
 }): HTMLElement {
@@ -212,11 +215,11 @@ function renderHistoryRecordDetail(options: {
   // 3. No Request Selected Placeholder
   if (!options.request) {
     const placeholder = document.createElement('div');
-    placeholder.className = 'gd-placeholder';
+    placeholder.className = 'gd-placeholder gd-history-empty-detail';
     placeholder.innerHTML = `
-      <div class="gd-placeholder-icon" aria-hidden="true"></div>
-      <h2 class="gd-placeholder-title">Select a Record</h2>
-      <p class="gd-placeholder-text">Select any decision from the archive on the left to inspect its details.</p>
+      <span class="gd-history-record-kicker">DECISION ARCHIVE</span>
+      <h2 class="gd-history-placeholder-title">Select a Record</h2>
+      <p class="gd-history-placeholder-desc">Select any decision from the archive on the left to inspect its permanent audit details, risk evaluation, and resolution timeline.</p>
     `;
     container.appendChild(placeholder);
     return container;
@@ -250,32 +253,16 @@ function renderHistoryRecordDetail(options: {
   }
   const formattedEventDate = formatEditorialTimestamp(eventDate);
 
-  // 1. Header: Kicker Group (RECORD 01 OF 30 — OPENED FROM ARCHIVE) + Badges, Title, Subhead
+  // 1. Header: Kicker (RECORD 01 OF 30) + Badges, Title, Subhead
   const header = document.createElement('header');
   header.className = 'gd-history-record-header';
 
   const topRow = document.createElement('div');
   topRow.className = 'gd-history-record-top-row';
 
-  const kickerGroup = document.createElement('div');
-  kickerGroup.className = 'gd-history-record-kicker-group';
-
   const kicker = document.createElement('span');
   kicker.className = 'gd-history-record-kicker';
   kicker.textContent = `RECORD ${formattedIdx} OF ${totalCount}`;
-
-  const kickerSep = document.createElement('span');
-  kickerSep.className = 'gd-history-kicker-sep';
-  kickerSep.setAttribute('aria-hidden', 'true');
-  kickerSep.textContent = '—';
-
-  const openedText = document.createElement('span');
-  openedText.className = 'gd-history-record-opened-text';
-  openedText.textContent = 'OPENED FROM ARCHIVE';
-
-  kickerGroup.appendChild(kicker);
-  kickerGroup.appendChild(kickerSep);
-  kickerGroup.appendChild(openedText);
 
   const badges = document.createElement('div');
   badges.className = 'gd-history-record-badges';
@@ -293,7 +280,21 @@ function renderHistoryRecordDetail(options: {
   badges.appendChild(statusPill);
   badges.appendChild(riskBadge);
 
-  topRow.appendChild(kickerGroup);
+  if (options.onClose) {
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'gd-history-detail-close-btn';
+    closeBtn.setAttribute('aria-label', 'Close record details');
+    closeBtn.setAttribute('title', 'Close details');
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      options.onClose?.();
+    });
+    badges.appendChild(closeBtn);
+  }
+
+  topRow.appendChild(kicker);
   topRow.appendChild(badges);
   header.appendChild(topRow);
 
@@ -802,14 +803,18 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const layout = document.createElement('div');
   layout.className = 'gd-approvals-layout gd-history-layout';
 
-  // --- Left Pane: History List & Filters ---
-  const listPane = document.createElement('div');
-  listPane.className = 'gd-list-pane';
-  listPane.setAttribute('role', 'region');
-  listPane.setAttribute('aria-label', 'Decision History List');
-
   // Filter requests using active filters
   const filteredRequests = filterRequests(allRequests, activeFilters);
+
+  // --- Left Pane: History List & Filters ---
+  const hasSelection = Boolean(
+    props.selectedRequestId &&
+    filteredRequests.some((r) => r.id === props.selectedRequestId)
+  );
+  const listPane = document.createElement('div');
+  listPane.className = `gd-list-pane gd-history-list ${hasSelection ? 'has-selection' : ''}`;
+  listPane.setAttribute('role', 'region');
+  listPane.setAttribute('aria-label', 'Decision History List');
 
   // Render Filter Bar
   const filterBar = renderFilterBar({
@@ -917,14 +922,6 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       riskBadge.className = `gd-risk-badge ${riskClass}`;
       riskBadge.textContent = req.riskLevel || 'LOW';
       badgesWrap.appendChild(riskBadge);
-
-      if (isSelected) {
-        const openedTag = document.createElement('span');
-        openedTag.className = 'gd-card-opened-tag';
-        openedTag.setAttribute('aria-label', 'Opened in detail view');
-        openedTag.innerHTML = `<span>OPENED</span> <span class="gd-opened-chevron" aria-hidden="true">›</span>`;
-        badgesWrap.appendChild(openedTag);
-      }
 
       titleRow.appendChild(badgesWrap);
       contentWrapper.appendChild(titleRow);
@@ -1124,16 +1121,18 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const selectedRequest =
     props.selectedRequestDetail !== undefined
       ? props.selectedRequestDetail
-      : (filteredRequests.find((r) => r.id === props.selectedRequestId) ||
-         allRequests.find((r) => r.id === props.selectedRequestId) ||
-         filteredRequests[0] ||
-         null);
+      : (props.selectedRequestId
+          ? (filteredRequests.find((r) => r.id === props.selectedRequestId) ||
+             allRequests.find((r) => r.id === props.selectedRequestId) ||
+             null)
+          : null);
 
   const detailPane = renderHistoryRecordDetail({
     request: selectedRequest,
     isLoading: props.isDetailLoading,
     errorMessage: props.detailErrorMessage,
     onRefresh: props.onRefreshDetail,
+    onClose: props.onCloseDetail,
     filteredRequests,
     allRequests,
   });
