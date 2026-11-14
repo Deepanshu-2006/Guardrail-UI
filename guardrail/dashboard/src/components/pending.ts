@@ -119,6 +119,88 @@ function getHumanReadableRiskExplanation(request: ApprovalRequest): string {
 }
 
 /**
+ * Renders an animated circular risk gauge chart with score and human-readable breakdown.
+ */
+function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'gd-risk-visual-card';
+
+  const riskLevel = request.riskLevel || RiskLevel.LOW;
+  const riskClass = riskLevel.toLowerCase();
+
+  // Compute canonical score (0-100)
+  let score = typeof request.riskScore === 'number' ? Math.round(request.riskScore) : 15;
+  if (typeof request.riskScore !== 'number') {
+    if (riskLevel === RiskLevel.CRITICAL) score = 92;
+    else if (riskLevel === RiskLevel.HIGH) score = 75;
+    else if (riskLevel === RiskLevel.MEDIUM) score = 45;
+    else score = 15;
+  }
+
+  // Radius = 28, Circumference = 2 * PI * 28 ≈ 175.93
+  const radius = 28;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+
+  const chartWrap = document.createElement('div');
+  chartWrap.className = 'gd-risk-chart-wrap';
+
+  chartWrap.innerHTML = `
+    <svg class="gd-risk-circular-svg" width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="Risk Score: ${score} out of 100 (${riskLevel})">
+      <circle
+        class="gd-risk-circle-bg"
+        cx="36"
+        cy="36"
+        r="${radius}"
+        fill="transparent"
+        stroke="rgba(39, 49, 33, 0.10)"
+        stroke-width="5"
+      />
+      <circle
+        class="gd-risk-circle-fill ${riskClass}"
+        cx="36"
+        cy="36"
+        r="${radius}"
+        fill="transparent"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-dasharray="${circumference.toFixed(1)}"
+        stroke-dashoffset="${circumference.toFixed(1)}"
+        style="--target-offset: ${offset.toFixed(1)};"
+      />
+    </svg>
+    <div class="gd-risk-chart-center">
+      <span class="gd-risk-chart-score">${score}</span>
+      <span class="gd-risk-chart-max">/100</span>
+    </div>
+  `;
+
+  const infoWrap = document.createElement('div');
+  infoWrap.className = 'gd-risk-chart-info';
+
+  const levelTag = document.createElement('div');
+  levelTag.className = `gd-risk-level-tag ${riskClass}`;
+  levelTag.textContent = `${riskLevel} OPERATIONAL RISK`;
+
+  const plainText = document.createElement('div');
+  plainText.className = 'gd-risk-explanation';
+  plainText.textContent = getHumanReadableRiskExplanation(request);
+
+  const impactDesc = document.createElement('p');
+  impactDesc.className = 'gd-risk-level-desc';
+  impactDesc.textContent = getRiskLevelExplanation(riskLevel);
+
+  infoWrap.appendChild(levelTag);
+  infoWrap.appendChild(plainText);
+  infoWrap.appendChild(impactDesc);
+
+  container.appendChild(chartWrap);
+  container.appendChild(infoWrap);
+
+  return container;
+}
+
+/**
  * Renders the redesigned Pending Approvals view.
  */
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
@@ -499,7 +581,23 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           ? { ...selectedBaseReq, ...props.selectedRequestDetail }
           : selectedBaseReq;
 
-        // Render Left Column: Minimal Unboxed Numbered List with Subheading
+        // Render Left Column: Clean List Header & Minimal Numbered Rows
+        const listHeader = document.createElement('div');
+        listHeader.className = 'gd-list-header';
+
+        const listKicker = document.createElement('span');
+        listKicker.className = 'gd-list-kicker';
+        listKicker.textContent = 'VERIFICATION QUEUE';
+
+        const listCountBadge = document.createElement('span');
+        listCountBadge.className = 'gd-list-count';
+        const qCount = filteredRequests.length;
+        listCountBadge.textContent = `${qCount} ${qCount === 1 ? 'Action Pending' : 'Actions Pending'}`;
+
+        listHeader.appendChild(listKicker);
+        listHeader.appendChild(listCountBadge);
+        listPane.appendChild(listHeader);
+
         filteredRequests.forEach((baseReq, index) => {
           const req = (props.selectedRequestDetail && props.selectedRequestDetail.id === baseReq.id)
             ? { ...baseReq, ...props.selectedRequestDetail }
@@ -914,7 +1012,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             detailPane.appendChild(expiredBanner);
           }
 
-          // 3. Human Context Breakdown
+          // 3. Visual Risk Assessment Widget (Circular Animated Chart & Concise Human Reasons)
+          const riskWidget = renderRiskCircularChart(selectedReq);
+          detailPane.appendChild(riskWidget);
+
+          // 4. Compact Context Ledger & Session Timestamps
           const contextGrid = document.createElement('div');
           contextGrid.className = 'gd-human-context-grid';
 
@@ -947,49 +1049,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           contextGrid.appendChild(ledgerRow);
 
-          const whyItem = document.createElement('div');
-          whyItem.className = 'gd-context-detail-item gd-context-detail-full';
-          const whyLabel = document.createElement('span');
-          whyLabel.className = 'gd-detail-label';
-          whyLabel.textContent = 'Why This Action Requires Approval';
-          const whyText = document.createElement('div');
-          whyText.className = 'gd-risk-explanation';
-          const plainExplanation = getHumanReadableRiskExplanation(selectedReq);
-          const impactExplanation = getRiskLevelExplanation(riskLevel);
-          whyText.textContent = plainExplanation;
-          whyItem.appendChild(whyLabel);
-          whyItem.appendChild(whyText);
-          contextGrid.appendChild(whyItem);
-
-          const riskAssessItem = document.createElement('div');
-          riskAssessItem.className = 'gd-context-detail-item gd-context-detail-full';
-          const rLabel = document.createElement('span');
-          rLabel.className = 'gd-detail-label';
-          rLabel.textContent = 'Risk Assessment';
-          const rVal = document.createElement('p');
-          rVal.className = 'gd-detail-value gd-risk-level-desc';
-          rVal.textContent = impactExplanation;
-          riskAssessItem.appendChild(rLabel);
-          riskAssessItem.appendChild(rVal);
-          contextGrid.appendChild(riskAssessItem);
-
-          const disclaimer = document.createElement('div');
-          disclaimer.className = 'gd-risk-disclaimer';
-          disclaimer.setAttribute('role', 'note');
-
-          const disclaimerIcon = document.createElement('span');
-          disclaimerIcon.className = 'gd-disclaimer-icon';
-          disclaimerIcon.setAttribute('aria-hidden', 'true');
-
-          const disclaimerText = document.createElement('p');
-          disclaimerText.className = 'gd-disclaimer-text';
-          disclaimerText.textContent =
-            'Notice: Guardrail risk scores measure operational sensitivity, potential data loss, and security impact to safeguard users. A high or critical risk score reflects high operational stakes requiring verification, NOT that the website or action is confirmed to be malicious or fraudulent.';
-
-          disclaimer.appendChild(disclaimerIcon);
-          disclaimer.appendChild(disclaimerText);
-          contextGrid.appendChild(disclaimer);
-
           const statusRow = document.createElement('div');
           statusRow.className = 'gd-context-detail-item gd-context-detail-full gd-context-status-row';
 
@@ -1017,13 +1076,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           detailPane.appendChild(contextGrid);
 
-          // 4. Developer & Audit Trail Disclosure
+          // 5. Developer & Security Audit Trail Disclosure (Disclaimers and Decoupled Notices Tucked)
           const auditDetails = document.createElement('details');
           auditDetails.className = 'gd-technical-audit-details';
 
           const auditSummary = document.createElement('summary');
           auditSummary.className = 'gd-audit-summary';
-          auditSummary.textContent = 'Developer & Audit Trail';
+          auditSummary.textContent = 'Security Governance & Audit Trail';
           auditDetails.appendChild(auditSummary);
 
           const auditBody = document.createElement('div');
@@ -1033,6 +1092,23 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           idBadge.className = 'gd-detail-id';
           idBadge.textContent = `Canonical Request ID: ${selectedReq.id}`;
           auditBody.appendChild(idBadge);
+
+          const disclaimer = document.createElement('div');
+          disclaimer.className = 'gd-risk-disclaimer';
+          disclaimer.setAttribute('role', 'note');
+
+          const disclaimerIcon = document.createElement('span');
+          disclaimerIcon.className = 'gd-disclaimer-icon';
+          disclaimerIcon.setAttribute('aria-hidden', 'true');
+
+          const disclaimerText = document.createElement('p');
+          disclaimerText.className = 'gd-disclaimer-text';
+          disclaimerText.textContent =
+            'Notice: Guardrail risk scores measure operational sensitivity, potential data loss, and security impact to safeguard users. A high or critical risk score reflects high operational stakes requiring verification, NOT that the website or action is confirmed to be malicious or fraudulent.';
+
+          disclaimer.appendChild(disclaimerIcon);
+          disclaimer.appendChild(disclaimerText);
+          auditBody.appendChild(disclaimer);
 
           const decouplingBox = document.createElement('div');
           decouplingBox.className = 'gd-action-decoupling-note';
