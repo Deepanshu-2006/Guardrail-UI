@@ -499,7 +499,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           ? { ...selectedBaseReq, ...props.selectedRequestDetail }
           : selectedBaseReq;
 
-        // Render Left Column: Clean, Uncluttered Request Cards Queue (Zero Buttons!)
+        // Render Left Column: Clean, Compact Request List (Zero Buttons!)
         for (const baseReq of filteredRequests) {
           const req = (props.selectedRequestDetail && props.selectedRequestDetail.id === baseReq.id)
             ? { ...baseReq, ...props.selectedRequestDetail }
@@ -520,7 +520,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
           card.setAttribute('aria-label', `Review request ${req.id}: ${req.actionDescription}`);
 
-          // 1. Eyebrow Row: Requester identity, category, and subtle risk indicator
+          // 1. Eyebrow Row: Requester identity, category, time, and risk indicator
           const eyebrow = document.createElement('div');
           eyebrow.className = 'gd-request-eyebrow';
 
@@ -548,6 +548,14 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const badgesWrap = document.createElement('div');
           badgesWrap.className = 'gd-pending-card-badges';
 
+          const timeStr = req.createdAt
+            ? new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now';
+          const timeBadge = document.createElement('span');
+          timeBadge.className = 'gd-request-time';
+          timeBadge.textContent = timeStr;
+          badgesWrap.appendChild(timeBadge);
+
           if (req.status && req.status !== ApprovalStatus.PENDING) {
             const statusBadge = document.createElement('span');
             statusBadge.className = `gd-status-badge ${req.status.toLowerCase()}`;
@@ -568,65 +576,44 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           eyebrow.appendChild(badgesWrap);
           card.appendChild(eyebrow);
 
-          // 2. Primary Visual Element: Requested Action (Hero Typography)
+          // 2. Primary Visual Element: Requested Action Description
           const primaryWrap = document.createElement('div');
           primaryWrap.className = 'gd-request-primary';
 
-          const actionTitle = document.createElement('h2');
+          const actionTitle = document.createElement('h3');
           actionTitle.className = 'gd-request-description';
           actionTitle.textContent = req.actionDescription;
           primaryWrap.appendChild(actionTitle);
           card.appendChild(primaryWrap);
 
-          // 3. Context Metadata Row (Ledger Layout: Destination, Requested, Expiration)
+          // 3. Context Metadata Row (Compact single-line)
           const metaRow = document.createElement('div');
           metaRow.className = 'gd-request-meta gd-request-context-line';
 
-          const websiteMeta = document.createElement('div');
-          websiteMeta.className = 'gd-context-item';
           const webLabel = document.createElement('span');
           webLabel.className = 'gd-context-label';
-          webLabel.textContent = 'Destination';
+          webLabel.textContent = 'DEST';
+
           const webVal = document.createElement('strong');
           webVal.className = 'gd-context-value gd-context-hostname';
           webVal.textContent = hostname;
-          websiteMeta.appendChild(webLabel);
-          websiteMeta.appendChild(webVal);
-          metaRow.appendChild(websiteMeta);
 
-          const timeStr = req.createdAt
-            ? new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : 'Just now';
-          const timeMeta = document.createElement('div');
-          timeMeta.className = 'gd-context-item';
-          const timeLabel = document.createElement('span');
-          timeLabel.className = 'gd-context-label';
-          timeLabel.textContent = 'Requested';
-          const timeVal = document.createElement('span');
-          timeVal.className = 'gd-context-value';
-          timeVal.textContent = timeStr;
-          timeMeta.appendChild(timeLabel);
-          timeMeta.appendChild(timeVal);
-          metaRow.appendChild(timeMeta);
+          metaRow.appendChild(webLabel);
+          metaRow.appendChild(webVal);
 
           if (req.expiresAt) {
             const expInfo = formatExpirationInfo(req.expiresAt);
-
-            const expMeta = document.createElement('div');
-            expMeta.className = 'gd-context-item';
-            const expLabel = document.createElement('span');
-            expLabel.className = 'gd-context-label';
-            expLabel.textContent = 'Safety Window';
-            expMeta.appendChild(expLabel);
+            const expSep = document.createElement('span');
+            expSep.className = 'gd-eyebrow-sep';
+            expSep.textContent = '·';
+            metaRow.appendChild(expSep);
 
             const expSpan = document.createElement('span');
             expSpan.className = expInfo.isPast ? 'gd-card-meta-expired' : 'gd-card-meta-expires';
             expSpan.textContent = expInfo.isPast
               ? 'Expired'
               : `Expires: ${new Date(req.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
-            expMeta.appendChild(expSpan);
-            metaRow.appendChild(expMeta);
+            metaRow.appendChild(expSpan);
           }
 
           card.appendChild(metaRow);
@@ -662,21 +649,38 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const dossierHeader = document.createElement('div');
           dossierHeader.className = 'gd-detail-dossier-header';
 
+          const topBar = document.createElement('div');
+          topBar.className = 'gd-detail-header-top';
+
           const kicker = document.createElement('span');
           kicker.className = 'gd-detail-dossier-kicker';
           kicker.textContent = 'ACTION VERIFICATION REQUIRED';
-          dossierHeader.appendChild(kicker);
+          topBar.appendChild(kicker);
+
+          const displayStatus = isExpired && selectedReq.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (selectedReq.status || ApprovalStatus.PENDING);
+          const statusPill = document.createElement('span');
+          const sClass = displayStatus.toLowerCase();
+          statusPill.className = `gd-detail-status-pill ${sClass}`;
+          statusPill.setAttribute('role', 'status');
+          statusPill.setAttribute('data-status', sClass);
+          statusPill.textContent = displayStatus;
+          topBar.appendChild(statusPill);
+          dossierHeader.appendChild(topBar);
 
           const detailTitleEl = document.createElement('h3');
           detailTitleEl.className = 'gd-detail-title';
           detailTitleEl.textContent = selectedReq.actionDescription;
           dossierHeader.appendChild(detailTitleEl);
 
+          const headerSub = document.createElement('div');
+          headerSub.className = 'gd-detail-header-sub';
+
           const dId = document.createElement('span');
           dId.className = 'gd-detail-id';
           dId.textContent = `Canonical Request ID: ${selectedReq.id}`;
-          dossierHeader.appendChild(dId);
+          headerSub.appendChild(dId);
 
+          dossierHeader.appendChild(headerSub);
           detailPane.appendChild(dossierHeader);
 
           // 2. Decision Controls (Approve & Reject Buttons + Confirmation Flows)
@@ -930,6 +934,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const contextGrid = document.createElement('div');
           contextGrid.className = 'gd-human-context-grid';
 
+          const ledgerRow = document.createElement('div');
+          ledgerRow.className = 'gd-context-ledger-row';
+
           const pageTitleItem = document.createElement('div');
           pageTitleItem.className = 'gd-context-detail-item';
           const pLabel = document.createElement('span');
@@ -940,7 +947,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           pVal.textContent = selectedReq.pageTitle || 'Untitled webpage';
           pageTitleItem.appendChild(pLabel);
           pageTitleItem.appendChild(pVal);
-          contextGrid.appendChild(pageTitleItem);
+          ledgerRow.appendChild(pageTitleItem);
 
           const hostItem = document.createElement('div');
           hostItem.className = 'gd-context-detail-item';
@@ -952,7 +959,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           hVal.textContent = hostname;
           hostItem.appendChild(hLabel);
           hostItem.appendChild(hVal);
-          contextGrid.appendChild(hostItem);
+          ledgerRow.appendChild(hostItem);
+
+          contextGrid.appendChild(ledgerRow);
 
           const whyItem = document.createElement('div');
           whyItem.className = 'gd-context-detail-item gd-context-detail-full';
@@ -1000,14 +1009,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const statusRow = document.createElement('div');
           statusRow.className = 'gd-context-detail-item gd-context-detail-full gd-context-status-row';
 
-          const displayStatus = isExpired && selectedReq.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (selectedReq.status || ApprovalStatus.PENDING);
-          const statusPill = document.createElement('span');
-          const sClass = displayStatus.toLowerCase();
-          statusPill.className = `gd-detail-status-pill ${sClass}`;
-          statusPill.setAttribute('role', 'status');
-          statusPill.setAttribute('data-status', sClass);
-          statusPill.textContent = displayStatus;
-
           const timestampsInfo = document.createElement('div');
           timestampsInfo.className = 'gd-context-timestamps';
 
@@ -1027,7 +1028,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           timestampsInfo.appendChild(timeSep);
           timestampsInfo.appendChild(expSpan2);
 
-          statusRow.appendChild(statusPill);
           statusRow.appendChild(timestampsInfo);
           contextGrid.appendChild(statusRow);
 

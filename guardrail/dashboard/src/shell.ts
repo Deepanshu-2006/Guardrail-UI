@@ -598,7 +598,12 @@ export class DashboardShell {
       lastSynchronizedAt: this.lastSynchronizedAt,
       isRefreshing: this.isRefreshing,
       onFiltersChange: (newFilters) => this.setPendingFilters(newFilters),
-      onRequestSelect: (id) => this.selectRequest(id),
+      onRequestSelect: (id) => {
+        this.selectRequest(id);
+        if (this.apiClient) {
+          void this.loadRequestDetails(id, true);
+        }
+      },
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onRefreshDetail: this.apiClient && this.state.selectedRequestId
         ? () => void this.loadRequestDetails(this.state.selectedRequestId!, true)
