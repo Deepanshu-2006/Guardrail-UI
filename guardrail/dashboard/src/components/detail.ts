@@ -674,26 +674,29 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   notice.appendChild(noticeText);
 
   // 9. Section E: Decision Controls (Connected to backend decision operations)
+  const isPending = req.status === ApprovalStatus.PENDING;
   const decisionCard = document.createElement('section');
-  decisionCard.className = 'gd-detail-card gd-decision-actions-card';
+  decisionCard.className = `gd-detail-card gd-decision-actions-card ${isPending ? '' : 'gd-decision-card-resolved'}`;
   decisionCard.setAttribute('aria-labelledby', 'detail-decision-heading');
 
-  const dCardHeader = document.createElement('div');
-  dCardHeader.className = 'gd-card-header';
+  if (isPending) {
+    const dCardHeader = document.createElement('div');
+    dCardHeader.className = 'gd-card-header';
 
-  const dCardTitle = document.createElement('h3');
-  dCardTitle.id = 'detail-decision-heading';
-  dCardTitle.className = 'gd-card-title';
-  dCardTitle.textContent = 'Reviewer Decision';
+    const dCardTitle = document.createElement('h3');
+    dCardTitle.id = 'detail-decision-heading';
+    dCardTitle.className = 'gd-card-title';
+    dCardTitle.textContent = 'Reviewer Decision';
 
-  const dCardSubtitle = document.createElement('p');
-  dCardSubtitle.className = 'gd-card-subtitle';
-  dCardSubtitle.textContent =
-    'Record an authoritative approval or rejection decision. Decisions are immutable once committed to the server.';
+    const dCardSubtitle = document.createElement('p');
+    dCardSubtitle.className = 'gd-card-subtitle';
+    dCardSubtitle.textContent =
+      'Record an authoritative approval or rejection decision. Decisions are immutable once committed to the server.';
 
-  dCardHeader.appendChild(dCardTitle);
-  dCardHeader.appendChild(dCardSubtitle);
-  decisionCard.appendChild(dCardHeader);
+    dCardHeader.appendChild(dCardTitle);
+    dCardHeader.appendChild(dCardSubtitle);
+    decisionCard.appendChild(dCardHeader);
+  }
 
   // Decision Error Banner
   if (props.decisionErrorMessage) {
@@ -734,7 +737,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   }
 
   // Lifecycle check: Decisions are allowed ONLY when request is PENDING
-  if (req.status !== ApprovalStatus.PENDING) {
+  if (!isPending) {
     const resolvedNotice = document.createElement('div');
     const isExpiredNotice = req.status === ApprovalStatus.EXPIRED;
     resolvedNotice.className = `gd-decision-resolved-notice ${isExpiredNotice ? 'expired-notice' : ''}`;
@@ -748,16 +751,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       p.textContent = `This request has already been ${statusLabel} and is no longer eligible for decisions.`;
     }
     resolvedNotice.appendChild(p);
-
-    if (props.onRefresh) {
-      const retryBtn = document.createElement('button');
-      retryBtn.type = 'button';
-      retryBtn.className = 'gd-btn-retry';
-      retryBtn.style.marginTop = '10px';
-      retryBtn.textContent = 'Refresh Status from Server';
-      retryBtn.addEventListener('click', () => props.onRefresh?.());
-      resolvedNotice.appendChild(retryBtn);
-    }
 
     decisionCard.appendChild(resolvedNotice);
   } else {

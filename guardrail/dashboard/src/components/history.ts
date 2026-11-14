@@ -88,17 +88,35 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
 
+  const sectionEyebrow = document.createElement('span');
+  sectionEyebrow.className = 'gd-section-eyebrow';
+  sectionEyebrow.textContent = 'TRUSTED CONTACT AUDIT LOG';
+  titleGroup.appendChild(sectionEyebrow);
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'gd-pending-title-row';
+
   const title = document.createElement('h1');
   title.id = 'history-title';
   title.className = 'gd-section-title';
   setAnimatedHeading(title, 'Decision History');
+  titleRow.appendChild(title);
+
+  if (allRequests.length > 0) {
+    const countPill = document.createElement('span');
+    countPill.className = 'gd-pending-count-pill';
+    countPill.setAttribute('role', 'status');
+    const n = allRequests.length;
+    countPill.textContent = `— ${n < 10 ? '0' + n : n} ${n === 1 ? 'Recorded Decision' : 'Recorded Decisions'}`;
+    titleRow.appendChild(countPill);
+  }
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
     'Review past approval decisions and permanent safety records.';
 
-  titleGroup.appendChild(title);
+  titleGroup.appendChild(titleRow);
   titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
 
@@ -291,8 +309,26 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     emptyFilter.id = 'gd-history-filter-empty';
     listPane.appendChild(emptyFilter);
   } else {
+    // Clean List Header matching Pending Approvals
+    const listHeader = document.createElement('div');
+    listHeader.className = 'gd-list-header';
+
+    const listKicker = document.createElement('span');
+    listKicker.className = 'gd-list-kicker';
+    listKicker.textContent = 'DECISION ARCHIVE';
+
+    const listCountBadge = document.createElement('span');
+    listCountBadge.className = 'gd-list-count';
+    const total = filteredRequests.length;
+    listCountBadge.textContent = `${total} ${total === 1 ? 'Record' : 'Records'}`;
+
+    listHeader.appendChild(listKicker);
+    listHeader.appendChild(listCountBadge);
+    listPane.appendChild(listHeader);
+
     // Render History Cards
-    for (const req of filteredRequests) {
+    for (let index = 0; index < filteredRequests.length; index++) {
+      const req = filteredRequests[index];
       const isSelected = req.id === props.selectedRequestId;
       const card = document.createElement('article');
       const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
@@ -302,47 +338,60 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
       card.setAttribute('aria-label', `View decision details for ${req.id}: ${req.actionDescription}`);
 
-      // Card Header: ID, Status Pill, Risk Badge
-      const cardHeader = document.createElement('div');
-      cardHeader.className = 'gd-request-card-header gd-history-card-header';
+      // 1. Numbering prefix (01, 02, etc.)
+      const numStr = (index + 1) < 10 ? `0${index + 1}` : String(index + 1);
+      const numEl = document.createElement('span');
+      numEl.className = 'gd-request-num';
+      numEl.textContent = numStr;
+      numEl.setAttribute('aria-hidden', 'true');
+      card.appendChild(numEl);
 
-      const idSpan = document.createElement('span');
-      idSpan.className = 'gd-request-id gd-mono';
-      idSpan.textContent = req.id ? (req.id.slice(0, 16) + '...') : 'Unknown ID';
+      // 2. Main content container (column layout, flex: 1, min-width: 0)
+      const contentWrapper = document.createElement('div');
+      contentWrapper.className = 'gd-request-item-content';
 
-      const headerBadges = document.createElement('div');
-      headerBadges.className = 'gd-history-header-badges';
+      // Title row: Action Description + Badges (Status Pill + Risk Badge)
+      const titleRow = document.createElement('div');
+      titleRow.className = 'gd-request-title-row';
 
-      // Visual distinction: prominent resolved status pill
+      const desc = document.createElement('h3');
+      desc.className = 'gd-request-description';
+      desc.textContent = req.actionDescription || 'Unnamed Browser Action';
+      titleRow.appendChild(desc);
+
+      const badgesWrap = document.createElement('div');
+      badgesWrap.className = 'gd-history-header-badges';
+
+      // Prominent resolved status pill
       const statusPill = document.createElement('span');
       statusPill.className = `gd-detail-status-pill ${statusClass}`;
       statusPill.textContent = req.status || 'RESOLVED';
+      badgesWrap.appendChild(statusPill);
 
       const riskBadge = document.createElement('span');
       const riskClass = (req.riskLevel || 'LOW').toLowerCase();
       riskBadge.className = `gd-risk-badge ${riskClass}`;
       riskBadge.textContent = req.riskLevel || 'LOW';
+      badgesWrap.appendChild(riskBadge);
 
-      headerBadges.appendChild(statusPill);
-      headerBadges.appendChild(riskBadge);
-      cardHeader.appendChild(idSpan);
-      cardHeader.appendChild(headerBadges);
+      titleRow.appendChild(badgesWrap);
+      contentWrapper.appendChild(titleRow);
 
-      // Card Description
-      const desc = document.createElement('h2');
-      desc.className = 'gd-request-description';
-      desc.textContent = req.actionDescription;
-
-      // Card Meta: Hostname, Timestamps, Reviewer attribution
-      const meta = document.createElement('div');
-      meta.className = 'gd-request-meta gd-history-meta';
+      // Subheading: Hostname · Requester · Timestamp · Reviewer
+      const subheading = document.createElement('p');
+      subheading.className = 'gd-request-subheading';
 
       const originSpan = document.createElement('span');
-      originSpan.className = 'gd-meta-hostname';
+      originSpan.className = 'gd-context-hostname gd-meta-hostname';
       originSpan.textContent = req.hostname || 'Local Interaction';
+      subheading.appendChild(originSpan);
 
-      const resolvedTimeSpan = document.createElement('span');
-      resolvedTimeSpan.className = 'gd-meta-timestamp';
+      const sep1 = document.createElement('span');
+      sep1.className = 'gd-subheading-sep';
+      sep1.setAttribute('aria-hidden', 'true');
+      sep1.textContent = '·';
+      subheading.appendChild(sep1);
+
       let timeLabel = 'Decided';
       let timestampVal = req.resolvedAt || req.createdAt;
       if (req.status === ApprovalStatus.CANCELLED) {
@@ -352,19 +401,27 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         timeLabel = 'Expired';
         timestampVal = req.expiresAt || req.resolvedAt || req.createdAt;
       }
+      const resolvedTimeSpan = document.createElement('span');
+      resolvedTimeSpan.className = 'gd-meta-timestamp';
       resolvedTimeSpan.textContent = `${timeLabel}: ${formatTimestamp(timestampVal)}`;
-
-      meta.appendChild(originSpan);
-      meta.appendChild(resolvedTimeSpan);
+      subheading.appendChild(resolvedTimeSpan);
 
       if (req.decision?.decidedBy) {
+        const sep2 = document.createElement('span');
+        sep2.className = 'gd-subheading-sep';
+        sep2.setAttribute('aria-hidden', 'true');
+        sep2.textContent = '·';
+        subheading.appendChild(sep2);
+
         const reviewerSpan = document.createElement('span');
         reviewerSpan.className = 'gd-history-reviewer-tag';
         reviewerSpan.textContent = `Reviewer: ${req.decision.decidedBy}`;
-        meta.appendChild(reviewerSpan);
+        subheading.appendChild(reviewerSpan);
       }
 
-      // Decoupled Continuation Posture Chip (Requirement 4)
+      contentWrapper.appendChild(subheading);
+
+      // Decoupled Continuation Posture Chip (subtle, clean typographic subline)
       const continuationRow = document.createElement('div');
       continuationRow.className = 'gd-history-continuation-posture';
 
@@ -384,11 +441,16 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       }
 
       continuationRow.appendChild(continuationChip);
+      contentWrapper.appendChild(continuationRow);
 
-      card.appendChild(cardHeader);
-      card.appendChild(desc);
-      card.appendChild(meta);
-      card.appendChild(continuationRow);
+      // Hidden ID span for ID query matching and tests
+      const idSpan = document.createElement('span');
+      idSpan.className = 'gd-request-id gd-mono';
+      idSpan.style.display = 'none';
+      idSpan.textContent = req.id || '';
+      contentWrapper.appendChild(idSpan);
+
+      card.appendChild(contentWrapper);
 
       // Keyboard & Click Handlers
       const selectAction = () => props.onRequestSelect?.(req.id);
