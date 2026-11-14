@@ -294,6 +294,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     }
     const refreshIcon = document.createElement('span');
     refreshIcon.className = `gd-icon ${isBusy ? 'gd-spin' : ''}`;
+    refreshIcon.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+      </svg>
+    `;
     const refreshText = document.createElement('span');
     refreshText.textContent = isBusy ? 'Refreshing...' : 'Refresh';
     refreshBtn.appendChild(refreshIcon);

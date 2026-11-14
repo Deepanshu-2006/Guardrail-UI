@@ -675,6 +675,8 @@ export class DashboardShell {
       requests: this.state.historyRequests,
       status: this.state.historyStatus,
       errorMessage: this.state.historyError,
+      isRefreshing: this.isRefreshing,
+      lastSynchronizedAt: this.lastSynchronizedAt,
       selectedRequestId: this.state.selectedHistoryRequestId,
       selectedRequestDetail: selectedHistoryDetail,
       isDetailLoading: this.isDetailLoading,
@@ -1680,6 +1682,7 @@ export class DashboardShell {
         this.state.historyError = null;
         this.state.historyPage = page;
         this.state.hasMoreHistory = fetchedRecords.length >= limit;
+        this.lastSynchronizedAt = new Date();
 
         if (!this.state.selectedHistoryRequestId && mergedList.length > 0) {
           this.state.selectedHistoryRequestId = mergedList[0].id;

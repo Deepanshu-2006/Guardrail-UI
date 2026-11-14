@@ -4630,6 +4630,71 @@ async function runDashboardTests() {
     shell.destroy();
   }
 
+  // Test Suite 53: Decision History Header Repositioning & Refresh Button Interactivity
+  console.log('\n▶ Test Suite 53: Decision History Header Repositioning & Refresh Button Interactivity');
+  {
+    const history12: ApprovalRequest[] = Array.from({ length: 12 }, (_, i) => ({
+      id: `apr_hist_${String(i + 1).padStart(3, '0')}`,
+      status: ApprovalStatus.APPROVED,
+      riskLevel: RiskLevel.LOW,
+      requesterId: 'usr_alice',
+      actionDescription: `Click on item ${i + 1}`,
+      createdAt: '2026-11-14T00:00:00Z',
+      updatedAt: '2026-11-14T00:00:00Z',
+    }));
+
+    let refreshCalled = false;
+    const mockFetch = async (): Promise<Response> => {
+      refreshCalled = true;
+      return createMockResponse(200, { success: true, data: [] });
+    };
+
+    const client = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'test-token',
+      fetchFn: mockFetch,
+    });
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'history',
+      initialHistoryRequests: history12,
+      apiClient: client,
+      autoFetch: false,
+    });
+
+    const historySection = rootElement.querySelector('#view-history');
+    assert(historySection !== null, 'Decision history section rendered');
+
+    // Title is clean without inline count pill
+    const titleRow = historySection?.querySelector('.gd-pending-title-row');
+    assert(titleRow !== null, 'Title row rendered');
+    const titlePill = titleRow?.querySelector('.gd-pending-count-pill');
+    assertEquals(titlePill, null, 'Inline count pill removed from title row for clean visual hierarchy');
+
+    // Header actions contains repositioned count badge
+    const headerActions = historySection?.querySelector('.gd-history-header-actions');
+    assert(headerActions !== null, 'Header actions container rendered on the right');
+    const countBadge = headerActions?.querySelector('.gd-history-count-badge');
+    assert(countBadge !== null, 'Count badge rendered in header actions');
+    assertEquals(countBadge?.textContent, '12 RECORDED DECISIONS', 'Count badge displays formatted total');
+
+    // Refresh button rendered with accessible attributes and SVG icon
+    const refreshBtn = headerActions?.querySelector('.gd-btn-refresh') as any;
+    assert(refreshBtn !== null, 'Refresh button rendered in header actions');
+    assertEquals(refreshBtn?.getAttribute('aria-label'), 'Refresh decision history', 'Refresh button has aria-label');
+    const refreshIcon = refreshBtn?.querySelector('.gd-icon');
+    assert(refreshIcon !== null, 'Refresh icon present');
+    assert(refreshIcon?.innerHTML.includes('<svg'), 'Refresh icon contains SVG markup');
+
+    // Click refresh button triggers refresh
+    refreshBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    assert(refreshCalled, 'Clicking refresh button triggers data synchronization');
+
+    shell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');

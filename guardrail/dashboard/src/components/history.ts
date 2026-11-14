@@ -38,6 +38,10 @@ export interface DecisionHistoryProps {
   status?: ViewStatus;
   /** Optional error message if loading history failed */
   errorMessage?: string | null;
+  /** Whether the shell is currently refreshing data */
+  isRefreshing?: boolean;
+  /** Timestamp when data was last successfully synchronized */
+  lastSynchronizedAt?: Date | null;
   /** Identifier of the currently selected request in the detail pane */
   selectedRequestId?: string | null;
   /** Selected request detail record (if loaded/cached) */
@@ -157,15 +161,6 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   setAnimatedHeading(title, 'Decision History');
   titleRow.appendChild(title);
 
-  if (allRequests.length > 0) {
-    const countPill = document.createElement('span');
-    countPill.className = 'gd-pending-count-pill';
-    countPill.setAttribute('role', 'status');
-    const n = allRequests.length;
-    countPill.textContent = `— ${n < 10 ? '0' + n : n} ${n === 1 ? 'Recorded Decision' : 'Recorded Decisions'}`;
-    titleRow.appendChild(countPill);
-  }
-
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
@@ -175,23 +170,68 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
 
-  // Refresh Button in header
+  // Header Actions (Count indicator, Sync time & Refresh button)
+  const headerActions = document.createElement('div');
+  headerActions.className = 'gd-history-header-actions';
+
+  if (allRequests.length > 0) {
+    const countBadge = document.createElement('span');
+    countBadge.className = 'gd-history-count-badge';
+    countBadge.setAttribute('role', 'status');
+    const n = allRequests.length;
+    countBadge.textContent = `${n < 10 ? '0' + n : n} ${n === 1 ? 'RECORDED DECISION' : 'RECORDED DECISIONS'}`;
+    headerActions.appendChild(countBadge);
+  }
+
+  if (props.lastSynchronizedAt) {
+    const syncTime = document.createElement('span');
+    syncTime.className = 'gd-last-sync-time';
+    syncTime.setAttribute('aria-live', 'polite');
+    const timeStr = props.lastSynchronizedAt.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    syncTime.textContent = `Last synced: ${timeStr}`;
+    headerActions.appendChild(syncTime);
+  }
+
   if (props.onRefresh) {
+    const isBusy = props.status === 'loading' || Boolean(props.isRefreshing);
     const refreshBtn = document.createElement('button');
     refreshBtn.type = 'button';
     refreshBtn.className = 'gd-btn-refresh';
     refreshBtn.setAttribute('aria-label', 'Refresh decision history');
-    refreshBtn.innerHTML = `
-      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    if (isBusy) {
+      refreshBtn.disabled = true;
+      refreshBtn.setAttribute('aria-busy', 'true');
+    }
+
+    const refreshIcon = document.createElement('span');
+    refreshIcon.className = `gd-icon ${isBusy ? 'gd-spin' : ''}`;
+    refreshIcon.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
       </svg>
-      <span>Refresh</span>
     `;
-    refreshBtn.addEventListener('click', () => {
+
+    const refreshText = document.createElement('span');
+    refreshText.textContent = isBusy ? 'Refreshing...' : 'Refresh';
+
+    refreshBtn.appendChild(refreshIcon);
+    refreshBtn.appendChild(refreshText);
+
+    let refreshClicked = false;
+    refreshBtn.addEventListener('click', (e) => {
+      e?.stopPropagation?.();
+      if (refreshClicked || isBusy) return;
+      refreshClicked = true;
       props.onRefresh?.();
     });
-    header.appendChild(refreshBtn);
+    headerActions.appendChild(refreshBtn);
   }
+
+  header.appendChild(headerActions);
 
   section.appendChild(header);
 
