@@ -101,12 +101,16 @@ function getHumanReadableRiskExplanation(request: ApprovalRequest): string {
   const hostname = resolveSafeHostname(request);
   const cat = (request.category || '').toUpperCase();
   const desc = (request.actionDescription || '').toLowerCase();
+  const riskLevel = request.riskLevel || RiskLevel.LOW;
 
+  if (cat.includes('TRANSFER') || desc.includes('wire') || desc.includes('transfer') || desc.includes('pay')) {
+    return `This action initiates an irreversible transfer of funds on ${hostname}.`;
+  }
   if (cat.includes('NAVIGATION') || desc.includes('click') || desc.includes('navigat')) {
     return `This action will navigate ${wardName} away from the currently trusted website to ${hostname}.`;
   }
-  if (cat.includes('TRANSFER') || desc.includes('wire') || desc.includes('transfer') || desc.includes('pay')) {
-    return `This action initiates a transfer of funds on ${hostname}, which cannot be reversed once processed.`;
+  if (riskLevel === RiskLevel.CRITICAL) {
+    return `This action involves high operational impact and irreversible state changes on ${hostname}.`;
   }
   if (request.riskReasons && Array.isArray(request.riskReasons) && request.riskReasons.length > 0 && request.riskReasons[0]) {
     return request.riskReasons[0];
@@ -892,10 +896,19 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           expDetailsInner.className = 'gd-expandable-details-content';
 
           // Action description in detail pane for test contract (detailPane.querySelector('.gd-detail-title'))
+          const detailDossierHeader = document.createElement('div');
+          detailDossierHeader.className = 'gd-detail-dossier-header';
+
+          const dossierKicker = document.createElement('span');
+          dossierKicker.className = 'gd-detail-dossier-kicker';
+          dossierKicker.textContent = 'INTERACTION CONTEXT & RISK ANALYSIS';
+          detailDossierHeader.appendChild(dossierKicker);
+
           const detailTitleEl = document.createElement('h3');
           detailTitleEl.className = isSelected ? 'gd-detail-title' : 'gd-detail-title-unselected';
           detailTitleEl.textContent = req.actionDescription;
-          expDetailsInner.appendChild(detailTitleEl);
+          detailDossierHeader.appendChild(detailTitleEl);
+          expDetailsInner.appendChild(detailDossierHeader);
 
           // Human Context Breakdown
           const contextGrid = document.createElement('div');
@@ -921,7 +934,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           hLabel.className = 'gd-detail-label';
           hLabel.textContent = 'Destination';
           const hVal = document.createElement('span');
-          hVal.className = 'gd-detail-value';
+          hVal.className = 'gd-detail-value gd-context-hostname';
           hVal.textContent = hostname;
           hostItem.appendChild(hLabel);
           hostItem.appendChild(hVal);
@@ -937,7 +950,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           whyText.className = 'gd-risk-explanation';
           const plainExplanation = getHumanReadableRiskExplanation(req);
           const impactExplanation = getRiskLevelExplanation(riskLevel);
-          whyText.textContent = `${plainExplanation} ${impactExplanation}`;
+          whyText.textContent = plainExplanation;
           whyItem.appendChild(whyLabel);
           whyItem.appendChild(whyText);
           contextGrid.appendChild(whyItem);
@@ -997,7 +1010,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const expSpan2 = document.createElement('span');
           const expFormatted = formatExpirationInfo(req.expiresAt);
-          expSpan2.textContent = `Expires At: ${expFormatted.text}`;
+          const expRelativeText = expFormatted.isPast ? 'Expired' : (expFormatted.text.includes('(') ? expFormatted.text.split(' (')[0] : expFormatted.text);
+          expSpan2.textContent = `Expires At: ${formatTimestamp(req.expiresAt)} (${expRelativeText})`;
 
           timestampsInfo.appendChild(initSpan);
           timestampsInfo.appendChild(timeSep);
