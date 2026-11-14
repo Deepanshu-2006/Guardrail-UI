@@ -691,13 +691,13 @@ textarea:focus-visible,
 }
 
 /* =============================================================================
-   Sequential Progressive Entrance: Everything Renders One by One
+   Sequential Progressive Entrance: Plays ONCE on Initial Open, Never Repeats
    ============================================================================= */
 
 @keyframes gd-render-in {
   0% {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;
@@ -705,12 +705,160 @@ textarea:focus-visible,
   }
 }
 
-/* Stable, Static Content Presentation (No repeating or looping animations) */
+/* Stable, Static Content Presentation (Base State: Never loops or repeats) */
 .gd-section-title .gd-char {
   display: inline;
   opacity: 1;
   transform: none;
   white-space: pre;
+}
+
+/* 1. App-level entrance (Plays once on initial app load) */
+.gd-initial-load .gd-top-header {
+  animation: gd-render-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+/* 2. View-level entrance (Plays once when each view is first opened, never on polling/re-renders) */
+.gd-view-section.gd-view-initial-enter .gd-section-header {
+  animation: gd-render-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-section-subtitle {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-protection-status-card {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
+/* Overview: Metrics Row (Sequential stagger) */
+.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both;
+}
+
+/* Overview: Main Content Columns */
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1),
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-card-alert-banner,
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-error-banner,
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-overview-pending-skeleton,
+.gd-view-section.gd-view-initial-enter .gd-overview-empty-pending {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
+}
+
+/* Overview: Recent Activity Section */
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1),
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-empty-state-card {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-btn-view-all-history {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
+}
+
+/* Overview: Right Column (Connect a Ward) */
+.gd-view-section.gd-view-initial-enter .gd-setup-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-setup-form {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
+}
+
+/* Pending Approvals & History: Layout and Panels */
+.gd-view-section.gd-view-initial-enter .gd-pending-meta-bar,
+.gd-view-section.gd-view-initial-enter .gd-history-meta-bar,
+.gd-view-section.gd-view-initial-enter .gd-filter-toolbar,
+.gd-view-section.gd-view-initial-enter .gd-filter-chips {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-pending-layout,
+.gd-view-section.gd-view-initial-enter .gd-history-layout {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(1),
+.gd-view-section.gd-view-initial-enter .gd-pending-empty-state,
+.gd-view-section.gd-view-initial-enter .gd-history-empty-state {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-detail-pane,
+.gd-view-section.gd-view-initial-enter .gd-detail-container {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+
+/* Settings View: Sections */
+.gd-view-section.gd-view-initial-enter .gd-settings-section:nth-of-type(1) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-settings-section:nth-of-type(2) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-settings-section:nth-of-type(3) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1202,7 +1350,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Overview: Section G — Recent Activity (Editorial, Warm-Surface Hierarchy)
+   Overview: Section G — Recent Activity (Pure Typography, Zero Cards, Zero Pills)
    ----------------------------------------------------------------------------- */
 
 #view-overview .gd-recent-activity-card {
@@ -1216,7 +1364,7 @@ textarea:focus-visible,
 }
 
 .gd-recent-activity-header {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .gd-recent-activity-header .gd-section-title {
@@ -1237,33 +1385,39 @@ textarea:focus-visible,
 }
 
 .gd-recent-activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: flex !important;
+  flex-direction: column !important;
+  border-top: 1px solid var(--gd-border-hairline) !important;
+  border-bottom: none !important;
+  background: transparent !important;
+  gap: 0 !important;
 }
 
 .gd-recent-activity-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 13px 18px !important;
-  border: 1px solid var(--gd-border-hairline) !important;
-  border-radius: 8px !important;
-  background-color: rgba(247, 243, 234, 0.50) !important;
-  transition: all 0.15s ease;
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  padding: 16px 0 !important;
+  border: none !important;
+  border-bottom: 1px solid var(--gd-border-hairline) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 
 .gd-recent-activity-item:hover {
-  background-color: rgba(247, 243, 234, 0.90) !important;
+  background: transparent !important;
   border-color: var(--gd-border-subtle) !important;
-  transform: translateY(-1px);
+  transform: none !important;
+  opacity: 0.82;
 }
 
 .gd-recent-activity-item:focus-visible {
   outline: 2px solid var(--gd-deep-olive);
-  outline-offset: 2px;
+  outline-offset: 4px;
 }
 
 .gd-recent-activity-left {
@@ -1273,24 +1427,12 @@ textarea:focus-visible,
   min-width: 0;
 }
 
-.gd-recent-activity-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--gd-font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--gd-accent-olive);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
 .gd-recent-activity-title,
 .gd-recent-activity-desc {
   font-family: var(--gd-font-display);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--gd-text-primary);
+  color: var(--gd-deep-olive);
   letter-spacing: -0.015em;
   line-height: 1.35;
   white-space: nowrap;
@@ -1301,59 +1443,143 @@ textarea:focus-visible,
 .gd-recent-activity-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-family: var(--gd-font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--gd-text-muted);
+  color: var(--gd-text-secondary);
 }
 
 .gd-recent-activity-host {
   font-family: var(--gd-font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
+  color: var(--gd-text-primary);
+  letter-spacing: 0.01em;
+}
+
+.gd-activity-sep {
+  color: var(--gd-border-strong);
+  font-weight: 400;
+}
+
+.gd-activity-ward {
   color: var(--gd-text-secondary);
-  letter-spacing: 0.02em;
+  font-weight: 500;
 }
 
 .gd-recent-activity-time {
   font-family: var(--gd-font-sans);
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--gd-text-muted);
 }
 
-/* Activity Status Pill Override (Clean, Editorial Badges) */
-.gd-recent-activity-item .gd-detail-status-pill {
-  font-family: var(--gd-font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 4px 10px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+/* Typographic Status (Pure Typography, Zero Pills, Zero Boxes) */
+.gd-recent-activity-item .gd-detail-status-pill,
+.gd-recent-activity-item .gd-activity-status-text {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-family: var(--gd-font-sans) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: capitalize !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-shrink: 0 !important;
 }
 
-.gd-recent-activity-item .gd-detail-status-pill.approved {
-  background-color: rgba(84, 104, 62, 0.12);
-  color: #273121;
-  border: 1px solid rgba(84, 104, 62, 0.28);
+.gd-recent-activity-item .gd-detail-status-pill.approved,
+.gd-recent-activity-item .gd-activity-status-text.approved {
+  color: #2D4C18 !important;
 }
 
-.gd-recent-activity-item .gd-detail-status-pill.rejected {
-  background-color: rgba(143, 43, 43, 0.08);
-  color: #8F2B2B;
-  border: 1px solid rgba(143, 43, 43, 0.22);
+.gd-recent-activity-item .gd-detail-status-pill.approved::before,
+.gd-recent-activity-item .gd-activity-status-text.approved::before {
+  content: "✓" !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: #2D4C18 !important;
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.rejected,
+.gd-recent-activity-item .gd-activity-status-text.rejected {
+  color: #8F2B2B !important;
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.rejected::before,
+.gd-recent-activity-item .gd-activity-status-text.rejected::before {
+  content: "✕" !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  color: #8F2B2B !important;
 }
 
 .gd-recent-activity-item .gd-detail-status-pill.expired,
-.gd-recent-activity-item .gd-detail-status-pill.cancelled {
-  background-color: rgba(39, 49, 33, 0.05);
-  color: var(--gd-text-muted);
-  border: 1px solid var(--gd-border-hairline);
+.gd-recent-activity-item .gd-activity-status-text.expired {
+  color: var(--gd-text-muted) !important;
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.expired::before,
+.gd-recent-activity-item .gd-activity-status-text.expired::before {
+  content: none !important;
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.cancelled,
+.gd-recent-activity-item .gd-activity-status-text.cancelled {
+  color: var(--gd-text-muted) !important;
+}
+
+.gd-recent-activity-item .gd-detail-status-pill.cancelled::before,
+.gd-recent-activity-item .gd-activity-status-text.cancelled::before {
+  content: none !important;
+}
+
+.gd-btn-view-all-history {
+  margin-top: 22px !important;
+  padding: 4px 0 !important;
+  font-family: var(--gd-font-sans) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  color: var(--gd-accent-olive) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  text-decoration: none !important;
+  letter-spacing: -0.01em !important;
+  transition: color 0.15s ease !important;
+  outline: none !important;
+}
+
+.gd-btn-view-all-history:hover {
+  color: var(--gd-deep-olive) !important;
+  text-decoration: none !important;
+}
+
+.gd-btn-view-all-history:focus-visible {
+  outline: 2px solid var(--gd-deep-olive) !important;
+  outline-offset: 4px !important;
+  border-radius: 4px !important;
+}
+
+.gd-btn-view-all-history .gd-arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.gd-btn-view-all-history:hover .gd-arrow {
+  transform: translateX(5px) !important;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1671,25 +1897,6 @@ textarea:focus-visible,
   max-width: 520px;
 }
 
-/* View All Links */
-.gd-btn-view-all-history {
-  margin-top: 18px;
-  padding: 0;
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gd-accent-olive);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  display: inline-block;
-}
-
-.gd-btn-view-all-history:hover {
-  color: var(--gd-accent-olive-hover);
-}
 
 /* -----------------------------------------------------------------------------
    Notifications / Action Items (Hairline Rules, No Heavy Cards)

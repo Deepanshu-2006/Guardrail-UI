@@ -89,6 +89,8 @@ export class DashboardShell {
   // Track initial mount so entrance animations (like sidebar slide) only run once
   private isEntryAnimationActive: boolean = true;
   private entryTimer: ReturnType<typeof setTimeout> | null = null;
+  // Track which views have played their initial entrance animation so they play once and never repeat
+  private readonly animatedViews = new Set<string>();
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -532,6 +534,13 @@ export class DashboardShell {
     this.mainContentEl.setAttribute('tabindex', '-1');
     this.mainContentEl.className = 'gd-content-container';
 
+    // Play entrance animations once when each view is first opened, never repeating afterwards
+    const currentView = this.state.activeView;
+    const shouldAnimateActiveView = !this.animatedViews.has(currentView);
+    if (shouldAnimateActiveView) {
+      this.animatedViews.add(currentView);
+    }
+
     // View 1: Overview
     const overviewSection = renderOverview({
       profile: this.state.contactProfile,
@@ -558,6 +567,12 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
+      if (shouldAnimateActiveView) {
+        overviewSection.classList.add('gd-view-initial-enter');
+        setTimeout(() => {
+          overviewSection.classList.remove('gd-view-initial-enter');
+        }, 1200);
+      }
     } else {
       overviewSection.classList.remove('active');
     }
@@ -601,6 +616,12 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');
+      if (shouldAnimateActiveView) {
+        pendingSection.classList.add('gd-view-initial-enter');
+        setTimeout(() => {
+          pendingSection.classList.remove('gd-view-initial-enter');
+        }, 1200);
+      }
     } else {
       pendingSection.classList.remove('active');
     }
@@ -634,6 +655,12 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'history') {
       historySection.classList.add('active');
+      if (shouldAnimateActiveView) {
+        historySection.classList.add('gd-view-initial-enter');
+        setTimeout(() => {
+          historySection.classList.remove('gd-view-initial-enter');
+        }, 1200);
+      }
     } else {
       historySection.classList.remove('active');
     }
@@ -676,6 +703,12 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'settings') {
       settingsSection.classList.add('active');
+      if (shouldAnimateActiveView) {
+        settingsSection.classList.add('gd-view-initial-enter');
+        setTimeout(() => {
+          settingsSection.classList.remove('gd-view-initial-enter');
+        }, 1200);
+      }
     } else {
       settingsSection.classList.remove('active');
     }
@@ -2132,6 +2165,7 @@ export class DashboardShell {
 
     this.activeFetchPromise = null;
     this.activeDetailFetchPromises.clear();
+    this.animatedViews.clear();
 
     while (this.rootContainer.firstChild) {
       this.rootContainer.removeChild(this.rootContainer.firstChild);

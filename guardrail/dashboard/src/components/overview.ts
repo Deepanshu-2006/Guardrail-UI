@@ -485,7 +485,18 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       const viewAllBtn = document.createElement('button');
       viewAllBtn.type = 'button';
       viewAllBtn.className = 'gd-btn-view-all-history';
-      viewAllBtn.textContent = `View All ${pendingList.length} Pending Approvals →`;
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = `View All ${pendingList.length} Pending Approvals`;
+
+      const arrowSpan = document.createElement('span');
+      arrowSpan.className = 'gd-arrow';
+      arrowSpan.setAttribute('aria-hidden', 'true');
+      arrowSpan.textContent = '→';
+
+      viewAllBtn.appendChild(textSpan);
+      viewAllBtn.appendChild(arrowSpan);
+
       viewAllBtn.addEventListener('click', () => {
         props.onViewPending?.();
       });
@@ -937,36 +948,13 @@ export function renderOverview(props: OverviewProps): HTMLElement {
         }
       }
 
-      // 1. Eyebrow Row: Category · Requester
-      const eyebrow = document.createElement('div');
-      eyebrow.className = 'gd-recent-activity-eyebrow';
-
-      const catSpan = document.createElement('span');
-      catSpan.className = 'gd-activity-cat';
-      catSpan.textContent = categoryLabel;
-      eyebrow.appendChild(catSpan);
-
-      if (wardDisplayName) {
-        const eyeSep = document.createElement('span');
-        eyeSep.className = 'gd-activity-sep';
-        eyeSep.textContent = '·';
-        eyeSep.setAttribute('aria-hidden', 'true');
-        eyebrow.appendChild(eyeSep);
-
-        const wardSpan = document.createElement('span');
-        wardSpan.className = 'gd-activity-ward';
-        wardSpan.textContent = wardDisplayName;
-        eyebrow.appendChild(wardSpan);
-      }
-      itemLeft.appendChild(eyebrow);
-
-      // 2. Primary Action Title (Display Typography)
+      // 1. Primary Action Title (Display Typography)
       const desc = document.createElement('div');
       desc.className = 'gd-recent-activity-desc gd-recent-activity-title';
       desc.textContent = actionTitle;
       itemLeft.appendChild(desc);
 
-      // 3. Metadata Row: Hostname · Resolved Timestamp
+      // 2. Metadata Subline: Hostname · Requester/Ward · Resolved Timestamp
       const meta = document.createElement('div');
       meta.className = 'gd-recent-activity-meta';
 
@@ -985,11 +973,24 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       hostSpan.textContent = safeHost;
       meta.appendChild(hostSpan);
 
-      const sep = document.createElement('span');
-      sep.className = 'gd-activity-sep';
-      sep.textContent = '·';
-      sep.setAttribute('aria-hidden', 'true');
-      meta.appendChild(sep);
+      if (wardDisplayName) {
+        const sep1 = document.createElement('span');
+        sep1.className = 'gd-activity-sep';
+        sep1.textContent = '·';
+        sep1.setAttribute('aria-hidden', 'true');
+        meta.appendChild(sep1);
+
+        const wardSpan = document.createElement('span');
+        wardSpan.className = 'gd-activity-ward';
+        wardSpan.textContent = wardDisplayName;
+        meta.appendChild(wardSpan);
+      }
+
+      const sep2 = document.createElement('span');
+      sep2.className = 'gd-activity-sep';
+      sep2.textContent = '·';
+      sep2.setAttribute('aria-hidden', 'true');
+      meta.appendChild(sep2);
 
       const timeSource = req.resolvedAt || (req.decision && req.decision.decidedAt) || req.createdAt;
       const timeStr = timeSource
@@ -1003,12 +1004,23 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
       itemLeft.appendChild(meta);
 
-      // 4. Status Badge (Right aligned)
+      // 3. Typographic Status Indicator (Pure Typography, Zero Boxes / Pills)
       const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
       const statusPill = document.createElement('span');
-      statusPill.className = `gd-detail-status-pill gd-activity-status-pill ${statusClass}`;
+      statusPill.className = `gd-activity-status-text ${statusClass}`;
       statusPill.setAttribute('role', 'status');
-      statusPill.textContent = req.status || 'APPROVED';
+
+      const statusText = req.status === ApprovalStatus.APPROVED
+        ? 'Approved'
+        : req.status === ApprovalStatus.REJECTED
+        ? 'Rejected'
+        : req.status === ApprovalStatus.EXPIRED
+        ? 'Expired'
+        : req.status === ApprovalStatus.CANCELLED
+        ? 'Cancelled'
+        : (req.status || 'Approved');
+
+      statusPill.textContent = statusText;
 
       item.appendChild(itemLeft);
       item.appendChild(statusPill);

@@ -383,7 +383,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       props.selectedRequestDetail &&
       !displayRequests.some((r) => r.id === props.selectedRequestDetail!.id)
     ) {
-      displayRequests.push(props.selectedRequestDetail);
+      displayRequests.unshift(props.selectedRequestDetail);
     }
 
     if (displayRequests.length === 0) {
