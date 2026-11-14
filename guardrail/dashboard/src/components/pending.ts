@@ -15,6 +15,7 @@
 import { ApprovalRequest, ApprovalStatus, RequestFilters, RiskLevel, ViewStatus } from '../types.js';
 import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isRequestExpired } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
+import { setAnimatedHeading } from './icons.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
@@ -135,8 +136,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const title = document.createElement('h1');
   title.id = 'pending-title';
   title.className = 'gd-section-title';
-  title.textContent = 'Pending Approvals';
-  title.setAttribute('aria-label', 'Pending Approvals');
+  setAnimatedHeading(title, 'Pending Approvals');
   titleRow.appendChild(title);
 
   // Subtle pending count indicator

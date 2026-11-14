@@ -86,11 +86,15 @@ export class DashboardShell {
   private lastAppliedHistorySeq: number = 0;
   private activeHistoryFetchPromise: Promise<void> | null = null;
 
+  // Active entrance animation state (triggers twice only per view, resets on page reload)
+  public static readonly MAX_VIEW_ENTRANCE_ANIMATIONS = 2;
+  private readonly viewEntranceCounts: Map<DashboardView, number> = new Map();
+  private activeEnteringView: DashboardView | null = null;
+  private viewEnterTimer: ReturnType<typeof setTimeout> | null = null;
+
   // Track initial mount so entrance animations (like sidebar slide) only run once
   private isEntryAnimationActive: boolean = true;
   private entryTimer: ReturnType<typeof setTimeout> | null = null;
-  // Track which views have played their initial entrance animation so they play once and never repeat
-  private readonly animatedViews = new Set<string>();
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -186,6 +190,7 @@ export class DashboardShell {
       }
     }, 1200);
 
+    this.startViewEntrance(this.state.activeView);
     this.init();
   }
 
@@ -534,12 +539,9 @@ export class DashboardShell {
     this.mainContentEl.setAttribute('tabindex', '-1');
     this.mainContentEl.className = 'gd-content-container';
 
-    // Play entrance animations once when each view is first opened, never repeating afterwards
+    // Play entrance animations once when each view is first opened/reloaded, never repeating on background polling
     const currentView = this.state.activeView;
-    const shouldAnimateActiveView = !this.animatedViews.has(currentView);
-    if (shouldAnimateActiveView) {
-      this.animatedViews.add(currentView);
-    }
+    const isViewEntering = this.activeEnteringView === currentView;
 
     // View 1: Overview
     const overviewSection = renderOverview({
@@ -567,11 +569,8 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
-      if (shouldAnimateActiveView) {
+      if (isViewEntering) {
         overviewSection.classList.add('gd-view-initial-enter');
-        setTimeout(() => {
-          overviewSection.classList.remove('gd-view-initial-enter');
-        }, 1200);
       }
     } else {
       overviewSection.classList.remove('active');
@@ -616,11 +615,8 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');
-      if (shouldAnimateActiveView) {
+      if (isViewEntering) {
         pendingSection.classList.add('gd-view-initial-enter');
-        setTimeout(() => {
-          pendingSection.classList.remove('gd-view-initial-enter');
-        }, 1200);
       }
     } else {
       pendingSection.classList.remove('active');
@@ -655,11 +651,8 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'history') {
       historySection.classList.add('active');
-      if (shouldAnimateActiveView) {
+      if (isViewEntering) {
         historySection.classList.add('gd-view-initial-enter');
-        setTimeout(() => {
-          historySection.classList.remove('gd-view-initial-enter');
-        }, 1200);
       }
     } else {
       historySection.classList.remove('active');
@@ -703,11 +696,8 @@ export class DashboardShell {
     });
     if (this.state.activeView === 'settings') {
       settingsSection.classList.add('active');
-      if (shouldAnimateActiveView) {
+      if (isViewEntering) {
         settingsSection.classList.add('gd-view-initial-enter');
-        setTimeout(() => {
-          settingsSection.classList.remove('gd-view-initial-enter');
-        }, 1200);
       }
     } else {
       settingsSection.classList.remove('active');
@@ -722,6 +712,49 @@ export class DashboardShell {
   }
 
   /**
+   * Starts an entrance animation window for a newly opened or reloaded view.
+   * Triggers at most twice per view per session, resetting upon page reload.
+   * Preserves gd-view-initial-enter across any rapid initial network fetches during this window,
+   * then removes it cleanly once completed so subsequent polling/re-renders stay completely static.
+   */
+  private startViewEntrance(view: DashboardView): void {
+    const count = this.viewEntranceCounts.get(view) ?? 0;
+    if (count >= DashboardShell.MAX_VIEW_ENTRANCE_ANIMATIONS) {
+      this.activeEnteringView = null;
+      return;
+    }
+    this.viewEntranceCounts.set(view, count + 1);
+
+    if (this.viewEnterTimer) {
+      clearTimeout(this.viewEnterTimer);
+      this.viewEnterTimer = null;
+    }
+    this.activeEnteringView = view;
+    this.viewEnterTimer = setTimeout(() => {
+      this.activeEnteringView = null;
+      this.viewEnterTimer = null;
+      if (this.mainContentEl) {
+        const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
+        enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
+      }
+    }, 1600);
+  }
+
+  /**
+   * Gets the number of times a view's entrance animation has triggered in this session.
+   */
+  public getViewEntranceCount(view: DashboardView): number {
+    return this.viewEntranceCounts.get(view) ?? 0;
+  }
+
+  /**
+   * Resets view entrance animation counters (called on page reload or programmatically).
+   */
+  public resetViewEntranceCounts(): void {
+    this.viewEntranceCounts.clear();
+  }
+
+  /**
    * Switches the active dashboard section.
    */
   public setActiveView(view: DashboardView, updateHash: boolean = true): void {
@@ -731,6 +764,16 @@ export class DashboardShell {
       this.entryTimer = null;
     }
 
+    if (this.viewEnterTimer) {
+      clearTimeout(this.viewEnterTimer);
+      this.viewEnterTimer = null;
+    }
+    this.activeEnteringView = null;
+    if (this.mainContentEl) {
+      const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
+      enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
+    }
+
     if (this.isMobileSidebarOpen) {
       this.toggleMobileSidebar(false);
     }
@@ -738,6 +781,7 @@ export class DashboardShell {
     if (this.state.activeView === view) return;
 
     this.state.activeView = view;
+    this.startViewEntrance(view);
     if (updateHash && typeof window !== 'undefined') {
       window.location.hash = `#${view}`;
     }
@@ -2148,6 +2192,12 @@ export class DashboardShell {
       this.entryTimer = null;
     }
 
+    if (this.viewEnterTimer) {
+      clearTimeout(this.viewEnterTimer);
+      this.viewEnterTimer = null;
+    }
+    this.activeEnteringView = null;
+
     if (this.hashChangeHandler && typeof window !== 'undefined') {
       window.removeEventListener('hashchange', this.hashChangeHandler);
       this.hashChangeHandler = null;
@@ -2165,7 +2215,7 @@ export class DashboardShell {
 
     this.activeFetchPromise = null;
     this.activeDetailFetchPromises.clear();
-    this.animatedViews.clear();
+    this.viewEntranceCounts.clear();
 
     while (this.rootContainer.firstChild) {
       this.rootContainer.removeChild(this.rootContainer.firstChild);

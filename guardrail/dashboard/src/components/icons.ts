@@ -76,10 +76,31 @@ export function createIcon(name: IconName, extraClass?: string): HTMLElement {
 }
 
 /**
- * Sets heading text directly and preserves accessible attributes.
- * Avoids repeated character DOM splitting and animation cycles.
+ * Applies character-by-character animation spans to heading elements.
+ * Preserves textContent for testing and sets aria-label for screen reader accessibility.
+ * Supports play-once sequential cascade during view initial entrance.
  */
 export function setAnimatedHeading(element: HTMLElement, text: string): void {
-  element.textContent = text;
   element.setAttribute('aria-label', text);
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+  if ('_textContent' in (element as any)) {
+    (element as any)._textContent = '';
+  }
+  for (let i = 0; i < text.length; i++) {
+    const span = document.createElement('span');
+    span.className = 'gd-char';
+    if (typeof span.setAttribute === 'function') {
+      span.setAttribute('style', `--char-idx: ${i};`);
+    }
+    const styleObj = span.style as Record<string, unknown> | CSSStyleDeclaration | undefined;
+    if (styleObj && typeof (styleObj as CSSStyleDeclaration).setProperty === 'function') {
+      (styleObj as CSSStyleDeclaration).setProperty('--char-idx', String(i));
+    } else if (styleObj) {
+      (styleObj as Record<string, unknown>)['--char-idx'] = String(i);
+    }
+    span.textContent = text[i];
+    element.appendChild(span);
+  }
 }

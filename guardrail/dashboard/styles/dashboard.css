@@ -694,6 +694,17 @@ textarea:focus-visible,
    Sequential Progressive Entrance: Plays ONCE on Initial Open, Never Repeats
    ============================================================================= */
 
+@keyframes gd-char-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes gd-render-in {
   0% {
     opacity: 0;
@@ -705,11 +716,21 @@ textarea:focus-visible,
   }
 }
 
-/* Stable, Static Content Presentation (Base State: Never loops or repeats) */
+/* Base static state: crisp, inline, no animation once settled or on re-renders */
 .gd-section-title .gd-char {
   display: inline;
   opacity: 1;
   transform: none;
+  white-space: pre;
+}
+
+/* Character-by-character Heading Animation: ONLY during initial view entrance */
+.gd-view-section.gd-view-initial-enter .gd-section-title .gd-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(14px) scale(0.92);
+  animation: gd-char-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(0.10s + var(--char-idx, 0) * 0.032s);
   white-space: pre;
 }
 
@@ -720,33 +741,33 @@ textarea:focus-visible,
 
 /* 2. View-level entrance (Plays once when each view is first opened, never on polling/re-renders) */
 .gd-view-section.gd-view-initial-enter .gd-section-header {
-  animation: gd-render-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+  animation: gd-render-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.10s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-section-subtitle {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-protection-status-card {
-  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
 
 /* Overview: Metrics Row (Sequential stagger) */
 .gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
 }
 
 /* Overview: Main Content Columns */
 .gd-view-section.gd-view-initial-enter .gd-overview-pending-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1),
@@ -754,111 +775,136 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-error-banner,
 .gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-overview-pending-skeleton,
 .gd-view-section.gd-view-initial-enter .gd-overview-empty-pending {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.78s both;
 }
 
 /* Overview: Recent Activity Section */
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1),
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-empty-state-card {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-btn-view-all-history {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
 }
 
 /* Overview: Right Column (Connect a Ward) */
 .gd-view-section.gd-view-initial-enter .gd-setup-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-setup-form {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both;
 }
 
 /* Pending Approvals & History: Layout and Panels */
 .gd-view-section.gd-view-initial-enter .gd-pending-meta-bar,
 .gd-view-section.gd-view-initial-enter .gd-history-meta-bar,
 .gd-view-section.gd-view-initial-enter .gd-filter-toolbar,
-.gd-view-section.gd-view-initial-enter .gd-filter-chips {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+.gd-view-section.gd-view-initial-enter .gd-filter-chips,
+.gd-view-section.gd-view-initial-enter .gd-pending-header-actions,
+.gd-view-section.gd-view-initial-enter .gd-pending-count-pill,
+.gd-view-section.gd-view-initial-enter .gd-history-notice {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-pending-layout,
-.gd-view-section.gd-view-initial-enter .gd-history-layout {
-  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+.gd-view-section.gd-view-initial-enter .gd-history-layout,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout,
+.gd-view-section.gd-view-initial-enter .gd-approvals-single-column {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
 
+.gd-view-section.gd-view-initial-enter .gd-approvals-single-column > .gd-request-card:nth-of-type(1),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > .gd-request-card:nth-of-type(1),
 .gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(1),
-.gd-view-section.gd-view-initial-enter .gd-pending-empty-state,
-.gd-view-section.gd-view-initial-enter .gd-history-empty-state {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
-}
-
-.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
-}
-
-.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(3) {
+.gd-view-section.gd-view-initial-enter .gd-empty-state,
+.gd-view-section.gd-view-initial-enter .gd-placeholder,
+.gd-view-section.gd-view-initial-enter .gd-history-empty-card,
+.gd-view-section.gd-view-initial-enter .gd-error-placeholder {
   animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-approvals-single-column > .gd-request-card:nth-of-type(2),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > .gd-request-card:nth-of-type(2),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-approvals-single-column > .gd-request-card:nth-of-type(3),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > .gd-request-card:nth-of-type(3),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-approvals-single-column > .gd-request-card:nth-of-type(4),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > .gd-request-card:nth-of-type(4),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(4) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-approvals-single-column > .gd-request-card:nth-of-type(5),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > .gd-request-card:nth-of-type(5),
+.gd-view-section.gd-view-initial-enter .gd-list-pane > :nth-child(5) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-detail-pane,
 .gd-view-section.gd-view-initial-enter .gd-detail-container {
-  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both;
 }
 
 /* Settings View: Sections */
 .gd-view-section.gd-view-initial-enter .gd-settings-section:nth-of-type(1) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-settings-section:nth-of-type(2) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-settings-section:nth-of-type(3) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
 }
 
 /* -----------------------------------------------------------------------------

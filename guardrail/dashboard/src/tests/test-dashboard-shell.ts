@@ -4505,6 +4505,74 @@ async function runDashboardTests() {
     assert(cssContent.includes('.gd-detail-status-pill.approved::before'), 'Stylesheet provides non-color checkmark indicator for approval');
   }
 
+  // Test Suite 51: View Entrance Animation Play-Twice Limit & Reload Reset
+  console.log('\n▶ Test Suite 51: View Entrance Animation Play-Twice Limit & Reload Reset');
+  {
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'overview',
+      autoFetch: false,
+    });
+
+    // 51.1: Initial view (overview) triggers entrance animation on first load
+    assert(shell.getViewEntranceCount('overview') === 1, 'Initial view entrance count is 1 on mount');
+    const overviewEl1 = rootElement.querySelector('#view-overview');
+    assert(overviewEl1 !== null && overviewEl1.classList.contains('gd-view-initial-enter'), 'Overview section has gd-view-initial-enter on initial mount');
+
+    // 51.2: Switching to pending triggers entrance animation (1st time)
+    shell.setActiveView('pending');
+    assert(shell.getViewEntranceCount('pending') === 1, 'Pending entrance count is 1 on first switch');
+    const pendingEl1 = rootElement.querySelector('#view-pending');
+    assert(pendingEl1 !== null && pendingEl1.classList.contains('gd-view-initial-enter'), 'Pending section has gd-view-initial-enter on first visit');
+
+    // 51.3: Switching back to overview triggers entrance animation a second time
+    shell.setActiveView('overview');
+    assert(shell.getViewEntranceCount('overview') === 2, 'Overview entrance count is 2 on second visit');
+    const overviewEl2 = rootElement.querySelector('#view-overview');
+    assert(overviewEl2 !== null && overviewEl2.classList.contains('gd-view-initial-enter'), 'Overview section has gd-view-initial-enter on second visit');
+
+    // 51.4: Switching back to pending triggers entrance animation a second time
+    shell.setActiveView('pending');
+    assert(shell.getViewEntranceCount('pending') === 2, 'Pending entrance count is 2 on second visit');
+    const pendingEl2 = rootElement.querySelector('#view-pending');
+    assert(pendingEl2 !== null && pendingEl2.classList.contains('gd-view-initial-enter'), 'Pending section has gd-view-initial-enter on second visit');
+
+    // 51.5: Switching to overview a third time DOES NOT trigger animation (max 2 reached)
+    shell.setActiveView('overview');
+    assert(shell.getViewEntranceCount('overview') === 2, 'Overview entrance count capped at 2');
+    const overviewEl3 = rootElement.querySelector('#view-overview');
+    assert(overviewEl3 !== null && !overviewEl3.classList.contains('gd-view-initial-enter'), 'Overview section renders statically without gd-view-initial-enter on 3rd visit');
+
+    // 51.6: Switching to pending a third time DOES NOT trigger animation (max 2 reached)
+    shell.setActiveView('pending');
+    assert(shell.getViewEntranceCount('pending') === 2, 'Pending entrance count capped at 2');
+    const pendingEl3 = rootElement.querySelector('#view-pending');
+    assert(pendingEl3 !== null && !pendingEl3.classList.contains('gd-view-initial-enter'), 'Pending section renders statically without gd-view-initial-enter on 3rd visit');
+
+    // 51.7: History and Settings can still trigger their 2 allowed animations
+    shell.setActiveView('history');
+    assert(shell.getViewEntranceCount('history') === 1, 'History entrance count is 1 on first visit');
+    const historyEl = rootElement.querySelector('#view-history');
+    assert(historyEl !== null && historyEl.classList.contains('gd-view-initial-enter'), 'History section has gd-view-initial-enter on first visit');
+
+    shell.setActiveView('settings');
+    assert(shell.getViewEntranceCount('settings') === 1, 'Settings entrance count is 1 on first visit');
+    const settingsEl = rootElement.querySelector('#view-settings');
+    assert(settingsEl !== null && settingsEl.classList.contains('gd-view-initial-enter'), 'Settings section has gd-view-initial-enter on first visit');
+
+    // 51.8: Resetting counts (simulating browser reload) allows animations to trigger twice again
+    shell.resetViewEntranceCounts();
+    assert(shell.getViewEntranceCount('overview') === 0, 'Counters reset to 0 on reload reset');
+    assert(shell.getViewEntranceCount('pending') === 0, 'Pending counter reset to 0 on reload reset');
+
+    shell.setActiveView('overview');
+    assert(shell.getViewEntranceCount('overview') === 1, 'Overview entrance triggers again after reload reset');
+    const overviewElReload = rootElement.querySelector('#view-overview');
+    assert(overviewElReload !== null && overviewElReload.classList.contains('gd-view-initial-enter'), 'Overview has gd-view-initial-enter after reload reset');
+
+    shell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');
