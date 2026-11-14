@@ -2592,35 +2592,53 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Decision History Record Detail Pane (Unboxed Editorial "Opened Record" View)
+   Decision History Record Detail Pane (Pure Typography, Unboxed, Zero Pills)
    ----------------------------------------------------------------------------- */
 
 .gd-history-detail-pane {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 28px;
   width: 100%;
   box-sizing: border-box;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0 0 32px 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 0 40px 0;
+  border-left: 1px solid rgba(39, 49, 33, 0.12) !important;
+  padding-left: 44px;
 }
 
-/* 1. Header: Kicker, Status/Risk Badges, Title, Subhead */
+@media (max-width: 1024px) {
+  .gd-history-detail-pane {
+    border-left: none !important;
+    padding-left: 0;
+  }
+}
+
+/* 1. Header: Kicker Group, Status/Risk Badges, Title, Subhead */
 .gd-history-record-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-bottom: 18px;
+  gap: 10px;
+  padding-bottom: 22px;
   border-bottom: 1px solid rgba(39, 49, 33, 0.12);
+  background: transparent !important;
 }
 
 .gd-history-record-top-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   width: 100%;
+}
+
+.gd-history-record-kicker-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .gd-history-record-kicker {
@@ -2629,23 +2647,59 @@ textarea:focus-visible,
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--gd-deep-olive);
+}
+
+.gd-history-kicker-sep {
+  color: rgba(39, 49, 33, 0.3);
+  font-weight: 700;
+}
+
+.gd-history-record-opened-text {
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: #7A705E;
 }
 
 .gd-history-record-badges {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.gd-history-record-badges .gd-detail-status-pill {
+  font-family: var(--gd-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.gd-history-record-badges .gd-risk-badge {
+  font-family: var(--gd-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
 }
 
 .gd-history-record-title {
   font-family: var(--gd-font-display);
-  font-size: 24px;
+  font-size: 34px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
   color: var(--gd-deep-olive);
-  line-height: 1.25;
-  margin: 4px 0 2px 0;
+  line-height: 1.18;
+  margin: 6px 0 4px 0;
 }
 
 .gd-history-record-subhead {
@@ -2655,195 +2709,222 @@ textarea:focus-visible,
   gap: 8px;
   font-family: var(--gd-font-mono);
   font-size: 12px;
-  color: #6E6452;
+  color: #7A705E;
   margin: 0;
 }
 
 .gd-history-meta-host {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--gd-deep-olive);
 }
 
 .gd-history-meta-sep {
-  color: rgba(39, 49, 33, 0.28);
+  color: rgba(39, 49, 33, 0.3);
+  font-weight: 700;
 }
 
 .gd-history-meta-ward {
-  color: #5A6454;
+  color: #4A5644;
 }
 
 .gd-history-meta-time {
   color: #7A705E;
 }
 
-/* 2. Outcome Summary Card (Refined, unboxed status callout) */
-.gd-history-outcome-card {
+/* 2. Decision Outcome (Pure Typography, Zero Box, Zero White Background) */
+.gd-history-outcome-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 16px;
-  border-radius: 4px;
-  border-left: 3px solid rgba(39, 49, 33, 0.2);
-  background: rgba(39, 49, 33, 0.025);
-  box-sizing: border-box;
-}
-
-.gd-history-outcome-card.approved {
-  border-left-color: #2F6F44;
-  background: rgba(47, 111, 68, 0.04);
-}
-
-.gd-history-outcome-card.rejected {
-  border-left-color: #A83226;
-  background: rgba(168, 50, 38, 0.04);
-}
-
-.gd-history-outcome-card.expired {
-  border-left-color: #8C6A23;
-  background: rgba(140, 106, 35, 0.04);
-}
-
-.gd-history-outcome-card.cancelled {
-  border-left-color: #7A705E;
-  background: rgba(122, 112, 94, 0.04);
+  padding: 0 0 24px 0;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.1);
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .gd-history-outcome-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
 }
 
-.gd-history-outcome-label {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--gd-deep-olive);
+.gd-history-outcome-title {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .gd-outcome-mark {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 18px;
   display: inline-flex;
+  align-items: center;
 }
 
-.gd-history-outcome-card.approved .gd-outcome-mark {
-  color: #2F6F44;
+.gd-outcome-verdict {
+  font-family: var(--gd-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  margin: 0;
 }
 
-.gd-history-outcome-card.rejected .gd-outcome-mark {
-  color: #A83226;
+.gd-history-outcome-block.approved .gd-outcome-mark,
+.gd-history-outcome-block.approved .gd-outcome-verdict {
+  color: #235E37;
 }
 
-.gd-history-outcome-card.expired .gd-outcome-mark {
+.gd-history-outcome-block.rejected .gd-outcome-mark,
+.gd-history-outcome-block.rejected .gd-outcome-verdict {
+  color: #9E2A20;
+}
+
+.gd-history-outcome-block.expired .gd-outcome-mark,
+.gd-history-outcome-block.expired .gd-outcome-verdict {
   color: #8C6A23;
 }
 
-.gd-history-outcome-card.cancelled .gd-outcome-mark {
-  color: #7A705E;
+.gd-history-outcome-block.cancelled .gd-outcome-mark,
+.gd-history-outcome-block.cancelled .gd-outcome-verdict {
+  color: #6E624E;
 }
 
 .gd-history-outcome-date {
   font-family: var(--gd-font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 500;
   color: #7A705E;
 }
 
 .gd-history-outcome-note {
-  margin: 2px 0 0 0;
+  margin: 4px 0 0 0;
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 14px;
   font-style: italic;
-  line-height: 1.45;
-  color: #3B4636;
+  line-height: 1.55;
+  color: #2F392B;
 }
 
 .gd-history-outcome-subtext {
-  margin: 2px 0 0 0;
-  font-family: var(--gd-font-mono);
-  font-size: 11.5px;
-  color: #7A705E;
-  letter-spacing: 0.02em;
+  margin: 4px 0 0 0;
+  font-family: var(--gd-font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #4A5644;
 }
 
-/* 3. Sections & Property Grids */
+/* 3. Sections: Numbered Headers & Clean Grids (No Boxes, No Pills) */
 .gd-history-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid rgba(39, 49, 33, 0.08);
+  gap: 14px;
+  padding: 0 0 24px 0;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.1);
+  background: transparent !important;
 }
 
 .gd-history-section-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
 
 .gd-history-section-title {
   font-family: var(--gd-font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gd-deep-olive);
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.gd-section-num {
+  color: #8A7E6C;
+  font-weight: 800;
 }
 
 .gd-history-props-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 24px;
+  gap: 22px 44px;
 }
 
 .gd-history-prop-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .gd-history-prop-label {
   font-family: var(--gd-font-mono);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #7A705E;
+  color: #8A7E6C;
 }
 
 .gd-history-prop-val {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  word-break: break-word;
+}
+
+.gd-prop-primary {
+  font-family: var(--gd-font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: #222B1E;
+  line-height: 1.35;
+}
+
+.gd-prop-secondary {
   font-family: var(--gd-font-sans);
   font-size: 13px;
-  font-weight: 500;
-  color: var(--gd-deep-olive);
-  word-break: break-word;
-  line-height: 1.4;
+  color: #5D6855;
+  font-weight: 400;
 }
 
-.gd-history-mono-id,
-.gd-history-mono-url {
+.gd-prop-meta {
   font-family: var(--gd-font-mono);
   font-size: 12px;
-  color: #525C4D;
+  color: #6E7967;
+  font-weight: 500;
 }
 
-/* 4. Risk Details */
-.gd-history-score-pill {
+.gd-prop-url {
+  font-family: var(--gd-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: #2B3527;
+  letter-spacing: -0.01em;
+}
+
+/* 4. Risk Details (No Pills, Pure Typography) */
+.gd-history-risk-summary {
   font-family: var(--gd-font-mono);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--gd-deep-olive);
-  background: rgba(39, 49, 33, 0.06);
-  padding: 3px 8px;
-  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
+
+.gd-history-risk-summary.low { color: #2F6F44; }
+.gd-history-risk-summary.medium { color: #8C6A23; }
+.gd-history-risk-summary.high { color: #B8531A; }
+.gd-history-risk-summary.critical { color: #A83226; }
 
 .gd-history-reasons-list {
   list-style: none;
@@ -2851,81 +2932,103 @@ textarea:focus-visible,
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .gd-history-reasons-list .gd-risk-reason-item {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
-  line-height: 1.45;
-  color: #384233;
-  position: relative;
-  padding-left: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #2D3728;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
-.gd-history-reasons-list .gd-risk-reason-item::before {
-  content: "•";
-  position: absolute;
-  left: 0;
+.gd-reason-bullet {
   color: #7A705E;
-  font-weight: bold;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.gd-reason-text {
+  flex: 1;
 }
 
 .gd-history-quiet-text {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--gd-text-secondary);
   margin: 0;
 }
 
-/* 5. Timeline Grid */
-.gd-history-timeline-grid {
+/* 5. Audit Timeline (Pure Typography, 3 Columns, Zero Card Boxes) */
+.gd-history-timeline-columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px 20px;
+  gap: 36px;
 }
 
-.gd-history-timeline-item {
+.gd-timeline-column {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .gd-timeline-label {
   font-family: var(--gd-font-mono);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #7A705E;
+  color: #8A7E6C;
 }
 
 .gd-timeline-val {
   font-family: var(--gd-font-mono);
-  font-size: 11.5px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--gd-deep-olive);
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
-/* 6. Footer Reference ID */
+.gd-timeline-actor {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  color: #6E7967;
+  margin-top: 1px;
+}
+
+/* 6. Footer */
 .gd-history-record-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: 2px;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(39, 49, 33, 0.08);
 }
 
 .gd-history-record-footer .gd-detail-id {
   font-family: var(--gd-font-mono);
   font-size: 11px;
+  color: #7C705D;
+}
+
+.gd-footer-status-sync {
+  font-family: var(--gd-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: #8C806D;
 }
 
 @media (max-width: 640px) {
   .gd-history-props-grid,
-  .gd-history-timeline-grid {
+  .gd-history-timeline-columns {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 }
 
@@ -3726,14 +3829,54 @@ article.gd-card-collapsed,
   background-color: rgba(39, 49, 33, 0.02) !important;
 }
 
+.gd-history-card {
+  position: relative;
+}
+
 .gd-history-card.selected,
 .gd-history-card[aria-selected="true"] {
-  background: rgba(39, 49, 33, 0.038) !important;
-  background-color: rgba(39, 49, 33, 0.038) !important;
-  border-left: 3px solid var(--gd-deep-olive) !important;
+  background: rgba(39, 49, 33, 0.05) !important;
+  background-color: rgba(39, 49, 33, 0.05) !important;
+  border-left: 3.5px solid var(--gd-deep-olive) !important;
   border-bottom: 1px solid transparent !important;
   padding-left: 10px !important;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.03) !important;
+  box-shadow: 0 1px 4px rgba(39, 49, 33, 0.05) !important;
+}
+
+.gd-history-card.selected::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--gd-deep-olive);
+  pointer-events: none;
+}
+
+.gd-card-opened-tag {
+  font-family: var(--gd-font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--gd-deep-olive) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  line-height: 1 !important;
+}
+
+.gd-card-opened-tag .gd-opened-chevron {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: var(--gd-deep-olive) !important;
 }
 
 .gd-history-header-badges {
