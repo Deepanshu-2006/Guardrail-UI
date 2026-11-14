@@ -4,6 +4,8 @@ import { ActionOwnershipRegistry, TrustedContactRegistry } from '../../extension
 import { createPersistentApprovalService } from './persistent-approval-service.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
 import { defaultApprovalEventHub } from './event-hub.js';
+import type { SqliteIdentityStore } from './identity-store.js';
+import type { OidcTokenVerifierConfig } from './oidc-token-verifier.js';
 
 export interface GuardrailHttpServerOptions {
   /** Must be supplied by the host application's real identity provider. */
@@ -15,6 +17,8 @@ export interface GuardrailHttpServerOptions {
   readonly contactRegistry?: TrustedContactRegistry;
   readonly actionOwnershipRegistry?: ActionOwnershipRegistry;
   readonly invitationDelivery?: InvitationDeliveryHandler;
+  readonly identities?: SqliteIdentityStore;
+  readonly oidcConfig?: OidcTokenVerifierConfig;
 }
 
 /**
@@ -53,6 +57,23 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
   });
   const server = createServer((request, response) => {
     const requestPath = new URL(request.url ?? '/', 'http://localhost').pathname.replace(/\/+$/, '') || '/';
+    // 1. CORS Preflight for Auth & Standard Endpoints
+    if (request.method === 'OPTIONS' && (requestPath.startsWith('/api/v1/auth/') || requestPath === '/api/v1/auth/me' || requestPath === '/api/v1/auth/config')) {
+      const originHeader = request.headers.origin;
+      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
+      if (originHeader && (allowedOrigins.includes(originHeader) || allowedOrigins.includes('*'))) {
+        response.setHeader('access-control-allow-origin', originHeader);
+        response.setHeader('vary', 'Origin');
+      }
+      response.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+      response.setHeader('access-control-allow-headers', 'authorization, content-type');
+      response.setHeader('access-control-max-age', '86400');
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
+
+    // 2. Health & Readiness Probes
     if (request.method === 'GET' && (requestPath === '/health' || requestPath === '/ready')) {
       const originHeader = request.headers.origin;
       const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
@@ -72,6 +93,124 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
         response.statusCode = databaseReady ? 200 : 503;
         response.end(JSON.stringify({ status: databaseReady ? 'ready' : 'not_ready' }));
       }
+      return;
+    }
+
+    // 3. Public Auth Configuration Discovery (OIDC Provider URLs & Client IDs)
+    if (request.method === 'GET' && requestPath === '/api/v1/auth/config') {
+      const originHeader = request.headers.origin;
+      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
+      if (originHeader && (allowedOrigins.includes(originHeader) || allowedOrigins.includes('*'))) {
+        response.setHeader('access-control-allow-origin', originHeader);
+        response.setHeader('vary', 'Origin');
+      }
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+      response.statusCode = 200;
+      response.end(
+        JSON.stringify({
+          success: true,
+          data: {
+            environment: config.environment,
+            oidcConfigured: Boolean(options.oidcConfig),
+            issuer: options.oidcConfig?.issuer ?? process.env.GUARDRAIL_OIDC_ISSUER ?? null,
+            audience: options.oidcConfig?.audience ?? process.env.GUARDRAIL_OIDC_AUDIENCE ?? null,
+            clientId: process.env.GUARDRAIL_OIDC_CLIENT_ID ?? options.oidcConfig?.audience ?? null,
+            authUrl: process.env.GUARDRAIL_OIDC_AUTH_URL ?? null,
+            tokenUrl: process.env.GUARDRAIL_OIDC_TOKEN_URL ?? null,
+            devTokensAvailable: config.environment !== 'production' && config.environment !== 'pilot',
+          },
+        })
+      );
+      return;
+    }
+
+    // 4. Authenticated Actor Identity Verification (/api/v1/auth/me)
+    if (request.method === 'GET' && requestPath === '/api/v1/auth/me') {
+      const originHeader = request.headers.origin;
+      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
+      if (originHeader && (allowedOrigins.includes(originHeader) || allowedOrigins.includes('*'))) {
+        response.setHeader('access-control-allow-origin', originHeader);
+        response.setHeader('vary', 'Origin');
+      }
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      const authHeader = request.headers.authorization;
+      const token =
+        typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? authHeader.slice(7).trim()
+          : '';
+
+      if (!token) {
+        response.statusCode = 401;
+        response.end(
+          JSON.stringify({
+            success: false,
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Valid Bearer authentication token required.',
+              statusCode: 401,
+            },
+          })
+        );
+        return;
+      }
+
+      options.tokenVerifier
+        .verifyToken(token)
+        .then((authContext) => {
+          if (!authContext || !authContext.isAuthenticated) {
+            response.statusCode = 401;
+            response.end(
+              JSON.stringify({
+                success: false,
+                error: {
+                  code: 'UNAUTHENTICATED',
+                  message: 'Invalid, expired, or untrusted authentication token.',
+                  statusCode: 401,
+                },
+              })
+            );
+            return;
+          }
+
+          let verifiedEmail: string | undefined;
+          try {
+            if (options.identities) {
+              verifiedEmail = options.identities.getVerifiedEmail(authContext.actorId);
+            }
+          } catch {}
+
+          response.statusCode = 200;
+          response.end(
+            JSON.stringify({
+              success: true,
+              data: {
+                actorId: authContext.actorId,
+                role: authContext.role,
+                isAuthenticated: true,
+                email: verifiedEmail ?? null,
+                environment: config.environment,
+              },
+            })
+          );
+        })
+        .catch(() => {
+          response.statusCode = 401;
+          response.end(
+            JSON.stringify({
+              success: false,
+              error: {
+                code: 'UNAUTHENTICATED',
+                message: 'Authentication token verification failed.',
+                statusCode: 401,
+              },
+            })
+          );
+        });
       return;
     }
     // 2. Real-Time Server-Sent Events (SSE) Stream Endpoints
