@@ -128,6 +128,16 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
   const searchWrap = document.createElement('div');
   searchWrap.className = 'gd-search-input-wrap';
 
+  const searchIcon = document.createElement('span');
+  searchIcon.className = 'gd-search-icon';
+  searchIcon.setAttribute('aria-hidden', 'true');
+  searchIcon.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+  `;
+
   const searchInput = document.createElement('input');
   searchInput.type = 'search';
   searchInput.setAttribute('type', 'search');
@@ -135,6 +145,10 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
   searchInput.placeholder = options.searchPlaceholder || 'Search by description, website, or ID...';
   searchInput.value = options.filters.searchQuery || '';
   searchInput.setAttribute('aria-label', 'Search requests by description, website, or ID');
+
+  const underline = document.createElement('span');
+  underline.className = 'gd-search-underline';
+  underline.setAttribute('aria-hidden', 'true');
 
   searchInput.addEventListener('input', (e) => {
     const val = (e?.target as HTMLInputElement)?.value ?? searchInput.value;
@@ -144,12 +158,38 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
     });
   });
 
+  searchWrap.appendChild(searchIcon);
   searchWrap.appendChild(searchInput);
+  searchWrap.appendChild(underline);
   container.appendChild(searchWrap);
 
   // Filter Controls Row
   const controlsRow = document.createElement('div');
   controlsRow.className = 'gd-filter-controls-row';
+
+  // Helper to wrap select with custom chevron and animated underline
+  function createSelectWrapper(selectEl: HTMLSelectElement): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'gd-select-wrap';
+
+    const chevron = document.createElement('span');
+    chevron.className = 'gd-select-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.innerHTML = `
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 9l6 6 6-6"></path>
+      </svg>
+    `;
+
+    const selectUnderline = document.createElement('span');
+    selectUnderline.className = 'gd-select-underline';
+    selectUnderline.setAttribute('aria-hidden', 'true');
+
+    wrap.appendChild(selectEl);
+    wrap.appendChild(chevron);
+    wrap.appendChild(selectUnderline);
+    return wrap;
+  }
 
   // Status Filter Select (if enabled, e.g. in History)
   if (options.showStatusFilter) {
@@ -182,7 +222,7 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       });
     });
 
-    controlsRow.appendChild(statusSelect);
+    controlsRow.appendChild(createSelectWrapper(statusSelect));
   }
 
   // Risk Level Filter Select
@@ -216,7 +256,7 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       });
     });
 
-    controlsRow.appendChild(riskSelect);
+    controlsRow.appendChild(createSelectWrapper(riskSelect));
   }
 
   // Date Range Filter Select
@@ -249,10 +289,26 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
       });
     });
 
-    controlsRow.appendChild(dateSelect);
+    controlsRow.appendChild(createSelectWrapper(dateSelect));
   }
 
-  // Clear Filters Button (shown only when filters or search query are active)
+  // Clear Filters Button & Live Count Indicator
+  const isFiltered = hasActiveFilters(options.filters) || options.filteredCount !== options.totalCount;
+
+  const countEl = document.createElement('div');
+  countEl.className = 'gd-filter-results-count';
+  countEl.setAttribute('role', 'status');
+  countEl.setAttribute('aria-live', 'polite');
+
+  const countText = document.createElement('span');
+  countText.className = 'gd-filter-results-text';
+  countText.textContent = `Showing ${options.filteredCount} of ${options.totalCount}`;
+  countEl.appendChild(countText);
+
+  if (!isFiltered) {
+    countEl.style.display = 'none';
+  }
+
   if (hasActiveFilters(options.filters)) {
     const clearBtn = document.createElement('button');
     clearBtn.type = 'button';
@@ -267,15 +323,8 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
         searchQuery: '',
       });
     });
-    controlsRow.appendChild(clearBtn);
+    countEl.appendChild(clearBtn);
   }
-
-  // Live Count Indicator
-  const countEl = document.createElement('div');
-  countEl.className = 'gd-filter-results-count';
-  countEl.setAttribute('role', 'status');
-  countEl.setAttribute('aria-live', 'polite');
-  countEl.textContent = `Showing ${options.filteredCount} of ${options.totalCount}`;
 
   controlsRow.appendChild(countEl);
   container.appendChild(controlsRow);
