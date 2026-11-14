@@ -380,7 +380,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const expSpan = document.createElement('span');
           expSpan.className = expInfo.isPast ? 'gd-card-meta-expired' : 'gd-card-meta-expires';
           expSpan.textContent = expInfo.isPast
-            ? '⚠️ Expired'
+            ? 'Expired'
             : `Expires: ${new Date(req.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
           meta.appendChild(expSpan);
         }

@@ -1964,46 +1964,46 @@ textarea:focus-visible,
 .gd-approvals-layout,
 .gd-history-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 56px;
+  grid-template-columns: 360px 1fr;
+  gap: 40px;
   min-height: 520px;
+  align-items: start;
 }
 
 .gd-list-pane {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .gd-request-card,
 .gd-history-card {
-  background-color: var(--gd-bg-surface);
+  background-color: rgba(247, 243, 234, 0.45);
   border: 1px solid var(--gd-border-hairline);
-  border-radius: 12px;
-  padding: 16px 18px;
+  border-radius: 8px;
+  padding: 14px 16px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.03);
+  gap: 8px;
+  box-shadow: none;
   transition: all 0.15s ease;
 }
 
 .gd-request-card:hover,
 .gd-history-card:hover {
-  background-color: #FFFFFF;
+  background-color: rgba(247, 243, 234, 0.85);
   border-color: var(--gd-border-strong);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(39, 49, 33, 0.06);
 }
 
 .gd-request-card.selected,
 .gd-request-card[aria-selected="true"],
 .gd-history-card.selected,
 .gd-history-card[aria-selected="true"] {
-  border: 2px solid var(--gd-text-primary);
-  background-color: #FFFFFF;
-  box-shadow: 0 4px 14px rgba(39, 49, 33, 0.08);
+  border-color: var(--gd-border-subtle);
+  border-left: 4px solid var(--gd-deep-olive);
+  background-color: #F7F3EA;
+  box-shadow: 0 1px 4px rgba(39, 49, 33, 0.05);
 }
 
 .gd-request-card-header {
@@ -2020,50 +2020,50 @@ textarea:focus-visible,
   letter-spacing: 0.04em;
 }
 
-/* Risk Badges (Semantic, legible pill badges) */
+/* Risk Badges (Restrained architectural badges) */
 .gd-risk-badge {
   font-family: var(--gd-font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
-  border: 1px solid var(--gd-border-hairline);
-  background-color: #FAF7F0;
+  border: 1px solid var(--gd-border-subtle);
+  background-color: rgba(39, 49, 33, 0.05);
   color: var(--gd-text-primary);
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .gd-risk-badge.low {
-  background-color: #EAF2E4;
-  color: #35531E;
-  border-color: #C0D6B5;
+  background-color: #E2ECD8;
+  color: #2D4C18;
+  border-color: #B8D2A6;
 }
 
 .gd-risk-badge.medium {
-  background-color: #FEF3D6;
-  color: #8A4D04;
-  border-color: #ECC980;
+  background-color: #FBF1D5;
+  color: #7D4504;
+  border-color: #E5C37A;
 }
 
 .gd-risk-badge.high {
-  background-color: #FEE8D6;
-  color: #A84813;
-  border-color: #EBBFA0;
+  background-color: #FCE6D2;
+  color: #933E10;
+  border-color: #E3B48F;
 }
 
 .gd-risk-badge.critical {
-  background-color: #FDE8E8;
-  color: #8F2B2B;
-  border-color: #F5B8B8;
+  background-color: #FADCDC;
+  color: #832626;
+  border-color: #E8A3A3;
 }
 
 .gd-request-description {
   font-family: var(--gd-font-display);
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--gd-text-primary);
@@ -2177,66 +2177,67 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Detail Pane & Inspector Components
+   Detail Pane & Inspector Components (Unboxed, Action-First Architecture)
    ----------------------------------------------------------------------------- */
 
 .gd-detail-pane {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 /* 1. Detail Hero Header */
 .gd-detail-header {
-  background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 14px;
-  padding: 24px 28px;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.03);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--gd-border-strong);
+  border-radius: 0;
+  padding: 0 0 16px 0;
+  box-shadow: none;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
+  gap: 20px;
 }
 
 .gd-detail-title-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
 }
 
 .gd-detail-id {
   font-family: var(--gd-font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--gd-text-secondary);
-  letter-spacing: 0.03em;
-  background-color: var(--gd-bg-canvas);
-  border: 1px solid var(--gd-border-subtle);
-  padding: 3px 10px;
-  border-radius: 6px;
+  letter-spacing: 0.04em;
+  background-color: rgba(39, 49, 33, 0.05);
+  border: 1px solid var(--gd-border-hairline);
+  padding: 2px 8px;
+  border-radius: 4px;
   display: inline-block;
   align-self: flex-start;
 }
 
 .gd-detail-title {
   font-family: var(--gd-font-display);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--gd-text-primary);
-  line-height: 1.3;
+  line-height: 1.25;
   margin: 0;
 }
 
 .gd-detail-status-pill {
   font-family: var(--gd-font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 6px;
-  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2245,417 +2246,68 @@ textarea:focus-visible,
 }
 
 .gd-detail-status-pill.pending {
-  background-color: #FEF3D6;
-  color: #8A4D04;
-  border: 1px solid #ECC980;
+  background-color: #FBF1D5;
+  color: #7D4504;
+  border: 1px solid #E5C37A;
 }
 
 .gd-detail-status-pill.approved {
-  background-color: #EFF5EB;
-  color: #2E4C18;
-  border: 1px solid #BED4B2;
+  background-color: #E2ECD8;
+  color: #2D4C18;
+  border: 1px solid #B8D2A6;
 }
 
 .gd-detail-status-pill.rejected {
-  background-color: #FDE8E8;
-  color: #8F2B2B;
-  border: 1px solid #F5B8B8;
+  background-color: #FADCDC;
+  color: #832626;
+  border: 1px solid #E8A3A3;
 }
 
-.gd-detail-status-pill.cancelled {
-  background-color: #F4EFE6;
-  color: #5F6656;
-  border: 1px solid #DDD5C2;
-}
-
+.gd-detail-status-pill.cancelled,
 .gd-detail-status-pill.expired {
-  background-color: #F4EFE6;
-  color: #7A4302;
-  border: 1px solid #DDD5C2;
+  background-color: rgba(39, 49, 33, 0.07);
+  color: var(--gd-text-secondary);
+  border: 1px solid var(--gd-border-hairline);
 }
 
-/* 2. Lifecycle Status Banner */
-.gd-status-banner {
-  border-radius: 12px;
+/* 2. Reviewer Decision Action Card (Hero Action Area at Top) */
+.gd-decision-actions-card {
+  background-color: rgba(39, 49, 33, 0.04);
+  border: 1px solid var(--gd-border-subtle);
+  border-left: 4px solid var(--gd-deep-olive);
+  border-radius: 8px;
   padding: 16px 20px;
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.02);
-  transition: all 0.2s ease;
-}
-
-.gd-status-banner-content {
-  display: flex;
   flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.gd-status-banner-title {
-  font-family: var(--gd-font-display);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.gd-status-banner-desc {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  line-height: 1.5;
-  margin: 0;
-  font-weight: 500;
-}
-
-.gd-status-banner.rejected {
-  background-color: #FDF2F2;
-  border: 1px solid #F5C6C6;
-  border-left: 5px solid #8F2B2B;
-}
-.gd-status-banner.rejected .gd-status-banner-title {
-  color: #8F2B2B;
-}
-.gd-status-banner.rejected .gd-status-banner-desc {
-  color: #5C1D1D;
-}
-
-.gd-status-banner.approved {
-  background-color: #EFF5EB;
-  border: 1px solid #C8DEC2;
-  border-left: 5px solid #273121;
-}
-.gd-status-banner.approved .gd-status-banner-title {
-  color: #273121;
-}
-.gd-status-banner.approved .gd-status-banner-desc {
-  color: #2C3825;
-}
-
-.gd-status-banner.pending {
-  background-color: #FEF9EE;
-  border: 1px solid #F0DFB8;
-  border-left: 5px solid #C27803;
-}
-.gd-status-banner.pending .gd-status-banner-title {
-  color: #8A4D04;
-}
-.gd-status-banner.pending .gd-status-banner-desc {
-  color: #633602;
-}
-
-.gd-status-banner.cancelled,
-.gd-status-banner.expired {
-  background-color: #F4EFE6;
-  border: 1px solid #DDD5C2;
-  border-left: 5px solid #737D68;
-}
-.gd-status-banner.cancelled .gd-status-banner-title,
-.gd-status-banner.expired .gd-status-banner-title {
-  color: #3F4738;
-}
-.gd-status-banner.cancelled .gd-status-banner-desc,
-.gd-status-banner.expired .gd-status-banner-desc {
-  color: #5F6656;
-}
-
-/* 3. Detail Section Cards */
-.gd-detail-card {
-  background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 14px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.03);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.gd-card-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-bottom: 1px solid #EAE3D3;
-  padding-bottom: 14px;
-}
-
-.gd-card-title {
-  font-family: var(--gd-font-display);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--gd-text-primary);
-  letter-spacing: -0.015em;
-  margin: 0;
-}
-
-.gd-card-subtitle {
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  color: var(--gd-text-secondary);
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* 4. Structured Key-Value Grids */
-.gd-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  box-shadow: none;
 }
 
-.gd-detail-item {
-  background-color: #F4EFE6;
-  border: 1px solid #E2DAC8;
-  border-radius: 10px;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: all 0.15s ease;
+.gd-decision-actions-card .gd-card-header {
+  border-bottom: none;
+  padding-bottom: 0;
+  gap: 2px;
 }
 
-.gd-detail-item:hover {
-  border-color: #D0C6B0;
-  background-color: #F0EAE0;
-}
-
-.gd-detail-label {
-  font-family: var(--gd-font-sans);
-  font-size: 11px;
+.gd-decision-actions-card .gd-card-title {
+  font-family: var(--gd-font-display);
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-weight: 700;
-  color: #737D68;
+  color: var(--gd-deep-olive);
 }
 
-.gd-detail-value {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--gd-text-primary);
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.gd-detail-value.gd-mono {
-  font-family: var(--gd-font-mono);
+.gd-decision-actions-card .gd-card-subtitle {
   font-size: 12px;
-  font-weight: 500;
-  color: #1E2818;
-}
-
-.gd-expired-text {
-  color: #8F2B2B !important;
-}
-
-/* 5. Architectural & Informational Callouts */
-.gd-action-decoupling-note,
-.gd-risk-disclaimer,
-.gd-decision-notice,
-.gd-consequential-notice {
-  background-color: rgba(39, 49, 33, 0.035);
-  border: 1px solid var(--gd-border-hairline);
-  border-left: 3px solid var(--gd-accent-olive);
-  border-radius: 8px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-family: var(--gd-font-sans);
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: #4F5747;
-}
-
-.gd-action-decoupling-note p,
-.gd-decision-notice p,
-.gd-consequential-notice p {
-  margin: 0;
-}
-
-.gd-disclaimer-icon,
-.gd-warning-icon,
-.gd-error-icon,
-.gd-success-icon {
-  font-size: 15px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.gd-disclaimer-text {
-  margin: 0;
-  font-family: var(--gd-font-sans);
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: #4F5747;
-}
-
-/* 6. Safety & Risk Evaluation Styling */
-.gd-risk-summary-row {
-  background-color: #F4EFE6;
-  border: 1px solid #E2DAC8;
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.gd-risk-explanation {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--gd-text-primary);
-  line-height: 1.5;
-  flex: 1;
-}
-
-.gd-risk-score-row {
-  background-color: #F4EFE6;
-  border: 1px solid #E2DAC8;
-  border-radius: 10px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.gd-risk-score-value {
-  font-family: var(--gd-font-mono);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--gd-text-primary);
-}
-
-.gd-risk-reasons-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.gd-risk-reasons-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.gd-risk-reason-item {
-  background-color: #F4EFE6;
-  border: 1px solid #E2DAC8;
-  border-radius: 8px;
-  padding: 11px 16px;
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--gd-text-primary);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.gd-risk-reason-item::before {
-  content: "•";
-  color: var(--gd-accent-olive);
-  font-size: 20px;
-  line-height: 0;
-  flex-shrink: 0;
-}
-
-.gd-risk-empty-text {
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
   color: var(--gd-text-secondary);
-  margin: 0;
-  font-style: italic;
 }
 
-/* 7. Governance Verdict Sub-Card */
-.gd-resolved-details-box {
-  background-color: #F4EFE6;
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 10px;
-  padding: 18px;
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.gd-resolved-details-title {
-  font-family: var(--gd-font-display);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--gd-text-primary);
-  letter-spacing: -0.01em;
-}
-
-.gd-resolved-details-box .gd-detail-item {
-  background-color: var(--gd-bg-surface);
-}
-
-/* 8. Reviewer Decision Controls & Notices */
-.gd-decision-resolved-notice {
-  background-color: #F4EFE6;
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 10px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.gd-decision-resolved-notice p {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  color: var(--gd-text-secondary);
-  line-height: 1.5;
-  margin: 0;
-  font-weight: 500;
-}
-
-.gd-decision-success-banner {
-  background-color: #EFF5EB;
-  border: 1px solid #C8DEC2;
-  border-radius: 10px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.gd-decision-success-text {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #2E4C18;
-}
-
-.gd-decision-error-banner {
-  background-color: #FDF2F2;
-  border: 1px solid #F5C6C6;
-  border-radius: 10px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.gd-decision-error-text {
-  font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #8F2B2B;
-}
-
-/* 9. Action Buttons (Approve / Reject / Refresh) */
 .gd-decision-actions-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .gd-btn-decision {
@@ -2663,91 +2315,69 @@ textarea:focus-visible,
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 10px 22px;
   font-family: var(--gd-font-sans);
   font-size: 13.5px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
-  border: none;
+  border: 1px solid transparent;
 }
 
 .gd-btn-approve {
   color: #EDE6D6;
-  background-color: #273121;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.2);
+  background-color: var(--gd-deep-olive);
+  border-color: var(--gd-deep-olive);
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.15);
 }
 
 .gd-btn-approve:hover:not(:disabled) {
   background-color: #1A2215;
+  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.25);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(39, 49, 33, 0.3);
 }
 
 .gd-btn-reject {
   color: #FFFFFF;
   background-color: #8F2B2B;
-  box-shadow: 0 1px 3px rgba(143, 43, 43, 0.2);
+  border-color: #8F2B2B;
+  box-shadow: 0 1px 3px rgba(143, 43, 43, 0.15);
 }
 
 .gd-btn-reject:hover:not(:disabled) {
   background-color: #752020;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(143, 43, 43, 0.3);
-}
-
-.gd-btn-retry {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  color: #EDE6D6;
-  background-color: #273121;
-  border: 1px solid #273121;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  align-self: flex-start;
-}
-
-.gd-btn-retry:hover {
-  background-color: #1A2215;
+  box-shadow: 0 3px 8px rgba(143, 43, 43, 0.25);
   transform: translateY(-1px);
 }
 
-/* 10. Confirmation Box */
+/* Confirmation Box (Expands in-place) */
 .gd-decision-confirm-box {
-  background-color: var(--gd-bg-surface);
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-top: 12px;
+  background-color: #FAF6ED;
+  border: 1px solid var(--gd-border-subtle);
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 2px 8px rgba(39, 49, 33, 0.05);
+  gap: 12px;
+  box-shadow: none;
 }
 
 .gd-confirm-title {
   font-family: var(--gd-font-display);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--gd-text-primary);
-  letter-spacing: -0.015em;
   margin: 0;
 }
 
 .gd-high-impact-warning {
-  background-color: #FEF9EE;
-  border: 1px solid #F0DFB8;
-  border-left: 4px solid #C27803;
-  border-radius: 8px;
-  padding: 14px 16px;
+  background-color: #FDF4E7;
+  border: 1px solid #ECC980;
+  border-left: 3px solid #C27803;
+  border-radius: 4px;
+  padding: 10px 14px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -2756,15 +2386,15 @@ textarea:focus-visible,
 .gd-warning-content strong {
   display: block;
   font-family: var(--gd-font-display);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #8A4D04;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .gd-warning-content p {
   font-family: var(--gd-font-sans);
-  font-size: 13px;
+  font-size: 12.5px;
   color: #633602;
   line-height: 1.45;
   margin: 0;
@@ -2772,7 +2402,7 @@ textarea:focus-visible,
 
 .gd-confirm-desc {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--gd-text-secondary);
   line-height: 1.5;
   margin: 0;
@@ -2781,50 +2411,60 @@ textarea:focus-visible,
 .gd-confirm-note-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .gd-decision-reason-input {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--gd-text-primary);
-  background-color: #F4EFE6;
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 8px;
-  padding: 10px 14px;
+  background-color: #FAF7F0;
+  border: 1px solid var(--gd-border-subtle);
+  border-radius: 4px;
+  padding: 8px 12px;
   outline: none;
   resize: vertical;
-  transition: all 0.15s ease;
 }
 
 .gd-decision-reason-input:focus {
-  border-color: var(--gd-text-primary);
+  border-color: var(--gd-deep-olive);
   background-color: #FFFFFF;
+}
+
+.gd-consequential-notice {
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--gd-border-strong);
+  border-radius: 0;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--gd-text-muted);
 }
 
 .gd-confirm-actions-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .gd-btn-confirm-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
+  padding: 9px 18px;
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #FFFFFF;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   border: none;
   transition: all 0.15s ease;
 }
 
 .gd-btn-approve-confirm {
-  background-color: #273121;
+  background-color: var(--gd-deep-olive);
 }
 .gd-btn-approve-confirm:hover:not(:disabled) {
   background-color: #1A2215;
@@ -2841,42 +2481,468 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 18px;
+  padding: 8px 16px;
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--gd-text-secondary);
   background-color: transparent;
   border: 1px solid var(--gd-border-hairline);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .gd-btn-cancel-confirm:hover:not(:disabled) {
-  background-color: #F4EFE6;
+  background-color: rgba(39, 49, 33, 0.05);
   color: var(--gd-text-primary);
 }
 
-/* 11. Empty State Placeholders */
+/* 3. Lifecycle Status Banner */
+.gd-status-banner {
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: none;
+  background-color: rgba(39, 49, 33, 0.03);
+  border: 1px solid var(--gd-border-hairline);
+}
+
+.gd-status-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.gd-status-banner-title {
+  font-family: var(--gd-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.gd-status-banner-desc {
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 0;
+  font-weight: 500;
+}
+
+.gd-status-banner.pending {
+  border-left: 3px solid #C27803;
+  background-color: rgba(194, 120, 3, 0.06);
+}
+.gd-status-banner.pending .gd-status-banner-title {
+  color: #8A4D04;
+}
+.gd-status-banner.pending .gd-status-banner-desc {
+  color: #633602;
+}
+
+.gd-status-banner.approved {
+  border-left: 3px solid var(--gd-deep-olive);
+  background-color: rgba(39, 49, 33, 0.06);
+}
+.gd-status-banner.approved .gd-status-banner-title {
+  color: var(--gd-deep-olive);
+}
+.gd-status-banner.approved .gd-status-banner-desc {
+  color: #2C3825;
+}
+
+.gd-status-banner.rejected {
+  border-left: 3px solid #8F2B2B;
+  background-color: rgba(143, 43, 43, 0.06);
+}
+.gd-status-banner.rejected .gd-status-banner-title {
+  color: #8F2B2B;
+}
+.gd-status-banner.rejected .gd-status-banner-desc {
+  color: #5C1D1D;
+}
+
+.gd-status-banner.cancelled,
+.gd-status-banner.expired {
+  border-left: 3px solid #737D68;
+  background-color: rgba(115, 125, 104, 0.06);
+}
+.gd-status-banner.cancelled .gd-status-banner-title,
+.gd-status-banner.expired .gd-status-banner-title {
+  color: #3F4738;
+}
+.gd-status-banner.cancelled .gd-status-banner-desc,
+.gd-status-banner.expired .gd-status-banner-desc {
+  color: #5F6656;
+}
+
+/* 4. Two-Column Compact Metadata Inspection Grid */
+.gd-detail-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.gd-detail-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Detail Section Cards: Unboxed, zero white background */
+.gd-detail-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gd-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--gd-border-hairline);
+  padding-bottom: 6px;
+}
+
+.gd-card-title {
+  font-family: var(--gd-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--gd-text-primary);
+  margin: 0;
+}
+
+.gd-card-subtitle {
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  color: var(--gd-text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Key-Value Lists: Clean architectural rows with hairlines */
+.gd-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gd-detail-item {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--gd-border-hairline);
+  border-radius: 0;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: none;
+}
+
+.gd-detail-item:last-child {
+  border-bottom: none;
+}
+
+.gd-detail-item:hover {
+  background: transparent;
+}
+
+.gd-detail-label {
+  font-family: var(--gd-font-sans);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--gd-text-secondary);
+}
+
+.gd-detail-value {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.gd-detail-value.gd-mono {
+  font-family: var(--gd-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: #1E2818;
+}
+
+.gd-expired-text {
+  color: #8F2B2B !important;
+}
+
+/* 5. Safety & Risk Section Styling */
+.gd-risk-summary-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--gd-border-hairline);
+  border-radius: 0;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gd-risk-explanation {
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--gd-text-primary);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.gd-risk-score-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--gd-border-hairline);
+  border-radius: 0;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gd-risk-score-value {
+  font-family: var(--gd-font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gd-text-primary);
+}
+
+.gd-risk-reasons-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.gd-risk-reasons-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gd-risk-reason-item {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 0;
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--gd-text-primary);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gd-risk-reason-item::before {
+  content: "•";
+  color: var(--gd-accent-olive);
+  font-size: 16px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.gd-risk-empty-text {
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  color: var(--gd-text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
+/* 6. Governance Verdict & Notices */
+.gd-resolved-details-box {
+  background-color: rgba(39, 49, 33, 0.04);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-resolved-details-title {
+  font-family: var(--gd-font-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--gd-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.gd-resolved-details-box .gd-detail-item {
+  border-bottom-color: rgba(39, 49, 33, 0.08);
+}
+
+.gd-decision-resolved-notice {
+  background-color: rgba(39, 49, 33, 0.04);
+  border: 1px solid var(--gd-border-hairline);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-decision-resolved-notice p {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  color: var(--gd-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 500;
+}
+
+.gd-decision-success-banner {
+  background-color: #E2ECD8;
+  border: 1px solid #B8D2A6;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gd-decision-success-text {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: #2D4C18;
+}
+
+.gd-decision-error-banner {
+  background-color: #FADCDC;
+  border: 1px solid #E8A3A3;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gd-backend-offline-banner {
+  background-color: #FDF4E7;
+  border-color: #ECC980;
+}
+
+.gd-backend-offline-banner .gd-decision-error-text {
+  color: #8A4D04;
+}
+
+.gd-decision-error-text {
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: #832626;
+}
+
+.gd-btn-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #EDE6D6;
+  background-color: var(--gd-deep-olive);
+  border: 1px solid var(--gd-deep-olive);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-start;
+}
+
+.gd-btn-retry:hover {
+  background-color: #1A2215;
+  transform: translateY(-1px);
+}
+
+/* 7. Architectural & Informational Callouts */
+.gd-action-decoupling-note,
+.gd-risk-disclaimer,
+.gd-decision-notice,
+.gd-consequential-notice {
+  background-color: transparent;
+  border: none;
+  border-left: 2px solid var(--gd-border-strong);
+  border-radius: 0;
+  padding: 6px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--gd-text-secondary);
+}
+
+.gd-action-decoupling-note p,
+.gd-decision-notice p,
+.gd-consequential-notice p {
+  margin: 0;
+}
+
+.gd-disclaimer-icon,
+.gd-warning-icon,
+.gd-error-icon,
+.gd-success-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.gd-disclaimer-text {
+  margin: 0;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--gd-text-secondary);
+}
+
+/* 8. Empty State Placeholders (Unboxed) */
 .gd-detail-pane .gd-placeholder,
 .gd-list-pane .gd-placeholder {
-  background-color: var(--gd-bg-surface);
-  border: 1px dashed var(--gd-border-hairline);
-  border-radius: 14px;
-  padding: 44px 32px;
+  background-color: transparent;
+  border: 1px dashed var(--gd-border-strong);
+  border-radius: 8px;
+  padding: 40px 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 10px;
+  gap: 8px;
   box-shadow: none;
 }
 
 .gd-detail-pane .gd-placeholder-title,
 .gd-list-pane .gd-placeholder-title {
   font-family: var(--gd-font-display);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--gd-text-primary);
@@ -2886,9 +2952,9 @@ textarea:focus-visible,
 .gd-detail-pane .gd-placeholder-text,
 .gd-list-pane .gd-placeholder-text {
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--gd-text-secondary);
-  line-height: 1.55;
+  line-height: 1.5;
   max-width: 420px;
   margin: 0;
 }

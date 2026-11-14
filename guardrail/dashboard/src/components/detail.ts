@@ -217,19 +217,19 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
   descEl.className = 'gd-status-banner-desc';
 
   if (status === ApprovalStatus.PENDING && expired) {
-    titleEl.textContent = '⏱️ Review Deadline Elapsed';
+    titleEl.textContent = 'Review Deadline Elapsed';
     descEl.textContent =
       'The expiration deadline for this approval request has passed. Decisions can no longer be recorded. The extension will revalidate the local action state and require a fresh request if needed.';
   } else {
     switch (status as string) {
       case ApprovalStatus.PENDING:
-        titleEl.textContent = '⏳ Awaiting Review';
+        titleEl.textContent = 'Awaiting Review';
         descEl.textContent =
           'The server records this approval request as pending. This dashboard cannot verify the action’s current state in the ward’s browser. The extension must validate the local action before any continuation.';
         break;
 
     case ApprovalStatus.APPROVED:
-      titleEl.textContent = '✅ Approved by Trusted Contact';
+      titleEl.textContent = 'Approved by Trusted Contact';
       if (request.decision) {
         const decidedBy = request.decision.decidedBy || 'Authorized reviewer';
         const decidedAt = formatTimestamp(request.decision.decidedAt || request.resolvedAt);
@@ -241,7 +241,7 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
       break;
 
     case ApprovalStatus.REJECTED:
-      titleEl.textContent = '❌ Rejected by Trusted Contact';
+      titleEl.textContent = 'Rejected by Trusted Contact';
       if (request.decision) {
         const decidedBy = request.decision.decidedBy || 'Authorized reviewer';
         const decidedAt = formatTimestamp(request.decision.decidedAt || request.resolvedAt);
@@ -253,7 +253,7 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
       break;
 
     case ApprovalStatus.CANCELLED:
-      titleEl.textContent = '🚫 Action Cancelled';
+      titleEl.textContent = 'Action Cancelled';
       if (request.cancellationReason) {
         descEl.textContent = `The user cancelled this action in Staging Mode: "${request.cancellationReason}".`;
       } else {
@@ -263,19 +263,19 @@ function createStatusBanner(request: ApprovalRequest): HTMLElement {
       break;
 
     case ApprovalStatus.EXPIRED:
-      titleEl.textContent = '⏰ Request Expired';
+      titleEl.textContent = 'Request Expired';
       descEl.textContent =
         'The server marked this request expired. This approval cannot authorize continuation; the extension must check the current action and require a fresh review if applicable.';
       break;
 
     case 'UNAVAILABLE':
-      titleEl.textContent = '⚠️ Status Unavailable';
+      titleEl.textContent = 'Status Unavailable';
       descEl.textContent =
         'The current status of this approval request could not be verified by the backend. It may have been removed or the service is temporarily unreachable.';
       break;
 
     case 'FAILED':
-      titleEl.textContent = '⚠️ Evaluation Failed';
+      titleEl.textContent = 'Evaluation Failed';
       descEl.textContent =
         'The approval request encountered a processing or authorization failure and cannot proceed.';
       break;
@@ -342,7 +342,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const icon = document.createElement('span');
     icon.className = 'gd-error-icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '⚠️';
 
     const errorText = document.createElement('span');
     errorText.className = 'gd-error-text';
@@ -421,12 +420,8 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
 
   dHeader.appendChild(titleGroup);
   dHeader.appendChild(statusPill);
-  container.appendChild(dHeader);
 
-  // 5. Lifecycle Status Banner
-  container.appendChild(createStatusBanner(req));
-
-  // 6. Section A: Held Browser Action (Action Under Review)
+  // 5. Section A: Held Browser Action (Action Under Review)
   // ARCHITECTURAL DISTINCTION: Separates what the ward did in browser from the approval request record.
   const actionCard = document.createElement('section');
   actionCard.className = 'gd-detail-card gd-action-card';
@@ -474,9 +469,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   actionDecouplingBox.appendChild(decouplingP);
   actionCard.appendChild(actionDecouplingBox);
 
-  container.appendChild(actionCard);
-
-  // 7. Section B: Safety & Risk Evaluation
+  // 6. Section B: Safety & Risk Evaluation
   const riskCard = document.createElement('section');
   riskCard.className = 'gd-detail-card gd-risk-card';
   riskCard.setAttribute('aria-labelledby', 'detail-risk-heading');
@@ -575,7 +568,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   const disclaimerIcon = document.createElement('span');
   disclaimerIcon.className = 'gd-disclaimer-icon';
   disclaimerIcon.setAttribute('aria-hidden', 'true');
-  disclaimerIcon.textContent = 'ℹ️';
 
   const disclaimerText = document.createElement('p');
   disclaimerText.className = 'gd-disclaimer-text';
@@ -586,9 +578,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
   disclaimer.appendChild(disclaimerText);
   riskCard.appendChild(disclaimer);
 
-  container.appendChild(riskCard);
-
-  // 8. Section C: Approval Request Governance (Backend Record)
+  // 7. Section C: Approval Request Governance (Backend Record)
   const govCard = document.createElement('section');
   govCard.className = 'gd-detail-card gd-governance-card';
   govCard.setAttribute('aria-labelledby', 'detail-gov-heading');
@@ -672,9 +662,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     govCard.appendChild(cancelBox);
   }
 
-  container.appendChild(govCard);
-
-  // 9. Decoupling & Decision Notice (Preserving selectors expected by existing test suite)
+  // 8. Decoupling & Decision Notice (Preserving selectors expected by existing test suite)
   const notice = document.createElement('div');
   notice.className = 'gd-decision-notice';
   notice.setAttribute('role', 'note');
@@ -684,9 +672,8 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     'Decoupled Execution Architecture: Approving this request records reviewer consent on the Guardrail backend. It does NOT remotely execute the action in the ward’s browser. The user retains sole continuation authority in Staging Mode.';
 
   notice.appendChild(noticeText);
-  container.appendChild(notice);
 
-  // 10. Section E: Decision Controls (Connected to backend decision operations)
+  // 9. Section E: Decision Controls (Connected to backend decision operations)
   const decisionCard = document.createElement('section');
   decisionCard.className = 'gd-detail-card gd-decision-actions-card';
   decisionCard.setAttribute('aria-labelledby', 'detail-decision-heading');
@@ -717,7 +704,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const dErrIcon = document.createElement('span');
     dErrIcon.className = 'gd-error-icon';
     dErrIcon.setAttribute('aria-hidden', 'true');
-    dErrIcon.textContent = '⚠️';
 
     const dErrText = document.createElement('span');
     dErrText.className = 'gd-decision-error-text';
@@ -737,7 +723,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const dSuccIcon = document.createElement('span');
     dSuccIcon.className = 'gd-success-icon';
     dSuccIcon.setAttribute('aria-hidden', 'true');
-    dSuccIcon.textContent = '✅';
 
     const dSuccText = document.createElement('span');
     dSuccText.className = 'gd-decision-success-text';
@@ -775,30 +760,26 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     }
 
     decisionCard.appendChild(resolvedNotice);
-    container.appendChild(decisionCard);
-    return container;
-  }
+  } else {
+    // Backend Unavailable Notice (Task 3 & 5)
+    if (props.isBackendUnavailable) {
+      const unavailNotice = document.createElement('div');
+      unavailNotice.className = 'gd-decision-error-banner gd-backend-offline-banner';
+      unavailNotice.setAttribute('role', 'alert');
 
-  // Backend Unavailable Notice (Task 3 & 5)
-  if (props.isBackendUnavailable) {
-    const unavailNotice = document.createElement('div');
-    unavailNotice.className = 'gd-decision-error-banner gd-backend-offline-banner';
-    unavailNotice.setAttribute('role', 'alert');
+      const unavailIcon = document.createElement('span');
+      unavailIcon.className = 'gd-error-icon';
+      unavailIcon.setAttribute('aria-hidden', 'true');
 
-    const unavailIcon = document.createElement('span');
-    unavailIcon.className = 'gd-error-icon';
-    unavailIcon.setAttribute('aria-hidden', 'true');
-    unavailIcon.textContent = '⚠️';
+      const unavailText = document.createElement('span');
+      unavailText.className = 'gd-decision-error-text';
+      unavailText.textContent =
+        'Backend Unavailable: Decisions cannot be committed while the approval service is unreachable. Please verify network connectivity and retry.';
 
-    const unavailText = document.createElement('span');
-    unavailText.className = 'gd-decision-error-text';
-    unavailText.textContent =
-      'Backend Unavailable: Decisions cannot be committed while the approval service is unreachable. Please verify network connectivity and retry.';
-
-    unavailNotice.appendChild(unavailIcon);
-    unavailNotice.appendChild(unavailText);
-    decisionCard.appendChild(unavailNotice);
-  }
+      unavailNotice.appendChild(unavailIcon);
+      unavailNotice.appendChild(unavailText);
+      decisionCard.appendChild(unavailNotice);
+    }
 
   // Interactive Decision Submission Flow (Two-Step Deliberate Confirmation)
   const decisionControlsContainer = document.createElement('div');
@@ -900,7 +881,6 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
         const warnIcon = document.createElement('span');
         warnIcon.className = 'gd-warning-icon';
         warnIcon.setAttribute('aria-hidden', 'true');
-        warnIcon.textContent = '⚠️';
 
         const warnContent = document.createElement('div');
         warnContent.className = 'gd-warning-content';
@@ -1015,8 +995,38 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     }
   };
 
-  updateDecisionControls();
-  container.appendChild(decisionCard);
+    updateDecisionControls();
+  }
+
+  // 10. Assemble complete View Hierarchy in action-oriented, compact order
+  container.appendChild(dHeader);
+
+  const statusBanner = createStatusBanner(req);
+
+  if (req.status === ApprovalStatus.PENDING) {
+    container.appendChild(decisionCard);
+    container.appendChild(statusBanner);
+  } else {
+    container.appendChild(statusBanner);
+    container.appendChild(decisionCard);
+  }
+
+  // Two-column layout for details
+  const columnsWrap = document.createElement('div');
+  columnsWrap.className = 'gd-detail-columns';
+
+  // Left column: Browser Action Under Review
+  columnsWrap.appendChild(actionCard);
+
+  // Right column: Safety & Risk Evaluation + Governance
+  const rightCol = document.createElement('div');
+  rightCol.className = 'gd-detail-col-right';
+  rightCol.appendChild(riskCard);
+  rightCol.appendChild(govCard);
+  columnsWrap.appendChild(rightCol);
+
+  container.appendChild(columnsWrap);
+  container.appendChild(notice);
 
   return container;
 }
