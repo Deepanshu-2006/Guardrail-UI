@@ -130,6 +130,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
 
+  const sectionEyebrow = document.createElement('span');
+  sectionEyebrow.className = 'gd-section-eyebrow';
+  sectionEyebrow.textContent = 'TRUSTED CONTACT VERIFICATION QUEUE';
+  titleGroup.appendChild(sectionEyebrow);
+
   const titleRow = document.createElement('div');
   titleRow.className = 'gd-pending-title-row';
 
@@ -144,7 +149,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     const countPill = document.createElement('span');
     countPill.className = 'gd-pending-count-pill';
     countPill.setAttribute('role', 'status');
-    countPill.textContent = `${props.requests.length} ${props.requests.length === 1 ? 'request' : 'requests'}`;
+    const n = props.requests.length;
+    countPill.textContent = `— ${n < 10 ? '0' + n : n} ${n === 1 ? 'Awaiting Evaluation' : 'Awaiting Evaluation'}`;
     titleRow.appendChild(countPill);
   }
 
@@ -528,7 +534,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           primaryWrap.appendChild(actionTitle);
           card.appendChild(primaryWrap);
 
-          // 3. Context Metadata Row (Website, Requested Time, Expiration)
+          // 3. Context Metadata Row (Ledger Layout: Destination, Requested, Expiration)
           const metaRow = document.createElement('div');
           metaRow.className = 'gd-request-meta gd-request-context-line';
 
@@ -536,19 +542,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           websiteMeta.className = 'gd-context-item';
           const webLabel = document.createElement('span');
           webLabel.className = 'gd-context-label';
-          webLabel.textContent = 'Website:';
+          webLabel.textContent = 'Destination';
           const webVal = document.createElement('strong');
           webVal.className = 'gd-context-value gd-context-hostname';
           webVal.textContent = hostname;
           websiteMeta.appendChild(webLabel);
           websiteMeta.appendChild(webVal);
           metaRow.appendChild(websiteMeta);
-
-          const sep2 = document.createElement('span');
-          sep2.className = 'gd-context-sep';
-          sep2.setAttribute('aria-hidden', 'true');
-          sep2.textContent = '·';
-          metaRow.appendChild(sep2);
 
           const timeStr = req.createdAt
             ? new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -557,7 +557,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           timeMeta.className = 'gd-context-item';
           const timeLabel = document.createElement('span');
           timeLabel.className = 'gd-context-label';
-          timeLabel.textContent = 'Requested at:';
+          timeLabel.textContent = 'Requested';
           const timeVal = document.createElement('span');
           timeVal.className = 'gd-context-value';
           timeVal.textContent = timeStr;
@@ -567,14 +567,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           if (req.expiresAt) {
             const expInfo = formatExpirationInfo(req.expiresAt);
-            const sep3 = document.createElement('span');
-            sep3.className = 'gd-context-sep';
-            sep3.setAttribute('aria-hidden', 'true');
-            sep3.textContent = '·';
-            metaRow.appendChild(sep3);
 
             const expMeta = document.createElement('div');
             expMeta.className = 'gd-context-item';
+            const expLabel = document.createElement('span');
+            expLabel.className = 'gd-context-label';
+            expLabel.textContent = 'Safety Window';
+            expMeta.appendChild(expLabel);
 
             const expSpan = document.createElement('span');
             expSpan.className = expInfo.isPast ? 'gd-card-meta-expired' : 'gd-card-meta-expires';
@@ -1119,13 +1118,29 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   sidePane.className = 'gd-pending-sidebar';
   sidePane.setAttribute('aria-label', 'Review Policies and Security Oversight');
 
+  // Console Header
+  const sideHeader = document.createElement('div');
+  sideHeader.className = 'gd-sidebar-header';
+
+  const sideTag = document.createElement('span');
+  sideTag.className = 'gd-sidebar-console-tag';
+  sideTag.textContent = 'PROTOCOL CONSOLE';
+
+  const sideConsoleTitle = document.createElement('h2');
+  sideConsoleTitle.className = 'gd-sidebar-console-title';
+  sideConsoleTitle.textContent = 'Security & Oversight';
+
+  sideHeader.appendChild(sideTag);
+  sideHeader.appendChild(sideConsoleTitle);
+  sidePane.appendChild(sideHeader);
+
   // Block 1: Architectural Guarantee
   const guaranteeBlock = document.createElement('div');
   guaranteeBlock.className = 'gd-pending-sidebar-block';
 
   const gBadge = document.createElement('span');
   gBadge.className = 'gd-sidebar-block-badge';
-  gBadge.textContent = 'Architectural Guarantee';
+  gBadge.textContent = 'INVIOLABLE SAFETY GUARANTEE';
 
   const gTitle = document.createElement('h3');
   gTitle.className = 'gd-sidebar-block-title';
@@ -1134,11 +1149,26 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const gText = document.createElement('p');
   gText.className = 'gd-sidebar-block-text';
   gText.textContent =
-    'Guardrail strictly decouples reviewer approvals from client-side execution. Recording your approval commits consent on the Guardrail backend. It does not remotely execute actions on your contact’s device—they retain complete final control to proceed or abort in Staging Mode.';
+    'Guardrail strictly decouples reviewer approvals from client-side execution. Approving an action records reviewer consent on the backend only. It never triggers execution on your contact’s browser—the user retains complete final control to proceed or abort in Staging Mode.';
+
+  const contrastPair = document.createElement('div');
+  contrastPair.className = 'gd-sidebar-contrast-pair';
+
+  const cp1 = document.createElement('div');
+  cp1.className = 'gd-contrast-item';
+  cp1.innerHTML = '<span class="gd-contrast-kicker">REVIEWER ROLE</span><strong class="gd-contrast-value">Audit Consent Only</strong>';
+
+  const cp2 = document.createElement('div');
+  cp2.className = 'gd-contrast-item';
+  cp2.innerHTML = '<span class="gd-contrast-kicker">BROWSER EXECUTION</span><strong class="gd-contrast-value">Ward Local Authority</strong>';
+
+  contrastPair.appendChild(cp1);
+  contrastPair.appendChild(cp2);
 
   guaranteeBlock.appendChild(gBadge);
   guaranteeBlock.appendChild(gTitle);
   guaranteeBlock.appendChild(gText);
+  guaranteeBlock.appendChild(contrastPair);
   sidePane.appendChild(guaranteeBlock);
 
   // Block 2: Review Guidelines
@@ -1147,7 +1177,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   const guideBadge = document.createElement('span');
   guideBadge.className = 'gd-sidebar-block-badge';
-  guideBadge.textContent = 'Review Standards';
+  guideBadge.textContent = 'EVALUATION CHECKLIST';
 
   const guideTitle = document.createElement('h3');
   guideTitle.className = 'gd-sidebar-block-title';
@@ -1158,15 +1188,18 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   const g1 = document.createElement('li');
   g1.className = 'gd-sidebar-guideline-item';
-  g1.innerHTML = '<strong>1. Verify Destination</strong><p>Confirm the target hostname and origin match the expected web application and do not spoof trusted services.</p>';
+  g1.innerHTML =
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm the target hostname and origin match the expected web application and do not spoof trusted services.</p>';
 
   const g2 = document.createElement('li');
   g2.className = 'gd-sidebar-guideline-item';
-  g2.innerHTML = '<strong>2. Check Context</strong><p>Review the action trigger and initiating context to ensure it reflects deliberate, non-malicious browsing.</p>';
+  g2.innerHTML =
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">02</span><strong class="gd-guideline-title">Evaluate Intent</strong></div><p class="gd-guideline-desc">Review the action trigger and initiating context to ensure it reflects intentional browsing activity.</p>';
 
   const g3 = document.createElement('li');
   g3.className = 'gd-sidebar-guideline-item';
-  g3.innerHTML = '<strong>3. 15-Minute Window</strong><p>Pending requests automatically expire after 15 minutes to prevent stale execution windows.</p>';
+  g3.innerHTML =
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">03</span><strong class="gd-guideline-title">15-Minute Expiry</strong></div><p class="gd-guideline-desc">Pending requests automatically expire after 15 minutes to prevent stale execution windows.</p>';
 
   guideList.appendChild(g1);
   guideList.appendChild(g2);
@@ -1183,7 +1216,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   const pBadge = document.createElement('span');
   pBadge.className = 'gd-sidebar-block-badge';
-  pBadge.textContent = 'System Oversight';
+  pBadge.textContent = 'RUNTIME TELEMETRY';
 
   const pTitle = document.createElement('h3');
   pTitle.className = 'gd-sidebar-block-title';
@@ -1194,19 +1227,24 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   const pm1 = document.createElement('div');
   pm1.className = 'gd-sidebar-meta-row';
-  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception:</span> <span class="gd-sidebar-meta-val">Staging Mode Active</span>';
+  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception</span> <span class="gd-sidebar-meta-val">Staging Mode Active</span>';
 
   const pm2 = document.createElement('div');
   pm2.className = 'gd-sidebar-meta-row';
-  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Audit Signing:</span> <span class="gd-sidebar-meta-val">Cryptographic Commit</span>';
+  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Consent Signature</span> <span class="gd-sidebar-meta-val">Ed25519 Cryptographic</span>';
 
   const pm3 = document.createElement('div');
   pm3.className = 'gd-sidebar-meta-row';
-  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Scoping:</span> <span class="gd-sidebar-meta-val">Strict Multi-Tenant</span>';
+  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Boundary</span> <span class="gd-sidebar-meta-val">Strict Multi-Tenant</span>';
+
+  const pm4 = document.createElement('div');
+  pm4.className = 'gd-sidebar-meta-row';
+  pm4.innerHTML = '<span class="gd-sidebar-meta-label">Local Execution</span> <span class="gd-sidebar-meta-val">Decoupled (0 Actions)</span>';
 
   pMeta.appendChild(pm1);
   pMeta.appendChild(pm2);
   pMeta.appendChild(pm3);
+  pMeta.appendChild(pm4);
 
   postureBlock.appendChild(pBadge);
   postureBlock.appendChild(pTitle);
