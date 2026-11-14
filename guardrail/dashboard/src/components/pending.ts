@@ -575,9 +575,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
             const expMeta = document.createElement('div');
             expMeta.className = 'gd-context-item';
-            const expLabel = document.createElement('span');
-            expLabel.className = 'gd-context-label';
-            expLabel.textContent = 'Expires at:';
 
             const expSpan = document.createElement('span');
             expSpan.className = expInfo.isPast ? 'gd-card-meta-expired' : 'gd-card-meta-expires';
@@ -585,7 +582,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               ? 'Expired'
               : `Expires: ${new Date(req.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
-            expMeta.appendChild(expLabel);
             expMeta.appendChild(expSpan);
             metaRow.appendChild(expMeta);
           }
@@ -1117,6 +1113,107 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   }
 
   layout.appendChild(listPane);
+
+  // 3. Companion Guidance & Policy Sidebar (Balances desktop layout, eliminates empty void)
+  const sidePane = document.createElement('aside');
+  sidePane.className = 'gd-pending-sidebar';
+  sidePane.setAttribute('aria-label', 'Review Policies and Security Oversight');
+
+  // Block 1: Architectural Guarantee
+  const guaranteeBlock = document.createElement('div');
+  guaranteeBlock.className = 'gd-pending-sidebar-block';
+
+  const gBadge = document.createElement('span');
+  gBadge.className = 'gd-sidebar-block-badge';
+  gBadge.textContent = 'Architectural Guarantee';
+
+  const gTitle = document.createElement('h3');
+  gTitle.className = 'gd-sidebar-block-title';
+  gTitle.textContent = 'Safe Approvals Guarantee';
+
+  const gText = document.createElement('p');
+  gText.className = 'gd-sidebar-block-text';
+  gText.textContent =
+    'Guardrail strictly decouples reviewer approvals from client-side execution. Recording your approval commits consent on the Guardrail backend. It does not remotely execute actions on your contact’s device—they retain complete final control to proceed or abort in Staging Mode.';
+
+  guaranteeBlock.appendChild(gBadge);
+  guaranteeBlock.appendChild(gTitle);
+  guaranteeBlock.appendChild(gText);
+  sidePane.appendChild(guaranteeBlock);
+
+  // Block 2: Review Guidelines
+  const guideBlock = document.createElement('div');
+  guideBlock.className = 'gd-pending-sidebar-block';
+
+  const guideBadge = document.createElement('span');
+  guideBadge.className = 'gd-sidebar-block-badge';
+  guideBadge.textContent = 'Review Standards';
+
+  const guideTitle = document.createElement('h3');
+  guideTitle.className = 'gd-sidebar-block-title';
+  guideTitle.textContent = 'Review Guidelines';
+
+  const guideList = document.createElement('ol');
+  guideList.className = 'gd-sidebar-guidelines-list';
+
+  const g1 = document.createElement('li');
+  g1.className = 'gd-sidebar-guideline-item';
+  g1.innerHTML = '<strong>1. Verify Destination</strong><p>Confirm the target hostname and origin match the expected web application and do not spoof trusted services.</p>';
+
+  const g2 = document.createElement('li');
+  g2.className = 'gd-sidebar-guideline-item';
+  g2.innerHTML = '<strong>2. Check Context</strong><p>Review the action trigger and initiating context to ensure it reflects deliberate, non-malicious browsing.</p>';
+
+  const g3 = document.createElement('li');
+  g3.className = 'gd-sidebar-guideline-item';
+  g3.innerHTML = '<strong>3. 15-Minute Window</strong><p>Pending requests automatically expire after 15 minutes to prevent stale execution windows.</p>';
+
+  guideList.appendChild(g1);
+  guideList.appendChild(g2);
+  guideList.appendChild(g3);
+
+  guideBlock.appendChild(guideBadge);
+  guideBlock.appendChild(guideTitle);
+  guideBlock.appendChild(guideList);
+  sidePane.appendChild(guideBlock);
+
+  // Block 3: Session Security Posture
+  const postureBlock = document.createElement('div');
+  postureBlock.className = 'gd-pending-sidebar-block';
+
+  const pBadge = document.createElement('span');
+  pBadge.className = 'gd-sidebar-block-badge';
+  pBadge.textContent = 'System Oversight';
+
+  const pTitle = document.createElement('h3');
+  pTitle.className = 'gd-sidebar-block-title';
+  pTitle.textContent = 'Session Protection';
+
+  const pMeta = document.createElement('div');
+  pMeta.className = 'gd-sidebar-posture-meta';
+
+  const pm1 = document.createElement('div');
+  pm1.className = 'gd-sidebar-meta-row';
+  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception:</span> <span class="gd-sidebar-meta-val">Staging Mode Active</span>';
+
+  const pm2 = document.createElement('div');
+  pm2.className = 'gd-sidebar-meta-row';
+  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Audit Signing:</span> <span class="gd-sidebar-meta-val">Cryptographic Commit</span>';
+
+  const pm3 = document.createElement('div');
+  pm3.className = 'gd-sidebar-meta-row';
+  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Scoping:</span> <span class="gd-sidebar-meta-val">Strict Multi-Tenant</span>';
+
+  pMeta.appendChild(pm1);
+  pMeta.appendChild(pm2);
+  pMeta.appendChild(pm3);
+
+  postureBlock.appendChild(pBadge);
+  postureBlock.appendChild(pTitle);
+  postureBlock.appendChild(pMeta);
+  sidePane.appendChild(postureBlock);
+
+  layout.appendChild(sidePane);
   section.appendChild(layout);
   return section;
 }
