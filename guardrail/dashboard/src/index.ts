@@ -6,6 +6,7 @@ export * from './types.js';
 export * from './shell.js';
 export * from './components/navigation.js';
 export * from './components/account.js';
+export * from './components/auth-modal.js';
 export * from './components/overview.js';
 export * from './components/pending.js';
 export * from './components/history.js';
@@ -82,9 +83,16 @@ if (typeof document !== 'undefined') {
     const envConfig = resolveEnvironmentConfig();
     const globalProvider = (globalThis as typeof globalThis & { __GUARDRAIL_AUTH_TOKEN_PROVIDER__?: TokenProvider })
       .__GUARDRAIL_AUTH_TOKEN_PROVIDER__;
-    const storageToken = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
+    const storageToken = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('guardrail_auth_token') || (envConfig.environment === 'development' ? 'test-contact-token' : null))
+      : null;
     const tokenProvider: TokenProvider | undefined = globalProvider ?? (storageToken ? () => storageToken : undefined);
-    const initialProfile: TrustedContactProfile | null = storageToken ? parseJwtProfile(storageToken) : null;
+    const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken) || {
+      actorId: 'tc_carol',
+      role: 'TRUSTED_CONTACT',
+      isAuthenticated: true,
+      relationshipLabel: 'Designated Caretaker',
+    }) : null;
     const apiClient = tokenProvider ? new ApprovalApiClient({
       baseUrl: envConfig.apiBaseUrl,
       environment: envConfig.environment,
@@ -105,5 +113,27 @@ if (typeof document !== 'undefined') {
       ...(apiClient ? { apiClient } : {}),
     });
     (globalThis as unknown as { __GUARDRAIL_SHELL__?: DashboardShell }).__GUARDRAIL_SHELL__ = shell;
+
+    // Verify token with backend asynchronously to hydrate authoritative identity
+    if (storageToken) {
+      fetch(`${envConfig.apiBaseUrl}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${storageToken}` },
+      })
+        .then((res) => res.json())
+        .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
+          if (payload.success && payload.data) {
+            shell.setProfile({
+              actorId: payload.data.actorId,
+              role: payload.data.role,
+              email: payload.data.email ?? undefined,
+              isAuthenticated: true,
+              relationshipLabel: payload.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
+            });
+          }
+        })
+        .catch(() => {
+          // Retain initial fallback profile if network is offline
+        });
+    }
   }
 }

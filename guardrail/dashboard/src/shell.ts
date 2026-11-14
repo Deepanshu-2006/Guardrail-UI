@@ -26,6 +26,7 @@ import {
 } from './types.js';
 import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
+import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview } from './components/overview.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory } from './components/history.js';
@@ -421,6 +422,8 @@ export class DashboardShell {
     const accountArea = renderAccountArea({
       profile: this.state.contactProfile,
       onOpenSettings: () => this.setActiveView('settings'),
+      onOpenAuth: () => this.openAuthModal(),
+      onSignOut: () => this.handleSignOut(),
     });
     this.sidebarEl.appendChild(accountArea);
     this.appWrapper.appendChild(this.sidebarEl);
@@ -1312,8 +1315,58 @@ export class DashboardShell {
       if (this.pollIntervalMs && this.pollIntervalMs > 0 && !this.pollTimer) {
         this.startPolling();
       }
+    } else {
+      this.stopPolling();
+      this.isPollingHaltedDueToAuth = true;
     }
     this.render();
+  }
+
+  /**
+   * Opens the Caretaker Authentication & Identity dialog.
+   */
+  public openAuthModal(): void {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('gd-auth-modal-root')) return;
+
+    const modal = renderAuthModal({
+      profile: this.state.contactProfile,
+      apiBaseUrl: (this.apiClient as any)?.options?.baseUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000'),
+      onAuthSuccess: (token, profile) => {
+        this.handleAuthSuccess(token, profile);
+      },
+      onSignOut: () => {
+        this.handleSignOut();
+      },
+      onClose: () => {
+        modal.remove();
+      },
+    });
+    modal.id = 'gd-auth-modal-root';
+    document.body.appendChild(modal);
+  }
+
+  /**
+   * Handles successful authentication by persisting token, updating profile,
+   * and refreshing dashboard data.
+   */
+  public handleAuthSuccess(token: string, profile: TrustedContactProfile): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('guardrail_auth_token', token);
+    }
+    this.setProfile(profile);
+    void this.refresh();
+  }
+
+  /**
+   * Clears persisted credentials, revokes active session state, and pauses live sync.
+   */
+  public handleSignOut(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('guardrail_auth_token');
+    }
+    this.setProfile(null);
+    void this.refresh();
   }
 
   /**

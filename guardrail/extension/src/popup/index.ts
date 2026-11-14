@@ -19,6 +19,7 @@ import { loadPolicyConfigFromStorage } from '../config/registry.js';
 import { ConfigHealthStatus } from '../types/config.js';
 import { evaluateProtectionStatus, getStoredOnboardingState } from '../onboarding/state.js';
 import { ProtectionStatusReport } from '../onboarding/types.js';
+import { verifyWardIdentity } from '../approval/auth-manager.js';
 
 export async function initializePopup(): Promise<void> {
   const manifest =
@@ -90,6 +91,20 @@ export function renderPopupStatus(
     if (report.isMockService) {
       serviceVal.style.color = '#54683E';
     }
+  }
+
+  // 2b. Ward Identity
+  const wardVal = document.getElementById('ext-ward-val');
+  if (wardVal) {
+    void verifyWardIdentity().then((identity) => {
+      if (identity && identity.isAuthenticated) {
+        wardVal.textContent = `${identity.actorId} (${identity.role})`;
+      } else {
+        wardVal.textContent = 'Unauthenticated';
+      }
+    }).catch(() => {
+      wardVal.textContent = 'Offline';
+    });
   }
 
   // 3. Status Indicator & Card

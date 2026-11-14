@@ -19,6 +19,8 @@ async function main(): Promise<void> {
       port: serverConfig.port,
       routerConfig: serverConfig.allowedOrigins.length ? { allowedOrigins: serverConfig.allowedOrigins } : undefined,
       invitationDelivery,
+      identities,
+      oidcConfig,
     });
   } catch (error) {
     invitationDelivery.close();

@@ -103,6 +103,8 @@ export interface TrustedContactProfile {
   readonly assignedWardId?: string;
   /** Human-readable relationship label, if configured */
   readonly relationshipLabel?: string;
+  /** Verified email from identity provider if available */
+  readonly email?: string;
   /** True if session is authenticated by the server */
   readonly isAuthenticated: boolean;
 }

@@ -1,8 +1,8 @@
 import { startGuardrailHttpServer } from './http-server.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
-import { InMemoryTokenVerifier } from '../../extension/src/approval/api.js';
-import { InMemoryTrustedContactRegistry, TrustedContactStatus } from '../../extension/src/approval/authorization.js';
+import { InMemoryTrustedContactRegistry, TrustedContactStatus, ActorRole } from '../../extension/src/approval/authorization.js';
 import { SqliteIdentityStore } from './identity-store.js';
+import { tryLoadOidcTokenVerifierConfig, OidcTokenVerifier, HybridTokenVerifier } from './oidc-token-verifier.js';
 
 async function main(): Promise<void> {
   const serverConfig = loadGuardrailServerConfig(process.env, {
@@ -13,17 +13,22 @@ async function main(): Promise<void> {
   // Setup SQLite Identity Store
   const identities = SqliteIdentityStore.open(serverConfig.databasePath);
 
-  // Development In-Memory Token Verifier with pre-seeded test ward & contact tokens
-  const tokenVerifier = new InMemoryTokenVerifier();
-  tokenVerifier.registerToken('test-ward-token', {
-    actorId: 'usr_alice',
-    role: 'USER',
-    isAuthenticated: true,
-  });
-  tokenVerifier.registerToken('test-contact-token', {
-    actorId: 'tc_carol',
-    role: 'TRUSTED_CONTACT',
-    isAuthenticated: true,
+  // Optional OIDC configuration if environment variables are provided
+  const oidcConfig = tryLoadOidcTokenVerifierConfig(process.env);
+  const oidcVerifier = oidcConfig ? new OidcTokenVerifier(oidcConfig, identities) : undefined;
+
+  // Hybrid Token Verifier supporting real verified JWTs and development test tokens
+  const tokenVerifier = new HybridTokenVerifier(oidcVerifier, true, {
+    'test-ward-token': {
+      actorId: 'usr_alice',
+      role: ActorRole.USER,
+      isAuthenticated: true,
+    },
+    'test-contact-token': {
+      actorId: 'tc_carol',
+      role: ActorRole.TRUSTED_CONTACT,
+      isAuthenticated: true,
+    },
   });
 
   // Contact registry with pre-seeded caretaker relationship
@@ -42,6 +47,8 @@ async function main(): Promise<void> {
     host: serverConfig.host,
     port: serverConfig.port,
     contactRegistry,
+    identities,
+    oidcConfig,
   });
 
   process.stdout.write(`\n======================================================\n`);
@@ -49,6 +56,7 @@ async function main(): Promise<void> {
   process.stdout.write(`======================================================\n`);
   process.stdout.write(`  API URL:          http://${runtime.address.host}:${runtime.address.port}/\n`);
   process.stdout.write(`  Database:         ${serverConfig.databasePath}\n`);
+  process.stdout.write(`  OIDC Issuer:      ${oidcConfig ? oidcConfig.issuer : 'None (Dev tokens active)'}\n`);
   process.stdout.write(`  Caretaker Token:  test-contact-token (Actor: tc_carol)\n`);
   process.stdout.write(`  Ward Token:       test-ward-token (Actor: usr_alice)\n\n`);
 
