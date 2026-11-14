@@ -274,14 +274,17 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     section.appendChild(errorBanner);
   }
 
-  // 2. Main Approvals Area (Single-Column Focused Workspace)
+  // 2. Main Approvals Area (Two-Pane Master-Detail Workspace)
   const layout = document.createElement('div');
-  layout.className = 'gd-approvals-layout gd-approvals-single-column';
+  layout.className = 'gd-approvals-layout';
 
   const listPane = document.createElement('div');
   listPane.className = 'gd-list-pane';
   listPane.setAttribute('role', 'region');
   listPane.setAttribute('aria-label', 'Pending Requests');
+
+  const rightColumn = document.createElement('div');
+  rightColumn.className = 'gd-pending-right-column';
 
   // Prominent Decision Success / Error Banners (Rendered in listPane so querySelector finds them)
   if (props.decisionErrorMessage) {
@@ -346,6 +349,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     skeletonCard.appendChild(s2);
     skeletonCard.appendChild(s3);
     listPane.appendChild(skeletonCard);
+
+    rightColumn.appendChild(renderProtocolSidebar());
   } else if (props.status === 'error' && props.requests.length === 0) {
     // State B: Backend Unavailable or Load Failure (Empty List)
     const errorPlaceholder = document.createElement('div');
@@ -386,6 +391,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       errorPlaceholder.appendChild(retryBtn);
     }
     listPane.appendChild(errorPlaceholder);
+    rightColumn.appendChild(renderProtocolSidebar());
   } else {
     // Combine pending requests with selectedRequestDetail if provided (e.g. freshly resolved or remote load)
     const displayRequests: ApprovalRequest[] = [...props.requests];
@@ -423,6 +429,19 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       emptyPlaceholder.appendChild(srTitle);
       emptyPlaceholder.appendChild(emptyDesc);
       listPane.appendChild(emptyPlaceholder);
+
+      // Empty Detail Box on Right
+      const emptyDetail = document.createElement('div');
+      emptyDetail.className = 'gd-detail-pane gd-detail-pane-empty';
+      emptyDetail.innerHTML = `
+        <div class="gd-detail-empty-box">
+          <span class="gd-detail-dossier-kicker">VERIFICATION CONSOLE</span>
+          <h3 class="gd-detail-empty-title">No Request Selected</h3>
+          <p class="gd-detail-empty-text">Select an approval request from the queue to evaluate risk and record decisions.</p>
+        </div>
+      `;
+      rightColumn.appendChild(emptyDetail);
+      rightColumn.appendChild(renderProtocolSidebar());
     } else {
       // State D: Filterable Approval Items List
       const filteredRequests = filterRequests(displayRequests, activeFilters);
@@ -458,14 +477,33 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           },
         });
         listPane.appendChild(emptyFilter);
+
+        const emptyDetail = document.createElement('div');
+        emptyDetail.className = 'gd-detail-pane gd-detail-pane-empty';
+        emptyDetail.innerHTML = `
+          <div class="gd-detail-empty-box">
+            <span class="gd-detail-dossier-kicker">VERIFICATION CONSOLE</span>
+            <h3 class="gd-detail-empty-title">No Matching Requests</h3>
+            <p class="gd-detail-empty-text">Adjust your filters to inspect pending approval requests.</p>
+          </div>
+        `;
+        rightColumn.appendChild(emptyDetail);
+        rightColumn.appendChild(renderProtocolSidebar());
       } else {
+        // Find selected request
+        const selectedBaseReq = (props.selectedRequestId && filteredRequests.find(r => r.id === props.selectedRequestId))
+          || filteredRequests[0];
+        const selectedReq = (props.selectedRequestDetail && props.selectedRequestDetail.id === selectedBaseReq?.id)
+          ? { ...selectedBaseReq, ...props.selectedRequestDetail }
+          : selectedBaseReq;
+
+        // Render Left Column: Clean, Uncluttered Request Cards Queue (Zero Buttons!)
         for (const baseReq of filteredRequests) {
-          // Merge authoritative details if this item matches selectedRequestDetail
           const req = (props.selectedRequestDetail && props.selectedRequestDetail.id === baseReq.id)
             ? { ...baseReq, ...props.selectedRequestDetail }
             : baseReq;
 
-          const isSelected = req.id === props.selectedRequestId || (filteredRequests.length === 1 && !props.selectedRequestId);
+          const isSelected = selectedReq && req.id === selectedReq.id;
           const isExpired = isRequestExpired(req);
           const wardName = formatWardDisplayName(req.requesterId);
           const categoryLabel = formatFriendlyCategory(req.category);
@@ -591,14 +629,58 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           card.appendChild(metaRow);
 
-          // 4. Decision Action Bar & Expand Details Toggle
-          const actionRow = document.createElement('div');
-          actionRow.className = 'gd-request-actions-row';
+          // Card Selection Handler (Click & Keyboard)
+          const selectAction = () => {
+            props.onRequestSelect(req.id);
+          };
 
+          card.addEventListener('click', selectAction);
+          card.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e?.preventDefault?.();
+              selectAction();
+            }
+          });
+
+          listPane.appendChild(card);
+        }
+
+        // Render Right Column: Top Decision & Inspection Box + Protocols Below
+        if (selectedReq) {
+          const isExpired = isRequestExpired(selectedReq);
+          const hostname = resolveSafeHostname(selectedReq);
+          const riskLevel = selectedReq.riskLevel || RiskLevel.LOW;
+
+          const detailPane = document.createElement('div');
+          detailPane.className = 'gd-detail-pane gd-decision-dossier-box';
+          detailPane.setAttribute('role', 'region');
+          detailPane.setAttribute('aria-label', `Review and decide on ${selectedReq.actionDescription}`);
+
+          // 1. Decision Dossier Header
+          const dossierHeader = document.createElement('div');
+          dossierHeader.className = 'gd-detail-dossier-header';
+
+          const kicker = document.createElement('span');
+          kicker.className = 'gd-detail-dossier-kicker';
+          kicker.textContent = 'ACTION VERIFICATION REQUIRED';
+          dossierHeader.appendChild(kicker);
+
+          const detailTitleEl = document.createElement('h3');
+          detailTitleEl.className = 'gd-detail-title';
+          detailTitleEl.textContent = selectedReq.actionDescription;
+          dossierHeader.appendChild(detailTitleEl);
+
+          const dId = document.createElement('span');
+          dId.className = 'gd-detail-id';
+          dId.textContent = `Canonical Request ID: ${selectedReq.id}`;
+          dossierHeader.appendChild(dId);
+
+          detailPane.appendChild(dossierHeader);
+
+          // 2. Decision Controls (Approve & Reject Buttons + Confirmation Flows)
           const decisionControlsContainer = document.createElement('div');
           decisionControlsContainer.className = 'gd-decision-controls-container';
 
-          // Offline Backend Notice (Task 3 & 5)
           if (props.isBackendUnavailable) {
             const unavailNotice = document.createElement('div');
             unavailNotice.className = 'gd-decision-error-banner gd-backend-offline-banner';
@@ -618,18 +700,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             decisionControlsContainer.appendChild(unavailNotice);
           }
 
-          // Expandable Details Container (Collapsed by default, styled as .gd-detail-pane)
-          const detailsContainer = document.createElement('div');
-          detailsContainer.className = `gd-request-expandable-details ${isSelected ? 'gd-detail-pane' : ''}`;
-          detailsContainer.setAttribute('role', 'region');
-          detailsContainer.setAttribute('aria-label', `Context details for ${req.actionDescription}`);
-          detailsContainer.style.display = 'none';
-
-          let isDetailsOpen = false;
           let activeConfirmation: 'APPROVED' | 'REJECTED' | null = props.isSubmittingDecision ? 'APPROVED' : null;
 
           const renderDecisionControls = () => {
-            // Keep offline notice if present
             const unavail = decisionControlsContainer.querySelector('.gd-backend-offline-banner');
             while (decisionControlsContainer.firstChild) {
               decisionControlsContainer.removeChild(decisionControlsContainer.firstChild);
@@ -638,45 +711,42 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               decisionControlsContainer.appendChild(unavail);
             }
 
-            // If request is already resolved on server (APPROVED, REJECTED, CANCELLED)
-            if (req.status && req.status !== ApprovalStatus.PENDING) {
+            if (selectedReq.status && selectedReq.status !== ApprovalStatus.PENDING) {
               const resolvedNotice = document.createElement('div');
-              resolvedNotice.className = `gd-decision-resolved-notice ${req.status.toLowerCase()}`;
+              resolvedNotice.className = `gd-decision-resolved-notice ${selectedReq.status.toLowerCase()}`;
               resolvedNotice.setAttribute('role', 'status');
 
               const statusText = document.createElement('span');
               statusText.className = 'gd-resolved-status-text';
               statusText.textContent =
-                req.status === ApprovalStatus.APPROVED
-                  ? '✓ Request Approved'
-                  : req.status === ApprovalStatus.REJECTED
-                  ? '✕ Request Rejected'
-                  : `Request ${req.status}`;
+                selectedReq.status === ApprovalStatus.APPROVED
+                  ? 'Approved: This action has been approved.'
+                  : selectedReq.status === ApprovalStatus.REJECTED
+                    ? 'Rejected: This action has been rejected.'
+                    : `Decision Recorded: ${selectedReq.status}`;
 
               resolvedNotice.appendChild(statusText);
               decisionControlsContainer.appendChild(resolvedNotice);
               return;
             }
 
-            if (!activeConfirmation && !props.isSubmittingDecision) {
-              // Step 1: Direct Decision Actions (Deep Olive Approve & Muted Red Reject)
-              const buttonsGroup = document.createElement('div');
-              buttonsGroup.className = 'gd-decision-actions-row';
+            if (!activeConfirmation) {
+              const btnGroup = document.createElement('div');
+              btnGroup.className = 'gd-decision-btn-group';
 
               const approveBtn = document.createElement('button');
               approveBtn.type = 'button';
               approveBtn.className = 'gd-btn-decision gd-btn-approve';
-              const approveSpan = document.createElement('span');
-              approveSpan.textContent = 'Approve Request';
-              approveBtn.appendChild(approveSpan);
+              approveBtn.textContent = 'Approve Request';
+              approveBtn.setAttribute('aria-label', `Approve request ${selectedReq.id}: ${selectedReq.actionDescription}`);
 
-              if (props.isSubmittingDecision || props.isBackendUnavailable) {
+              if (isExpired || props.isBackendUnavailable) {
                 approveBtn.disabled = true;
-                if (props.isSubmittingDecision) approveBtn.setAttribute('aria-busy', 'true');
+                approveBtn.setAttribute('aria-disabled', 'true');
               }
+
               approveBtn.addEventListener('click', (e) => {
                 e?.stopPropagation?.();
-                if (props.isSubmittingDecision || props.isBackendUnavailable) return;
                 activeConfirmation = 'APPROVED';
                 renderDecisionControls();
               });
@@ -684,43 +754,38 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               const rejectBtn = document.createElement('button');
               rejectBtn.type = 'button';
               rejectBtn.className = 'gd-btn-decision gd-btn-reject';
-              const rejectSpan = document.createElement('span');
-              rejectSpan.textContent = 'Reject Request';
-              rejectBtn.appendChild(rejectSpan);
+              rejectBtn.textContent = 'Reject Request';
+              rejectBtn.setAttribute('aria-label', `Reject request ${selectedReq.id}: ${selectedReq.actionDescription}`);
 
-              if (props.isSubmittingDecision || props.isBackendUnavailable) {
+              if (isExpired || props.isBackendUnavailable) {
                 rejectBtn.disabled = true;
-                if (props.isSubmittingDecision) rejectBtn.setAttribute('aria-busy', 'true');
+                rejectBtn.setAttribute('aria-disabled', 'true');
               }
+
               rejectBtn.addEventListener('click', (e) => {
                 e?.stopPropagation?.();
-                if (props.isSubmittingDecision || props.isBackendUnavailable) return;
                 activeConfirmation = 'REJECTED';
                 renderDecisionControls();
               });
 
-              buttonsGroup.appendChild(approveBtn);
-              buttonsGroup.appendChild(rejectBtn);
-              decisionControlsContainer.appendChild(buttonsGroup);
+              btnGroup.appendChild(approveBtn);
+              btnGroup.appendChild(rejectBtn);
+              decisionControlsContainer.appendChild(btnGroup);
             } else {
-              // Step 2: Deliberate Inline Confirmation Box
-              const isApprove = activeConfirmation !== 'REJECTED';
+              const isApprove = activeConfirmation === 'APPROVED';
+
               const confirmBox = document.createElement('div');
               confirmBox.className = `gd-decision-confirm-box ${isApprove ? 'confirm-approve' : 'confirm-reject'}`;
               confirmBox.setAttribute('role', 'group');
               confirmBox.setAttribute('aria-labelledby', 'gd-decision-confirm-title');
 
-              // Escape key listener for keyboard dismissal
-              confirmBox.addEventListener('keydown', (e: KeyboardEvent) => {
+              confirmBox.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                  e?.preventDefault?.();
                   e?.stopPropagation?.();
-                  if (!props.isSubmittingDecision) {
-                    activeConfirmation = null;
-                    renderDecisionControls();
-                    const returnBtn = card.querySelector<HTMLButtonElement>(isApprove ? '.gd-btn-approve' : '.gd-btn-reject');
-                    returnBtn?.focus();
-                  }
+                  activeConfirmation = null;
+                  renderDecisionControls();
+                  const returnBtn = detailPane.querySelector<HTMLButtonElement>(isApprove ? '.gd-btn-approve' : '.gd-btn-reject');
+                  returnBtn?.focus();
                 }
               });
 
@@ -731,71 +796,47 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               confirmTitle.textContent = isApprove ? 'Confirm Approval Decision' : 'Confirm Rejection Decision';
               confirmBox.appendChild(confirmTitle);
 
-              // High-Impact Decision Warning for Critical/High Risk
               const isHighImpact =
                 riskLevel === RiskLevel.CRITICAL ||
                 riskLevel === RiskLevel.HIGH ||
-                (typeof req.riskScore === 'number' && req.riskScore >= 50);
+                (typeof selectedReq.riskScore === 'number' && selectedReq.riskScore >= 50);
 
               if (isHighImpact) {
                 const warningBox = document.createElement('div');
                 warningBox.className = 'gd-high-impact-warning';
                 warningBox.setAttribute('role', 'alert');
-
-                const warnIcon = document.createElement('span');
-                warnIcon.className = 'gd-warning-icon';
-                warnIcon.setAttribute('aria-hidden', 'true');
-
-                const warnContent = document.createElement('div');
-                warnContent.className = 'gd-warning-content';
-
-                const warnHeading = document.createElement('strong');
-                warnHeading.textContent = `High-Impact Decision Warning (${riskLevel} Risk)`;
-
-                const warnText = document.createElement('p');
-                warnText.textContent = isApprove
-                  ? 'Approving records reviewer consent for an elevated-risk request. It does not run the action. Verify that you recognize this interaction; the extension must revalidate locally and the user must confirm any supported continuation.'
-                  : 'Rejecting records that reviewer consent was denied. The dashboard cannot change or verify the action’s current browser state.';
-
-                warnContent.appendChild(warnHeading);
-                warnContent.appendChild(warnText);
-                warningBox.appendChild(warnIcon);
-                warningBox.appendChild(warnContent);
+                const wTitle = document.createElement('h5');
+                wTitle.className = 'gd-warning-heading';
+                wTitle.textContent = 'High-Impact Decision Warning';
+                const wText = document.createElement('p');
+                wText.textContent =
+                  'This action involves elevated operational risk. Your decision commits an authoritative audit record.';
+                warningBox.appendChild(wTitle);
+                warningBox.appendChild(wText);
                 confirmBox.appendChild(warningBox);
-              } else {
-                const infoText = document.createElement('p');
-                infoText.className = 'gd-confirm-desc';
-                infoText.textContent = isApprove
-                  ? 'This records reviewer consent only. It does not run the action; the extension must revalidate locally and the user must confirm any supported continuation.'
-                  : 'This records rejection of the request. The dashboard cannot change or verify the action’s current browser state.';
-                confirmBox.appendChild(infoText);
               }
 
-              // Reviewer Note Textarea (Optional)
               const noteGroup = document.createElement('div');
-              noteGroup.className = 'gd-confirm-note-group';
+              noteGroup.className = 'gd-confirm-field-group';
 
               const noteLabel = document.createElement('label');
-              noteLabel.className = 'gd-detail-label';
               noteLabel.htmlFor = 'decision-reason-input';
-              noteLabel.textContent = 'Reviewer Note (Optional)';
+              noteLabel.className = 'gd-confirm-field-label';
+              noteLabel.textContent = 'Reason or Notes (Optional)';
 
-              const noteInput = document.createElement('textarea');
+              const noteInput = document.createElement('input');
+              noteInput.type = 'text';
               noteInput.id = 'decision-reason-input';
-              noteInput.className = 'gd-decision-reason-input';
+              noteInput.className = 'gd-confirm-note-input gd-decision-note-input';
+              noteInput.setAttribute('aria-label', 'Reason or notes for decision (optional)');
               noteInput.placeholder = isApprove
-                ? 'Optional: Add an audit note (e.g., "Verified with user verbally")...'
-                : 'Optional: Add an explanation for the rejection...';
-              noteInput.rows = 2;
-              if (props.isSubmittingDecision) {
-                noteInput.disabled = true;
-              }
+                ? 'e.g., Verified routine navigation to trusted series'
+                : 'e.g., Unrecognized external site';
 
               noteGroup.appendChild(noteLabel);
               noteGroup.appendChild(noteInput);
               confirmBox.appendChild(noteGroup);
 
-              // Consequential Decision Notice
               const consequentialNotice = document.createElement('div');
               consequentialNotice.className = 'gd-consequential-notice';
               consequentialNotice.setAttribute('role', 'note');
@@ -806,7 +847,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               consequentialNotice.appendChild(cNoticeText);
               confirmBox.appendChild(consequentialNotice);
 
-              // Confirm & Cancel Actions Row
               const confirmActions = document.createElement('div');
               confirmActions.className = 'gd-confirm-actions-row';
 
@@ -831,7 +871,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
                 submitBtn.setAttribute('aria-busy', 'true');
                 submitBtn.textContent = 'Submitting decision...';
                 const reason = noteInput.value ? noteInput.value.trim() : undefined;
-                void props.onDecisionSubmit?.(isApprove ? 'APPROVED' : 'REJECTED', reason, req.id);
+                void props.onDecisionSubmit?.(isApprove ? 'APPROVED' : 'REJECTED', reason, selectedReq.id);
               });
 
               const cancelBtn = document.createElement('button');
@@ -842,17 +882,15 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
                 e?.stopPropagation?.();
                 activeConfirmation = null;
                 renderDecisionControls();
-                const returnBtn = card.querySelector<HTMLButtonElement>(isApprove ? '.gd-btn-approve' : '.gd-btn-reject');
+                const returnBtn = detailPane.querySelector<HTMLButtonElement>(isApprove ? '.gd-btn-approve' : '.gd-btn-reject');
                 returnBtn?.focus();
               });
 
               confirmActions.appendChild(submitBtn);
               confirmActions.appendChild(cancelBtn);
               confirmBox.appendChild(confirmActions);
-
               decisionControlsContainer.appendChild(confirmBox);
 
-              // Focus confirmation title for accessibility
               if (!props.isSubmittingDecision) {
                 confirmTitle.focus();
               }
@@ -860,171 +898,10 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           };
 
           renderDecisionControls();
-
-          // Secondary "View Request Details" Toggle Button
-          const toggleDetailsBtn = document.createElement('button');
-          toggleDetailsBtn.type = 'button';
-          toggleDetailsBtn.className = 'gd-btn-toggle-details';
-          toggleDetailsBtn.setAttribute('aria-expanded', 'false');
-
-          const textSpan = document.createElement('span');
-          textSpan.className = 'gd-toggle-text';
-          textSpan.textContent = 'View Request Details';
-
-          const chevron = document.createElement('span');
-          chevron.className = 'gd-chevron-icon';
-          chevron.setAttribute('aria-hidden', 'true');
-
-          toggleDetailsBtn.appendChild(textSpan);
-          toggleDetailsBtn.appendChild(chevron);
-
-          toggleDetailsBtn.addEventListener('click', (e) => {
-            e?.stopPropagation?.();
-            isDetailsOpen = !isDetailsOpen;
-            detailsContainer.style.display = isDetailsOpen ? 'flex' : 'none';
-            toggleDetailsBtn.setAttribute('aria-expanded', isDetailsOpen ? 'true' : 'false');
-            textSpan.textContent = isDetailsOpen ? 'Hide Details' : 'View Request Details';
-            chevron.classList.toggle('gd-chevron-rotated', isDetailsOpen);
-          });
-
-          actionRow.appendChild(decisionControlsContainer);
-          actionRow.appendChild(toggleDetailsBtn);
-          card.appendChild(actionRow);
-
-          // 5. Expandable Details Section (Human-friendly context + Tucked Audit Data)
-          const expDetailsInner = document.createElement('div');
-          expDetailsInner.className = 'gd-expandable-details-content';
-
-          // Action description in detail pane for test contract (detailPane.querySelector('.gd-detail-title'))
-          const detailDossierHeader = document.createElement('div');
-          detailDossierHeader.className = 'gd-detail-dossier-header';
-
-          const dossierKicker = document.createElement('span');
-          dossierKicker.className = 'gd-detail-dossier-kicker';
-          dossierKicker.textContent = 'INTERACTION CONTEXT & RISK ANALYSIS';
-          detailDossierHeader.appendChild(dossierKicker);
-
-          const detailTitleEl = document.createElement('h3');
-          detailTitleEl.className = isSelected ? 'gd-detail-title' : 'gd-detail-title-unselected';
-          detailTitleEl.textContent = req.actionDescription;
-          detailDossierHeader.appendChild(detailTitleEl);
-          expDetailsInner.appendChild(detailDossierHeader);
-
-          // Human Context Breakdown
-          const contextGrid = document.createElement('div');
-          contextGrid.className = 'gd-human-context-grid';
-
-          // Webpage Title
-          const pageTitleItem = document.createElement('div');
-          pageTitleItem.className = 'gd-context-detail-item';
-          const pLabel = document.createElement('span');
-          pLabel.className = 'gd-detail-label';
-          pLabel.textContent = 'Webpage Title';
-          const pVal = document.createElement('span');
-          pVal.className = 'gd-detail-value';
-          pVal.textContent = req.pageTitle || 'Untitled webpage';
-          pageTitleItem.appendChild(pLabel);
-          pageTitleItem.appendChild(pVal);
-          contextGrid.appendChild(pageTitleItem);
-
-          // Destination Hostname
-          const hostItem = document.createElement('div');
-          hostItem.className = 'gd-context-detail-item';
-          const hLabel = document.createElement('span');
-          hLabel.className = 'gd-detail-label';
-          hLabel.textContent = 'Destination';
-          const hVal = document.createElement('span');
-          hVal.className = 'gd-detail-value gd-context-hostname';
-          hVal.textContent = hostname;
-          hostItem.appendChild(hLabel);
-          hostItem.appendChild(hVal);
-          contextGrid.appendChild(hostItem);
-
-          // Why Flagged (Plain-language risk explanation)
-          const whyItem = document.createElement('div');
-          whyItem.className = 'gd-context-detail-item gd-context-detail-full';
-          const whyLabel = document.createElement('span');
-          whyLabel.className = 'gd-detail-label';
-          whyLabel.textContent = 'Why This Action Requires Approval';
-          const whyText = document.createElement('div');
-          whyText.className = 'gd-risk-explanation';
-          const plainExplanation = getHumanReadableRiskExplanation(req);
-          const impactExplanation = getRiskLevelExplanation(riskLevel);
-          whyText.textContent = plainExplanation;
-          whyItem.appendChild(whyLabel);
-          whyItem.appendChild(whyText);
-          contextGrid.appendChild(whyItem);
-
-          // Operational Impact Assessment
-          const riskAssessItem = document.createElement('div');
-          riskAssessItem.className = 'gd-context-detail-item gd-context-detail-full';
-          const rLabel = document.createElement('span');
-          rLabel.className = 'gd-detail-label';
-          rLabel.textContent = 'Risk Assessment';
-          const rVal = document.createElement('p');
-          rVal.className = 'gd-detail-value gd-risk-level-desc';
-          rVal.textContent = impactExplanation;
-          riskAssessItem.appendChild(rLabel);
-          riskAssessItem.appendChild(rVal);
-          contextGrid.appendChild(riskAssessItem);
-
-          // Non-malicious risk disclaimer
-          const disclaimer = document.createElement('div');
-          disclaimer.className = 'gd-risk-disclaimer';
-          disclaimer.setAttribute('role', 'note');
-
-          const disclaimerIcon = document.createElement('span');
-          disclaimerIcon.className = 'gd-disclaimer-icon';
-          disclaimerIcon.setAttribute('aria-hidden', 'true');
-
-          const disclaimerText = document.createElement('p');
-          disclaimerText.className = 'gd-disclaimer-text';
-          disclaimerText.textContent =
-            'Notice: Guardrail risk scores measure operational sensitivity, potential data loss, and security impact to safeguard users. A high or critical risk score reflects high operational stakes requiring verification, NOT that the website or action is confirmed to be malicious or fraudulent.';
-
-          disclaimer.appendChild(disclaimerIcon);
-          disclaimer.appendChild(disclaimerText);
-          contextGrid.appendChild(disclaimer);
-
-          // Status Pill and Timestamps Row
-          const statusRow = document.createElement('div');
-          statusRow.className = 'gd-context-detail-item gd-context-detail-full gd-context-status-row';
-
-          const displayStatus = isExpired && req.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (req.status || ApprovalStatus.PENDING);
-          const statusPill = document.createElement('span');
-          const sClass = displayStatus.toLowerCase();
-          statusPill.className = `gd-detail-status-pill ${sClass}`;
-          statusPill.setAttribute('role', 'status');
-          statusPill.setAttribute('data-status', sClass);
-          statusPill.textContent = displayStatus;
-
-          const timestampsInfo = document.createElement('div');
-          timestampsInfo.className = 'gd-context-timestamps';
-
-          const initSpan = document.createElement('span');
-          initSpan.textContent = `Initiated At: ${formatTimestamp(req.createdAt)}`;
-
-          const timeSep = document.createElement('span');
-          timeSep.className = 'gd-context-sep';
-          timeSep.textContent = '·';
-
-          const expSpan2 = document.createElement('span');
-          const expFormatted = formatExpirationInfo(req.expiresAt);
-          const expRelativeText = expFormatted.isPast ? 'Expired' : (expFormatted.text.includes('(') ? expFormatted.text.split(' (')[0] : expFormatted.text);
-          expSpan2.textContent = `Expires At: ${formatTimestamp(req.expiresAt)} (${expRelativeText})`;
-
-          timestampsInfo.appendChild(initSpan);
-          timestampsInfo.appendChild(timeSep);
-          timestampsInfo.appendChild(expSpan2);
-
-          statusRow.appendChild(statusPill);
-          statusRow.appendChild(timestampsInfo);
-          contextGrid.appendChild(statusRow);
-
-          expDetailsInner.appendChild(contextGrid);
+          detailPane.appendChild(decisionControlsContainer);
 
           // If Expired: review deadline elapsed banner
-          if (isExpired && req.status === ApprovalStatus.PENDING) {
+          if (isExpired && selectedReq.status === ApprovalStatus.PENDING) {
             const expiredBanner = document.createElement('div');
             expiredBanner.className = 'gd-status-banner expired';
             expiredBanner.setAttribute('role', 'status');
@@ -1044,10 +921,117 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             bannerContent.appendChild(bannerTitle);
             bannerContent.appendChild(bannerDesc);
             expiredBanner.appendChild(bannerContent);
-            expDetailsInner.appendChild(expiredBanner);
+            detailPane.appendChild(expiredBanner);
           }
 
-          // Tucked Developer & Audit Disclosure (Hidden behind clean details element for developer / compliance review)
+          // 3. Human Context Breakdown
+          const contextGrid = document.createElement('div');
+          contextGrid.className = 'gd-human-context-grid';
+
+          const pageTitleItem = document.createElement('div');
+          pageTitleItem.className = 'gd-context-detail-item';
+          const pLabel = document.createElement('span');
+          pLabel.className = 'gd-detail-label';
+          pLabel.textContent = 'Webpage Title';
+          const pVal = document.createElement('span');
+          pVal.className = 'gd-detail-value';
+          pVal.textContent = selectedReq.pageTitle || 'Untitled webpage';
+          pageTitleItem.appendChild(pLabel);
+          pageTitleItem.appendChild(pVal);
+          contextGrid.appendChild(pageTitleItem);
+
+          const hostItem = document.createElement('div');
+          hostItem.className = 'gd-context-detail-item';
+          const hLabel = document.createElement('span');
+          hLabel.className = 'gd-detail-label';
+          hLabel.textContent = 'Destination';
+          const hVal = document.createElement('span');
+          hVal.className = 'gd-detail-value gd-context-hostname';
+          hVal.textContent = hostname;
+          hostItem.appendChild(hLabel);
+          hostItem.appendChild(hVal);
+          contextGrid.appendChild(hostItem);
+
+          const whyItem = document.createElement('div');
+          whyItem.className = 'gd-context-detail-item gd-context-detail-full';
+          const whyLabel = document.createElement('span');
+          whyLabel.className = 'gd-detail-label';
+          whyLabel.textContent = 'Why This Action Requires Approval';
+          const whyText = document.createElement('div');
+          whyText.className = 'gd-risk-explanation';
+          const plainExplanation = getHumanReadableRiskExplanation(selectedReq);
+          const impactExplanation = getRiskLevelExplanation(riskLevel);
+          whyText.textContent = plainExplanation;
+          whyItem.appendChild(whyLabel);
+          whyItem.appendChild(whyText);
+          contextGrid.appendChild(whyItem);
+
+          const riskAssessItem = document.createElement('div');
+          riskAssessItem.className = 'gd-context-detail-item gd-context-detail-full';
+          const rLabel = document.createElement('span');
+          rLabel.className = 'gd-detail-label';
+          rLabel.textContent = 'Risk Assessment';
+          const rVal = document.createElement('p');
+          rVal.className = 'gd-detail-value gd-risk-level-desc';
+          rVal.textContent = impactExplanation;
+          riskAssessItem.appendChild(rLabel);
+          riskAssessItem.appendChild(rVal);
+          contextGrid.appendChild(riskAssessItem);
+
+          const disclaimer = document.createElement('div');
+          disclaimer.className = 'gd-risk-disclaimer';
+          disclaimer.setAttribute('role', 'note');
+
+          const disclaimerIcon = document.createElement('span');
+          disclaimerIcon.className = 'gd-disclaimer-icon';
+          disclaimerIcon.setAttribute('aria-hidden', 'true');
+
+          const disclaimerText = document.createElement('p');
+          disclaimerText.className = 'gd-disclaimer-text';
+          disclaimerText.textContent =
+            'Notice: Guardrail risk scores measure operational sensitivity, potential data loss, and security impact to safeguard users. A high or critical risk score reflects high operational stakes requiring verification, NOT that the website or action is confirmed to be malicious or fraudulent.';
+
+          disclaimer.appendChild(disclaimerIcon);
+          disclaimer.appendChild(disclaimerText);
+          contextGrid.appendChild(disclaimer);
+
+          const statusRow = document.createElement('div');
+          statusRow.className = 'gd-context-detail-item gd-context-detail-full gd-context-status-row';
+
+          const displayStatus = isExpired && selectedReq.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (selectedReq.status || ApprovalStatus.PENDING);
+          const statusPill = document.createElement('span');
+          const sClass = displayStatus.toLowerCase();
+          statusPill.className = `gd-detail-status-pill ${sClass}`;
+          statusPill.setAttribute('role', 'status');
+          statusPill.setAttribute('data-status', sClass);
+          statusPill.textContent = displayStatus;
+
+          const timestampsInfo = document.createElement('div');
+          timestampsInfo.className = 'gd-context-timestamps';
+
+          const initSpan = document.createElement('span');
+          initSpan.textContent = `Initiated At: ${formatTimestamp(selectedReq.createdAt)}`;
+
+          const timeSep = document.createElement('span');
+          timeSep.className = 'gd-context-sep';
+          timeSep.textContent = '·';
+
+          const expSpan2 = document.createElement('span');
+          const expFormatted = formatExpirationInfo(selectedReq.expiresAt);
+          const expRelativeText = expFormatted.isPast ? 'Expired' : (expFormatted.text.includes('(') ? expFormatted.text.split(' (')[0] : expFormatted.text);
+          expSpan2.textContent = `Expires At: ${formatTimestamp(selectedReq.expiresAt)} (${expRelativeText})`;
+
+          timestampsInfo.appendChild(initSpan);
+          timestampsInfo.appendChild(timeSep);
+          timestampsInfo.appendChild(expSpan2);
+
+          statusRow.appendChild(statusPill);
+          statusRow.appendChild(timestampsInfo);
+          contextGrid.appendChild(statusRow);
+
+          detailPane.appendChild(contextGrid);
+
+          // 4. Developer & Audit Trail Disclosure
           const auditDetails = document.createElement('details');
           auditDetails.className = 'gd-technical-audit-details';
 
@@ -1061,10 +1045,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const idBadge = document.createElement('span');
           idBadge.className = 'gd-detail-id';
-          idBadge.textContent = `Canonical Request ID: ${req.id}`;
+          idBadge.textContent = `Canonical Request ID: ${selectedReq.id}`;
           auditBody.appendChild(idBadge);
 
-          // Decoupled Action Execution Notice (Preserving test contract selector)
           const decouplingBox = document.createElement('div');
           decouplingBox.className = 'gd-action-decoupling-note';
           decouplingBox.setAttribute('role', 'note');
@@ -1075,7 +1058,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           decouplingBox.appendChild(decP);
           auditBody.appendChild(decouplingBox);
 
-          // Decoupled Execution Architecture notice
           const noticeBox = document.createElement('div');
           noticeBox.className = 'gd-decision-notice';
           noticeBox.setAttribute('role', 'note');
@@ -1086,11 +1068,10 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           noticeBox.appendChild(notP);
           auditBody.appendChild(noticeBox);
 
-          // Heuristic Risk Reasons list
-          if (req.riskReasons && Array.isArray(req.riskReasons) && req.riskReasons.length > 0) {
+          if (selectedReq.riskReasons && Array.isArray(selectedReq.riskReasons) && selectedReq.riskReasons.length > 0) {
             const ul = document.createElement('ul');
             ul.className = 'gd-risk-reasons-list';
-            for (const reason of req.riskReasons) {
+            for (const reason of selectedReq.riskReasons) {
               if (typeof reason === 'string' && reason.trim()) {
                 const li = document.createElement('li');
                 li.className = 'gd-risk-reason-item';
@@ -1102,32 +1083,26 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           }
 
           auditDetails.appendChild(auditBody);
-          expDetailsInner.appendChild(auditDetails);
-          detailsContainer.appendChild(expDetailsInner);
-          card.appendChild(detailsContainer);
+          detailPane.appendChild(auditDetails);
 
-          // Card Selection Event Handlers
-          const selectAction = () => {
-            props.onRequestSelect(req.id);
-          };
-
-          card.addEventListener('click', selectAction);
-          card.addEventListener('keydown', (e: KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e?.preventDefault?.();
-              selectAction();
-            }
-          });
-
-          listPane.appendChild(card);
+          rightColumn.appendChild(detailPane);
         }
+
+        rightColumn.appendChild(renderProtocolSidebar());
       }
     }
   }
 
   layout.appendChild(listPane);
+  layout.appendChild(rightColumn);
+  section.appendChild(layout);
+  return section;
+}
 
-  // 3. Companion Guidance & Policy Sidebar (Balances desktop layout, eliminates empty void)
+/**
+ * Renders the Companion Protocols & Oversight Sidebar.
+ */
+function renderProtocolSidebar(): HTMLElement {
   const sidePane = document.createElement('aside');
   sidePane.className = 'gd-pending-sidebar';
   sidePane.setAttribute('aria-label', 'Review Policies and Security Oversight');
@@ -1265,7 +1240,5 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   postureBlock.appendChild(pMeta);
   sidePane.appendChild(postureBlock);
 
-  layout.appendChild(sidePane);
-  section.appendChild(layout);
-  return section;
+  return sidePane;
 }
