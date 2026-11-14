@@ -592,9 +592,10 @@ export class DashboardShell {
       isSubmittingDecision: this.isSubmittingDecision,
       decisionErrorMessage: this.state.decisionErrorMessage,
       decisionSuccessMessage: this.state.decisionSuccessMessage,
-      onDecisionSubmit: async (decision, reason) => {
-        if (this.state.selectedRequestId) {
-          await this.submitDecision(this.state.selectedRequestId, decision, reason);
+      onDecisionSubmit: async (decision, reason, targetId) => {
+        const idToDecide = targetId || this.state.selectedRequestId;
+        if (idToDecide) {
+          await this.submitDecision(idToDecide, decision, reason);
         }
       },
     });
@@ -840,9 +841,32 @@ export class DashboardShell {
           reconciledPending.push(req);
         }
 
+        const prevRequests = this.state.pendingRequests;
+        const isDataIdentical = (
+          prevRequests.length === reconciledPending.length &&
+          prevRequests.every((prev, i) => {
+            const next = reconciledPending[i];
+            return (
+              prev.id === next.id &&
+              prev.status === next.status &&
+              prev.expiresAt === next.expiresAt &&
+              prev.actionDescription === next.actionDescription
+            );
+          }) &&
+          this.state.errorMessage === null &&
+          !this.isBackendUnavailable
+        );
+
         this.isBackendUnavailable = false;
         this.state.errorMessage = null;
-        this.setPendingRequests(reconciledPending);
+
+        if (isBackground && isDataIdentical) {
+          // Silent background poll with no changes: do NOT wipe/re-render DOM!
+          this.state.pendingRequests = reconciledPending;
+          this.updateSyncIndicatorsInPlace();
+        } else {
+          this.setPendingRequests(reconciledPending);
+        }
 
         // Synchronize visible request details if a request is currently selected
         if (this.state.selectedRequestId) {
@@ -918,8 +942,22 @@ export class DashboardShell {
       this.setError(`Client error while retrieving pending approvals: ${msg}`);
     } finally {
       this.isRefreshing = false;
-      if (!this.isDestroyed) {
+      if (!this.isDestroyed && !isBackground) {
         this.render();
+      }
+    }
+  }
+
+  private updateSyncIndicatorsInPlace(): void {
+    if (this.lastSynchronizedAt && this.rootContainer) {
+      const timeStr = this.lastSynchronizedAt.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const syncEls = this.rootContainer.querySelectorAll('.gd-last-sync-time');
+      for (let i = 0; i < syncEls.length; i++) {
+        syncEls[i].textContent = `Last synced: ${timeStr}`;
       }
     }
   }
