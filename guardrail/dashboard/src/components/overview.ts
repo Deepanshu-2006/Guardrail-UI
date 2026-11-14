@@ -443,7 +443,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
       const riskBadge = document.createElement('span');
       const riskClass = (req.riskLevel || RiskLevel.HIGH).toLowerCase();
-      riskBadge.className = `gd-risk-badge gd-risk-${riskClass}`;
+      riskBadge.className = `gd-risk-badge gd-risk-${riskClass} ${riskClass}`;
       riskBadge.textContent = req.riskLevel || 'HIGH';
 
       topRow.appendChild(desc);
