@@ -3,6 +3,7 @@ import { ApprovalApiRouter, ApprovalApiRouterConfig, DEFAULT_ALLOWED_ORIGINS, In
 import { ActionOwnershipRegistry, TrustedContactRegistry } from '../../extension/src/approval/authorization.js';
 import { createPersistentApprovalService } from './persistent-approval-service.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
+import { defaultApprovalEventHub } from './event-hub.js';
 
 export interface GuardrailHttpServerOptions {
   /** Must be supplied by the host application's real identity provider. */
@@ -73,6 +74,80 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       }
       return;
     }
+    // 2. Real-Time Server-Sent Events (SSE) Stream Endpoints
+    const eventsMatch = requestPath.match(/^\/api\/v1\/approval-requests\/([^/]+)\/events$/);
+    const dashboardStreamMatch = requestPath === '/api/v1/approvals/stream';
+    if (request.method === 'GET' && (eventsMatch || dashboardStreamMatch)) {
+      const originHeader = request.headers.origin;
+      const allowedOrigins = config.allowedOrigins.length > 0 ? config.allowedOrigins : (options.routerConfig?.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS);
+      if (originHeader && allowedOrigins.includes(originHeader)) {
+        response.setHeader('access-control-allow-origin', originHeader);
+        response.setHeader('vary', 'Origin');
+      }
+      response.setHeader('content-type', 'text/event-stream; charset=utf-8');
+      response.setHeader('cache-control', 'no-cache, no-transform');
+      response.setHeader('connection', 'keep-alive');
+      response.setHeader('x-accel-buffering', 'no');
+      response.statusCode = 200;
+
+      // Send initial connection handshake comment
+      response.write(`: connected to guardrail real-time event stream\n\n`);
+
+      // Heartbeat every 15s to keep connections alive through proxies and firewalls
+      const keepaliveTimer = setInterval(() => {
+        if (!response.writableEnded) {
+          response.write(`:keepalive\n\n`);
+        }
+      }, 15000);
+
+      let unsubscribe: (() => void) | null = null;
+
+      if (eventsMatch) {
+        const requestId = decodeURIComponent(eventsMatch[1]);
+        // Send immediate current snapshot if request exists
+        try {
+          const reqRecord = runtime.repository.findById(requestId);
+          if (reqRecord) {
+            response.write(`event: status\ndata: ${JSON.stringify({
+              type: 'current',
+              requestId: reqRecord.id,
+              status: reqRecord.status,
+              decidedBy: reqRecord.decision?.decidedBy,
+              decidedAt: reqRecord.decision?.decidedAt,
+              decisionReason: reqRecord.decision?.reason,
+              request: reqRecord,
+            })}\n\n`);
+          }
+        } catch {}
+
+        unsubscribe = defaultApprovalEventHub.subscribeRequest(requestId, (event) => {
+          if (!response.writableEnded) {
+            response.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+          }
+        });
+      } else if (dashboardStreamMatch) {
+        unsubscribe = defaultApprovalEventHub.subscribeAll((event) => {
+          if (!response.writableEnded) {
+            response.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+          }
+        });
+      }
+
+      const cleanup = () => {
+        clearInterval(keepaliveTimer);
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
+        }
+      };
+
+      request.on('close', cleanup);
+      request.on('end', cleanup);
+      response.on('close', cleanup);
+      response.on('finish', cleanup);
+      return;
+    }
+
     void router.handleHttpStream(request, response).catch(() => {
       if (!response.headersSent) {
         response.statusCode = 500;

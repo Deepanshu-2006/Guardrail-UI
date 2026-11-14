@@ -72,6 +72,7 @@ export class DashboardShell {
   private lastSynchronizedAt: Date | null = null;
   private isBackendUnavailable: boolean = false;
   private isRefreshing: boolean = false;
+  private eventSource: EventSource | null = null;
 
   // Monotonic sequence tracking for stale-response protection
   private nextPendingFetchSeq: number = 0;
@@ -262,6 +263,8 @@ export class DashboardShell {
     if (this.isPollingHaltedDueToAuth) return;
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
 
+    this.connectEventSource();
+
     this.pollTimer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return;
@@ -270,10 +273,51 @@ export class DashboardShell {
     }, this.pollIntervalMs);
   }
 
+  private connectEventSource(): void {
+    if (typeof EventSource === 'undefined' || !this.apiClient) return;
+    if (this.eventSource !== null) return;
+
+    try {
+      const baseUrl = typeof (this.apiClient as any).getBaseUrl === 'function'
+        ? (this.apiClient as any).getBaseUrl()
+        : 'http://localhost:3000';
+      const sseUrl = `${baseUrl}/api/v1/approvals/stream`;
+      const es = new EventSource(sseUrl);
+      this.eventSource = es;
+
+      const onStreamEvent = () => {
+        if (this.isDestroyed) return;
+        // Immediate background refresh when any approval lifecycle event is emitted
+        void this.fetchPendingRequests({ isBackground: true });
+        void this.fetchHistoryRequests();
+      };
+
+      es.addEventListener('created', onStreamEvent);
+      es.addEventListener('decided', onStreamEvent);
+      es.addEventListener('cancelled', onStreamEvent);
+      es.addEventListener('expired', onStreamEvent);
+
+      es.onerror = () => {
+        if (this.eventSource) {
+          try { this.eventSource.close(); } catch {}
+          this.eventSource = null;
+        }
+      };
+    } catch {
+      this.eventSource = null;
+    }
+  }
+
   /**
    * Stops background polling timer.
    */
   public stopPolling(): void {
+    if (this.eventSource !== null) {
+      try {
+        this.eventSource.close();
+      } catch {}
+      this.eventSource = null;
+    }
     if (this.pollTimer !== null) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;

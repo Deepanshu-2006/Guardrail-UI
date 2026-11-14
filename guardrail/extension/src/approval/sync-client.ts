@@ -623,6 +623,7 @@ class InternalSyncSubscription implements StatusSyncSubscription {
   private startTimeMs: number = 0;
   private visibilityHandler: (() => void) | null = null;
   private unloadHandler: (() => void) | null = null;
+  private eventSource: EventSource | null = null;
 
   // Hardening: Consecutive error tracking & bounded retry with backoff (Requirements 1 & 2)
   private consecutiveErrors: number = 0;
@@ -700,13 +701,60 @@ class InternalSyncSubscription implements StatusSyncSubscription {
       window.addEventListener('beforeunload', this.unloadHandler);
     }
 
-    // Trigger initial poll immediately
+    // Connect to real-time SSE event stream if EventSource is supported
+    this.connectEventSource();
+
+    // Trigger initial poll immediately & maintain fallback poll schedule
     this.scheduleNextPoll(0);
+  }
+
+  private connectEventSource(): void {
+    if (typeof EventSource === 'undefined') return;
+    try {
+      const baseUrl = this.client.getApiClient().getBaseUrl();
+      const sseUrl = `${baseUrl}/api/v1/approval-requests/${encodeURIComponent(this.requestId)}/events`;
+      const es = new EventSource(sseUrl);
+      this.eventSource = es;
+
+      const handleEvent = (e: MessageEvent) => {
+        if (!this.active) return;
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload && payload.status) {
+            console.log(`[StatusSync SSE] Real-time event received for ${this.requestId}:`, payload.type, payload.status);
+            // Trigger immediate authoritative probe to ensure complete cryptographic validation
+            this.pollNow().catch(() => {});
+          }
+        } catch {}
+      };
+
+      es.addEventListener('status', handleEvent);
+      es.addEventListener('decided', handleEvent);
+      es.addEventListener('cancelled', handleEvent);
+      es.addEventListener('expired', handleEvent);
+      es.onerror = () => {
+        // Fallback polling continues seamlessly
+        if (this.eventSource) {
+          try { this.eventSource.close(); } catch {}
+          this.eventSource = null;
+        }
+      };
+    } catch (sseErr) {
+      // Graceful fallback to adaptive polling
+      this.eventSource = null;
+    }
   }
 
   public stop(): void {
     if (!this.active) return;
     this.active = false;
+
+    if (this.eventSource) {
+      try {
+        this.eventSource.close();
+      } catch {}
+      this.eventSource = null;
+    }
 
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
