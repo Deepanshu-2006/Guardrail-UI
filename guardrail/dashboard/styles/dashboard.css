@@ -992,12 +992,11 @@ textarea:focus-visible,
   .gd-history-detail-pane .gd-history-empty-detail,
   .gd-outcome-mark,
   .gd-outcome-icon,
-  .gd-clock-dial,
+  .gd-clock-rim,
   .gd-clock-minute,
   .gd-clock-hour,
-  .gd-clock-pulse-ring,
   .gd-clock-pivot,
-  .gd-clock-stem,
+  .gd-clock-alarm-pulse,
   .gd-approved-dial,
   .gd-approved-check,
   .gd-approved-burst-ring,
@@ -2797,49 +2796,70 @@ textarea:focus-visible,
   animation: gd-mark-settle 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) 0.14s both;
 }
 
-/* 1. CLOCK (Expired / Review Deadline Elapsed) Choreography */
+/* 1. CLOCK (Expired / Review Deadline Elapsed) Time Expired Choreography */
 .gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark.expired,
 .gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.expired {
-  animation: gd-clock-enter-stamp 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) 0.14s both;
+  animation: gd-clock-enter-stamp 0.44s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-clock-dial,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-dial {
+/* Solid, crisp outer clock rim: ALWAYS 100% visible and solid */
+.gd-clock-rim {
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-clock-rim,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-rim {
   stroke-dasharray: 58;
   stroke-dashoffset: 58;
-  animation: gd-clock-dial-trace 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+  animation: gd-clock-rim-draw 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-clock-minute,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-minute {
+/* Hour hand: pointing straight up to 12 o'clock */
+.gd-clock-hour {
+  stroke: currentColor;
+  stroke-width: 2.2;
   transform-origin: 12px 12px;
-  animation: gd-clock-minute-sweep 0.74s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
 }
 
 .gd-history-detail-pane.gd-detail-animating-in .gd-clock-hour,
 .gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-hour {
-  transform-origin: 12px 12px;
-  animation: gd-clock-hour-advance 0.60s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+  animation: gd-clock-hour-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-clock-pulse-ring,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-pulse-ring {
+/* Minute hand: resting at 125deg (~4 o'clock) */
+.gd-clock-minute {
+  stroke: currentColor;
+  stroke-width: 2.2;
+  transform-origin: 12px 12px;
+  transform: rotate(125deg);
+}
+
+/* Minute hand sweeps 360° + 125° fast forward through time and snaps to elapsed position */
+.gd-history-detail-pane.gd-detail-animating-in .gd-clock-minute,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-minute {
+  animation: gd-clock-fast-sweep 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
+}
+
+/* The "TIME'S UP!" Alarm Vibration: clock body shakes when the hand reaches the elapsed position */
+.gd-history-detail-pane.gd-detail-animating-in .gd-clock-expired,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-expired {
+  transform-origin: 12px 12px;
+  animation: gd-clock-alarm-ring 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.56s both;
+}
+
+/* Acoustic alarm soundwave ring: pulses outward as alarm rings */
+.gd-history-detail-pane.gd-detail-animating-in .gd-clock-alarm-pulse,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-alarm-pulse {
   transform-origin: 12px 12px;
   opacity: 0;
   stroke: currentColor;
-  stroke-width: 1.4;
-  animation: gd-clock-pulse-expand 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+  animation: gd-clock-alarm-pulse-expand 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-clock-pivot,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-pivot {
-  transform-origin: 12px 12px;
-  animation: gd-clock-pivot-pop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) 0.22s both;
-}
-
-.gd-history-detail-pane.gd-detail-animating-in .gd-clock-stem,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-clock-stem {
-  animation: gd-clock-stem-press 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+/* Center pivot: solid dot */
+.gd-clock-pivot {
+  fill: currentColor;
 }
 
 /* 2. APPROVED (Approved by Reviewer) Cryptographic Seal Choreography */
@@ -2932,7 +2952,17 @@ textarea:focus-visible,
 /* Interactive Hover Reactions on Verdict Marks */
 .gd-history-outcome-block.expired:hover .gd-clock-minute,
 .gd-outcome-mark.expired:hover .gd-clock-minute {
-  animation: gd-clock-hover-rewind 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: gd-clock-fast-sweep 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gd-history-outcome-block.expired:hover .gd-clock-expired,
+.gd-outcome-mark.expired:hover .gd-clock-expired {
+  animation: gd-clock-alarm-ring 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.50s both;
+}
+
+.gd-history-outcome-block.expired:hover .gd-clock-alarm-pulse,
+.gd-outcome-mark.expired:hover .gd-clock-alarm-pulse {
+  animation: gd-clock-alarm-pulse-expand 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
 
 .gd-history-outcome-block.approved:hover .gd-approved-check,
@@ -3102,11 +3132,11 @@ textarea:focus-visible,
 @keyframes gd-clock-enter-stamp {
   0% {
     opacity: 0;
-    transform: scale(0.55) rotate(-26deg);
+    transform: scale(0.6) rotate(-20deg);
   }
   65% {
     opacity: 1;
-    transform: scale(1.15) rotate(4deg);
+    transform: scale(1.12) rotate(4deg);
   }
   100% {
     opacity: 1;
@@ -3114,7 +3144,7 @@ textarea:focus-visible,
   }
 }
 
-@keyframes gd-clock-dial-trace {
+@keyframes gd-clock-rim-draw {
   0% {
     stroke-dashoffset: 58;
   }
@@ -3123,7 +3153,18 @@ textarea:focus-visible,
   }
 }
 
-@keyframes gd-clock-minute-sweep {
+@keyframes gd-clock-hour-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gd-clock-fast-sweep {
   0% {
     opacity: 0;
     transform: rotate(0deg);
@@ -3131,78 +3172,56 @@ textarea:focus-visible,
   15% {
     opacity: 1;
   }
-  72% {
-    transform: rotate(826deg);
+  74% {
+    transform: rotate(496deg);
   }
-  86% {
-    transform: rotate(806deg);
+  88% {
+    transform: rotate(481deg);
   }
   100% {
     opacity: 1;
-    transform: rotate(810deg);
+    transform: rotate(485deg);
   }
 }
 
-@keyframes gd-clock-hour-advance {
+@keyframes gd-clock-alarm-ring {
   0% {
-    opacity: 0;
-    transform: rotate(0deg);
+    transform: scale(1) rotate(0deg);
   }
-  20% {
-    opacity: 1;
+  15% {
+    transform: scale(1.12) rotate(-10deg);
   }
-  85% {
-    transform: rotate(72deg);
+  30% {
+    transform: scale(1.12) rotate(10deg);
+  }
+  45% {
+    transform: scale(1.08) rotate(-7deg);
+  }
+  60% {
+    transform: scale(1.06) rotate(7deg);
+  }
+  75% {
+    transform: scale(1.03) rotate(-3deg);
+  }
+  90% {
+    transform: scale(1.01) rotate(2deg);
   }
   100% {
-    opacity: 1;
-    transform: rotate(68deg);
+    transform: scale(1) rotate(0deg);
   }
 }
 
-@keyframes gd-clock-pulse-expand {
+@keyframes gd-clock-alarm-pulse-expand {
   0% {
     transform: scale(0.9);
     opacity: 0;
   }
-  30% {
-    opacity: 0.65;
+  25% {
+    opacity: 0.75;
   }
   100% {
-    transform: scale(1.42);
+    transform: scale(1.48);
     opacity: 0;
-  }
-}
-
-@keyframes gd-clock-pivot-pop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes gd-clock-stem-press {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(1.2px);
-  }
-}
-
-@keyframes gd-clock-hover-rewind {
-  0% {
-    transform: rotate(810deg);
-  }
-  80% {
-    transform: rotate(1185deg);
-  }
-  100% {
-    transform: rotate(1170deg);
   }
 }
 

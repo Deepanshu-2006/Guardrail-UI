@@ -164,12 +164,11 @@ function formatActionType(type?: string): string {
  * Clock (Expired), Approved (Seal & Checkmark), and Cancelled/Rejected (Barrier / Slash).
  */
 function renderClockOutcomeIcon(): string {
-  return `<svg class="gd-outcome-icon gd-clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <circle class="gd-clock-pulse-ring" cx="12" cy="12" r="9" />
-    <circle class="gd-clock-dial" cx="12" cy="12" r="9" />
-    <line class="gd-clock-stem" x1="12" y1="1.2" x2="12" y2="3.2" />
-    <line class="gd-clock-hour" x1="12" y1="12" x2="12" y2="7.5" />
-    <line class="gd-clock-minute" x1="12" y1="12" x2="12" y2="6.2" />
+  return `<svg class="gd-outcome-icon gd-clock-icon gd-clock-expired" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle class="gd-clock-alarm-pulse" cx="12" cy="12" r="9" stroke-width="1.4" />
+    <circle class="gd-clock-rim" cx="12" cy="12" r="9" />
+    <line class="gd-clock-hour" x1="12" y1="12" x2="12" y2="7.2" stroke-width="2.2" />
+    <line class="gd-clock-minute" x1="12" y1="12" x2="12" y2="5.8" stroke-width="2.2" />
     <circle class="gd-clock-pivot" cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
   </svg>`;
 }
