@@ -5499,43 +5499,66 @@ article.gd-card-collapsed,
   color: var(--gd-text-muted) !important;
 }
 
+/* Unboxed Architectural Underline Note/Reason Input */
+.gd-decision-confirm-box input,
+.gd-decision-confirm-box textarea,
+.gd-decision-confirm-box .gd-confirm-note-input,
+.gd-decision-confirm-box .gd-decision-note-input,
+.gd-decision-confirm-box .gd-decision-reason-input,
 .gd-confirm-note-input,
 .gd-decision-note-input,
 .gd-decision-reason-input {
   width: 100% !important;
   box-sizing: border-box !important;
-  height: 36px !important;
-  padding: 4px 0 !important;
+  height: 38px !important;
+  padding: 8px 0 !important;
   font-family: var(--gd-font-sans) !important;
   font-size: 13.5px !important;
   font-weight: 500 !important;
-  color: var(--gd-text-primary) !important;
+  color: var(--gd-text-primary, #1C2418) !important;
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
-  border-bottom: 1.5px solid var(--gd-border-strong) !important;
+  border-bottom: 1.5px solid var(--gd-border-strong, #C5BDAE) !important;
   border-radius: 0 !important;
   outline: none !important;
   box-shadow: none !important;
   transition: border-bottom-color 0.2s ease !important;
 }
 
+.gd-decision-confirm-box input::placeholder,
+.gd-decision-confirm-box textarea::placeholder,
+.gd-decision-confirm-box .gd-confirm-note-input::placeholder,
+.gd-decision-confirm-box .gd-decision-note-input::placeholder,
+.gd-decision-confirm-box .gd-decision-reason-input::placeholder,
 .gd-confirm-note-input::placeholder,
 .gd-decision-note-input::placeholder,
 .gd-decision-reason-input::placeholder {
-  color: var(--gd-text-muted) !important;
+  color: var(--gd-text-muted, #7E7769) !important;
   font-weight: 400 !important;
   font-size: 13px !important;
   font-style: italic !important;
-  opacity: 0.75 !important;
+  opacity: 0.8 !important;
 }
 
+.gd-decision-confirm-box input:hover,
+.gd-decision-confirm-box textarea:hover,
+.gd-decision-confirm-box .gd-confirm-note-input:hover,
+.gd-decision-confirm-box .gd-decision-note-input:hover,
+.gd-decision-confirm-box .gd-decision-reason-input:hover,
 .gd-confirm-note-input:hover,
 .gd-decision-note-input:hover,
 .gd-decision-reason-input:hover {
-  border-bottom-color: var(--gd-deep-olive) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom-color: var(--gd-deep-olive, #1C2418) !important;
 }
 
+.gd-decision-confirm-box input:focus,
+.gd-decision-confirm-box textarea:focus,
+.gd-decision-confirm-box .gd-confirm-note-input:focus,
+.gd-decision-confirm-box .gd-decision-note-input:focus,
+.gd-decision-confirm-box .gd-decision-reason-input:focus,
 .gd-confirm-note-input:focus,
 .gd-decision-note-input:focus,
 .gd-decision-reason-input:focus {
@@ -5544,7 +5567,7 @@ article.gd-card-collapsed,
   background-color: transparent !important;
   box-shadow: none !important;
   border: none !important;
-  border-bottom: 2px solid var(--gd-deep-olive) !important;
+  border-bottom: 2px solid var(--gd-deep-olive, #1C2418) !important;
 }
 
 .gd-consequential-notice {
@@ -6783,9 +6806,9 @@ article.gd-card-collapsed,
   font-size: 13.5px;
   font-weight: 500;
   color: var(--gd-text-primary);
-  background-color: rgba(43, 62, 43, 0.035) !important;
-  border: 1px solid rgba(43, 62, 43, 0.18) !important;
-  border-radius: 6px !important;
+  background-color: rgba(43, 62, 43, 0.035);
+  border: 1px solid rgba(43, 62, 43, 0.18);
+  border-radius: 6px;
   box-sizing: border-box;
   transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -6796,16 +6819,16 @@ article.gd-card-collapsed,
 
 .gd-input-text:hover,
 .gd-select:hover {
-  background-color: rgba(43, 62, 43, 0.055) !important;
-  border-color: rgba(43, 62, 43, 0.3) !important;
+  background-color: rgba(43, 62, 43, 0.055);
+  border-color: rgba(43, 62, 43, 0.3);
 }
 
 .gd-input-text:focus,
 .gd-select:focus {
   outline: none;
-  background-color: #FFFFFF !important;
-  border-color: var(--gd-accent-olive) !important;
-  box-shadow: 0 0 0 3px rgba(74, 93, 74, 0.14) !important;
+  background-color: #FFFFFF;
+  border-color: var(--gd-accent-olive);
+  box-shadow: 0 0 0 3px rgba(74, 93, 74, 0.14);
 }
 
 /* Custom Styled Dropdown Select */

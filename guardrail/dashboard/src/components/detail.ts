@@ -703,6 +703,14 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const dErrBanner = document.createElement('div');
     dErrBanner.className = 'gd-decision-error-banner';
     dErrBanner.setAttribute('role', 'alert');
+    dErrBanner.style.background = 'transparent';
+    dErrBanner.style.backgroundColor = 'transparent';
+    dErrBanner.style.border = 'none';
+    dErrBanner.style.borderLeft = '2.5px solid #8F2B2B';
+    dErrBanner.style.borderRadius = '0';
+    dErrBanner.style.boxShadow = 'none';
+    dErrBanner.style.padding = '4px 0 4px 12px';
+    dErrBanner.style.marginBottom = '16px';
 
     const dErrIcon = document.createElement('span');
     dErrIcon.className = 'gd-error-icon';
@@ -711,6 +719,11 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const dErrText = document.createElement('span');
     dErrText.className = 'gd-decision-error-text';
     dErrText.textContent = props.decisionErrorMessage;
+    dErrText.style.color = '#8F2B2B';
+    dErrText.style.fontFamily = 'var(--gd-font-sans)';
+    dErrText.style.fontSize = '12.5px';
+    dErrText.style.fontWeight = '500';
+    dErrText.style.lineHeight = '1.45';
 
     dErrBanner.appendChild(dErrIcon);
     dErrBanner.appendChild(dErrText);
@@ -722,6 +735,14 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const dSuccBanner = document.createElement('div');
     dSuccBanner.className = 'gd-decision-success-banner';
     dSuccBanner.setAttribute('role', 'status');
+    dSuccBanner.style.background = 'transparent';
+    dSuccBanner.style.backgroundColor = 'transparent';
+    dSuccBanner.style.border = 'none';
+    dSuccBanner.style.borderLeft = '2.5px solid #2D4C18';
+    dSuccBanner.style.borderRadius = '0';
+    dSuccBanner.style.boxShadow = 'none';
+    dSuccBanner.style.padding = '4px 0 4px 12px';
+    dSuccBanner.style.marginBottom = '16px';
 
     const dSuccIcon = document.createElement('span');
     dSuccIcon.className = 'gd-success-icon';
@@ -730,6 +751,11 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
     const dSuccText = document.createElement('span');
     dSuccText.className = 'gd-decision-success-text';
     dSuccText.textContent = props.decisionSuccessMessage;
+    dSuccText.style.color = '#2D4C18';
+    dSuccText.style.fontFamily = 'var(--gd-font-sans)';
+    dSuccText.style.fontSize = '12.5px';
+    dSuccText.style.fontWeight = '500';
+    dSuccText.style.lineHeight = '1.45';
 
     dSuccBanner.appendChild(dSuccIcon);
     dSuccBanner.appendChild(dSuccText);
