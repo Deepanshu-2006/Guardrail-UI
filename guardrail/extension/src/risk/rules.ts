@@ -19,7 +19,13 @@ import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 import { evaluatePhishingIndicators } from '../utils/phishing-detector.js';
 import { evaluateFormSafety, FormSafetyEvaluation } from '../utils/form-detector.js';
 import { evaluateDownloadSafety } from '../utils/download-detector.js';
-import { matchesAnyPhrase } from '../classifier/rules.js';
+import {
+  matchesAnyPhrase,
+  isUpiInteraction,
+  isTransactionConfirmation,
+  isBeneficiaryAdditionOrChange,
+  isDisablingFinancialSecurity,
+} from '../classifier/rules.js';
 
 /**
  * Context provided to a risk rule for evaluation.
@@ -188,17 +194,43 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       const isPayment =
         context.classification?.category === ActionCategory.PAYMENT ||
         context.classification?.category === ActionCategory.FINANCIAL_TRANSACTION ||
+        context.classification?.category === ActionCategory.BENEFICIARY_MANAGEMENT ||
+        context.classification?.category === ActionCategory.FINANCIAL_SECURITY_CHANGE ||
         context.action.category === ActionCategory.PAYMENT ||
         context.action.category === ActionCategory.FINANCIAL_TRANSACTION ||
+        context.action.category === ActionCategory.BENEFICIARY_MANAGEMENT ||
+        context.action.category === ActionCategory.FINANCIAL_SECURITY_CHANGE ||
         context.action.element?.sensitiveFieldTypes?.includes('payment_card') === true ||
-        hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer money', 'send money', 'fund transfer', 'transfer']);
+        hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer money', 'send money', 'fund transfer', 'transfer']) ||
+        isUpiInteraction(context.action);
 
       if (isPayment) {
+        let scoreContribution = config.scoreContribution;
+
+        // Financial Confirmation / Authorization / High-Risk Beneficiary changes escalate to CRITICAL (80)
+        if (isTransactionConfirmation(context.action)) {
+          scoreContribution = 80;
+        } else if (isBeneficiaryAdditionOrChange(context.action)) {
+          scoreContribution = 80;
+        } else if (isDisablingFinancialSecurity(context.action)) {
+          scoreContribution = 80;
+        } else if (
+          context.classification?.category === ActionCategory.FINANCIAL_TRANSACTION ||
+          context.action.category === ActionCategory.FINANCIAL_TRANSACTION
+        ) {
+          scoreContribution = Math.max(scoreContribution, 50);
+        } else if (
+          context.classification?.category === ActionCategory.FINANCIAL_SECURITY_CHANGE ||
+          context.action.category === ActionCategory.FINANCIAL_SECURITY_CHANGE
+        ) {
+          scoreContribution = Math.max(scoreContribution, 50);
+        }
+
         return {
           matched: true,
           ruleId: 'RISK_RULE_PAYMENT',
           signalId: RiskSignalId.PAYMENT_ACTION,
-          scoreContribution: config.scoreContribution,
+          scoreContribution,
           reason: config.reason,
         };
       }

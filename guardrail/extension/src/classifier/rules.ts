@@ -190,11 +190,19 @@ export const FINANCIAL_READ_ONLY_PHRASES: readonly string[] = [
   'view balance',
   'check balance',
   'account balance',
+  'available balance',
+  'total balance',
+  'current balance',
+  'balance card',
   'balance inquiry',
   'mini statement',
   'view statement',
   'account statement',
   'download statement',
+  'download e-statement',
+  'e-statement',
+  'export statement',
+  'statement pdf',
   'statements',
   'passbook',
   'transaction details',
@@ -204,6 +212,33 @@ export const FINANCIAL_READ_ONLY_PHRASES: readonly string[] = [
   'order history',
   'view transactions',
   'recent activity',
+  'filter transactions',
+  'search transactions',
+  'filter payment history',
+  'payment history filter',
+  'payment methods',
+  'saved payment methods',
+  'manage payment methods',
+  'payment options',
+  'account dashboard',
+  'banking dashboard',
+  'dashboard overview',
+  'my accounts',
+  'account summary',
+  'view beneficiaries',
+  'beneficiary list',
+  'payee list',
+  'view payees',
+  'my payees',
+  'transfer limits',
+  'view limits',
+  'bank home',
+  'banking home',
+  'back to dashboard',
+  'savings account',
+  'current account',
+  'fixed deposits',
+  'recurring deposits',
 ];
 
 export const FinancialReadOnlyRule: ClassificationRule = {
@@ -211,6 +246,22 @@ export const FinancialReadOnlyRule: ClassificationRule = {
   category: ActionCategory.FINANCIAL_READ_ONLY,
   description: 'Matches read-only financial browsing (view balances, statements, transaction history)',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    // 1. Direct navigation to banking portal
+    if (action.type === ActionType.NAVIGATION) {
+      const pageTitle = (action.page?.title || '').toLowerCase();
+      const pageUrl = (action.page?.url || '').toLowerCase();
+      if (
+        (pageTitle.includes('bank') || pageUrl.includes('bank.') || pageUrl.includes('/netbanking')) &&
+        !pageTitle.includes('phish') &&
+        !pageTitle.includes('verify')
+      ) {
+        return {
+          matched: true,
+          reason: `Navigation targets banking portal ("${action.page?.title || action.page?.url}")`,
+        };
+      }
+    }
+
     const texts = extractActionElementTexts(action);
     const { matched, matchedKeyword } = matchesAnyPhrase(texts, FINANCIAL_READ_ONLY_PHRASES);
     if (matched) {
@@ -219,6 +270,56 @@ export const FinancialReadOnlyRule: ClassificationRule = {
         reason: `Matched financial read-only phrase "${matchedKeyword}" on interactive element`,
       };
     }
+
+    const firstText = texts[0]?.toLowerCase() || '';
+
+    // 2. Table rows, list items, or historical entries displaying past transactions (e.g. "Transfer to Alice: ₹2,500 on 14 Nov")
+    const isTableRow =
+      action.element?.tagName === 'TR' ||
+      action.element?.tagName === 'TD' ||
+      action.element?.tagName === 'LI';
+    const isHistoryItem =
+      (action.element?.className || '').toLowerCase().includes('history') ||
+      (action.page?.title || '').toLowerCase().includes('history') ||
+      (action.page?.url || '').toLowerCase().includes('transfers') ||
+      (action.page?.url || '').toLowerCase().includes('history');
+    const hasCompletedTxPattern =
+      /\b(on \d{1,2} [a-z]{3}|\d{4}-\d{2}-\d{2}|completed|successful|debited|credited)\b/i.test(firstText);
+
+    if (
+      (isTableRow || isHistoryItem || hasCompletedTxPattern) &&
+      !isTransactionConfirmation(action) &&
+      !isBeneficiaryAdditionOrChange(action)
+    ) {
+      if (
+        firstText.includes('transfer to ') ||
+        firstText.includes('paid to ') ||
+        firstText.includes('received from ') ||
+        firstText.includes('payment to ') ||
+        hasCompletedTxPattern ||
+        (isTableRow && (firstText.includes('transfer') || firstText.includes('payment')))
+      ) {
+        return {
+          matched: true,
+          reason: `Interactive table row or history entry displaying past transaction record`,
+        };
+      }
+    }
+
+    if (
+      (firstText.includes('balance') && !firstText.includes('pay') && !firstText.includes('transfer')) ||
+      (firstText.includes('history') && !firstText.includes('confirm') && !firstText.includes('authorize')) ||
+      (firstText.includes('statement') && !firstText.includes('pay')) ||
+      firstText === 'accounts' ||
+      firstText === 'my accounts' ||
+      firstText === 'dashboard'
+    ) {
+      return {
+        matched: true,
+        reason: `Interactive element indicates read-only financial browsing ("${firstText}")`,
+      };
+    }
+
     return { matched: false };
   },
 };
@@ -235,12 +336,24 @@ export const BENEFICIARY_MANAGEMENT_PHRASES: readonly string[] = [
   'manage beneficiaries',
   'delete beneficiary',
   'edit beneficiary',
+  'modify beneficiary',
+  'change beneficiary',
   'add payee',
   'new payee',
   'manage payees',
   'delete payee',
   'edit payee',
+  'modify payee',
+  'add new payee',
   'register beneficiary',
+  'add account',
+  'add new account',
+  'change recipient',
+  'modify recipient',
+  'remove beneficiary',
+  'remove payee',
+  'update beneficiary details',
+  'update payee details',
 ];
 
 export const BeneficiaryManagementRule: ClassificationRule = {
@@ -276,11 +389,32 @@ export const FINANCIAL_TRANSACTION_PHRASES: readonly string[] = [
   'upi transfer',
   'make transfer',
   'initiate transfer',
+  'start transfer',
+  'new transfer',
   'quick transfer',
   'send funds',
   'transfer now',
   'confirm transfer',
   'submit transfer',
+  'authorize transfer',
+  'confirm transaction',
+  'authorize transaction',
+  'authorize debit',
+  'authorize withdrawal',
+  'confirm withdrawal',
+  'pay via upi',
+  'upi payment',
+  'bhim upi',
+  'confirm upi',
+  'authorize upi',
+  'approve upi payment',
+  'send to upi id',
+  'send to vpa',
+  'scan and pay',
+  'scan qr',
+  'upi qr',
+  'approve payment request',
+  'remit funds',
 ];
 
 export const FinancialTransactionRule: ClassificationRule = {
@@ -297,9 +431,198 @@ export const FinancialTransactionRule: ClassificationRule = {
         reason: `Matched financial transaction phrase "${matchedKeyword}" on interactive element`,
       };
     }
+    if (isUpiInteraction(action)) {
+      return {
+        matched: true,
+        reason: 'Detected UPI payment flow on interactive element',
+      };
+    }
     return { matched: false };
   },
 };
+
+/**
+ * -----------------------------------------------------------------------------
+ * 3b. Rule: FINANCIAL_SECURITY_CHANGE
+ * -----------------------------------------------------------------------------
+ * Matches modifications to banking security, transaction limits, alerts, or payment credentials.
+ */
+export const FINANCIAL_SECURITY_CHANGE_PHRASES: readonly string[] = [
+  'change transaction limit',
+  'set transfer limit',
+  'daily transfer limit',
+  'modify transfer limit',
+  'increase limit',
+  'update transfer limit',
+  'card limit',
+  'manage limits',
+  'change daily limit',
+  'disable transaction alerts',
+  'turn off sms alerts',
+  'disable alerts',
+  'disable notification',
+  'disable security alerts',
+  'financial security settings',
+  'transaction controls',
+  'payment security settings',
+  'change mpin',
+  'reset mpin',
+  'set mpin',
+  'change transaction pin',
+  'update 2fa for banking',
+  'change payment pin',
+  'disable international transactions',
+  'disable 2fa',
+  'disable cooling period',
+  'disable two factor authentication',
+];
+
+export const FinancialSecurityChangeRule: ClassificationRule = {
+  id: 'RULE_FINANCIAL_SECURITY_CHANGE',
+  category: ActionCategory.FINANCIAL_SECURITY_CHANGE,
+  description: 'Matches modifications to banking security, transaction limits, alerts, or payment credentials',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, FINANCIAL_SECURITY_CHANGE_PHRASES);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched financial security change phrase "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * UPI handle regex matching standard Indian banking VPA formats (strictly without PIN or credentials).
+ */
+export const UPI_HANDLES_REGEX =
+  /^[a-zA-Z0-9.\-_]{2,256}@(okaxis|okhdfcbank|okicici|oksbi|upi|paytm|ybl|axl|ibl|barodampay|federal|postbank|jupiteraxis|fbl)$/i;
+
+/**
+ * Evaluates whether an interaction engages with UPI payment or VPA identifier.
+ */
+export function isUpiInteraction(action: GuardrailAction): boolean {
+  if (action.element?.isUpi) return true;
+  if (action.element?.vpaHandle) return true;
+  const texts = extractActionElementTexts(action);
+  for (const text of texts) {
+    if (
+      matchesAnyPhrase([text], [
+        'upi',
+        'vpa',
+        'bhim upi',
+        'pay via upi',
+        'gpay',
+        'phonepe',
+        'paytm upi',
+        'upi qr',
+        'scan and pay',
+        'upi id',
+        'send to upi',
+      ]).matched
+    ) {
+      return true;
+    }
+    if (UPI_HANDLES_REGEX.test(text.trim())) {
+      return true;
+    }
+  }
+  if (
+    action.element?.targetUrl &&
+    (action.element.targetUrl.startsWith('upi://') || action.element.targetUrl.includes('upi/pay'))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Identifies explicit final confirmation or authorization of a financial transaction.
+ */
+export const TRANSACTION_CONFIRMATION_PHRASES: readonly string[] = [
+  'confirm transfer',
+  'authorize transfer',
+  'submit transfer',
+  'confirm payment',
+  'authorize payment',
+  'confirm transaction',
+  'authorize transaction',
+  'authorize debit',
+  'confirm upi',
+  'authorize upi',
+  'approve upi payment',
+  'approve payment',
+  'confirm wire',
+  'submit payment',
+  'confirm withdrawal',
+  'authorize withdrawal',
+];
+
+export function isTransactionConfirmation(action: GuardrailAction): boolean {
+  if (action.element?.isTransactionConfirmation) return true;
+  const texts = extractActionElementTexts(action);
+  const { matched } = matchesAnyPhrase(texts, TRANSACTION_CONFIRMATION_PHRASES);
+  if (matched) return true;
+
+  if (action.type === ActionType.SUBMIT) {
+    const btnText = action.element?.submitButtonText || action.element?.visibleText || '';
+    if (/\b(confirm|authorize|approve|submit transfer|pay now)\b/i.test(btnText)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Evaluates whether an action adds or changes a payee or beneficiary.
+ */
+export function isBeneficiaryAdditionOrChange(action: GuardrailAction): boolean {
+  if (action.category !== ActionCategory.BENEFICIARY_MANAGEMENT) {
+    const texts = extractActionElementTexts(action);
+    const { matched } = matchesAnyPhrase(texts, BENEFICIARY_MANAGEMENT_PHRASES);
+    if (!matched) return false;
+  }
+  const texts = extractActionElementTexts(action);
+  return matchesAnyPhrase(texts, [
+    'add beneficiary',
+    'new beneficiary',
+    'add payee',
+    'new payee',
+    'add account',
+    'register beneficiary',
+    'add new payee',
+    'change beneficiary',
+    'modify beneficiary',
+    'change recipient',
+    'modify recipient',
+    'edit beneficiary',
+    'edit payee',
+    'update beneficiary',
+  ]).matched;
+}
+
+/**
+ * Evaluates whether an action disables important financial security protections or alerts.
+ */
+export function isDisablingFinancialSecurity(action: GuardrailAction): boolean {
+  const texts = extractActionElementTexts(action);
+  return matchesAnyPhrase(texts, [
+    'disable transaction alerts',
+    'turn off sms alerts',
+    'disable alerts',
+    'disable notification',
+    'disable security alerts',
+    'disable international transactions',
+    'disable 2fa',
+    'disable cooling period',
+    'disable two factor authentication',
+    'reset mpin',
+    'change mpin',
+    'change transaction pin',
+  ]).matched;
+}
 
 /**
  * -----------------------------------------------------------------------------
@@ -737,6 +1060,7 @@ export const CLASSIFICATION_RULES: readonly ClassificationRule[] = [
   BeneficiaryManagementRule,
   FinancialTransactionRule,
   PaymentRule,
+  FinancialSecurityChangeRule,
   SecuritySettingChangeRule,
   PermissionChangeRule,
   DestructiveRule,
