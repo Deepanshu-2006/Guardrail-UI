@@ -109,13 +109,29 @@ export const CONTROLLED_DESTRUCTIVE_POLICY: RiskPolicyDefinition = Object.freeze
     if (!CONTROLLED_DESTRUCTIVE_POLICY.appliesTo(action, assessment)) {
       return { matched: false };
     }
+
+    const tokens = extractTokens(action);
+    const isDangerousIrreversible =
+      hasAnyToken(tokens, ['delete account', 'close account', 'terminate', 'purge', 'wipe', 'delete all']) ||
+      assessment?.riskLevel === RiskLevel.CRITICAL ||
+      (typeof assessment?.score === 'number' && assessment.score >= 75);
+
+    const decision = isDangerousIrreversible ? ResponseAction.PROTECT : ResponseAction.WARN;
+    const ruleId = isDangerousIrreversible ? 'RULE_CONTROLLED_DESTRUCTIVE' : 'RULE_DESTRUCTIVE_MODERATE_WARN';
+    const reasonCode = isDangerousIrreversible ? 'POLICY_PROTECT_DESTRUCTIVE' : 'POLICY_WARN_DESTRUCTIVE';
+    const explanation = isDangerousIrreversible
+      ? CONTROLLED_DESTRUCTIVE_POLICY.userExplanation
+      : 'User warning recommended: Destructive action detected on target element. Review before confirming.';
+
     return {
       matched: true,
-      decision: ResponseAction.PROTECT,
-      ruleId: 'RULE_CONTROLLED_DESTRUCTIVE',
-      reasonCode: 'POLICY_PROTECT_DESTRUCTIVE',
-      explanation: CONTROLLED_DESTRUCTIVE_POLICY.userExplanation,
-      downstreamBehavior: CONTROLLED_DESTRUCTIVE_POLICY.downstreamBehavior,
+      decision,
+      ruleId,
+      reasonCode,
+      explanation,
+      downstreamBehavior: isDangerousIrreversible
+        ? CONTROLLED_DESTRUCTIVE_POLICY.downstreamBehavior
+        : 'Displays warning modal without automatic staging hold.',
     };
   },
 });
@@ -159,6 +175,10 @@ export const CONTROLLED_PAYMENT_POLICY: RiskPolicyDefinition = Object.freeze({
     }
 
     const tokens = extractTokens(action);
+    const isInformational = hasAnyToken(tokens, ['faq', 'help', 'options', 'guide', 'policy', 'terms', 'methods', 'about', 'how to pay']);
+    if (isInformational && (action.category === ActionCategory.GENERAL || !action.category)) {
+      return false;
+    }
     const hasPaymentToken =
       action.category === ActionCategory.PAYMENT ||
       action.category === ActionCategory.FINANCIAL_TRANSACTION ||
@@ -173,24 +193,27 @@ export const CONTROLLED_PAYMENT_POLICY: RiskPolicyDefinition = Object.freeze({
       return { matched: false };
     }
 
-    // Compound check: If payment is compounded with critical severity, escalate to PROTECT
+    // Compound check: If payment is high-risk authorization, escalate to PROTECT
     const criticalScore = getCriticalThresholdScore();
-    const isCritical =
+    const isHighRiskAuthorization =
       assessment?.riskLevel === RiskLevel.CRITICAL ||
-      (typeof assessment?.score === 'number' && assessment.score >= criticalScore);
-    const decision = isCritical ? ResponseAction.PROTECT : ResponseAction.WARN;
-    const ruleId = isCritical ? 'RULE_PAYMENT_COMPOUND_PROTECT' : 'RULE_PAYMENT_INTERACTION_POLICY';
-    const explanation = isCritical
-      ? 'Protective mechanism required: High-consequence payment action requires verification before processing.'
+      (typeof assessment?.score === 'number' && assessment.score >= criticalScore) ||
+      assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR') ||
+      action.category === ActionCategory.BENEFICIARY_MANAGEMENT;
+
+    const decision = isHighRiskAuthorization ? ResponseAction.PROTECT : ResponseAction.WARN;
+    const ruleId = isHighRiskAuthorization ? 'RULE_PAYMENT_COMPOUND_PROTECT' : 'RULE_PAYMENT_INTERACTION_POLICY';
+    const explanation = isHighRiskAuthorization
+      ? 'Protective mechanism required: High-consequence financial authorization requires verification before processing.'
       : CONTROLLED_PAYMENT_POLICY.userExplanation;
 
     return {
       matched: true,
       decision,
       ruleId,
-      reasonCode: isCritical ? 'POLICY_PROTECT_PAYMENT_COMPOUND' : 'POLICY_WARN_PAYMENT',
+      reasonCode: isHighRiskAuthorization ? 'POLICY_PROTECT_PAYMENT_COMPOUND' : 'POLICY_WARN_PAYMENT',
       explanation,
-      downstreamBehavior: isCritical
+      downstreamBehavior: isHighRiskAuthorization
         ? 'Enters Staging Mode requiring trusted-contact approval.'
         : CONTROLLED_PAYMENT_POLICY.downstreamBehavior,
     };
@@ -339,24 +362,69 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
     const phishingRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR');
     const suspiciousRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_SUSPICIOUS_URL');
 
-    let reasonCode = 'POLICY_WARN_EXTERNAL_NAVIGATION';
-    let explanation = EXTERNAL_NAVIGATION_POLICY.userExplanation;
-
+    // 1. Phishing / deceptive indicators strictly escalate to PROTECT
     if (phishingRule) {
-      reasonCode = 'POLICY_WARN_PHISHING_INDICATOR';
-      explanation = `Deceptive website advisory: ${phishingRule.reason}`;
-    } else if (suspiciousRule) {
-      reasonCode = 'POLICY_WARN_SUSPICIOUS_URL';
-      explanation = `Suspicious URL advisory: ${suspiciousRule.reason}`;
+      return {
+        matched: true,
+        decision: ResponseAction.PROTECT,
+        ruleId: 'RULE_EXTERNAL_NAVIGATION_PHISHING_PROTECT',
+        reasonCode: 'POLICY_PROTECT_PHISHING_INDICATOR',
+        explanation: `Protective mechanism required: Deceptive website or phishing indicator detected across navigation boundary (${phishingRule.reason}).`,
+        downstreamBehavior: 'Halts execution and prevents navigation pending verification.',
+      };
     }
 
+    // 2. High severity suspicious URL escalates to WARN; mild suspicion to ADVISE
+    if (suspiciousRule) {
+      const isHighSuspicion =
+        (suspiciousRule.scoreContribution ?? 0) >= 40 ||
+        (assessment?.score ?? 0) >= 50;
+
+      const decision = isHighSuspicion ? ResponseAction.WARN : ResponseAction.ADVISE;
+      return {
+        matched: true,
+        decision,
+        ruleId: 'RULE_EXTERNAL_NAVIGATION_POLICY',
+        reasonCode: isHighSuspicion ? 'POLICY_WARN_SUSPICIOUS_URL' : 'POLICY_ADVISE_SUSPICIOUS_URL',
+        explanation: `${decision === ResponseAction.WARN ? 'User warning recommended' : 'Advisory notice'}: Suspicious URL characteristics detected (${suspiciousRule.reason}).`,
+        downstreamBehavior: decision === ResponseAction.WARN
+          ? EXTERNAL_NAVIGATION_POLICY.downstreamBehavior
+          : 'Displays non-blocking advisory notification without halting page execution.',
+      };
+    }
+
+    // 3. Meaningful risky action across boundary (e.g. form submission, payment, credentials, destructive, or sensitive endpoints)
+    const targetUrlStr = action.element?.targetUrl || action.element?.formAction || action.page?.url || '';
+    const hasSensitiveDestination = /\b(login|signin|sign-in|auth|authenticate|checkout|pay|billing|transfer)\b/i.test(targetUrlStr);
+
+    const isMeaningfulRisk =
+      action.type === ActionType.SUBMIT ||
+      action.category === ActionCategory.PAYMENT ||
+      action.category === ActionCategory.AUTHENTICATION ||
+      action.category === ActionCategory.FINANCIAL_TRANSACTION ||
+      action.category === ActionCategory.DESTRUCTIVE_ACTION ||
+      hasSensitiveDestination ||
+      (assessment?.score ?? 0) >= 50;
+
+    if (isMeaningfulRisk) {
+      return {
+        matched: true,
+        decision: ResponseAction.WARN,
+        ruleId: 'RULE_EXTERNAL_NAVIGATION_POLICY',
+        reasonCode: 'POLICY_WARN_EXTERNAL_NAVIGATION',
+        explanation: 'User warning recommended: High-sensitivity interaction crossing external origin boundaries.',
+        downstreamBehavior: EXTERNAL_NAVIGATION_POLICY.downstreamBehavior,
+      };
+    }
+
+    // 4. Unknown but ordinary website navigation -> ADVISE (non-blocking advisory)
     return {
       matched: true,
-      decision: ResponseAction.WARN,
-      ruleId: 'RULE_EXTERNAL_NAVIGATION_POLICY',
-      reasonCode,
-      explanation,
-      downstreamBehavior: EXTERNAL_NAVIGATION_POLICY.downstreamBehavior,
+      decision: ResponseAction.ADVISE,
+      ruleId: 'RULE_EXTERNAL_NAVIGATION_ADVISE',
+      reasonCode: 'POLICY_ADVISE_EXTERNAL_NAVIGATION',
+      explanation: 'Advisory notice: Navigation redirects to an unclassified external destination. Proceed with normal caution.',
+      downstreamBehavior: 'Displays non-blocking advisory notification without halting page execution.',
     };
   },
 });
@@ -438,7 +506,131 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
 
 /**
  * -----------------------------------------------------------------------------
- * 5. ROUTINE BENIGN INTERACTION POLICY
+ * 5. SUSPICIOUS FILE DOWNLOAD POLICY
+ * -----------------------------------------------------------------------------
+ */
+export const SUSPICIOUS_DOWNLOAD_POLICY: RiskPolicyDefinition = Object.freeze({
+  id: RiskPolicyId.SUSPICIOUS_DOWNLOAD,
+  name: 'Suspicious Executable & File Download Policy',
+  description:
+    'Identifies file download triggers and halts executable or high-risk binary transfers pending verification.',
+  supportedActionTypes: [ActionType.CLICK, ActionType.NAVIGATION],
+  evidenceRequirement:
+    'Action initiates a file download targeting executable file formats (.exe, .msi, .dmg, .pkg, .bat, etc.) or triggered by DOWNLOAD_ACTION signal with elevated risk score.',
+  decision: ResponseAction.PROTECT,
+  userExplanation:
+    'Protective mechanism required: Suspicious executable file download detected. Transfer held pending security review.',
+  ruleId: 'RULE_SUSPICIOUS_DOWNLOAD_POLICY',
+  downstreamBehavior:
+    'Halts execution of download links and prevents automated binary transfers.',
+  limitations: {
+    falsePositives:
+      'May trigger on legitimate developer utility scripts or software installers downloaded intentionally.',
+    falseNegatives:
+      'Cannot inspect binary payloads delivered via blob URLs generated purely in memory by service workers.',
+    architecturalConstraints:
+      'Guardrail operates at the DOM click/navigation boundary before native browser download managers take control.',
+  },
+  appliesTo: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): boolean => {
+    if (action.type !== ActionType.CLICK && action.type !== ActionType.NAVIGATION) return false;
+
+    const hasDownloadCategory =
+      action.category === ActionCategory.DOWNLOAD ||
+      action.category === ActionCategory.FILE_DOWNLOAD;
+    const hasDownloadRule =
+      assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_DOWNLOAD') || false;
+
+    const downloadCandidate =
+      action.download?.filename ||
+      action.element?.downloadAttribute ||
+      action.element?.targetUrl ||
+      action.page?.url ||
+      '';
+    const hasExecutableTarget = /\.(exe|msi|dmg|pkg|zip|tar|gz|7z|iso|img|vhd|bat|cmd|sh|ps1|vbs|scr|hta)(\?.*)?$/i.test(downloadCandidate);
+
+    return hasDownloadCategory || hasDownloadRule || hasExecutableTarget;
+  },
+  evaluate: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): PolicyEvaluationResult => {
+    if (!SUSPICIOUS_DOWNLOAD_POLICY.appliesTo(action, assessment)) {
+      return { matched: false };
+    }
+
+    const downloadCandidate =
+      action.download?.filename ||
+      action.element?.downloadAttribute ||
+      action.element?.targetUrl ||
+      action.page?.url ||
+      '';
+    const isExecutable = /\.(exe|msi|dmg|pkg|iso|img|vhd|bat|cmd|sh|ps1|vbs|scr|hta)(\?.*)?$/i.test(downloadCandidate);
+    const isHighRisk = (assessment?.score ?? 0) >= 50 || isExecutable;
+
+    if (isHighRisk) {
+      return {
+        matched: true,
+        decision: ResponseAction.PROTECT,
+        ruleId: 'RULE_SUSPICIOUS_DOWNLOAD_POLICY',
+        reasonCode: 'POLICY_PROTECT_SUSPICIOUS_DOWNLOAD',
+        explanation: 'Protective mechanism required: Suspicious executable download detected from unverified source.',
+        downstreamBehavior: SUSPICIOUS_DOWNLOAD_POLICY.downstreamBehavior,
+      };
+    }
+
+    return { matched: false };
+  },
+});
+
+/**
+ * -----------------------------------------------------------------------------
+ * 6. PHISHING & DECEPTIVE IDENTITY PROTECTION POLICY
+ * -----------------------------------------------------------------------------
+ */
+export const PHISHING_PROTECTION_POLICY: RiskPolicyDefinition = Object.freeze({
+  id: RiskPolicyId.PHISHING_PROTECTION,
+  name: 'Phishing & Deceptive Identity Protection Policy',
+  description:
+    'Provides strict protection against interactions on deceptive websites, homoglyph lookalikes, or credential exfiltration targets.',
+  supportedActionTypes: [ActionType.CLICK, ActionType.INPUT, ActionType.SUBMIT, ActionType.NAVIGATION],
+  evidenceRequirement:
+    'Action occurs on a page with triggered PHISHING_INDICATOR signal, brand identity mismatch, or unencrypted credential exfiltration.',
+  decision: ResponseAction.PROTECT,
+  userExplanation:
+    'Protective mechanism required: Deceptive website or phishing indicator detected. Action held to protect credentials.',
+  ruleId: 'RULE_PHISHING_PROTECTION_POLICY',
+  downstreamBehavior:
+    'Enters Staging Mode: Halts form submission and navigation immediately. Requires verified authorization.',
+  limitations: {
+    falsePositives: 'May trigger on test staging environments using non-standard domain names.',
+    falseNegatives: 'Zero-day phishing on high-reputation compromised domains without branding mismatches.',
+    architecturalConstraints: 'Operates via heuristic inspection without external network reputation lookups.',
+  },
+  appliesTo: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): boolean => {
+    return (
+      assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR') ||
+      action.category === ActionCategory.SUSPICIOUS_REDIRECT ||
+      false
+    );
+  },
+  evaluate: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): PolicyEvaluationResult => {
+    if (!PHISHING_PROTECTION_POLICY.appliesTo(action, assessment)) {
+      return { matched: false };
+    }
+    const phishingRule = assessment?.matchedRules?.find((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR');
+    const reasonDetail = phishingRule?.reason || PHISHING_PROTECTION_POLICY.userExplanation;
+
+    return {
+      matched: true,
+      decision: ResponseAction.PROTECT,
+      ruleId: 'RULE_PHISHING_PROTECTION_POLICY',
+      reasonCode: 'POLICY_PROTECT_PHISHING_INDICATOR',
+      explanation: `Protective mechanism required: Deceptive website indicator detected (${reasonDetail}).`,
+      downstreamBehavior: PHISHING_PROTECTION_POLICY.downstreamBehavior,
+    };
+  },
+});
+
+/**
+ * -----------------------------------------------------------------------------
+ * 7. ROUTINE BENIGN INTERACTION POLICY
  * -----------------------------------------------------------------------------
  */
 export const ROUTINE_INTERACTION_POLICY: RiskPolicyDefinition = Object.freeze({
@@ -475,6 +667,7 @@ export const ROUTINE_INTERACTION_POLICY: RiskPolicyDefinition = Object.freeze({
     }
 
     // Check that none of the elevated policies match
+    if (PHISHING_PROTECTION_POLICY.appliesTo(action, assessment)) return false;
     if (CONTROLLED_DESTRUCTIVE_POLICY.appliesTo(action, assessment)) return false;
     if (CONTROLLED_PAYMENT_POLICY.appliesTo(action, assessment)) return false;
     if (EXTERNAL_NAVIGATION_POLICY.appliesTo(action, assessment)) return false;
@@ -503,7 +696,7 @@ export const ROUTINE_INTERACTION_POLICY: RiskPolicyDefinition = Object.freeze({
 
 /**
  * -----------------------------------------------------------------------------
- * 6. UNSUPPORTED ACTION BOUNDARY & CORRUPTION GUARD POLICY
+ * 8. UNSUPPORTED ACTION BOUNDARY & CORRUPTION GUARD POLICY
  * -----------------------------------------------------------------------------
  */
 export const UNSUPPORTED_BOUNDARY_GUARD_POLICY: RiskPolicyDefinition = Object.freeze({
@@ -557,6 +750,8 @@ export const UNSUPPORTED_BOUNDARY_GUARD_POLICY: RiskPolicyDefinition = Object.fr
  * Complete catalog of official Guardrail risk policies.
  */
 export const ALL_GUARDRAIL_POLICIES: readonly RiskPolicyDefinition[] = Object.freeze([
+  PHISHING_PROTECTION_POLICY,
+  SUSPICIOUS_DOWNLOAD_POLICY,
   CONTROLLED_DESTRUCTIVE_POLICY,
   CONTROLLED_PAYMENT_POLICY,
   EXTERNAL_NAVIGATION_POLICY,
