@@ -1123,6 +1123,17 @@ function bootstrap(): void {
               decision,
             });
 
+            // If the navigation event was halted by pre-navigation check, allow it to proceed now
+            const allowDestUrl = action.element?.targetUrl;
+            if (
+              allowDestUrl &&
+              typeof window !== 'undefined' &&
+              event.defaultPrevented &&
+              !element.hasAttribute(GUARDRAIL_TEST_ACTION_ATTR)
+            ) {
+              window.location.href = allowDestUrl;
+            }
+
             // Forward pipeline evaluation to background coordinator (without interception record)
             dispatchActionToBackground(action, classification, risk, decision);
             break;
@@ -1145,6 +1156,17 @@ function bootstrap(): void {
             });
 
             showAdvisoryNotice({ action, risk, decision });
+
+            // If the navigation event was halted by pre-navigation check, allow it to proceed now
+            const adviseDestUrl = action.element?.targetUrl;
+            if (
+              adviseDestUrl &&
+              typeof window !== 'undefined' &&
+              event.defaultPrevented &&
+              !element.hasAttribute(GUARDRAIL_TEST_ACTION_ATTR)
+            ) {
+              window.location.href = adviseDestUrl;
+            }
 
             // Forward pipeline evaluation to background coordinator (without interception record)
             dispatchActionToBackground(action, classification, risk, decision);
@@ -1280,17 +1302,8 @@ function bootstrap(): void {
             // Forward pipeline evaluation to background coordinator WITH the held interception record
             dispatchActionToBackground(action, classification, risk, decision, heldRecord);
 
-            // * Automatically present staging interface for user review and decision
-            if (latestStagingContext) {
-              showStagingModal({
-                context: latestStagingContext,
-                state: 'active',
-                controller: defaultInterceptionController,
-                continuationManager: defaultContinuationManager,
-                useRealBackend: true,
-                onCancel: (id) => cancelHeldAction(id),
-              });
-            }
+            // * Automatically present warning / protection interface for user review and decision
+            presentWarningWithApproval(action, risk, decision, classification);
             break;
           }
         }
