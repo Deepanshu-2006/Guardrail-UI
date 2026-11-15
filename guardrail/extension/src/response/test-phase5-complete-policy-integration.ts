@@ -135,6 +135,29 @@ console.log('\n▶ Suite 2: Authentication Operations (Legitimate vs Threat)');
   const resLogout = evaluateActionPipeline(logoutAction);
   assertEquals(resLogout.decision.response, ResponseAction.ALLOW, 'Normal account logout yields ALLOW');
 
+  // 2b. Legitimate bank login (ALLOW)
+  const legitBankLoginAction: GuardrailAction = {
+    id: 'act-auth-bank-login',
+    type: ActionType.CLICK,
+    element: { tagName: 'BUTTON', visibleText: 'Log In' },
+    page: { url: 'https://netbanking.hdfcbank.com/netbanking/', title: 'HDFC Bank NetBanking', isSecureContext: true },
+    timestamp: new Date().toISOString(),
+  };
+  const resLegitLogin = evaluateActionPipeline(legitBankLoginAction);
+  assertEquals(resLegitLogin.decision.response, ResponseAction.ALLOW, 'Legitimate bank login yields ALLOW');
+
+  // 2c. Google search results for bank do not trigger phishing brand mismatch
+  const googleSearchAction: GuardrailAction = {
+    id: 'act-google-search-bank',
+    type: ActionType.CLICK,
+    element: { tagName: 'A', visibleText: 'HDFC Bank NetBanking - Secure Online Banking' },
+    page: { url: 'https://www.google.com/search?q=hdfc+netbanking', title: 'hdfc netbanking - Google Search' },
+    timestamp: new Date().toISOString(),
+  };
+  const resGoogleBank = evaluateActionPipeline(googleSearchAction);
+  assertEquals(resGoogleBank.risk.riskLevel, RiskLevel.LOW, 'Google search results for bank remain LOW risk (0 score)');
+  assert(!resGoogleBank.risk.reasons.some(r => r.includes('claims identity of')), 'Zero false phishing mismatch on Google search');
+
   // 3. Credential submission on lookalike deceptive domain (Critical Threat)
   const deceptiveLoginAction: GuardrailAction = {
     id: 'act-auth-phish-sub',

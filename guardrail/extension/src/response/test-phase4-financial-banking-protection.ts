@@ -203,6 +203,30 @@ console.log('\n▶ Suite 2: Real Transaction Intent vs Benign Financial Elements
   const resViewBen = evaluateActionPipeline(viewBenAction);
   assertEquals(resViewBen.classification.category, ActionCategory.FINANCIAL_READ_ONLY, 'View Beneficiaries is FINANCIAL_READ_ONLY');
   assertEquals(resViewBen.decision.response, ResponseAction.ALLOW, 'View Beneficiaries yields ALLOW');
+
+  // Legitimate Bank Login yields ALLOW
+  const bankLoginAction: GuardrailAction = {
+    id: 'act-bank-login-legit',
+    type: ActionType.CLICK,
+    element: { tagName: 'BUTTON', visibleText: 'Log In' },
+    page: { url: 'https://netbanking.hdfcbank.com/netbanking/', title: 'HDFC Bank NetBanking', isSecureContext: true },
+    timestamp: new Date().toISOString(),
+  };
+  const resBankLogin = evaluateActionPipeline(bankLoginAction);
+  assertEquals(resBankLogin.decision.response, ResponseAction.ALLOW, 'Legitimate bank login on hdfcbank.com yields ALLOW');
+  assert(resBankLogin.risk.score <= 24, 'Legitimate bank login risk score is LOW (<= 24)');
+
+  // Informational UPI help link yields ALLOW
+  const upiInfoAction: GuardrailAction = {
+    id: 'act-upi-info-faq',
+    type: ActionType.CLICK,
+    element: { tagName: 'A', visibleText: 'About UPI' },
+    page: { url: 'https://netbanking.hdfcbank.com/faq', title: 'HDFC Bank FAQs' },
+    timestamp: new Date().toISOString(),
+  };
+  const resUpiInfo = evaluateActionPipeline(upiInfoAction);
+  assertEquals(resUpiInfo.classification.category, ActionCategory.FINANCIAL_READ_ONLY, 'About UPI link is FINANCIAL_READ_ONLY');
+  assertEquals(resUpiInfo.decision.response, ResponseAction.ALLOW, 'About UPI link yields ALLOW');
 }
 
 // =============================================================================
