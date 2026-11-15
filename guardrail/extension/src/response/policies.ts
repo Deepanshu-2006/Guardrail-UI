@@ -38,6 +38,22 @@ import {
   isDisablingFinancialSecurity,
 } from '../classifier/rules.js';
 
+export const LEGITIMATE_BANKING_DOMAINS: readonly string[] = Object.freeze([
+  'hdfcbank.com',
+  'sbi.co.in',
+  'onlinesbi.sbi',
+  'onlinesbi.com',
+  'icicibank.com',
+  'chase.com',
+  'bankofamerica.com',
+  'wellsfargo.com',
+  'citibank.com',
+  'barclays.co.uk',
+  'hsbc.com',
+  'santander.co.uk',
+  'lloydsbank.com',
+]);
+
 /**
  * Extracts searchable text tokens strictly from the interactive DOM element.
  * Never includes page.title, page.url pathname, or element.className.
@@ -555,6 +571,32 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
       firstText.includes('sign out') ||
       firstText === 'signout'
     ) {
+      return false;
+    }
+
+    // Legitimate bank login or trusted domain login without independent threat signals is routine and permitted
+    const pageUrl = action.page?.url || '';
+    let isLegitDomain = isTrustedDomain(pageUrl);
+    if (!isLegitDomain && pageUrl) {
+      try {
+        const host = new URL(pageUrl).hostname.toLowerCase();
+        isLegitDomain = LEGITIMATE_BANKING_DOMAINS.some(
+          (d) => host === d || host.endsWith(`.${d}`)
+        );
+      } catch {}
+    }
+
+    const hasThreat = assessment?.matchedRules?.some(
+      (r) =>
+        r.ruleId === 'RISK_RULE_PHISHING_INDICATOR' ||
+        r.ruleId === 'RISK_RULE_SUSPICIOUS_URL'
+    );
+
+    const isSecurityOrPermChange =
+      action.category === ActionCategory.SECURITY_SETTING_CHANGE ||
+      action.category === ActionCategory.PERMISSION_CHANGE;
+
+    if (isLegitDomain && !hasThreat && !isSecurityOrPermChange) {
       return false;
     }
 

@@ -358,7 +358,20 @@ export function evaluatePhishingIndicators(
   const metaBranding = (context.pageMetaBranding || '').toLowerCase();
   const combinedBrandingText = `${titleText} ${metaBranding}`.trim();
 
-  if (combinedBrandingText && pageRegDomain && !isLocalhost) {
+  // Search engines naturally include user query keywords (e.g. "hdfc netbanking - Google Search") in page titles
+  const isSearchEngine =
+    pageRegDomain === 'google.com' ||
+    pageRegDomain === 'bing.com' ||
+    pageRegDomain === 'yahoo.com' ||
+    pageRegDomain === 'duckduckgo.com' ||
+    pageHost.endsWith('.google.com') ||
+    pageHost.endsWith('.google.co.in') ||
+    pageHost.endsWith('.google.co.uk') ||
+    pageHost.endsWith('.bing.com') ||
+    pageHost.endsWith('.yahoo.com') ||
+    pageHost.endsWith('.duckduckgo.com');
+
+  if (combinedBrandingText && pageRegDomain && !isLocalhost && !isSearchEngine) {
     for (const brand of RECOGNIZED_BRANDS) {
       const claimsBrand = brand.titleKeywords.some((kw) => combinedBrandingText.includes(kw));
       if (claimsBrand) {

@@ -239,6 +239,12 @@ export const FINANCIAL_READ_ONLY_PHRASES: readonly string[] = [
   'current account',
   'fixed deposits',
   'recurring deposits',
+  'about upi',
+  'upi faq',
+  'upi faqs',
+  'upi help',
+  'upi guide',
+  'what is upi',
 ];
 
 export const FinancialReadOnlyRule: ClassificationRule = {
@@ -508,6 +514,17 @@ export function isUpiInteraction(action: GuardrailAction): boolean {
   if (action.element?.vpaHandle) return true;
   const texts = extractActionElementTexts(action);
   for (const text of texts) {
+    const lower = text.toLowerCase();
+    if (
+      lower.includes('about upi') ||
+      lower.includes('upi faq') ||
+      lower.includes('upi help') ||
+      lower.includes('upi guide') ||
+      lower.includes('what is upi') ||
+      lower.includes('learn about upi')
+    ) {
+      continue;
+    }
     if (
       matchesAnyPhrase([text], [
         'upi',
