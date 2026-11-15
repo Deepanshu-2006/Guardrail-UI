@@ -449,6 +449,188 @@ export function explainRiskDecision(
       };
     }
 
+    case 'POLICY_PROTECT_TRANSACTION_CONFIRMATION':
+    case 'RULE_PAYMENT_CONFIRMATION_PROTECT': {
+      return {
+        decision: ResponseAction.PROTECT,
+        nature: 'POLICY_MATCH',
+        categoryBadge: 'Financial Confirmation Guard',
+        headline: 'Protected Action: Fund Transfer or Payment Authorization',
+        userSummary:
+          'Guardrail held this transfer or payment confirmation in Staging Mode to verify recipient and payment parameters before execution.',
+        actionDescription: `Authorizing or confirming a final financial transfer/payment ("${targetLabel}")`,
+        whyRisky: 'Final financial confirmations initiate irreversible debiting or transfer of funds.',
+        consequences: 'Funds will be transferred or debited to the specified payee.',
+        saferChoice: 'Verify payee details, account/VPA, and amount in Staging Mode before confirming.',
+        whyFlagged: Object.freeze([
+          `Target element ("${targetLabel}") represents final transaction authorization.`,
+          'Direct debit or irreversible funds transfer detected.',
+          'Guardrail never inspects, reads, or logs PINs, OTPs, or passwords.',
+        ]),
+        recoveryGuidance: Object.freeze([
+          'Review the recipient, amount, and payment method before proceeding.',
+          'Confirm continuation in Staging Mode or click Cancel to stop the transaction.',
+        ]),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_PAYMENT_CONFIRMATION_PROTECT',
+          reasonCode: 'POLICY_PROTECT_TRANSACTION_CONFIRMATION',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.CRITICAL,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+      };
+    }
+
+    case 'POLICY_PROTECT_BENEFICIARY_MANAGEMENT':
+    case 'RULE_BENEFICIARY_MANAGEMENT_PROTECT': {
+      return {
+        decision: ResponseAction.PROTECT,
+        nature: 'POLICY_MATCH',
+        categoryBadge: 'Beneficiary Management Guard',
+        headline: 'Protected Action: Beneficiary or Payee Modification',
+        userSummary:
+          'Guardrail held this beneficiary addition or change in Staging Mode to verify recipient details before saving.',
+        actionDescription: `Adding or modifying an authorized transaction beneficiary/payee ("${targetLabel}")`,
+        whyRisky: 'Registering or changing beneficiaries creates new authorized channels for funds transfer.',
+        consequences: 'The payee or bank account will be added or modified in your payee registry.',
+        saferChoice: 'Double-check the account number, IFSC/SWIFT code, or UPI VPA before confirming.',
+        whyFlagged: Object.freeze([
+          `Target element ("${targetLabel}") adds or modifies a financial beneficiary/payee.`,
+          'Elevated security policy enforces verification of recipient details.',
+          'Credentials and bank details are never stored or transmitted by Guardrail.',
+        ]),
+        recoveryGuidance: Object.freeze([
+          'Verify that the account number or VPA matches the intended person.',
+          'Confirm continuation in Staging Mode or click Cancel.',
+        ]),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_BENEFICIARY_MANAGEMENT_PROTECT',
+          reasonCode: 'POLICY_PROTECT_BENEFICIARY_MANAGEMENT',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.CRITICAL,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+      };
+    }
+
+    case 'POLICY_PROTECT_FINANCIAL_SECURITY':
+    case 'RULE_FINANCIAL_SECURITY_PROTECT': {
+      return {
+        decision: ResponseAction.PROTECT,
+        nature: 'POLICY_MATCH',
+        categoryBadge: 'Financial Security Protection',
+        headline: 'Protected Action: Disabling Financial Protections',
+        userSummary:
+          'Guardrail held this action because it modifies or disables vital banking security alerts or protections.',
+        actionDescription: `Modifying or disabling important banking security settings/alerts ("${targetLabel}")`,
+        whyRisky: 'Disabling transaction alerts or security protections reduces defense against unauthorized transactions.',
+        consequences: 'Notifications or limits protecting your financial account will be weakened or removed.',
+        saferChoice: 'Keep transaction alerts and multi-factor protections enabled.',
+        whyFlagged: Object.freeze([
+          `Target element ("${targetLabel}") disables banking security alerts or controls.`,
+          'Financial security invariant requires verification before weakening protections.',
+        ]),
+        recoveryGuidance: Object.freeze([
+          'Verify if you genuinely intended to turn off security notifications or limits.',
+          'Cancel to keep full protections active.',
+        ]),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_FINANCIAL_SECURITY_PROTECT',
+          reasonCode: 'POLICY_PROTECT_FINANCIAL_SECURITY',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.CRITICAL,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+      };
+    }
+
+    case 'POLICY_PROTECT_UNTRUSTED_PAYMENT_REDIRECT':
+    case 'RULE_UNTRUSTED_PAYMENT_REDIRECT_PROTECT': {
+      return {
+        decision: ResponseAction.PROTECT,
+        nature: 'POLICY_MATCH',
+        categoryBadge: 'Payment Redirection Guard',
+        headline: 'Protected Action: Untrusted Payment Gateway Redirection',
+        userSummary:
+          'Guardrail intercepted this payment redirection because the destination domain is not verified as a trusted payment gateway.',
+        actionDescription: `Redirecting payment flow to an unverified external destination ("${targetLabel}")`,
+        whyRisky: 'Payment redirection to unknown or unverified domains presents a risk of payment hijacking or credential harvesting.',
+        consequences: 'You will be redirected to an unverified external website.',
+        saferChoice: 'Cancel and use an authorized, recognized payment method on the official store.',
+        whyFlagged: Object.freeze([
+          `Payment target points to an unverified domain outside official payment gateway registries.`,
+          'Protection hold initiated to prevent external payment fraud.',
+        ]),
+        recoveryGuidance: Object.freeze([
+          'Check the destination domain URL carefully.',
+          'Cancel if the website or gateway does not look familiar.',
+        ]),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_UNTRUSTED_PAYMENT_REDIRECT_PROTECT',
+          reasonCode: 'POLICY_PROTECT_UNTRUSTED_PAYMENT_REDIRECT',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.CRITICAL,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+      };
+    }
+
+    case 'POLICY_WARN_FINANCIAL_SECURITY':
+    case 'RULE_FINANCIAL_SECURITY_WARN': {
+      return {
+        decision: ResponseAction.WARN,
+        nature: 'OPERATIONAL_PRECAUTION',
+        categoryBadge: 'Financial Setting Advisory',
+        headline: 'Notice: Modifying Banking or Financial Limit',
+        userSummary:
+          'Guardrail identified an action modifying transaction limits or account settings. Please review changes before continuing.',
+        actionDescription: `Modifying banking limit or account configuration ("${targetLabel}")`,
+        whyRisky: 'Adjusting transaction limits impacts the maximum amount that can be transferred without extra verification.',
+        consequences: 'Your account transfer limits will be updated to the new threshold.',
+        saferChoice: 'Ensure limits are set only as high as necessary for immediate needs.',
+        whyFlagged: Object.freeze([
+          `Target element ("${targetLabel}") changes transaction limits or controls.`,
+          'Advisory friction provided to prevent unintended limit changes.',
+        ]),
+        recoveryGuidance: Object.freeze([
+          'Verify the new limit values before proceeding.',
+          'Click Continue if correct, or Cancel to keep existing settings.',
+        ]),
+        technicalDetails: Object.freeze({
+          actionId,
+          ruleId: primaryRuleId || 'RULE_FINANCIAL_SECURITY_WARN',
+          reasonCode: 'POLICY_WARN_FINANCIAL_SECURITY',
+          score: risk?.score,
+          riskLevel: risk?.riskLevel || RiskLevel.HIGH,
+          evaluationStatus: RiskEvaluationStatus.EVALUATED,
+          sanitizedUrl,
+          targetLabel,
+          matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+        }),
+        isSecurityThreat: false,
+      };
+    }
+
     case 'POLICY_WARN_PAYMENT':
     case 'RULE_PAYMENT_INTERACTION_POLICY':
     case 'POLICY_CONTROLLED_PAYMENT': {
