@@ -982,7 +982,14 @@ textarea:focus-visible,
   .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap,
   .gd-view-section.gd-view-initial-enter .gd-history-card,
   .gd-view-section.gd-view-initial-enter .gd-history-list.has-selection .gd-history-card:not(.selected),
-  .gd-history-card.gd-card-animating-in {
+  .gd-history-card.gd-card-animating-in,
+  .gd-history-detail-pane .gd-history-record-header,
+  .gd-history-detail-pane .gd-history-outcome-block,
+  .gd-history-detail-pane .gd-history-section-interaction,
+  .gd-history-detail-pane .gd-history-section-risk,
+  .gd-history-detail-pane .gd-history-section-timeline,
+  .gd-history-detail-pane .gd-history-record-footer,
+  .gd-history-detail-pane .gd-history-empty-detail {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -2729,6 +2736,197 @@ textarea:focus-visible,
   padding-left: 36px;
 }
 
+/* Synchronized record detail entrance animation: multi-layered editorial choreography */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-record-header,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-record-header {
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both;
+}
+
+/* Kicker tracking decompression */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-record-kicker,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-record-kicker {
+  display: inline-block;
+  animation: gd-kicker-enter 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
+}
+
+/* Badges stamp into place like an authoritative physical archive seal */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-record-badges .gd-detail-status-pill,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-record-badges .gd-detail-status-pill {
+  animation: gd-badge-stamp 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-record-badges .gd-risk-badge,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-record-badges .gd-risk-badge {
+  animation: gd-badge-stamp 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
+}
+
+/* Editorial title focus reveal */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-record-title,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-record-title {
+  animation: gd-title-focus-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+/* Verdict Outcome Block */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-outcome-block,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-outcome-block {
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark {
+  display: inline-block;
+  animation: gd-mark-settle 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) 0.16s both;
+}
+
+/* 01 Interaction Details */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-section-interaction,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-section-interaction {
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-prop-item,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-prop-item {
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-prop-item:nth-child(1),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-prop-item:nth-child(1) { animation-delay: 0.20s; }
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-prop-item:nth-child(2),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-prop-item:nth-child(2) { animation-delay: 0.23s; }
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-prop-item:nth-child(3),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-prop-item:nth-child(3) { animation-delay: 0.26s; }
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-prop-item:nth-child(4),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-prop-item:nth-child(4) { animation-delay: 0.29s; }
+
+/* 02 Safety & Risk Evaluation */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-section-risk,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-section-risk {
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-risk-reason-item,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-risk-reason-item {
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
+/* 03 Audit Timeline Columns (Revealing chronologically from left to right) */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-section-timeline,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-section-timeline {
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-timeline-column:nth-child(1),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-timeline-column:nth-child(1) {
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+.gd-history-detail-pane.gd-detail-animating-in .gd-timeline-column:nth-child(2),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-timeline-column:nth-child(2) {
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+}
+.gd-history-detail-pane.gd-detail-animating-in .gd-timeline-column:nth-child(3),
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-timeline-column:nth-child(3) {
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+}
+
+/* Record Footer */
+.gd-history-detail-pane.gd-detail-animating-in .gd-history-record-footer,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-history-record-footer {
+  animation: gd-section-unfold 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+
+.gd-history-detail-pane .gd-history-empty-detail {
+  animation: gd-history-placeholder-content-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Keyframes */
+@keyframes gd-section-unfold {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gd-kicker-enter {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+    letter-spacing: 0.16em;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    letter-spacing: 0.08em;
+  }
+}
+
+@keyframes gd-badge-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(4px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.06) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes gd-title-focus-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes gd-mark-settle {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-28deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.15) rotate(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes gd-micro-stagger {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gd-history-placeholder-content-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1024px) {
   .gd-history-detail-pane {
     border-left: none !important;
@@ -3913,7 +4111,10 @@ article.gd-card-collapsed,
   align-items: flex-start !important;
   gap: 14px !important;
   box-shadow: none !important;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.22s ease,
+              border-color 0.22s ease,
+              padding-left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   margin-bottom: 0 !important;
   width: 100% !important;
   box-sizing: border-box !important;
@@ -3931,17 +4132,17 @@ article.gd-card-collapsed,
   background-color: rgba(39, 49, 33, 0.02) !important;
 }
 
-/* Focus principle: when a record is opened, unselected records gently dim */
+/* Unified Focus Choreography: when a record is opened, unselected records gracefully fade out */
 .gd-history-list.has-selection .gd-history-card:not(.selected),
 .gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected) {
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
 .gd-history-list.has-selection .gd-history-card:not(.selected):hover,
 .gd-history-list.has-selection .gd-history-card:not(.selected):focus-visible,
 .gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected):hover,
 .gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected):focus-visible {
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .gd-history-card {
@@ -4000,22 +4201,7 @@ article.gd-card-collapsed,
 }
 
 .gd-history-detail-close-btn {
-  background: transparent;
-  border: none;
-  color: var(--gd-text-muted);
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
-  padding: 3px 6px;
-  margin-left: 6px;
-  border-radius: 4px;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.gd-history-detail-close-btn:hover,
-.gd-history-detail-close-btn:focus-visible {
-  color: var(--gd-deep-olive);
-  background: rgba(39, 49, 33, 0.08);
+  display: none !important;
 }
 
 .gd-history-header-badges {

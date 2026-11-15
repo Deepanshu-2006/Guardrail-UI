@@ -159,7 +159,7 @@ function formatActionType(type?: string): string {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function renderHistoryRecordDetail(options: {
+export function renderHistoryRecordDetail(options: {
   request: ApprovalRequest | null | undefined;
   isLoading?: boolean;
   errorMessage?: string | null;
@@ -280,20 +280,6 @@ function renderHistoryRecordDetail(options: {
   badges.appendChild(statusPill);
   badges.appendChild(riskBadge);
 
-  if (options.onClose) {
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'gd-history-detail-close-btn';
-    closeBtn.setAttribute('aria-label', 'Close record details');
-    closeBtn.setAttribute('title', 'Close details');
-    closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      options.onClose?.();
-    });
-    badges.appendChild(closeBtn);
-  }
-
   topRow.appendChild(kicker);
   topRow.appendChild(badges);
   header.appendChild(topRow);
@@ -393,7 +379,7 @@ function renderHistoryRecordDetail(options: {
 
   // 3. Section 01: Interaction Details (Pure typography, no pill shapes)
   const propsSection = document.createElement('div');
-  propsSection.className = 'gd-history-section';
+  propsSection.className = 'gd-history-section gd-history-section-interaction';
 
   const propsHeader = document.createElement('div');
   propsHeader.className = 'gd-history-section-header';
@@ -461,7 +447,7 @@ function renderHistoryRecordDetail(options: {
 
   // 4. Section 02: Safety & Risk Evaluation (Pure typographic hierarchy)
   const riskSection = document.createElement('div');
-  riskSection.className = 'gd-history-section';
+  riskSection.className = 'gd-history-section gd-history-section-risk';
 
   const riskHeaderEl = document.createElement('div');
   riskHeaderEl.className = 'gd-history-section-header';
@@ -505,7 +491,7 @@ function renderHistoryRecordDetail(options: {
 
   // 5. Section 03: Audit Timeline (Pure unboxed 3-column timeline)
   const timelineSection = document.createElement('div');
-  timelineSection.className = 'gd-history-section';
+  timelineSection.className = 'gd-history-section gd-history-section-timeline';
 
   const timelineHeader = document.createElement('div');
   timelineHeader.className = 'gd-history-section-header';
@@ -885,6 +871,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
       card.setAttribute('aria-label', `View decision details for ${req.id}: ${req.actionDescription}`);
+      card.setAttribute('data-request-id', req.id);
       if (typeof card.style?.setProperty === 'function') {
         card.style.setProperty('--card-idx', String(index));
       } else if (card.style) {
@@ -1151,6 +1138,9 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     filteredRequests,
     allRequests,
   });
+  if (selectedRequest) {
+    detailPane.classList.add('gd-detail-animating-in');
+  }
 
   layout.appendChild(detailPane);
   section.appendChild(layout);

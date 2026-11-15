@@ -29,7 +29,8 @@ import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview } from './components/overview.js';
 import { renderPendingApprovals } from './components/pending.js';
-import { renderDecisionHistory } from './components/history.js';
+import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
+import { filterRequests } from './components/filters.js';
 import { renderSettings } from './components/settings.js';
 import { isInvitationExpired } from './components/relationships.js';
 
@@ -1783,11 +1784,71 @@ export class DashboardShell {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
       enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
     }
-    if (this.state.selectedHistoryRequestId === requestId || !requestId) {
-      this.state.selectedHistoryRequestId = null;
-    } else {
-      this.state.selectedHistoryRequestId = requestId;
+    const newSelectedId = (this.state.selectedHistoryRequestId === requestId || !requestId)
+      ? null
+      : requestId;
+    this.state.selectedHistoryRequestId = newSelectedId;
+
+    // Perform seamless in-place transition if the history view is mounted
+    const historySection = this.mainContentEl?.querySelector('#view-history');
+    const historyLayout = historySection?.querySelector('.gd-history-layout');
+    const listPane = historyLayout?.querySelector('.gd-history-list');
+    const oldDetailPane = historyLayout?.querySelector('.gd-detail-pane');
+
+    if (historySection && historyLayout && listPane && oldDetailPane) {
+      const hasSelection = Boolean(newSelectedId);
+      if (hasSelection) {
+        listPane.classList.add('has-selection');
+      } else {
+        listPane.classList.remove('has-selection');
+      }
+
+      // Update card selection states smoothly in-place so unselected cards fade out
+      const cards = listPane.querySelectorAll('.gd-history-card');
+      cards.forEach((card) => {
+        const cardId = card.getAttribute('data-request-id') || card.getAttribute('aria-label') || '';
+        const isCurrentSelected = Boolean(newSelectedId && (cardId === newSelectedId || cardId.includes(newSelectedId)));
+        if (isCurrentSelected) {
+          card.classList.add('selected', 'is-opened');
+          card.setAttribute('aria-selected', 'true');
+        } else {
+          card.classList.remove('selected', 'is-opened');
+          card.setAttribute('aria-selected', 'false');
+        }
+      });
+
+      // Render updated detail pane with entrance animation
+      const selectedHistoryDetail = newSelectedId
+        ? (this.detailedRequestsCache.get(newSelectedId) ||
+           this.state.historyRequests.find((r) => r.id === newSelectedId) ||
+           null)
+        : null;
+
+      const filteredRequests = filterRequests(this.state.historyRequests, this.state.historyFilters);
+
+      const newDetailPane = renderHistoryRecordDetail({
+        request: selectedHistoryDetail,
+        isLoading: this.isDetailLoading,
+        errorMessage: this.detailErrorMessage,
+        onRefresh: this.apiClient && newSelectedId
+          ? () => void this.loadRequestDetails(newSelectedId, true)
+          : undefined,
+        onClose: () => this.selectHistoryRequest(''),
+        filteredRequests,
+        allRequests: this.state.historyRequests,
+      });
+
+      newDetailPane.classList.add('gd-detail-animating-in');
+
+      if (typeof (historyLayout as any).replaceChild === 'function') {
+        historyLayout.replaceChild(newDetailPane, oldDetailPane);
+      } else {
+        historyLayout.removeChild(oldDetailPane);
+        historyLayout.appendChild(newDetailPane);
+      }
+      return;
     }
+
     this.render();
   }
 
