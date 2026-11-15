@@ -385,16 +385,46 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
 
       // Benign password recovery or help links do not represent credential submission
       const firstText = tokens[0]?.toLowerCase() || '';
-      if (firstText.includes('forgot password') || firstText.includes('recover password')) {
+      if (
+        firstText.includes('forgot password') ||
+        firstText.includes('forgot your password') ||
+        firstText.includes('recover password') ||
+        firstText.includes('reset password')
+      ) {
+        return { matched: false };
+      }
+
+      // Normal session termination (logout) is routine and safe
+      if (
+        firstText.includes('log out') ||
+        firstText.includes('logout') ||
+        firstText.includes('sign out') ||
+        firstText === 'signout'
+      ) {
         return { matched: false };
       }
 
       const isAuth =
         context.classification?.category === ActionCategory.AUTHENTICATION ||
+        context.classification?.category === ActionCategory.SECURITY_SETTING_CHANGE ||
+        context.classification?.category === ActionCategory.PERMISSION_CHANGE ||
         context.action.category === ActionCategory.AUTHENTICATION ||
+        context.action.category === ActionCategory.SECURITY_SETTING_CHANGE ||
+        context.action.category === ActionCategory.PERMISSION_CHANGE ||
         context.action.element?.hasPasswordField === true ||
         context.action.element?.sensitiveFieldTypes?.includes('password') === true ||
-        hasAnyToken(tokens, ['login', 'log in', 'sign in', 'signin', 'authenticate', 'password', '2fa']);
+        hasAnyToken(tokens, [
+          'login',
+          'log in',
+          'sign in',
+          'signin',
+          'authenticate',
+          'password',
+          '2fa',
+          'grant permission',
+          'grant access',
+          'security settings',
+        ]);
 
       if (isAuth) {
         return {

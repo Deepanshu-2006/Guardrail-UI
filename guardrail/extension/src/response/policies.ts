@@ -535,20 +535,42 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
       return false;
     }
 
-    if (action.category === ActionCategory.AUTHENTICATION) return true;
+    const tokens = extractTokens(action);
+    const firstText = tokens[0]?.toLowerCase() || '';
+
+    // Benign password recovery links do not represent credential entry or authentication boundaries
+    if (
+      firstText.includes('forgot password') ||
+      firstText.includes('forgot your password') ||
+      firstText.includes('recover password') ||
+      firstText.includes('reset password')
+    ) {
+      return false;
+    }
+
+    // Normal session termination (logout) is routine and safe
+    if (
+      firstText.includes('log out') ||
+      firstText.includes('logout') ||
+      firstText.includes('sign out') ||
+      firstText === 'signout'
+    ) {
+      return false;
+    }
+
+    if (
+      action.category === ActionCategory.AUTHENTICATION ||
+      action.category === ActionCategory.SECURITY_SETTING_CHANGE ||
+      action.category === ActionCategory.PERMISSION_CHANGE
+    ) {
+      return true;
+    }
     if (
       assessment?.matchedRules?.some(
         (r) => r.ruleId === 'RISK_RULE_AUTHENTICATION' || r.ruleId === 'RISK_RULE_PHISHING_INDICATOR'
       )
     ) {
       return true;
-    }
-
-    const tokens = extractTokens(action);
-    // Benign password recovery links do not represent credential entry or authentication boundaries
-    const firstText = tokens[0]?.toLowerCase() || '';
-    if (firstText.includes('forgot password') || firstText.includes('recover password')) {
-      return false;
     }
 
     return hasAnyToken(tokens, ['login', 'log in', 'sign in', 'signin', 'authenticate', 'password', '2fa']);
