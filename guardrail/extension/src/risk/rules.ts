@@ -19,6 +19,7 @@ import { evaluateSuspiciousUrl } from '../utils/url-detector.js';
 import { evaluatePhishingIndicators } from '../utils/phishing-detector.js';
 import { evaluateFormSafety, FormSafetyEvaluation } from '../utils/form-detector.js';
 import { evaluateDownloadSafety } from '../utils/download-detector.js';
+import { matchesAnyPhrase } from '../classifier/rules.js';
 
 /**
  * Context provided to a risk rule for evaluation.
@@ -96,30 +97,27 @@ export function clampRiskScore(score: number): number {
 
 /**
  * Helper to extract non-sensitive searchable tokens from an action.
+ * Strictly isolates element visible text and accessible label from page-level URL/title and CSS classes.
  */
 function extractActionTokens(action: GuardrailAction): string[] {
   const tokens: string[] = [];
-  if (action.element?.visibleText) {
-    tokens.push(action.element.visibleText.toLowerCase().trim());
+  const elem = action.element || (action as any).target;
+  const visibleText = elem?.visibleText || (elem as any)?.text;
+  if (visibleText && typeof visibleText === 'string' && visibleText.trim().length > 0) {
+    tokens.push(visibleText.trim());
   }
-  if (action.element?.id) {
-    tokens.push(action.element.id.toLowerCase().trim());
+  if (elem?.ariaLabel && typeof elem.ariaLabel === 'string' && elem.ariaLabel.trim().length > 0) {
+    tokens.push(elem.ariaLabel.trim());
   }
-  if (action.element?.className) {
-    tokens.push(action.element.className.toLowerCase().trim());
-  }
-  if (action.page?.url) {
-    try {
-      tokens.push(new URL(action.page.url).pathname.toLowerCase());
-    } catch {
-      // Ignore
-    }
+  const elemId = elem?.id || (elem as any)?.elementId;
+  if (tokens.length === 0 && elemId && typeof elemId === 'string' && elemId.trim().length > 0) {
+    tokens.push(elemId.replace(/[-_]/g, ' ').trim());
   }
   return tokens;
 }
 
 function hasAnyToken(tokens: string[], keywords: string[]): boolean {
-  return keywords.some((kw) => tokens.some((t) => t.includes(kw)));
+  return matchesAnyPhrase(tokens, keywords).matched;
 }
 
 /**
@@ -141,7 +139,9 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       const tokens = extractActionTokens(context.action);
       const isDestructive =
         context.classification?.category === ActionCategory.DESTRUCTIVE ||
+        context.classification?.category === ActionCategory.DESTRUCTIVE_ACTION ||
         context.action.category === ActionCategory.DESTRUCTIVE ||
+        context.action.category === ActionCategory.DESTRUCTIVE_ACTION ||
         hasAnyToken(tokens, ['delete', 'remove', 'purge', 'close account', 'terminate']);
 
       if (isDestructive) {
@@ -170,12 +170,23 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     description: 'Triggers PAYMENT_ACTION signal when action targets checkout, payment, or financial flows.',
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.PAYMENT_ACTION];
+
+      // Read-only financial browsing (view balances, statements, transaction history) must never trigger payment risk
+      const isFinancialReadOnly =
+        context.classification?.category === ActionCategory.FINANCIAL_READ_ONLY ||
+        context.action.category === ActionCategory.FINANCIAL_READ_ONLY;
+      if (isFinancialReadOnly) {
+        return { matched: false };
+      }
+
       const tokens = extractActionTokens(context.action);
       const isPayment =
         context.classification?.category === ActionCategory.PAYMENT ||
+        context.classification?.category === ActionCategory.FINANCIAL_TRANSACTION ||
         context.action.category === ActionCategory.PAYMENT ||
+        context.action.category === ActionCategory.FINANCIAL_TRANSACTION ||
         context.action.element?.sensitiveFieldTypes?.includes('payment_card') === true ||
-        hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer']);
+        hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer money', 'send money', 'fund transfer', 'transfer']);
 
       if (isPayment) {
         return {
@@ -330,6 +341,13 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
     evaluate: (context, signalConfig) => {
       const config = signalConfig ?? INITIAL_RISK_SIGNALS[RiskSignalId.AUTHENTICATION_ACTION];
       const tokens = extractActionTokens(context.action);
+
+      // Benign password recovery or help links do not represent credential submission
+      const firstText = tokens[0]?.toLowerCase() || '';
+      if (firstText.includes('forgot password') || firstText.includes('recover password')) {
+        return { matched: false };
+      }
+
       const isAuth =
         context.classification?.category === ActionCategory.AUTHENTICATION ||
         context.action.category === ActionCategory.AUTHENTICATION ||

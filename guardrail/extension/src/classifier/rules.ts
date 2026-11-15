@@ -3,6 +3,22 @@
  *
  * Provides a modular, rule-based heuristic specification for classifying
  * Guardrail actions into semantic categories based on safe metadata.
+ *
+ * ARCHITECTURAL INVARIANTS (PHASE 1):
+ * 1. Strict Element vs Page Context Isolation:
+ *    Interactive element tokens (visible text, aria-label, ID fallback) are strictly
+ *    isolated from page context (URL, domain, page title, referrer). Page-level metadata
+ *    never bleeds into the searchable tokens of clicked controls.
+ * 2. Bounded Semantic Matching:
+ *    Unrestricted substring matching is replaced by normalized, word-bounded phrase matching.
+ *    CSS class names are omitted to avoid framework-generated styling false positives.
+ * 3. Granular Category Coverage:
+ *    Distinguishes FINANCIAL_READ_ONLY, BENEFICIARY_MANAGEMENT, FINANCIAL_TRANSACTION,
+ *    PAYMENT, SECURITY_SETTING_CHANGE, PERMISSION_CHANGE, DESTRUCTIVE, AUTHENTICATION,
+ *    DOWNLOAD, SENSITIVE_DATA_SUBMISSION, SUSPICIOUS_REDIRECT, EXTERNAL_NAVIGATION, GENERAL.
+ * 4. Privacy Guarantee:
+ *    Operates strictly on safe DOM metadata without inspecting password values, OTPs,
+ *    PINs, CVVs, or sensitive form contents.
  */
 
 import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
@@ -37,49 +53,36 @@ export interface ClassificationRule {
 }
 
 /**
- * Helper to extract safe, searchable text tokens from an action without inspecting input values.
+ * Normalizes text for robust, punctuation-tolerant, boundary-safe phrase matching.
  */
-function extractSearchableTokens(action: GuardrailAction): string[] {
-  const tokens: string[] = [];
-
-  if (action.element?.visibleText) {
-    tokens.push(action.element.visibleText.toLowerCase().trim());
-  }
-
-  if (action.element?.id) {
-    tokens.push(action.element.id.toLowerCase().trim());
-  }
-
-  if (action.element?.className) {
-    tokens.push(action.element.className.toLowerCase().trim());
-  }
-
-  if (action.page.title) {
-    tokens.push(action.page.title.toLowerCase().trim());
-  }
-
-  if (action.page.url) {
-    try {
-      const parsedUrl = new URL(action.page.url);
-      tokens.push(parsedUrl.pathname.toLowerCase());
-    } catch {
-      // Ignore URL parsing errors for non-standard schemes
-    }
-  }
-
-  return tokens;
+export function normalizeForMatching(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /**
- * Helper to match any keyword against the action's searchable metadata tokens.
- * Uses case-insensitive word or substring matching.
+ * Matches an exact or bounded phrase within candidate text.
+ * Enforces whole-word or whole-phrase boundaries so that "pay" does not match "taxpayer",
+ * "transfer" does not match "untransferred", etc.
  */
-function matchesAnyKeyword(tokens: string[], keywords: string[]): { matched: boolean; matchedKeyword?: string } {
-  for (const keyword of keywords) {
-    const normalizedKeyword = keyword.toLowerCase();
-    for (const token of tokens) {
-      if (token.includes(normalizedKeyword)) {
-        return { matched: true, matchedKeyword: keyword };
+export function matchesBoundedPhrase(text: string, phrase: string): boolean {
+  if (!text || !phrase) return false;
+  const normalizedText = ` ${normalizeForMatching(text)} `;
+  const normalizedPhrase = normalizeForMatching(phrase);
+  if (!normalizedPhrase) return false;
+  return normalizedText.includes(` ${normalizedPhrase} `);
+}
+
+/**
+ * Checks if any of the candidate texts matches any phrase with word boundaries.
+ */
+export function matchesAnyPhrase(
+  texts: readonly (string | undefined)[],
+  phrases: readonly string[]
+): { matched: boolean; matchedKeyword?: string } {
+  for (const phrase of phrases) {
+    for (const text of texts) {
+      if (text && matchesBoundedPhrase(text, phrase)) {
+        return { matched: true, matchedKeyword: phrase };
       }
     }
   }
@@ -87,16 +90,236 @@ function matchesAnyKeyword(tokens: string[], keywords: string[]): { matched: boo
 }
 
 /**
- * Rule: PAYMENT
- * Matches actions involving checkout, fund transfers, purchases, and payments.
+ * Extracts action-level text context strictly from the interactive DOM element.
+ *
+ * ISOLATION GUARANTEE:
+ * - Extracts visible text and aria-label
+ * - Falls back to normalized element ID only if visible text and aria-label are absent
+ * - NEVER extracts page.title
+ * - NEVER extracts page.url pathname
+ * - NEVER extracts element.className
+ */
+export function extractActionElementTexts(action: GuardrailAction): string[] {
+  const texts: string[] = [];
+  const elem = action.element || (action as any).target;
+
+  const visibleText = elem?.visibleText || (elem as any)?.text;
+  if (visibleText && typeof visibleText === 'string' && visibleText.trim().length > 0) {
+    texts.push(visibleText.trim());
+  }
+
+  if (elem?.ariaLabel && typeof elem.ariaLabel === 'string' && elem.ariaLabel.trim().length > 0) {
+    texts.push(elem.ariaLabel.trim());
+  }
+
+  // Fallback to element ID only if visible text and accessible label are absent
+  const elemId = elem?.id || (elem as any)?.elementId;
+  if (texts.length === 0 && elemId && typeof elemId === 'string' && elemId.trim().length > 0) {
+    // Replace hyphens and underscores with spaces so "pay-btn" -> "pay btn"
+    texts.push(elemId.replace(/[-_]/g, ' ').trim());
+  }
+
+  return texts;
+}
+
+/**
+ * Extracts page-level contextual metadata (for corroboration only, not direct text matching).
+ */
+export function extractPageContext(action: GuardrailAction): {
+  url?: string;
+  pathname?: string;
+  domain?: string;
+  title?: string;
+  isSecureContext?: boolean;
+} {
+  let pathname: string | undefined;
+  let domain: string | undefined;
+
+  if (action.page?.url) {
+    try {
+      const parsed = new URL(action.page.url);
+      pathname = parsed.pathname.toLowerCase();
+      domain = parsed.hostname.toLowerCase();
+    } catch {
+      // Ignore
+    }
+  }
+
+  return {
+    url: action.page?.url,
+    pathname,
+    domain: domain || action.page?.domain,
+    title: action.page?.title,
+    isSecureContext: action.page?.isSecureContext,
+  };
+}
+
+/**
+ * Backward-compatible helper to extract searchable tokens (now strictly isolated from page context).
+ */
+export function extractSearchableTokens(action: GuardrailAction): string[] {
+  return extractActionElementTexts(action);
+}
+
+/**
+ * Backward-compatible helper to match keywords using boundary-safe matching.
+ */
+export function matchesAnyKeyword(
+  tokens: string[],
+  keywords: string[]
+): { matched: boolean; matchedKeyword?: string } {
+  return matchesAnyPhrase(tokens, keywords);
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * 1. Rule: FINANCIAL_READ_ONLY
+ * -----------------------------------------------------------------------------
+ * Matches read-only financial operations: viewing balances, statements,
+ * transaction history, passbooks, and past transfers.
+ * Evaluated BEFORE transactional rules to prevent benign navigation on banking
+ * sites from triggering high-risk payment or staging responses.
+ */
+export const FINANCIAL_READ_ONLY_PHRASES: readonly string[] = [
+  'transaction history',
+  'view history',
+  'past transactions',
+  'recent transactions',
+  'account overview',
+  'account details',
+  'view balance',
+  'check balance',
+  'account balance',
+  'balance inquiry',
+  'mini statement',
+  'view statement',
+  'account statement',
+  'download statement',
+  'statements',
+  'passbook',
+  'transaction details',
+  'past transfers',
+  'transfer history',
+  'payment history',
+  'order history',
+  'view transactions',
+  'recent activity',
+];
+
+export const FinancialReadOnlyRule: ClassificationRule = {
+  id: 'RULE_FINANCIAL_READ_ONLY',
+  category: ActionCategory.FINANCIAL_READ_ONLY,
+  description: 'Matches read-only financial browsing (view balances, statements, transaction history)',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, FINANCIAL_READ_ONLY_PHRASES);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched financial read-only phrase "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 2. Rule: BENEFICIARY_MANAGEMENT
+ * -----------------------------------------------------------------------------
+ * Matches adding, modifying, or removing payees/beneficiaries.
+ */
+export const BENEFICIARY_MANAGEMENT_PHRASES: readonly string[] = [
+  'add beneficiary',
+  'new beneficiary',
+  'manage beneficiaries',
+  'delete beneficiary',
+  'edit beneficiary',
+  'add payee',
+  'new payee',
+  'manage payees',
+  'delete payee',
+  'edit payee',
+  'register beneficiary',
+];
+
+export const BeneficiaryManagementRule: ClassificationRule = {
+  id: 'RULE_BENEFICIARY_MANAGEMENT',
+  category: ActionCategory.BENEFICIARY_MANAGEMENT,
+  description: 'Matches adding, editing, managing, or deleting beneficiaries and payees',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, BENEFICIARY_MANAGEMENT_PHRASES);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched beneficiary management phrase "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 3. Rule: FINANCIAL_TRANSACTION
+ * -----------------------------------------------------------------------------
+ * Matches explicit fund transfers, remittances, and wire transactions.
+ */
+export const FINANCIAL_TRANSACTION_PHRASES: readonly string[] = [
+  'transfer money',
+  'send money',
+  'wire transfer',
+  'transfer funds',
+  'fund transfer',
+  'instant transfer',
+  'upi transfer',
+  'make transfer',
+  'initiate transfer',
+  'quick transfer',
+  'send funds',
+  'transfer now',
+  'confirm transfer',
+  'submit transfer',
+];
+
+export const FinancialTransactionRule: ClassificationRule = {
+  id: 'RULE_FINANCIAL_TRANSACTION',
+  category: ActionCategory.FINANCIAL_TRANSACTION,
+  description: 'Matches explicit fund transfers and wire transactions',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    if (action.element?.hasPasswordField) return { matched: false };
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, FINANCIAL_TRANSACTION_PHRASES);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched financial transaction phrase "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 4. Rule: PAYMENT
+ * -----------------------------------------------------------------------------
+ * Matches checkout, purchases, payments, and billing authorization.
  */
 export const PAYMENT_KEYWORDS: readonly string[] = [
   'pay',
   'payment',
   'purchase',
   'checkout',
-  'transfer',
   'buy',
+  'place order',
+  'complete purchase',
+  'confirm payment',
+  'submit payment',
+  'pay now',
+  'proceed to pay',
+  'transfer',
 ];
 
 export const PaymentRule: ClassificationRule = {
@@ -109,12 +332,24 @@ export const PaymentRule: ClassificationRule = {
       return { matched: false };
     }
 
-    const tokens = extractSearchableTokens(action);
-    const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...PAYMENT_KEYWORDS]);
+    const texts = extractActionElementTexts(action);
+
+    // Filter out read-only informational phrases that might contain "payment" (e.g. "payment options")
+    const firstText = texts[0]?.toLowerCase() || '';
+    if (
+      firstText.includes('payment options') ||
+      firstText.includes('payment methods') ||
+      firstText.includes('how to pay') ||
+      firstText.includes('payment faq')
+    ) {
+      return { matched: false };
+    }
+
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, PAYMENT_KEYWORDS);
     if (matched) {
       return {
         matched: true,
-        reason: `Matched payment keyword "${matchedKeyword}" in action metadata`,
+        reason: `Matched payment keyword "${matchedKeyword}" on interactive element`,
       };
     }
     return { matched: false };
@@ -122,21 +357,149 @@ export const PaymentRule: ClassificationRule = {
 };
 
 /**
- * Rule: AUTHENTICATION
- * Matches actions involving sign-in, login, registration, and identity verification.
+ * -----------------------------------------------------------------------------
+ * 5. Rule: SECURITY_SETTING_CHANGE
+ * -----------------------------------------------------------------------------
+ * Matches modifications to security settings, passwords, PINs, and 2FA credentials.
+ */
+export const SECURITY_SETTING_PHRASES: readonly string[] = [
+  'change password',
+  'update password',
+  'reset password',
+  'enable 2fa',
+  'disable 2fa',
+  'setup 2fa',
+  'security questions',
+  'security settings',
+  'change pin',
+  'reset pin',
+  'update recovery email',
+];
+
+export const SecuritySettingChangeRule: ClassificationRule = {
+  id: 'RULE_SECURITY_SETTING_CHANGE',
+  category: ActionCategory.SECURITY_SETTING_CHANGE,
+  description: 'Matches modifications to security settings, credentials, passwords, or 2FA',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, SECURITY_SETTING_PHRASES);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched security setting phrase "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 6. Rule: PERMISSION_CHANGE
+ * -----------------------------------------------------------------------------
+ * Matches site or user access permission modifications.
+ */
+export const PERMISSION_CHANGE_PHRASES: readonly string[] = [
+  'change permissions',
+  'grant permission',
+  'revoke permission',
+  'grant access',
+  'revoke access',
+  'modify permissions',
+  'manage permissions',
+  'edit permissions',
+];
+
+export const PermissionChangeRule: ClassificationRule = {
+  id: 'RULE_PERMISSION_CHANGE',
+  category: ActionCategory.PERMISSION_CHANGE,
+  description: 'Matches site or user access permission modifications',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, PERMISSION_CHANGE_PHRASES);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched permission change phrase "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 7. Rule: DESTRUCTIVE
+ * -----------------------------------------------------------------------------
+ * Matches permanent deletion, data purging, and irreversible account termination.
+ */
+export const DESTRUCTIVE_KEYWORDS: readonly string[] = [
+  'delete',
+  'permanently delete',
+  'close account',
+  'terminate account',
+  'purge data',
+  'purge',
+  'destroy',
+  'cancel account',
+  'delete profile',
+];
+
+export const DestructiveRule: ClassificationRule = {
+  id: 'RULE_DESTRUCTIVE_KEYWORDS',
+  category: ActionCategory.DESTRUCTIVE,
+  description: 'Matches keywords related to permanent deletion, data purging, and account closure',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const texts = extractActionElementTexts(action);
+
+    // Exclude routine non-destructive filtering/searching UI interactions
+    const firstText = texts[0]?.toLowerCase() || '';
+    if (
+      firstText.includes('remove filter') ||
+      firstText.includes('clear filter') ||
+      firstText.includes('clear search') ||
+      firstText.includes('remove tag')
+    ) {
+      return { matched: false };
+    }
+
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, DESTRUCTIVE_KEYWORDS);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched destructive keyword "${matchedKeyword}" on interactive element`,
+      };
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 8. Rule: AUTHENTICATION
+ * -----------------------------------------------------------------------------
+ * Matches user sign-in, login, registration, and credential submission.
+ * IMPORTANT: Standalone "verify" in general navigation is NOT classified as auth.
  */
 export const AUTH_KEYWORDS: readonly string[] = [
   'login',
   'log in',
   'sign in',
+  'signin',
   'authenticate',
-  'verify',
+  'register',
+  'create account',
+  'sign up',
+  'signup',
+  'log out',
+  'logout',
+  'sign out',
 ];
 
 export const AuthenticationRule: ClassificationRule = {
   id: 'RULE_AUTH_KEYWORDS',
   category: ActionCategory.AUTHENTICATION,
-  description: 'Matches keywords or structural inputs related to user sign-in, login, and identity verification',
+  description: 'Matches keywords or structural inputs related to user sign-in, login, and authentication',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
     if (action.element?.hasPasswordField) {
       return {
@@ -145,12 +508,12 @@ export const AuthenticationRule: ClassificationRule = {
       };
     }
 
-    const tokens = extractSearchableTokens(action);
-    const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...AUTH_KEYWORDS]);
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, AUTH_KEYWORDS);
     if (matched) {
       return {
         matched: true,
-        reason: `Matched authentication keyword "${matchedKeyword}" in action metadata`,
+        reason: `Matched authentication keyword "${matchedKeyword}" on interactive element`,
       };
     }
     return { matched: false };
@@ -158,41 +521,18 @@ export const AuthenticationRule: ClassificationRule = {
 };
 
 /**
- * Rule: DESTRUCTIVE
- * Matches actions involving permanent deletions, item removals, and account closures.
- */
-export const DESTRUCTIVE_KEYWORDS: readonly string[] = [
-  'delete',
-  'remove',
-  'permanently delete',
-  'close account',
-];
-
-export const DestructiveRule: ClassificationRule = {
-  id: 'RULE_DESTRUCTIVE_KEYWORDS',
-  category: ActionCategory.DESTRUCTIVE,
-  description: 'Matches keywords related to deletion, removal, and account closure',
-  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
-    const tokens = extractSearchableTokens(action);
-    const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...DESTRUCTIVE_KEYWORDS]);
-    if (matched) {
-      return {
-        matched: true,
-        reason: `Matched destructive keyword "${matchedKeyword}" in action metadata`,
-      };
-    }
-    return { matched: false };
-  },
-};
-
-/**
- * Rule: DOWNLOAD
- * Matches actions involving file downloads, data exports, and file saving.
+ * -----------------------------------------------------------------------------
+ * 9. Rule: DOWNLOAD
+ * -----------------------------------------------------------------------------
+ * Matches file downloads, data exports, and file saving.
  */
 export const DOWNLOAD_KEYWORDS: readonly string[] = [
   'download',
   'export',
+  'export reports',
   'save file',
+  'download file',
+  'export to csv',
 ];
 
 export const DownloadRule: ClassificationRule = {
@@ -216,13 +556,13 @@ export const DownloadRule: ClassificationRule = {
       };
     }
 
-    // 3. Keyword matching in action metadata
-    const tokens = extractSearchableTokens(action);
-    const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...DOWNLOAD_KEYWORDS]);
+    // 3. Keyword matching in action element texts
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, DOWNLOAD_KEYWORDS);
     if (matched) {
       return {
         matched: true,
-        reason: `Matched download keyword "${matchedKeyword}" in action metadata`,
+        reason: `Matched download keyword "${matchedKeyword}" on interactive element`,
       };
     }
 
@@ -248,33 +588,82 @@ export const DownloadRule: ClassificationRule = {
 };
 
 /**
- * Rule: EXTERNAL_NAVIGATION
- * Matches navigation or link traversal that departs from the current origin/site context,
- * or elements explicitly targeting external destinations.
+ * -----------------------------------------------------------------------------
+ * 10. Rule: SENSITIVE_DATA_SUBMISSION
+ * -----------------------------------------------------------------------------
+ * Matches form submissions or inputs involving sensitive PII, SSN, or identity documents.
+ */
+export const SensitiveDataSubmissionRule: ClassificationRule = {
+  id: 'RULE_SENSITIVE_DATA_SUBMISSION',
+  category: ActionCategory.SENSITIVE_DATA_SUBMISSION,
+  description: 'Matches form submissions or inputs involving sensitive PII, SSN, or identity documents',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    if (action.element?.hasSensitiveField) {
+      const sensitiveTypes = action.element.sensitiveFieldTypes || [];
+      const hasNonPaymentSensitive = sensitiveTypes.some(
+        (t) => t === 'ssn' || t === 'national_id' || t === 'passport' || t === 'driver_license'
+      );
+      if (hasNonPaymentSensitive) {
+        return {
+          matched: true,
+          reason: `Action interacts with sensitive identity field (${sensitiveTypes.join(', ')})`,
+        };
+      }
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 11. Rule: SUSPICIOUS_REDIRECT
+ * -----------------------------------------------------------------------------
+ * Matches navigation or links targeting suspicious, spoofed, or homoglyph URLs.
+ */
+export const SuspiciousRedirectRule: ClassificationRule = {
+  id: 'RULE_SUSPICIOUS_REDIRECT',
+  category: ActionCategory.SUSPICIOUS_REDIRECT,
+  description: 'Matches navigation or links targeting suspicious, spoofed, or homoglyph URLs',
+  evaluate: (action: GuardrailAction): RuleEvaluationResult => {
+    const candidateUrl =
+      action.element?.targetUrl ||
+      (action.type === ActionType.NAVIGATION ? action.page.url : undefined);
+    if (candidateUrl) {
+      const evalResult = evaluateSuspiciousUrl(candidateUrl);
+      if (evalResult.isSuspicious) {
+        return {
+          matched: true,
+          reason: `Suspicious destination URL detected: ${evalResult.reasons[0] || 'Unverified host characteristics'}`,
+        };
+      }
+    }
+    return { matched: false };
+  },
+};
+
+/**
+ * -----------------------------------------------------------------------------
+ * 12. Rule: EXTERNAL_NAVIGATION
+ * -----------------------------------------------------------------------------
+ * Matches navigation or link traversal that departs to an external origin.
  */
 export const EXTERNAL_KEYWORDS: readonly string[] = [
   'external',
-  'third-party',
-  'redirect',
+  'external navigation',
   'leave site',
+  'external link',
+  'third party',
+  'third-party',
+  'external site',
+  'redirect',
 ];
 
 export const ExternalNavigationRule: ClassificationRule = {
   id: 'RULE_EXTERNAL_NAVIGATION',
   category: ActionCategory.EXTERNAL_NAVIGATION,
-  description: 'Matches navigation events or links where the target domain or metadata indicates external departure',
+  description: 'Matches navigation events or links where the target domain indicates external departure',
   evaluate: (action: GuardrailAction): RuleEvaluationResult => {
-    // 1. Keyword check in metadata tokens (e.g. id="external-link", text="External Navigation")
-    const tokens = extractSearchableTokens(action);
-    const { matched, matchedKeyword } = matchesAnyKeyword(tokens, [...EXTERNAL_KEYWORDS]);
-    if (matched) {
-      return {
-        matched: true,
-        reason: `Matched external navigation keyword "${matchedKeyword}" in action metadata`,
-      };
-    }
-
-    // 2. Navigation crossing origin boundaries
+    // 1. Navigation crossing origin boundaries
     if (action.page.url && action.page.previousUrl) {
       try {
         const currentOrigin = new URL(action.page.url).origin;
@@ -291,7 +680,7 @@ export const ExternalNavigationRule: ClassificationRule = {
       }
     }
 
-    // 3. Link explicitly targeting an external origin
+    // 2. Link explicitly targeting an external origin
     if (action.element?.targetUrl) {
       try {
         const targetOrigin = new URL(action.element.targetUrl).origin;
@@ -307,16 +696,14 @@ export const ExternalNavigationRule: ClassificationRule = {
       }
     }
 
-    // 4. Suspicious URL patterns on targetUrl or navigation page url
-    const candidateUrl = action.element?.targetUrl || (action.type === ActionType.NAVIGATION ? action.page.url : undefined);
-    if (candidateUrl) {
-      const evalResult = evaluateSuspiciousUrl(candidateUrl);
-      if (evalResult.isSuspicious) {
-        return {
-          matched: true,
-          reason: `Detected suspicious URL indicator: ${evalResult.reasons[0] || 'Unverified host characteristics'}`,
-        };
-      }
+    // 3. Explicit bounded keywords on the interactive element itself
+    const texts = extractActionElementTexts(action);
+    const { matched, matchedKeyword } = matchesAnyPhrase(texts, EXTERNAL_KEYWORDS);
+    if (matched) {
+      return {
+        matched: true,
+        reason: `Matched external navigation phrase "${matchedKeyword}" on interactive element`,
+      };
     }
 
     return { matched: false };
@@ -324,7 +711,9 @@ export const ExternalNavigationRule: ClassificationRule = {
 };
 
 /**
- * Fallback Rule: GENERAL
+ * -----------------------------------------------------------------------------
+ * 13. Fallback Rule: GENERAL
+ * -----------------------------------------------------------------------------
  * Default category when no specialized heuristic rules match.
  */
 export const GeneralFallbackRule: ClassificationRule = {
@@ -344,10 +733,17 @@ export const GeneralFallbackRule: ClassificationRule = {
  * Rules are evaluated in priority order; first match wins before falling back to GENERAL.
  */
 export const CLASSIFICATION_RULES: readonly ClassificationRule[] = [
+  FinancialReadOnlyRule,
+  BeneficiaryManagementRule,
+  FinancialTransactionRule,
   PaymentRule,
-  AuthenticationRule,
+  SecuritySettingChangeRule,
+  PermissionChangeRule,
   DestructiveRule,
+  AuthenticationRule,
   DownloadRule,
+  SensitiveDataSubmissionRule,
+  SuspiciousRedirectRule,
   ExternalNavigationRule,
   GeneralFallbackRule,
 ];
