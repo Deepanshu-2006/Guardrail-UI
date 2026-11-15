@@ -543,13 +543,19 @@ function presentWarningWithApproval(
       console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
       try {
         // 1. Register & hold action in InterceptionController so it is recognized for approval
-        if (!defaultInterceptionController.hasRecord(action.id)) {
+        let heldRecord = defaultInterceptionController.getRecord(action.id);
+        if (!heldRecord) {
           defaultInterceptionController.register(action, 'External navigation warned; awaiting caretaker approval.');
+          heldRecord = defaultInterceptionController.holdAction(
+            action.id,
+            'External navigation intercepted; user requested caretaker approval.'
+          );
+        } else if (heldRecord.state !== InterceptionState.HELD) {
+          heldRecord = defaultInterceptionController.holdAction(
+            action.id,
+            'External navigation intercepted; user requested caretaker approval.'
+          );
         }
-        const heldRecord = defaultInterceptionController.holdAction(
-          action.id,
-          'External navigation intercepted; user requested caretaker approval.'
-        );
 
         // 2. Build staging context
         const stagingContext = createStagingActionContext({

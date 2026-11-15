@@ -917,29 +917,43 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
                 const warningBox = document.createElement('div');
                 warningBox.className = 'gd-high-impact-warning';
                 warningBox.setAttribute('role', 'alert');
+
                 const wTitle = document.createElement('h5');
                 wTitle.className = 'gd-warning-heading';
                 wTitle.textContent = 'High-Impact Decision Warning';
+
                 const wText = document.createElement('p');
+                wText.className = 'gd-warning-desc';
                 wText.textContent =
                   'This action involves elevated operational risk. Your decision commits an authoritative audit record.';
+
                 warningBox.appendChild(wTitle);
                 warningBox.appendChild(wText);
                 confirmBox.appendChild(warningBox);
               }
 
               const noteGroup = document.createElement('div');
-              noteGroup.className = 'gd-confirm-field-group';
+              noteGroup.className = 'gd-confirm-field-group gd-confirm-note-group';
 
               const noteLabel = document.createElement('label');
               noteLabel.htmlFor = 'decision-reason-input';
               noteLabel.className = 'gd-confirm-field-label';
-              noteLabel.textContent = 'Reason or Notes (Optional)';
+
+              const noteLabelText = document.createElement('span');
+              noteLabelText.className = 'gd-field-label-text';
+              noteLabelText.textContent = 'Reason or Notes ';
+
+              const noteLabelOpt = document.createElement('span');
+              noteLabelOpt.className = 'gd-field-optional';
+              noteLabelOpt.textContent = '(Optional)';
+
+              noteLabel.appendChild(noteLabelText);
+              noteLabel.appendChild(noteLabelOpt);
 
               const noteInput = document.createElement('input');
               noteInput.type = 'text';
               noteInput.id = 'decision-reason-input';
-              noteInput.className = 'gd-confirm-note-input gd-decision-note-input';
+              noteInput.className = 'gd-confirm-note-input gd-decision-note-input gd-decision-reason-input gd-input-text';
               noteInput.setAttribute('aria-label', 'Reason or notes for decision (optional)');
               noteInput.placeholder = isApprove
                 ? 'e.g., Verified routine navigation to trusted series'

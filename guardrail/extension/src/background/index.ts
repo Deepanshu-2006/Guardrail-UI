@@ -219,6 +219,11 @@ export async function handleBackgroundApprovalSubmission(
         },
       };
     }
+  } else {
+    const existing = controller.getRecord(actionId);
+    if (existing && existing.state === InterceptionState.DETECTED && context.interceptionState === InterceptionState.HELD) {
+      controller.holdAction(actionId, context.interceptionReason || 'Action held in staging mode.');
+    }
   }
 
   // Verify state in controller (Requirement 5)
