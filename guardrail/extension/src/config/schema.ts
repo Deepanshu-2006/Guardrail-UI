@@ -343,6 +343,28 @@ export const DEFAULT_POLICY_RULES: readonly ConfigurablePolicyRule[] = Object.fr
       'Action permitted without intervention: No elevated risk signals detected. Routine interaction.',
   }),
   Object.freeze({
+    id: RiskPolicyId.SUSPICIOUS_DOWNLOAD,
+    name: 'Suspicious Executable & File Download Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.CLICK, ActionType.NAVIGATION]),
+    decision: ResponseAction.PROTECT,
+    priority: 275,
+    reasonCode: 'POLICY_PROTECT_SUSPICIOUS_DOWNLOAD',
+    userExplanation:
+      'Protective mechanism required: Suspicious executable file download detected. Transfer held pending security review.',
+  }),
+  Object.freeze({
+    id: RiskPolicyId.PHISHING_PROTECTION,
+    name: 'Phishing & Deceptive Identity Protection Policy',
+    enabled: true,
+    actionTypes: Object.freeze([ActionType.CLICK, ActionType.INPUT, ActionType.SUBMIT, ActionType.NAVIGATION]),
+    decision: ResponseAction.PROTECT,
+    priority: 290,
+    reasonCode: 'POLICY_PROTECT_PHISHING_INDICATOR',
+    userExplanation:
+      'Protective mechanism required: Deceptive website or phishing indicator detected. Action held to protect credentials.',
+  }),
+  Object.freeze({
     id: RiskPolicyId.UNSUPPORTED_BOUNDARY_GUARD,
     name: 'Unsupported Action Type & Corruption Guard Policy',
     enabled: true,

@@ -50,7 +50,7 @@ console.log('\n=== Guardrail Canonical Risk Policies Verification ===\n');
 // -----------------------------------------------------------------------------
 console.log('Test Group 1: Policy Metadata & Specification Completeness');
 
-assert(ALL_GUARDRAIL_POLICIES.length === 6, 'All 6 canonical policies are registered');
+assert(ALL_GUARDRAIL_POLICIES.length === 8, 'All 8 canonical policies are registered');
 
 for (const policy of ALL_GUARDRAIL_POLICIES) {
   const hasId = typeof policy.id === 'string' && policy.id.length > 0;

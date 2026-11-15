@@ -400,10 +400,11 @@ export function evaluateActionPipeline(
     const risk = assessRisk(enrichedAction, resolvedClassification, resolvedRiskOptions);
     let decision = decideResponse(risk, responseOptions);
 
-    // Apply canonical risk policies and preserve monotonic precedence
+    // Apply canonical risk policies and preserve monotonic precedence (PROTECT > WARN > ADVISE > ALLOW)
     const policyResults = evaluatePolicies(enrichedAction, risk, config);
     const protectPolicy = policyResults.find((p) => p.decision === ResponseAction.PROTECT);
     const warnPolicy = policyResults.find((p) => p.decision === ResponseAction.WARN);
+    const advisePolicy = policyResults.find((p) => p.decision === ResponseAction.ADVISE);
     const allowPolicy = policyResults.find((p) => p.decision === ResponseAction.ALLOW);
 
     if (protectPolicy) {
@@ -429,22 +430,47 @@ export function evaluateActionPipeline(
       };
     } else if (warnPolicy && decision.response !== ResponseAction.PROTECT) {
       const reasons = [
-        warnPolicy.explanation || 'Advisory warning policy requirement satisfied.',
-        ...decision.reasons,
+        warnPolicy.explanation || 'User warning policy requirement satisfied.',
+        ...decision.reasons.filter((r) => r !== warnPolicy.explanation),
       ];
       const structuredReasons = [
         {
           code: warnPolicy.reasonCode || 'POLICY_WARN',
-          message: warnPolicy.explanation || 'Advisory warning policy requirement satisfied.',
+          message: warnPolicy.explanation || 'User warning policy requirement satisfied.',
           ruleId: warnPolicy.ruleId,
-          severity: RiskLevel.MEDIUM,
+          severity: RiskLevel.HIGH,
         },
-        ...(decision.structuredReasons || []),
+        ...(decision.structuredReasons || []).filter((sr) => sr.code !== warnPolicy.reasonCode),
       ];
       decision = {
         ...decision,
         response: ResponseAction.WARN,
         policyRuleId: warnPolicy.ruleId || decision.policyRuleId,
+        reasons,
+        structuredReasons,
+      };
+    } else if (
+      advisePolicy &&
+      decision.response !== ResponseAction.PROTECT &&
+      decision.response !== ResponseAction.WARN
+    ) {
+      const reasons = [
+        advisePolicy.explanation || 'Advisory notice policy requirement satisfied.',
+        ...decision.reasons.filter((r) => r !== advisePolicy.explanation),
+      ];
+      const structuredReasons = [
+        {
+          code: advisePolicy.reasonCode || 'POLICY_ADVISE',
+          message: advisePolicy.explanation || 'Advisory notice policy requirement satisfied.',
+          ruleId: advisePolicy.ruleId,
+          severity: RiskLevel.MEDIUM,
+        },
+        ...(decision.structuredReasons || []).filter((sr) => sr.code !== advisePolicy.reasonCode),
+      ];
+      decision = {
+        ...decision,
+        response: ResponseAction.ADVISE,
+        policyRuleId: advisePolicy.ruleId || decision.policyRuleId,
         reasons,
         structuredReasons,
       };

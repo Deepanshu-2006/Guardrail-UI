@@ -20,6 +20,7 @@ import {
   dismissWarningModal,
   showPendingApprovalPill,
   showWarningModal,
+  showAdvisoryNotice,
   updatePendingApprovalPill,
   updateWaitingScreenStatus,
   type ApprovalWaitingState,
@@ -531,6 +532,14 @@ function presentWarningWithApproval(
       void handleCancelApproval(action);
     },
     onRequestApproval: () => {
+      if (
+        activeApprovalSession &&
+        activeApprovalSession.action.id === action.id &&
+        (activeApprovalSession.status === 'pending' || activeApprovalSession.status === 'under_review')
+      ) {
+        console.warn(`[Guardrail UI] Caretaker approval is already pending for action: ${action.id}. Duplicate submission ignored.`);
+        return;
+      }
       console.log(`[Guardrail UI] User clicked Request Approval for caretaker review on action: ${action.id}`);
       try {
         // 1. Register & hold action in InterceptionController so it is recognized for approval
@@ -775,6 +784,58 @@ function updateControlledTestPageDisplay(
       break;
     }
 
+    case ResponseAction.ADVISE: {
+      if (statusEl) {
+        statusEl.textContent = 'ADVISED (Non-blocking Advisory Displayed - Not Held)';
+        statusEl.setAttribute('data-response', ResponseAction.ADVISE);
+        statusEl.setAttribute('data-action-id', action.id);
+        statusEl.removeAttribute('data-interception-state');
+        statusEl.style.background = 'rgba(59, 130, 246, 0.15)';
+        statusEl.style.color = '#60a5fa';
+        statusEl.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+      }
+      if (detailsEl) {
+        detailsEl.textContent = `[Guardrail Response] actionId: ${action.id} | response: ADVISE | risk: ${params.risk.riskLevel} (score: ${params.risk.score}) | non-blocking advisory active | action not held | normal execution permitted`;
+        detailsEl.style.display = 'block';
+      }
+      if (devMessageEl) {
+        devMessageEl.style.display = 'none';
+      }
+      const continueBtnAdvise = document.getElementById('btn-continue-test-action') as HTMLButtonElement | null;
+      const cancelBtnAdvise = document.getElementById('btn-cancel-test-action') as HTMLButtonElement | null;
+      const indicatorElAdvise = document.getElementById('held-action-indicator');
+      if (continueBtnAdvise) {
+        continueBtnAdvise.disabled = true;
+        continueBtnAdvise.style.opacity = '0.5';
+        continueBtnAdvise.style.cursor = 'not-allowed';
+      }
+      if (cancelBtnAdvise) {
+        cancelBtnAdvise.disabled = true;
+        cancelBtnAdvise.style.opacity = '0.5';
+        cancelBtnAdvise.style.cursor = 'not-allowed';
+      }
+      if (indicatorElAdvise) {
+        indicatorElAdvise.textContent = 'No action held';
+        indicatorElAdvise.style.color = '#64748b';
+      }
+      try {
+        document.dispatchEvent(
+          new CustomEvent('guardrail:action-advised', {
+            detail: {
+              actionId: action.id,
+              action,
+              risk: params.risk,
+              decision: params.decision,
+            },
+            bubbles: true,
+          })
+        );
+      } catch (err) {
+        console.warn('[Guardrail Content] Failed to dispatch custom advised event.');
+      }
+      break;
+    }
+
     case ResponseAction.WARN: {
       if (statusEl) {
         statusEl.textContent = 'WARNED (Advisory Modal Displayed - Not Held)';
@@ -959,6 +1020,11 @@ function bootstrap(): void {
           console.log(`[Guardrail Response] ALLOW: Action permitted. Prototype flow continues.`);
           break;
 
+        case ResponseAction.ADVISE:
+          console.log(`[Guardrail Response] ADVISE: Displaying non-blocking advisory notice. Browsing continues.`);
+          showAdvisoryNotice({ action, risk, decision });
+          break;
+
         case ResponseAction.WARN:
           console.log(`[Guardrail Response] WARN: Displaying Guardrail warning UI with Caretaker Approval option.`);
           presentWarningWithApproval(action, risk, decision, classification);
@@ -1056,6 +1122,29 @@ function bootstrap(): void {
               risk,
               decision,
             });
+
+            // Forward pipeline evaluation to background coordinator (without interception record)
+            dispatchActionToBackground(action, classification, risk, decision);
+            break;
+          }
+
+          case ResponseAction.ADVISE: {
+            console.log(
+              `%c[Guardrail Interception]%c ACTION ADVISED (Score: ${risk.score})\n` +
+              `ACTION: ${action.type}\n` +
+              `ACTION ID: ${action.id}\n` +
+              `DECISION: ADVISE - Displaying non-blocking advisory notice without interception. Action is not held.`,
+              'color: #3b82f6; font-weight: bold; padding: 2px 6px; background: rgba(59, 130, 246, 0.1); border-radius: 3px;',
+              'color: inherit; font-weight: normal;'
+            );
+
+            updateControlledTestPageDisplay(action, {
+              response: ResponseAction.ADVISE,
+              risk,
+              decision,
+            });
+
+            showAdvisoryNotice({ action, risk, decision });
 
             // Forward pipeline evaluation to background coordinator (without interception record)
             dispatchActionToBackground(action, classification, risk, decision);
@@ -1235,7 +1324,11 @@ function bootstrap(): void {
         typeof document !== 'undefined' ? document.referrer || undefined : undefined
       );
       const { classification, risk, decision } = evaluateActionPipeline(navAction);
-      presentWarningWithApproval(navAction, risk, decision, classification);
+      if (decision.response === ResponseAction.ADVISE) {
+        showAdvisoryNotice({ action: navAction, risk, decision });
+      } else if (decision.response === ResponseAction.WARN || decision.response === ResponseAction.PROTECT) {
+        presentWarningWithApproval(navAction, risk, decision, classification);
+      }
     }
   }
 

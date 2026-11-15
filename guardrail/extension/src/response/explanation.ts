@@ -113,7 +113,7 @@ export interface WebsiteSecurityContext {
 export interface RiskDecisionExplanation {
   /** Optional structured website security context for suspicious website warnings */
   readonly websiteContext?: WebsiteSecurityContext;
-  /** The operational governance decision (ALLOW, WARN, PROTECT) */
+  /** The operational governance decision (ALLOW, ADVISE, WARN, PROTECT) */
   readonly decision: ResponseAction;
 
   /** Nature of the decision (never an unverified security threat) */
@@ -127,6 +127,18 @@ export interface RiskDecisionExplanation {
 
   /** Plain-language user summary explaining the operational context */
   readonly userSummary: string;
+
+  /** What action is about to happen */
+  readonly actionDescription?: string;
+
+  /** Why Guardrail considers it risky */
+  readonly whyRisky?: string;
+
+  /** What could happen if the user continues */
+  readonly consequences?: string;
+
+  /** What safer choice is available */
+  readonly saferChoice?: string;
 
   /** Clear bullet points explaining why this action was evaluated as such */
   readonly whyFlagged: readonly string[];
@@ -370,6 +382,10 @@ export function explainRiskDecision(
         headline: 'Protected Action: Permanent Deletion or Removal',
         userSummary:
           'Guardrail paused this action because it appears to permanently delete resources, remove data, or close an account. Staging Mode requires trusted confirmation before execution.',
+        actionDescription: `Permanently deleting data, resources, or account ("${targetLabel}")`,
+        whyRisky: 'Permanent deletion cannot typically be undone once processed.',
+        consequences: 'Resources, data, or settings will be permanently removed.',
+        saferChoice: 'Review the action in Staging Mode or cancel to leave data untouched.',
         whyFlagged: Object.freeze([
           `The target element ("${targetLabel}") contains destructive command keywords (e.g., delete, remove, purge, or terminate).`,
           'Permanent deletion cannot typically be undone once processed.',
@@ -404,6 +420,10 @@ export function explainRiskDecision(
         headline: 'Protected Action: Sensitive Financial Checkout',
         userSummary:
           'Guardrail held this checkout or payment transaction because high-impact sensitivity factors (such as external destination or elevated thresholds) were detected.',
+        actionDescription: `Authorizing a high-impact financial transaction or checkout ("${targetLabel}")`,
+        whyRisky: 'Financial transaction with elevated or compounding risk factors.',
+        consequences: 'Funds could be transferred or payment authorized without adequate verification.',
+        saferChoice: 'Verify payee and amount in Staging Mode before confirming continuation.',
         whyFlagged: Object.freeze([
           `Target element ("${targetLabel}") engages with financial checkout or funds transfer.`,
           'Compounding policy criteria triggered protective Staging Mode.',
@@ -439,6 +459,10 @@ export function explainRiskDecision(
         headline: 'Sensitive Operation: Checkout or Billing Interaction',
         userSummary:
           'Guardrail identified an interaction with a payment, checkout, or billing workflow. Please verify transaction details before proceeding.',
+        actionDescription: `Engaging with payment, checkout, or billing workflow ("${targetLabel}")`,
+        whyRisky: 'Financial interactions may initiate charges or fund transfers.',
+        consequences: 'Your payment card or balance will be charged the specified transaction amount.',
+        saferChoice: 'Verify transaction details, payee, and amounts before proceeding.',
         whyFlagged: Object.freeze([
           `Target element ("${targetLabel}") interacts with financial transaction flows.`,
           'Guardrail presents user friction to prevent unintended or accidental checkouts.',
@@ -474,6 +498,10 @@ export function explainRiskDecision(
         headline: 'Review Website Before Entering Information',
         userSummary:
           'Guardrail detected characteristics on this page commonly associated with deceptive websites or brand imitation. Please verify that this is your intended website before entering passwords or personal details.',
+        actionDescription: `Interacting with or entering information on a website with deceptive indicators ("${webCtx.domain}")`,
+        whyRisky: 'Page exhibits characteristics common in phishing, imitation, or deceptive identity spoofing.',
+        consequences: 'Submitting credentials or data may expose account access to unauthorized parties.',
+        saferChoice: 'Leave the website or verify the official address independently.',
         whyFlagged: Object.freeze(
           webCtx.detectedCharacteristics.length > 0
             ? webCtx.detectedCharacteristics
@@ -510,6 +538,10 @@ export function explainRiskDecision(
         headline: 'Unusual Web Address Detected',
         userSummary:
           'This link or website uses an unusual web address structure (such as a numerical IP address, multiple subdomains, or lookalike characters). Please review the destination before proceeding.',
+        actionDescription: `Navigating to or interacting with an unusual web address ("${webCtx.domain}")`,
+        whyRisky: 'The web address structure uses suspicious or atypical patterns.',
+        consequences: 'You could land on a spoofed or unverified web property.',
+        saferChoice: 'Verify the web address in your browser address bar or cancel.',
         whyFlagged: Object.freeze(
           webCtx.detectedCharacteristics.length > 0
             ? webCtx.detectedCharacteristics
@@ -545,6 +577,10 @@ export function explainRiskDecision(
         headline: 'External Destination: Navigating to Third-Party Website',
         userSummary:
           'This action leads to a different domain origin outside the current website. Please review the destination address.',
+        actionDescription: `Navigating away to an external third-party destination ("${targetLabel}")`,
+        whyRisky: 'You are crossing origin boundaries to a third-party website.',
+        consequences: 'External websites operate under different privacy and security policies.',
+        saferChoice: 'Confirm the destination domain in your address bar, or cancel.',
         whyFlagged: Object.freeze([
           'Action links or redirects to a different domain origin.',
           'Operational notice: Guardrail does not claim this external website is fraudulent or malicious.',
@@ -578,6 +614,10 @@ export function explainRiskDecision(
         headline: 'Sign-in Boundary: Account or Credential Interaction',
         userSummary:
           'This action interacts with an account sign-in or authentication boundary. Please ensure you are on the intended website portal.',
+        actionDescription: `Interacting with account sign-in or authentication boundary ("${targetLabel}")`,
+        whyRisky: 'Entering credentials on unfamiliar sites poses account takeover risks.',
+        consequences: 'Credentials could be entered on an unintended or unencrypted page.',
+        saferChoice: 'Ensure the URL in the address bar matches your service provider and uses HTTPS.',
         whyFlagged: Object.freeze([
           'Target element interacts with login, registration, or credential entry fields.',
           'Guardrail strictly respects your privacy: passwords and credentials are never read or logged.',
@@ -626,6 +666,10 @@ export function explainRiskDecision(
           : 'Safety Advisory: Review Download Before Opening',
         userSummary:
           'Guardrail evaluated this file download. To protect your computer, review the file details and source address before opening or running it.',
+        actionDescription: `Downloading a file ("${downloadCandidateName}")`,
+        whyRisky: 'File download may contain executable code or script formats.',
+        consequences: 'Executable files from unverified websites could compromise your computer.',
+        saferChoice: 'Cancel the download or scan the file with antivirus software.',
         whyFlagged: Object.freeze(reasonsList),
         recoveryGuidance: Object.freeze([
           '1. If you did not intend to download this file, cancel or discard it.',
@@ -658,6 +702,10 @@ export function explainRiskDecision(
         headline: 'Action Permitted: Standard Interaction',
         userSummary:
           'Standard everyday interaction evaluated under default Guardrail safety policies. No elevated sensitivity policies were triggered.',
+        actionDescription: `Routine browsing interaction ("${targetLabel}")`,
+        whyRisky: 'No elevated risk factors detected.',
+        consequences: 'Normal page execution without intervention.',
+        saferChoice: 'Action is safe to proceed.',
         whyFlagged: Object.freeze([
           'Standard page element interaction without destructive, payment, or external triggers.',
           'Action proceeds directly without holding or interception.',
@@ -691,6 +739,10 @@ export function explainRiskDecision(
           headline: 'Protected Action: Operational Precaution',
           userSummary:
             'Guardrail paused this action under active safety policies. Please review the details below before proceeding.',
+          actionDescription: `Protected sensitive action ("${targetLabel}")`,
+          whyRisky: rawReason || 'High-sensitivity policy criteria matched for this interaction.',
+          consequences: 'Potentially critical account or data modifications.',
+          saferChoice: 'Review in Staging Mode or request caretaker approval.',
           whyFlagged: Object.freeze([
             rawReason,
             'High-sensitivity policy criteria matched for this interaction.',
@@ -722,6 +774,10 @@ export function explainRiskDecision(
           headline: 'Safety Advisory: Sensitive Operation',
           userSummary:
             'Guardrail detected an interaction with elevated operational sensitivity under current settings.',
+          actionDescription: `Potentially risky action ("${targetLabel}")`,
+          whyRisky: rawReason,
+          consequences: 'Action carries operational or security sensitivity.',
+          saferChoice: 'Verify the action details before continuing, or cancel.',
           whyFlagged: Object.freeze([
             rawReason,
             'This advisory is an operational notice, not a confirmed security threat.',
@@ -745,6 +801,38 @@ export function explainRiskDecision(
         };
       }
 
+      if (decisionAction === ResponseAction.ADVISE) {
+        return {
+          decision: ResponseAction.ADVISE,
+          nature: 'OPERATIONAL_PRECAUTION',
+          categoryBadge: 'Safety Advisory',
+          headline: 'Safety Advisory: Caution Recommended',
+          userSummary:
+            'Guardrail noted mild caution factors for this interaction. You may continue normally.',
+          actionDescription: `Action with mild caution ("${targetLabel}")`,
+          whyRisky: rawReason || 'Mildly concerning destination or unverified website structure.',
+          consequences: 'Potential unverified destination or unfamiliar site context.',
+          saferChoice: 'Review the page and address bar before entering sensitive details.',
+          whyFlagged: Object.freeze([
+            rawReason,
+            'Non-blocking notice: normal browsing continues without interruption.',
+          ]),
+          recoveryGuidance: undefined,
+          technicalDetails: Object.freeze({
+            actionId,
+            ruleId: primaryRuleId,
+            reasonCode: primaryCode || 'UNKNOWN_ADVISE_REASON',
+            score: risk?.score ?? 25,
+            riskLevel: risk?.riskLevel || RiskLevel.MEDIUM,
+            evaluationStatus: RiskEvaluationStatus.EVALUATED,
+            sanitizedUrl,
+            targetLabel,
+            matchedRules: risk?.matchedRules?.map((r) => r.ruleId) || [],
+          }),
+          isSecurityThreat: false,
+        };
+      }
+
       return {
         decision: ResponseAction.ALLOW,
         nature: 'BASELINE_ROUTINE',
@@ -752,6 +840,10 @@ export function explainRiskDecision(
         headline: 'Action Permitted: Standard Interaction',
         userSummary:
           'This action was evaluated against standard safety rules and permitted without elevated friction.',
+        actionDescription: `Standard page interaction ("${targetLabel}")`,
+        whyRisky: 'No elevated risk factors detected.',
+        consequences: 'Normal page execution.',
+        saferChoice: 'Proceed normally.',
         whyFlagged: Object.freeze([rawReason]),
         recoveryGuidance: undefined,
         technicalDetails: Object.freeze({

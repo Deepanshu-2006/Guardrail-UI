@@ -12,8 +12,8 @@
  *
  * INITIAL DEVELOPMENT RESPONSE MAPPINGS:
  * - LOW      → ALLOW   (routine interactions proceed seamlessly)
- * - MEDIUM   → WARN    (advisory notice; user attention recommended)
- * - HIGH     → WARN    (elevated risk; prompt/inform user without immediate gating)
+ * - MEDIUM   → ADVISE  (non-blocking advisory notice; user continues normally)
+ * - HIGH     → WARN    (meaningful security risk requiring user attention)
  * - CRITICAL → PROTECT (maximum impact; requires protective mechanism before proceeding)
  */
 
@@ -31,7 +31,7 @@ export type ResponsePolicyMapping = Record<RiskLevel, ResponseAction>;
  */
 export const DEFAULT_RESPONSE_POLICY: Readonly<ResponsePolicyMapping> = Object.freeze({
   [RiskLevel.LOW]: ResponseAction.ALLOW,
-  [RiskLevel.MEDIUM]: ResponseAction.WARN,
+  [RiskLevel.MEDIUM]: ResponseAction.ADVISE,
   [RiskLevel.HIGH]: ResponseAction.WARN,
   [RiskLevel.CRITICAL]: ResponseAction.PROTECT,
 });
@@ -48,12 +48,13 @@ export interface ResponseRuleContext {
  * Deterministic precedence hierarchy for ResponseAction decisions.
  *
  * Conflict Resolution Policy:
- * 1. PROTECT (Priority 300) > WARN (Priority 200) > ALLOW (Priority 100).
+ * 1. PROTECT (Priority 400) > WARN (Priority 300) > ADVISE (Priority 200) > ALLOW (Priority 100).
  * 2. Monotonic Protection Invariant: If ANY matching rule yields PROTECT,
- *    the resolved decision MUST be PROTECT. An ordinary WARN or ALLOW rule
+ *    the resolved decision MUST be PROTECT. An ordinary WARN, ADVISE, or ALLOW rule
  *    can never downgrade a PROTECT decision.
- * 3. Advisory Invariant: A WARN rule takes precedence over ALLOW. An ALLOW rule
- *    can never downgrade a WARN decision.
+ * 3. Advisory Invariant: A WARN rule takes precedence over ADVISE and ALLOW.
+ *    An ADVISE rule takes precedence over ALLOW. An ALLOW rule can never downgrade
+ *    an ADVISE or WARN decision.
  * 4. Tie-breaking: When multiple rules match and produce the same highest action,
  *    the rule with the highest rule priority (or first registered in deterministic order)
  *    is designated as the primary resolving rule.
@@ -61,8 +62,9 @@ export interface ResponseRuleContext {
  *    retained in the composite result for auditing.
  */
 export const RESPONSE_ACTION_PRECEDENCE: Readonly<Record<ResponseAction, number>> = Object.freeze({
-  [ResponseAction.PROTECT]: 300,
-  [ResponseAction.WARN]: 200,
+  [ResponseAction.PROTECT]: 400,
+  [ResponseAction.WARN]: 300,
+  [ResponseAction.ADVISE]: 200,
   [ResponseAction.ALLOW]: 100,
 });
 
@@ -106,8 +108,11 @@ export function generateResponseReason(
     case ResponseAction.ALLOW:
       return `Action permitted without intervention: Risk level is ${assessment.riskLevel} (score: ${assessment.score}).`;
 
+    case ResponseAction.ADVISE:
+      return `Advisory notice: Action evaluated as ${assessment.riskLevel} risk (score: ${assessment.score}). Proceed with normal caution.`;
+
     case ResponseAction.WARN:
-      return `User advisory recommended: Action evaluated as ${assessment.riskLevel} risk (score: ${assessment.score}).`;
+      return `User warning recommended: Action evaluated as ${assessment.riskLevel} risk (score: ${assessment.score}). Review details before continuing.`;
 
     case ResponseAction.PROTECT:
       return `Protective mechanism required: Action evaluated as ${assessment.riskLevel} risk (score: ${assessment.score}).`;
@@ -227,6 +232,7 @@ export function resolveResponsePrecedence(
     if (!o || typeof o !== 'object') return false;
     return (
       o.action === ResponseAction.ALLOW ||
+      o.action === ResponseAction.ADVISE ||
       o.action === ResponseAction.WARN ||
       o.action === ResponseAction.PROTECT
     );
@@ -277,15 +283,42 @@ export function resolveResponsePrecedence(
   const matchedRuleIds = valid.map((o) => o.ruleId || 'RULE_UNKNOWN');
   const allReasons = valid.map((o) => o.reason).filter((r): r is string => Boolean(r));
 
-  // 5. SECURITY INVARIANT CHECK:
-  // If ANY rule produced PROTECT, winning action MUST be PROTECT.
-  // Warning rules can NEVER downgrade a protection decision!
+  // 5. SECURITY & PRECEDENCE INVARIANT CHECKS:
+  // - If ANY rule produced PROTECT, winning action MUST be PROTECT.
+  // - If ANY rule produced WARN (and none produced PROTECT), winning action MUST be WARN.
+  // - If ANY rule produced ADVISE (and none produced PROTECT/WARN), winning action MUST be ADVISE.
+  // An ALLOW decision can NEVER downgrade an ADVISE, WARN, or PROTECT decision!
   const hadProtect = valid.some((o) => o.action === ResponseAction.PROTECT);
+  const hadWarn = valid.some((o) => o.action === ResponseAction.WARN);
+  const hadAdvise = valid.some((o) => o.action === ResponseAction.ADVISE);
+
   if (hadProtect && winningAction !== ResponseAction.PROTECT) {
     return {
       action: ResponseAction.PROTECT,
       reason: 'Protective mechanism required: Monotonic protection invariant enforced (PROTECT cannot be downgraded).',
       ruleId: 'RULE_FAIL_CLOSED_FALLBACK',
+      matchedRuleIds,
+      allReasons,
+      matchedOutcomes: valid.map((o) => ({ ...o, rulePriority: o.rulePriority ?? 100 })),
+    };
+  }
+
+  if (!hadProtect && hadWarn && winningAction !== ResponseAction.WARN) {
+    return {
+      action: ResponseAction.WARN,
+      reason: 'User warning required: Precedence invariant enforced (WARN cannot be downgraded to ADVISE or ALLOW).',
+      ruleId: valid.find((o) => o.action === ResponseAction.WARN)?.ruleId || winningRuleId,
+      matchedRuleIds,
+      allReasons,
+      matchedOutcomes: valid.map((o) => ({ ...o, rulePriority: o.rulePriority ?? 100 })),
+    };
+  }
+
+  if (!hadProtect && !hadWarn && hadAdvise && winningAction !== ResponseAction.ADVISE) {
+    return {
+      action: ResponseAction.ADVISE,
+      reason: 'Advisory notice required: Precedence invariant enforced (ADVISE cannot be downgraded to ALLOW).',
+      ruleId: valid.find((o) => o.action === ResponseAction.ADVISE)?.ruleId || winningRuleId,
       matchedRuleIds,
       allReasons,
       matchedOutcomes: valid.map((o) => ({ ...o, rulePriority: o.rulePriority ?? 100 })),

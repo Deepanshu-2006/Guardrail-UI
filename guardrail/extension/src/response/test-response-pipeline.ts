@@ -392,7 +392,7 @@ console.log('▶ Test 2: MEDIUM-Risk Authentication-Style Action (WARN)');
   assert(res.classification.category === ActionCategory.AUTHENTICATION, 'Classification is AUTHENTICATION');
   assert(res.risk.score === 40, `Score is exactly 40 (within 0-100)`);
   assert(res.risk.riskLevel === RiskLevel.MEDIUM, 'Risk level is MEDIUM (25-49 tier)');
-  assert(res.decision.response === ResponseAction.WARN, 'ResponseAction is WARN');
+  assert(res.decision.response === ResponseAction.ADVISE, 'ResponseAction is ADVISE');
   assert(
     res.action.id === res.classification.actionId &&
     res.action.id === res.risk.actionId &&
@@ -756,7 +756,7 @@ console.log('▶ Test 8: Dynamically Created Buttons Detection');
     const res = runFullPipeline(act);
     assert(res.classification.category === ActionCategory.PAYMENT, 'Dynamic button classified as PAYMENT');
     assert(res.risk.riskLevel === RiskLevel.MEDIUM, 'Evaluated risk as MEDIUM (40)');
-    assert(res.decision.response === ResponseAction.WARN, 'Generated WARN response decision');
+    assert(res.decision.response === ResponseAction.ADVISE, 'Generated ADVISE response decision');
   }
 
   detector.stop();

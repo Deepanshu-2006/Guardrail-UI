@@ -180,6 +180,11 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
       }
 
       const tokens = extractActionTokens(context.action);
+      const isInformational =
+        hasAnyToken(tokens, ['faq', 'help', 'options', 'guide', 'policy', 'terms', 'methods', 'about', 'how to pay']);
+      if (isInformational && (context.classification?.category === ActionCategory.GENERAL || !context.action.category)) {
+        return { matched: false };
+      }
       const isPayment =
         context.classification?.category === ActionCategory.PAYMENT ||
         context.classification?.category === ActionCategory.FINANCIAL_TRANSACTION ||
@@ -307,7 +312,11 @@ export const INITIAL_RISK_RULES: readonly RiskRule[] = Object.freeze([
               }
             }
 
-            const scoreContribution = config.scoreContribution;
+            const scoreContribution = Math.max(
+              config.scoreContribution,
+              phishingResult.score,
+              formResult?.score ?? 0
+            );
 
             return {
               matched: true,

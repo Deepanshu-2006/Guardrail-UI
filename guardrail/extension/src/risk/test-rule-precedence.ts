@@ -226,7 +226,7 @@ console.log('\n▶ Suite 3: Individual Response Rules Testing');
   assertEquals(lowResp.action, ResponseAction.ALLOW, 'LOW risk evaluates to ALLOW');
 
   const medResp = CoreRiskLevelResponseRule.evaluate({ assessment: makeAssessment(RiskLevel.MEDIUM, 30) });
-  assertEquals(medResp.action, ResponseAction.WARN, 'MEDIUM risk evaluates to WARN');
+  assertEquals(medResp.action, ResponseAction.ADVISE, 'MEDIUM risk evaluates to ADVISE');
 
   const highResp = CoreRiskLevelResponseRule.evaluate({ assessment: makeAssessment(RiskLevel.HIGH, 60) });
   assertEquals(highResp.action, ResponseAction.WARN, 'HIGH risk evaluates to WARN');
@@ -251,13 +251,15 @@ console.log('\n▶ Suite 3: Individual Response Rules Testing');
 console.log('\n▶ Suite 4: Response Rule Precedence & Monotonic Protection Invariant');
 {
   // Verify Precedence Constants
-  assertEquals(RESPONSE_ACTION_PRECEDENCE[ResponseAction.PROTECT], 300, 'PROTECT precedence is 300');
-  assertEquals(RESPONSE_ACTION_PRECEDENCE[ResponseAction.WARN], 200, 'WARN precedence is 200');
+  assertEquals(RESPONSE_ACTION_PRECEDENCE[ResponseAction.PROTECT], 400, 'PROTECT precedence is 400');
+  assertEquals(RESPONSE_ACTION_PRECEDENCE[ResponseAction.WARN], 300, 'WARN precedence is 300');
+  assertEquals(RESPONSE_ACTION_PRECEDENCE[ResponseAction.ADVISE], 200, 'ADVISE precedence is 200');
   assertEquals(RESPONSE_ACTION_PRECEDENCE[ResponseAction.ALLOW], 100, 'ALLOW precedence is 100');
   assert(
     RESPONSE_ACTION_PRECEDENCE[ResponseAction.PROTECT] > RESPONSE_ACTION_PRECEDENCE[ResponseAction.WARN] &&
-    RESPONSE_ACTION_PRECEDENCE[ResponseAction.WARN] > RESPONSE_ACTION_PRECEDENCE[ResponseAction.ALLOW],
-    'Precedence strictly satisfies: PROTECT > WARN > ALLOW'
+    RESPONSE_ACTION_PRECEDENCE[ResponseAction.WARN] > RESPONSE_ACTION_PRECEDENCE[ResponseAction.ADVISE] &&
+    RESPONSE_ACTION_PRECEDENCE[ResponseAction.ADVISE] > RESPONSE_ACTION_PRECEDENCE[ResponseAction.ALLOW],
+    'Precedence strictly satisfies: PROTECT > WARN > ADVISE > ALLOW'
   );
 
   // Case 1: Conflicting rules - Rule A yields PROTECT, Rule B yields WARN
@@ -272,21 +274,30 @@ console.log('\n▶ Suite 4: Response Rule Precedence & Monotonic Protection Inva
   // Case 2: Monotonic Protection - An ordinary warning CANNOT silently downgrade a protection decision
   const outcomesConflict2 = [
     { action: ResponseAction.ALLOW, reason: 'Routine path', ruleId: 'RULE_ALLOW', rulePriority: 250 },
+    { action: ResponseAction.ADVISE, reason: 'Mild caution', ruleId: 'RULE_ADVISE', rulePriority: 220 },
     { action: ResponseAction.WARN, reason: 'Caution', ruleId: 'RULE_WARN', rulePriority: 200 },
     { action: ResponseAction.PROTECT, reason: 'Critical quarantine', ruleId: 'RULE_PROTECT', rulePriority: 50 },
   ];
   const resolvedConflict2 = resolveResponsePrecedence(outcomesConflict2);
   assertEquals(resolvedConflict2.action, ResponseAction.PROTECT, 'Protection preserved even if lower rule priority than WARN/ALLOW');
   assert(resolvedConflict2.action !== ResponseAction.WARN, 'Ordinary warning strictly prevented from downgrading PROTECT');
+  assert(resolvedConflict2.action !== ResponseAction.ADVISE, 'Advisory strictly prevented from downgrading PROTECT');
   assert(resolvedConflict2.action !== ResponseAction.ALLOW, 'Allow strictly prevented from downgrading PROTECT');
 
-  // Case 3: WARN takes precedence over ALLOW
-  const outcomesWarnVsAllow = [
-    { action: ResponseAction.ALLOW, reason: 'Allow general click', ruleId: 'RULE_GENERAL', rulePriority: 200 },
+  // Case 3: WARN takes precedence over ADVISE, and ADVISE takes precedence over ALLOW
+  const outcomesWarnVsAdvise = [
+    { action: ResponseAction.ADVISE, reason: 'Advise mild caution', ruleId: 'RULE_ADVISE', rulePriority: 200 },
     { action: ResponseAction.WARN, reason: 'Warn financial transaction', ruleId: 'RULE_PAYMENT_WARN', rulePriority: 100 },
   ];
-  const resolvedWarn = resolveResponsePrecedence(outcomesWarnVsAllow);
-  assertEquals(resolvedWarn.action, ResponseAction.WARN, 'WARN takes precedence over ALLOW');
+  const resolvedWarn = resolveResponsePrecedence(outcomesWarnVsAdvise);
+  assertEquals(resolvedWarn.action, ResponseAction.WARN, 'WARN takes precedence over ADVISE');
+
+  const outcomesAdviseVsAllow = [
+    { action: ResponseAction.ALLOW, reason: 'Allow general click', ruleId: 'RULE_GENERAL', rulePriority: 200 },
+    { action: ResponseAction.ADVISE, reason: 'Advise mild caution', ruleId: 'RULE_ADVISE', rulePriority: 100 },
+  ];
+  const resolvedAdvise = resolveResponsePrecedence(outcomesAdviseVsAllow);
+  assertEquals(resolvedAdvise.action, ResponseAction.ADVISE, 'ADVISE takes precedence over ALLOW');
 
   // Case 4: Tie-breaking - Multiple rules produce the SAME highest action (PROTECT)
   // Rule with higher priority wins primary ruleId

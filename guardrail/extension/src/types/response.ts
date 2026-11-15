@@ -26,8 +26,16 @@ export enum ResponseAction {
   ALLOW = 'ALLOW',
 
   /**
-   * Guardrail should inform the user that the action deserves attention before continuing.
-   * Serves as an advisory notification, visual cue, or confirmation prompt without hard impediment.
+   * Guardrail displays a small, non-blocking advisory notification for mildly
+   * concerning or uncertain situations. The user continues normally without interruption.
+   * Never creates caretaker approval requests.
+   */
+  ADVISE = 'ADVISE',
+
+  /**
+   * Guardrail informs the user that the action deserves explicit security attention before continuing.
+   * Presents the redesigned Guardrail warning interface explaining risks, consequences, and choices.
+   * Does NOT automatically create a caretaker approval request.
    */
   WARN = 'WARN',
 
@@ -43,7 +51,7 @@ import { EvaluationError, EvaluationReason, RiskEvaluationStatus } from './risk.
 /**
  * String union type representing valid ResponseAction values.
  */
-export type ResponseActionString = 'ALLOW' | 'WARN' | 'PROTECT';
+export type ResponseActionString = 'ALLOW' | 'ADVISE' | 'WARN' | 'PROTECT';
 
 /**
  * Validates whether an arbitrary value is a canonical ResponseAction.
@@ -58,6 +66,7 @@ export function validateResponseAction(value: unknown): {
 } {
   if (
     value === ResponseAction.ALLOW ||
+    value === ResponseAction.ADVISE ||
     value === ResponseAction.WARN ||
     value === ResponseAction.PROTECT
   ) {
@@ -65,7 +74,7 @@ export function validateResponseAction(value: unknown): {
   }
   return {
     valid: false,
-    error: `Invalid ResponseAction "${String(value)}". Must be strictly one of: ALLOW, WARN, PROTECT.`,
+    error: `Invalid ResponseAction "${String(value)}". Must be strictly one of: ALLOW, ADVISE, WARN, PROTECT.`,
   };
 }
 
@@ -85,6 +94,7 @@ export function resolveFailClosedDecision(
 ): { decision: ResponseAction; isFallback: boolean; reason: string } {
   if (
     candidate === ResponseAction.ALLOW ||
+    candidate === ResponseAction.ADVISE ||
     candidate === ResponseAction.WARN ||
     candidate === ResponseAction.PROTECT
   ) {
