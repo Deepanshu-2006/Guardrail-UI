@@ -1723,6 +1723,16 @@ export class DashboardShell {
    * Updates decision history filters and refreshes if apiClient is available.
    */
   public setHistoryFilters(filters: Partial<RequestFilters>): void {
+    if (this.viewEnterTimer) {
+      clearTimeout(this.viewEnterTimer);
+      this.viewEnterTimer = null;
+    }
+    this.activeEnteringView = null;
+    if (this.mainContentEl) {
+      const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
+      enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
+    }
+
     const prevStatus = this.state.historyFilters?.status;
     const prevRisk = this.state.historyFilters?.riskLevel;
 
@@ -1764,6 +1774,15 @@ export class DashboardShell {
    * Clicking the currently selected request toggles it closed.
    */
   public selectHistoryRequest(requestId: string): void {
+    if (this.viewEnterTimer) {
+      clearTimeout(this.viewEnterTimer);
+      this.viewEnterTimer = null;
+    }
+    this.activeEnteringView = null;
+    if (this.mainContentEl) {
+      const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
+      enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
+    }
     if (this.state.selectedHistoryRequestId === requestId || !requestId) {
       this.state.selectedHistoryRequestId = null;
     } else {

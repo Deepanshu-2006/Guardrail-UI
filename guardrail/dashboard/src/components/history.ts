@@ -885,6 +885,11 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
       card.setAttribute('aria-label', `View decision details for ${req.id}: ${req.actionDescription}`);
+      if (typeof card.style?.setProperty === 'function') {
+        card.style.setProperty('--card-idx', String(index));
+      } else if (card.style) {
+        (card.style as any)['--card-idx'] = String(index);
+      }
 
       // 1. Numbering prefix (01, 02, etc.)
       const numStr = (index + 1) < 10 ? `0${index + 1}` : String(index + 1);
@@ -1072,8 +1077,18 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         for (let i = 0; i < cards.length; i++) {
           if (i < newLimitNum) {
             cards[i].classList.remove('gd-card-collapsed');
+            if (i >= 10 && !isCurrentlyExpanded) {
+              cards[i].classList.add('gd-card-animating-in');
+              const cardEl = cards[i] as HTMLElement;
+              if (typeof cardEl.style?.setProperty === 'function') {
+                cardEl.style.setProperty('--expand-idx', String(i - 10));
+              } else if (cardEl.style) {
+                (cardEl.style as any)['--expand-idx'] = String(i - 10);
+              }
+            }
           } else {
             cards[i].classList.add('gd-card-collapsed');
+            cards[i].classList.remove('gd-card-animating-in');
           }
         }
 
