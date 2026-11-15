@@ -966,7 +966,7 @@ textarea:focus-visible,
     transform: translateY(14px);
   }
   100% {
-    opacity: 0.55;
+    opacity: 0.45;
     transform: translateY(0);
   }
 }
@@ -975,6 +975,11 @@ textarea:focus-visible,
 .gd-history-card.gd-card-animating-in {
   animation: gd-history-card-enter 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--expand-idx, 0) * 0.035s);
+}
+
+.gd-history-list.has-selection .gd-history-card.gd-card-animating-in:not(.selected),
+.gd-history-list:has(.gd-history-card.selected) .gd-history-card.gd-card-animating-in:not(.selected) {
+  animation-name: gd-history-card-enter-dimmed !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -997,16 +1002,22 @@ textarea:focus-visible,
   .gd-clock-hour,
   .gd-clock-pivot,
   .gd-clock-alarm-pulse,
-  .gd-approved-dial,
+  .gd-approved-rim,
   .gd-approved-check,
+  .gd-approved-pulse,
+  .gd-approved-dial,
   .gd-approved-burst-ring,
   .gd-approved-sparkle,
-  .gd-cancelled-ring,
+  .gd-cancelled-rim,
   .gd-cancelled-slash,
+  .gd-cancelled-pulse,
+  .gd-cancelled-ring,
   .gd-cancelled-impact-dot,
-  .gd-rejected-ring,
+  .gd-rejected-rim,
   .gd-rejected-cross-1,
-  .gd-rejected-cross-2 {
+  .gd-rejected-cross-2,
+  .gd-rejected-pulse,
+  .gd-rejected-ring {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -2711,6 +2722,18 @@ textarea:focus-visible,
     grid-template-columns: 1fr;
     gap: 36px;
   }
+
+  .gd-history-layout .gd-detail-pane {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .gd-history-detail-pane {
+    border-left: none !important;
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 
 .gd-history-layout {
@@ -2734,6 +2757,31 @@ textarea:focus-visible,
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(39, 49, 33, 0.22) transparent;
+}
+
+.gd-history-layout .gd-detail-pane::-webkit-scrollbar {
+  width: 5px;
+}
+
+.gd-history-layout .gd-detail-pane::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gd-history-layout .gd-detail-pane::-webkit-scrollbar-thumb {
+  background-color: rgba(39, 49, 33, 0.18);
+  border-radius: 4px;
+}
+
+.gd-history-layout .gd-detail-pane::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(39, 49, 33, 0.35);
 }
 
 /* -----------------------------------------------------------------------------
@@ -2749,9 +2797,8 @@ textarea:focus-visible,
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 0 40px 0;
+  padding: 0 16px 48px 36px;
   border-left: 1px solid rgba(39, 49, 33, 0.12) !important;
-  padding-left: 36px;
 }
 
 /* Synchronized record detail entrance animation: multi-layered editorial choreography */
@@ -2862,91 +2909,135 @@ textarea:focus-visible,
   fill: currentColor;
 }
 
-/* 2. APPROVED (Approved by Reviewer) Cryptographic Seal Choreography */
-.gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark.approved,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.approved {
-  animation: gd-approved-enter-stamp 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) 0.14s both;
+/* Base styles for outcome mark SVG shapes: 100% visible by default */
+.gd-approved-rim {
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-dasharray: 57;
+  stroke-dashoffset: 0;
+  transform-origin: 12px 12px;
+  transform: rotate(-90deg);
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-approved-dial,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-approved-dial {
-  stroke-dasharray: 58;
-  stroke-dashoffset: 58;
-  animation: gd-approved-dial-trace 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+.gd-approved-check {
+  stroke: currentColor;
+  stroke-width: 2.4;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 16;
+  stroke-dashoffset: 0;
+  transform-origin: 10.5px 16px;
+}
+
+.gd-cancelled-rim,
+.gd-rejected-rim {
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-dasharray: 57;
+  stroke-dashoffset: 0;
+}
+
+.gd-cancelled-slash {
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-dasharray: 18.5;
+  stroke-dashoffset: 0;
+}
+
+.gd-rejected-cross-1,
+.gd-rejected-cross-2 {
+  stroke: currentColor;
+  stroke-width: 2.3;
+  stroke-dasharray: 11.5;
+  stroke-dashoffset: 0;
+}
+
+/* 2. APPROVED (Minimalist Swiss Verification Seal & Pen Draw) */
+.gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark.approved,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.approved {
+  animation: gd-approved-enter-seal 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-approved-rim,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-approved-rim {
+  animation: gd-approved-rim-trace 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
 }
 
 .gd-history-detail-pane.gd-detail-animating-in .gd-approved-check,
 .gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-approved-check {
-  stroke-dasharray: 20;
-  stroke-dashoffset: 20;
-  animation: gd-approved-check-draw 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+  animation: gd-approved-check-build 0.42s cubic-bezier(0.2, 0.85, 0.25, 1) 0.18s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-approved-burst-ring,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-approved-burst-ring {
+.gd-history-detail-pane.gd-detail-animating-in .gd-approved-pulse,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-approved-pulse {
   transform-origin: 12px 12px;
   opacity: 0;
   stroke: currentColor;
-  stroke-width: 1.4;
-  animation: gd-approved-burst-expand 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+  stroke-width: 1.3;
+  animation: gd-approved-pulse-expand 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-approved-sparkle,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-approved-sparkle {
-  transform-origin: center;
-  animation: gd-sparkle-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) 0.40s both;
-}
-.gd-history-detail-pane.gd-detail-animating-in .gd-sparkle-2,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-sparkle-2 {
-  animation-delay: 0.46s;
-}
-
-/* 3. CANCEL / REJECT (Barrier / Recoil) Choreography */
+/* 3. CANCELLED (Dismissal Slash) */
 .gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark.cancelled,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.cancelled,
-.gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark.rejected,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.rejected {
-  animation: gd-cancel-enter-recoil 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) 0.14s both;
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.cancelled {
+  animation: gd-cancel-enter-recoil 0.44s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-cancelled-ring,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-cancelled-ring,
-.gd-history-detail-pane.gd-detail-animating-in .gd-rejected-ring,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-rejected-ring {
-  stroke-dasharray: 58;
-  stroke-dashoffset: 58;
-  animation: gd-cancel-ring-trace 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+.gd-history-detail-pane.gd-detail-animating-in .gd-cancelled-rim,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-cancelled-rim {
+  animation: gd-cancel-ring-trace 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
 .gd-history-detail-pane.gd-detail-animating-in .gd-cancelled-slash,
 .gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-cancelled-slash {
-  stroke-dasharray: 20;
-  stroke-dashoffset: 20;
-  animation: gd-cancel-slash-strike 0.32s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+  animation: gd-cancel-slash-strike 0.30s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
 }
 
-.gd-history-detail-pane.gd-detail-animating-in .gd-cancelled-impact-dot,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-cancelled-impact-dot {
-  transform-origin: center;
-  animation: gd-impact-dot-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.36s both;
+.gd-history-detail-pane.gd-detail-animating-in .gd-cancelled-pulse,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-cancelled-pulse {
+  transform-origin: 12px 12px;
+  opacity: 0;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  animation: gd-cancel-pulse-expand 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
 }
-.gd-history-detail-pane.gd-detail-animating-in .gd-dot-2,
-.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-dot-2 {
-  animation-delay: 0.40s;
+
+/* 4. REJECTED (Minimalist Swiss Interception Cross & Recoil) */
+.gd-history-detail-pane.gd-detail-animating-in .gd-outcome-mark.rejected,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-outcome-mark.rejected {
+  animation: gd-rejected-slam-entrance 0.44s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
+}
+
+/* Clean haptic recoil shudder the moment the lines intersect */
+.gd-history-detail-pane.gd-detail-animating-in .gd-rejected-icon,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-rejected-icon {
+  transform-origin: 12px 12px;
+  animation: gd-rejected-recoil-shudder 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.32s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-rejected-rim,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-rejected-rim {
+  animation: gd-rejected-rim-trace 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
 .gd-history-detail-pane.gd-detail-animating-in .gd-rejected-cross-1,
 .gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-rejected-cross-1 {
-  stroke-dasharray: 16;
-  stroke-dashoffset: 16;
-  animation: gd-rejected-line-draw 0.30s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+  animation: gd-rejected-slash-1 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) 0.18s both;
 }
 
 .gd-history-detail-pane.gd-detail-animating-in .gd-rejected-cross-2,
 .gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-rejected-cross-2 {
-  stroke-dasharray: 16;
-  stroke-dashoffset: 16;
-  animation: gd-rejected-line-draw 0.30s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+  animation: gd-rejected-slash-2 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) 0.26s both;
+}
+
+.gd-history-detail-pane.gd-detail-animating-in .gd-rejected-pulse,
+.gd-history-layout:not(.gd-view-initial-enter) .gd-history-detail-pane .gd-rejected-pulse {
+  transform-origin: 12px 12px;
+  opacity: 0;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  animation: gd-rejected-pulse-expand 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
 }
 
 /* Interactive Hover Reactions on Verdict Marks */
@@ -2967,14 +3058,17 @@ textarea:focus-visible,
 
 .gd-history-outcome-block.approved:hover .gd-approved-check,
 .gd-outcome-mark.approved:hover .gd-approved-check {
-  animation: gd-approved-hover-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: gd-approved-check-build 0.48s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
 .gd-history-outcome-block.cancelled:hover .gd-cancelled-slash,
-.gd-outcome-mark.cancelled:hover .gd-cancelled-slash,
-.gd-history-outcome-block.rejected:hover .gd-rejected-cross-1,
-.gd-outcome-mark.rejected:hover .gd-rejected-cross-1 {
-  animation: gd-cancel-hover-shudder 0.35s ease both;
+.gd-outcome-mark.cancelled:hover .gd-cancelled-slash {
+  animation: gd-cancel-hover-shudder 0.32s ease both;
+}
+
+.gd-history-outcome-block.rejected:hover .gd-rejected-icon,
+.gd-outcome-mark.rejected:hover .gd-rejected-icon {
+  animation: gd-rejected-hover-shudder 0.32s ease both;
 }
 
 /* 01 Interaction Details */
@@ -3225,40 +3319,110 @@ textarea:focus-visible,
   }
 }
 
-/* 2. APPROVED (Cryptographic Seal & Flourish) */
-@keyframes gd-approved-enter-stamp {
+/* 2. APPROVED KEYFRAMES (Minimalist Swiss Verification Seal & Pen Draw) */
+@keyframes gd-approved-enter-seal {
   0% {
     opacity: 0;
-    transform: scale(0.6) translateY(5px);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.2) translateY(-2px);
-  }
-  85% {
-    transform: scale(0.96) translateY(0);
+    transform: scale(0.92);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes gd-approved-rim-trace {
+  0% {
+    stroke-dashoffset: 57;
+  }
+  100% {
+    stroke-dashoffset: 0;
   }
 }
 
 @keyframes gd-approved-dial-trace {
   0% {
-    stroke-dashoffset: 58;
+    stroke-dashoffset: 57;
   }
   100% {
     stroke-dashoffset: 0;
   }
 }
 
-@keyframes gd-approved-check-draw {
+@keyframes gd-approved-check-build {
   0% {
-    stroke-dashoffset: 20;
+    stroke-dashoffset: 16;
+    opacity: 0;
+    transform: scale(1);
+  }
+  4% {
+    opacity: 1;
+    stroke-dashoffset: 15.2;
+  }
+  36% {
+    stroke-dashoffset: 11.05;
+    transform: scale(1);
+  }
+  88% {
+    stroke-dashoffset: 0;
+    transform: scale(1.05);
   }
   100% {
     stroke-dashoffset: 0;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gd-approved-check-snap {
+  0% {
+    stroke-dashoffset: 16;
+    opacity: 0;
+    transform: scale(1);
+  }
+  4% {
+    opacity: 1;
+    stroke-dashoffset: 15.2;
+  }
+  36% {
+    stroke-dashoffset: 11.05;
+    transform: scale(1);
+  }
+  88% {
+    stroke-dashoffset: 0;
+    transform: scale(1.05);
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gd-approved-check-draw {
+  0% {
+    stroke-dashoffset: 16;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gd-approved-pulse-expand {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.42);
+    opacity: 0;
+  }
+}
+    transform: scale(1.44);
+    opacity: 0;
   }
 }
 
@@ -3267,27 +3431,12 @@ textarea:focus-visible,
     transform: scale(0.9);
     opacity: 0;
   }
-  30% {
-    opacity: 0.75;
+  25% {
+    opacity: 0.65;
   }
   100% {
-    transform: scale(1.45);
+    transform: scale(1.44);
     opacity: 0;
-  }
-}
-
-@keyframes gd-sparkle-pop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.4);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.85;
   }
 }
 
@@ -3295,23 +3444,23 @@ textarea:focus-visible,
   0%, 100% {
     transform: scale(1);
   }
-  50% {
-    transform: scale(1.18);
+  45% {
+    transform: scale(1.16);
   }
 }
 
-/* 3. CANCEL / REJECT (Barrier & Impact Snap) */
+/* 3. CANCEL KEYFRAMES */
 @keyframes gd-cancel-enter-recoil {
   0% {
     opacity: 0;
-    transform: scale(0.6) rotate(-22deg);
+    transform: scale(0.7) rotate(-16deg);
   }
   60% {
     opacity: 1;
-    transform: scale(1.18) rotate(5deg);
+    transform: scale(1.12) rotate(4deg);
   }
-  82% {
-    transform: scale(0.96) rotate(-2deg);
+  85% {
+    transform: scale(0.97);
   }
   100% {
     opacity: 1;
@@ -3337,18 +3486,105 @@ textarea:focus-visible,
   }
 }
 
-@keyframes gd-impact-dot-pop {
+@keyframes gd-cancel-pulse-expand {
   0% {
-    transform: scale(0);
+    transform: scale(0.9);
     opacity: 0;
   }
-  70% {
-    transform: scale(1.5);
-    opacity: 1;
+  25% {
+    opacity: 0.55;
   }
   100% {
-    transform: scale(1);
-    opacity: 0.9;
+    transform: scale(1.40);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-cancel-hover-shudder {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-1.5px, 0.5px);
+  }
+  60% {
+    transform: translate(1.5px, -0.5px);
+  }
+}
+
+/* 4. REJECTED KEYFRAMES (Minimalist Interception & Haptic Recoil) */
+@keyframes gd-rejected-slam-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-12deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(3deg);
+  }
+  85% {
+    transform: scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes gd-rejected-recoil-shudder {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-2.5px) rotate(-1deg);
+  }
+  40% {
+    transform: translateX(2.5px) rotate(1deg);
+  }
+  60% {
+    transform: translateX(-1.5px);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gd-rejected-rim-trace {
+  0% {
+    stroke-dashoffset: 58;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gd-rejected-ring-trace {
+  0% {
+    stroke-dashoffset: 58;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gd-rejected-slash-1 {
+  0% {
+    stroke-dashoffset: 16;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gd-rejected-slash-2 {
+  0% {
+    stroke-dashoffset: 16;
+  }
+  100% {
+    stroke-dashoffset: 0;
   }
 }
 
@@ -3361,18 +3597,46 @@ textarea:focus-visible,
   }
 }
 
-@keyframes gd-cancel-hover-shudder {
-  0%, 100% {
-    transform: translate(0, 0);
+@keyframes gd-rejected-pulse-expand {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
   }
   25% {
-    transform: translate(-1.5px, 0.5px);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.44);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-rejected-shockwave-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.44);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-rejected-hover-shudder {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
   }
   50% {
-    transform: translate(1.5px, -0.5px);
+    transform: translateX(2px);
   }
   75% {
-    transform: translate(-1px, 0);
+    transform: translateX(-1px);
   }
 }
 
@@ -4602,15 +4866,19 @@ article.gd-card-collapsed,
 
 /* Unified Focus Choreography: when a record is opened, unselected records gracefully fade out */
 .gd-history-list.has-selection .gd-history-card:not(.selected),
-.gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected) {
-  opacity: 0.45;
+.gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected),
+.gd-history-list.has-selection .gd-history-card.gd-card-animating-in:not(.selected),
+.gd-history-list:has(.gd-history-card.selected) .gd-history-card.gd-card-animating-in:not(.selected) {
+  opacity: 0.45 !important;
 }
 
 .gd-history-list.has-selection .gd-history-card:not(.selected):hover,
 .gd-history-list.has-selection .gd-history-card:not(.selected):focus-visible,
 .gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected):hover,
-.gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected):focus-visible {
-  opacity: 0.88;
+.gd-history-list:has(.gd-history-card.selected) .gd-history-card:not(.selected):focus-visible,
+.gd-history-list.has-selection .gd-history-card.gd-card-animating-in:not(.selected):hover,
+.gd-history-list.has-selection .gd-history-card.gd-card-animating-in:not(.selected):focus-visible {
+  opacity: 0.88 !important;
 }
 
 .gd-history-card {
