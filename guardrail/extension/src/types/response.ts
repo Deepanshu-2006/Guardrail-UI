@@ -165,6 +165,11 @@ export interface ResponseDecision {
   policyRuleId?: string;
 
   /**
+   * Strongly typed machine-readable reason code justifying the decision.
+   */
+  reasonCode?: string;
+
+  /**
    * Strongly typed structured reasons explaining this decision.
    */
   structuredReasons?: readonly EvaluationReason[];

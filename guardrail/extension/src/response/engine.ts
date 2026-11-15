@@ -225,6 +225,7 @@ export class ResponseEngine {
       status: RiskEvaluationStatus.EVALUATED,
       success: true,
       policyRuleId,
+      reasonCode: `POLICY_${action}`,
       structuredReasons,
     };
   }
@@ -425,6 +426,7 @@ export function evaluateActionPipeline(
         ...decision,
         response: ResponseAction.PROTECT,
         policyRuleId: protectPolicy.ruleId || decision.policyRuleId,
+        reasonCode: protectPolicy.reasonCode || decision.reasonCode,
         reasons,
         structuredReasons,
       };
@@ -446,6 +448,7 @@ export function evaluateActionPipeline(
         ...decision,
         response: ResponseAction.WARN,
         policyRuleId: warnPolicy.ruleId || decision.policyRuleId,
+        reasonCode: warnPolicy.reasonCode || decision.reasonCode,
         reasons,
         structuredReasons,
       };
@@ -471,6 +474,7 @@ export function evaluateActionPipeline(
         ...decision,
         response: ResponseAction.ADVISE,
         policyRuleId: advisePolicy.ruleId || decision.policyRuleId,
+        reasonCode: advisePolicy.reasonCode || decision.reasonCode,
         reasons,
         structuredReasons,
       };
@@ -478,6 +482,7 @@ export function evaluateActionPipeline(
       decision = {
         ...decision,
         policyRuleId: allowPolicy.ruleId || decision.policyRuleId,
+        reasonCode: allowPolicy.reasonCode || decision.reasonCode,
       };
     }
 

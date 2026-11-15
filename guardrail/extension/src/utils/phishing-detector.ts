@@ -261,6 +261,21 @@ const RECOGNIZED_BRANDS: readonly BrandIdentityDefinition[] = Object.freeze([
     legitimateDomains: ['github.com'],
     assetDomains: ['github.com', 'githubassets.com'],
   },
+  {
+    brandName: 'HDFC Bank',
+    titleKeywords: ['hdfc', 'hfdc', 'hdfc bank', 'hdfc netbanking', 'hdfcbank'],
+    legitimateDomains: ['hdfcbank.com'],
+  },
+  {
+    brandName: 'State Bank of India',
+    titleKeywords: ['sbi', 'state bank of india', 'onlinesbi'],
+    legitimateDomains: ['sbi.co.in', 'onlinesbi.sbi', 'onlinesbi.com'],
+  },
+  {
+    brandName: 'ICICI Bank',
+    titleKeywords: ['icici', 'icici bank', 'icicibank'],
+    legitimateDomains: ['icicibank.com'],
+  },
 ]);
 
 /**

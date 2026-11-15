@@ -67,6 +67,9 @@ export enum ActionCategory {
   /** Modifying passwords, 2FA devices, recovery emails or security questions */
   SECURITY_SETTING_CHANGE = 'SECURITY_SETTING_CHANGE',
 
+  /** Modifying transaction limits, alerts, MPIN, or banking security protections */
+  FINANCIAL_SECURITY_CHANGE = 'FINANCIAL_SECURITY_CHANGE',
+
   /** Navigating away to external third-party websites or untrusted domains */
   EXTERNAL_NAVIGATION = 'EXTERNAL_NAVIGATION',
 
@@ -94,6 +97,7 @@ export type ActionCategoryString =
   | 'FILE_DOWNLOAD'
   | 'PERMISSION_CHANGE'
   | 'SECURITY_SETTING_CHANGE'
+  | 'FINANCIAL_SECURITY_CHANGE'
   | 'EXTERNAL_NAVIGATION'
   | 'SENSITIVE_DATA_SUBMISSION'
   | 'SUSPICIOUS_REDIRECT';
@@ -159,6 +163,15 @@ export interface ActionElementInfo {
 
   /** Visible text or label on the clicked submit button/trigger */
   submitButtonText?: string;
+
+  /** True if interaction represents a final transaction confirmation or payment authorization */
+  isTransactionConfirmation?: boolean;
+
+  /** True if interaction engages with UPI payment or VPA identifier */
+  isUpi?: boolean;
+
+  /** Observable UPI VPA handle or payment scheme format (e.g. '@okhdfcbank', 'upi://pay') strictly without credentials */
+  vpaHandle?: string;
 
   /** Value of download attribute if element is an anchor with download specified */
   downloadAttribute?: string;

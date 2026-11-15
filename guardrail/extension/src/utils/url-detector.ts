@@ -194,6 +194,14 @@ const SENSITIVE_BRAND_NAMES: readonly string[] = Object.freeze([
   'whatsapp',
   'telegram',
   'metamask',
+  'hdfc',
+  'hfdc',
+  'sbi',
+  'icici',
+  'barclays',
+  'hsbc',
+  'santander',
+  'lloyds',
 ]);
 
 /**

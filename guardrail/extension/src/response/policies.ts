@@ -30,7 +30,13 @@ import {
   getActivePolicyConfig,
 } from '../config/registry.js';
 import { GuardrailPolicyConfig } from '../types/config.js';
-import { matchesAnyPhrase } from '../classifier/rules.js';
+import {
+  matchesAnyPhrase,
+  isUpiInteraction,
+  isTransactionConfirmation,
+  isBeneficiaryAdditionOrChange,
+  isDisablingFinancialSecurity,
+} from '../classifier/rules.js';
 
 /**
  * Extracts searchable text tokens strictly from the interactive DOM element.
@@ -97,9 +103,8 @@ export const CONTROLLED_DESTRUCTIVE_POLICY: RiskPolicyDefinition = Object.freeze
     const hasDestructiveToken =
       action.category === ActionCategory.DESTRUCTIVE ||
       action.category === ActionCategory.DESTRUCTIVE_ACTION ||
-      hasAnyToken(tokens, ['delete', 'remove', 'purge', 'close account', 'terminate']);
+      hasAnyToken(tokens, ['delete', 'remove', 'purge', 'close account', 'terminate', 'wipe', 'destroy']);
     const hasDestructiveAssessment =
-      assessment?.riskLevel === RiskLevel.CRITICAL ||
       assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_DESTRUCTIVE') ||
       false;
 
@@ -182,7 +187,10 @@ export const CONTROLLED_PAYMENT_POLICY: RiskPolicyDefinition = Object.freeze({
     const hasPaymentToken =
       action.category === ActionCategory.PAYMENT ||
       action.category === ActionCategory.FINANCIAL_TRANSACTION ||
-      hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer money', 'send money', 'fund transfer', 'transfer']);
+      action.category === ActionCategory.BENEFICIARY_MANAGEMENT ||
+      action.category === ActionCategory.FINANCIAL_SECURITY_CHANGE ||
+      hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer money', 'send money', 'fund transfer', 'transfer']) ||
+      isUpiInteraction(action);
     const hasPaymentAssessment =
       assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PAYMENT') || false;
 
@@ -193,25 +201,73 @@ export const CONTROLLED_PAYMENT_POLICY: RiskPolicyDefinition = Object.freeze({
       return { matched: false };
     }
 
+    // Destination check: If payment targets an untrusted external origin
+    let isUntrustedExternalPayment = false;
+    const destCandidate = action.element?.targetUrl || action.element?.formAction;
+    if (destCandidate && action.page?.url) {
+      try {
+        const destOrigin = new URL(destCandidate, action.page.url).origin;
+        const curOrigin = new URL(action.page.url).origin;
+        if (destOrigin !== curOrigin && destOrigin !== 'null' && !isTrustedDomain(destCandidate)) {
+          isUntrustedExternalPayment = true;
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
     // Compound check: If payment is high-risk authorization, escalate to PROTECT
     const criticalScore = getCriticalThresholdScore();
+    const isConfirmation = isTransactionConfirmation(action);
+    const isBeneficiaryOp =
+      isBeneficiaryAdditionOrChange(action) ||
+      (action.category === ActionCategory.BENEFICIARY_MANAGEMENT &&
+        !action.element?.visibleText?.toLowerCase().includes('view'));
+    const isSecurityDisabling = isDisablingFinancialSecurity(action);
+
     const isHighRiskAuthorization =
       assessment?.riskLevel === RiskLevel.CRITICAL ||
       (typeof assessment?.score === 'number' && assessment.score >= criticalScore) ||
       assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR') ||
-      action.category === ActionCategory.BENEFICIARY_MANAGEMENT;
+      isConfirmation ||
+      isBeneficiaryOp ||
+      isSecurityDisabling ||
+      isUntrustedExternalPayment;
 
     const decision = isHighRiskAuthorization ? ResponseAction.PROTECT : ResponseAction.WARN;
-    const ruleId = isHighRiskAuthorization ? 'RULE_PAYMENT_COMPOUND_PROTECT' : 'RULE_PAYMENT_INTERACTION_POLICY';
-    const explanation = isHighRiskAuthorization
-      ? 'Protective mechanism required: High-consequence financial authorization requires verification before processing.'
-      : CONTROLLED_PAYMENT_POLICY.userExplanation;
+    let ruleId = isHighRiskAuthorization ? 'RULE_PAYMENT_COMPOUND_PROTECT' : 'RULE_PAYMENT_INTERACTION_POLICY';
+    let reasonCode = isHighRiskAuthorization ? 'POLICY_PROTECT_PAYMENT_COMPOUND' : 'POLICY_WARN_PAYMENT';
+    let explanation = CONTROLLED_PAYMENT_POLICY.userExplanation;
+
+    if (isConfirmation) {
+      ruleId = 'RULE_PAYMENT_CONFIRMATION_PROTECT';
+      reasonCode = 'POLICY_PROTECT_TRANSACTION_CONFIRMATION';
+      explanation = 'Protective mechanism required: Direct fund transfer or payment authorization requires explicit verification.';
+    } else if (isBeneficiaryOp) {
+      ruleId = 'RULE_BENEFICIARY_MANAGEMENT_PROTECT';
+      reasonCode = 'POLICY_PROTECT_BENEFICIARY_MANAGEMENT';
+      explanation = 'Protective mechanism required: Adding or modifying transfer beneficiaries requires explicit verification.';
+    } else if (isSecurityDisabling) {
+      ruleId = 'RULE_FINANCIAL_SECURITY_PROTECT';
+      reasonCode = 'POLICY_PROTECT_FINANCIAL_SECURITY';
+      explanation = 'Protective mechanism required: Disabling critical banking security alerts or protections requires explicit verification.';
+    } else if (isUntrustedExternalPayment) {
+      ruleId = 'RULE_UNTRUSTED_PAYMENT_REDIRECT_PROTECT';
+      reasonCode = 'POLICY_PROTECT_UNTRUSTED_PAYMENT_REDIRECT';
+      explanation = 'Protective mechanism required: Payment redirection to an unverified external provider detected.';
+    } else if (isHighRiskAuthorization) {
+      explanation = 'Protective mechanism required: High-consequence financial authorization requires verification before processing.';
+    } else if (action.category === ActionCategory.FINANCIAL_SECURITY_CHANGE) {
+      ruleId = 'RULE_FINANCIAL_SECURITY_WARN';
+      reasonCode = 'POLICY_WARN_FINANCIAL_SECURITY';
+      explanation = 'User advisory recommended: Action modifies banking or financial account security settings.';
+    }
 
     return {
       matched: true,
       decision,
       ruleId,
-      reasonCode: isHighRiskAuthorization ? 'POLICY_PROTECT_PAYMENT_COMPOUND' : 'POLICY_WARN_PAYMENT',
+      reasonCode,
       explanation,
       downstreamBehavior: isHighRiskAuthorization
         ? 'Enters Staging Mode requiring trusted-contact approval.'
@@ -262,6 +318,20 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
       action.element?.formAction ||
       (action.type === ActionType.NAVIGATION ? action.page?.url : undefined);
     if (destCandidate && isTrustedDomain(destCandidate)) {
+      return false;
+    }
+
+    // Read-only financial actions (such as opening a bank website) must not be flagged by external navigation unless an independent threat exists
+    const isFinancialReadOnly =
+      action.category === ActionCategory.FINANCIAL_READ_ONLY ||
+      assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_ROUTINE_INTERACTION');
+    const hasSecurityThreat =
+      assessment?.matchedRules?.some(
+        (r) =>
+          r.ruleId === 'RISK_RULE_PHISHING_INDICATOR' ||
+          r.ruleId === 'RISK_RULE_SUSPICIOUS_URL'
+      );
+    if (isFinancialReadOnly && !hasSecurityThreat) {
       return false;
     }
 
@@ -604,11 +674,17 @@ export const PHISHING_PROTECTION_POLICY: RiskPolicyDefinition = Object.freeze({
     architecturalConstraints: 'Operates via heuristic inspection without external network reputation lookups.',
   },
   appliesTo: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): boolean => {
-    return (
-      assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR') ||
-      action.category === ActionCategory.SUSPICIOUS_REDIRECT ||
-      false
-    );
+    const hasPhishingRule =
+      assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PHISHING_INDICATOR') || false;
+    const isSuspiciousRedirect = action.category === ActionCategory.SUSPICIOUS_REDIRECT;
+    const isSensitiveCredentialOnSuspiciousUrl =
+      (action.category === ActionCategory.SENSITIVE_DATA_SUBMISSION ||
+        Boolean(action.element?.hasPasswordField) ||
+        Boolean(action.element?.hasSensitiveField)) &&
+      (assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_SUSPICIOUS_URL') ||
+        (assessment?.score ?? 0) >= 50);
+
+    return hasPhishingRule || isSuspiciousRedirect || isSensitiveCredentialOnSuspiciousUrl;
   },
   evaluate: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): PolicyEvaluationResult => {
     if (!PHISHING_PROTECTION_POLICY.appliesTo(action, assessment)) {
