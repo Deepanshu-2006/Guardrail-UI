@@ -159,6 +159,48 @@ function formatActionType(type?: string): string {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
+/**
+ * Renders high-precision SVG icons for the 3 decision outcome verdict states:
+ * Clock (Expired), Approved (Seal & Checkmark), and Cancelled/Rejected (Barrier / Slash).
+ */
+function renderClockOutcomeIcon(): string {
+  return `<svg class="gd-outcome-icon gd-clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle class="gd-clock-pulse-ring" cx="12" cy="12" r="9" />
+    <circle class="gd-clock-dial" cx="12" cy="12" r="9" />
+    <line class="gd-clock-stem" x1="12" y1="1.2" x2="12" y2="3.2" />
+    <line class="gd-clock-hour" x1="12" y1="12" x2="12" y2="7.5" />
+    <line class="gd-clock-minute" x1="12" y1="12" x2="12" y2="6.2" />
+    <circle class="gd-clock-pivot" cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+  </svg>`;
+}
+
+function renderApprovedOutcomeIcon(): string {
+  return `<svg class="gd-outcome-icon gd-approved-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle class="gd-approved-burst-ring" cx="12" cy="12" r="9" />
+    <circle class="gd-approved-dial" cx="12" cy="12" r="9" />
+    <path class="gd-approved-check" d="M7 12.3l3.4 3.4 6.8-6.8" />
+    <circle class="gd-approved-sparkle gd-sparkle-1" cx="19.5" cy="4.5" r="1" fill="currentColor" stroke="none" />
+    <circle class="gd-approved-sparkle gd-sparkle-2" cx="4.5" cy="19.5" r="0.8" fill="currentColor" stroke="none" />
+  </svg>`;
+}
+
+function renderCancelledOutcomeIcon(): string {
+  return `<svg class="gd-outcome-icon gd-cancelled-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle class="gd-cancelled-ring" cx="12" cy="12" r="9" />
+    <line class="gd-cancelled-slash" x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+    <circle class="gd-cancelled-impact-dot gd-dot-1" cx="5.6" cy="5.6" r="1.2" fill="currentColor" stroke="none" />
+    <circle class="gd-cancelled-impact-dot gd-dot-2" cx="18.4" cy="18.4" r="1.2" fill="currentColor" stroke="none" />
+  </svg>`;
+}
+
+function renderRejectedOutcomeIcon(): string {
+  return `<svg class="gd-outcome-icon gd-rejected-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle class="gd-rejected-ring" cx="12" cy="12" r="9" />
+    <line class="gd-rejected-cross-1" x1="7.5" y1="7.5" x2="16.5" y2="16.5" />
+    <line class="gd-rejected-cross-2" x1="16.5" y1="7.5" x2="7.5" y2="16.5" />
+  </svg>`;
+}
+
 export function renderHistoryRecordDetail(options: {
   request: ApprovalRequest | null | undefined;
   isLoading?: boolean;
@@ -323,13 +365,13 @@ export function renderHistoryRecordDetail(options: {
 
   const reviewerName = req.decision?.decidedBy || 'tc_carol';
   if (displayStatus === ApprovalStatus.APPROVED) {
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">✓</span> <h3 class="gd-outcome-verdict">Approved by ${reviewerName}</h3>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark approved" aria-hidden="true">${renderApprovedOutcomeIcon()}</span> <h3 class="gd-outcome-verdict">Approved by ${reviewerName}</h3>`;
   } else if (displayStatus === ApprovalStatus.REJECTED) {
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">✕</span> <h3 class="gd-outcome-verdict">Rejected by ${reviewerName}</h3>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark rejected" aria-hidden="true">${renderRejectedOutcomeIcon()}</span> <h3 class="gd-outcome-verdict">Rejected by ${reviewerName}</h3>`;
   } else if (displayStatus === ApprovalStatus.EXPIRED) {
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">⏱</span> <h3 class="gd-outcome-verdict">Review Deadline Elapsed</h3>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark expired" aria-hidden="true">${renderClockOutcomeIcon()}</span> <h3 class="gd-outcome-verdict">Review Deadline Elapsed</h3>`;
   } else if (displayStatus === ApprovalStatus.CANCELLED) {
-    outcomeStatus.innerHTML = `<span class="gd-outcome-mark" aria-hidden="true">⊘</span> <h3 class="gd-outcome-verdict">Cancelled by ${wardName}</h3>`;
+    outcomeStatus.innerHTML = `<span class="gd-outcome-mark cancelled" aria-hidden="true">${renderCancelledOutcomeIcon()}</span> <h3 class="gd-outcome-verdict">Cancelled by ${wardName}</h3>`;
   } else {
     outcomeStatus.innerHTML = `<h3 class="gd-outcome-verdict">Status: ${displayStatus}</h3>`;
   }
