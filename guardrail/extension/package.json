@@ -12,6 +12,7 @@
     "audit": "npm audit --audit-level=high",
     "type-check": "tsc --noEmit",
     "test:pilot-build": "esbuild src/build/test-pilot-deployment-verification.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-pilot-deployment-verification.js && node dist/test-pilot-deployment-verification.js",
+    "test:phase1": "esbuild src/classifier/test-phase1-detection-classification.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-phase1-detection-classification.js && node dist/test-phase1-detection-classification.js",
     "test:risk": "esbuild src/risk/test-risk-engine.ts --bundle --format=esm --target=es2022 --outfile=dist/test-risk-engine.js && node dist/test-risk-engine.js",
     "test:response": "esbuild src/response/test-response-pipeline.ts --bundle --format=esm --target=es2022 --outfile=dist/test-response-pipeline.js && node dist/test-response-pipeline.js",
     "test:interception": "esbuild src/interception/test-interception-model.ts --bundle --format=esm --target=es2022 --outfile=dist/test-interception-model.js && node dist/test-interception-model.js",

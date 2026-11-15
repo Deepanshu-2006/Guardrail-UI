@@ -395,12 +395,13 @@ export function evaluateActionPipeline(
     const config = responseOptions?.config ?? riskOptions?.config ?? getActivePolicyConfig();
     const resolvedRiskOptions: RiskEngineOptions = { ...riskOptions, config };
     const resolvedClassification = classification ?? classifyAction(action);
+    const enrichedAction = action.category ? action : { ...action, category: resolvedClassification.category };
 
-    const risk = assessRisk(action, resolvedClassification, resolvedRiskOptions);
+    const risk = assessRisk(enrichedAction, resolvedClassification, resolvedRiskOptions);
     let decision = decideResponse(risk, responseOptions);
 
     // Apply canonical risk policies and preserve monotonic precedence
-    const policyResults = evaluatePolicies(action, risk, config);
+    const policyResults = evaluatePolicies(enrichedAction, risk, config);
     const protectPolicy = policyResults.find((p) => p.decision === ResponseAction.PROTECT);
     const warnPolicy = policyResults.find((p) => p.decision === ResponseAction.WARN);
     const allowPolicy = policyResults.find((p) => p.decision === ResponseAction.ALLOW);
@@ -479,7 +480,7 @@ export function evaluateActionPipeline(
     const evaluationResult = createRiskEvaluationResult(risk, decision);
 
     return {
-      action,
+      action: enrichedAction,
       classification: resolvedClassification,
       risk,
       decision,

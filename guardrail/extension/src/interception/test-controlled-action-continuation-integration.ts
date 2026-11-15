@@ -578,6 +578,7 @@ async function runControlledContinuationIntegrationTests(): Promise<void> {
     const testButton = mockDocument.createElement('button');
     testButton.setAttribute('id', 'btn-suite2');
     testButton.setAttribute('data-guardrail-test-action', 'true');
+    testButton.textContent = 'Submit Transfer';
     mockBody.appendChild(testButton);
 
     const action: GuardrailAction = {
@@ -585,7 +586,7 @@ async function runControlledContinuationIntegrationTests(): Promise<void> {
       type: ActionType.CLICK,
       timestamp: h.currentTime,
       page: { url: 'https://bank.example.com/transfer/confirm', title: 'Transfer' },
-      element: { tagName: 'BUTTON', id: 'btn-suite2' },
+      element: { tagName: 'BUTTON', id: 'btn-suite2', visibleText: 'Submit Transfer' },
     };
 
     h.controller.register(action);

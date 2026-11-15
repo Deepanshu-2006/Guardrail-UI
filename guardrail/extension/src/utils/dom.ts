@@ -296,6 +296,27 @@ export function extractElementInfo(
   const visibleText = extractVisibleText(element);
   const className = extractClassName(element);
 
+  // Extract accessible label, role, and type attributes
+  const rawAria =
+    (typeof element.getAttribute === 'function' &&
+      (element.getAttribute('aria-label') ||
+        element.getAttribute('title') ||
+        element.getAttribute('aria-description'))) ||
+    undefined;
+  const ariaLabel = rawAria && typeof rawAria === 'string' && rawAria.trim().length > 0
+    ? redactSensitiveText(rawAria.trim())
+    : undefined;
+  const role =
+    typeof element.getAttribute === 'function' && element.getAttribute('role')
+      ? element.getAttribute('role')!.trim().toLowerCase()
+      : undefined;
+  const type =
+    typeof (element as any).type === 'string'
+      ? (element as any).type.trim().toLowerCase()
+      : typeof element.getAttribute === 'function' && element.getAttribute('type')
+        ? element.getAttribute('type')!.trim().toLowerCase()
+        : undefined;
+
   // Return plain, serializable object with no circular references or DOM bindings
   const elementInfo: ActionElementInfo = {
     tagName,
@@ -303,6 +324,18 @@ export function extractElementInfo(
 
   if (visibleText !== undefined) {
     elementInfo.visibleText = visibleText;
+  }
+
+  if (ariaLabel !== undefined) {
+    elementInfo.ariaLabel = ariaLabel;
+  }
+
+  if (role !== undefined) {
+    elementInfo.role = role;
+  }
+
+  if (type !== undefined) {
+    elementInfo.type = type;
   }
 
   if (elementId !== undefined) {

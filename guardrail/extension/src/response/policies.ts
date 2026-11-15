@@ -30,33 +30,31 @@ import {
   getActivePolicyConfig,
 } from '../config/registry.js';
 import { GuardrailPolicyConfig } from '../types/config.js';
+import { matchesAnyPhrase } from '../classifier/rules.js';
 
 /**
- * Extracts searchable text tokens from an action safely (without inspecting input values).
+ * Extracts searchable text tokens strictly from the interactive DOM element.
+ * Never includes page.title, page.url pathname, or element.className.
  */
 function extractTokens(action: GuardrailAction): string[] {
   const tokens: string[] = [];
-  if (action.element?.visibleText) {
-    tokens.push(action.element.visibleText.toLowerCase().trim());
+  const elem = action.element || (action as any).target;
+  const visibleText = elem?.visibleText || (elem as any)?.text;
+  if (visibleText && typeof visibleText === 'string' && visibleText.trim().length > 0) {
+    tokens.push(visibleText.trim());
   }
-  if (action.element?.id) {
-    tokens.push(action.element.id.toLowerCase().trim());
+  if (elem?.ariaLabel && typeof elem.ariaLabel === 'string' && elem.ariaLabel.trim().length > 0) {
+    tokens.push(elem.ariaLabel.trim());
   }
-  if (action.element?.className) {
-    tokens.push(action.element.className.toLowerCase().trim());
-  }
-  if (action.page?.url) {
-    try {
-      tokens.push(new URL(action.page.url).pathname.toLowerCase());
-    } catch {
-      // Ignore URL parsing errors
-    }
+  const elemId = elem?.id || (elem as any)?.elementId;
+  if (tokens.length === 0 && elemId && typeof elemId === 'string' && elemId.trim().length > 0) {
+    tokens.push(elemId.replace(/[-_]/g, ' ').trim());
   }
   return tokens;
 }
 
 function hasAnyToken(tokens: string[], keywords: string[]): boolean {
-  return keywords.some((kw) => tokens.some((t) => t.includes(kw)));
+  return matchesAnyPhrase(tokens, keywords).matched;
 }
 
 /**
@@ -98,6 +96,7 @@ export const CONTROLLED_DESTRUCTIVE_POLICY: RiskPolicyDefinition = Object.freeze
     const tokens = extractTokens(action);
     const hasDestructiveToken =
       action.category === ActionCategory.DESTRUCTIVE ||
+      action.category === ActionCategory.DESTRUCTIVE_ACTION ||
       hasAnyToken(tokens, ['delete', 'remove', 'purge', 'close account', 'terminate']);
     const hasDestructiveAssessment =
       assessment?.riskLevel === RiskLevel.CRITICAL ||
@@ -150,10 +149,20 @@ export const CONTROLLED_PAYMENT_POLICY: RiskPolicyDefinition = Object.freeze({
   },
   appliesTo: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): boolean => {
     if (action.type !== ActionType.CLICK && action.type !== ActionType.SUBMIT) return false;
+
+    // Routine financial read-only operations must never trigger payment policies or staging
+    if (
+      action.category === ActionCategory.FINANCIAL_READ_ONLY ||
+      assessment?.matchedRules?.some((r) => r.ruleId === 'RULE_FINANCIAL_READ_ONLY')
+    ) {
+      return false;
+    }
+
     const tokens = extractTokens(action);
     const hasPaymentToken =
       action.category === ActionCategory.PAYMENT ||
-      hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer']);
+      action.category === ActionCategory.FINANCIAL_TRANSACTION ||
+      hasAnyToken(tokens, ['pay', 'payment', 'checkout', 'purchase', 'buy', 'transfer money', 'send money', 'fund transfer', 'transfer']);
     const hasPaymentAssessment =
       assessment?.matchedRules?.some((r) => r.ruleId === 'RISK_RULE_PAYMENT') || false;
 
@@ -398,6 +407,12 @@ export const AUTHENTICATION_BOUNDARY_POLICY: RiskPolicyDefinition = Object.freez
     }
 
     const tokens = extractTokens(action);
+    // Benign password recovery links do not represent credential entry or authentication boundaries
+    const firstText = tokens[0]?.toLowerCase() || '';
+    if (firstText.includes('forgot password') || firstText.includes('recover password')) {
+      return false;
+    }
+
     return hasAnyToken(tokens, ['login', 'log in', 'sign in', 'signin', 'authenticate', 'password', '2fa']);
   },
   evaluate: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): PolicyEvaluationResult => {

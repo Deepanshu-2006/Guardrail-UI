@@ -38,21 +38,43 @@ export type ActionTypeString = 'CLICK' | 'INPUT' | 'SUBMIT' | 'NAVIGATION';
 export enum ActionCategory {
   /** Routine interactions with standard UI controls */
   GENERAL = 'GENERAL',
+  GENERAL_BROWSING = 'GENERAL_BROWSING',
 
   /** Login, registration, password entry, credential updates, 2FA */
   AUTHENTICATION = 'AUTHENTICATION',
 
+  /** Read-only financial account browsing (view balances, statements, transaction history) */
+  FINANCIAL_READ_ONLY = 'FINANCIAL_READ_ONLY',
+
   /** Checkout, fund transfers, payments, credit card input, billing */
   PAYMENT = 'PAYMENT',
+  FINANCIAL_TRANSACTION = 'FINANCIAL_TRANSACTION',
+
+  /** Adding, updating, or removing payees/beneficiaries */
+  BENEFICIARY_MANAGEMENT = 'BENEFICIARY_MANAGEMENT',
 
   /** Permanent deletions, account cancellations, data purging, destructive updates */
   DESTRUCTIVE = 'DESTRUCTIVE',
+  DESTRUCTIVE_ACTION = 'DESTRUCTIVE_ACTION',
 
   /** File downloads, document exports, software installation packages */
   DOWNLOAD = 'DOWNLOAD',
+  FILE_DOWNLOAD = 'FILE_DOWNLOAD',
+
+  /** Modifying browser or site access permissions */
+  PERMISSION_CHANGE = 'PERMISSION_CHANGE',
+
+  /** Modifying passwords, 2FA devices, recovery emails or security questions */
+  SECURITY_SETTING_CHANGE = 'SECURITY_SETTING_CHANGE',
 
   /** Navigating away to external third-party websites or untrusted domains */
   EXTERNAL_NAVIGATION = 'EXTERNAL_NAVIGATION',
+
+  /** Forms collecting PII, identity documents, or sensitive data */
+  SENSITIVE_DATA_SUBMISSION = 'SENSITIVE_DATA_SUBMISSION',
+
+  /** Deceptive hops, homoglyph redirects, or suspicious redirects */
+  SUSPICIOUS_REDIRECT = 'SUSPICIOUS_REDIRECT',
 }
 
 /**
@@ -60,11 +82,21 @@ export enum ActionCategory {
  */
 export type ActionCategoryString =
   | 'GENERAL'
+  | 'GENERAL_BROWSING'
   | 'AUTHENTICATION'
+  | 'FINANCIAL_READ_ONLY'
   | 'PAYMENT'
+  | 'FINANCIAL_TRANSACTION'
+  | 'BENEFICIARY_MANAGEMENT'
   | 'DESTRUCTIVE'
+  | 'DESTRUCTIVE_ACTION'
   | 'DOWNLOAD'
-  | 'EXTERNAL_NAVIGATION';
+  | 'FILE_DOWNLOAD'
+  | 'PERMISSION_CHANGE'
+  | 'SECURITY_SETTING_CHANGE'
+  | 'EXTERNAL_NAVIGATION'
+  | 'SENSITIVE_DATA_SUBMISSION'
+  | 'SUSPICIOUS_REDIRECT';
 
 /**
  * Normalized representation of the DOM element involved in an interaction.
@@ -73,6 +105,15 @@ export type ActionCategoryString =
 export interface ActionElementInfo {
   /** HTML tag name in uppercase (e.g., 'BUTTON', 'INPUT', 'A') */
   tagName: string;
+
+  /** Accessible label from aria-label, title, or aria-description */
+  ariaLabel?: string;
+
+  /** Explicit ARIA role attribute if present */
+  role?: string;
+
+  /** Type attribute if present (e.g., button, submit, password) */
+  type?: string;
 
   /** Visible human-readable text on or within the element (trimmed) */
   visibleText?: string;
