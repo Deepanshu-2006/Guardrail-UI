@@ -13,7 +13,7 @@
  * communication are intentionally omitted at this stage.
  */
 
-import { ActionDetector } from '../detector/index.js';
+import { ActionDetector, createGuardrailAction } from '../detector/index.js';
 import { evaluateActionPipeline } from '../response/index.js';
 import {
   dismissPendingApprovalPill,
@@ -66,10 +66,77 @@ import {
   getConfigHealthStatus,
   loadPolicyConfigFromStorage,
   reloadPolicyConfig,
+  isTrustedDomain,
 } from '../config/index.js';
 import { cancelControlledActionUntilPolicyInitialized, isPolicyConfigurationInitialized } from '../config/readiness.js';
 import { GUARDRAIL_POLICY_CONFIG_STORAGE_KEY } from '../config/loader.js';
 import { getStoredWardToken } from '../approval/auth-manager.js';
+
+/**
+ * Detects if the current webpage is the Guardrail Trusted Contact Portal dashboard
+ * or an internal extension page, which must be strictly exempt from content script
+ * interception, policy evaluation, and warning UI injection.
+ */
+export function isDashboardOrInternalPage(): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  // 1. Dashboard mount container or application role
+  if (
+    (typeof document.getElementById === 'function' && document.getElementById('dashboard-app')) ||
+    (typeof document.querySelector === 'function' && document.querySelector('[role="application"][aria-label*="Guardrail"]'))
+  ) {
+    return true;
+  }
+
+  // 2. Document title
+  if (typeof document.title === 'string' && document.title.includes('Guardrail — Trusted Contact Portal')) {
+    return true;
+  }
+
+  // 3. Location heuristics (dashboard dev port 5173 or extension origin)
+  const loc = window.location;
+  if (loc) {
+    if (loc.port === '5173') {
+      return true;
+    }
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome.runtime?.id &&
+      loc.origin === `chrome-extension://${chrome.runtime.id}`
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Evaluates whether a destination URL represents an untrusted web destination.
+ */
+export function isUntrustedWebDestination(urlCandidate?: string, currentOrigin?: string): boolean {
+  if (!urlCandidate || typeof urlCandidate !== 'string') return false;
+  const trimmed = urlCandidate.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+      return false;
+    }
+    if (isTrustedDomain(trimmed)) {
+      return false;
+    }
+    const originToCheck = currentOrigin ?? (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined);
+    if (originToCheck && parsed.origin === originToCheck) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 let latestStagingContext: StagingActionContext | null = null;
 let activeWarningSyncSub: StatusSyncSubscription | null = null;
@@ -151,7 +218,7 @@ function handleAuthoritativeApprovalResolution(
           console.warn('[Guardrail UI] Continuation manager warning:', contErr);
         }
 
-        const destUrl = action.page?.url;
+        const destUrl = action.element?.targetUrl || action.element?.formAction || action.page?.url;
         if (destUrl && typeof window !== 'undefined') {
           window.location.href = destUrl;
         }
@@ -450,6 +517,11 @@ function presentWarningWithApproval(
   decision: ResponseDecision,
   classification?: ActionClassificationResult
 ): void {
+  // Never present warning modals on the Trusted Contact Portal Dashboard or internal pages
+  if (isDashboardOrInternalPage()) {
+    return;
+  }
+
   showWarningModal({
     action,
     risk,
@@ -823,6 +895,14 @@ function updateControlledTestPageDisplay(
  * Bootstraps the Guardrail Content Script runtime and Action Detector.
  */
 function bootstrap(): void {
+  // 0. Exemption for Guardrail Trusted Contact Portal & Internal Pages
+  if (isDashboardOrInternalPage()) {
+    console.log(
+      '[Guardrail Content] Guardrail Trusted Contact Portal / internal page detected. Content script monitoring disabled.'
+    );
+    return;
+  }
+
   const pageInfo = extractPageInfo();
 
   // Begin loading before detection starts. While the result is pending, ambient
@@ -983,6 +1063,15 @@ function bootstrap(): void {
           }
 
           case ResponseAction.WARN: {
+            // Synchronously halt event propagation if opening an untrusted web destination
+            const dest = action.element?.targetUrl || action.element?.formAction;
+            if (dest && isUntrustedWebDestination(dest)) {
+              try {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+              } catch {}
+            }
+
             // WARN:
             // * Preserve the existing Guardrail warning behavior.
             // * Do not treat WARN as authorization to execute an already-held action.
@@ -1132,6 +1221,23 @@ function bootstrap(): void {
 
   // Start ambient observation
   detector.start();
+
+  // Page-level advisory if the active page itself is an untrusted domain
+  if (typeof window !== 'undefined' && window.location && window.location.href) {
+    const currentUrl = window.location.href;
+    if (isUntrustedWebDestination(currentUrl) && !isDashboardOrInternalPage()) {
+      console.warn(
+        `[Guardrail Content] Current webpage [${currentUrl}] is an untrusted domain. Enforcing warning advisory.`
+      );
+      const navAction = createGuardrailAction(
+        ActionType.NAVIGATION,
+        null,
+        typeof document !== 'undefined' ? document.referrer || undefined : undefined
+      );
+      const { classification, risk, decision } = evaluateActionPipeline(navAction);
+      presentWarningWithApproval(navAction, risk, decision, classification);
+    }
+  }
 
   // Initialize explicit resolution controls (Continue & Cancel)
   initResolutionControls();
@@ -1633,9 +1739,11 @@ function init(): void {
   bootstrap();
 }
 
-// Ensure initialization occurs after the DOM tree is available
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+// Ensure initialization occurs after the DOM tree is available in browser contexts
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 }

@@ -14,6 +14,7 @@ import {
   isFormSubmitTrigger,
 } from '../utils/index.js';
 import { createGuardrailAction } from './action-factory.js';
+import { isTrustedDomain } from '../config/registry.js';
 
 export type ActionHandler = (action: GuardrailAction) => void;
 export type InterceptHandler = (
@@ -21,6 +22,70 @@ export type InterceptHandler = (
   element: HTMLElement,
   event: Event
 ) => void;
+
+/**
+ * Checks if the current webpage execution environment is the Trusted Contact Portal Dashboard
+ * or internal Guardrail page, which must remain completely exempt from action detection.
+ */
+function isDashboardOrInternalPage(): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  if (
+    (typeof document.getElementById === 'function' && document.getElementById('dashboard-app')) ||
+    (typeof document.querySelector === 'function' && document.querySelector('[role="application"][aria-label*="Guardrail"]'))
+  ) {
+    return true;
+  }
+  if (typeof document.title === 'string' && document.title.includes('Guardrail — Trusted Contact Portal')) {
+    return true;
+  }
+  const loc = window.location;
+  if (loc) {
+    if (loc.port === '5173') {
+      return true;
+    }
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome.runtime?.id &&
+      loc.origin === `chrome-extension://${chrome.runtime.id}`
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Evaluates whether a destination URL represents an untrusted web destination
+ * that must be intercepted before navigation is permitted.
+ */
+function isUntrustedDestination(urlCandidate?: string): boolean {
+  if (!urlCandidate || typeof urlCandidate !== 'string') return false;
+  const trimmed = urlCandidate.trim();
+  // Only evaluate valid web schemes
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    // Localhost and loopback development environments are always trusted
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+      return false;
+    }
+    // Allowlisted trusted domains
+    if (isTrustedDomain(trimmed)) {
+      return false;
+    }
+    // Same origin as current page is not an external untrusted navigation
+    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+      if (parsed.origin === window.location.origin) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export class ActionDetector {
   private lastTrackedUrl: string = '';
@@ -85,6 +150,10 @@ export class ActionDetector {
    * Tracks a page navigation event if the URL has changed.
    */
   public trackNavigation(explicitPreviousUrl?: string): void {
+    if (isDashboardOrInternalPage()) {
+      return;
+    }
+
     const currentUrl = typeof window !== 'undefined' && window.location ? window.location.href : '';
     if (!currentUrl || currentUrl === this.lastTrackedUrl) {
       return;
@@ -101,6 +170,11 @@ export class ActionDetector {
    * Handles generic click events via event delegation.
    */
   private handleClick = (event: MouseEvent): void => {
+    // 0. Exemption for Dashboard & Internal Guardrail Pages
+    if (isDashboardOrInternalPage()) {
+      return;
+    }
+
     // 1. Check for form submit trigger:
     // When a submit button or submit input is clicked, defer to handleSubmit.
     // This prevents duplicate handling (emitting both a CLICK action and a SUBMIT action),
@@ -161,6 +235,31 @@ export class ActionDetector {
     }
 
     const action = createGuardrailAction(ActionType.CLICK, interactiveElement);
+
+    // 4. Pre-Navigation Interception for Untrusted Websites:
+    // If the element attempts to open or navigate to an untrusted domain/URL,
+    // synchronously halt the navigation BEFORE the browser navigates away,
+    // and present the warning modal with caretaker approval flow.
+    const destUrl = action.element?.targetUrl || action.element?.formAction;
+    if (destUrl && isUntrustedDestination(destUrl)) {
+      try {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      } catch {
+        // Ignore if uncancelable
+      }
+      if (this.onIntercept) {
+        try {
+          this.onIntercept(action, interactiveElement, event);
+          return;
+        } catch (err) {
+          console.error('[Guardrail Detector] Interception handler failed for untrusted destination:', err);
+        }
+      }
+      this.emitAction(action);
+      return;
+    }
+
     this.emitAction(action);
   };
 
@@ -168,6 +267,10 @@ export class ActionDetector {
    * Handles generic form control input/change events via event delegation.
    */
   private handleChange = (event: Event): void => {
+    if (isDashboardOrInternalPage()) {
+      return;
+    }
+
     const inputElement = findFormInputElement(event.target);
     if (!inputElement) {
       return;
@@ -181,6 +284,10 @@ export class ActionDetector {
    * Handles generic form submit events via event delegation.
    */
   private handleSubmit = (event: Event): void => {
+    if (isDashboardOrInternalPage()) {
+      return;
+    }
+
     let formElement: HTMLFormElement | null = null;
     if (event.target instanceof HTMLFormElement) {
       formElement = event.target;
@@ -241,6 +348,24 @@ export class ActionDetector {
     }
 
     const action = createGuardrailAction(ActionType.SUBMIT, formElement, undefined, submitter);
+
+    // Pre-Navigation Interception for Untrusted Form Destinations:
+    const formDest = action.element?.formAction;
+    if (formDest && isUntrustedDestination(formDest)) {
+      try {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      } catch {}
+      if (this.onIntercept) {
+        try {
+          this.onIntercept(action, formElement, event);
+          return;
+        } catch {}
+      }
+      this.emitAction(action);
+      return;
+    }
+
     this.emitAction(action);
   };
 

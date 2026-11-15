@@ -41,6 +41,7 @@ export const FORM_INPUT_SELECTOR = [
  * (e.g. Warning Modal or Staging Mode Shadow DOM host).
  */
 export function isInternalGuardrailUi(target: Element): boolean {
+  // Check if target is inside Guardrail warning or staging UI hosts
   if (
     target.id === 'guardrail-warning-ui-host' ||
     target.id === 'guardrail-staging-ui-host' ||
@@ -48,6 +49,30 @@ export function isInternalGuardrailUi(target: Element): boolean {
     Boolean(target.closest?.('#guardrail-staging-ui-host'))
   ) {
     return true;
+  }
+
+  // Check if target is inside the Trusted Contact Portal Dashboard application
+  if (
+    target.id === 'dashboard-app' ||
+    Boolean(target.closest?.('#dashboard-app')) ||
+    Boolean(target.closest?.('[role="application"][aria-label*="Guardrail"]'))
+  ) {
+    return true;
+  }
+
+  // Global dashboard environment checks
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.port === '5173') {
+      return true;
+    }
+  }
+  if (typeof document !== 'undefined') {
+    if (
+      (typeof document.getElementById === 'function' && document.getElementById('dashboard-app')) ||
+      (typeof document.title === 'string' && document.title.includes('Guardrail — Trusted Contact Portal'))
+    ) {
+      return true;
+    }
   }
 
   if (typeof target.getRootNode === 'function') {

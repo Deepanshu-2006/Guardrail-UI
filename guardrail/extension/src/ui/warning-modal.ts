@@ -1532,6 +1532,19 @@ export function showWarningModal(props: WarningModalProps): () => void {
   card.appendChild(viewsContainer);
   backdrop.appendChild(card);
 
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) {
+      const viewWaiting = currentShadow?.querySelector('.gr-view-waiting') as HTMLElement | null;
+      const isWaiting = viewWaiting && (Boolean(viewWaiting?.classList?.contains?.('gr-slide-in')) || (viewWaiting.style?.display !== 'none' && !currentShadow?.querySelector('.gr-view-warning')?.offsetParent));
+      dismissWarningModal();
+      if (isWaiting && props.onCloseWaiting) {
+        props.onCloseWaiting();
+      } else if (props.onCancel) {
+        props.onCancel();
+      }
+    }
+  });
+
   shadow.appendChild(style);
   shadow.appendChild(backdrop);
 
@@ -1540,7 +1553,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     activeEscapeHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         const viewWaiting = currentShadow?.querySelector('.gr-view-waiting') as HTMLElement | null;
-        const isWaiting = viewWaiting && (viewWaiting.classList.contains('gr-slide-in') || (viewWaiting.style.display !== 'none' && !currentShadow?.querySelector('.gr-view-warning')?.offsetParent));
+        const isWaiting = viewWaiting && (Boolean(viewWaiting?.classList?.contains?.('gr-slide-in')) || (viewWaiting.style?.display !== 'none' && !currentShadow?.querySelector('.gr-view-warning')?.offsetParent));
         dismissWarningModal();
         if (isWaiting && props.onCloseWaiting) {
           props.onCloseWaiting();

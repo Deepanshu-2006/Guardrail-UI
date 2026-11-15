@@ -224,8 +224,27 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
       return false;
     }
 
+    // Check if destination candidate is explicitly configured as trusted
+    const destCandidate =
+      action.element?.targetUrl ||
+      action.element?.formAction ||
+      (action.type === ActionType.NAVIGATION ? action.page?.url : undefined);
+    if (destCandidate && isTrustedDomain(destCandidate)) {
+      return false;
+    }
+
     // Check explicit classification or assessment
-    if (action.category === ActionCategory.EXTERNAL_NAVIGATION) return true;
+    if (action.category === ActionCategory.EXTERNAL_NAVIGATION) {
+      if (
+        action.page?.url &&
+        isTrustedDomain(action.page.url) &&
+        !action.element?.targetUrl &&
+        !action.element?.formAction
+      ) {
+        return false;
+      }
+      return true;
+    }
     if (
       assessment?.matchedRules?.some(
         (r) =>
@@ -242,6 +261,9 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
       try {
         const curOrigin = new URL(action.page.url).origin;
         const prevOrigin = new URL(action.page.previousUrl).origin;
+        if (curOrigin === prevOrigin) {
+          return false;
+        }
         if (curOrigin !== prevOrigin && curOrigin !== 'null' && prevOrigin !== 'null') {
           // If destination origin is explicitly configured as trusted, exempt it from external warning
           if (isTrustedDomain(curOrigin)) {
@@ -251,6 +273,22 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
         }
       } catch {
         return false;
+      }
+    }
+
+    // Check link click targetUrl cross-origin boundary
+    if (action.page?.url && action.element?.targetUrl) {
+      try {
+        const curOrigin = new URL(action.page.url).origin;
+        const destOrigin = new URL(action.element.targetUrl).origin;
+        if (curOrigin !== destOrigin && curOrigin !== 'null' && destOrigin !== 'null') {
+          if (isTrustedDomain(destOrigin)) {
+            return false;
+          }
+          return true;
+        }
+      } catch {
+        // Ignore
       }
     }
 
@@ -270,8 +308,19 @@ export const EXTERNAL_NAVIGATION_POLICY: RiskPolicyDefinition = Object.freeze({
       }
     }
 
+    // Check direct navigation to an untrusted domain
+    if (action.type === ActionType.NAVIGATION && action.page?.url) {
+      if (!isTrustedDomain(action.page.url)) {
+        return true;
+      }
+    }
+
     const tokens = extractTokens(action);
-    return isLinkAction(action) && hasAnyToken(tokens, ['external', 'third-party', 'redirect', 'leave site']);
+    return (
+      isLinkAction(action) &&
+      Boolean(action.element?.targetUrl) &&
+      hasAnyToken(tokens, ['external', 'third-party', 'redirect', 'leave site'])
+    );
   },
   evaluate: (action: GuardrailAction, assessment?: Readonly<RiskAssessment>): PolicyEvaluationResult => {
     if (!EXTERNAL_NAVIGATION_POLICY.appliesTo(action, assessment)) {
