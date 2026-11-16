@@ -758,19 +758,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const dossierHeader = document.createElement('div');
           dossierHeader.className = 'gd-detail-dossier-header';
 
-          const topBar = document.createElement('div');
-          topBar.className = 'gd-detail-header-top';
-
-          const displayStatus = isExpired && selectedReq.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (selectedReq.status || ApprovalStatus.PENDING);
-          const statusPill = document.createElement('span');
-          const sClass = displayStatus.toLowerCase();
-          statusPill.className = `gd-detail-status-pill ${sClass}`;
-          statusPill.setAttribute('role', 'status');
-          statusPill.setAttribute('data-status', sClass);
-          statusPill.textContent = displayStatus;
-          topBar.appendChild(statusPill);
-          dossierHeader.appendChild(topBar);
-
           const detailTitleEl = document.createElement('h3');
           detailTitleEl.className = 'gd-detail-title';
           detailTitleEl.textContent = selectedReq.actionDescription;
@@ -797,6 +784,21 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             titleSpan.title = selectedReq.pageTitle;
             headerMeta.appendChild(titleSpan);
           }
+
+          const metaSep2 = document.createElement('span');
+          metaSep2.className = 'gd-meta-sep';
+          metaSep2.textContent = '·';
+          metaSep2.setAttribute('aria-hidden', 'true');
+          headerMeta.appendChild(metaSep2);
+
+          const displayStatus = isExpired && selectedReq.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (selectedReq.status || ApprovalStatus.PENDING);
+          const statusPill = document.createElement('span');
+          const sClass = displayStatus.toLowerCase();
+          statusPill.className = `gd-detail-status-pill ${sClass}`;
+          statusPill.setAttribute('role', 'status');
+          statusPill.setAttribute('data-status', sClass);
+          statusPill.textContent = displayStatus;
+          headerMeta.appendChild(statusPill);
 
           dossierHeader.appendChild(headerMeta);
           detailPane.appendChild(dossierHeader);
