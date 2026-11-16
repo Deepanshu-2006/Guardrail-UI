@@ -53,6 +53,7 @@ export class DashboardShell {
   private readonly activeDetailFetchPromises: Map<string, Promise<ApprovalRequest | null>> = new Map();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private resolutionTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+  private resolutionExitTimer: ReturnType<typeof setTimeout> | null = null;
   public static readonly MAX_CACHE_ENTRIES = 100;
   private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
   private isDetailLoading: boolean = false;
@@ -72,6 +73,17 @@ export class DashboardShell {
   private isSubmittingDecision: boolean = false;
   private isDestroyed: boolean = false;
   private isPollingHaltedDueToAuth: boolean = false;
+
+  private clearResolutionTimers(): void {
+    if (this.resolutionTransitionTimer) {
+      clearTimeout(this.resolutionTransitionTimer);
+      this.resolutionTransitionTimer = null;
+    }
+    if (this.resolutionExitTimer) {
+      clearTimeout(this.resolutionExitTimer);
+      this.resolutionExitTimer = null;
+    }
+  }
   private lastSynchronizedAt: Date | null = null;
   private isBackendUnavailable: boolean = false;
   private isRefreshing: boolean = false;
@@ -822,10 +834,7 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
-    if (this.resolutionTransitionTimer) {
-      clearTimeout(this.resolutionTransitionTimer);
-      this.resolutionTransitionTimer = null;
-    }
+    this.clearResolutionTimers();
     this.activeEnteringView = view;
     this.viewEnterTimer = setTimeout(() => {
       this.activeEnteringView = null;
@@ -865,10 +874,7 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
-    if (this.resolutionTransitionTimer) {
-      clearTimeout(this.resolutionTransitionTimer);
-      this.resolutionTransitionTimer = null;
-    }
+    this.clearResolutionTimers();
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -1278,10 +1284,7 @@ export class DashboardShell {
    */
   public selectRequest(requestId: string, fetchFresh: boolean = false): void {
     if (this.state.selectedRequestId !== requestId) {
-      if (this.resolutionTransitionTimer) {
-        clearTimeout(this.resolutionTransitionTimer);
-        this.resolutionTransitionTimer = null;
-      }
+      this.clearResolutionTimers();
       this.state.decisionErrorMessage = null;
       this.state.decisionSuccessMessage = null;
     }
@@ -1402,22 +1405,17 @@ export class DashboardShell {
         this.state.decisionErrorMessage = null;
         this.announce(`Decision recorded: ${decision}. Reviewer consent committed to server.`);
 
-        // Clear any active transition timer
-        if (this.resolutionTransitionTimer) {
-          clearTimeout(this.resolutionTransitionTimer);
-          this.resolutionTransitionTimer = null;
-        }
+        // Clear any active transition and exit timers
+        this.clearResolutionTimers();
 
         // Automatic queue advance: transition gracefully after sealing the decision
         // In Node test runs (CLI runners), use 1400ms to align with fast test assertions;
-        // In real browser runtime, provide 2800ms so the caretaker experiences the Decision Moment.
+        // In real browser runtime, provide 5000ms (5 full seconds) so the caretaker experiences the Decision Moment.
         const isNodeRuntime = typeof process !== 'undefined' && Boolean(process.versions?.node);
-        const transitionDelay = isNodeRuntime ? 1400 : 2800;
+        const transitionDelay = isNodeRuntime ? 1400 : 5000;
 
-        this.resolutionTransitionTimer = setTimeout(() => {
-          this.resolutionTransitionTimer = null;
+        const advanceQueue = () => {
           if (this.isDestroyed) return;
-
           if (this.state.selectedRequestId === trimmedId) {
             this.state.decisionSuccessMessage = null;
 
@@ -1431,6 +1429,35 @@ export class DashboardShell {
             }
             this.render();
           }
+        };
+
+        this.resolutionTransitionTimer = setTimeout(() => {
+          this.resolutionTransitionTimer = null;
+          if (this.isDestroyed) return;
+
+          if (isNodeRuntime) {
+            advanceQueue();
+            return;
+          }
+
+          // Trigger silky-smooth exit animation in browser
+          const stageEl = this.rootContainer?.querySelector('.gd-decision-moment-stage');
+          const momentEl = this.rootContainer?.querySelector('.gd-decision-moment');
+          if (stageEl) stageEl.classList.add('gd-moment-exiting');
+          if (momentEl) momentEl.classList.add('gd-moment-exiting');
+
+          let executed = false;
+          const onAnimationComplete = () => {
+            if (executed) return;
+            executed = true;
+            this.resolutionExitTimer = null;
+            advanceQueue();
+          };
+
+          if (momentEl) {
+            momentEl.addEventListener('animationend', onAnimationComplete, { once: true });
+          }
+          this.resolutionExitTimer = setTimeout(onAnimationComplete, 380);
         }, transitionDelay);
 
         // Immediate background refresh so dashboard does not depend exclusively on periodic polling
@@ -1772,10 +1799,7 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
-    if (this.resolutionTransitionTimer) {
-      clearTimeout(this.resolutionTransitionTimer);
-      this.resolutionTransitionTimer = null;
-    }
+    this.clearResolutionTimers();
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -1827,10 +1851,7 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
-    if (this.resolutionTransitionTimer) {
-      clearTimeout(this.resolutionTransitionTimer);
-      this.resolutionTransitionTimer = null;
-    }
+    this.clearResolutionTimers();
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -2446,10 +2467,7 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
-    if (this.resolutionTransitionTimer) {
-      clearTimeout(this.resolutionTransitionTimer);
-      this.resolutionTransitionTimer = null;
-    }
+    this.clearResolutionTimers();
     this.activeEnteringView = null;
 
     if (this.hashChangeHandler && typeof window !== 'undefined') {

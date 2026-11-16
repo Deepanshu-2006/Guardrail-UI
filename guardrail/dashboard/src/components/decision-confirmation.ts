@@ -93,7 +93,7 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
   const heroCard = document.createElement('div');
   heroCard.className = `gd-moment-hero ${statusClass}`;
 
-  // 1. Top Header Row: Guardrail Brand + DECISION RECORDED Badge
+  // 1. Top Header Row: Guardrail Brand (clean minimal, no top pill)
   const topBar = document.createElement('div');
   topBar.className = 'gd-moment-topbar';
 
@@ -107,15 +107,7 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
     <span class="gd-moment-brand-text">GUARDRAIL</span>
   `;
 
-  const decisionBadge = document.createElement('span');
-  decisionBadge.className = `gd-moment-status-pill ${statusClass}`;
-  decisionBadge.innerHTML = `
-    <span class="gd-moment-live-dot ${statusClass}" aria-hidden="true"></span>
-    <span class="gd-moment-status-pill-text">DECISION RECORDED</span>
-  `;
-
   topBar.appendChild(brandTag);
-  topBar.appendChild(decisionBadge);
   heroCard.appendChild(topBar);
 
   // 2. Centered Animated Circular Icon Badge (Draws Tick or Cross)

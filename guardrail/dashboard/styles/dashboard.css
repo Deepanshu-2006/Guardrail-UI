@@ -6304,6 +6304,9 @@ article.gd-card-collapsed,
    GUARDRAIL DECISION MOMENT — Unified Editorial Confirmation Interaction
    ============================================================================= */
 
+.gd-decision-moment-active .gd-section-header,
+.gd-pending-redesign.gd-decision-moment-active .gd-section-header,
+#view-pending.gd-decision-moment-active .gd-section-header,
 .gd-pending-approvals.gd-decision-moment-active .gd-pending-header,
 .gd-pending-approvals.gd-decision-moment-active .gd-view-header {
   display: none !important;
@@ -6330,6 +6333,31 @@ article.gd-card-collapsed,
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* Graceful Exit / Ending Animation — Silky Smooth Apple-Style Dissolve */
+.gd-decision-moment-stage.gd-moment-exiting,
+.gd-decision-moment.gd-moment-exiting {
+  pointer-events: none !important;
+}
+
+.gd-decision-moment-stage.gd-moment-exiting .gd-decision-moment,
+.gd-decision-moment.gd-moment-exiting {
+  animation: gdDecisionMomentSmoothExit 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity !important;
+  transform-origin: center center !important;
+  pointer-events: none !important;
+}
+
+@keyframes gdDecisionMomentSmoothExit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
   }
 }
 
@@ -6400,12 +6428,12 @@ article.gd-card-collapsed,
     linear-gradient(180deg, #322119 0%, #251710 100%) !important;
 }
 
-/* Top bar: Brand + Status Pill */
+/* Top bar: Brand (Minimal & Uncluttered) */
 .gd-moment-topbar {
   width: 100% !important;
   box-sizing: border-box !important;
   display: flex !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
   align-items: center !important;
   margin-bottom: 24px !important;
 }
@@ -6438,28 +6466,7 @@ article.gd-card-collapsed,
 }
 
 .gd-moment-status-pill {
-  font-family: var(--gd-font-mono, monospace) !important;
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-  border-radius: 9999px !important;
-  padding: 4px 12px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  line-height: 1.2 !important;
-}
-
-.gd-moment-status-pill.approved {
-  border: 1px solid rgba(74, 222, 128, 0.4) !important;
-  color: #4ADE80 !important;
-  background: rgba(74, 222, 128, 0.1) !important;
-}
-
-.gd-moment-status-pill.rejected {
-  border: 1px solid rgba(240, 140, 110, 0.4) !important;
-  color: #F08C6E !important;
-  background: rgba(240, 140, 110, 0.1) !important;
+  display: none !important;
 }
 
 .gd-moment-live-dot {
@@ -6715,7 +6722,7 @@ article.gd-card-collapsed,
 .gd-decision-moment-progress-bar {
   height: 100% !important;
   width: 0% !important;
-  animation: gdMomentProgressBar 2.8s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  animation: gdMomentProgressBar 5s linear forwards !important;
   border-radius: 9999px !important;
 }
 
