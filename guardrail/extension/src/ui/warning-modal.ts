@@ -373,11 +373,11 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-card.gr-card-approved::before {
-      background: linear-gradient(90deg, #556B3A 0%, #769650 50%, #556B3A 100%);
+      display: none;
     }
 
     .gr-card.gr-card-rejected::before {
-      background: linear-gradient(90deg, #8F2B2B 0%, #A83838 50%, #8F2B2B 100%);
+      display: none;
     }
 
     .gr-card.gr-card-cancelled::before {
@@ -864,6 +864,216 @@ export function showWarningModal(props: WarningModalProps): () => void {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
+    }
+
+    /* Decision Moment Hero Banner - Caretaker Confirmation Parity */
+    .gr-waiting-hero {
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .gr-waiting-hero.gr-hero-rejected {
+      background: 
+        radial-gradient(circle at 50% 45%, rgba(240, 140, 110, 0.12) 0%, transparent 65%),
+        linear-gradient(180deg, #322119 0%, #251710 100%) !important;
+      padding: 26px 34px 28px 34px !important;
+      text-align: center !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
+    }
+
+    .gr-waiting-hero.gr-hero-approved {
+      background: 
+        radial-gradient(circle at 50% 45%, rgba(74, 222, 128, 0.12) 0%, transparent 65%),
+        linear-gradient(180deg, #1E331D 0%, #172716 100%) !important;
+      padding: 26px 34px 28px 34px !important;
+      text-align: center !important;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
+    }
+
+    /* Topbar inside Hero */
+    .gr-hero-rejected .gr-waiting-header,
+    .gr-hero-approved .gr-waiting-header {
+      padding: 0 !important;
+      margin-bottom: 20px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+    }
+
+    .gr-hero-brand-tag {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      color: #FAF7F0 !important;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.12em !important;
+    }
+
+    .gr-hero-brand-shield {
+      flex-shrink: 0 !important;
+    }
+
+    .gr-hero-brand-shield.approved {
+      color: #4ADE80 !important;
+    }
+
+    .gr-hero-brand-shield.rejected {
+      color: #F08C6E !important;
+    }
+
+    .gr-hero-brand-text {
+      color: #FAF7F0 !important;
+    }
+
+    .gr-hero-rejected .gr-btn-close,
+    .gr-hero-approved .gr-btn-close {
+      color: rgba(250, 247, 240, 0.72) !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border-radius: 8px !important;
+      border: none !important;
+      width: 28px !important;
+      height: 28px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 15px !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+    }
+
+    .gr-hero-rejected .gr-btn-close:hover,
+    .gr-hero-approved .gr-btn-close:hover,
+    .gr-hero-rejected .gr-btn-close:focus-visible,
+    .gr-hero-approved .gr-btn-close:focus-visible {
+      color: #FAF7F0 !important;
+      background: rgba(255, 255, 255, 0.18) !important;
+      outline: none !important;
+    }
+
+    /* Centered Circular Badge & Animations */
+    .gr-waiting-medallion {
+      display: none;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .gd-moment-badge-circle {
+      width: 76px !important;
+      height: 76px !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      position: relative !important;
+      animation: gdCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
+    }
+
+    .gd-moment-badge-circle.approved {
+      background: radial-gradient(circle at 35% 35%, #E5F0DE 0%, #C8DCBA 100%) !important;
+      border: 2px solid rgba(255, 255, 255, 0.45) !important;
+      box-shadow: 
+        0 0 0 6px rgba(255, 255, 255, 0.08),
+        0 0 0 12px rgba(255, 255, 255, 0.03),
+        0 12px 28px rgba(0, 0, 0, 0.28) !important;
+    }
+
+    .gd-moment-badge-circle.rejected {
+      background: radial-gradient(circle at 35% 35%, #F6E6D5 0%, #E0CBBA 100%) !important;
+      border: 2px solid rgba(255, 255, 255, 0.45) !important;
+      box-shadow: 
+        0 0 0 6px rgba(255, 255, 255, 0.08),
+        0 0 0 12px rgba(255, 255, 255, 0.03),
+        0 12px 28px rgba(0, 0, 0, 0.28) !important;
+    }
+
+    @keyframes gdCirclePop {
+      0% {
+        transform: scale(0.65);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .gd-anim-tick {
+      stroke-dasharray: 45;
+      stroke-dashoffset: 45;
+      animation: gdDrawTick 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards !important;
+    }
+
+    @keyframes gdDrawTick {
+      0% { stroke-dashoffset: 45; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    .gd-anim-cross1 {
+      stroke-dasharray: 30;
+      stroke-dashoffset: 30;
+      animation: gdDrawCross1 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards !important;
+    }
+
+    .gd-anim-cross2 {
+      stroke-dasharray: 30;
+      stroke-dashoffset: 30;
+      animation: gdDrawCross2 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards !important;
+    }
+
+    @keyframes gdDrawCross1 {
+      0% { stroke-dashoffset: 30; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    @keyframes gdDrawCross2 {
+      0% { stroke-dashoffset: 30; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    /* Titles inside Hero */
+    .gr-hero-rejected .gr-waiting-title,
+    .gr-hero-approved .gr-waiting-title {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 30px !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.03em !important;
+      line-height: 1.15 !important;
+      color: #FAF7F0 !important;
+      margin: 0 0 8px 0 !important;
+      text-align: center !important;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .gr-hero-rejected .gr-waiting-subtitle,
+    .gr-hero-approved .gr-waiting-subtitle {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 14.5px !important;
+      font-weight: 400 !important;
+      color: rgba(250, 247, 240, 0.78) !important;
+      line-height: 1.5 !important;
+      text-align: center !important;
+      margin: 0 !important;
+      letter-spacing: 0.01em !important;
+    }
+
+    /* Hero Text Container for pending mode */
+    .gr-waiting-hero-text {
+      padding: 0 34px 10px;
+    }
+
+    .gr-hero-rejected .gr-waiting-hero-text,
+    .gr-hero-approved .gr-waiting-hero-text {
+      padding: 0 !important;
+    }
+
+    .gr-card-rejected .gr-waiting-body,
+    .gr-card-approved .gr-waiting-body {
+      padding: 22px 34px 26px 34px !important;
     }
 
     /* Waiting Screen Aesthetic Enhancements */
@@ -1622,7 +1832,11 @@ function createWaitingView(
   const viewWaiting = document.createElement('div');
   viewWaiting.className = 'gr-view gr-view-waiting';
 
-  // HEADER
+  // HERO SECTION (Transformed into Decision Moment on rejected / approved)
+  const waitingHero = document.createElement('div');
+  waitingHero.className = 'gr-waiting-hero';
+
+  // HEADER (Topbar)
   const waitingHeader = document.createElement('div');
   waitingHeader.className = 'gr-header gr-waiting-header';
 
@@ -1669,24 +1883,37 @@ function createWaitingView(
 
   waitingHeader.appendChild(headerLeft);
   waitingHeader.appendChild(waitingCloseBtn);
-  viewWaiting.appendChild(waitingHeader);
+  waitingHero.appendChild(waitingHeader);
 
-  // BODY
-  const waitingBody = document.createElement('div');
-  waitingBody.className = 'gr-body gr-waiting-body';
+  // Centered circular medallion (populated on decision)
+  const medallionWrap = document.createElement('div');
+  medallionWrap.className = 'gr-waiting-medallion';
+  medallionWrap.setAttribute('aria-hidden', 'true');
+  waitingHero.appendChild(medallionWrap);
+
+  // Hero text container (title & subtitle)
+  const heroTextWrap = document.createElement('div');
+  heroTextWrap.className = 'gr-waiting-hero-text';
 
   const title = document.createElement('h2');
   title.id = 'gr-waiting-title-id';
   title.className = 'gr-title gr-waiting-title';
   title.textContent = 'Waiting for approval...';
-  waitingBody.appendChild(title);
+  heroTextWrap.appendChild(title);
 
   const subtitle = document.createElement('p');
   subtitle.id = 'gr-waiting-summary-id';
   subtitle.className = 'gr-subtitle gr-waiting-subtitle';
   subtitle.textContent =
     'Your request to visit this website has been sent to your designated caretaker. This page will remain safely held until they approve.';
-  waitingBody.appendChild(subtitle);
+  heroTextWrap.appendChild(subtitle);
+
+  waitingHero.appendChild(heroTextWrap);
+  viewWaiting.appendChild(waitingHero);
+
+  // BODY
+  const waitingBody = document.createElement('div');
+  waitingBody.className = 'gr-body gr-waiting-body';
 
   // Destination Card
   const destCard = document.createElement('div');
@@ -1984,6 +2211,9 @@ export function updateWaitingScreenStatus(
   const viewWaiting = currentShadow.querySelector('.gr-view-waiting') as HTMLElement | null;
   if (!viewWaiting) return;
 
+  const waitingHero = viewWaiting.querySelector('.gr-waiting-hero') as HTMLElement | null;
+  const medallionWrap = viewWaiting.querySelector('.gr-waiting-medallion') as HTMLElement | null;
+  const headerLeft = viewWaiting.querySelector('.gr-header-left') as HTMLElement | null;
   const pill = viewWaiting.querySelector('.gr-waiting-pill') as HTMLElement | null;
   const title = viewWaiting.querySelector('.gr-waiting-title') as HTMLElement | null;
   const subtitle = viewWaiting.querySelector('.gr-waiting-subtitle') as HTMLElement | null;
@@ -2022,6 +2252,13 @@ export function updateWaitingScreenStatus(
   if (card) {
     card.classList.remove('gr-card-waiting', 'gr-card-approved', 'gr-card-rejected', 'gr-card-cancelled', 'gr-card-expired');
   }
+  if (waitingHero) {
+    waitingHero.classList.remove('gr-hero-approved', 'gr-hero-rejected', 'gr-hero-cancelled', 'gr-hero-expired');
+  }
+  if (medallionWrap) {
+    medallionWrap.style.display = 'none';
+    medallionWrap.innerHTML = '';
+  }
   if (waitingBadge) {
     waitingBadge.classList.remove('gr-badge-approved', 'gr-badge-rejected', 'gr-badge-cancelled', 'gr-badge-expired');
   }
@@ -2029,12 +2266,18 @@ export function updateWaitingScreenStatus(
   switch (status) {
     case 'pending': {
       if (card) card.classList.add('gr-card-waiting');
-      if (waitingBadge) {
-        waitingBadge.innerHTML = `
-          <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-warning-badge gr-waiting-badge">
+            <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="gr-header-titles">
+            <span class="gr-header-category"><span>GUARDRAIL APPROVAL WORKFLOW</span></span>
+            <span class="gr-header-context gr-waiting-context">Awaiting Caretaker Review</span>
+          </div>
         `;
       }
       if (contextLabel) contextLabel.textContent = 'Awaiting Caretaker Review';
@@ -2095,12 +2338,18 @@ export function updateWaitingScreenStatus(
 
     case 'under_review': {
       if (card) card.classList.add('gr-card-waiting');
-      if (waitingBadge) {
-        waitingBadge.innerHTML = `
-          <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-warning-badge gr-waiting-badge">
+            <svg class="gr-waiting-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div class="gr-header-titles">
+            <span class="gr-header-category"><span>GUARDRAIL APPROVAL WORKFLOW</span></span>
+            <span class="gr-header-context gr-waiting-context">Caretaker Reviewing</span>
+          </div>
         `;
       }
       if (contextLabel) contextLabel.textContent = 'Caretaker Reviewing';
@@ -2161,12 +2410,26 @@ export function updateWaitingScreenStatus(
 
     case 'approved': {
       if (card) card.classList.add('gr-card-approved');
-      if (waitingBadge) {
-        waitingBadge.classList.add('gr-badge-approved');
-        waitingBadge.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+      if (waitingHero) waitingHero.classList.add('gr-hero-approved');
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-hero-brand-tag">
+            <svg class="gr-hero-brand-shield approved" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+            <span class="gr-hero-brand-text">GUARDRAIL</span>
+          </div>
+        `;
+      }
+      if (medallionWrap) {
+        medallionWrap.style.display = 'flex';
+        medallionWrap.innerHTML = `
+          <div class="gd-moment-badge-circle approved">
+            <svg class="gd-moment-anim-svg" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="gd-anim-tick" d="M10 19.5L16 25.5L28 13.5" stroke="#162B14" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
         `;
       }
       if (contextLabel) contextLabel.textContent = 'Approval Confirmed';
@@ -2248,20 +2511,34 @@ export function updateWaitingScreenStatus(
 
     case 'rejected': {
       if (card) card.classList.add('gr-card-rejected');
-      if (waitingBadge) {
-        waitingBadge.classList.add('gr-badge-rejected');
-        waitingBadge.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
+      if (waitingHero) waitingHero.classList.add('gr-hero-rejected');
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-hero-brand-tag">
+            <svg class="gr-hero-brand-shield rejected" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 8v4M12 16h.01"/>
+            </svg>
+            <span class="gr-hero-brand-text">GUARDRAIL</span>
+          </div>
+        `;
+      }
+      if (medallionWrap) {
+        medallionWrap.style.display = 'flex';
+        medallionWrap.innerHTML = `
+          <div class="gd-moment-badge-circle rejected">
+            <svg class="gd-moment-anim-svg" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="gd-anim-cross1" d="M12 12L26 26" stroke="#2E1B13" stroke-width="3.6" stroke-linecap="round"/>
+              <path class="gd-anim-cross2" d="M26 12L12 26" stroke="#2E1B13" stroke-width="3.6" stroke-linecap="round"/>
+            </svg>
+          </div>
         `;
       }
       if (contextLabel) contextLabel.textContent = 'Request Declined';
-      if (title) title.textContent = 'Request Not Approved';
+      if (title) title.textContent = 'Request Declined';
       if (subtitle) {
         const reasonText = details?.reason ? ` Reason: ${escapeText(details.reason)}.` : '';
-        subtitle.textContent = `Your caretaker has declined this request.${reasonText} Access to the requested destination remains blocked.`;
+        subtitle.textContent = `This action has not been authorized.${reasonText} Access to the requested destination remains blocked.`;
       }
       if (pill) {
         pill.className = 'gr-waiting-pill gr-pill-rejected';
@@ -2323,12 +2600,17 @@ export function updateWaitingScreenStatus(
 
     case 'cancelled': {
       if (card) card.classList.add('gr-card-cancelled');
-      if (waitingBadge) {
-        waitingBadge.classList.add('gr-badge-cancelled');
-        waitingBadge.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-warning-badge gr-badge-cancelled">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <div class="gr-header-titles">
+            <span class="gr-header-category"><span>GUARDRAIL APPROVAL WORKFLOW</span></span>
+            <span class="gr-header-context gr-waiting-context">Request Cancelled</span>
+          </div>
         `;
       }
       if (contextLabel) contextLabel.textContent = 'Request Cancelled';
@@ -2393,14 +2675,19 @@ export function updateWaitingScreenStatus(
 
     case 'expired': {
       if (card) card.classList.add('gr-card-expired');
-      if (waitingBadge) {
-        waitingBadge.classList.add('gr-badge-expired');
-        waitingBadge.innerHTML = `
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-warning-badge gr-badge-expired">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="gr-header-titles">
+            <span class="gr-header-category"><span>GUARDRAIL APPROVAL WORKFLOW</span></span>
+            <span class="gr-header-context gr-waiting-context">Request Expired</span>
+          </div>
         `;
       }
       if (contextLabel) contextLabel.textContent = 'Request Expired';

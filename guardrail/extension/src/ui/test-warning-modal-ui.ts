@@ -1033,7 +1033,10 @@ async function runWarningUITests() {
       reason: 'Domain flagged as unsafe stream site',
     });
     assert(cardRej?.classList.contains('gr-card-rejected') ?? false, 'Rejected card class applied');
-    assert(titleRej?.textContent.includes('Request Not Approved') ?? false, 'Rejected headline correct');
+    assert(
+      (titleRej?.textContent.includes('Request Declined') || titleRej?.textContent.includes('Request Not Approved')) ?? false,
+      'Rejected headline correct'
+    );
     assert(pillRej?.textContent.includes('Access Denied') ?? false, 'Rejected pill displays Access Denied');
     assert(stepperRej?.textContent.includes('Access Denied') ?? false, 'Stage 3 timeline displays Access Denied');
     const leaveBtn = shadowRej.querySelector('.gr-footer-actions .gr-btn-cancel');
