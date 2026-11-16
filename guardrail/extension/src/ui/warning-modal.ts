@@ -26,7 +26,7 @@
  * 7. COMPREHENSIVE VIEW STATES: Supports active warning, loading, and clean programmatic dismissal.
  */
 
-import { GuardrailAction } from '../types/actions.js';
+import { ActionCategory, ActionType, GuardrailAction } from '../types/actions.js';
 import { RiskAssessment } from '../types/risk.js';
 import { ResponseAction, ResponseDecision } from '../types/response.js';
 import {
@@ -296,6 +296,93 @@ export function showWarningModal(props: WarningModalProps): () => void {
     'Selected interaction';
 
   const isAdvisoryOnly = props.decision.response === ResponseAction.WARN;
+
+  // Determine whether the action is an external navigation (leaving current website) or an in-page interaction/button click
+  let pageHostName = '';
+  try {
+    if (props.action.page?.url) {
+      pageHostName = new URL(props.action.page.url).hostname.toLowerCase().replace(/^www\./, '');
+    }
+  } catch {}
+
+  let targetHostName = '';
+  try {
+    const candidate = props.action.element?.targetUrl || props.action.element?.formAction || webCtx.targetUrl || webCtx.domain;
+    if (candidate) {
+      targetHostName = (candidate.includes('://') ? new URL(candidate).hostname : candidate).toLowerCase().replace(/^www\./, '');
+    }
+  } catch {}
+
+  const isSameDomain = Boolean(pageHostName && targetHostName && (
+    pageHostName === targetHostName ||
+    targetHostName.endsWith('.' + pageHostName) ||
+    pageHostName.endsWith('.' + targetHostName)
+  ));
+
+  const isButtonOrInteraction =
+    props.action.type === ActionType.CLICK ||
+    props.action.type === ActionType.SUBMIT ||
+    props.action.type === ActionType.INPUT ||
+    props.action.type === 'CLICK' ||
+    props.action.type === 'SUBMIT' ||
+    props.action.type === 'INPUT' ||
+    Boolean(props.action.element?.tagName && ['BUTTON', 'INPUT', 'FORM', 'SELECT'].includes(props.action.element.tagName.toUpperCase()));
+
+  const isExternalNav = (
+    props.action.type === ActionType.NAVIGATION ||
+    props.action.type === 'NAVIGATION' ||
+    props.action.category === ActionCategory.EXTERNAL_NAVIGATION ||
+    props.action.category === 'EXTERNAL_NAVIGATION' ||
+    (!isSameDomain && Boolean(props.action.element?.targetUrl && props.action.element.tagName === 'A'))
+  ) && !isSameDomain;
+
+  // Context-specific text resolution
+  let modalTitle = "You're leaving this website.";
+  let modalSubtitle = "This navigation will take you to an external website outside the current website's origin.";
+  let modalContext = 'External Navigation Interception';
+  let modalDestLabel = 'DESTINATION WEBSITE';
+  let modalDestPill = 'External Domain';
+  let modalGuidance = 'To continue to this external website, request approval from your designated caretaker, or cancel to safely leave.';
+
+  if (!isExternalNav) {
+    modalTitle = 'Review this action before proceeding.';
+    modalContext = 'Sensitive Action Interception';
+    modalDestLabel = isSameDomain ? 'CURRENT WEBSITE' : 'TARGET WEBSITE';
+    modalDestPill = isSameDomain ? 'Current Website' : 'Action Target';
+
+    const cleanTarget = targetLabel && targetLabel !== 'Selected interaction' ? targetLabel : '';
+    if (cleanTarget && cleanTarget.length <= 40) {
+      modalSubtitle = `You selected "${cleanTarget}" on ${webCtx.domain}. This action was paused for your safety.`;
+    } else {
+      modalSubtitle = `This action on ${webCtx.domain} interacts with a sensitive boundary and was paused for review.`;
+    }
+
+    modalGuidance = 'To proceed with this action, request approval from your designated caretaker, or cancel to safely dismiss.';
+
+    const isAuth =
+      props.action.category === ActionCategory.AUTHENTICATION ||
+      props.action.category === 'AUTHENTICATION' ||
+      /auth|login|sign[- ]?in|password/i.test(targetLabel) ||
+      /auth|login/i.test(explanation.technicalDetails.reasonCode || '');
+    const isPayment =
+      props.action.category === ActionCategory.PAYMENT ||
+      props.action.category === 'PAYMENT' ||
+      props.action.category === ActionCategory.FINANCIAL_TRANSACTION ||
+      props.action.category === 'FINANCIAL_TRANSACTION' ||
+      /pay|transfer|checkout/i.test(targetLabel);
+    const isDestructive =
+      props.action.category === ActionCategory.DESTRUCTIVE ||
+      props.action.category === 'DESTRUCTIVE' ||
+      /delete|remove|purge/i.test(targetLabel);
+
+    if (isAuth) {
+      modalContext = 'Sign-in & Authentication Boundary';
+    } else if (isPayment) {
+      modalContext = 'Financial Transaction Guard';
+    } else if (isDestructive) {
+      modalContext = 'Permanent Deletion Guard';
+    }
+  }
 
   // 5. Construct encapsulated styles - Redesigned from scratch
   const style = document.createElement('style');
@@ -1467,7 +1554,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
   srAnnounce.setAttribute('role', 'status');
   srAnnounce.setAttribute('aria-live', 'polite');
   srAnnounce.setAttribute('aria-atomic', 'true');
-  srAnnounce.textContent = `Guardrail Safety Advisory: Guardrail Security Warning: You're leaving this website. Destination: ${webCtx.domain}. ${webCtx.actionStatusExplanation}`;
+  srAnnounce.textContent = `Guardrail Safety Advisory: Guardrail Security Warning: ${modalTitle} Destination: ${webCtx.domain}. ${webCtx.actionStatusExplanation}`;
   card.appendChild(srAnnounce);
 
   // Loading Overlay
@@ -1509,7 +1596,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
   const contextLabel = document.createElement('span');
   contextLabel.className = 'gr-header-context';
-  contextLabel.textContent = 'External Navigation Interception';
+  contextLabel.textContent = modalContext;
 
   headerTitles.appendChild(categoryLabel);
   headerTitles.appendChild(contextLabel);
@@ -1540,13 +1627,13 @@ export function showWarningModal(props: WarningModalProps): () => void {
   const title = document.createElement('h2');
   title.id = 'gr-title-id';
   title.className = 'gr-title';
-  title.textContent = "You're leaving this website.";
+  title.textContent = modalTitle;
   body.appendChild(title);
 
   const subtitle = document.createElement('p');
   subtitle.id = 'gr-summary-id';
   subtitle.className = 'gr-subtitle';
-  subtitle.textContent = "This navigation will take you to an external website outside the current website's origin.";
+  subtitle.textContent = modalSubtitle;
   body.appendChild(subtitle);
 
   // AREA C — DESTINATION IDENTITY REGION (Soft-Sage Box with External Arrow)
@@ -1558,11 +1645,11 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
   const destLabel = document.createElement('div');
   destLabel.className = 'gr-destination-label';
-  destLabel.textContent = 'DESTINATION WEBSITE';
+  destLabel.textContent = modalDestLabel;
 
   const destPill = document.createElement('span');
   destPill.className = 'gr-destination-pill';
-  destPill.textContent = 'External Domain';
+  destPill.textContent = modalDestPill;
 
   destHeaderRow.appendChild(destLabel);
   destHeaderRow.appendChild(destPill);
@@ -1632,7 +1719,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
   // AREA E — USER GUIDANCE (Caretaker Approval Note)
   const guidanceNote = document.createElement('p');
   guidanceNote.className = 'gr-guidance-note';
-  guidanceNote.textContent = 'To continue to this external website, request approval from your designated caretaker, or cancel to safely leave.';
+  guidanceNote.textContent = modalGuidance;
   body.appendChild(guidanceNote);
 
   // Hidden testing fixtures (Preserving strict assertions of test suite)
@@ -1738,8 +1825,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
   cancelBtn.className = 'gr-btn gr-btn-cancel';
-  cancelBtn.textContent = 'Cancel & Leave';
-  cancelBtn.setAttribute('title', 'Cancel this action and leave the page');
+  cancelBtn.textContent = isExternalNav ? 'Cancel & Leave' : 'Cancel & Stay';
+  cancelBtn.setAttribute('title', isExternalNav ? 'Cancel this action and leave the page' : 'Cancel this action and stay on this page');
   cancelBtn.addEventListener('click', () => {
     dismissWarningModal();
     if (props.onCancel) {
@@ -1779,7 +1866,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
   const { viewWaiting, waitingCancelBtn, waitingCloseBtn } = createWaitingView(
     props,
     webCtx,
-    sanitizedUrl
+    sanitizedUrl,
+    isExternalNav
   );
 
   viewsContainer.appendChild(viewWarning);
@@ -1869,7 +1957,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
 function createWaitingView(
   props: WarningModalProps,
   webCtx: WebsiteSecurityContext,
-  sanitizedUrl: string
+  sanitizedUrl: string,
+  isExternalNav: boolean = false
 ): {
   viewWaiting: HTMLElement;
   waitingCancelBtn: HTMLButtonElement;
@@ -1950,8 +2039,9 @@ function createWaitingView(
   const subtitle = document.createElement('p');
   subtitle.id = 'gr-waiting-summary-id';
   subtitle.className = 'gr-subtitle gr-waiting-subtitle';
-  subtitle.textContent =
-    'Your request to visit this website has been sent to your designated caretaker. This page will remain safely held until they approve.';
+  subtitle.textContent = isExternalNav
+    ? 'Your request to visit this website has been sent to your designated caretaker. This page will remain safely held until they approve.'
+    : 'Your request to proceed with this action has been sent to your designated caretaker. This page will remain safely held until they approve.';
   heroTextWrap.appendChild(subtitle);
 
   waitingHero.appendChild(heroTextWrap);
@@ -1970,7 +2060,7 @@ function createWaitingView(
 
   const destLabel = document.createElement('div');
   destLabel.className = 'gr-destination-label';
-  destLabel.textContent = 'REQUESTED DESTINATION';
+  destLabel.textContent = isExternalNav ? 'REQUESTED DESTINATION' : 'TARGET WEBSITE';
 
   const destPill = document.createElement('span');
   destPill.className = 'gr-waiting-pill';
