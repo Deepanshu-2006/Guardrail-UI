@@ -190,8 +190,8 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
         cy="38"
         r="${radius}"
         fill="transparent"
-        stroke="rgba(39, 49, 33, 0.08)"
-        stroke-width="5.5"
+        stroke="rgba(39, 49, 33, 0.09)"
+        stroke-width="5"
       />
       <circle
         class="gd-risk-circle-fill ${riskClass}"
@@ -200,7 +200,7 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
         r="${radius}"
         fill="transparent"
         stroke="url(#gd-risk-grad-${riskClass})"
-        stroke-width="5.5"
+        stroke-width="5"
         stroke-linecap="round"
         stroke-dasharray="${circumference.toFixed(1)}"
         stroke-dashoffset="${circumference.toFixed(1)}"
@@ -219,7 +219,7 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
   const levelTag = document.createElement('div');
   levelTag.className = `gd-risk-level-tag ${riskClass}`;
   levelTag.innerHTML = `
-    <span class="gd-risk-tag-dot"></span>
+    <span class="gd-risk-tag-dot" aria-hidden="true"></span>
     <span class="gd-risk-tag-text">${riskLevel} RISK</span>
   `;
 
@@ -1134,16 +1134,19 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           timestampsInfo.className = 'gd-context-timestamps';
 
           const initSpan = document.createElement('span');
-          initSpan.textContent = `Initiated At: ${formatTimestamp(selectedReq.createdAt)}`;
+          initSpan.className = 'gd-timestamp-item gd-timestamp-init';
+          initSpan.innerHTML = `<span class="gd-timestamp-label">Initiated At:</span> <span class="gd-timestamp-val">${formatTimestamp(selectedReq.createdAt)}</span>`;
 
           const timeSep = document.createElement('span');
           timeSep.className = 'gd-context-sep';
           timeSep.textContent = '·';
+          timeSep.setAttribute('aria-hidden', 'true');
 
           const expSpan2 = document.createElement('span');
+          expSpan2.className = 'gd-timestamp-item gd-timestamp-exp';
           const expFormatted = formatExpirationInfo(selectedReq.expiresAt);
           const expRelativeText = expFormatted.isPast ? 'Expired' : (expFormatted.text.includes('(') ? expFormatted.text.split(' (')[0] : expFormatted.text);
-          expSpan2.textContent = `Expires At: ${formatTimestamp(selectedReq.expiresAt)} (${expRelativeText})`;
+          expSpan2.innerHTML = `<span class="gd-timestamp-label">Expires At:</span> <span class="gd-timestamp-val">${formatTimestamp(selectedReq.expiresAt)}</span> <span class="gd-timestamp-countdown">(${expRelativeText})</span>`;
 
           timestampsInfo.appendChild(initSpan);
           timestampsInfo.appendChild(timeSep);
@@ -1157,7 +1160,12 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const auditSummary = document.createElement('summary');
           auditSummary.className = 'gd-audit-summary';
-          auditSummary.textContent = 'Audit trail and governance details';
+          auditSummary.innerHTML = `
+            <svg class="gd-audit-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            <span>Audit trail and governance details</span>
+          `;
           auditDetails.appendChild(auditSummary);
 
           const auditBody = document.createElement('div');
