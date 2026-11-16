@@ -956,7 +956,7 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
       consequentialNotice.setAttribute('role', 'note');
       const cNoticeText = document.createElement('p');
       cNoticeText.textContent =
-        'Consequential Decision Notice: Submitting this decision authoritatively commits it to the Guardrail backend audit log. Decisions are permanent and cannot be reversed or undone.';
+        'Consequential Decision Notice: Submitting commits this decision to the audit log and cannot be reversed or undone.';
       consequentialNotice.appendChild(cNoticeText);
       confirmBox.appendChild(consequentialNotice);
 

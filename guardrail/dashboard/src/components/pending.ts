@@ -94,6 +94,25 @@ function resolveSafeHostname(request: ApprovalRequest): string {
 }
 
 /**
+ * Cleans long SEO or repetitive page titles into a concise brand or page context tag.
+ */
+function formatCleanPageTitle(rawTitle: string): string {
+  if (!rawTitle) return '';
+  const trimmed = rawTitle.trim();
+  // Split on pipe, dash, or hyphen commonly used in web page title meta tags
+  const segments = trimmed.split(/\s*[|—–-]\s*/).map(s => s.trim()).filter(Boolean);
+  if (segments.length > 1) {
+    const brand = segments[segments.length - 1];
+    if (brand && brand.length <= 25 && !brand.toLowerCase().includes('banking services') && !brand.toLowerCase().includes('online')) {
+      return brand;
+    }
+    const first = segments[0];
+    return first.length > 32 ? first.slice(0, 30) + '…' : first;
+  }
+  return trimmed.length > 35 ? trimmed.slice(0, 32) + '…' : trimmed;
+}
+
+/**
  * Generates a human-understandable explanation of why this action was flagged.
  */
 function getHumanReadableRiskExplanation(request: ApprovalRequest): string {
@@ -201,7 +220,7 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
   levelTag.className = `gd-risk-level-tag ${riskClass}`;
   levelTag.innerHTML = `
     <span class="gd-risk-tag-dot"></span>
-    <span class="gd-risk-tag-text">${riskLevel} OPERATIONAL RISK</span>
+    <span class="gd-risk-tag-text">${riskLevel} RISK</span>
   `;
 
   const plainText = document.createElement('p');
@@ -226,17 +245,12 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   section.className = 'gd-view-section gd-pending-redesign';
   section.setAttribute('aria-labelledby', 'pending-title');
 
-  // 1. Page Header (Editorial, Unboxed)
+  // 1. Page Header (Editorial, Unboxed, Minimal)
   const header = document.createElement('header');
   header.className = 'gd-section-header';
 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
-
-  const sectionEyebrow = document.createElement('span');
-  sectionEyebrow.className = 'gd-section-eyebrow';
-  sectionEyebrow.textContent = 'TRUSTED CONTACT VERIFICATION QUEUE';
-  titleGroup.appendChild(sectionEyebrow);
 
   const titleRow = document.createElement('div');
   titleRow.className = 'gd-pending-title-row';
@@ -247,22 +261,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   setAnimatedHeading(title, 'Pending Approvals');
   titleRow.appendChild(title);
 
-  // Subtle pending count indicator
-  if (props.requests.length > 0) {
-    const countPill = document.createElement('span');
-    countPill.className = 'gd-pending-count-pill';
-    countPill.setAttribute('role', 'status');
-    const n = props.requests.length;
-    countPill.textContent = `— ${n < 10 ? '0' + n : n} ${n === 1 ? 'Awaiting Evaluation' : 'Awaiting Evaluation'}`;
-    titleRow.appendChild(countPill);
-  }
-
-  const subtitle = document.createElement('p');
-  subtitle.className = 'gd-section-subtitle';
-  subtitle.textContent = 'Review browsing actions that require your approval.';
-
   titleGroup.appendChild(titleRow);
-  titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
 
   // Header Actions (Sync time & Refresh button)
@@ -620,15 +619,10 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
         const listKicker = document.createElement('span');
         listKicker.className = 'gd-list-kicker';
-        listKicker.textContent = 'VERIFICATION QUEUE';
-
-        const listCountBadge = document.createElement('span');
-        listCountBadge.className = 'gd-list-count';
         const qCount = filteredRequests.length;
-        listCountBadge.textContent = `${qCount} ${qCount === 1 ? 'Action Pending' : 'Actions Pending'}`;
+        listKicker.textContent = `Queue (${qCount})`;
 
         listHeader.appendChild(listKicker);
-        listHeader.appendChild(listCountBadge);
         listPane.appendChild(listHeader);
 
         filteredRequests.forEach((baseReq, index) => {
@@ -767,11 +761,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const topBar = document.createElement('div');
           topBar.className = 'gd-detail-header-top';
 
-          const kicker = document.createElement('span');
-          kicker.className = 'gd-detail-dossier-kicker';
-          kicker.textContent = 'ACTION VERIFICATION REQUIRED';
-          topBar.appendChild(kicker);
-
           const displayStatus = isExpired && selectedReq.status === ApprovalStatus.PENDING ? ApprovalStatus.EXPIRED : (selectedReq.status || ApprovalStatus.PENDING);
           const statusPill = document.createElement('span');
           const sClass = displayStatus.toLowerCase();
@@ -804,7 +793,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
             const titleSpan = document.createElement('span');
             titleSpan.className = 'gd-page-title-label';
-            titleSpan.textContent = selectedReq.pageTitle;
+            titleSpan.textContent = formatCleanPageTitle(selectedReq.pageTitle);
+            titleSpan.title = selectedReq.pageTitle;
             headerMeta.appendChild(titleSpan);
           }
 
@@ -875,8 +865,20 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               const approveBtn = document.createElement('button');
               approveBtn.type = 'button';
               approveBtn.className = 'gd-btn-decision gd-btn-approve';
-              approveBtn.textContent = 'Approve Request';
               approveBtn.setAttribute('aria-label', `Approve request ${selectedReq.id}: ${selectedReq.actionDescription}`);
+
+              const approveIcon = document.createElement('span');
+              approveIcon.className = 'gd-btn-icon';
+              approveIcon.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              `;
+              const approveLabel = document.createElement('span');
+              approveLabel.className = 'gd-btn-label';
+              approveLabel.textContent = 'Approve Request';
+              approveBtn.appendChild(approveIcon);
+              approveBtn.appendChild(approveLabel);
 
               if (isExpired || props.isBackendUnavailable) {
                 approveBtn.disabled = true;
@@ -892,8 +894,21 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               const rejectBtn = document.createElement('button');
               rejectBtn.type = 'button';
               rejectBtn.className = 'gd-btn-decision gd-btn-reject';
-              rejectBtn.textContent = 'Reject Request';
               rejectBtn.setAttribute('aria-label', `Reject request ${selectedReq.id}: ${selectedReq.actionDescription}`);
+
+              const rejectIcon = document.createElement('span');
+              rejectIcon.className = 'gd-btn-icon';
+              rejectIcon.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              `;
+              const rejectLabel = document.createElement('span');
+              rejectLabel.className = 'gd-btn-label';
+              rejectLabel.textContent = 'Reject Request';
+              rejectBtn.appendChild(rejectIcon);
+              rejectBtn.appendChild(rejectLabel);
 
               if (isExpired || props.isBackendUnavailable) {
                 rejectBtn.disabled = true;
@@ -951,7 +966,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
                 const wText = document.createElement('p');
                 wText.className = 'gd-warning-desc';
                 wText.textContent =
-                  'This action involves elevated operational risk. Your decision commits an authoritative audit record.';
+                  'Elevated operational risk. Your decision will be recorded in the audit log.';
 
                 warningBox.appendChild(wTitle);
                 warningBox.appendChild(wText);
@@ -995,7 +1010,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
               const cNoticeText = document.createElement('p');
               cNoticeText.textContent =
-                'Consequential Decision Notice: Submitting this decision authoritatively commits it to the Guardrail backend audit log. Decisions are permanent and cannot be reversed or undone.';
+                'Consequential Decision Notice: Submitting commits this decision to the audit log and cannot be reversed or undone.';
               consequentialNotice.appendChild(cNoticeText);
               confirmBox.appendChild(consequentialNotice);
 
@@ -1006,7 +1021,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               submitBtn.type = 'button';
               submitBtn.className = `gd-btn-confirm-submit ${isApprove ? 'gd-btn-approve-confirm' : 'gd-btn-reject-confirm'}`;
               submitBtn.textContent = props.isSubmittingDecision
-                ? 'Submitting decision...'
+                ? 'Submitting...'
                 : `Confirm ${isApprove ? 'Approval' : 'Rejection'}`;
 
               if (props.isSubmittingDecision) {
@@ -1107,7 +1122,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const auditSummary = document.createElement('summary');
           auditSummary.className = 'gd-audit-summary';
-          auditSummary.textContent = 'Security Governance & Audit Trail';
+          auditSummary.textContent = 'Audit trail and governance details';
           auditDetails.appendChild(auditSummary);
 
           const auditBody = document.createElement('div');
@@ -1245,7 +1260,7 @@ function renderProtocolSidebar(): HTMLElement {
   const gText = document.createElement('p');
   gText.className = 'gd-sidebar-block-text';
   gText.textContent =
-    'Guardrail strictly decouples reviewer approvals from client-side execution. Approving an action records reviewer consent on the backend only. It never triggers execution on your contact’s browser—the user retains complete final control to proceed or abort in Staging Mode.';
+    'Guardrail strictly decouples reviewer approvals from client execution. Approving an action records consent on the backend only and never remotely executes actions in the browser.';
 
   const contrastPair = document.createElement('div');
   contrastPair.className = 'gd-sidebar-contrast-pair';
@@ -1285,17 +1300,17 @@ function renderProtocolSidebar(): HTMLElement {
   const g1 = document.createElement('li');
   g1.className = 'gd-sidebar-guideline-item';
   g1.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm target hostname and origin match expected application and do not spoof trusted services.</p>';
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm target hostname matches the expected service.</p>';
 
   const g2 = document.createElement('li');
   g2.className = 'gd-sidebar-guideline-item';
   g2.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">02</span><strong class="gd-guideline-title">Evaluate Intent</strong></div><p class="gd-guideline-desc">Review action trigger and initiating context to ensure it reflects intentional browsing activity.</p>';
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">02</span><strong class="gd-guideline-title">Evaluate Intent</strong></div><p class="gd-guideline-desc">Verify context reflects intentional browsing activity.</p>';
 
   const g3 = document.createElement('li');
   g3.className = 'gd-sidebar-guideline-item';
   g3.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">03</span><strong class="gd-guideline-title">15-Minute Expiry</strong></div><p class="gd-guideline-desc">Pending requests automatically expire after 15 minutes to prevent stale execution windows.</p>';
+    '<div class="gd-guideline-header"><span class="gd-guideline-num">03</span><strong class="gd-guideline-title">15-Minute Expiry</strong></div><p class="gd-guideline-desc">Requests automatically expire to prevent stale execution windows.</p>';
 
   guideList.appendChild(g1);
   guideList.appendChild(g2);
