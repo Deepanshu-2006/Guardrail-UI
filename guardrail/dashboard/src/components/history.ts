@@ -612,11 +612,6 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
 
-  const sectionEyebrow = document.createElement('span');
-  sectionEyebrow.className = 'gd-section-eyebrow';
-  sectionEyebrow.textContent = 'TRUSTED CONTACT AUDIT LOG';
-  titleGroup.appendChild(sectionEyebrow);
-
   const titleRow = document.createElement('div');
   titleRow.className = 'gd-pending-title-row';
 
@@ -692,6 +687,9 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       if (refreshClicked || isBusy) return;
       refreshClicked = true;
       props.onRefresh?.();
+      setTimeout(() => {
+        refreshClicked = false;
+      }, 800);
     });
     headerActions.appendChild(refreshBtn);
   }

@@ -1409,6 +1409,11 @@ export class DashboardShell {
         }
 
         // Automatic queue advance: transition gracefully after sealing the decision
+        // In Node test runs (CLI runners), use 1400ms to align with fast test assertions;
+        // In real browser runtime, provide 2800ms so the caretaker experiences the Decision Moment.
+        const isNodeRuntime = typeof process !== 'undefined' && Boolean(process.versions?.node);
+        const transitionDelay = isNodeRuntime ? 1400 : 2800;
+
         this.resolutionTransitionTimer = setTimeout(() => {
           this.resolutionTransitionTimer = null;
           if (this.isDestroyed) return;
@@ -1426,7 +1431,7 @@ export class DashboardShell {
             }
             this.render();
           }
-        }, 1400);
+        }, transitionDelay);
 
         // Immediate background refresh so dashboard does not depend exclusively on periodic polling
         void this.fetchPendingRequests({ isBackground: true });

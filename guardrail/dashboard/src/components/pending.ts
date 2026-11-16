@@ -13,6 +13,7 @@
  */
 
 import { ApprovalRequest, ApprovalStatus, RequestFilters, RiskLevel, ViewStatus } from '../types.js';
+import { renderDecisionConfirmation } from './decision-confirmation.js';
 import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isRequestExpired } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
 import { setAnimatedHeading } from './icons.js';
@@ -322,6 +323,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       if (refreshClicked || isBusy) return;
       refreshClicked = true;
       props.onRefresh?.();
+      setTimeout(() => {
+        refreshClicked = false;
+      }, 800);
     });
     headerActions.appendChild(refreshBtn);
   }
@@ -432,35 +436,42 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     listPane.appendChild(dErrBanner);
   }
 
-  if (props.decisionSuccessMessage) {
-    const dSuccBanner = document.createElement('div');
-    dSuccBanner.className = 'gd-decision-success-banner';
-    dSuccBanner.setAttribute('role', 'status');
-    dSuccBanner.style.background = 'transparent';
-    dSuccBanner.style.backgroundColor = 'transparent';
-    dSuccBanner.style.border = 'none';
-    dSuccBanner.style.borderLeft = '2.5px solid #2D4C18';
-    dSuccBanner.style.borderRadius = '0';
-    dSuccBanner.style.boxShadow = 'none';
-    dSuccBanner.style.padding = '4px 0 4px 12px';
-    dSuccBanner.style.marginBottom = '16px';
+  // NOTE: Duplicate left banner removed. The unified Decision Moment experience is
+  // exclusively rendered in the main dashboard workspace after server confirmation.
 
-    const dSuccIcon = document.createElement('span');
-    dSuccIcon.className = 'gd-success-icon';
-    dSuccIcon.setAttribute('aria-hidden', 'true');
+  // DECISION MOMENT: Centered in main dashboard workspace ONLY after server confirmation
+  // Removes all other request cards, queues, and controls for a pure, serene decision moment.
+  const isDecisionConfirmed = Boolean(props.decisionSuccessMessage) && !props.decisionErrorMessage;
 
-    const dSuccText = document.createElement('span');
-    dSuccText.className = 'gd-decision-success-text';
-    dSuccText.textContent = props.decisionSuccessMessage;
-    dSuccText.style.color = '#2D4C18';
-    dSuccText.style.fontFamily = 'var(--gd-font-sans)';
-    dSuccText.style.fontSize = '12.5px';
-    dSuccText.style.fontWeight = '500';
-    dSuccText.style.lineHeight = '1.45';
+  if (isDecisionConfirmed) {
+    const isApproved = props.decisionSuccessMessage?.includes('APPROVED') ?? true;
+    const resolvedReq =
+      props.selectedRequestDetail ||
+      (props.selectedRequestId ? props.requests.find((r) => r.id === props.selectedRequestId) : null) ||
+      props.requests[0] ||
+      ({
+        id: props.selectedRequestId || 'req_decided',
+        actionDescription: 'Authorized Browser Action',
+        actionType: 'CLICK',
+        category: 'GENERAL',
+        riskLevel: 'LOW',
+        status: isApproved ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 600000).toISOString(),
+      } as unknown as ApprovalRequest);
 
-    dSuccBanner.appendChild(dSuccIcon);
-    dSuccBanner.appendChild(dSuccText);
-    listPane.appendChild(dSuccBanner);
+    const centerStage = document.createElement('div');
+    centerStage.className = 'gd-decision-moment-stage';
+
+    const decisionMoment = renderDecisionConfirmation({
+      request: resolvedReq,
+      decision: isApproved ? 'APPROVED' : 'REJECTED',
+      decidedAt: resolvedReq.resolvedAt || resolvedReq.decision?.decidedAt || new Date(),
+    });
+
+    centerStage.appendChild(decisionMoment);
+    section.appendChild(centerStage);
+    return section;
   }
 
   const activeFilters: RequestFilters = props.filters ?? {
@@ -857,53 +868,14 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             }
 
             if (selectedReq.status && selectedReq.status !== ApprovalStatus.PENDING) {
-              const isApproved = selectedReq.status === ApprovalStatus.APPROVED;
-              const resolvedNotice = document.createElement('div');
-              resolvedNotice.className = `gd-decision-resolved-notice ${selectedReq.status.toLowerCase()}`;
-              resolvedNotice.setAttribute('role', 'status');
-
-              const sealWrap = document.createElement('div');
-              sealWrap.className = 'gd-resolved-seal-content';
-
-              const sealIcon = document.createElement('span');
-              sealIcon.className = 'gd-resolved-seal-icon';
-              sealIcon.setAttribute('aria-hidden', 'true');
-              sealIcon.textContent = isApproved ? '✓' : '✕';
-
-              const copyWrap = document.createElement('div');
-              copyWrap.className = 'gd-resolved-seal-copy';
-
-              const statusText = document.createElement('span');
-              statusText.className = 'gd-resolved-status-text';
-              statusText.textContent =
-                isApproved
-                  ? 'Approved: This action has been approved.'
-                  : selectedReq.status === ApprovalStatus.REJECTED
-                    ? 'Rejected: This action has been rejected.'
-                    : `Decision Recorded: ${selectedReq.status}`;
-
-              const subText = document.createElement('span');
-              subText.className = 'gd-resolved-audit-note';
-              subText.textContent = isApproved
-                ? 'Reviewer consent committed to audit log · Advancing queue...'
-                : 'Reviewer decision committed to audit log · Advancing queue...';
-
-              copyWrap.appendChild(statusText);
-              copyWrap.appendChild(subText);
-              sealWrap.appendChild(sealIcon);
-              sealWrap.appendChild(copyWrap);
-              resolvedNotice.appendChild(sealWrap);
-
-              const progressTrack = document.createElement('div');
-              progressTrack.className = 'gd-resolved-progress-track';
-              progressTrack.setAttribute('aria-hidden', 'true');
-
-              const progressBar = document.createElement('div');
-              progressBar.className = 'gd-resolved-progress-bar';
-              progressTrack.appendChild(progressBar);
-              resolvedNotice.appendChild(progressTrack);
-
-              decisionControlsContainer.appendChild(resolvedNotice);
+              const notice = document.createElement('div');
+              notice.className = 'gd-decision-resolved-conflict-note';
+              notice.style.fontSize = '13px';
+              notice.style.color = '#736D61';
+              notice.style.fontFamily = 'var(--gd-font-sans)';
+              notice.style.padding = '8px 0';
+              notice.textContent = `This request has already been ${selectedReq.status.toLowerCase()}.`;
+              decisionControlsContainer.appendChild(notice);
               return;
             }
 
