@@ -372,8 +372,16 @@ export function showWarningModal(props: WarningModalProps): () => void {
       animation: grShimmer 2.2s infinite linear;
     }
 
+    .gr-card.gr-card-approved {
+      border: 1.5px solid #1A2D19 !important;
+    }
+
     .gr-card.gr-card-approved::before {
       display: none;
+    }
+
+    .gr-card.gr-card-rejected {
+      border: 1.5px solid #2B1810 !important;
     }
 
     .gr-card.gr-card-rejected::before {
@@ -877,27 +885,35 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: 
         radial-gradient(circle at 50% 45%, rgba(240, 140, 110, 0.12) 0%, transparent 65%),
         linear-gradient(180deg, #322119 0%, #251710 100%) !important;
-      padding: 26px 34px 28px 34px !important;
+      padding: 16px 28px 18px 28px !important;
       text-align: center !important;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+      box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
+      margin: -1px -1px 0 -1px !important;
+      width: calc(100% + 2px) !important;
+      border-top-left-radius: 14.5px !important;
+      border-top-right-radius: 14.5px !important;
     }
 
     .gr-waiting-hero.gr-hero-approved {
       background: 
         radial-gradient(circle at 50% 45%, rgba(74, 222, 128, 0.12) 0%, transparent 65%),
         linear-gradient(180deg, #1E331D 0%, #172716 100%) !important;
-      padding: 26px 34px 28px 34px !important;
+      padding: 16px 28px 18px 28px !important;
       text-align: center !important;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+      box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
+      margin: -1px -1px 0 -1px !important;
+      width: calc(100% + 2px) !important;
+      border-top-left-radius: 14.5px !important;
+      border-top-right-radius: 14.5px !important;
     }
 
     /* Topbar inside Hero */
     .gr-hero-rejected .gr-waiting-header,
     .gr-hero-approved .gr-waiting-header {
       padding: 0 !important;
-      margin-bottom: 20px !important;
+      margin-bottom: 10px !important;
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
@@ -959,36 +975,37 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-waiting-medallion {
       display: none;
       justify-content: center;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
 
     .gd-moment-badge-circle {
-      width: 76px !important;
-      height: 76px !important;
+      width: 50px !important;
+      height: 50px !important;
       border-radius: 50% !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
+      margin: 0 auto 10px auto !important;
       position: relative !important;
       animation: gdCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
     }
 
     .gd-moment-badge-circle.approved {
       background: radial-gradient(circle at 35% 35%, #E5F0DE 0%, #C8DCBA 100%) !important;
-      border: 2px solid rgba(255, 255, 255, 0.45) !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
       box-shadow: 
-        0 0 0 6px rgba(255, 255, 255, 0.08),
-        0 0 0 12px rgba(255, 255, 255, 0.03),
-        0 12px 28px rgba(0, 0, 0, 0.28) !important;
+        0 0 0 4px rgba(255, 255, 255, 0.08),
+        0 0 0 8px rgba(255, 255, 255, 0.03),
+        0 8px 20px rgba(0, 0, 0, 0.25) !important;
     }
 
     .gd-moment-badge-circle.rejected {
       background: radial-gradient(circle at 35% 35%, #F6E6D5 0%, #E0CBBA 100%) !important;
-      border: 2px solid rgba(255, 255, 255, 0.45) !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
       box-shadow: 
-        0 0 0 6px rgba(255, 255, 255, 0.08),
-        0 0 0 12px rgba(255, 255, 255, 0.03),
-        0 12px 28px rgba(0, 0, 0, 0.28) !important;
+        0 0 0 4px rgba(255, 255, 255, 0.08),
+        0 0 0 8px rgba(255, 255, 255, 0.03),
+        0 8px 20px rgba(0, 0, 0, 0.25) !important;
     }
 
     @keyframes gdCirclePop {
@@ -1003,35 +1020,35 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gd-anim-tick {
-      stroke-dasharray: 45;
-      stroke-dashoffset: 45;
-      animation: gdDrawTick 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards !important;
+      stroke-dasharray: 30;
+      stroke-dashoffset: 30;
+      animation: gdDrawTick 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards !important;
     }
 
     @keyframes gdDrawTick {
-      0% { stroke-dashoffset: 45; }
+      0% { stroke-dashoffset: 30; }
       100% { stroke-dashoffset: 0; }
     }
 
     .gd-anim-cross1 {
-      stroke-dasharray: 30;
-      stroke-dashoffset: 30;
-      animation: gdDrawCross1 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards !important;
+      stroke-dasharray: 24;
+      stroke-dashoffset: 24;
+      animation: gdDrawCross1 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards !important;
     }
 
     .gd-anim-cross2 {
-      stroke-dasharray: 30;
-      stroke-dashoffset: 30;
-      animation: gdDrawCross2 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards !important;
+      stroke-dasharray: 24;
+      stroke-dashoffset: 24;
+      animation: gdDrawCross2 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.22s forwards !important;
     }
 
     @keyframes gdDrawCross1 {
-      0% { stroke-dashoffset: 30; }
+      0% { stroke-dashoffset: 24; }
       100% { stroke-dashoffset: 0; }
     }
 
     @keyframes gdDrawCross2 {
-      0% { stroke-dashoffset: 30; }
+      0% { stroke-dashoffset: 24; }
       100% { stroke-dashoffset: 0; }
     }
 
@@ -1039,25 +1056,26 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-hero-rejected .gr-waiting-title,
     .gr-hero-approved .gr-waiting-title {
       font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-      font-size: 30px !important;
+      font-size: 21px !important;
       font-weight: 700 !important;
-      letter-spacing: -0.03em !important;
-      line-height: 1.15 !important;
+      letter-spacing: -0.02em !important;
+      line-height: 1.25 !important;
       color: #FAF7F0 !important;
-      margin: 0 0 8px 0 !important;
+      margin: 0 0 4px 0 !important;
       text-align: center !important;
-      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.25) !important;
     }
 
     .gr-hero-rejected .gr-waiting-subtitle,
     .gr-hero-approved .gr-waiting-subtitle {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-      font-size: 14.5px !important;
+      font-size: 13px !important;
       font-weight: 400 !important;
-      color: rgba(250, 247, 240, 0.78) !important;
-      line-height: 1.5 !important;
+      color: rgba(250, 247, 240, 0.80) !important;
+      line-height: 1.4 !important;
       text-align: center !important;
-      margin: 0 !important;
+      margin: 0 auto !important;
+      max-width: 440px !important;
       letter-spacing: 0.01em !important;
     }
 
@@ -1073,7 +1091,35 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-card-rejected .gr-waiting-body,
     .gr-card-approved .gr-waiting-body {
-      padding: 22px 34px 26px 34px !important;
+      padding: 18px 28px 22px 28px !important;
+    }
+
+    /* Destination card rejection override: warm clay palette, no green */
+    .gr-card-rejected .gr-destination-card {
+      background: #FDF4F0 !important;
+      border: 1.5px solid #F0D5CA !important;
+      padding: 14px 18px !important;
+      margin-bottom: 18px !important;
+      box-shadow: 0 1px 4px rgba(46, 27, 19, 0.04) !important;
+    }
+
+    .gr-card-rejected .gr-destination-label {
+      color: #9E452E !important;
+    }
+
+    .gr-card-rejected .gr-destination-host {
+      color: #24160F !important;
+      font-size: 16px !important;
+    }
+
+    .gr-card-rejected .gr-ext-icon {
+      color: #9E452E !important;
+    }
+
+    /* Remove pill access denied from destination header row */
+    .gr-card-rejected .gr-destination-header-row .gr-waiting-pill,
+    .gr-card-rejected .gr-pill-rejected {
+      display: none !important;
     }
 
     /* Waiting Screen Aesthetic Enhancements */
@@ -2426,8 +2472,8 @@ export function updateWaitingScreenStatus(
         medallionWrap.style.display = 'flex';
         medallionWrap.innerHTML = `
           <div class="gd-moment-badge-circle approved">
-            <svg class="gd-moment-anim-svg" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path class="gd-anim-tick" d="M10 19.5L16 25.5L28 13.5" stroke="#162B14" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg class="gd-moment-anim-svg" width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="gd-anim-tick" d="M7 13.5L11 17.5L19 9.5" stroke="#162B14" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
         `;
@@ -2527,9 +2573,9 @@ export function updateWaitingScreenStatus(
         medallionWrap.style.display = 'flex';
         medallionWrap.innerHTML = `
           <div class="gd-moment-badge-circle rejected">
-            <svg class="gd-moment-anim-svg" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path class="gd-anim-cross1" d="M12 12L26 26" stroke="#2E1B13" stroke-width="3.6" stroke-linecap="round"/>
-              <path class="gd-anim-cross2" d="M26 12L12 26" stroke="#2E1B13" stroke-width="3.6" stroke-linecap="round"/>
+            <svg class="gd-moment-anim-svg" width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="gd-anim-cross1" d="M8 8L18 18" stroke="#2E1B13" stroke-width="3" stroke-linecap="round"/>
+              <path class="gd-anim-cross2" d="M18 8L8 18" stroke="#2E1B13" stroke-width="3" stroke-linecap="round"/>
             </svg>
           </div>
         `;
@@ -2543,6 +2589,7 @@ export function updateWaitingScreenStatus(
       if (pill) {
         pill.className = 'gr-waiting-pill gr-pill-rejected';
         pill.innerHTML = '<span>✕</span><span>Access Denied</span>';
+        pill.style.display = 'none';
       }
 
       if (stepper) {
