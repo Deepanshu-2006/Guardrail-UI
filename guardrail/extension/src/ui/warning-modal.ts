@@ -324,9 +324,8 @@ export function isExternalNavigationAction(
 }
 
 /**
- * Creates the live Security Gateway rail combining:
- * - Idea 3: The Caretaker Pulse Wave (Oscilloscope Heartbeat Monitor)
- * - Idea 5: The Monospace Security Ticker (Infinitely Scrolling Industrial Ribbon)
+ * Creates the live Security Gateway rail:
+ * Monospace Security Ticker (Infinitely Scrolling Industrial Ribbon)
  */
 function createTopRail(): HTMLElement {
   const topRail = document.createElement('div');
@@ -334,33 +333,7 @@ function createTopRail(): HTMLElement {
   topRail.setAttribute('role', 'status');
   topRail.setAttribute('aria-label', 'Guardrail Live Security Gateway Status');
 
-  // Caretaker Pulse Monitor (Oscilloscope Heartbeat - Idea 3)
-  const monitor = document.createElement('div');
-  monitor.className = 'gr-pulse-monitor';
-  monitor.setAttribute('title', 'Active Caretaker Gateway Heartbeat');
-
-  const led = document.createElement('span');
-  led.className = 'gr-pulse-led';
-  led.setAttribute('aria-hidden', 'true');
-
-  const ekgWrap = document.createElement('div');
-  ekgWrap.className = 'gr-ekg-wrap';
-  ekgWrap.innerHTML = `
-    <svg class="gr-ekg-svg" viewBox="0 0 60 16" fill="none" aria-hidden="true">
-      <path class="gr-ekg-bg" d="M 0 8 L 14 8 L 17 3 L 21 13 L 24 0.5 L 28 15.5 L 31 8 L 60 8" />
-      <path class="gr-ekg-pulse" d="M 0 8 L 14 8 L 17 3 L 21 13 L 24 0.5 L 28 15.5 L 31 8 L 60 8" />
-    </svg>
-  `;
-
-  const bpm = document.createElement('span');
-  bpm.className = 'gr-pulse-bpm';
-  bpm.textContent = '1.0 Hz';
-
-  monitor.appendChild(led);
-  monitor.appendChild(ekgWrap);
-  monitor.appendChild(bpm);
-
-  // Monospace Security Ticker Marquee (Idea 5)
+  // Monospace Security Ticker Marquee
   const tickerViewport = document.createElement('div');
   tickerViewport.className = 'gr-ticker-viewport';
 
@@ -391,8 +364,6 @@ function createTopRail(): HTMLElement {
   }
 
   tickerViewport.appendChild(tickerTrack);
-
-  topRail.appendChild(monitor);
   topRail.appendChild(tickerViewport);
 
   return topRail;
@@ -571,86 +542,22 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: none;
     }
 
-    /* Monospace Security Ticker & Caretaker Pulse Wave Rail (Ideas 3 & 5) */
+    /* Monospace Security Ticker Rail */
     .gr-top-rail {
       display: flex;
       align-items: center;
-      height: 28px;
-      background: #141A13;
-      border-bottom: 1px solid rgba(212, 155, 66, 0.35);
+      height: 26px;
+      background: linear-gradient(180deg, #EFE7D8 0%, #E8DFCE 100%);
+      border-bottom: 1px solid #D8CCB6;
       position: relative;
       z-index: 10;
       overflow: hidden;
       user-select: none;
       border-radius: 14.5px 14.5px 0 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
     }
 
-    /* Caretaker Pulse Wave Monitor (Idea 3: Live Oscilloscope Heartbeat) */
-    .gr-pulse-monitor {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 10px 0 14px;
-      height: 100%;
-      background: #10160F;
-      border-right: 1px solid rgba(212, 155, 66, 0.25);
-      flex-shrink: 0;
-      z-index: 2;
-    }
-
-    .gr-pulse-led {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #E2B755;
-      display: inline-block;
-      animation: grHeartbeatLed 2.4s infinite ease-in-out;
-      flex-shrink: 0;
-    }
-
-    .gr-ekg-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 52px;
-      height: 16px;
-    }
-
-    .gr-ekg-svg {
-      width: 52px;
-      height: 16px;
-      overflow: visible;
-    }
-
-    .gr-ekg-bg {
-      stroke: rgba(226, 183, 85, 0.20);
-      stroke-width: 1.4;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .gr-ekg-pulse {
-      stroke: #E2B755;
-      stroke-width: 1.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      stroke-dasharray: 96;
-      stroke-dashoffset: 96;
-      animation: grEkgPulse 2.4s infinite ease-in-out;
-      filter: drop-shadow(0 0 3px rgba(226, 183, 85, 0.85));
-    }
-
-    .gr-pulse-bpm {
-      font-family: 'IBM Plex Mono', ui-monospace, monospace;
-      font-size: 8.5px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      color: #C49144;
-      text-transform: uppercase;
-      opacity: 0.95;
-    }
-
-    /* Monospace Security Ticker Marquee (Idea 5: Infinitely Scrolling Ribbon) */
+    /* Monospace Security Ticker Marquee (Infinitely Scrolling Industrial Ribbon) */
     .gr-ticker-viewport {
       flex: 1;
       height: 100%;
@@ -658,8 +565,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
       position: relative;
       display: flex;
       align-items: center;
-      mask-image: linear-gradient(90deg, transparent 0%, #000 14px, #000 calc(100% - 14px), transparent 100%);
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 14px, #000 calc(100% - 14px), transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0%, #000 24px, #000 calc(100% - 24px), transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 24px, #000 calc(100% - 24px), transparent 100%);
     }
 
     .gr-ticker-track {
@@ -671,21 +578,21 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-ticker-segment {
-      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
       font-size: 9px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: #E2B755;
+      color: #7D5B28;
       display: inline-flex;
       align-items: center;
     }
 
     .gr-ticker-sep {
-      color: #8C6228;
-      margin: 0 10px;
+      color: #B89357;
+      margin: 0 14px;
       font-size: 8px;
-      opacity: 0.75;
+      opacity: 0.85;
     }
 
     @keyframes grTickerMarquee {
@@ -697,102 +604,49 @@ export function showWarningModal(props: WarningModalProps): () => void {
       }
     }
 
-    @keyframes grEkgPulse {
-      0% {
-        stroke-dashoffset: 96;
-        opacity: 0.25;
-      }
-      12% {
-        opacity: 1;
-      }
-      42% {
-        stroke-dashoffset: 0;
-        opacity: 1;
-      }
-      65% {
-        opacity: 0.25;
-        stroke-dashoffset: -96;
-      }
-      100% {
-        stroke-dashoffset: -96;
-        opacity: 0.25;
-      }
-    }
-
-    @keyframes grHeartbeatLed {
-      0%, 100% {
-        transform: scale(0.85);
-        box-shadow: 0 0 0 0 rgba(226, 183, 85, 0.5);
-        background: #A87932;
-      }
-      12% {
-        transform: scale(1.3);
-        box-shadow: 0 0 0 5px rgba(226, 183, 85, 0);
-        background: #F5D380;
-      }
-      22% {
-        transform: scale(0.9);
-        box-shadow: 0 0 0 0 rgba(226, 183, 85, 0);
-        background: #C49144;
-      }
-      32% {
-        transform: scale(1.2);
-        box-shadow: 0 0 0 4px rgba(226, 183, 85, 0);
-        background: #E2B755;
-      }
-      45% {
-        transform: scale(0.85);
-        background: #A87932;
-      }
-    }
-
     /* Decision State Overrides */
     .gr-card-approved .gr-top-rail {
-      background: #142215;
-      border-bottom-color: rgba(52, 211, 153, 0.35);
-    }
-    .gr-card-approved .gr-pulse-monitor {
-      background: #101B11;
-      border-right-color: rgba(52, 211, 153, 0.25);
-    }
-    .gr-card-approved .gr-pulse-led {
-      background: #34D399;
-      animation: none;
-      box-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
-    }
-    .gr-card-approved .gr-ekg-pulse {
-      stroke: #34D399;
-      filter: drop-shadow(0 0 3px rgba(52, 211, 153, 0.8));
-    }
-    .gr-card-approved .gr-pulse-bpm {
-      color: #34D399;
+      background: linear-gradient(180deg, #E5EFE4 0%, #D8E7D6 100%);
+      border-bottom-color: #C4D9C2;
     }
     .gr-card-approved .gr-ticker-segment {
-      color: #6EE7B7;
+      color: #285E32;
+    }
+    .gr-card-approved .gr-ticker-sep {
+      color: #4C8957;
     }
 
     .gr-card-rejected .gr-top-rail {
-      background: #24160F;
-      border-bottom-color: rgba(239, 68, 68, 0.3);
-    }
-    .gr-card-rejected .gr-pulse-monitor {
-      background: #1D120C;
-      border-right-color: rgba(239, 68, 68, 0.2);
-    }
-    .gr-card-rejected .gr-pulse-led {
-      background: #F87171;
-      animation: none;
-      box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
-    }
-    .gr-card-rejected .gr-ekg-pulse {
-      stroke: #F87171;
-      filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.8));
-    }
-    .gr-card-rejected .gr-pulse-bpm {
-      color: #F87171;
+      background: linear-gradient(180deg, #F8EBE6 0%, #F0DCD5 100%);
+      border-bottom-color: #E2C5BC;
     }
     .gr-card-rejected .gr-ticker-segment {
-      color: #FCA5A5;
+      color: #8D3622;
+    }
+    .gr-card-rejected .gr-ticker-sep {
+      color: #BD5B44;
+    }
+
+    .gr-card-cancelled .gr-top-rail {
+      background: linear-gradient(180deg, #EDECE8 0%, #E2E1DC 100%);
+      border-bottom-color: #CFCDBF;
+    }
+    .gr-card-cancelled .gr-ticker-segment {
+      color: #55594F;
+    }
+    .gr-card-cancelled .gr-ticker-sep {
+      color: #888C81;
+    }
+
+    .gr-card-expired .gr-top-rail {
+      background: linear-gradient(180deg, #F4ECE0 0%, #EAE0D0 100%);
+      border-bottom-color: #DACAB2;
+    }
+    .gr-card-expired .gr-ticker-segment {
+      color: #7D5B28;
+    }
+    .gr-card-expired .gr-ticker-sep {
+      color: #B89357;
     }
 
     @keyframes grPopupPulse {
