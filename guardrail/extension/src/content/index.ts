@@ -18,6 +18,7 @@ import { evaluateActionPipeline } from '../response/index.js';
 import {
   dismissPendingApprovalPill,
   dismissWarningModal,
+  isExternalNavigationAction,
   showPendingApprovalPill,
   showWarningModal,
   showAdvisoryNotice,
@@ -433,6 +434,40 @@ function handleCloseWaiting(
 }
 
 /**
+ * Handles user cancellation from warning dialogs.
+ * If the action is an external navigation away from the current website ("Cancel & Leave"),
+ * it exits the site safely to protect the user from malicious navigation.
+ * If the action is an in-page button click or interaction ("Cancel & Stay"), it cancels the
+ * held action and safely dismisses the modal, allowing the user to stay on the current website.
+ */
+function handleModalCancel(action: GuardrailAction): void {
+  console.log(`[Guardrail UI] Handling modal cancellation for action: ${action.id}`);
+  stopWarningStatusPolling();
+  dismissPendingApprovalPill();
+
+  // 1. Safely cancel held action in continuation manager and interception controller
+  try {
+    defaultContinuationManager.cancelAction(action.id, 'Action cancelled by user.');
+  } catch (err) {
+    console.warn('[Guardrail UI] Continuation cancellation notice:', err);
+  }
+  try {
+    defaultInterceptionController.cancelAction(action.id, 'Action cancelled by user.');
+  } catch (err) {
+    console.warn('[Guardrail UI] Interception cancellation notice:', err);
+  }
+
+  // 2. Only exit the website if this was an external navigation ("Cancel & Leave")
+  const isExternalNav = isExternalNavigationAction(action);
+  if (isExternalNav) {
+    console.log(`[Guardrail UI] External navigation cancelled (Cancel & Leave) -> performing safe site exit`);
+    performSafeSiteExit();
+  } else {
+    console.log(`[Guardrail UI] In-page button or interaction cancelled (Cancel & Stay) -> staying safely on website`);
+  }
+}
+
+/**
  * Re-opens the waiting screen modal directly in waiting state when the user clicks the floating pill.
  */
 function reopenWaitingModal(
@@ -452,9 +487,7 @@ function reopenWaitingModal(
       void handleCancelApproval(action);
     },
     onCancel: () => {
-      stopWarningStatusPolling();
-      dismissPendingApprovalPill();
-      performSafeSiteExit();
+      handleModalCancel(action);
     },
   });
 
@@ -617,10 +650,7 @@ function presentWarningWithApproval(
       }
     },
     onCancel: () => {
-      console.log(`[Guardrail UI] User clicked Cancel & Leave for action: ${action.id}`);
-      stopWarningStatusPolling();
-      dismissPendingApprovalPill();
-      performSafeSiteExit();
+      handleModalCancel(action);
     },
   });
 }

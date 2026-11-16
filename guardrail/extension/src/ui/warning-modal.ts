@@ -260,6 +260,69 @@ export function updateWarningModalState(
  * @param props Metadata for rendering the warning dialog.
  * @returns A dismiss function to close the warning programmatically.
  */
+/**
+ * Determines whether an action represents an external navigation away from the current website origin,
+ * versus an in-page interaction (button click, form input, same-origin interaction).
+ */
+export function isExternalNavigationAction(
+  action: GuardrailAction,
+  fallbackTargetUrl?: string
+): boolean {
+  let pageHostName = '';
+  try {
+    if (action.page?.url) {
+      pageHostName = new URL(action.page.url).hostname.toLowerCase().replace(/^www\./, '');
+    } else if (typeof window !== 'undefined' && window.location?.hostname) {
+      pageHostName = window.location.hostname.toLowerCase().replace(/^www\./, '');
+    }
+  } catch {}
+
+  let targetHostName = '';
+  try {
+    const candidate =
+      action.element?.targetUrl ||
+      action.element?.formAction ||
+      action.url ||
+      (action as any).targetUrl ||
+      fallbackTargetUrl;
+    if (candidate) {
+      targetHostName = (candidate.includes('://') ? new URL(candidate).hostname : candidate)
+        .toLowerCase()
+        .replace(/^www\./, '');
+    }
+  } catch {}
+
+  const isSameDomain = Boolean(
+    pageHostName &&
+      targetHostName &&
+      (pageHostName === targetHostName ||
+        targetHostName.endsWith('.' + pageHostName) ||
+        pageHostName.endsWith('.' + targetHostName))
+  );
+
+  const isButtonOrInteraction =
+    action.type === ActionType.CLICK ||
+    action.type === ActionType.SUBMIT ||
+    action.type === ActionType.INPUT ||
+    action.type === 'CLICK' ||
+    action.type === 'SUBMIT' ||
+    action.type === 'INPUT' ||
+    Boolean(
+      action.element?.tagName &&
+        ['BUTTON', 'INPUT', 'FORM', 'SELECT'].includes(action.element.tagName.toUpperCase())
+    );
+
+  const isExternalNav =
+    (action.type === ActionType.NAVIGATION ||
+      action.type === 'NAVIGATION' ||
+      action.category === ActionCategory.EXTERNAL_NAVIGATION ||
+      action.category === 'EXTERNAL_NAVIGATION' ||
+      (!isSameDomain && Boolean(action.element?.targetUrl && action.element.tagName === 'A'))) &&
+    !isSameDomain;
+
+  return isExternalNav;
+}
+
 export function showWarningModal(props: WarningModalProps): () => void {
   // 1. Remove any previous instance to prevent stacking
   dismissWarningModal();
@@ -302,6 +365,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
   try {
     if (props.action.page?.url) {
       pageHostName = new URL(props.action.page.url).hostname.toLowerCase().replace(/^www\./, '');
+    } else if (typeof window !== 'undefined' && window.location?.hostname) {
+      pageHostName = window.location.hostname.toLowerCase().replace(/^www\./, '');
     }
   } catch {}
 
@@ -319,22 +384,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     pageHostName.endsWith('.' + targetHostName)
   ));
 
-  const isButtonOrInteraction =
-    props.action.type === ActionType.CLICK ||
-    props.action.type === ActionType.SUBMIT ||
-    props.action.type === ActionType.INPUT ||
-    props.action.type === 'CLICK' ||
-    props.action.type === 'SUBMIT' ||
-    props.action.type === 'INPUT' ||
-    Boolean(props.action.element?.tagName && ['BUTTON', 'INPUT', 'FORM', 'SELECT'].includes(props.action.element.tagName.toUpperCase()));
-
-  const isExternalNav = (
-    props.action.type === ActionType.NAVIGATION ||
-    props.action.type === 'NAVIGATION' ||
-    props.action.category === ActionCategory.EXTERNAL_NAVIGATION ||
-    props.action.category === 'EXTERNAL_NAVIGATION' ||
-    (!isSameDomain && Boolean(props.action.element?.targetUrl && props.action.element.tagName === 'A'))
-  ) && !isSameDomain;
+  const isExternalNav = isExternalNavigationAction(props.action, webCtx.targetUrl || webCtx.domain);
 
   // Context-specific text resolution
   let modalTitle = "You're leaving this website.";
