@@ -109,7 +109,10 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
 
   const decisionBadge = document.createElement('span');
   decisionBadge.className = `gd-moment-status-pill ${statusClass}`;
-  decisionBadge.textContent = 'DECISION RECORDED';
+  decisionBadge.innerHTML = `
+    <span class="gd-moment-live-dot ${statusClass}" aria-hidden="true"></span>
+    <span class="gd-moment-status-pill-text">DECISION RECORDED</span>
+  `;
 
   topBar.appendChild(brandTag);
   topBar.appendChild(decisionBadge);
@@ -122,15 +125,15 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
 
   if (isApproved) {
     badgeWrap.innerHTML = `
-      <svg class="gd-moment-anim-svg" width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path class="gd-anim-tick" d="M9 18.5L15 24.5L27 12.5" stroke="#1A2F18" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg class="gd-moment-anim-svg" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="gd-anim-tick" d="M10 19.5L16 25.5L28 13.5" stroke="#162B14" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     `;
   } else {
     badgeWrap.innerHTML = `
-      <svg class="gd-moment-anim-svg" width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path class="gd-anim-cross1" d="M11 11L25 25" stroke="#312117" stroke-width="3.4" stroke-linecap="round"/>
-        <path class="gd-anim-cross2" d="M25 11L11 25" stroke="#312117" stroke-width="3.4" stroke-linecap="round"/>
+      <svg class="gd-moment-anim-svg" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="gd-anim-cross1" d="M12 12L26 26" stroke="#2E1B13" stroke-width="3.6" stroke-linecap="round"/>
+        <path class="gd-anim-cross2" d="M26 12L12 26" stroke="#2E1B13" stroke-width="3.6" stroke-linecap="round"/>
       </svg>
     `;
   }
@@ -192,10 +195,20 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
   const progressFooter = document.createElement('div');
   progressFooter.className = 'gd-moment-progress-wrap';
 
+  const progressHeader = document.createElement('div');
+  progressHeader.className = 'gd-moment-progress-header';
+
   const progressLabel = document.createElement('span');
   progressLabel.className = 'gd-moment-progress-text';
   progressLabel.textContent = 'Updating pending queue...';
-  progressFooter.appendChild(progressLabel);
+  progressHeader.appendChild(progressLabel);
+
+  const progressNote = document.createElement('span');
+  progressNote.className = 'gd-moment-progress-note';
+  progressNote.textContent = isApproved ? 'Reviewer Consent Logged' : 'Reviewer Rejection Logged';
+  progressHeader.appendChild(progressNote);
+
+  progressFooter.appendChild(progressHeader);
 
   const progressTrack = document.createElement('div');
   progressTrack.className = 'gd-decision-moment-progress-track';

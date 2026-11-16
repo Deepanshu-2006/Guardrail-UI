@@ -6304,14 +6304,19 @@ article.gd-card-collapsed,
    GUARDRAIL DECISION MOMENT — Unified Editorial Confirmation Interaction
    ============================================================================= */
 
+.gd-pending-approvals.gd-decision-moment-active .gd-pending-header,
+.gd-pending-approvals.gd-decision-moment-active .gd-view-header {
+  display: none !important;
+}
+
 .gd-decision-moment-stage {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
-  justify-content: flex-start !important;
+  justify-content: center !important;
   width: 100% !important;
-  min-height: 440px !important;
-  padding: 24px 0 40px 0 !important;
+  min-height: calc(100vh - 130px) !important;
+  padding: 40px 24px 60px 24px !important;
   margin: 0 auto !important;
   box-sizing: border-box !important;
   animation: gdDecisionMomentStageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
@@ -6320,7 +6325,7 @@ article.gd-card-collapsed,
 @keyframes gdDecisionMomentStageIn {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(12px) scale(0.98);
   }
   100% {
     opacity: 1;
@@ -6343,23 +6348,26 @@ article.gd-card-collapsed,
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
-  max-width: 600px !important;
+  max-width: 580px !important;
   margin: 0 auto !important;
   padding: 0 !important;
-  border-radius: 16px !important;
+  border-radius: 20px !important;
   overflow: hidden !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 20px 48px -12px rgba(22, 28, 20, 0.28), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(27, 33, 23, 0.12) !important;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 10px 28px -4px rgba(22, 28, 20, 0.16),
+    0 28px 64px -12px rgba(22, 28, 20, 0.26) !important;
   background: transparent !important;
   position: relative !important;
   box-sizing: border-box !important;
-  animation: gdDecisionMomentIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gdDecisionMomentIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 @keyframes gdDecisionMomentIn {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.985);
+    transform: translateY(14px) scale(0.98);
   }
   100% {
     opacity: 1;
@@ -6371,19 +6379,25 @@ article.gd-card-collapsed,
 .gd-moment-hero {
   width: 100% !important;
   box-sizing: border-box !important;
-  padding: 26px 32px 32px 32px !important;
+  padding: 28px 34px 34px 34px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
   text-align: center !important;
+  position: relative !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
 .gd-moment-hero.approved {
-  background: #20361F !important;
+  background: 
+    radial-gradient(circle at 50% 45%, rgba(74, 222, 128, 0.10) 0%, transparent 65%),
+    linear-gradient(180deg, #1E331D 0%, #172716 100%) !important;
 }
 
 .gd-moment-hero.rejected {
-  background: #32231A !important;
+  background: 
+    radial-gradient(circle at 50% 45%, rgba(240, 140, 110, 0.10) 0%, transparent 65%),
+    linear-gradient(180deg, #322119 0%, #251710 100%) !important;
 }
 
 /* Top bar: Brand + Status Pill */
@@ -6393,66 +6407,124 @@ article.gd-card-collapsed,
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  margin-bottom: 22px !important;
+  margin-bottom: 24px !important;
 }
 
 .gd-moment-brand-tag {
   display: inline-flex !important;
   align-items: center !important;
   gap: 7px !important;
-  color: #F5F5F0 !important;
+  color: #FAF7F0 !important;
   font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
+  letter-spacing: 0.12em !important;
+}
+
+.gd-moment-brand-shield {
+  flex-shrink: 0 !important;
+}
+
+.gd-moment-hero.approved .gd-moment-brand-shield {
+  color: #4ADE80 !important;
+}
+
+.gd-moment-hero.rejected .gd-moment-brand-shield {
+  color: #F08C6E !important;
 }
 
 .gd-moment-hero.rejected .gd-moment-brand-tag {
-  color: #EBD6C3 !important;
+  color: #FAF7F0 !important;
 }
 
 .gd-moment-status-pill {
   font-family: var(--gd-font-mono, monospace) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   border-radius: 9999px !important;
-  padding: 4px 11px !important;
+  padding: 4px 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1.2 !important;
 }
 
 .gd-moment-status-pill.approved {
-  border: 1.5px solid #2ECC71 !important;
-  color: #2ECC71 !important;
-  background: transparent !important;
+  border: 1px solid rgba(74, 222, 128, 0.4) !important;
+  color: #4ADE80 !important;
+  background: rgba(74, 222, 128, 0.1) !important;
 }
 
 .gd-moment-status-pill.rejected {
-  border: 1.5px solid #E67E22 !important;
-  color: #E67E22 !important;
-  background: transparent !important;
+  border: 1px solid rgba(240, 140, 110, 0.4) !important;
+  color: #F08C6E !important;
+  background: rgba(240, 140, 110, 0.1) !important;
+}
+
+.gd-moment-live-dot {
+  display: inline-block !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  margin-right: 6px !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  top: -0.5px !important;
+}
+
+.gd-moment-live-dot.approved {
+  background: #4ADE80 !important;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.8) !important;
+  animation: gdLiveDotPulse 1.8s ease-in-out infinite !important;
+}
+
+.gd-moment-live-dot.rejected {
+  background: #F08C6E !important;
+  box-shadow: 0 0 8px rgba(240, 140, 110, 0.8) !important;
+  animation: gdLiveDotPulse 1.8s ease-in-out infinite !important;
+}
+
+@keyframes gdLiveDotPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
 }
 
 /* Centered Circular Badge & Animations */
 .gd-moment-badge-circle {
-  width: 72px !important;
-  height: 72px !important;
+  width: 76px !important;
+  height: 76px !important;
   border-radius: 50% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin: 0 auto 16px auto !important;
-  animation: gdCirclePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
+  margin: 0 auto 18px auto !important;
+  position: relative !important;
+  animation: gdCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
 }
 
 .gd-moment-badge-circle.approved {
-  background: #D8E7CD !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  background: radial-gradient(circle at 35% 35%, #E5F0DE 0%, #C8DCBA 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 
+    0 0 0 6px rgba(255, 255, 255, 0.08),
+    0 0 0 12px rgba(255, 255, 255, 0.03),
+    0 12px 28px rgba(0, 0, 0, 0.28) !important;
 }
 
 .gd-moment-badge-circle.rejected {
-  background: #EEDBC5 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  background: radial-gradient(circle at 35% 35%, #F6E6D5 0%, #E0CBBA 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 
+    0 0 0 6px rgba(255, 255, 255, 0.08),
+    0 0 0 12px rgba(255, 255, 255, 0.03),
+    0 12px 28px rgba(0, 0, 0, 0.28) !important;
 }
 
 @keyframes gdCirclePop {
@@ -6505,32 +6577,35 @@ article.gd-card-collapsed,
 
 /* Titles */
 .gd-moment-title {
-  font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
-  font-size: 34px !important;
+  font-family: var(--gd-font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
+  font-size: 32px !important;
   font-weight: 700 !important;
-  letter-spacing: -0.025em !important;
+  letter-spacing: -0.03em !important;
   line-height: 1.15 !important;
-  color: #FFFFFF !important;
-  margin: 0 0 6px 0 !important;
+  color: #FAF7F0 !important;
+  margin: 0 0 8px 0 !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
 }
 
 .gd-moment-subtitle {
-  font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
   font-size: 14.5px !important;
-  font-weight: 400 !important;
-  color: rgba(255, 255, 255, 0.78) !important;
+  font-weight: 450 !important;
+  color: rgba(250, 247, 240, 0.76) !important;
   margin: 0 !important;
+  letter-spacing: 0.01em !important;
 }
 
 /* Lower Tier (Cream Details Section) */
 .gd-moment-details-tier {
   width: 100% !important;
   box-sizing: border-box !important;
-  background: #F8F6F0 !important;
-  padding: 22px 32px 26px 32px !important;
+  background: #FAF8F3 !important;
+  padding: 24px 34px 28px 34px !important;
   border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
   display: flex !important;
   flex-direction: column !important;
+  position: relative !important;
 }
 
 .gd-moment-tier-header {
@@ -6539,19 +6614,19 @@ article.gd-card-collapsed,
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 10px !important;
 }
 
 .gd-moment-tier-title {
   font-family: var(--gd-font-mono, monospace) !important;
   font-size: 11px !important;
-  font-weight: 750 !important;
-  letter-spacing: 0.08em !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.09em !important;
   text-transform: uppercase !important;
 }
 
 .gd-moment-tier-title.approved {
-  color: #38562E !important;
+  color: #3B5D30 !important;
 }
 
 .gd-moment-tier-title.rejected {
@@ -6561,22 +6636,25 @@ article.gd-card-collapsed,
 .gd-moment-tier-time {
   font-family: var(--gd-font-mono, monospace) !important;
   font-size: 11.5px !important;
-  color: #787063 !important;
+  font-weight: 500 !important;
+  color: #7D7568 !important;
+  letter-spacing: 0.03em !important;
 }
 
 .gd-moment-action-row {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  gap: 14px !important;
-  margin-bottom: 18px !important;
+  gap: 16px !important;
+  margin-bottom: 20px !important;
 }
 
 .gd-moment-action-desc {
   font-family: var(--gd-font-sans, sans-serif) !important;
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
   color: #1E261B !important;
+  letter-spacing: -0.01em !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -6585,25 +6663,43 @@ article.gd-card-collapsed,
 .gd-moment-host-badge {
   font-family: var(--gd-font-mono, monospace) !important;
   font-size: 11px !important;
-  padding: 3px 8px !important;
-  background: rgba(0, 0, 0, 0.05) !important;
-  border-radius: 4px !important;
-  color: #555E50 !important;
+  font-weight: 500 !important;
+  padding: 4px 10px !important;
+  background: #ECE7DA !important;
+  border: 1px solid #DCD5C5 !important;
+  border-radius: 6px !important;
+  color: #4A5343 !important;
   flex-shrink: 0 !important;
 }
 
 .gd-moment-progress-wrap {
   display: flex !important;
   flex-direction: column !important;
-  gap: 6px !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.gd-moment-progress-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
   width: 100% !important;
 }
 
 .gd-moment-progress-text {
   font-family: var(--gd-font-mono, monospace) !important;
   font-size: 10.5px !important;
-  color: #8F8778 !important;
-  letter-spacing: 0.05em !important;
+  color: #8C8476 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+}
+
+.gd-moment-progress-note {
+  font-family: var(--gd-font-mono, monospace) !important;
+  font-size: 10px !important;
+  color: #A39B8C !important;
+  letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
 }
 
@@ -6619,15 +6715,16 @@ article.gd-card-collapsed,
 .gd-decision-moment-progress-bar {
   height: 100% !important;
   width: 0% !important;
-  animation: gdMomentProgressBar 2.8s linear forwards !important;
+  animation: gdMomentProgressBar 2.8s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  border-radius: 9999px !important;
 }
 
 .gd-decision-moment-progress-bar.approved {
-  background: #20361F !important;
+  background: linear-gradient(90deg, #2A4824 0%, #4D7A3E 100%) !important;
 }
 
 .gd-decision-moment-progress-bar.rejected {
-  background: #8C402E !important;
+  background: linear-gradient(90deg, #7C3524 0%, #A44933 100%) !important;
 }
 
 @keyframes gdMomentProgressBar {
@@ -6636,6 +6733,25 @@ article.gd-card-collapsed,
   }
   100% {
     width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .gd-decision-moment-stage {
+    min-height: auto !important;
+    padding: 32px 16px !important;
+  }
+  .gd-decision-moment {
+    max-width: 100% !important;
+  }
+  .gd-moment-hero {
+    padding: 24px 20px 28px 20px !important;
+  }
+  .gd-moment-title {
+    font-size: 26px !important;
+  }
+  .gd-moment-details-tier {
+    padding: 20px 20px 24px 20px !important;
   }
 }
 

@@ -444,6 +444,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   const isDecisionConfirmed = Boolean(props.decisionSuccessMessage) && !props.decisionErrorMessage;
 
   if (isDecisionConfirmed) {
+    section.classList.add('gd-decision-moment-active');
     const isApproved = props.decisionSuccessMessage?.includes('APPROVED') ?? true;
     const resolvedReq =
       props.selectedRequestDetail ||
