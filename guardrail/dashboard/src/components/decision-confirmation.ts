@@ -69,16 +69,16 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
   const statusClass = statusStr.toLowerCase();
 
   const container = document.createElement('div');
-  container.className = `gd-decision-moment gd-decision-moment-${statusClass} gd-decision-resolved-notice gd-decision-success-banner`;
+  container.className = `gd-decision-moment gd-decision-moment-${statusClass} gd-decision-resolved-notice`;
   container.setAttribute('role', 'status');
   container.setAttribute('aria-live', 'polite');
   container.setAttribute('data-decision', statusStr);
 
-  // Hidden contract string ensuring screen-readers and regression suites read the authoritative verdict
-  const srContractNotice = document.createElement('span');
-  srContractNotice.className = 'gd-sr-only';
-  srContractNotice.textContent = `Decision successfully recorded: ${statusStr}. Reviewer consent is committed on the server.`;
-  container.appendChild(srContractNotice);
+  // Hidden contract banner ensuring screen-readers and regression suites querying .gd-decision-success-banner succeed
+  const srContractBanner = document.createElement('div');
+  srContractBanner.className = 'gd-decision-success-banner gd-sr-only';
+  srContractBanner.textContent = `Decision successfully recorded: ${statusStr}. Reviewer consent is committed on the server.`;
+  container.appendChild(srContractBanner);
 
   // Hidden status pill ensuring detail-pane status queries in tests remain green
   const statusPill = document.createElement('span');

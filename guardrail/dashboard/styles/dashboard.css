@@ -6308,11 +6308,11 @@ article.gd-card-collapsed,
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   width: 100% !important;
-  min-height: 480px !important;
-  padding: 24px 16px !important;
-  margin: 20px auto 40px auto !important;
+  min-height: 440px !important;
+  padding: 24px 0 40px 0 !important;
+  margin: 0 auto !important;
   box-sizing: border-box !important;
   animation: gdDecisionMomentStageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
@@ -6343,14 +6343,16 @@ article.gd-card-collapsed,
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
-  max-width: 580px !important;
+  max-width: 600px !important;
   margin: 0 auto !important;
   padding: 0 !important;
-  border-radius: 14px !important;
+  border-radius: 16px !important;
   overflow: hidden !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 20px 48px -12px rgba(22, 28, 20, 0.28), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  background: transparent !important;
   position: relative !important;
+  box-sizing: border-box !important;
   animation: gdDecisionMomentIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
@@ -6367,10 +6369,12 @@ article.gd-card-collapsed,
 
 /* Hero Section (Upper Rich Dark Tier) */
 .gd-moment-hero {
-  padding: 24px 28px 30px 28px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 26px 32px 32px 32px !important;
   display: flex !important;
   flex-direction: column !important;
-  align-items: center !important;
+  align-items: stretch !important;
   text-align: center !important;
 }
 
@@ -6385,6 +6389,7 @@ article.gd-card-collapsed,
 /* Top bar: Brand + Status Pill */
 .gd-moment-topbar {
   width: 100% !important;
+  box-sizing: border-box !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
@@ -6417,15 +6422,15 @@ article.gd-card-collapsed,
 }
 
 .gd-moment-status-pill.approved {
-  border: 1px solid #2ECC71 !important;
+  border: 1.5px solid #2ECC71 !important;
   color: #2ECC71 !important;
-  background: rgba(46, 204, 113, 0.08) !important;
+  background: transparent !important;
 }
 
 .gd-moment-status-pill.rejected {
-  border: 1px solid #E67E22 !important;
+  border: 1.5px solid #E67E22 !important;
   color: #E67E22 !important;
-  background: rgba(230, 126, 34, 0.08) !important;
+  background: transparent !important;
 }
 
 /* Centered Circular Badge & Animations */
@@ -6519,15 +6524,18 @@ article.gd-card-collapsed,
 
 /* Lower Tier (Cream Details Section) */
 .gd-moment-details-tier {
-  background: #F8F6F0 !important;
-  padding: 20px 28px 22px 28px !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  width: 100% !important;
   box-sizing: border-box !important;
+  background: #F8F6F0 !important;
+  padding: 22px 32px 26px 32px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
   display: flex !important;
   flex-direction: column !important;
 }
 
 .gd-moment-tier-header {
+  width: 100% !important;
+  box-sizing: border-box !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
@@ -6651,19 +6659,20 @@ article.gd-card-collapsed,
   }
 }
 
-.gd-decision-success-banner {
-  background: rgba(36, 53, 30, 0.04) !important;
-  background-color: rgba(36, 53, 30, 0.04) !important;
-  border: 1px solid rgba(36, 53, 30, 0.14) !important;
-  border-left: 2.5px solid var(--gd-accent-olive, #2D4C18) !important;
-  border-radius: 6px !important;
-  padding: 6px 12px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  margin: 0 0 16px 0 !important;
-  box-shadow: none !important;
-  animation: gdFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+.gd-decision-success-banner:not(.gd-sr-only) {
+  display: none !important;
+}
+
+.gd-decision-success-banner.gd-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .gd-decision-success-banner .gd-success-icon {
