@@ -104,6 +104,20 @@ export function formatTimestamp(isoString?: string | null): string {
 }
 
 /**
+ * Wraps each character into an animated span for fluid typewriter entrance (no pill wrapper).
+ */
+function renderActionTypewriterText(phrase: string, baseDelayMs: number = 30): string {
+  return phrase
+    .split('')
+    .map((char, i) => {
+      const delay = baseDelayMs + i * 22;
+      const display = char === ' ' ? '&nbsp;' : char;
+      return `<span class="gd-type-char" style="animation-delay: ${delay}ms;">${display}</span>`;
+    })
+    .join('');
+}
+
+/**
  * Evaluates whether an approval request has expired based on its expiresAt timestamp.
  */
 export function isRequestExpired(request?: ApprovalRequest | null): boolean {
@@ -878,6 +892,17 @@ export function renderRequestDetailView(props: RequestDetailViewProps): HTMLElem
           }
         }
       });
+
+      // Typographic animated action status line (Zero pill container, pure editorial typography)
+      const statusLine = document.createElement('div');
+      statusLine.className = `gd-confirm-status-line ${isApprove ? 'approve' : 'reject'}`;
+      const actionPhrase = isApprove ? 'Approving Request' : 'Rejecting Request';
+      statusLine.innerHTML = `
+        <span class="gd-confirm-action-icon" aria-hidden="true">${isApprove ? '✓' : '✕'}</span>
+        <span class="gd-confirm-action-phrase">${renderActionTypewriterText(actionPhrase)}</span>
+        <span class="gd-confirm-dots" aria-hidden="true"><span class="gd-confirm-dot gd-dot-1">.</span><span class="gd-confirm-dot gd-dot-2">.</span><span class="gd-confirm-dot gd-dot-3">.</span></span>
+      `;
+      confirmBox.appendChild(statusLine);
 
       const confirmTitle = document.createElement('h4');
       confirmTitle.id = 'gd-decision-confirm-title';

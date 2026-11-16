@@ -5547,50 +5547,211 @@ article.gd-card-collapsed,
   transform: translateY(-1.5px) !important;
 }
 
-/* Confirmation Section: Tactile, Refined Decision Dialogue Card */
+/* =============================================================================
+   Deliberate Confirmation Section: Organic Morph Expansion & Unboxed Hierarchy
+   ============================================================================= */
+
+@keyframes gdConfirmMorphExpand {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    clip-path: inset(0 0 75% 0 round 6px);
+  }
+  35% {
+    opacity: 0.9;
+    clip-path: inset(0 0 20% 0 round 4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    clip-path: inset(0 0 0 0 round 0px);
+  }
+}
+
+/* Zero Container Box: Pure Typography and Flow */
 .gd-decision-confirm-box {
-  background: rgba(39, 49, 33, 0.02) !important;
-  background-color: rgba(39, 49, 33, 0.02) !important;
-  border: 1px solid rgba(39, 49, 33, 0.12) !important;
-  border-radius: 8px !important;
-  padding: 20px 22px !important;
-  margin-top: 16px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-top: 6px !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 16px !important;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.03) !important;
+  box-shadow: none !important;
   box-sizing: border-box !important;
   width: 100% !important;
   position: relative !important;
+  animation: gdConfirmMorphExpand 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transform-origin: top left !important;
 }
 
 .gd-decision-confirm-box.confirm-reject {
-  border-color: rgba(140, 46, 46, 0.22) !important;
-  background-color: rgba(140, 46, 46, 0.015) !important;
+  /* Clean unboxed reject variant */
+}
+
+/* Smooth staggered cascading reveals for internal sections */
+.gd-decision-confirm-box > * {
+  animation: gdConfirmItemFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+.gd-decision-confirm-box > :nth-child(1) { animation-delay: 0.03s !important; }
+.gd-decision-confirm-box > :nth-child(2) { animation-delay: 0.07s !important; }
+.gd-decision-confirm-box > :nth-child(3) { animation-delay: 0.11s !important; }
+.gd-decision-confirm-box > :nth-child(4) { animation-delay: 0.15s !important; }
+.gd-decision-confirm-box > :nth-child(5) { animation-delay: 0.19s !important; }
+.gd-decision-confirm-box > :nth-child(6) { animation-delay: 0.23s !important; }
+
+@keyframes gdConfirmItemFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =============================================================================
+   Typographic Animated Action Status: ZERO PILL CONTAINER, Pure Editorial Motion
+   ============================================================================= */
+.gd-confirm-status-line {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.3 !important;
+  padding: 0 !important;
+  margin: 0 0 2px 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.gd-confirm-status-line.approve {
+  color: #2D521E !important;
+}
+
+.gd-confirm-status-line.reject {
+  color: #9C2E2E !important;
+}
+
+.gd-confirm-action-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  opacity: 0;
+  animation: gdActionIconIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) 0.04s forwards !important;
+}
+
+@keyframes gdActionIconIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.gd-confirm-action-phrase {
+  display: inline-flex !important;
+  align-items: baseline !important;
+  white-space: nowrap !important;
+}
+
+/* Character-by-Character Typewriter Animation */
+.gd-type-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(3px);
+  animation: gdTypeCharReveal 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes gdTypeCharReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Living Undulating Ellipsis Dots */
+.gd-confirm-dots {
+  display: inline-flex !important;
+  align-items: baseline !important;
+  gap: 2px !important;
+  margin-left: 1px !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+.gd-confirm-dot {
+  display: inline-block !important;
+  opacity: 0.15;
+  animation: gdConfirmDotPulse 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite !important;
+}
+
+.gd-confirm-dot.gd-dot-1 {
+  animation-delay: 0.35s !important;
+}
+.gd-confirm-dot.gd-dot-2 {
+  animation-delay: 0.55s !important;
+}
+.gd-confirm-dot.gd-dot-3 {
+  animation-delay: 0.75s !important;
+}
+
+@keyframes gdConfirmDotPulse {
+  0%, 20% {
+    opacity: 0.15;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2.5px);
+  }
+  80%, 100% {
+    opacity: 0.15;
+    transform: translateY(0);
+  }
 }
 
 .gd-confirm-title {
   font-family: var(--gd-font-display, "Space Grotesk", sans-serif) !important;
-  font-size: 17px !important;
+  font-size: 19px !important;
   font-weight: 700 !important;
-  letter-spacing: -0.02em !important;
-  color: #172213 !important;
+  letter-spacing: -0.025em !important;
+  color: #141B12 !important;
   margin: 0 !important;
   line-height: 1.25 !important;
   outline: none !important;
 }
 
+/* High-Impact Warning: Editorial amber pullout, no heavy box */
 .gd-high-impact-warning {
   background: rgba(194, 120, 3, 0.06) !important;
   background-color: rgba(194, 120, 3, 0.06) !important;
-  border: 1px solid rgba(194, 120, 3, 0.20) !important;
+  border: 1px solid rgba(194, 120, 3, 0.18) !important;
   border-radius: 6px !important;
   padding: 10px 14px !important;
   margin: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
-  gap: 4px !important;
+  gap: 3px !important;
   box-sizing: border-box !important;
   box-shadow: none !important;
 }
@@ -5601,9 +5762,9 @@ article.gd-card-collapsed,
   align-items: center !important;
   gap: 6px !important;
   font-family: var(--gd-font-display, "Space Grotesk", sans-serif) !important;
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
+  letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
   color: #8A4D04 !important;
   margin: 0 !important;
@@ -5665,7 +5826,7 @@ article.gd-card-collapsed,
   color: #7E7769 !important;
 }
 
-/* Tactile Recessed Note/Reason Input Field */
+/* Recessed Paper-Tone Note Input (ZERO White background) */
 .gd-decision-confirm-box input,
 .gd-decision-confirm-box textarea,
 .gd-decision-confirm-box .gd-confirm-note-input,
@@ -5676,19 +5837,19 @@ article.gd-card-collapsed,
 .gd-decision-reason-input {
   width: 100% !important;
   box-sizing: border-box !important;
-  height: 40px !important;
-  padding: 8px 13px !important;
+  height: 42px !important;
+  padding: 0 14px !important;
   font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
   font-size: 13.5px !important;
   font-weight: 450 !important;
   color: #1A2616 !important;
-  background: rgba(255, 255, 255, 0.70) !important;
-  background-color: rgba(255, 255, 255, 0.70) !important;
-  border: 1px solid rgba(39, 49, 33, 0.18) !important;
+  background: rgba(39, 49, 33, 0.035) !important;
+  background-color: rgba(39, 49, 33, 0.035) !important;
+  border: 1px solid rgba(39, 49, 33, 0.16) !important;
   border-radius: 6px !important;
   outline: none !important;
-  box-shadow: inset 0 1px 2px rgba(39, 49, 33, 0.04) !important;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
+  box-shadow: none !important;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease !important;
 }
 
 .gd-decision-confirm-box input::placeholder,
@@ -5714,9 +5875,9 @@ article.gd-card-collapsed,
 .gd-confirm-note-input:hover,
 .gd-decision-note-input:hover,
 .gd-decision-reason-input:hover {
-  background: rgba(255, 255, 255, 0.90) !important;
-  background-color: rgba(255, 255, 255, 0.90) !important;
-  border-color: rgba(39, 49, 33, 0.32) !important;
+  background: rgba(39, 49, 33, 0.055) !important;
+  background-color: rgba(39, 49, 33, 0.055) !important;
+  border-color: rgba(39, 49, 33, 0.28) !important;
 }
 
 .gd-decision-confirm-box input:focus,
@@ -5728,10 +5889,10 @@ article.gd-card-collapsed,
 .gd-decision-note-input:focus,
 .gd-decision-reason-input:focus {
   outline: none !important;
-  background: #FFFFFF !important;
-  background-color: #FFFFFF !important;
+  background: rgba(39, 49, 33, 0.065) !important;
+  background-color: rgba(39, 49, 33, 0.065) !important;
   border-color: #22301E !important;
-  box-shadow: 0 0 0 3px rgba(34, 48, 30, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: 0 0 0 3px rgba(34, 48, 30, 0.09) !important;
 }
 
 .gd-consequential-notice {
@@ -5747,7 +5908,7 @@ article.gd-card-collapsed,
 .gd-consequential-notice p {
   font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
   font-size: 11.5px !important;
-  line-height: 1.5 !important;
+  line-height: 1.55 !important;
   color: #7A7467 !important;
   margin: 0 !important;
 }
@@ -5762,7 +5923,7 @@ article.gd-card-collapsed,
 .gd-confirm-actions-row {
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 12px !important;
   margin-top: 4px !important;
 }
 
@@ -5771,10 +5932,10 @@ article.gd-card-collapsed,
   align-items: center !important;
   justify-content: center !important;
   gap: 7px !important;
-  padding: 0 20px !important;
-  height: 38px !important;
+  padding: 0 22px !important;
+  height: 40px !important;
   font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
-  font-size: 13px !important;
+  font-size: 13.5px !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
   text-transform: none !important;
@@ -5782,34 +5943,32 @@ article.gd-card-collapsed,
   border-radius: 6px !important;
   cursor: pointer !important;
   border: 1px solid transparent !important;
-  transition: all 0.16s ease !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .gd-btn-approve-confirm {
-  background-color: #22301E !important;
-  border-color: #22301E !important;
-  box-shadow: 0 1px 3px rgba(34, 48, 30, 0.20) !important;
+  background: linear-gradient(180deg, #2D3E28 0%, #1E2B1A 100%) !important;
+  border: 1px solid #182315 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(30, 43, 26, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
 }
 .gd-btn-approve-confirm:hover:not(:disabled) {
-  background-color: #172214 !important;
-  border-color: #172214 !important;
-  box-shadow: 0 2px 6px rgba(34, 48, 30, 0.30) !important;
-  transform: translateY(-1px) !important;
+  background: linear-gradient(180deg, #34482F 0%, #22311E 100%) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 6px 14px rgba(29, 42, 26, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+  transform: translateY(-1.5px) !important;
 }
 .gd-btn-approve-confirm:active:not(:disabled) {
   transform: translateY(0px) !important;
 }
 
 .gd-btn-reject-confirm {
-  background-color: #8C2E2E !important;
-  border-color: #8C2E2E !important;
-  box-shadow: 0 1px 3px rgba(140, 46, 46, 0.20) !important;
+  background: linear-gradient(180deg, #8A2D2D 0%, #6E1F1F 100%) !important;
+  border: 1px solid #5C1919 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(110, 31, 31, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
 }
 .gd-btn-reject-confirm:hover:not(:disabled) {
-  background-color: #732323 !important;
-  border-color: #732323 !important;
-  box-shadow: 0 2px 6px rgba(140, 46, 46, 0.30) !important;
-  transform: translateY(-1px) !important;
+  background: linear-gradient(180deg, #9C3333 0%, #7A2424 100%) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 6px 14px rgba(110, 31, 31, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+  transform: translateY(-1.5px) !important;
 }
 .gd-btn-reject-confirm:active:not(:disabled) {
   transform: translateY(0px) !important;
@@ -5819,23 +5978,24 @@ article.gd-card-collapsed,
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 0 16px !important;
-  height: 38px !important;
+  padding: 0 18px !important;
+  height: 40px !important;
   font-family: var(--gd-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
   font-size: 13px !important;
   font-weight: 550 !important;
-  color: #4A5243 !important;
+  color: #5C5547 !important;
   background-color: transparent !important;
   border: 1px solid rgba(39, 49, 33, 0.20) !important;
   border-radius: 6px !important;
   cursor: pointer !important;
-  transition: all 0.16s ease !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .gd-btn-cancel-confirm:hover:not(:disabled) {
   background-color: rgba(39, 49, 33, 0.05) !important;
   border-color: rgba(39, 49, 33, 0.35) !important;
   color: #1C2418 !important;
+  transform: translateY(-1px) !important;
 }
 
 /* 3. Lifecycle Status Banner: Editorial pullout with colored left accent rule, zero boxes */
@@ -7385,7 +7545,10 @@ article.gd-card-collapsed,
     scroll-behavior: auto !important;
   }
 
-  .gd-char {
+  .gd-char,
+  .gd-type-char,
+  .gd-confirm-action-icon,
+  .gd-confirm-dot {
     opacity: 1 !important;
     transform: none !important;
   }
