@@ -52,6 +52,7 @@ export class DashboardShell {
   private activeFetchPromise: Promise<void> | null = null;
   private readonly activeDetailFetchPromises: Map<string, Promise<ApprovalRequest | null>> = new Map();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private resolutionTransitionTimer: ReturnType<typeof setTimeout> | null = null;
   public static readonly MAX_CACHE_ENTRIES = 100;
   private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
   private isDetailLoading: boolean = false;
@@ -821,6 +822,10 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
+    if (this.resolutionTransitionTimer) {
+      clearTimeout(this.resolutionTransitionTimer);
+      this.resolutionTransitionTimer = null;
+    }
     this.activeEnteringView = view;
     this.viewEnterTimer = setTimeout(() => {
       this.activeEnteringView = null;
@@ -859,6 +864,10 @@ export class DashboardShell {
     if (this.viewEnterTimer) {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
+    }
+    if (this.resolutionTransitionTimer) {
+      clearTimeout(this.resolutionTransitionTimer);
+      this.resolutionTransitionTimer = null;
     }
     this.activeEnteringView = null;
     if (this.mainContentEl) {
@@ -1269,6 +1278,10 @@ export class DashboardShell {
    */
   public selectRequest(requestId: string, fetchFresh: boolean = false): void {
     if (this.state.selectedRequestId !== requestId) {
+      if (this.resolutionTransitionTimer) {
+        clearTimeout(this.resolutionTransitionTimer);
+        this.resolutionTransitionTimer = null;
+      }
       this.state.decisionErrorMessage = null;
       this.state.decisionSuccessMessage = null;
     }
@@ -1388,6 +1401,32 @@ export class DashboardShell {
         this.state.decisionSuccessMessage = `Decision successfully recorded: ${decision}. Reviewer consent is committed on the server.`;
         this.state.decisionErrorMessage = null;
         this.announce(`Decision recorded: ${decision}. Reviewer consent committed to server.`);
+
+        // Clear any active transition timer
+        if (this.resolutionTransitionTimer) {
+          clearTimeout(this.resolutionTransitionTimer);
+          this.resolutionTransitionTimer = null;
+        }
+
+        // Automatic queue advance: transition gracefully after sealing the decision
+        this.resolutionTransitionTimer = setTimeout(() => {
+          this.resolutionTransitionTimer = null;
+          if (this.isDestroyed) return;
+
+          if (this.state.selectedRequestId === trimmedId) {
+            this.state.decisionSuccessMessage = null;
+
+            if (this.state.pendingRequests.length > 0) {
+              this.state.selectedRequestId = this.state.pendingRequests[0].id;
+              if (this.apiClient) {
+                void this.loadRequestDetails(this.state.selectedRequestId, true);
+              }
+            } else {
+              this.state.selectedRequestId = null;
+            }
+            this.render();
+          }
+        }, 1400);
 
         // Immediate background refresh so dashboard does not depend exclusively on periodic polling
         void this.fetchPendingRequests({ isBackground: true });
@@ -1728,6 +1767,10 @@ export class DashboardShell {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
     }
+    if (this.resolutionTransitionTimer) {
+      clearTimeout(this.resolutionTransitionTimer);
+      this.resolutionTransitionTimer = null;
+    }
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -1778,6 +1821,10 @@ export class DashboardShell {
     if (this.viewEnterTimer) {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
+    }
+    if (this.resolutionTransitionTimer) {
+      clearTimeout(this.resolutionTransitionTimer);
+      this.resolutionTransitionTimer = null;
     }
     this.activeEnteringView = null;
     if (this.mainContentEl) {
@@ -2393,6 +2440,10 @@ export class DashboardShell {
     if (this.viewEnterTimer) {
       clearTimeout(this.viewEnterTimer);
       this.viewEnterTimer = null;
+    }
+    if (this.resolutionTransitionTimer) {
+      clearTimeout(this.resolutionTransitionTimer);
+      this.resolutionTransitionTimer = null;
     }
     this.activeEnteringView = null;
 

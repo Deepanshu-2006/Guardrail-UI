@@ -637,8 +637,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const riskLevel = req.riskLevel || RiskLevel.LOW;
           const riskClass = riskLevel.toLowerCase();
 
+          const isResolvedTransition = req.status && req.status !== ApprovalStatus.PENDING;
           const card = document.createElement('article');
-          card.className = `gd-request-card ${isSelected ? 'selected' : ''} ${isExpired ? 'is-expired' : ''}`;
+          card.className = `gd-request-card ${isSelected ? 'selected' : ''} ${isExpired ? 'is-expired' : ''} ${isResolvedTransition ? 'is-resolving-transition' : ''}`;
           card.setAttribute('role', 'button');
           card.setAttribute('tabindex', '0');
           card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -842,20 +843,52 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             }
 
             if (selectedReq.status && selectedReq.status !== ApprovalStatus.PENDING) {
+              const isApproved = selectedReq.status === ApprovalStatus.APPROVED;
               const resolvedNotice = document.createElement('div');
               resolvedNotice.className = `gd-decision-resolved-notice ${selectedReq.status.toLowerCase()}`;
               resolvedNotice.setAttribute('role', 'status');
 
+              const sealWrap = document.createElement('div');
+              sealWrap.className = 'gd-resolved-seal-content';
+
+              const sealIcon = document.createElement('span');
+              sealIcon.className = 'gd-resolved-seal-icon';
+              sealIcon.setAttribute('aria-hidden', 'true');
+              sealIcon.textContent = isApproved ? '✓' : '✕';
+
+              const copyWrap = document.createElement('div');
+              copyWrap.className = 'gd-resolved-seal-copy';
+
               const statusText = document.createElement('span');
               statusText.className = 'gd-resolved-status-text';
               statusText.textContent =
-                selectedReq.status === ApprovalStatus.APPROVED
+                isApproved
                   ? 'Approved: This action has been approved.'
                   : selectedReq.status === ApprovalStatus.REJECTED
                     ? 'Rejected: This action has been rejected.'
                     : `Decision Recorded: ${selectedReq.status}`;
 
-              resolvedNotice.appendChild(statusText);
+              const subText = document.createElement('span');
+              subText.className = 'gd-resolved-audit-note';
+              subText.textContent = isApproved
+                ? 'Reviewer consent committed to audit log · Advancing queue...'
+                : 'Reviewer decision committed to audit log · Advancing queue...';
+
+              copyWrap.appendChild(statusText);
+              copyWrap.appendChild(subText);
+              sealWrap.appendChild(sealIcon);
+              sealWrap.appendChild(copyWrap);
+              resolvedNotice.appendChild(sealWrap);
+
+              const progressTrack = document.createElement('div');
+              progressTrack.className = 'gd-resolved-progress-track';
+              progressTrack.setAttribute('aria-hidden', 'true');
+
+              const progressBar = document.createElement('div');
+              progressBar.className = 'gd-resolved-progress-bar';
+              progressTrack.appendChild(progressBar);
+              resolvedNotice.appendChild(progressTrack);
+
               decisionControlsContainer.appendChild(resolvedNotice);
               return;
             }

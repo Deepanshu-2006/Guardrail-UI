@@ -4696,6 +4696,84 @@ async function runDashboardTests() {
     shell.destroy();
   }
 
+  // Test Suite 54: Automatic Queue Progression & Resolution Transition
+  console.log('\n▶ Test Suite 54: Automatic Queue Progression & Resolution Transition');
+  {
+    const decided = new Set<string>();
+    const mockClient = {
+      listPendingApprovals: async () => ({
+        success: true,
+        data: [
+          { ...SAMPLE_REQUEST, id: 'apr_trans_01', actionDescription: 'Action 1' },
+          { ...SAMPLE_REQUEST, id: 'apr_trans_02', actionDescription: 'Action 2' },
+        ].filter((r) => !decided.has(r.id)),
+      }),
+      getApprovalDetails: async (id: string) => ({
+        success: true,
+        data: { ...SAMPLE_REQUEST, id, actionDescription: id === 'apr_trans_01' ? 'Action 1' : 'Action 2' },
+      }),
+      submitDecision: async (id: string, _payload: any) => {
+        decided.add(id);
+        return {
+          success: true,
+          data: {
+            ...SAMPLE_REQUEST,
+            id,
+            actionDescription: id === 'apr_trans_01' ? 'Action 1' : 'Action 2',
+            status: ApprovalStatus.APPROVED,
+            decision: { decision: 'APPROVED', decidedBy: 'tc_carol' },
+          },
+        };
+      },
+    } as unknown as ApprovalApiClient;
+
+    const shell = new DashboardShell({
+      container: testContainer,
+      initialView: 'pending',
+      initialRequests: [
+        { ...SAMPLE_REQUEST, id: 'apr_trans_01', actionDescription: 'Action 1' },
+        { ...SAMPLE_REQUEST, id: 'apr_trans_02', actionDescription: 'Action 2' },
+      ],
+      apiClient: mockClient,
+      autoFetch: false,
+    });
+
+    // 1. Initial state: 2 requests
+    assertEquals(shell.getState().pendingRequests.length, 2, 'Initially 2 pending requests');
+    assertEquals(shell.getState().selectedRequestId, 'apr_trans_01', 'First request selected initially');
+
+    // 2. Submit decision on Action 1
+    await shell.submitDecision('apr_trans_01', 'APPROVED');
+
+    // Action 1 pruned from pendingRequests, but selectedRequestId still points to it during transition window
+    assertEquals(shell.getState().pendingRequests.length, 1, 'Action 1 pruned from pendingRequests');
+    assertEquals(shell.getState().selectedRequestId, 'apr_trans_01', 'Action 1 still selected during resolution transition window');
+    assert(rootElement.querySelector('.gd-decision-resolved-notice') !== null, 'Resolution notice displayed during transition window');
+
+    // 3. Fast-forward timer past 1400ms transition
+    await new Promise((r) => setTimeout(r, 1450));
+
+    // After transition: Action 2 is automatically selected!
+    assertEquals(shell.getState().selectedRequestId, 'apr_trans_02', 'Automatically advanced to next pending request in queue');
+    const titleEl = rootElement.querySelector('.gd-detail-title');
+    assertEquals(titleEl?.textContent, 'Action 2', 'Detail title updated to Action 2 automatically');
+
+    // 4. Submit decision on Action 2 (the last remaining request in queue)
+    await shell.submitDecision('apr_trans_02', 'APPROVED');
+    assertEquals(shell.getState().pendingRequests.length, 0, 'Queue is now 0 pending requests');
+
+    // Fast-forward past transition window
+    await new Promise((r) => setTimeout(r, 1450));
+
+    // After transition: automatically transitioned to All Caught Up empty state!
+    assertEquals(shell.getState().selectedRequestId, null, 'selectedRequestId automatically cleared to null when queue hits zero');
+    const emptyState = rootElement.querySelector('.gd-empty-state');
+    assert(emptyState !== null, 'Automatically transitioned into All Caught Up empty state');
+    assert(emptyState?.textContent.includes('No Pending Approval Requests') ?? false, 'Empty state communicates no pending requests');
+
+    shell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');
