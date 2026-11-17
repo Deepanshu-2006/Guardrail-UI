@@ -8084,6 +8084,142 @@ article.gd-card-collapsed,
   gap: 9px;
 }
 
+/* 1-Click Consumer Social Sign-In Buttons */
+.gd-auth-social-section {
+  margin-top: 2px;
+}
+
+.gd-auth-social-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gd-auth-social-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 42px;
+  border-radius: 9px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 11px;
+  padding: 0 16px;
+  user-select: none;
+  outline: none;
+}
+
+.gd-auth-social-btn:focus-visible {
+  box-shadow: 0 0 0 2.5px rgba(37, 43, 30, 0.25);
+}
+
+.gd-auth-google-btn {
+  background: #FFFFFF;
+  color: #1F241A;
+  border: 1px solid #D8D2C5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.gd-auth-google-btn:hover {
+  background: #FDFCF9;
+  border-color: #BDB5A4;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+  transform: translateY(-0.5px);
+}
+
+.gd-auth-google-btn:active {
+  background: #F4F1EA;
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.gd-auth-google-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.gd-auth-apple-btn {
+  background: #1C2117;
+  color: #FAF8F5;
+  border: 1px solid #1C2117;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.gd-auth-apple-btn:hover {
+  background: #2D3525;
+  border-color: #2D3525;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  transform: translateY(-0.5px);
+}
+
+.gd-auth-apple-btn:active {
+  background: #141710;
+  transform: translateY(0);
+}
+
+.gd-auth-apple-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.gd-auth-social-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.gd-auth-social-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* Labeled Divider */
+.gd-auth-divider-with-label {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0 12px 0;
+  color: #8C9384;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.gd-auth-divider-with-label::before,
+.gd-auth-divider-with-label::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #DFD9CE;
+}
+
+.gd-auth-divider-with-label span {
+  padding: 0 10px;
+}
+
+/* Developer Wrapper & Box */
+.gd-auth-dev-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gd-auth-dev-section {
+  background: #F7F5EE;
+  border: 1px solid #DFD9CE;
+  border-radius: 9px;
+  padding: 12px 14px;
+}
+
 .gd-auth-section-header {
   display: flex;
   align-items: baseline;
