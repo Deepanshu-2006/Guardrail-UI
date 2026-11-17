@@ -634,8 +634,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
   if (chrome.runtime.onInstalled) {
     chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
       console.log(`[Guardrail] Extension lifecycle event: onInstalled (reason: ${details.reason})`);
-      if (details.reason === 'install' && typeof chrome.tabs !== 'undefined' && chrome.tabs.create) {
-        chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/onboarding.html') });
+      // No intrusive tab opening - setup and caretaker pairing are handled directly in the extension popup
+      if (details.reason === 'install' && chrome.action?.setBadgeText) {
+        chrome.action.setBadgeText({ text: 'PAIR' });
+        chrome.action.setBadgeBackgroundColor({ color: '#54683E' });
       }
     });
   }
