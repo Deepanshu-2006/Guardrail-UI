@@ -16,5 +16,8 @@ dist-pilot/
 .DS_Store
 Thumbs.db
 *.log
+data/
+*.sqlite
+*.sqlite-journal
 .vscode/
 .idea/

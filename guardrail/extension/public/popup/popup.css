@@ -34,8 +34,11 @@
   padding: 0;
 }
 
-body {
+html, body {
+  margin: 0;
+  padding: 0;
   width: 360px;
+  max-width: 360px;
   background-color: var(--gd-bg-canvas);
   color: var(--gd-text-primary);
   font-family: var(--gd-font-sans);
@@ -44,18 +47,25 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.pairing-open {
   width: 710px;
+  max-width: 710px;
 }
 
 .popup-stage {
   display: flex;
   flex-direction: row;
-  width: 710px;
+  width: 360px;
+  max-width: 360px;
   min-height: 100%;
+  overflow: hidden;
+}
+
+body.pairing-open .popup-stage {
+  width: 710px;
+  max-width: 710px;
 }
 
 /* =============================================================================
@@ -63,19 +73,21 @@ body.pairing-open {
    ============================================================================= */
 
 .pairing-panel {
+  display: none !important;
+  width: 0;
+  box-sizing: border-box;
+}
+
+body.pairing-open .pairing-panel {
+  display: flex !important;
   width: 350px;
   flex-shrink: 0;
   padding: 18px 18px 16px;
-  display: flex;
   flex-direction: column;
   gap: 11px;
   background-color: var(--gd-bg-canvas);
   border-right: 1px solid rgba(39, 49, 33, 0.12);
   box-sizing: border-box;
-}
-
-body:not(.pairing-open) .pairing-panel {
-  display: none !important;
 }
 
 .pairing-header {
@@ -586,10 +598,9 @@ body:not(.pairing-open) .pairing-panel {
   background: var(--gd-card-bg);
   border: 1px solid var(--gd-card-border);
   border-radius: 14px;
-  padding: 11px 14px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
   transition: all 0.2s ease;
 }
 

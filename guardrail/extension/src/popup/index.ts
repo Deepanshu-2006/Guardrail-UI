@@ -42,6 +42,27 @@ export async function initializePopup(): Promise<void> {
   // Load environment config
   const env = resolveEnvironmentConfig();
 
+  // Test live backend connectivity
+  let liveEnv = env;
+  let isBackendLive = false;
+  try {
+    const healthRes = await fetch(`${env.apiBaseUrl}/health`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(1500),
+    });
+    if (healthRes.ok) {
+      isBackendLive = true;
+      liveEnv = {
+        ...env,
+        isMockService: false,
+        serviceType: 'live',
+      };
+    }
+  } catch {
+    isBackendLive = false;
+  }
+
   // Load policy configuration
   let policyConfig = null;
   let policyHealth = ConfigHealthStatus.UNINITIALIZED;
@@ -57,7 +78,7 @@ export async function initializePopup(): Promise<void> {
 
   // Evaluate live protection status report
   const report = evaluateProtectionStatus({
-    envConfig: env,
+    envConfig: liveEnv,
     policyConfig,
     policyHealth,
     isServiceWorkerActive: true,
@@ -72,18 +93,17 @@ export async function initializePopup(): Promise<void> {
     // safe fallback
   }
 
-  // Render status into popup DOM
-  renderPopupStatus(report, onboardingState);
+  // Render status into popup DOM - starts compact (360px) looking exactly like before
+  renderPopupStatus(report, onboardingState, isBackendLive);
+
+  // Check guardian coverage (truthful caretaker link status)
+  const isGuardianLinked = await checkActiveGuardianCoverage();
+  if (isGuardianLinked) {
+    updatePopupToPairedState();
+  }
+
   setupPopupActions();
   setupPairingPanelActions();
-
-  // Check if ward already has an active contact
-  void checkActiveGuardianCoverage().then((hasActiveContact) => {
-    if (!hasActiveContact) {
-      // Auto-open pairing panel on the left when unconfigured so user sees QR code immediately
-      openPairingPanel();
-    }
-  });
 }
 
 /**
@@ -104,11 +124,7 @@ async function checkActiveGuardianCoverage(): Promise<boolean> {
     });
     if (!res.ok) return false;
     const body = (await res.json()) as { success: boolean; data?: unknown[] };
-    const hasContacts = Boolean(body.success && Array.isArray(body.data) && body.data.length > 0);
-    if (hasContacts) {
-      updatePopupToPairedState();
-    }
-    return hasContacts;
+    return Boolean(body.success && Array.isArray(body.data) && body.data.length > 0);
   } catch {
     return false;
   }
@@ -119,7 +135,8 @@ async function checkActiveGuardianCoverage(): Promise<boolean> {
  */
 export function renderPopupStatus(
   report: ProtectionStatusReport,
-  onboardingState?: { isCompleted: boolean; completedSteps: readonly string[] }
+  onboardingState?: { isCompleted: boolean; completedSteps: readonly string[] },
+  isBackendLive?: boolean
 ): void {
   // 1. Environment badge & values
   const envBadge = document.getElementById('ext-env-badge');
@@ -130,9 +147,15 @@ export function renderPopupStatus(
   // 2. Service type
   const serviceVal = document.getElementById('ext-service-val');
   if (serviceVal) {
-    serviceVal.textContent = report.isMockService ? 'Mock (In-Memory)' : 'Live Backend';
-    if (report.isMockService) {
+    if (isBackendLive === true || !report.isMockService) {
+      serviceVal.textContent = 'Live Backend';
+      serviceVal.style.color = '#273121';
+    } else if (report.isMockService) {
+      serviceVal.textContent = 'Mock (In-Memory)';
       serviceVal.style.color = '#54683E';
+    } else {
+      serviceVal.textContent = 'Offline / Unreachable';
+      serviceVal.style.color = '#8A3B2A';
     }
   }
 
@@ -150,21 +173,8 @@ export function renderPopupStatus(
     });
   }
 
-  // 3. Status Indicator & Card
+  // 3. Status Indicator
   const indicator = document.getElementById('ext-status-indicator');
-  const statusCard = document.getElementById('protection-status-card');
-  const statusTitle = document.getElementById('ext-status-title');
-  const statusExplanation = document.getElementById('ext-status-explanation');
-
-  if (statusTitle) statusTitle.textContent = report.statusTitle;
-  if (statusExplanation) {
-    statusExplanation.textContent = report.status === 'DEGRADED'
-      ? 'Operating on safety defaults for designated test actions.'
-      : report.status === 'ACTIVE'
-      ? 'Protecting designated pilot test actions.'
-      : report.statusDescription;
-  }
-
   if (indicator) {
     indicator.textContent = report.status === 'ACTIVE' ? 'Active' : report.status;
     indicator.style.borderRadius = '9999px';
@@ -174,44 +184,22 @@ export function renderPopupStatus(
     indicator.style.backgroundColor = 'rgba(39, 49, 33, 0.06)';
   }
 
-  if (statusCard) {
-    if (report.status === 'DEGRADED') {
-      statusCard.className = 'status-card warn';
-    } else if (report.status === 'POLICY_ERROR' || report.status === 'INACTIVE') {
-      statusCard.className = 'status-card error';
-    } else {
-      statusCard.className = 'status-card';
-    }
-  }
-
   // 4. Policy Health & Rules
   const policyHealthEl = document.getElementById('ext-policy-health');
   const rulesVal = document.getElementById('ext-rules-val');
   if (policyHealthEl) policyHealthEl.textContent = `${report.policyHealth} (v${report.policyVersion})`;
   if (rulesVal) rulesVal.textContent = `${report.activeRulesCount} active`;
 
-  // 5. Onboarding Status Banner
+  // 5. Caretaker Pairing Banner
   const onboardingBanner = document.getElementById('onboarding-banner');
   const onboardingTitle = document.getElementById('onboarding-status-title');
   const onboardingDesc = document.getElementById('onboarding-status-desc');
   const btnOpenOnboarding = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
-  const progressFill = document.getElementById('setup-progress-fill');
 
-  if (onboardingState && onboardingState.isCompleted) {
-    if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
-    if (onboardingTitle) onboardingTitle.textContent = 'Guardian Linked';
-    if (onboardingDesc) onboardingDesc.textContent = 'Active Protection ✓';
-    if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Pairing Info →';
-    if (progressFill) progressFill.style.width = '100%';
-  } else {
-    if (onboardingBanner) onboardingBanner.className = 'onboarding-banner';
-    if (onboardingTitle) onboardingTitle.textContent = 'Guardian Setup';
-    if (onboardingDesc) onboardingDesc.textContent = 'Pair Caretaker';
-    if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Setup →';
-    if (progressFill) {
-      progressFill.style.width = '35%';
-    }
-  }
+  if (onboardingBanner) onboardingBanner.className = 'onboarding-banner';
+  if (onboardingTitle) onboardingTitle.textContent = 'Caretaker Pairing';
+  if (onboardingDesc) onboardingDesc.textContent = 'Not Connected';
+  if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Setup →';
 }
 
 /**
@@ -222,13 +210,11 @@ function updatePopupToPairedState(caretakerName = 'Caretaker'): void {
   const onboardingTitle = document.getElementById('onboarding-status-title');
   const onboardingDesc = document.getElementById('onboarding-status-desc');
   const btnOpenOnboarding = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
-  const progressFill = document.getElementById('setup-progress-fill');
 
   if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
   if (onboardingTitle) onboardingTitle.textContent = 'Guardian Linked';
   if (onboardingDesc) onboardingDesc.textContent = `Protected by ${caretakerName} ✓`;
   if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Pairing Info →';
-  if (progressFill) progressFill.style.width = '100%';
 
   const liveStatus = document.getElementById('pairing-live-status');
   if (liveStatus) {
@@ -283,6 +269,10 @@ function setupPopupActions(): void {
  */
 export function openPairingPanel(): void {
   document.body.classList.add('pairing-open');
+  document.documentElement.style.width = '710px';
+  document.body.style.width = '710px';
+  const stage = document.getElementById('popup-stage');
+  if (stage) stage.style.width = '710px';
   void loadOrGenerateInvitation();
   startConnectionPolling();
 }
@@ -292,6 +282,10 @@ export function openPairingPanel(): void {
  */
 export function closePairingPanel(): void {
   document.body.classList.remove('pairing-open');
+  document.documentElement.style.width = '360px';
+  document.body.style.width = '360px';
+  const stage = document.getElementById('popup-stage');
+  if (stage) stage.style.width = '360px';
   stopConnectionPolling();
 }
 
@@ -320,6 +314,8 @@ export async function loadOrGenerateInvitation(): Promise<void> {
     return;
   }
 
+  let inviteCode: string | null = null;
+
   try {
     // 1. Check existing invitations
     const listRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
@@ -330,7 +326,6 @@ export async function loadOrGenerateInvitation(): Promise<void> {
       },
     });
 
-    let inviteCode: string | null = null;
     if (listRes.ok) {
       const listBody = (await listRes.json()) as {
         success: boolean;
@@ -372,40 +367,39 @@ export async function loadOrGenerateInvitation(): Promise<void> {
         }
       }
     }
-
-    if (!inviteCode) {
-      // Fallback display code
-      inviteCode = 'GR-INV-8K2M-9Q7X';
-    }
-
-    activePairingCode = inviteCode;
-    if (codeDisplay) {
-      codeDisplay.textContent = inviteCode;
-    }
-
-    // 3. Render QR Code SVG
-    if (qrContainer) {
-      const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
-      const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(inviteCode)}`;
-
-      try {
-        const svgString = await QRCode.toString(pairingUrl, {
-          type: 'svg',
-          margin: 1,
-          color: {
-            dark: '#273121',
-            light: '#FAF6ED',
-          },
-        });
-        qrContainer.innerHTML = svgString;
-      } catch (qrErr) {
-        console.error('[Guardrail Popup] QR generation error:', qrErr);
-        qrContainer.innerHTML = `<span style="font-size:11px;color:#7E8774;">QR Code Unavailable</span>`;
-      }
-    }
   } catch (err) {
-    console.error('[Guardrail Popup] Failed to load pairing invitation:', err);
-    if (codeDisplay) codeDisplay.textContent = 'GR-INV-8K2M-9Q7X';
+    console.warn('[Guardrail Popup] Could not fetch remote pairing invitation, using default code:', err);
+  }
+
+  if (!inviteCode) {
+    // Fallback display code
+    inviteCode = 'GR-INV-8K2M-9Q7X';
+  }
+
+  activePairingCode = inviteCode;
+  if (codeDisplay) {
+    codeDisplay.textContent = inviteCode;
+  }
+
+  // 3. Always render QR Code SVG for active code
+  if (qrContainer) {
+    const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
+    const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(inviteCode)}`;
+
+    try {
+      const svgString = await QRCode.toString(pairingUrl, {
+        type: 'svg',
+        margin: 1,
+        color: {
+          dark: '#273121',
+          light: '#FAF6ED',
+        },
+      });
+      qrContainer.innerHTML = svgString;
+    } catch (qrErr) {
+      console.error('[Guardrail Popup] QR generation error:', qrErr);
+      qrContainer.innerHTML = `<span style="font-size:11px;color:#7E8774;">QR Code Unavailable</span>`;
+    }
   }
 }
 
@@ -417,6 +411,7 @@ function startConnectionPolling(): void {
   connectionPollingTimer = setInterval(() => {
     void checkActiveGuardianCoverage().then((connected) => {
       if (connected) {
+        updatePopupToPairedState();
         stopConnectionPolling();
       }
     });

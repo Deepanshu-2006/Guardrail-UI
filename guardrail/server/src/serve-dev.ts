@@ -31,15 +31,8 @@ async function main(): Promise<void> {
     },
   });
 
-  // Contact registry with pre-seeded caretaker relationship
+  // Contact registry starts fresh and unconfigured (no fake pre-seeded contacts)
   const contactRegistry = new InMemoryTrustedContactRegistry();
-  contactRegistry.addContact({
-    id: 'tc_carol',
-    userId: 'usr_alice',
-    relationshipLabel: 'Designated Caretaker',
-    status: TrustedContactStatus.ACTIVE,
-    createdAt: new Date().toISOString(),
-  });
 
   const runtime = await startGuardrailHttpServer({
     tokenVerifier,

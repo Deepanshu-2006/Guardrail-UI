@@ -44,7 +44,9 @@ function copyStaticAssets() {
   const manifestRaw = fs.readFileSync(manifestPath, 'utf-8');
   const manifest = JSON.parse(manifestRaw);
   // MV3 requires an exact backend origin host permission for cross-origin fetches.
-  manifest.host_permissions = [hostPermissionForBackend(backendUrl)];
+  manifest.host_permissions = isPilot
+    ? [hostPermissionForBackend(backendUrl)]
+    : Array.from(new Set([hostPermissionForBackend(backendUrl), 'http://localhost:3000/*', 'http://127.0.0.1:3000/*']));
   if (isPilot) {
     manifest.version_name = `${manifest.version}-pilot`;
     manifest.description = `${manifest.description} [PILOT DEPLOYMENT]`;
