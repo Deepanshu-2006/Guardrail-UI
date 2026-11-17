@@ -147,14 +147,75 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   errorBanner.style.display = 'none';
   body.appendChild(errorBanner);
 
-  // 3. Provider Discovery (OIDC / SSO if configured)
+  // 3. 1-Click Consumer Social Login Section (Task 2.1)
+  const socialSection = document.createElement('div');
+  socialSection.className = 'gd-auth-section gd-auth-social-section';
+
+  const socialHeader = document.createElement('div');
+  socialHeader.className = 'gd-auth-section-header';
+
+  const socialTitle = document.createElement('span');
+  socialTitle.className = 'gd-auth-section-title';
+  socialTitle.textContent = 'Sign in with your account';
+
+  const socialHint = document.createElement('span');
+  socialHint.className = 'gd-auth-section-hint';
+  socialHint.textContent = '1-click secure access';
+
+  socialHeader.appendChild(socialTitle);
+  socialHeader.appendChild(socialHint);
+  socialSection.appendChild(socialHeader);
+
+  const socialButtonsContainer = document.createElement('div');
+  socialButtonsContainer.className = 'gd-auth-social-buttons';
+
+  // Google Sign-In Button
+  const googleBtn = document.createElement('button');
+  googleBtn.type = 'button';
+  googleBtn.className = 'gd-auth-social-btn gd-auth-google-btn';
+  googleBtn.appendChild(createIcon('google', 'gd-auth-social-icon'));
+  const googleText = document.createElement('span');
+  googleText.textContent = 'Continue with Google';
+  googleBtn.appendChild(googleText);
+  googleBtn.addEventListener('click', () => {
+    void handleSocialSignIn('google', googleBtn, googleText);
+  });
+  socialButtonsContainer.appendChild(googleBtn);
+
+  // Apple Sign-In Button
+  const appleBtn = document.createElement('button');
+  appleBtn.type = 'button';
+  appleBtn.className = 'gd-auth-social-btn gd-auth-apple-btn';
+  appleBtn.appendChild(createIcon('apple', 'gd-auth-social-icon'));
+  const appleText = document.createElement('span');
+  appleText.textContent = 'Continue with Apple';
+  appleBtn.appendChild(appleText);
+  appleBtn.addEventListener('click', () => {
+    void handleSocialSignIn('apple', appleBtn, appleText);
+  });
+  socialButtonsContainer.appendChild(appleBtn);
+
+  socialSection.appendChild(socialButtonsContainer);
+  body.appendChild(socialSection);
+
+  // Provider Discovery (SSO / OIDC fallback if configured)
   const providerContent = document.createElement('div');
   providerContent.className = 'gd-auth-provider-content';
   body.appendChild(providerContent);
 
-  // 4. Quick Development Switcher
+  // 4. Developer Tools & Manual Token Section (Adaptive: hidden in production)
+  const devContainer = document.createElement('div');
+  devContainer.className = 'gd-auth-dev-wrapper';
+
+  const devDivider = document.createElement('div');
+  devDivider.className = 'gd-auth-divider-with-label';
+  const devDividerLabel = document.createElement('span');
+  devDividerLabel.textContent = 'Developer shortcuts';
+  devDivider.appendChild(devDividerLabel);
+  devContainer.appendChild(devDivider);
+
   const devSection = document.createElement('div');
-  devSection.className = 'gd-auth-section';
+  devSection.className = 'gd-auth-section gd-auth-dev-section';
 
   const devHeader = document.createElement('div');
   devHeader.className = 'gd-auth-section-header';
@@ -165,7 +226,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   const devHint = document.createElement('span');
   devHint.className = 'gd-auth-section-hint';
-  devHint.textContent = 'Development shortcuts';
+  devHint.textContent = 'Local simulation';
 
   devHeader.appendChild(devTitle);
   devHeader.appendChild(devHint);
@@ -183,7 +244,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   caretakerBtn.className = `gd-auth-chip ${isCarol ? 'selected' : ''}`;
   caretakerBtn.textContent = 'Carol (Caretaker)';
   caretakerBtn.addEventListener('click', () => {
-    void verifyAndApplyToken('test-contact-token');
+    void verifyAndApplyToken('test-contact-token', 'carol.guardian@gmail.com');
   });
   devButtonsContainer.appendChild(caretakerBtn);
 
@@ -193,17 +254,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   wardBtn.className = `gd-auth-chip ${isAlice ? 'selected' : ''}`;
   wardBtn.textContent = 'Alice (Ward)';
   wardBtn.addEventListener('click', () => {
-    void verifyAndApplyToken('test-ward-token');
+    void verifyAndApplyToken('test-ward-token', 'alice.ward@gmail.com');
   });
   devButtonsContainer.appendChild(wardBtn);
 
   devSection.appendChild(devButtonsContainer);
-  body.appendChild(devSection);
-
-  // Divider
-  const divider2 = document.createElement('hr');
-  divider2.className = 'gd-auth-divider';
-  body.appendChild(divider2);
+  devContainer.appendChild(devSection);
 
   // 5. Custom Bearer Token Input
   const tokenSection = document.createElement('div');
@@ -251,7 +307,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   tokenInputRow.appendChild(tokenInput);
   tokenInputRow.appendChild(applyBtn);
   tokenSection.appendChild(tokenInputRow);
-  body.appendChild(tokenSection);
+  devContainer.appendChild(tokenSection);
+
+  body.appendChild(devContainer);
 
   modal.appendChild(body);
 
@@ -272,7 +330,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   backdrop.appendChild(modal);
 
-  // --- Helper Functions ---
+  // --- State & Helpers ---
+  let cachedAuthConfig: AuthConfigResponse | null = null;
+
   function showError(msg: string): void {
     errorBanner.textContent = msg;
     errorBanner.style.display = 'block';
@@ -283,7 +343,45 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     errorBanner.style.display = 'none';
   }
 
-  async function verifyAndApplyToken(token: string): Promise<void> {
+  async function handleSocialSignIn(
+    provider: 'google' | 'apple',
+    btn: HTMLButtonElement,
+    labelSpan: HTMLSpanElement
+  ): Promise<void> {
+    hideError();
+
+    // 1. If an authoritative OIDC or Clerk provider URL is configured, execute OAuth 2.0 / OIDC redirect
+    if (cachedAuthConfig?.oidcConfigured && cachedAuthConfig?.authUrl) {
+      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+      const targetUrl = new URL(cachedAuthConfig.authUrl);
+      targetUrl.searchParams.set('client_id', cachedAuthConfig.clientId || '');
+      targetUrl.searchParams.set('redirect_uri', redirectUri);
+      targetUrl.searchParams.set('response_type', 'token');
+      targetUrl.searchParams.set('scope', 'openid email profile');
+      targetUrl.searchParams.set('state', Math.random().toString(36).substring(2));
+      targetUrl.searchParams.set('connection', provider === 'google' ? 'google-oauth2' : 'apple');
+      targetUrl.searchParams.set('provider', provider);
+      if (typeof window !== 'undefined') {
+        window.location.href = targetUrl.toString();
+      }
+      return;
+    }
+
+    // 2. Zero-friction development mode simulation
+    const originalText = labelSpan.textContent;
+    btn.disabled = true;
+    labelSpan.textContent = provider === 'google' ? 'Connecting Google account...' : 'Connecting Apple ID...';
+
+    const simulatedEmail = provider === 'google' ? 'carol.guardian@gmail.com' : 'carol.guardian@appleid.com';
+    try {
+      await verifyAndApplyToken('test-contact-token', simulatedEmail);
+    } catch {
+      btn.disabled = false;
+      labelSpan.textContent = originalText;
+    }
+  }
+
+  async function verifyAndApplyToken(token: string, simulatedEmail?: string): Promise<void> {
     hideError();
     applyBtn.disabled = true;
     applyBtn.textContent = 'Verifying...';
@@ -310,10 +408,11 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
         return;
       }
 
+      const verifiedEmail = body.data.email || simulatedEmail || undefined;
       const verifiedProfile: TrustedContactProfile = {
         actorId: body.data.actorId,
         role: body.data.role,
-        email: body.data.email ?? undefined,
+        email: verifiedEmail,
         isAuthenticated: true,
         relationshipLabel: body.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
       };
@@ -338,13 +437,20 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     .then((r) => r.json())
     .then((data: { success: boolean; data?: AuthConfigResponse }) => {
       if (data.success && data.data) {
+        cachedAuthConfig = data.data;
         const config = data.data;
+
+        // In pilot/production environments, hide developer profile switchers and manual overrides
+        if (!config.devTokensAvailable) {
+          devContainer.style.display = 'none';
+        }
+
         providerContent.innerHTML = '';
         if (config.oidcConfigured && config.authUrl) {
           const ssoBtn = document.createElement('button');
           ssoBtn.type = 'button';
           ssoBtn.className = 'gd-auth-chip full-width';
-          ssoBtn.textContent = `Sign in with ${config.issuer ? new URL(config.issuer).hostname : 'Identity Provider'}`;
+          ssoBtn.textContent = `Sign in with Enterprise SSO (${config.issuer ? new URL(config.issuer).hostname : 'OIDC'})`;
           ssoBtn.addEventListener('click', () => {
             const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
             const targetUrl = new URL(config.authUrl!);
@@ -362,7 +468,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       }
     })
     .catch(() => {
-      // Keep quiet in dev
+      // Retain graceful offline defaults
       providerContent.innerHTML = '';
     });
 
