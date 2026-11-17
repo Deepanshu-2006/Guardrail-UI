@@ -264,10 +264,14 @@ function setupPopupActions(): void {
   }
 }
 
+let isClosingPanel = false;
+
 /**
- * Opens the pairing panel expanding to the left.
+ * Opens the pairing panel expanding to the left with cinematic ease.
  */
 export function openPairingPanel(): void {
+  if (isClosingPanel) return;
+  document.body.classList.remove('pairing-closing');
   document.body.classList.add('pairing-open');
   document.documentElement.style.width = '710px';
   document.body.style.width = '710px';
@@ -278,24 +282,31 @@ export function openPairingPanel(): void {
 }
 
 /**
- * Closes the pairing panel, collapsing the popup.
+ * Closes the pairing panel with a smooth slide-out transition.
  */
 export function closePairingPanel(): void {
-  document.body.classList.remove('pairing-open');
-  document.documentElement.style.width = '360px';
-  document.body.style.width = '360px';
-  const stage = document.getElementById('popup-stage');
-  if (stage) stage.style.width = '360px';
+  if (isClosingPanel || !document.body.classList.contains('pairing-open')) return;
+  isClosingPanel = true;
+  document.body.classList.add('pairing-closing');
   stopConnectionPolling();
+
+  setTimeout(() => {
+    document.body.classList.remove('pairing-open', 'pairing-closing');
+    document.documentElement.style.width = '360px';
+    document.body.style.width = '360px';
+    const stage = document.getElementById('popup-stage');
+    if (stage) stage.style.width = '360px';
+    isClosingPanel = false;
+  }, 200);
 }
 
 /**
  * Toggles the pairing panel open/closed.
  */
 export function togglePairingPanel(): void {
-  if (document.body.classList.contains('pairing-open')) {
+  if (document.body.classList.contains('pairing-open') && !document.body.classList.contains('pairing-closing')) {
     closePairingPanel();
-  } else {
+  } else if (!isClosingPanel) {
     openPairingPanel();
   }
 }
@@ -436,6 +447,13 @@ function setupPairingPanelActions(): void {
       closePairingPanel();
     });
   }
+
+  // Escape key to close pairing flyout
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('pairing-open')) {
+      closePairingPanel();
+    }
+  });
 
   // Copy Code Button
   const btnCopy = document.getElementById('btn-copy-code');
