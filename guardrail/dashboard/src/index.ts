@@ -76,6 +76,49 @@ function parseJwtProfile(token: string): TrustedContactProfile | null {
   }
 }
 
+/**
+ * Safely extracts authentication tokens passed back via OAuth 2.0 / OIDC redirects
+ * in either URL hash fragments (#access_token=... / #id_token=...) or query parameters
+ * (?token=... / ?id_token=... / ?session_token=...).
+ *
+ * Implements address bar sanitization to strip credentials from browser history immediately.
+ */
+export function extractOAuthRedirectToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    let extracted: string | null = null;
+
+    // 1. Inspect URL hash fragment (implicit flow / PKCE hash redirect)
+    if (window.location.hash && window.location.hash.length > 1) {
+      const hashClean = window.location.hash.replace(/^#\/?/, '');
+      const hashParams = new URLSearchParams(hashClean);
+      const token = hashParams.get('access_token') || hashParams.get('id_token') || hashParams.get('token');
+      if (token && token.trim()) {
+        extracted = token.trim();
+      }
+    }
+
+    // 2. Inspect query parameters (?token=... or ?id_token=... or ?session_token=...)
+    if (!extracted && window.location.search && window.location.search.length > 1) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const token = searchParams.get('token') || searchParams.get('id_token') || searchParams.get('access_token') || searchParams.get('session_token');
+      if (token && token.trim()) {
+        extracted = token.trim();
+      }
+    }
+
+    // 3. Immediately sanitize the browser address bar to prevent credential leakage in history/logs
+    if (extracted && window.history && typeof window.history.replaceState === 'function') {
+      const cleanPath = window.location.pathname || '/';
+      window.history.replaceState({}, document.title, cleanPath);
+    }
+
+    return extracted;
+  } catch {
+    return null;
+  }
+}
+
 // Auto-mount if running in standalone HTML document with #dashboard-app container
 if (typeof document !== 'undefined') {
   const defaultMountPoint = document.getElementById('dashboard-app');
@@ -83,9 +126,13 @@ if (typeof document !== 'undefined') {
     const envConfig = resolveEnvironmentConfig();
     const globalProvider = (globalThis as typeof globalThis & { __GUARDRAIL_AUTH_TOKEN_PROVIDER__?: TokenProvider })
       .__GUARDRAIL_AUTH_TOKEN_PROVIDER__;
-    const storageToken = typeof localStorage !== 'undefined'
+    const redirectToken = extractOAuthRedirectToken();
+    if (redirectToken && typeof localStorage !== 'undefined') {
+      localStorage.setItem('guardrail_auth_token', redirectToken);
+    }
+    const storageToken = redirectToken || (typeof localStorage !== 'undefined'
       ? (localStorage.getItem('guardrail_auth_token') || (envConfig.environment === 'development' ? 'test-contact-token' : null))
-      : null;
+      : null);
     const tokenProvider: TokenProvider | undefined = globalProvider ?? (storageToken ? () => storageToken : undefined);
     const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken) || {
       actorId: 'tc_carol',

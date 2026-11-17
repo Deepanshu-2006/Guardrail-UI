@@ -546,14 +546,17 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-top-rail {
       display: flex;
       align-items: center;
-      height: 26px;
+      height: 28px;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
       background: linear-gradient(180deg, #EFE7D8 0%, #E8DFCE 100%);
       border-bottom: 1px solid #D8CCB6;
       position: relative;
       z-index: 10;
       overflow: hidden;
       user-select: none;
-      border-radius: 14.5px 14.5px 0 0;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
     }
 
@@ -606,25 +609,35 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     /* Decision State Overrides */
     .gr-card-approved .gr-top-rail {
-      background: linear-gradient(180deg, #E5EFE4 0%, #D8E7D6 100%);
-      border-bottom-color: #C4D9C2;
+      background: linear-gradient(180deg, #244C29 0%, #1A391E 100%);
+      border-bottom: 1px solid #142F18;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
     .gr-card-approved .gr-ticker-segment {
-      color: #285E32;
+      color: #F0FDF4;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
     }
     .gr-card-approved .gr-ticker-sep {
-      color: #4C8957;
+      color: #86EFAC;
+      opacity: 0.9;
     }
 
     .gr-card-rejected .gr-top-rail {
-      background: linear-gradient(180deg, #F8EBE6 0%, #F0DCD5 100%);
-      border-bottom-color: #E2C5BC;
+      background: linear-gradient(180deg, #8E2816 0%, #761F0F 100%);
+      border-bottom: 1px solid #551509;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
     }
     .gr-card-rejected .gr-ticker-segment {
-      color: #8D3622;
+      color: #FFF2EE;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
     }
     .gr-card-rejected .gr-ticker-sep {
-      color: #BD5B44;
+      color: #F8B4A6;
+      opacity: 0.9;
     }
 
     .gr-card-cancelled .gr-top-rail {
@@ -1203,10 +1216,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
       text-align: center !important;
       box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
-      margin: -1px -1px 0 -1px !important;
-      width: calc(100% + 2px) !important;
-      border-top-left-radius: 14.5px !important;
-      border-top-right-radius: 14.5px !important;
+      margin: 0 !important;
+      width: 100% !important;
+      border-top-left-radius: 0 !important;
+      border-top-right-radius: 0 !important;
     }
 
     .gr-waiting-hero.gr-hero-approved {
@@ -1217,10 +1230,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
       text-align: center !important;
       box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
-      margin: -1px -1px 0 -1px !important;
-      width: calc(100% + 2px) !important;
-      border-top-left-radius: 14.5px !important;
-      border-top-right-radius: 14.5px !important;
+      margin: 0 !important;
+      width: 100% !important;
+      border-top-left-radius: 0 !important;
+      border-top-right-radius: 0 !important;
     }
 
     /* Topbar inside Hero */

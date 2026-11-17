@@ -69,7 +69,7 @@ Open Dashboard ──► Sign In (Google / Passkey) ──► Enter GR-INV Code 
 * **Authentication Modal & OIDC Verifier:** Clean modal displaying active identity session and token input ([auth-modal.ts](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/dashboard/src/components/auth-modal.ts)); server-side RS256 JWKS OIDC verifier ([oidc-token-verifier.ts](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/server/src/oidc-token-verifier.ts)).
 
 #### What Is Left
-* [ ] **Task 2.1 — 1-Click Consumer Social Login Buttons:** Replace developer profile switchers in production mode with direct **"Sign in with Google"** / **"Sign in with Apple"** OAuth redirect flows.
+* [x] **Task 2.1 — 1-Click Consumer Social Login Buttons:** Replace developer profile switchers in production mode with direct **"Sign in with Google"** / **"Sign in with Apple"** OAuth redirect flows. (Implemented: 1-Click Google and Apple branded buttons, URL hash/query OAuth redirect parameter extraction, instant address bar sanitization with `replaceState`, environment adaptation with dev simulation).
 * [ ] **Task 2.2 — Production Hosting Deployment Configuration:** Deploy dashboard to static CDN hosting (Firebase Hosting or Cloudflare Pages) with custom domain routing.
 
 ---

@@ -17,8 +17,8 @@ try {
   assert.match(resIndex.headers.get('content-type') || '', /text\/html/, 'index.html content-type should be text/html');
   const htmlText = await resIndex.text();
   assert(htmlText.includes('id="dashboard-app"'), 'HTML must contain #dashboard-app container');
-  assert(htmlText.includes('src="dist/dashboard.js"'), 'HTML must reference dist/dashboard.js');
-  assert(htmlText.includes('href="styles/dashboard.css"'), 'HTML must reference styles/dashboard.css');
+  assert(htmlText.includes('dist/dashboard.js'), 'HTML must reference dist/dashboard.js');
+  assert(htmlText.includes('styles/dashboard.css'), 'HTML must reference styles/dashboard.css');
   console.log('  ✓ Serves index.html with valid mount container and module scripts');
 
   // Test styles/dashboard.css

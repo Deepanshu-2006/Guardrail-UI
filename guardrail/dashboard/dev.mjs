@@ -11,6 +11,8 @@ const backendUrl = resolveBackendUrl(process.env, environment);
 const port = Number(process.env.PORT) || 5173;
 const host = process.env.HOST || '127.0.0.1';
 
+const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
+
 /**
  * Creates and starts the Guardrail Dashboard development server.
  * Watches source files in src/ for incremental rebuilds and serves index.html,
@@ -21,11 +23,11 @@ export async function startDevServer(options = {}) {
   const serverHost = options.host ?? host;
 
   const ctx = await esbuild.context({
-    entryPoints: ['src/index.ts'],
+    entryPoints: [path.join(dashboardDir, 'src/index.ts')],
     bundle: true,
     format: 'esm',
     target: 'es2022',
-    outfile: 'dist/dashboard.js',
+    outfile: path.join(dashboardDir, 'dist/dashboard.js'),
     sourcemap: true,
     define: {
       'process.env.GUARDRAIL_ENV': JSON.stringify(environment),
@@ -39,7 +41,7 @@ export async function startDevServer(options = {}) {
 
   // Serve static assets and bundled JavaScript
   const server = await ctx.serve({
-    servedir: '.',
+    servedir: dashboardDir,
     host: serverHost,
     port: serverPort,
   });
