@@ -131,7 +131,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const sessionSub = document.createElement('div');
   sessionSub.className = 'gd-auth-session-sub';
   if (props.profile?.isAuthenticated) {
-    sessionSub.textContent = `Actor: ${props.profile.actorId} • Role: ${props.profile.role}${props.profile.relationshipLabel ? ` (${props.profile.relationshipLabel})` : ''}`;
+    const roleText = props.profile.relationshipLabel || (props.profile.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : props.profile.role);
+    sessionSub.textContent = `Actor: ${props.profile.actorId} • ${roleText}`;
   } else {
     sessionSub.textContent = 'Viewing unauthenticated standalone interface. API actions require authorization.';
   }
@@ -140,7 +141,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   const statusBadge = document.createElement('div');
   statusBadge.className = `gd-auth-status-badge ${props.profile?.isAuthenticated ? 'active' : 'inactive'}`;
-  statusBadge.textContent = props.profile?.isAuthenticated ? 'Authenticated' : 'Signed Out';
+  statusBadge.innerHTML = props.profile?.isAuthenticated
+    ? '<span class="gd-btn-dot green"></span> Authenticated'
+    : '<span class="gd-btn-dot amber"></span> Signed Out';
   sessionRow.appendChild(statusBadge);
 
   sessionCard.appendChild(sessionRow);
@@ -288,7 +291,11 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     applyBtn.disabled = true;
     applyBtn.textContent = 'Verifying...';
 
-    const baseUrl = props.apiBaseUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000');
+    const baseUrl =
+      props.apiBaseUrl ||
+      (typeof window !== 'undefined' && window.location.port !== '5173'
+        ? window.location.origin
+        : 'http://127.0.0.1:3000');
     try {
       const res = await fetch(`${baseUrl}/api/v1/auth/me`, {
         method: 'GET',
@@ -325,7 +332,11 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   }
 
   // Fetch auth config on mount
-  const baseUrl = props.apiBaseUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000');
+  const baseUrl =
+    props.apiBaseUrl ||
+    (typeof window !== 'undefined' && window.location.port !== '5173'
+      ? window.location.origin
+      : 'http://127.0.0.1:3000');
   fetch(`${baseUrl}/api/v1/auth/config`)
     .then((r) => r.json())
     .then((data: { success: boolean; data?: AuthConfigResponse }) => {

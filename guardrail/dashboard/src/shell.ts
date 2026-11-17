@@ -1609,7 +1609,13 @@ export class DashboardShell {
 
     const modal = renderAuthModal({
       profile: this.state.contactProfile,
-      apiBaseUrl: (this.apiClient as any)?.options?.baseUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000'),
+      apiBaseUrl:
+        typeof (this.apiClient as any)?.getBaseUrl === 'function'
+          ? (this.apiClient as any).getBaseUrl()
+          : (this.apiClient as any)?.options?.baseUrl ??
+            (typeof window !== 'undefined' && window.location.port !== '5173'
+              ? window.location.origin
+              : 'http://127.0.0.1:3000'),
       onAuthSuccess: (token, profile) => {
         this.handleAuthSuccess(token, profile);
       },

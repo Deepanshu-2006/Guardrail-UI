@@ -677,7 +677,10 @@ export async function runDay12Verification(): Promise<void> {
 
       // Submit decision over REAL HTTP: POST /api/v1/approvals/:id/decide
       confirmSubmitBtn?.click();
-      await new Promise((r) => setTimeout(r, 20));
+      for (let i = 0; i < 60 && shell.getState().isSubmittingDecision; i++) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      await new Promise((r) => setTimeout(r, 50));
 
       // 1. Success feedback preserved
       const successBanner = rootElement.querySelector('.gd-decision-success-banner');
@@ -735,7 +738,10 @@ export async function runDay12Verification(): Promise<void> {
       // Submit rejection over REAL HTTP
       const confirmSubmitBtn = rootElement.querySelector('.gd-btn-confirm-submit');
       confirmSubmitBtn?.click();
-      await new Promise((r) => setTimeout(r, 20));
+      for (let i = 0; i < 60 && shell.getState().isSubmittingDecision; i++) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      await new Promise((r) => setTimeout(r, 50));
 
       const statusPill = rootElement.querySelector('.gd-detail-status-pill');
       assertEquals(statusPill?.textContent, 'REJECTED', 'Detail status pill updated to REJECTED');
