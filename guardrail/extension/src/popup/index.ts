@@ -266,17 +266,27 @@ function setupPopupActions(): void {
 
 let isClosingPanel = false;
 
+function getPairingButtonDefaultText(): string {
+  const isPaired = document.getElementById('onboarding-banner')?.classList.contains('completed');
+  return isPaired ? 'Pairing Info →' : 'Setup →';
+}
+
 /**
  * Opens the pairing panel expanding to the left with cinematic ease.
  */
 export function openPairingPanel(): void {
   if (isClosingPanel) return;
   document.body.classList.remove('pairing-closing');
+  document.documentElement.classList.add('pairing-open');
   document.body.classList.add('pairing-open');
   document.documentElement.style.width = '710px';
   document.body.style.width = '710px';
   const stage = document.getElementById('popup-stage');
   if (stage) stage.style.width = '710px';
+
+  const btn = document.getElementById('btn-open-onboarding');
+  if (btn) btn.textContent = 'Close ✕';
+
   void loadOrGenerateInvitation();
   startConnectionPolling();
 }
@@ -290,14 +300,18 @@ export function closePairingPanel(): void {
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
 
+  const btn = document.getElementById('btn-open-onboarding');
+  if (btn) btn.textContent = getPairingButtonDefaultText();
+
   setTimeout(() => {
+    document.documentElement.classList.remove('pairing-open');
     document.body.classList.remove('pairing-open', 'pairing-closing');
     document.documentElement.style.width = '360px';
     document.body.style.width = '360px';
     const stage = document.getElementById('popup-stage');
     if (stage) stage.style.width = '360px';
     isClosingPanel = false;
-  }, 200);
+  }, 300);
 }
 
 /**

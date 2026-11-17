@@ -9,72 +9,7 @@
 <body>
   <div class="popup-stage" id="popup-stage">
 
-    <!-- LEFT PANEL: Caretaker Pairing Flyout -->
-    <aside class="pairing-panel" id="pairing-panel" aria-label="Caretaker Pairing">
-      <div class="pairing-header">
-        <div class="pairing-brand">
-          <div class="pairing-badge-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#273121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              <path d="M9 12l2 2 4-4"></path>
-            </svg>
-          </div>
-          <div class="pairing-header-text">
-            <h2 class="pairing-title">Connect Caretaker</h2>
-            <p class="pairing-subtitle">One-time device pairing</p>
-          </div>
-        </div>
-        <button type="button" class="btn-close-pairing" id="btn-close-pairing" aria-label="Close pairing panel" title="Close">✕</button>
-      </div>
-
-      <!-- QR Code Card -->
-      <section class="pairing-card qr-card">
-        <div class="card-kicker-row">
-          <span class="card-kicker">SCAN WITH PHONE CAMERA</span>
-        </div>
-        <div class="qr-code-wrapper" id="qr-code-container">
-          <div class="qr-loading-placeholder">
-            <div class="qr-spinner"></div>
-            <span>Generating code...</span>
-          </div>
-        </div>
-        <p class="qr-helper-text">Point your Caretaker's phone camera at this QR code to connect instantly.</p>
-      </section>
-
-      <!-- Code Display Card -->
-      <section class="pairing-card code-card">
-        <div class="pairing-label-row">
-          <span class="pairing-kicker">OR ENTER PAIRING CODE</span>
-          <span class="expiry-pill" id="invite-expiry-pill">7 days</span>
-        </div>
-        <div class="pairing-code-box">
-          <span class="pairing-code-text" id="pairing-code-display">GR-INV-••••-••••</span>
-          <button type="button" class="btn-copy-code" id="btn-copy-code" aria-label="Copy invitation code">Copy</button>
-        </div>
-      </section>
-
-      <!-- Send / Share Card -->
-      <section class="pairing-card share-card">
-        <div class="pairing-label-row">
-          <span class="pairing-kicker">SEND TO CARETAKER</span>
-        </div>
-        <div class="share-input-row">
-          <input type="text" id="caretaker-contact-input" placeholder="Caretaker email or name..." class="gd-input-field" autocomplete="off" />
-          <button type="button" id="btn-send-invitation" class="btn-send-invite">Send</button>
-        </div>
-        <div class="invite-feedback" id="invite-feedback" style="display:none"></div>
-      </section>
-
-      <!-- Live Handshake Status -->
-      <div class="pairing-footer">
-        <div class="pairing-live-status waiting" id="pairing-live-status">
-          <span class="pulse-ring"><span class="pulse-dot"></span></span>
-          <span class="status-msg" id="pairing-status-msg">Waiting for Caretaker to connect...</span>
-        </div>
-      </div>
-    </aside>
-
-    <!-- RIGHT PANEL: Main Extension Popup -->
+    <!-- PRIMARY MAIN POPUP (Placed first; anchored to right via row-reverse) -->
     <div class="popup-container">
       <!-- Header: Refined Brand & Badges -->
       <header class="header">
@@ -180,6 +115,72 @@
         <span class="footer-text">Zero credentials collected</span>
       </footer>
     </div>
+
+    <!-- LEFT PANEL: Caretaker Pairing Flyout (Reveals to left in row-reverse) -->
+    <aside class="pairing-panel" id="pairing-panel" aria-label="Caretaker Pairing">
+      <div class="pairing-header">
+        <div class="pairing-brand">
+          <div class="pairing-badge-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#273121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+          </div>
+          <div class="pairing-header-text">
+            <h2 class="pairing-title">Connect Caretaker</h2>
+            <p class="pairing-subtitle">One-time device pairing</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-pairing" id="btn-close-pairing" aria-label="Close pairing panel" title="Close">✕</button>
+      </div>
+
+      <!-- QR Code Card -->
+      <section class="pairing-card qr-card">
+        <div class="card-kicker-row">
+          <span class="card-kicker">SCAN WITH PHONE CAMERA</span>
+        </div>
+        <div class="qr-code-wrapper" id="qr-code-container">
+          <div class="qr-loading-placeholder">
+            <div class="qr-spinner"></div>
+            <span>Generating code...</span>
+          </div>
+        </div>
+        <p class="qr-helper-text">Point your Caretaker's phone camera at this QR code to connect instantly.</p>
+      </section>
+
+      <!-- Code Display Card -->
+      <section class="pairing-card code-card">
+        <div class="pairing-label-row">
+          <span class="pairing-kicker">OR ENTER PAIRING CODE</span>
+          <span class="expiry-pill" id="invite-expiry-pill">7 days</span>
+        </div>
+        <div class="pairing-code-box">
+          <span class="pairing-code-text" id="pairing-code-display">GR-INV-••••-••••</span>
+          <button type="button" class="btn-copy-code" id="btn-copy-code" aria-label="Copy invitation code">Copy</button>
+        </div>
+      </section>
+
+      <!-- Send / Share Card -->
+      <section class="pairing-card share-card">
+        <div class="pairing-label-row">
+          <span class="pairing-kicker">SEND TO CARETAKER</span>
+        </div>
+        <div class="share-input-row">
+          <input type="text" id="caretaker-contact-input" placeholder="Caretaker email or name..." class="gd-input-field" autocomplete="off" />
+          <button type="button" id="btn-send-invitation" class="btn-send-invite">Send</button>
+        </div>
+        <div class="invite-feedback" id="invite-feedback" style="display:none"></div>
+      </section>
+
+      <!-- Live Handshake Status -->
+      <div class="pairing-footer">
+        <div class="pairing-live-status waiting" id="pairing-live-status">
+          <span class="pulse-ring"><span class="pulse-dot"></span></span>
+          <span class="status-msg" id="pairing-status-msg">Waiting for Caretaker to connect...</span>
+        </div>
+      </div>
+    </aside>
+
   </div>
 
   <script src="popup.js"></script>

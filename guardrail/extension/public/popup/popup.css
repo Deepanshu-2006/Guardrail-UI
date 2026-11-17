@@ -34,11 +34,23 @@
   padding: 0;
 }
 
-html, body {
+html {
   margin: 0;
   padding: 0;
   width: 360px;
-  max-width: 360px;
+  background-color: var(--gd-bg-canvas);
+  color: var(--gd-text-primary);
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 360px;
   background-color: var(--gd-bg-canvas);
   color: var(--gd-text-primary);
   font-family: var(--gd-font-sans);
@@ -49,6 +61,7 @@ html, body {
   overflow-x: hidden;
 }
 
+html.pairing-open,
 body.pairing-open {
   width: 710px;
   max-width: 710px;
@@ -56,9 +69,8 @@ body.pairing-open {
 
 .popup-stage {
   display: flex;
-  flex-direction: row;
+  flex-direction: row-reverse;
   width: 360px;
-  max-width: 360px;
   min-height: 100%;
   overflow: hidden;
 }
@@ -90,22 +102,23 @@ body.pairing-open .pairing-panel {
   gap: 11px;
   background-color: var(--gd-bg-canvas);
   border-right: 1px solid rgba(39, 49, 33, 0.12);
+  box-shadow: 4px 0 24px rgba(39, 49, 33, 0.07);
   box-sizing: border-box;
-  animation: gdPairingSlideIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: gdPairingSlideIn 0.64s cubic-bezier(0.12, 1, 0.22, 1) forwards;
   will-change: transform, opacity;
   backface-visibility: hidden;
   transform: translateZ(0);
 }
 
 body.pairing-closing .pairing-panel {
-  animation: gdPairingSlideOut 0.20s cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
+  animation: gdPairingSlideOut 0.30s cubic-bezier(0.35, 0, 0.25, 1) forwards;
   pointer-events: none;
 }
 
 @keyframes gdPairingSlideIn {
   0% {
     opacity: 0;
-    transform: translate3d(-30px, 0, 0);
+    transform: translate3d(-38px, 0, 0);
   }
   100% {
     opacity: 1;
@@ -124,36 +137,44 @@ body.pairing-closing .pairing-panel {
   }
 }
 
-/* Staggered micro-cascades for high cinematic fidelity */
+/* Staggered micro-cascades for slow, cinematic reveal */
 body.pairing-open .pairing-header {
-  animation: gdCardCascade 0.32s cubic-bezier(0.16, 1, 0.3, 1) 0.02s backwards;
+  animation: gdCardCascade 0.54s cubic-bezier(0.12, 1, 0.22, 1) 0.06s backwards;
 }
 
 body.pairing-open .qr-card {
-  animation: gdCardCascade 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.06s backwards;
+  animation: gdCardCascade 0.58s cubic-bezier(0.12, 1, 0.22, 1) 0.14s backwards;
 }
 
 body.pairing-open .code-card {
-  animation: gdCardCascade 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.10s backwards;
+  animation: gdCardCascade 0.60s cubic-bezier(0.12, 1, 0.22, 1) 0.22s backwards;
 }
 
 body.pairing-open .share-card {
-  animation: gdCardCascade 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.14s backwards;
+  animation: gdCardCascade 0.62s cubic-bezier(0.12, 1, 0.22, 1) 0.30s backwards;
 }
 
 body.pairing-open .pairing-footer {
-  animation: gdCardCascade 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.18s backwards;
+  animation: gdCardCascade 0.64s cubic-bezier(0.12, 1, 0.22, 1) 0.38s backwards;
 }
 
 @keyframes gdCardCascade {
   0% {
     opacity: 0;
-    transform: translate3d(0, 9px, 0);
+    transform: translate3d(-16px, 12px, 0);
   }
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
   }
+}
+
+body.pairing-closing .pairing-card,
+body.pairing-closing .pairing-header,
+body.pairing-closing .pairing-footer {
+  transition: opacity 0.24s cubic-bezier(0.35, 0, 0.25, 1), transform 0.26s cubic-bezier(0.35, 0, 0.25, 1);
+  opacity: 0;
+  transform: translate3d(-14px, 0, 0);
 }
 
 .pairing-header {
@@ -275,13 +296,13 @@ body.pairing-open .pairing-footer {
   width: 100%;
   height: 100%;
   display: block;
-  animation: gdQrReveal 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: gdQrReveal 0.52s cubic-bezier(0.12, 1, 0.22, 1) 0.16s backwards;
 }
 
 @keyframes gdQrReveal {
   0% {
     opacity: 0;
-    transform: scale(0.94);
+    transform: scale(0.90);
   }
   100% {
     opacity: 1;
@@ -492,12 +513,20 @@ body.pairing-open .pairing-footer {
 
 .popup-container {
   width: 360px;
+  min-width: 360px;
+  max-width: 360px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   padding: 18px 18px 16px;
   gap: 12px;
   background-color: var(--gd-bg-canvas);
+  box-sizing: border-box;
+}
+
+body.pairing-open .onboarding-banner {
+  border-color: rgba(39, 49, 33, 0.28);
+  box-shadow: 0 0 0 1px rgba(84, 104, 62, 0.16);
 }
 
 /* -----------------------------------------------------------------------------
