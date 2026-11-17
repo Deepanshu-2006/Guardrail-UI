@@ -2,13 +2,11 @@
  * Guardrail Trusted-Contact Dashboard - Caretaker Auth & Identity Modal
  *
  * Implements production-ready authentication management:
- * 1. OAuth 2.0 PKCE / OIDC identity provider integration
- * 2. Real-time token verification via /api/v1/auth/me
- * 3. Zero-friction development profile switcher (test-contact-token, test-ward-token)
- * 4. Custom Bearer JWT token inspection and storage
- * 5. Clean sign-out and session revocation
- *
- * Adheres strictly to the Warm Linen, Deep Forest Olive, and Muted Amber design system.
+ * 1. Real-time token verification via /api/v1/auth/me
+ * 2. Zero-friction development profile switcher (test-contact-token, test-ward-token)
+ * 3. Custom Bearer JWT token inspection and storage
+ * 4. Clean sign-out and session revocation
+ * 5. Minimal, editorial typography adhering strictly to the Warm Linen and Deep Forest design language.
  */
 
 import { TrustedContactProfile } from '../types.js';
@@ -55,29 +53,20 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const header = document.createElement('div');
   header.className = 'gd-auth-modal-header';
 
-  const headerLeft = document.createElement('div');
-  headerLeft.className = 'gd-auth-modal-header-left';
-
-  const iconWrapper = document.createElement('div');
-  iconWrapper.className = 'gd-auth-modal-icon-badge';
-  iconWrapper.appendChild(createIcon('shield', 'gd-auth-shield-icon'));
-
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-auth-modal-title-group';
 
   const title = document.createElement('h2');
   title.id = 'gd-auth-modal-title';
   title.className = 'gd-auth-modal-title';
-  title.textContent = 'Caretaker Authentication';
+  title.textContent = 'Authentication';
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-auth-modal-subtitle';
-  subtitle.textContent = 'Manage verified identity session and trusted contact authorization.';
+  subtitle.textContent = 'Manage identity session and trusted contact access.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
-  headerLeft.appendChild(iconWrapper);
-  headerLeft.appendChild(titleGroup);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -89,7 +78,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     props.onClose();
   });
 
-  header.appendChild(headerLeft);
+  header.appendChild(titleGroup);
   header.appendChild(closeBtn);
   modal.appendChild(header);
 
@@ -97,57 +86,60 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const body = document.createElement('div');
   body.className = 'gd-auth-modal-body';
 
-  // 1. Current Session Banner
-  const sessionCard = document.createElement('div');
-  sessionCard.className = 'gd-auth-session-card';
-
-  const sessionHeader = document.createElement('div');
-  sessionHeader.className = 'gd-auth-section-label';
-  sessionHeader.textContent = 'CURRENT SESSION STATUS';
-  sessionCard.appendChild(sessionHeader);
+  // 1. Active Session
+  const sessionSection = document.createElement('div');
+  sessionSection.className = 'gd-auth-session-section';
 
   const sessionRow = document.createElement('div');
   sessionRow.className = 'gd-auth-session-row';
 
-  const avatar = document.createElement('div');
-  avatar.className = 'gd-auth-avatar';
-  if (props.profile?.isAuthenticated) {
-    avatar.textContent = (props.profile.actorId.slice(3, 5) || 'TC').toUpperCase();
-  } else {
-    avatar.appendChild(createIcon('lock', 'gd-auth-lock-icon'));
-  }
-  sessionRow.appendChild(avatar);
-
   const sessionDetails = document.createElement('div');
   sessionDetails.className = 'gd-auth-session-details';
+
+  const sessionLabel = document.createElement('span');
+  sessionLabel.className = 'gd-auth-eyebrow';
+  sessionLabel.textContent = 'Active session';
 
   const sessionName = document.createElement('div');
   sessionName.className = 'gd-auth-session-name';
   sessionName.textContent = props.profile?.isAuthenticated
     ? (props.profile.email || props.profile.actorId)
-    : 'Not Authenticated (Guest)';
-  sessionDetails.appendChild(sessionName);
+    : 'Not authenticated';
 
   const sessionSub = document.createElement('div');
   sessionSub.className = 'gd-auth-session-sub';
   if (props.profile?.isAuthenticated) {
     const roleText = props.profile.relationshipLabel || (props.profile.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : props.profile.role);
-    sessionSub.textContent = `Actor: ${props.profile.actorId} • ${roleText}`;
+    sessionSub.textContent = `${roleText} · Local environment`;
   } else {
-    sessionSub.textContent = 'Viewing unauthenticated standalone interface. API actions require authorization.';
+    sessionSub.textContent = 'Guest mode · Actions require authentication';
   }
+
+  sessionDetails.appendChild(sessionLabel);
+  sessionDetails.appendChild(sessionName);
   sessionDetails.appendChild(sessionSub);
   sessionRow.appendChild(sessionDetails);
 
-  const statusBadge = document.createElement('div');
-  statusBadge.className = `gd-auth-status-badge ${props.profile?.isAuthenticated ? 'active' : 'inactive'}`;
-  statusBadge.innerHTML = props.profile?.isAuthenticated
-    ? '<span class="gd-btn-dot green"></span> Authenticated'
-    : '<span class="gd-btn-dot amber"></span> Signed Out';
-  sessionRow.appendChild(statusBadge);
+  if (props.profile?.isAuthenticated) {
+    const signOutBtn = document.createElement('button');
+    signOutBtn.type = 'button';
+    signOutBtn.className = 'gd-auth-signout-link';
+    signOutBtn.textContent = 'Sign out';
+    signOutBtn.addEventListener('click', () => {
+      cleanup();
+      props.onSignOut();
+      props.onClose();
+    });
+    sessionRow.appendChild(signOutBtn);
+  }
 
-  sessionCard.appendChild(sessionRow);
-  body.appendChild(sessionCard);
+  sessionSection.appendChild(sessionRow);
+  body.appendChild(sessionSection);
+
+  // Divider
+  const divider1 = document.createElement('hr');
+  divider1.className = 'gd-auth-divider';
+  body.appendChild(divider1);
 
   // 2. Error message banner (initially hidden)
   const errorBanner = document.createElement('div');
@@ -155,38 +147,41 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   errorBanner.style.display = 'none';
   body.appendChild(errorBanner);
 
-  // 3. Provider Discovery & Config
-  const providerSection = document.createElement('div');
-  providerSection.className = 'gd-auth-section';
-
-  const providerLabel = document.createElement('div');
-  providerLabel.className = 'gd-auth-section-label';
-  providerLabel.textContent = 'IDENTITY PROVIDER (OIDC / SSO)';
-  providerSection.appendChild(providerLabel);
-
+  // 3. Provider Discovery (OIDC / SSO if configured)
   const providerContent = document.createElement('div');
   providerContent.className = 'gd-auth-provider-content';
-  providerContent.textContent = 'Discovering authentication endpoints...';
-  providerSection.appendChild(providerContent);
-  body.appendChild(providerSection);
+  body.appendChild(providerContent);
 
   // 4. Quick Development Switcher
   const devSection = document.createElement('div');
   devSection.className = 'gd-auth-section';
 
-  const devLabel = document.createElement('div');
-  devLabel.className = 'gd-auth-section-label';
-  devLabel.textContent = 'DEVELOPMENT PROFILE SWITCHER';
-  devSection.appendChild(devLabel);
+  const devHeader = document.createElement('div');
+  devHeader.className = 'gd-auth-section-header';
+
+  const devTitle = document.createElement('span');
+  devTitle.className = 'gd-auth-section-title';
+  devTitle.textContent = 'Switch profile';
+
+  const devHint = document.createElement('span');
+  devHint.className = 'gd-auth-section-hint';
+  devHint.textContent = 'Development shortcuts';
+
+  devHeader.appendChild(devTitle);
+  devHeader.appendChild(devHint);
+  devSection.appendChild(devHeader);
 
   const devButtonsContainer = document.createElement('div');
   devButtonsContainer.className = 'gd-auth-dev-buttons';
 
+  const isCarol = props.profile?.actorId === 'tc_carol' && props.profile?.isAuthenticated;
+  const isAlice = props.profile?.actorId === 'test-ward' && props.profile?.isAuthenticated;
+
   // Caretaker button
   const caretakerBtn = document.createElement('button');
   caretakerBtn.type = 'button';
-  caretakerBtn.className = 'gd-auth-btn gd-auth-btn-secondary';
-  caretakerBtn.innerHTML = '<span class="gd-btn-dot amber"></span> Switch to Carol (Caretaker)';
+  caretakerBtn.className = `gd-auth-chip ${isCarol ? 'selected' : ''}`;
+  caretakerBtn.textContent = 'Carol (Caretaker)';
   caretakerBtn.addEventListener('click', () => {
     void verifyAndApplyToken('test-contact-token');
   });
@@ -195,8 +190,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   // Ward user button
   const wardBtn = document.createElement('button');
   wardBtn.type = 'button';
-  wardBtn.className = 'gd-auth-btn gd-auth-btn-secondary';
-  wardBtn.innerHTML = '<span class="gd-btn-dot green"></span> Switch to Alice (Ward)';
+  wardBtn.className = `gd-auth-chip ${isAlice ? 'selected' : ''}`;
+  wardBtn.textContent = 'Alice (Ward)';
   wardBtn.addEventListener('click', () => {
     void verifyAndApplyToken('test-ward-token');
   });
@@ -205,29 +200,44 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   devSection.appendChild(devButtonsContainer);
   body.appendChild(devSection);
 
+  // Divider
+  const divider2 = document.createElement('hr');
+  divider2.className = 'gd-auth-divider';
+  body.appendChild(divider2);
+
   // 5. Custom Bearer Token Input
   const tokenSection = document.createElement('div');
   tokenSection.className = 'gd-auth-section';
 
-  const tokenLabel = document.createElement('div');
-  tokenLabel.className = 'gd-auth-section-label';
-  tokenLabel.textContent = 'CUSTOM BEARER TOKEN';
-  tokenSection.appendChild(tokenLabel);
+  const tokenHeader = document.createElement('div');
+  tokenHeader.className = 'gd-auth-section-header';
+
+  const tokenTitle = document.createElement('span');
+  tokenTitle.className = 'gd-auth-section-title';
+  tokenTitle.textContent = 'Bearer token';
+
+  const tokenHint = document.createElement('span');
+  tokenHint.className = 'gd-auth-section-hint';
+  tokenHint.textContent = 'Manual JWT override';
+
+  tokenHeader.appendChild(tokenTitle);
+  tokenHeader.appendChild(tokenHint);
+  tokenSection.appendChild(tokenHeader);
 
   const tokenInputRow = document.createElement('div');
-  tokenInputRow.className = 'gd-auth-input-row';
+  tokenInputRow.className = 'gd-auth-input-group';
 
   const tokenInput = document.createElement('input');
   tokenInput.type = 'text';
   tokenInput.className = 'gd-auth-input';
-  tokenInput.placeholder = 'Paste JWT or Bearer authorization token...';
+  tokenInput.placeholder = 'Paste JWT or authorization token...';
   tokenInput.autocomplete = 'off';
   tokenInput.spellcheck = false;
 
   const applyBtn = document.createElement('button');
   applyBtn.type = 'button';
-  applyBtn.className = 'gd-auth-btn gd-auth-btn-primary';
-  applyBtn.textContent = 'Apply Token';
+  applyBtn.className = 'gd-auth-btn-apply';
+  applyBtn.textContent = 'Apply';
   applyBtn.addEventListener('click', () => {
     const rawVal = tokenInput.value.trim();
     if (!rawVal) {
@@ -249,30 +259,17 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const footer = document.createElement('div');
   footer.className = 'gd-auth-modal-footer';
 
-  if (props.profile?.isAuthenticated) {
-    const signOutBtn = document.createElement('button');
-    signOutBtn.type = 'button';
-    signOutBtn.className = 'gd-auth-btn gd-auth-btn-danger';
-    signOutBtn.textContent = 'Sign Out';
-    signOutBtn.addEventListener('click', () => {
-      cleanup();
-      props.onSignOut();
-      props.onClose();
-    });
-    footer.appendChild(signOutBtn);
-  }
-
   const closeFooterBtn = document.createElement('button');
   closeFooterBtn.type = 'button';
-  closeFooterBtn.className = 'gd-auth-btn gd-auth-btn-secondary';
-  closeFooterBtn.textContent = 'Close';
+  closeFooterBtn.className = 'gd-auth-btn-close';
+  closeFooterBtn.textContent = 'Done';
   closeFooterBtn.addEventListener('click', () => {
     cleanup();
     props.onClose();
   });
   footer.appendChild(closeFooterBtn);
-
   modal.appendChild(footer);
+
   backdrop.appendChild(modal);
 
   // --- Helper Functions ---
@@ -309,7 +306,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       if (!res.ok || !body.success || !body.data) {
         showError(body.error?.message || `Server rejected token (HTTP ${res.status}).`);
         applyBtn.disabled = false;
-        applyBtn.textContent = 'Apply Token';
+        applyBtn.textContent = 'Apply';
         return;
       }
 
@@ -327,7 +324,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Network error communicating with authentication service.');
       applyBtn.disabled = false;
-      applyBtn.textContent = 'Apply Token';
+      applyBtn.textContent = 'Apply';
     }
   }
 
@@ -346,8 +343,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
         if (config.oidcConfigured && config.authUrl) {
           const ssoBtn = document.createElement('button');
           ssoBtn.type = 'button';
-          ssoBtn.className = 'gd-auth-btn gd-auth-btn-primary full-width';
-          ssoBtn.textContent = `Sign In via ${config.issuer ? new URL(config.issuer).hostname : 'Identity Provider'}`;
+          ssoBtn.className = 'gd-auth-chip full-width';
+          ssoBtn.textContent = `Sign in with ${config.issuer ? new URL(config.issuer).hostname : 'Identity Provider'}`;
           ssoBtn.addEventListener('click', () => {
             const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
             const targetUrl = new URL(config.authUrl!);
@@ -361,21 +358,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
             }
           });
           providerContent.appendChild(ssoBtn);
-        } else {
-          const infoBox = document.createElement('div');
-          infoBox.className = 'gd-auth-info-note';
-          infoBox.innerHTML = `
-            <strong>OIDC Provider:</strong> Running in local development mode.
-            <div style="font-size: 11px; margin-top: 4px; color: var(--gd-text-secondary);">
-              To link Okta, Google Identity, Clerk, or Auth0, set <code>GUARDRAIL_OIDC_ISSUER</code> and <code>GUARDRAIL_OIDC_AUDIENCE</code> in the backend environment.
-            </div>
-          `;
-          providerContent.appendChild(infoBox);
         }
       }
     })
     .catch(() => {
-      providerContent.textContent = 'Authentication endpoint discovery unavailable (offline or proxy blocked).';
+      // Keep quiet in dev
+      providerContent.innerHTML = '';
     });
 
   // Keyboard accessibility
@@ -401,4 +389,3 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   return backdrop;
 }
-
