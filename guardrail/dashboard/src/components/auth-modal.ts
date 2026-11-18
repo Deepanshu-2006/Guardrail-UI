@@ -62,12 +62,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const title = document.createElement('h2');
   title.id = 'gd-auth-modal-title';
   title.className = 'gd-auth-modal-title';
-  title.textContent = isAuth ? 'Account & Session' : 'Sign in to Guardrail';
+  title.textContent = isAuth ? 'Account' : 'Sign in to Guardrail';
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-auth-modal-subtitle';
   subtitle.textContent = isAuth
-    ? 'Manage your active identity session and trusted contact access.'
+    ? 'Signed in as a trusted contact.'
     : 'Access your trusted contact dashboard.';
 
   titleGroup.appendChild(title);
@@ -91,50 +91,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const body = document.createElement('div');
   body.className = 'gd-auth-modal-body';
 
-  // 1. Active Session (only rendered when authenticated)
-  const sessionSection = document.createElement('div');
-  sessionSection.className = 'gd-auth-session-section';
-  if (!isAuth) {
-    sessionSection.style.display = 'none';
-  }
-
-  const sessionRow = document.createElement('div');
-  sessionRow.className = 'gd-auth-session-row';
-
-  const sessionDetails = document.createElement('div');
-  sessionDetails.className = 'gd-auth-session-details';
-
-  const sessionLabel = document.createElement('span');
-  sessionLabel.className = 'gd-auth-eyebrow';
-  sessionLabel.textContent = 'Active session';
-
-  const sessionName = document.createElement('div');
-  sessionName.className = 'gd-auth-session-name';
-  sessionName.textContent = props.profile?.fullName || props.profile?.email || props.profile?.actorId || 'Not authenticated';
-
-  const sessionSub = document.createElement('div');
-  sessionSub.className = 'gd-auth-session-sub';
-  if (isAuth) {
-    const roleText = props.profile?.relationshipLabel || (props.profile?.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : props.profile?.role);
-    const emailPrefix = props.profile?.email ? `${props.profile.email} · ` : '';
-    sessionSub.textContent = `${emailPrefix}${roleText} · Secure session`;
-  } else {
-    sessionSub.textContent = 'Sign in to access trusted contact approvals';
-  }
-
-  sessionDetails.appendChild(sessionLabel);
-  sessionDetails.appendChild(sessionName);
-  sessionDetails.appendChild(sessionSub);
-  const sessionLeft = document.createElement('div');
-  sessionLeft.className = 'gd-auth-session-left';
-  sessionLeft.style.display = 'flex';
-  sessionLeft.style.alignItems = 'center';
-  sessionLeft.style.gap = '12px';
-
-  const sessionAvatar = document.createElement('div');
-  sessionAvatar.className = 'gd-account-avatar gd-auth-session-avatar';
-  sessionAvatar.setAttribute('aria-hidden', 'true');
-
+  // 1. Authenticated Profile Card (Clean, minimal identity presentation)
   const isDefaultAvatar = (url?: string | null): boolean => {
     if (!url) return true;
     return (
@@ -145,128 +102,53 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     );
   };
 
-  const photoUrl = props.profile?.avatarUrl || props.profile?.imageUrl;
-  if (photoUrl && !isDefaultAvatar(photoUrl)) {
+  const storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+  const photoUrl =
+    props.profile?.avatarUrl ||
+    props.profile?.imageUrl ||
+    (storedAvatar && !isDefaultAvatar(storedAvatar) ? storedAvatar : null);
+  const currentEmail = props.profile?.email || 'deepanshukhatri20061972@gmail.com';
+  const fullName = props.profile?.fullName || 'Deepanshu Khatri';
+  const roleLabel =
+    props.profile?.relationshipLabel ||
+    (props.profile?.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'Trusted Contact');
+
+  const profileCard = document.createElement('div');
+  profileCard.className = 'gd-auth-profile-card';
+
+  // Identity Row: Avatar + Details
+  const profileMain = document.createElement('div');
+  profileMain.className = 'gd-auth-profile-main';
+
+  // Avatar + photo update button
+  const avatarWrap = document.createElement('div');
+  avatarWrap.className = 'gd-auth-profile-avatar-wrap';
+
+  const avatarContainer = document.createElement('div');
+  avatarContainer.className = 'gd-auth-profile-avatar';
+  avatarContainer.setAttribute('aria-hidden', 'true');
+
+  const renderAvatarImg = (src: string) => {
+    while (avatarContainer.firstChild) {
+      avatarContainer.removeChild(avatarContainer.firstChild);
+    }
     const img = document.createElement('img');
-    img.className = 'gd-account-avatar-img';
-    img.src = photoUrl;
-    img.alt = props.profile?.fullName || props.profile?.email || 'Profile photo';
+    img.src = src;
+    img.alt = fullName;
     img.onerror = () => {
       img.remove();
-      if (!sessionAvatar.hasChildNodes()) {
-        sessionAvatar.appendChild(createIcon('user', 'gd-avatar-icon'));
+      if (!avatarContainer.hasChildNodes()) {
+        avatarContainer.appendChild(createIcon('user', 'gd-avatar-icon'));
       }
     };
-    sessionAvatar.appendChild(img);
-  } else {
-    sessionAvatar.appendChild(createIcon('user', 'gd-avatar-icon'));
-  }
-
-  sessionLeft.appendChild(sessionAvatar);
-  sessionLeft.appendChild(sessionDetails);
-  sessionRow.appendChild(sessionLeft);
-
-  if (props.profile?.isAuthenticated) {
-    const signOutBtn = document.createElement('button');
-    signOutBtn.type = 'button';
-    signOutBtn.className = 'gd-auth-signout-link';
-    signOutBtn.textContent = 'Sign out';
-    signOutBtn.addEventListener('click', async () => {
-      try {
-        const clerk = await getClerk();
-        if (clerk) {
-          await clerk.signOut();
-        }
-      } catch (err) {
-        console.warn('[Clerk] Sign out failed:', err);
-      }
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('guardrail_auth_token');
-        localStorage.removeItem('guardrail_user_email');
-        localStorage.removeItem('guardrail_user_avatar');
-      }
-      cleanup();
-      props.onSignOut();
-      props.onClose();
-    });
-    sessionRow.appendChild(signOutBtn);
-  }
-
-  sessionSection.appendChild(sessionRow);
-  body.appendChild(sessionSection);
-
-  // Divider (only shown when authenticated to separate active session from details)
-  const divider1 = document.createElement('hr');
-  divider1.className = 'gd-auth-divider';
-  if (!isAuth) {
-    divider1.style.display = 'none';
-  }
-  body.appendChild(divider1);
-
-  // 2. Error message banner (initially hidden)
-  const errorBanner = document.createElement('div');
-  errorBanner.className = 'gd-auth-error-banner';
-  errorBanner.style.display = 'none';
-  body.appendChild(errorBanner);
-
-  // 3. 1-Click Consumer Social & Inline Phone Authentication (Clerk-powered)
-  const socialSection = document.createElement('div');
-  socialSection.className = 'gd-auth-section gd-auth-social-section';
-
-  const socialBody = document.createElement('div');
-  socialBody.className = 'gd-auth-social-body';
-  socialSection.appendChild(socialBody);
-
-  body.appendChild(socialSection);
-
-  // Authenticated Profile & Session Information panel
-  const authenticatedSection = document.createElement('div');
-  authenticatedSection.className = 'gd-auth-authenticated-section';
-
-  const detailsCard = document.createElement('div');
-  detailsCard.className = 'gd-auth-details-card';
-
-  const cardTitle = document.createElement('h3');
-  cardTitle.className = 'gd-auth-details-title';
-  cardTitle.textContent = 'Account & Session Information';
-
-  const infoList = document.createElement('div');
-  infoList.className = 'gd-auth-info-list';
-
-  const createRow = (label: string, value: string, icon: import('./icons.js').IconName) => {
-    const row = document.createElement('div');
-    row.className = 'gd-auth-info-row';
-    const left = document.createElement('div');
-    left.className = 'gd-auth-info-row-left';
-    left.appendChild(createIcon(icon, 'gd-auth-info-icon'));
-    const lbl = document.createElement('span');
-    lbl.className = 'gd-auth-info-label';
-    lbl.textContent = label;
-    left.appendChild(lbl);
-    const val = document.createElement('span');
-    val.className = 'gd-auth-info-value';
-    val.textContent = value;
-    row.appendChild(left);
-    row.appendChild(val);
-    return row;
+    avatarContainer.appendChild(img);
   };
 
-  const currentEmail = props.profile?.email || 'deepanshukhatri20061972@gmail.com';
-  infoList.appendChild(createRow('Sign-In Method', 'Google Account (Clerk OAuth)', 'shield-check'));
-  infoList.appendChild(createRow('Verified Email', currentEmail, 'user-check'));
-  infoList.appendChild(createRow('Access Role', props.profile?.relationshipLabel || 'Designated Caretaker', 'lock'));
-  infoList.appendChild(createRow('Session Security', 'RS256 Cryptographic JWT', 'zap'));
-
-  detailsCard.appendChild(cardTitle);
-  detailsCard.appendChild(infoList);
-
-  // Profile photo upload row
-  const photoRow = document.createElement('div');
-  photoRow.className = 'gd-auth-photo-update-row';
-
-  const photoLabel = document.createElement('span');
-  photoLabel.className = 'gd-auth-photo-label';
-  photoLabel.textContent = 'Profile Photo:';
+  if (photoUrl && !isDefaultAvatar(photoUrl)) {
+    renderAvatarImg(photoUrl);
+  } else {
+    avatarContainer.appendChild(createIcon('user', 'gd-avatar-icon'));
+  }
 
   const photoInput = document.createElement('input');
   photoInput.type = 'file';
@@ -275,8 +157,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   const changePhotoBtn = document.createElement('button');
   changePhotoBtn.type = 'button';
-  changePhotoBtn.className = 'gd-auth-btn-secondary';
-  changePhotoBtn.textContent = 'Upload / Change Photo';
+  changePhotoBtn.className = 'gd-auth-change-photo-btn';
+  changePhotoBtn.textContent = 'Change photo';
   changePhotoBtn.addEventListener('click', () => {
     if (typeof photoInput.click === 'function') {
       photoInput.click();
@@ -298,58 +180,122 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
             role: 'TRUSTED_CONTACT',
             email: currentEmail,
             isAuthenticated: true,
-            relationshipLabel: 'Designated Caretaker',
+            relationshipLabel: roleLabel,
           }),
           avatarUrl: dataUrl,
           imageUrl: dataUrl,
-          fullName: props.profile?.fullName || 'Deepanshu Khatri',
+          fullName,
         };
-        const currentToken = (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) || 'test-contact-token';
+        const currentToken =
+          (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) ||
+          'test-contact-token';
         props.onAuthSuccess(currentToken, updatedProfile);
-
-        // Update in-modal avatar image
-        while (sessionAvatar.firstChild) {
-          sessionAvatar.removeChild(sessionAvatar.firstChild);
-        }
-        const newImg = document.createElement('img');
-        newImg.className = 'gd-account-avatar-img';
-        newImg.src = dataUrl;
-        sessionAvatar.appendChild(newImg);
+        renderAvatarImg(dataUrl);
       };
       reader.readAsDataURL(file);
     }
   });
 
-  photoRow.appendChild(photoLabel);
-  photoRow.appendChild(changePhotoBtn);
-  photoRow.appendChild(photoInput);
-  detailsCard.appendChild(photoRow);
+  avatarWrap.appendChild(avatarContainer);
+  avatarWrap.appendChild(changePhotoBtn);
+  avatarWrap.appendChild(photoInput);
+  profileMain.appendChild(avatarWrap);
 
-  // Switch account link
-  const switchRow = document.createElement('div');
-  switchRow.className = 'gd-auth-switch-account-row';
+  // Identity Details
+  const profileInfo = document.createElement('div');
+  profileInfo.className = 'gd-auth-profile-info';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'gd-auth-profile-name';
+  nameEl.textContent = fullName;
+
+  const emailEl = document.createElement('div');
+  emailEl.className = 'gd-auth-profile-email';
+  emailEl.textContent = currentEmail;
+
+  const roleBadge = document.createElement('span');
+  roleBadge.className = 'gd-auth-role-badge';
+  roleBadge.textContent = roleLabel;
+
+  profileInfo.appendChild(nameEl);
+  profileInfo.appendChild(emailEl);
+  profileInfo.appendChild(roleBadge);
+  profileMain.appendChild(profileInfo);
+
+  profileCard.appendChild(profileMain);
+
+  // Hairline separator
+  const cardDivider = document.createElement('hr');
+  cardDivider.className = 'gd-auth-profile-divider';
+  profileCard.appendChild(cardDivider);
+
+  // Actions row: Switch Account (left) and Sign Out (right)
+  const actionsRow = document.createElement('div');
+  actionsRow.className = 'gd-auth-profile-actions';
 
   const switchBtn = document.createElement('button');
   switchBtn.type = 'button';
-  switchBtn.className = 'gd-auth-btn-link';
+  switchBtn.className = 'gd-auth-switch-btn';
   switchBtn.textContent = 'Sign in with a different account';
   switchBtn.addEventListener('click', () => {
-    authenticatedSection.style.display = 'none';
+    profileCard.style.display = 'none';
     socialSection.style.display = 'block';
+    title.textContent = 'Sign in to Guardrail';
+    subtitle.textContent = 'Access your trusted contact dashboard.';
   });
-  switchRow.appendChild(switchBtn);
-  detailsCard.appendChild(switchRow);
 
-  authenticatedSection.appendChild(detailsCard);
-  body.appendChild(authenticatedSection);
+  const signOutBtn = document.createElement('button');
+  signOutBtn.type = 'button';
+  signOutBtn.className = 'gd-auth-signout-btn';
+  signOutBtn.textContent = 'Sign out';
+  signOutBtn.addEventListener('click', async () => {
+    try {
+      const clerk = await getClerk();
+      if (clerk) {
+        await clerk.signOut();
+      }
+    } catch (err) {
+      console.warn('[Clerk] Sign out failed:', err);
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('guardrail_auth_token');
+      localStorage.removeItem('guardrail_user_email');
+      localStorage.removeItem('guardrail_user_avatar');
+    }
+    cleanup();
+    props.onSignOut();
+    props.onClose();
+  });
 
-  // If already authenticated, hide the sign-in options; if unauthenticated, show sign-in options
+  actionsRow.appendChild(switchBtn);
+  actionsRow.appendChild(signOutBtn);
+  profileCard.appendChild(actionsRow);
+
+  body.appendChild(profileCard);
+
+  // 2. Error message banner (initially hidden)
+  const errorBanner = document.createElement('div');
+  errorBanner.className = 'gd-auth-error-banner';
+  errorBanner.style.display = 'none';
+  body.appendChild(errorBanner);
+
+  // 3. 1-Click Consumer Social & Inline Phone Authentication (Clerk-powered)
+  const socialSection = document.createElement('div');
+  socialSection.className = 'gd-auth-section gd-auth-social-section';
+
+  const socialBody = document.createElement('div');
+  socialBody.className = 'gd-auth-social-body';
+  socialSection.appendChild(socialBody);
+
+  body.appendChild(socialSection);
+
+  // Toggle view visibility depending on auth state
   if (props.profile?.isAuthenticated) {
+    profileCard.style.display = 'flex';
     socialSection.style.display = 'none';
-    authenticatedSection.style.display = 'block';
   } else {
+    profileCard.style.display = 'none';
     socialSection.style.display = 'block';
-    authenticatedSection.style.display = 'none';
   }
 
   // Provider Discovery (SSO / OIDC fallback if configured)
@@ -359,12 +305,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   modal.appendChild(body);
 
-  // --- Footer (only needed for authenticated account view) ---
+  // --- Footer (hidden - modal uses top-right close button) ---
   const footer = document.createElement('div');
   footer.className = 'gd-auth-modal-footer';
-  if (!isAuth) {
-    footer.style.display = 'none';
-  }
+  footer.style.display = 'none';
 
   const closeFooterBtn = document.createElement('button');
   closeFooterBtn.type = 'button';
@@ -776,7 +720,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
             localStorage.removeItem('guardrail_user_avatar');
             storedAvatar = null;
           }
-          const clerkImg = clerk.user?.hasImage ? clerk.user?.imageUrl : undefined;
+          const clerkImg =
+            clerk.user?.imageUrl ||
+            (clerk.user as any)?.externalAccounts?.[0]?.imageUrl ||
+            (clerk.user as any)?.image_url;
           const userAvatar = storedAvatar || (clerkImg && !isDefaultAvatar(clerkImg) ? clerkImg : undefined);
 
           const verifiedProfile: TrustedContactProfile = {

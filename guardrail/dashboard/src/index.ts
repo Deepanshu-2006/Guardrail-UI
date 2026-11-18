@@ -302,7 +302,11 @@ if (typeof document !== 'undefined') {
             localStorage.removeItem('guardrail_user_avatar');
             storedAvatar = null;
           }
-          const rawClerkImg = activeUser?.hasImage ? (activeUser.imageUrl || (activeUser as any)?.image_url) : undefined;
+          const rawClerkImg =
+            activeUser?.imageUrl ||
+            (activeUser as any)?.image_url ||
+            activeUser?.externalAccounts?.[0]?.imageUrl ||
+            activeUser?.externalAccounts?.[0]?.avatarUrl;
           const userAvatar = storedAvatar || (rawClerkImg && !isDefaultAvatar(rawClerkImg) ? rawClerkImg : undefined);
           if (userAvatar && typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_user_avatar', userAvatar);
