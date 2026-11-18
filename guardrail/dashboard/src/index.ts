@@ -202,7 +202,11 @@ if (typeof document !== 'undefined') {
               if (typeof localStorage !== 'undefined') {
                 localStorage.setItem('guardrail_auth_token', clerkToken);
               }
-              const userEmail = clerk.user.primaryEmailAddress?.emailAddress || clerk.user.username || clerk.user.id;
+              const userEmail =
+                clerk.user.primaryEmailAddress?.emailAddress ||
+                clerk.user.primaryPhoneNumber?.phoneNumber ||
+                clerk.user.username ||
+                clerk.user.id;
               shell.setProfile({
                 actorId: clerk.user.id,
                 role: 'TRUSTED_CONTACT',

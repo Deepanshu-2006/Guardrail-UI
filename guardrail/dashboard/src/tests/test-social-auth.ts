@@ -272,13 +272,21 @@ assert(appleIcon, 'Apple button contains social icon container');
 assert(appleIcon.innerHTML.includes('M18.71'), 'Apple icon contains official Apple SVG path');
 console.log('  ✓ "Continue with Apple" button rendered with official Apple SVG icon');
 
-// 4. Clerk button
-const clerkBtn = modalEl.querySelector('.gd-auth-clerk-btn');
-assert(clerkBtn, 'Renders .gd-auth-clerk-btn button');
-assert(clerkBtn.textContent.includes('Sign in with Clerk'), 'Clerk button has "Sign in with Clerk" label');
-console.log('  ✓ "Sign in with Clerk" button rendered with official Clerk shield icon');
+// 4. Phone Number button (Clerk-powered Phone SMS Auth)
+const phoneBtn = modalEl.querySelector('.gd-auth-phone-btn');
+assert(phoneBtn, 'Renders .gd-auth-phone-btn button');
+assert(phoneBtn.textContent.includes('Continue with Phone Number'), 'Phone button has "Continue with Phone Number" label');
+const phoneIcon = phoneBtn.querySelector('.gd-auth-social-icon');
+assert(phoneIcon, 'Phone button contains social icon container');
+assert(phoneIcon.innerHTML.includes('M22 16.92v3a2'), 'Phone icon contains official phone SVG path');
+console.log('  ✓ "Continue with Phone Number" button rendered with official phone SVG icon');
 
-// 5. Verification that developer shortcuts are removed in production
+// 5. Verification that "Sign in with Clerk" is NOT present (Clerk is the underlying engine, not consumer brand)
+const clerkBtn = modalEl.querySelector('.gd-auth-clerk-btn');
+assert.strictEqual(clerkBtn, null, 'Zero "Sign in with Clerk" buttons rendered (Clerk powers Google/Apple/Phone under the hood)');
+console.log('  ✓ Consumer branding verification: "Sign in with Clerk" is excluded; Clerk seamlessly powers Google, Apple, and Phone');
+
+// 6. Verification that developer shortcuts are removed in production
 const devWrapper = modalEl.querySelector('.gd-auth-dev-wrapper');
 assert.strictEqual(devWrapper, null, 'Developer shortcuts are cleanly removed for production');
 console.log('  ✓ Production verification: developer shortcuts and test switchers are completely excluded');

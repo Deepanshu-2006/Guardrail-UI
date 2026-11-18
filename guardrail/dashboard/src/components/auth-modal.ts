@@ -207,33 +207,18 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   });
   socialButtonsContainer.appendChild(appleBtn);
 
-  // Clerk Direct Sign-In Button (Email / Passkey / SSO)
-  const clerkBtn = document.createElement('button');
-  clerkBtn.type = 'button';
-  clerkBtn.className = 'gd-auth-social-btn gd-auth-clerk-btn';
-  clerkBtn.appendChild(createIcon('shield', 'gd-auth-social-icon'));
-  const clerkText = document.createElement('span');
-  clerkText.textContent = 'Sign in with Clerk';
-  clerkBtn.appendChild(clerkText);
-  clerkBtn.addEventListener('click', async () => {
-    hideError();
-    try {
-      const clerk = await getClerk();
-      if (clerk && typeof clerk.openSignIn === 'function') {
-        cleanup();
-        props.onClose();
-        clerk.openSignIn();
-      } else if (clerk && typeof clerk.redirectToSignIn === 'function') {
-        await clerk.redirectToSignIn({ redirectUrl: window.location.href });
-      } else {
-        showError('Clerk authentication service is loading. Please retry in a moment.');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showError(`Clerk sign-in error: ${msg}`);
-    }
+  // Phone Number Sign-In Button (SMS OTP verification handled by Clerk)
+  const phoneBtn = document.createElement('button');
+  phoneBtn.type = 'button';
+  phoneBtn.className = 'gd-auth-social-btn gd-auth-phone-btn';
+  phoneBtn.appendChild(createIcon('phone', 'gd-auth-social-icon'));
+  const phoneText = document.createElement('span');
+  phoneText.textContent = 'Continue with Phone Number';
+  phoneBtn.appendChild(phoneText);
+  phoneBtn.addEventListener('click', () => {
+    void handleSocialSignIn('phone', phoneBtn, phoneText);
   });
-  socialButtonsContainer.appendChild(clerkBtn);
+  socialButtonsContainer.appendChild(phoneBtn);
 
   socialSection.appendChild(socialButtonsContainer);
   body.appendChild(socialSection);
@@ -276,62 +261,90 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   }
 
   async function handleSocialSignIn(
-    provider: 'google' | 'apple',
+    provider: 'google' | 'apple' | 'phone',
     btn: HTMLButtonElement,
     labelSpan: HTMLSpanElement
   ): Promise<void> {
     hideError();
     const originalText = labelSpan.textContent;
     btn.disabled = true;
-    labelSpan.textContent = provider === 'google' ? 'Connecting Google...' : 'Connecting Apple...';
+    labelSpan.textContent =
+      provider === 'google'
+        ? 'Connecting Google...'
+        : provider === 'apple'
+        ? 'Connecting Apple...'
+        : 'Connecting Phone...';
 
-    // 1. If Clerk SDK is active, execute real Clerk authentication
+    // 1. If Clerk SDK is active, execute Clerk authentication
     try {
       const clerk = await getClerk();
       if (clerk) {
-        // Direct OAuth redirect via Clerk client
-        if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
-          try {
-            await clerk.client.signIn.authenticateWithRedirect({
-              strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
+        if (provider === 'phone') {
+          // Phone authentication flow handled natively by Clerk (Phone input + SMS OTP verification)
+          if (typeof clerk.openSignIn === 'function') {
+            cleanup();
+            props.onClose();
+            clerk.openSignIn();
+            return;
+          }
+          if (typeof clerk.redirectToSignIn === 'function') {
+            await clerk.redirectToSignIn({ redirectUrl: window.location.href });
+            return;
+          }
+        } else {
+          // Direct OAuth redirect via Clerk client for Google / Apple
+          if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
+            try {
+              await clerk.client.signIn.authenticateWithRedirect({
+                strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
+                redirectUrl: window.location.href,
+                redirectUrlComplete: window.location.href,
+              });
+              return;
+            } catch (oauthErr) {
+              console.warn(`[Clerk] Direct OAuth redirect failed for ${provider}, opening Clerk sign-in modal:`, oauthErr);
+              if (typeof clerk.openSignIn === 'function') {
+                cleanup();
+                props.onClose();
+                clerk.openSignIn();
+                return;
+              }
+              if (typeof clerk.redirectToSignIn === 'function') {
+                await clerk.redirectToSignIn({ redirectUrl: window.location.href });
+                return;
+              }
+              throw oauthErr;
+            }
+          }
+
+          // Open Clerk's modal
+          if (typeof clerk.openSignIn === 'function') {
+            cleanup();
+            props.onClose();
+            clerk.openSignIn();
+            return;
+          }
+
+          // Hosted redirect
+          if (typeof clerk.redirectToSignIn === 'function') {
+            await clerk.redirectToSignIn({
               redirectUrl: window.location.href,
-              redirectUrlComplete: window.location.href,
             });
             return;
-          } catch (oauthErr) {
-            console.warn(`[Clerk] Direct OAuth redirect failed for ${provider}, opening Clerk sign-in modal:`, oauthErr);
-            if (typeof clerk.openSignIn === 'function') {
-              cleanup();
-              props.onClose();
-              clerk.openSignIn();
-              return;
-            }
-            throw oauthErr;
           }
-        }
-
-        // Open Clerk's modal
-        if (typeof clerk.openSignIn === 'function') {
-          cleanup();
-          props.onClose();
-          clerk.openSignIn();
-          return;
-        }
-
-        // Hosted redirect
-        if (typeof clerk.redirectToSignIn === 'function') {
-          await clerk.redirectToSignIn({
-            redirectUrl: window.location.href,
-          });
-          return;
         }
       }
     } catch (err) {
-      console.warn('[Clerk Social Auth Error]', err);
+      console.warn('[Clerk Auth Error]', err);
       // In test/Node environment without browser window, allow test simulation
       if (typeof window === 'undefined' || !window.location.origin) {
-        const simulatedEmail = provider === 'google' ? 'carol.guardian@gmail.com' : 'carol.guardian@appleid.com';
-        await verifyAndApplyToken('test-contact-token', simulatedEmail);
+        const simulatedContact =
+          provider === 'google'
+            ? 'carol.guardian@gmail.com'
+            : provider === 'apple'
+            ? 'carol.guardian@appleid.com'
+            : '+1 (555) 234-5678';
+        await verifyAndApplyToken('test-contact-token', simulatedContact);
         return;
       }
 
@@ -343,7 +356,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     }
 
     // 2. If an authoritative OIDC or Clerk provider URL is configured, execute OAuth 2.0 / OIDC redirect
-    if (cachedAuthConfig?.oidcConfigured && cachedAuthConfig?.authUrl) {
+    if (provider !== 'phone' && cachedAuthConfig?.oidcConfigured && cachedAuthConfig?.authUrl) {
       const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
       const targetUrl = new URL(cachedAuthConfig.authUrl);
       targetUrl.searchParams.set('client_id', cachedAuthConfig.clientId || '');
@@ -360,9 +373,14 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     }
 
     // 3. Fallback for environments without Clerk configured (e.g. Node tests or offline dev)
-    const simulatedEmail = provider === 'google' ? 'carol.guardian@gmail.com' : 'carol.guardian@appleid.com';
+    const simulatedContact =
+      provider === 'google'
+        ? 'carol.guardian@gmail.com'
+        : provider === 'apple'
+        ? 'carol.guardian@appleid.com'
+        : '+1 (555) 234-5678';
     try {
-      await verifyAndApplyToken('test-contact-token', simulatedEmail);
+      await verifyAndApplyToken('test-contact-token', simulatedContact);
     } catch {
       btn.disabled = false;
       labelSpan.textContent = originalText;
@@ -421,11 +439,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       if (data.success && data.data) {
         cachedAuthConfig = data.data;
         const config = data.data;
-
-        // In pilot/production environments, hide developer profile switchers and manual overrides
-        if (!config.devTokensAvailable) {
-          devContainer.style.display = 'none';
-        }
 
         providerContent.innerHTML = '';
         if (config.oidcConfigured && config.authUrl) {
