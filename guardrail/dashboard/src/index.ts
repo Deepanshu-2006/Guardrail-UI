@@ -22,6 +22,7 @@ import { DashboardShellOptions, TrustedContactProfile } from './types.js';
 import { resolveEnvironmentConfig } from '../../extension/src/config/environment.js';
 import { ApprovalApiClient, TokenProvider } from '../../extension/src/approval/client.js';
 import { getClerk } from './services/clerk-service.js';
+import { showConnectedModal } from './components/auth-modal.js';
 
 /**
  * Convenience bootstrap function to mount the dashboard shell into the page.
@@ -251,23 +252,11 @@ if (typeof document !== 'undefined') {
     getClerk().then(async (clerk) => {
       if (!clerk) return;
 
-      // Handle OAuth redirect return if returning from Google / social sign-in
-      if (typeof window !== 'undefined' && (
+      const isOAuthRedirect = typeof window !== 'undefined' && (
         window.location.search.includes('__clerk') ||
         window.location.hash.includes('__clerk') ||
         window.location.search.includes('status=')
-      )) {
-        if (typeof clerk.handleRedirectCallback === 'function') {
-          try {
-            await clerk.handleRedirectCallback({
-              afterSignInUrl: window.location.origin,
-              afterSignUpUrl: window.location.origin,
-            });
-          } catch (cbErr) {
-            console.warn('[Clerk] handleRedirectCallback:', cbErr);
-          }
-        }
-      }
+      );
 
       let wasAuthenticated = false;
 
@@ -287,7 +276,7 @@ if (typeof document !== 'undefined') {
         }
       };
 
-      const syncClerkSession = async () => {
+      const syncClerkSession = async (showPopup: boolean = false) => {
         await ensureActiveSession();
         const activeSession = clerk.session || clerk.client?.signedInSessions?.[0] || clerk.client?.sessions?.[0];
         const activeUser = clerk.user || activeSession?.user;
@@ -329,12 +318,11 @@ if (typeof document !== 'undefined') {
           if (userAvatar && typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_user_avatar', userAvatar);
           }
-          const fullName = activeUser?.fullName || 'Deepanshu Khatri';
+          const fullName = activeUser?.fullName || activeUser?.firstName || 'Deepanshu Khatri';
 
           wasAuthenticated = true;
 
-          // Immediately render authoritative Caretaker profile card in the sidebar
-          shell.setProfile({
+          const verifiedProfile: TrustedContactProfile = {
             actorId,
             role: 'TRUSTED_CONTACT',
             email: userEmail,
@@ -343,14 +331,44 @@ if (typeof document !== 'undefined') {
             imageUrl: userAvatar,
             isAuthenticated: true,
             relationshipLabel: 'Designated Caretaker',
-          });
+          };
 
-          // Dismiss any open auth modal dialog
+          // Ensure API client is instantiated and active on shell
+          if (!shell.getApiClient()) {
+            const newApiClient = new ApprovalApiClient({
+              baseUrl: envConfig.apiBaseUrl,
+              environment: envConfig.environment,
+              serviceType: 'live',
+              tokenProvider: () => clerkToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') || '' : ''),
+              timeoutMs: envConfig.timeoutMs,
+              logger: {
+                info: (msg: string, ctx?: Record<string, unknown>) => console.info('[Guardrail API]', msg, ctx ?? ''),
+                warn: (msg: string, ctx?: Record<string, unknown>) => console.warn('[Guardrail API]', msg, ctx ?? ''),
+                error: (msg: string, ctx?: Record<string, unknown>) => console.error('[Guardrail API]', msg, ctx ?? ''),
+              },
+            });
+            shell.setApiClient(newApiClient);
+          }
+
+          // Immediately render authoritative Caretaker profile card in the sidebar
+          shell.setProfile(verifiedProfile);
+
+          // Dismiss any open auth sign-in modal dialog
           if (typeof document !== 'undefined') {
             const modalRoot = document.getElementById('gd-auth-modal-root');
             if (modalRoot) {
               modalRoot.remove();
             }
+          }
+
+          // Show centered celebration connected popup if just signed in
+          if (showPopup && typeof document !== 'undefined') {
+            showConnectedModal(verifiedProfile);
+          }
+
+          // Clean up address bar query params after successful redirect handling
+          if (typeof window !== 'undefined' && (window.location.search.includes('__clerk') || window.location.search.includes('status='))) {
+            window.history.replaceState({}, document.title, window.location.pathname);
           }
 
           // Authoritative backend verification via /api/v1/auth/me
@@ -381,6 +399,21 @@ if (typeof document !== 'undefined') {
         }
       };
 
+      // 1. Process OAuth redirect callback if returning from Google / external identity provider
+      if (isOAuthRedirect && typeof clerk.handleRedirectCallback === 'function') {
+        try {
+          await clerk.handleRedirectCallback({
+            afterSignInUrl: window.location.origin,
+            afterSignUpUrl: window.location.origin,
+          });
+        } catch (cbErr) {
+          console.warn('[Clerk] handleRedirectCallback error:', cbErr);
+        }
+        // Immediately trigger session sync with centered celebration modal
+        await syncClerkSession(true);
+      }
+
+      // 2. Real-time session listener
       if (typeof clerk.addListener === 'function') {
         clerk.addListener(async (emission: any) => {
           const hasSession = Boolean(
@@ -389,7 +422,7 @@ if (typeof document !== 'undefined') {
             (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0)
           );
           if (hasSession) {
-            await syncClerkSession();
+            await syncClerkSession(false);
           } else if (!hasSession && wasAuthenticated) {
             wasAuthenticated = false;
             const current = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
@@ -405,14 +438,14 @@ if (typeof document !== 'undefined') {
         });
       }
 
-      // Initial check on page load / hydration
+      // 3. Initial check on page load / hydration
       const initialActive = Boolean(
         clerk.session ||
         (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
         (clerk.client?.sessions && clerk.client.sessions.length > 0)
       );
       if (initialActive) {
-        await syncClerkSession();
+        await syncClerkSession(isOAuthRedirect);
       }
     }).catch((err) => {
       console.warn('[Clerk] Initialization error:', err);

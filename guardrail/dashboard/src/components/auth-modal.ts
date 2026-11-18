@@ -1130,3 +1130,126 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   return backdrop;
 }
+
+/**
+ * Renders a centered celebration modal confirming that the Trusted Contact has connected successfully.
+ */
+export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: () => void): HTMLElement {
+  if (typeof document === 'undefined') {
+    return {} as HTMLElement;
+  }
+
+  // Remove any existing connected modal
+  const existing = document.getElementById('gd-connected-modal-root');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'gd-connected-modal-root';
+  backdrop.className = 'gd-auth-modal-backdrop';
+  backdrop.setAttribute('role', 'dialog');
+  backdrop.setAttribute('aria-modal', 'true');
+  backdrop.setAttribute('aria-labelledby', 'gd-connected-title');
+
+  const card = document.createElement('div');
+  card.className = 'gd-auth-modal-card gd-connected-card';
+  card.style.maxWidth = '420px';
+  card.style.textAlign = 'center';
+  card.style.padding = '32px 28px 28px';
+
+  // Checkmark Badge Icon
+  const iconWrap = document.createElement('div');
+  iconWrap.style.cssText = 'width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: rgba(39, 49, 33, 0.08); display: flex; align-items: center; justify-content: center; color: #273121;';
+  iconWrap.innerHTML = `
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+  `;
+
+  const title = document.createElement('h2');
+  title.id = 'gd-connected-title';
+  title.className = 'gd-auth-modal-title';
+  title.textContent = 'Connected Successfully';
+  title.style.fontSize = '22px';
+  title.style.marginBottom = '6px';
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'gd-auth-modal-subtitle';
+  subtitle.textContent = 'Your trusted contact session is now active.';
+  subtitle.style.marginBottom = '22px';
+
+  // Profile container
+  const profileBox = document.createElement('div');
+  profileBox.style.cssText = 'background: rgba(39, 49, 33, 0.04); border: 1px solid #CCD6C0; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-align: left; margin-bottom: 22px;';
+
+  const avatarWrap = document.createElement('div');
+  avatarWrap.style.cssText = 'width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #273121; color: #FAF7F0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0;';
+  if (profile.avatarUrl || profile.imageUrl) {
+    const img = document.createElement('img');
+    img.src = profile.avatarUrl || profile.imageUrl || '';
+    img.alt = profile.fullName || 'User';
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    img.onerror = () => {
+      avatarWrap.textContent = (profile.fullName || profile.email || 'U').charAt(0).toUpperCase();
+    };
+    avatarWrap.appendChild(img);
+  } else {
+    avatarWrap.textContent = (profile.fullName || profile.email || 'U').charAt(0).toUpperCase();
+  }
+
+  const infoWrap = document.createElement('div');
+  infoWrap.style.cssText = 'display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;';
+
+  const nameEl = document.createElement('div');
+  nameEl.style.cssText = 'font-weight: 700; font-size: 15px; color: #273121; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+  nameEl.textContent = profile.fullName || 'Trusted Contact';
+
+  const emailEl = document.createElement('div');
+  emailEl.style.cssText = 'font-size: 13px; color: #5F6656; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+  emailEl.textContent = profile.email || 'Authenticated Contact';
+
+  const badgeRow = document.createElement('div');
+  badgeRow.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-top: 4px;';
+  badgeRow.innerHTML = `
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #10B981;"></span>
+    <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #10B981;">Session Active</span>
+  `;
+
+  infoWrap.appendChild(nameEl);
+  infoWrap.appendChild(emailEl);
+  infoWrap.appendChild(badgeRow);
+
+  profileBox.appendChild(avatarWrap);
+  profileBox.appendChild(infoWrap);
+
+  // Continue Button
+  const continueBtn = document.createElement('button');
+  continueBtn.type = 'button';
+  continueBtn.className = 'gd-auth-btn-primary';
+  continueBtn.style.cssText = 'width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: none; background: #273121; color: #FAF7F0;';
+  continueBtn.textContent = 'Continue to Dashboard';
+
+  const dismiss = () => {
+    backdrop.classList.add('closing');
+    setTimeout(() => {
+      backdrop.remove();
+      onDismiss?.();
+    }, 150);
+  };
+
+  continueBtn.addEventListener('click', dismiss);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) dismiss();
+  });
+
+  card.appendChild(iconWrap);
+  card.appendChild(title);
+  card.appendChild(subtitle);
+  card.appendChild(profileBox);
+  card.appendChild(continueBtn);
+  backdrop.appendChild(card);
+
+  document.body.appendChild(backdrop);
+  continueBtn.focus();
+  return backdrop;
+}

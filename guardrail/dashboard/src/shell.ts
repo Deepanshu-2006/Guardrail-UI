@@ -46,8 +46,8 @@ export class DashboardShell {
   private hashChangeHandler: (() => void) | null = null;
   private visibilityChangeHandler: (() => void) | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
-  private readonly apiClient?: ApprovalApiClient;
-  private readonly autoFetch: boolean;
+  private apiClient?: ApprovalApiClient;
+  private autoFetch: boolean;
   private pollIntervalMs?: number;
   private activeFetchPromise: Promise<void> | null = null;
   private readonly activeDetailFetchPromises: Map<string, Promise<ApprovalRequest | null>> = new Map();
@@ -1603,6 +1603,28 @@ export class DashboardShell {
     } else {
       this.stopPolling();
       this.isPollingHaltedDueToAuth = true;
+    }
+    this.render();
+  }
+
+  /**
+   * Returns current active ApprovalApiClient instance, if any.
+   */
+  public getApiClient(): ApprovalApiClient | undefined {
+    return this.apiClient;
+  }
+
+  /**
+   * Dynamically sets or updates the active API client (e.g. after authentication completes).
+   */
+  public setApiClient(client: ApprovalApiClient): void {
+    this.apiClient = client;
+    this.autoFetch = true;
+    if (this.state.contactProfile?.isAuthenticated) {
+      if (!this.pollTimer && this.pollIntervalMs && this.pollIntervalMs > 0) {
+        this.startPolling();
+      }
+      void this.refresh();
     }
     this.render();
   }

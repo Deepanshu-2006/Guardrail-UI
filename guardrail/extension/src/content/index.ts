@@ -91,20 +91,34 @@ export function isDashboardOrInternalPage(): boolean {
   }
 
   // 2. Document title
-  if (typeof document.title === 'string' && document.title.includes('Guardrail — Trusted Contact Portal')) {
+  if (typeof document.title === 'string' && (document.title.includes('Guardrail — Trusted Contact Portal') || document.title.includes('Guardrail'))) {
     return true;
   }
 
-  // 3. Location heuristics (dashboard dev port 5173 or extension origin)
+  // 3. Location heuristics (dashboard dev port 5173, localhost, or extension origin)
   const loc = window.location;
   if (loc) {
-    if (loc.port === '5173') {
+    if (loc.port === '5173' || loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
       return true;
     }
     if (
       typeof chrome !== 'undefined' &&
       chrome.runtime?.id &&
       loc.origin === `chrome-extension://${chrome.runtime.id}`
+    ) {
+      return true;
+    }
+
+    // 4. Legitimate OAuth / Identity Provider pages (Google, Clerk, Apple)
+    const hostname = loc.hostname.toLowerCase();
+    if (
+      hostname === 'accounts.google.com' ||
+      hostname.endsWith('.google.com') ||
+      hostname.endsWith('.clerk.accounts.dev') ||
+      hostname.endsWith('.clerk.com') ||
+      hostname.endsWith('.accounts.dev') ||
+      hostname.endsWith('.apple.com') ||
+      hostname === 'appleid.apple.com'
     ) {
       return true;
     }
@@ -124,7 +138,20 @@ export function isUntrustedWebDestination(urlCandidate?: string, currentOrigin?:
   }
   try {
     const parsed = new URL(trimmed);
-    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return false;
+    }
+    // Legitimate OAuth / Identity Provider hostnames
+    if (
+      hostname === 'accounts.google.com' ||
+      hostname.endsWith('.google.com') ||
+      hostname.endsWith('.clerk.accounts.dev') ||
+      hostname.endsWith('.clerk.com') ||
+      hostname.endsWith('.accounts.dev') ||
+      hostname.endsWith('.apple.com') ||
+      hostname === 'appleid.apple.com'
+    ) {
       return false;
     }
     if (isTrustedDomain(trimmed)) {
