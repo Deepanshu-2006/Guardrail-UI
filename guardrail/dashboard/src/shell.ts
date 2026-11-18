@@ -1647,6 +1647,15 @@ export class DashboardShell {
       if (profile.email) {
         localStorage.setItem('guardrail_user_email', profile.email);
       }
+      const avatarToSave = profile.avatarUrl || profile.imageUrl;
+      if (
+        avatarToSave &&
+        !avatarToSave.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') &&
+        !avatarToSave.includes('images.clerk.dev') &&
+        !avatarToSave.includes('d=mp')
+      ) {
+        localStorage.setItem('guardrail_user_avatar', avatarToSave);
+      }
     }
     this.setProfile(profile);
     void this.refresh();
@@ -1659,6 +1668,7 @@ export class DashboardShell {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('guardrail_auth_token');
       localStorage.removeItem('guardrail_user_email');
+      localStorage.removeItem('guardrail_user_avatar');
     }
     this.setProfile(null);
     void this.refresh();

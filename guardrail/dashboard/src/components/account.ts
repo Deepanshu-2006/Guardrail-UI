@@ -21,7 +21,7 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
   container.className = 'gd-sidebar-footer';
   container.setAttribute('aria-label', 'Trusted Contact Identity');
 
-  // Minimal unauthenticated state: Simple, sleek Sign In button only
+  // Minimal unauthenticated state: Simple, sleek Sign In button with profile icon
   if (!props.profile?.isAuthenticated) {
     const signInBtn = document.createElement('button');
     signInBtn.type = 'button';
@@ -31,7 +31,7 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
     const iconSpan = document.createElement('span');
     iconSpan.className = 'gd-sidebar-sign-in-icon';
     iconSpan.setAttribute('aria-hidden', 'true');
-    iconSpan.appendChild(createIcon('shield'));
+    iconSpan.appendChild(createIcon('user'));
 
     const textSpan = document.createElement('span');
     textSpan.textContent = 'Sign In';
@@ -72,14 +72,44 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
   const avatar = document.createElement('div');
   avatar.className = 'gd-account-avatar';
   avatar.setAttribute('aria-hidden', 'true');
-  avatar.textContent = (props.profile.actorId.slice(3, 5) || 'TC').toUpperCase();
+
+  const isDefaultAvatar = (url?: string | null): boolean => {
+    if (!url) return true;
+    return (
+      url.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') ||
+      url.includes('images.clerk.dev') ||
+      url.includes('gravatar.com/avatar?d=mp') ||
+      url.includes('d=mp')
+    );
+  };
+
+  const photoUrl = props.profile.avatarUrl || props.profile.imageUrl;
+  if (photoUrl && !isDefaultAvatar(photoUrl)) {
+    const img = document.createElement('img');
+    img.className = 'gd-account-avatar-img';
+    img.src = photoUrl;
+    img.alt = props.profile.fullName || props.profile.email || 'Profile photo';
+    img.setAttribute('loading', 'eager');
+    img.onerror = () => {
+      img.remove();
+      if (!avatar.hasChildNodes()) {
+        avatar.appendChild(createIcon('user', 'gd-avatar-icon'));
+      }
+    };
+    avatar.appendChild(img);
+  } else {
+    avatar.appendChild(createIcon('user', 'gd-avatar-icon'));
+  }
 
   const details = document.createElement('div');
   details.className = 'gd-account-details';
 
   const name = document.createElement('span');
   name.className = 'gd-account-name';
-  name.textContent = props.profile.email || props.profile.actorId;
+  name.textContent = props.profile.fullName || props.profile.email || props.profile.actorId;
+  if (props.profile.email && props.profile.fullName) {
+    name.title = props.profile.email;
+  }
 
   const role = document.createElement('span');
   role.className = 'gd-account-role';

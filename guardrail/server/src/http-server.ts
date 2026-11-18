@@ -175,6 +175,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                       userId: defaultUserId,
                       email: 'deepanshukhatri20061972@gmail.com',
                       fullName: 'Deepanshu Khatri',
+                      imageUrl: null,
                     },
                   })
                 );
@@ -268,6 +269,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 role: authContext.role,
                 isAuthenticated: true,
                 email: verifiedEmail ?? (config.environment !== 'production' ? 'deepanshukhatri20061972@gmail.com' : null),
+                fullName: 'Deepanshu Khatri',
+                imageUrl: (authContext as any).picture || null,
                 environment: config.environment,
               },
             })

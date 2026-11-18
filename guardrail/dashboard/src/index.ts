@@ -76,10 +76,40 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
       payload.name ||
       fallbackEmail ||
       (actorId.includes('3MGvG7Te') ? 'deepanshukhatri20061972@gmail.com' : undefined);
+    
+    const isDefaultAvatar = (url?: string | null): boolean => {
+      if (!url) return true;
+      return (
+        url.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') ||
+        url.includes('images.clerk.dev') ||
+        url.includes('gravatar.com/avatar?d=mp') ||
+        url.includes('d=mp')
+      );
+    };
+
+    let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+    if (storedAvatar && isDefaultAvatar(storedAvatar)) {
+      localStorage.removeItem('guardrail_user_avatar');
+      storedAvatar = null;
+    }
+
+    const rawAvatar =
+      payload.picture ||
+      payload.avatar_url ||
+      payload.image_url ||
+      payload.photo_url ||
+      storedAvatar ||
+      undefined;
+
+    const avatarUrl = rawAvatar && !isDefaultAvatar(rawAvatar) ? rawAvatar : undefined;
+    const fullName = payload.name || payload.full_name || 'Deepanshu Khatri';
     return {
       actorId,
       role,
       email,
+      fullName,
+      avatarUrl,
+      imageUrl: avatarUrl,
       isAuthenticated: true,
       relationshipLabel: role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
     };
@@ -148,17 +178,26 @@ if (typeof document !== 'undefined') {
     const storedEmail = typeof localStorage !== 'undefined'
       ? localStorage.getItem('guardrail_user_email')
       : null;
+    const storedAvatar = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('guardrail_user_avatar')
+      : null;
     const tokenProvider: TokenProvider | undefined = globalProvider ?? (storageToken ? () => storageToken : undefined);
     const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken, storedEmail) || (storageToken.startsWith('test-') ? {
       actorId: storageToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
       role: storageToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
       email: storedEmail || (storageToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'deepanshukhatri20061972@gmail.com'),
+      fullName: 'Deepanshu Khatri',
+      avatarUrl: storedAvatar || undefined,
+      imageUrl: storedAvatar || undefined,
       isAuthenticated: true,
       relationshipLabel: storageToken === 'test-ward-token' ? 'Ward User' : 'Designated Caretaker',
     } : {
       actorId: 'tc_reviewer',
       role: 'TRUSTED_CONTACT',
       email: storedEmail || 'deepanshukhatri20061972@gmail.com',
+      fullName: 'Deepanshu Khatri',
+      avatarUrl: storedAvatar || undefined,
+      imageUrl: storedAvatar || undefined,
       isAuthenticated: true,
       relationshipLabel: 'Authorized Contact',
     })) : null;
@@ -195,6 +234,9 @@ if (typeof document !== 'undefined') {
               actorId: payload.data.actorId,
               role: payload.data.role,
               email: payload.data.email ?? undefined,
+              fullName: 'Deepanshu Khatri',
+              avatarUrl: storedAvatar || undefined,
+              imageUrl: storedAvatar || undefined,
               isAuthenticated: true,
               relationshipLabel: payload.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
             });
@@ -255,6 +297,17 @@ if (typeof document !== 'undefined') {
           }
 
           const actorId = activeUser?.id || activeSession.id || 'tc_caretaker';
+          let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+          if (storedAvatar && isDefaultAvatar(storedAvatar)) {
+            localStorage.removeItem('guardrail_user_avatar');
+            storedAvatar = null;
+          }
+          const rawClerkImg = activeUser?.hasImage ? (activeUser.imageUrl || (activeUser as any)?.image_url) : undefined;
+          const userAvatar = storedAvatar || (rawClerkImg && !isDefaultAvatar(rawClerkImg) ? rawClerkImg : undefined);
+          if (userAvatar && typeof localStorage !== 'undefined') {
+            localStorage.setItem('guardrail_user_avatar', userAvatar);
+          }
+          const fullName = activeUser?.fullName || 'Deepanshu Khatri';
 
           wasAuthenticated = true;
 
@@ -263,6 +316,9 @@ if (typeof document !== 'undefined') {
             actorId,
             role: 'TRUSTED_CONTACT',
             email: userEmail,
+            fullName,
+            avatarUrl: userAvatar,
+            imageUrl: userAvatar,
             isAuthenticated: true,
             relationshipLabel: 'Designated Caretaker',
           });
@@ -283,10 +339,14 @@ if (typeof document !== 'undefined') {
               .then((res) => res.json())
               .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
                 if (payload.success && payload.data) {
+                  const currentAvatar = (payload.data as any).imageUrl || userAvatar;
                   shell.setProfile({
                     actorId: payload.data.actorId,
                     role: payload.data.role,
                     email: payload.data.email ?? userEmail,
+                    fullName,
+                    avatarUrl: currentAvatar,
+                    imageUrl: currentAvatar,
                     isAuthenticated: true,
                     relationshipLabel: 'Designated Caretaker',
                   });
@@ -315,6 +375,7 @@ if (typeof document !== 'undefined') {
               if (typeof localStorage !== 'undefined') {
                 localStorage.removeItem('guardrail_auth_token');
                 localStorage.removeItem('guardrail_user_email');
+                localStorage.removeItem('guardrail_user_avatar');
               }
               shell.setProfile(null);
             }

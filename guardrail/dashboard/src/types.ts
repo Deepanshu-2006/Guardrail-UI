@@ -105,6 +105,12 @@ export interface TrustedContactProfile {
   readonly relationshipLabel?: string;
   /** Verified email from identity provider if available */
   readonly email?: string;
+  /** Verified full display name if available */
+  readonly fullName?: string;
+  /** Profile photo / avatar URL from Google account or identity provider */
+  readonly avatarUrl?: string;
+  /** Alias for avatarUrl for compatibility */
+  readonly imageUrl?: string;
   /** True if session is authenticated by the server */
   readonly isAuthenticated: boolean;
 }

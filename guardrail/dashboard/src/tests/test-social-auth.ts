@@ -451,3 +451,4 @@ console.log('  ✓ Verifying 6-digit code completes authentication and dismisses
 console.log('\n======================================================');
 console.log('🎉 TASK 2.1 VERIFICATION COMPLETE: ALL ASSERTIONS PASSED!');
 console.log('======================================================\n');
+process.exit(0);
