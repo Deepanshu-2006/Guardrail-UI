@@ -1644,6 +1644,9 @@ export class DashboardShell {
   public handleAuthSuccess(token: string, profile: TrustedContactProfile): void {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('guardrail_auth_token', token);
+      if (profile.email) {
+        localStorage.setItem('guardrail_user_email', profile.email);
+      }
     }
     this.setProfile(profile);
     void this.refresh();
@@ -1655,6 +1658,7 @@ export class DashboardShell {
   public handleSignOut(): void {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('guardrail_auth_token');
+      localStorage.removeItem('guardrail_user_email');
     }
     this.setProfile(null);
     void this.refresh();

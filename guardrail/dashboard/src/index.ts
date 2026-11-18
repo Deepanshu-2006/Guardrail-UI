@@ -52,7 +52,7 @@ declare global {
   }
 }
 
-function parseJwtProfile(token: string): TrustedContactProfile | null {
+function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedContactProfile | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -74,7 +74,8 @@ function parseJwtProfile(token: string): TrustedContactProfile | null {
       payload.phone_number ||
       payload.preferred_username ||
       payload.name ||
-      undefined;
+      fallbackEmail ||
+      (actorId.includes('3MGvG7Te') ? 'deepanshukhatri20061972@gmail.com' : undefined);
     return {
       actorId,
       role,
@@ -144,15 +145,20 @@ if (typeof document !== 'undefined') {
     const storageToken = redirectToken || (typeof localStorage !== 'undefined'
       ? localStorage.getItem('guardrail_auth_token')
       : null);
+    const storedEmail = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('guardrail_user_email')
+      : null;
     const tokenProvider: TokenProvider | undefined = globalProvider ?? (storageToken ? () => storageToken : undefined);
-    const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken) || (storageToken.startsWith('test-') ? {
+    const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken, storedEmail) || (storageToken.startsWith('test-') ? {
       actorId: storageToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
       role: storageToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
+      email: storedEmail || (storageToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'deepanshukhatri20061972@gmail.com'),
       isAuthenticated: true,
       relationshipLabel: storageToken === 'test-ward-token' ? 'Ward User' : 'Designated Caretaker',
     } : {
       actorId: 'tc_reviewer',
       role: 'TRUSTED_CONTACT',
+      email: storedEmail || 'deepanshukhatri20061972@gmail.com',
       isAuthenticated: true,
       relationshipLabel: 'Authorized Contact',
     })) : null;
@@ -242,7 +248,11 @@ if (typeof document !== 'undefined') {
             activeUser?.fullName ||
             activeUser?.firstName ||
             activeUser?.id ||
-            'Designated Caretaker';
+            'deepanshukhatri20061972@gmail.com';
+
+          if (userEmail && typeof localStorage !== 'undefined') {
+            localStorage.setItem('guardrail_user_email', userEmail);
+          }
 
           const actorId = activeUser?.id || activeSession.id || 'tc_caretaker';
 
@@ -304,6 +314,7 @@ if (typeof document !== 'undefined') {
             if (current && (current.startsWith('ey') || current.includes('.'))) {
               if (typeof localStorage !== 'undefined') {
                 localStorage.removeItem('guardrail_auth_token');
+                localStorage.removeItem('guardrail_user_email');
               }
               shell.setProfile(null);
             }
