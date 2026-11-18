@@ -251,6 +251,24 @@ if (typeof document !== 'undefined') {
     getClerk().then(async (clerk) => {
       if (!clerk) return;
 
+      // Handle OAuth redirect return if returning from Google / social sign-in
+      if (typeof window !== 'undefined' && (
+        window.location.search.includes('__clerk') ||
+        window.location.hash.includes('__clerk') ||
+        window.location.search.includes('status=')
+      )) {
+        if (typeof clerk.handleRedirectCallback === 'function') {
+          try {
+            await clerk.handleRedirectCallback({
+              afterSignInUrl: window.location.origin,
+              afterSignUpUrl: window.location.origin,
+            });
+          } catch (cbErr) {
+            console.warn('[Clerk] handleRedirectCallback:', cbErr);
+          }
+        }
+      }
+
       let wasAuthenticated = false;
 
       // Ensure an active session is selected if signedInSessions exists but clerk.session is not set
