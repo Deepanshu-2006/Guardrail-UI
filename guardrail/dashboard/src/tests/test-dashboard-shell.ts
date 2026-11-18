@@ -598,8 +598,9 @@ async function runDashboardTests() {
       initialProfile: null,
     });
 
-    const unauthName = rootElement.querySelector('.gd-account-name');
-    assertEquals(unauthName?.textContent, 'Not Authenticated', 'Displays "Not Authenticated" when profile is null');
+    const signInBtn = rootElement.querySelector('.gd-sidebar-sign-in-btn');
+    assertEquals(signInBtn !== null, true, 'Displays minimal Sign In button when profile is null');
+    assertEquals(signInBtn?.textContent?.includes('Sign In'), true, 'Button text is "Sign In"');
 
     unauthShell.destroy();
   }

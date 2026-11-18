@@ -21,14 +21,43 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
   container.className = 'gd-sidebar-footer';
   container.setAttribute('aria-label', 'Trusted Contact Identity');
 
+  // Minimal unauthenticated state: Simple, sleek Sign In button only
+  if (!props.profile?.isAuthenticated) {
+    const signInBtn = document.createElement('button');
+    signInBtn.type = 'button';
+    signInBtn.className = 'gd-sidebar-sign-in-btn';
+    signInBtn.setAttribute('aria-label', 'Sign in to Guardrail');
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'gd-sidebar-sign-in-icon';
+    iconSpan.setAttribute('aria-hidden', 'true');
+    iconSpan.appendChild(createIcon('shield'));
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = 'Sign In';
+
+    signInBtn.appendChild(iconSpan);
+    signInBtn.appendChild(textSpan);
+
+    const clickHandler = props.onOpenAuth ?? props.onOpenSettings;
+    if (clickHandler) {
+      signInBtn.addEventListener('click', () => {
+        clickHandler();
+      });
+    }
+
+    container.appendChild(signInBtn);
+    return container;
+  }
+
+  // Authenticated state: User avatar, identity details, and account settings
   const card = document.createElement('div');
-  card.className = 'gd-account-card';
+  card.className = 'gd-account-card clickable';
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-label', 'Manage session and account settings');
   const clickHandler = props.onOpenAuth ?? props.onOpenSettings;
   if (clickHandler) {
-    card.classList.add('clickable');
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', props.profile?.isAuthenticated ? 'Manage session and account settings' : 'Sign in to Guardrail');
     card.addEventListener('click', () => {
       clickHandler();
     });
@@ -43,62 +72,33 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
   const avatar = document.createElement('div');
   avatar.className = 'gd-account-avatar';
   avatar.setAttribute('aria-hidden', 'true');
+  avatar.textContent = (props.profile.actorId.slice(3, 5) || 'TC').toUpperCase();
 
   const details = document.createElement('div');
   details.className = 'gd-account-details';
 
   const name = document.createElement('span');
   name.className = 'gd-account-name';
+  name.textContent = props.profile.email || props.profile.actorId;
 
   const role = document.createElement('span');
   role.className = 'gd-account-role';
-
-  if (props.profile && props.profile.isAuthenticated) {
-    avatar.textContent = (props.profile.actorId.slice(3, 5) || 'TC').toUpperCase();
-    name.textContent = props.profile.email || props.profile.actorId;
-    role.textContent = props.profile.assignedWardId
-      ? `Contact for ${props.profile.assignedWardId}`
-      : (props.profile.relationshipLabel || 'Trusted Contact');
-  } else {
-    avatar.appendChild(createIcon('lock', 'gd-avatar-icon'));
-    name.textContent = 'Not Authenticated';
-    role.textContent = 'Standalone Shell';
-  }
+  role.textContent = props.profile.assignedWardId
+    ? `Contact for ${props.profile.assignedWardId}`
+    : (props.profile.relationshipLabel || 'Trusted Contact');
 
   details.appendChild(name);
   details.appendChild(role);
 
-  if (!props.profile?.isAuthenticated && props.onOpenAuth) {
-    const signInBtn = document.createElement('button');
-    signInBtn.type = 'button';
-    signInBtn.className = 'gd-account-sign-in-btn';
-    signInBtn.textContent = 'Sign In';
-    signInBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      props.onOpenAuth?.();
-    });
-    details.appendChild(signInBtn);
-  }
-
   card.appendChild(avatar);
   card.appendChild(details);
 
-  if (props.onOpenAuth) {
-    const authIcon = document.createElement('span');
-    authIcon.className = 'gd-account-settings-icon';
-    authIcon.setAttribute('aria-label', 'Authentication settings');
-    authIcon.title = 'Session & Account Switcher';
-    authIcon.appendChild(createIcon('shield'));
-    card.appendChild(authIcon);
-  } else if (props.onOpenSettings) {
-    const settingsIcon = document.createElement('span');
-    settingsIcon.className = 'gd-account-settings-icon';
-    settingsIcon.setAttribute('aria-hidden', 'true');
-    settingsIcon.appendChild(createIcon('settings'));
-    card.appendChild(settingsIcon);
-  }
+  const authIcon = document.createElement('span');
+  authIcon.className = 'gd-account-settings-icon';
+  authIcon.setAttribute('aria-hidden', 'true');
+  authIcon.appendChild(createIcon('settings'));
+  card.appendChild(authIcon);
 
   container.appendChild(card);
-
   return container;
 }
