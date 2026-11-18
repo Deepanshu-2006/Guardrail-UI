@@ -159,7 +159,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   errorBanner.style.display = 'none';
   body.appendChild(errorBanner);
 
-  // 3. 1-Click Consumer Social Login Section (Task 2.1)
+  // 3. 1-Click Consumer Social & In-Modal Phone Authentication (Clerk-powered)
   const socialSection = document.createElement('div');
   socialSection.className = 'gd-auth-section gd-auth-social-section';
 
@@ -178,49 +178,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   socialHeader.appendChild(socialHint);
   socialSection.appendChild(socialHeader);
 
-  const socialButtonsContainer = document.createElement('div');
-  socialButtonsContainer.className = 'gd-auth-social-buttons';
+  const socialBody = document.createElement('div');
+  socialBody.className = 'gd-auth-social-body';
+  socialSection.appendChild(socialBody);
 
-  // Google Sign-In Button
-  const googleBtn = document.createElement('button');
-  googleBtn.type = 'button';
-  googleBtn.className = 'gd-auth-social-btn gd-auth-google-btn';
-  googleBtn.appendChild(createIcon('google', 'gd-auth-social-icon'));
-  const googleText = document.createElement('span');
-  googleText.textContent = 'Continue with Google';
-  googleBtn.appendChild(googleText);
-  googleBtn.addEventListener('click', () => {
-    void handleSocialSignIn('google', googleBtn, googleText);
-  });
-  socialButtonsContainer.appendChild(googleBtn);
-
-  // Apple Sign-In Button
-  const appleBtn = document.createElement('button');
-  appleBtn.type = 'button';
-  appleBtn.className = 'gd-auth-social-btn gd-auth-apple-btn';
-  appleBtn.appendChild(createIcon('apple', 'gd-auth-social-icon'));
-  const appleText = document.createElement('span');
-  appleText.textContent = 'Continue with Apple';
-  appleBtn.appendChild(appleText);
-  appleBtn.addEventListener('click', () => {
-    void handleSocialSignIn('apple', appleBtn, appleText);
-  });
-  socialButtonsContainer.appendChild(appleBtn);
-
-  // Phone Number Sign-In Button (SMS OTP verification handled by Clerk)
-  const phoneBtn = document.createElement('button');
-  phoneBtn.type = 'button';
-  phoneBtn.className = 'gd-auth-social-btn gd-auth-phone-btn';
-  phoneBtn.appendChild(createIcon('phone', 'gd-auth-social-icon'));
-  const phoneText = document.createElement('span');
-  phoneText.textContent = 'Continue with Phone Number';
-  phoneBtn.appendChild(phoneText);
-  phoneBtn.addEventListener('click', () => {
-    void handleSocialSignIn('phone', phoneBtn, phoneText);
-  });
-  socialButtonsContainer.appendChild(phoneBtn);
-
-  socialSection.appendChild(socialButtonsContainer);
   body.appendChild(socialSection);
 
   // Provider Discovery (SSO / OIDC fallback if configured)
@@ -247,8 +208,13 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   backdrop.appendChild(modal);
 
-  // --- State & Helpers ---
+  // --- State & Phone / OTP Flows ---
   let cachedAuthConfig: AuthConfigResponse | null = null;
+  let currentPhone = '';
+  let authMode: 'signIn' | 'signUp' = 'signIn';
+  let currentSignIn: any = null;
+  let currentSignUp: any = null;
+  let currentPhoneId: string | null = null;
 
   function showError(msg: string): void {
     errorBanner.textContent = msg;
@@ -260,115 +226,459 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     errorBanner.style.display = 'none';
   }
 
+  function cleanPhoneNumber(raw: string): string {
+    const trimmed = raw.trim();
+    const digitsAndPlus = trimmed.replace(/[^\d+]/g, '');
+    if (!digitsAndPlus) return '';
+    if (digitsAndPlus.startsWith('+')) {
+      return digitsAndPlus;
+    }
+    if (digitsAndPlus.length === 10) {
+      return `+1${digitsAndPlus}`;
+    }
+    return `+${digitsAndPlus}`;
+  }
+
+  function extractClerkError(err: unknown): string {
+    if (!err) return 'Authentication failed.';
+    const anyErr = err as any;
+    if (Array.isArray(anyErr.errors) && anyErr.errors.length > 0) {
+      const first = anyErr.errors[0];
+      return first.longMessage || first.message || String(first);
+    }
+    if (anyErr instanceof Error) {
+      return anyErr.message;
+    }
+    return String(err);
+  }
+
+  function isAccountNotFoundError(err: unknown): boolean {
+    if (!err) return false;
+    const anyErr = err as any;
+    if (Array.isArray(anyErr.errors)) {
+      return anyErr.errors.some((e: any) => {
+        const code = String(e.code || '').toLowerCase();
+        const msg = String(e.message || '').toLowerCase();
+        const longMsg = String(e.longMessage || '').toLowerCase();
+        return (
+          code === 'form_identifier_not_found' ||
+          code === 'user_not_found' ||
+          msg.includes('account not found') ||
+          msg.includes('user not found') ||
+          msg.includes('not found') ||
+          longMsg.includes('account not found') ||
+          longMsg.includes('sign up')
+        );
+      });
+    }
+    const str = String(anyErr.message || anyErr).toLowerCase();
+    return str.includes('not found') || str.includes('sign up') || str.includes('identifier');
+  }
+
+  function clearContainer(el: HTMLElement): void {
+    el.innerHTML = '';
+    while (el.firstChild) {
+      el.removeChild(el.firstChild);
+    }
+  }
+
+  function renderOptionsView(): void {
+    hideError();
+    socialTitle.textContent = 'Sign in with your account';
+    socialHint.textContent = '1-click secure access';
+    clearContainer(socialBody);
+
+    const socialButtonsContainer = document.createElement('div');
+    socialButtonsContainer.className = 'gd-auth-social-buttons';
+
+    // Google Sign-In Button
+    const googleBtn = document.createElement('button');
+    googleBtn.type = 'button';
+    googleBtn.className = 'gd-auth-social-btn gd-auth-google-btn';
+    googleBtn.appendChild(createIcon('google', 'gd-auth-social-icon'));
+    const googleText = document.createElement('span');
+    googleText.textContent = 'Continue with Google';
+    googleBtn.appendChild(googleText);
+    googleBtn.addEventListener('click', () => {
+      void handleSocialSignIn('google', googleBtn, googleText);
+    });
+    socialButtonsContainer.appendChild(googleBtn);
+
+    // Apple Sign-In Button
+    const appleBtn = document.createElement('button');
+    appleBtn.type = 'button';
+    appleBtn.className = 'gd-auth-social-btn gd-auth-apple-btn';
+    appleBtn.appendChild(createIcon('apple', 'gd-auth-social-icon'));
+    const appleText = document.createElement('span');
+    appleText.textContent = 'Continue with Apple';
+    appleBtn.appendChild(appleText);
+    appleBtn.addEventListener('click', () => {
+      void handleSocialSignIn('apple', appleBtn, appleText);
+    });
+    socialButtonsContainer.appendChild(appleBtn);
+
+    // Phone Number Sign-In Button (In-modal Phone + SMS OTP)
+    const phoneBtn = document.createElement('button');
+    phoneBtn.type = 'button';
+    phoneBtn.className = 'gd-auth-social-btn gd-auth-phone-btn';
+    phoneBtn.appendChild(createIcon('phone', 'gd-auth-social-icon'));
+    const phoneText = document.createElement('span');
+    phoneText.textContent = 'Continue with Phone Number';
+    phoneBtn.appendChild(phoneText);
+    phoneBtn.addEventListener('click', () => {
+      renderPhoneView();
+    });
+    socialButtonsContainer.appendChild(phoneBtn);
+
+    socialBody.appendChild(socialButtonsContainer);
+  }
+
+  function renderPhoneView(): void {
+    hideError();
+    socialTitle.textContent = 'Sign in with Phone';
+    socialHint.textContent = 'SMS verification';
+    clearContainer(socialBody);
+
+    const form = document.createElement('form');
+    form.className = 'gd-auth-phone-form';
+    form.setAttribute('novalidate', 'true');
+
+    const label = document.createElement('label');
+    label.className = 'gd-auth-field-label';
+    label.textContent = 'Mobile Phone Number';
+
+    const phoneInput = document.createElement('input');
+    phoneInput.type = 'tel';
+    phoneInput.className = 'gd-auth-phone-input';
+    phoneInput.placeholder = '+1 (555) 555-0100';
+    phoneInput.autocomplete = 'tel';
+    phoneInput.value = currentPhone;
+
+    const hint = document.createElement('p');
+    hint.className = 'gd-auth-field-hint';
+    hint.textContent = 'Include country code (e.g. +1 for US/Canada, +91 for India). Dev test number: +1 (555) 555-0100';
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'gd-auth-btn-primary';
+    submitBtn.textContent = 'Send Verification Code';
+
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'gd-auth-btn-back';
+    backBtn.textContent = '← Back to all options';
+    backBtn.addEventListener('click', () => {
+      renderOptionsView();
+    });
+
+    form.appendChild(label);
+    form.appendChild(phoneInput);
+    form.appendChild(hint);
+    form.appendChild(submitBtn);
+    form.appendChild(backBtn);
+
+    form.addEventListener('submit', (e) => {
+      if (typeof e?.preventDefault === 'function') {
+        e.preventDefault();
+      }
+      void handleSendPhoneCode(phoneInput.value, submitBtn);
+    });
+
+    socialBody.appendChild(form);
+
+    setTimeout(() => {
+      if (typeof phoneInput.focus === 'function') {
+        phoneInput.focus();
+      }
+    }, 50);
+  }
+
+  function renderOtpView(phone: string, mode: 'signIn' | 'signUp'): void {
+    hideError();
+    socialTitle.textContent = 'Verify Phone Number';
+    socialHint.textContent = '6-digit code';
+    clearContainer(socialBody);
+
+    const form = document.createElement('form');
+    form.className = 'gd-auth-otp-form';
+    form.setAttribute('novalidate', 'true');
+
+    const label = document.createElement('label');
+    label.className = 'gd-auth-field-label';
+    label.textContent = 'Verification Code';
+
+    const otpInput = document.createElement('input');
+    otpInput.type = 'text';
+    otpInput.inputMode = 'numeric';
+    otpInput.maxLength = 6;
+    otpInput.pattern = '[0-9]*';
+    otpInput.className = 'gd-auth-otp-input';
+    otpInput.placeholder = '123456';
+    otpInput.autocomplete = 'one-time-code';
+
+    const hint = document.createElement('p');
+    hint.className = 'gd-auth-field-hint';
+    hint.innerHTML = `Code sent to <strong>${phone}</strong>. In dev mode, test code is <strong>424242</strong>.`;
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'gd-auth-btn-primary';
+    submitBtn.textContent = 'Verify & Sign In';
+
+    const linksRow = document.createElement('div');
+    linksRow.className = 'gd-auth-form-links';
+
+    const resendBtn = document.createElement('button');
+    resendBtn.type = 'button';
+    resendBtn.className = 'gd-auth-btn-link gd-auth-resend-btn';
+    resendBtn.textContent = 'Resend code';
+    resendBtn.addEventListener('click', () => {
+      void handleResendCode(resendBtn);
+    });
+
+    const changePhoneBtn = document.createElement('button');
+    changePhoneBtn.type = 'button';
+    changePhoneBtn.className = 'gd-auth-btn-link gd-auth-change-phone-btn';
+    changePhoneBtn.textContent = '← Use different number';
+    changePhoneBtn.addEventListener('click', () => {
+      renderPhoneView();
+    });
+
+    linksRow.appendChild(resendBtn);
+    linksRow.appendChild(changePhoneBtn);
+
+    form.appendChild(label);
+    form.appendChild(otpInput);
+    form.appendChild(hint);
+    form.appendChild(submitBtn);
+    form.appendChild(linksRow);
+
+    form.addEventListener('submit', (e) => {
+      if (typeof e?.preventDefault === 'function') {
+        e.preventDefault();
+      }
+      void handleVerifyOtpCode(otpInput.value, submitBtn);
+    });
+
+    socialBody.appendChild(form);
+
+    setTimeout(() => {
+      if (typeof otpInput.focus === 'function') {
+        otpInput.focus();
+      }
+    }, 50);
+  }
+
+  async function handleSendPhoneCode(phoneVal: string, submitBtn: HTMLButtonElement): Promise<void> {
+    hideError();
+    const cleanPhone = cleanPhoneNumber(phoneVal);
+    if (!cleanPhone || cleanPhone.length < 8) {
+      showError('Please enter a valid phone number with country code (e.g. +1 555-555-0100 or +91 ...).');
+      return;
+    }
+
+    currentPhone = cleanPhone;
+    submitBtn.disabled = true;
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Sending code...';
+
+    try {
+      const clerk = await getClerk();
+      if (clerk && clerk.client) {
+        // Unified Sign-In / Sign-Up
+        try {
+          const signInAttempt = await clerk.client.signIn.create({
+            identifier: cleanPhone,
+          });
+          currentSignIn = signInAttempt;
+          currentSignUp = null;
+          authMode = 'signIn';
+
+          if (signInAttempt.status === 'needs_first_factor') {
+            const factor = signInAttempt.supportedFirstFactors?.find(
+              (f: any) => f.strategy === 'phone_code'
+            ) as any;
+            if (factor) {
+              currentPhoneId = factor.phoneNumberId;
+              await signInAttempt.prepareFirstFactor({
+                strategy: 'phone_code',
+                phoneNumberId: factor.phoneNumberId,
+              });
+            }
+          }
+        } catch (signInErr: any) {
+          if (isAccountNotFoundError(signInErr) || !currentSignIn) {
+            // Automatically fall back to Sign Up with zero error banner
+            try {
+              const signUpAttempt = await clerk.client.signUp.create({
+                phoneNumber: cleanPhone,
+              });
+              currentSignUp = signUpAttempt;
+              currentSignIn = null;
+              authMode = 'signUp';
+              await signUpAttempt.preparePhoneNumberVerification({
+                strategy: 'phone_code',
+              });
+            } catch (signUpErr: any) {
+              throw signUpErr;
+            }
+          } else {
+            throw signInErr;
+          }
+        }
+
+        renderOtpView(cleanPhone, authMode);
+        return;
+      }
+
+      // Test/offline environment fallback
+      if (typeof window === 'undefined' || !window.location.origin) {
+        await verifyAndApplyToken('test-contact-token', cleanPhone);
+        return;
+      }
+
+      renderOtpView(cleanPhone, 'signIn');
+    } catch (err) {
+      showError(extractClerkError(err));
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+
+  async function handleVerifyOtpCode(codeVal: string, submitBtn: HTMLButtonElement): Promise<void> {
+    hideError();
+    const code = codeVal.trim();
+    if (!code || code.length < 6) {
+      showError('Please enter the 6-digit verification code.');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Verifying code...';
+
+    try {
+      const clerk = await getClerk();
+      if (clerk) {
+        let createdSessionId: string | null = null;
+
+        if (authMode === 'signIn' && currentSignIn) {
+          const factorRes = await currentSignIn.attemptFirstFactor({
+            strategy: 'phone_code',
+            code,
+          });
+          if (factorRes.status === 'complete' && factorRes.createdSessionId) {
+            createdSessionId = factorRes.createdSessionId;
+          } else {
+            showError(`Verification status: ${factorRes.status}`);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            return;
+          }
+        } else if (authMode === 'signUp' && currentSignUp) {
+          const verifyRes = await currentSignUp.attemptPhoneNumberVerification({
+            code,
+          });
+          if (verifyRes.status === 'complete' && verifyRes.createdSessionId) {
+            createdSessionId = verifyRes.createdSessionId;
+          } else {
+            showError(`Sign up status: ${verifyRes.status}`);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            return;
+          }
+        }
+
+        if (createdSessionId) {
+          if (typeof clerk.setActive === 'function') {
+            await clerk.setActive({ session: createdSessionId });
+          }
+          let sessionToken = '';
+          if (clerk.session && typeof clerk.session.getToken === 'function') {
+            sessionToken = (await clerk.session.getToken()) || '';
+          }
+          await verifyAndApplyToken(sessionToken || 'test-contact-token', currentPhone);
+          return;
+        }
+      }
+
+      // Offline / Test environment fallback
+      await verifyAndApplyToken('test-contact-token', currentPhone);
+    } catch (err) {
+      showError(extractClerkError(err));
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+
+  async function handleResendCode(resendBtn: HTMLButtonElement): Promise<void> {
+    hideError();
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Resending...';
+
+    try {
+      const clerk = await getClerk();
+      if (clerk) {
+        if (authMode === 'signIn' && currentSignIn && currentPhoneId) {
+          await currentSignIn.prepareFirstFactor({
+            strategy: 'phone_code',
+            phoneNumberId: currentPhoneId,
+          });
+        } else if (authMode === 'signUp' && currentSignUp) {
+          await currentSignUp.preparePhoneNumberVerification({
+            strategy: 'phone_code',
+          });
+        }
+      }
+      resendBtn.textContent = 'Code resent!';
+      setTimeout(() => {
+        resendBtn.textContent = 'Resend code';
+        resendBtn.disabled = false;
+      }, 4000);
+    } catch (err) {
+      showError(`Resend failed: ${extractClerkError(err)}`);
+      resendBtn.textContent = 'Resend code';
+      resendBtn.disabled = false;
+    }
+  }
+
   async function handleSocialSignIn(
-    provider: 'google' | 'apple' | 'phone',
+    provider: 'google' | 'apple',
     btn: HTMLButtonElement,
     labelSpan: HTMLSpanElement
   ): Promise<void> {
     hideError();
     const originalText = labelSpan.textContent;
     btn.disabled = true;
-    labelSpan.textContent =
-      provider === 'google'
-        ? 'Connecting Google...'
-        : provider === 'apple'
-        ? 'Connecting Apple...'
-        : 'Connecting Phone...';
+    labelSpan.textContent = provider === 'google' ? 'Connecting Google...' : 'Connecting Apple...';
 
-    // 1. If Clerk SDK is active, execute Clerk authentication
+    // 1. If Clerk SDK is active, execute direct OAuth redirect
     try {
       const clerk = await getClerk();
-      if (clerk) {
-        if (provider === 'phone') {
-          // Phone authentication flow handled natively by Clerk (Phone input + SMS OTP verification)
-          try {
-            if (typeof clerk.openSignIn === 'function') {
-              cleanup();
-              props.onClose();
-              clerk.openSignIn();
-              return;
-            }
-          } catch (modalErr) {
-            console.warn('[Clerk] openSignIn modal failed, falling back to redirect:', modalErr);
-          }
-          if (typeof clerk.redirectToSignIn === 'function') {
-            await clerk.redirectToSignIn({ redirectUrl: window.location.href });
-            return;
-          }
-        } else {
-          // Direct OAuth redirect via Clerk client for Google / Apple
-          if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
-            try {
-              await clerk.client.signIn.authenticateWithRedirect({
-                strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
-                redirectUrl: window.location.href,
-                redirectUrlComplete: window.location.href,
-              });
-              return;
-            } catch (oauthErr) {
-              console.warn(`[Clerk] Direct OAuth redirect failed for ${provider}, opening Clerk sign-in modal:`, oauthErr);
-              try {
-                if (typeof clerk.openSignIn === 'function') {
-                  cleanup();
-                  props.onClose();
-                  clerk.openSignIn();
-                  return;
-                }
-              } catch (modalErr) {
-                console.warn('[Clerk] openSignIn modal failed after direct redirect error:', modalErr);
-              }
-              if (typeof clerk.redirectToSignIn === 'function') {
-                await clerk.redirectToSignIn({ redirectUrl: window.location.href });
-                return;
-              }
-              throw oauthErr;
-            }
-          }
-
-          // Open Clerk's modal
-          try {
-            if (typeof clerk.openSignIn === 'function') {
-              cleanup();
-              props.onClose();
-              clerk.openSignIn();
-              return;
-            }
-          } catch (modalErr) {
-            console.warn('[Clerk] openSignIn modal failed, falling back to redirectToSignIn:', modalErr);
-          }
-
-          // Hosted redirect
-          if (typeof clerk.redirectToSignIn === 'function') {
-            await clerk.redirectToSignIn({
-              redirectUrl: window.location.href,
-            });
-            return;
-          }
-        }
+      if (clerk && clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
+        await clerk.client.signIn.authenticateWithRedirect({
+          strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
+          redirectUrl: window.location.href,
+          redirectUrlComplete: window.location.href,
+          continueSignUp: true,
+        });
+        return;
       }
     } catch (err) {
       console.warn('[Clerk Auth Error]', err);
-      // In test/Node environment without browser window, allow test simulation
       if (typeof window === 'undefined' || !window.location.origin) {
-        const simulatedContact =
-          provider === 'google'
-            ? 'carol.guardian@gmail.com'
-            : provider === 'apple'
-            ? 'carol.guardian@appleid.com'
-            : '+1 (555) 234-5678';
+        const simulatedContact = provider === 'google' ? 'carol.guardian@gmail.com' : 'carol.guardian@appleid.com';
         await verifyAndApplyToken('test-contact-token', simulatedContact);
         return;
       }
-
-      const errMsg = err instanceof Error ? err.message : String(err);
-      showError(`Authentication error: ${errMsg}`);
+      showError(`Authentication error: ${extractClerkError(err)}`);
       btn.disabled = false;
       labelSpan.textContent = originalText;
       return;
     }
 
     // 2. If an authoritative OIDC or Clerk provider URL is configured, execute OAuth 2.0 / OIDC redirect
-    if (provider !== 'phone' && cachedAuthConfig?.oidcConfigured && cachedAuthConfig?.authUrl) {
+    if (cachedAuthConfig?.oidcConfigured && cachedAuthConfig?.authUrl) {
       const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
       const targetUrl = new URL(cachedAuthConfig.authUrl);
       targetUrl.searchParams.set('client_id', cachedAuthConfig.clientId || '');
@@ -385,12 +695,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     }
 
     // 3. Fallback for environments without Clerk configured (e.g. Node tests or offline dev)
-    const simulatedContact =
-      provider === 'google'
-        ? 'carol.guardian@gmail.com'
-        : provider === 'apple'
-        ? 'carol.guardian@appleid.com'
-        : '+1 (555) 234-5678';
+    const simulatedContact = provider === 'google' ? 'carol.guardian@gmail.com' : 'carol.guardian@appleid.com';
     try {
       await verifyAndApplyToken('test-contact-token', simulatedContact);
     } catch {
@@ -398,6 +703,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       labelSpan.textContent = originalText;
     }
   }
+
+  // Initial render: show options view (Google, Apple, Phone)
+  renderOptionsView();
 
   async function verifyAndApplyToken(token: string, simulatedEmail?: string): Promise<void> {
     hideError();
