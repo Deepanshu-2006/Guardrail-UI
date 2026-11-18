@@ -194,6 +194,8 @@ if (typeof document !== 'undefined') {
     getClerk().then(async (clerk) => {
       if (!clerk) return;
 
+      let wasAuthenticated = false;
+
       const syncClerkSession = async () => {
         if (clerk.user && clerk.session) {
           try {
@@ -207,6 +209,7 @@ if (typeof document !== 'undefined') {
                 clerk.user.primaryPhoneNumber?.phoneNumber ||
                 clerk.user.username ||
                 clerk.user.id;
+              wasAuthenticated = true;
               shell.setProfile({
                 actorId: clerk.user.id,
                 role: 'TRUSTED_CONTACT',
@@ -241,7 +244,8 @@ if (typeof document !== 'undefined') {
         clerk.addListener(async (emission) => {
           if (emission.user && emission.session) {
             await syncClerkSession();
-          } else if (!emission.session) {
+          } else if (!emission.session && wasAuthenticated) {
+            wasAuthenticated = false;
             const current = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
             if (current && (current.startsWith('ey') || current.includes('.'))) {
               if (typeof localStorage !== 'undefined') {

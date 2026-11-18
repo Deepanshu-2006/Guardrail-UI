@@ -281,11 +281,15 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       if (clerk) {
         if (provider === 'phone') {
           // Phone authentication flow handled natively by Clerk (Phone input + SMS OTP verification)
-          if (typeof clerk.openSignIn === 'function') {
-            cleanup();
-            props.onClose();
-            clerk.openSignIn();
-            return;
+          try {
+            if (typeof clerk.openSignIn === 'function') {
+              cleanup();
+              props.onClose();
+              clerk.openSignIn();
+              return;
+            }
+          } catch (modalErr) {
+            console.warn('[Clerk] openSignIn modal failed, falling back to redirect:', modalErr);
           }
           if (typeof clerk.redirectToSignIn === 'function') {
             await clerk.redirectToSignIn({ redirectUrl: window.location.href });
@@ -303,11 +307,15 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
               return;
             } catch (oauthErr) {
               console.warn(`[Clerk] Direct OAuth redirect failed for ${provider}, opening Clerk sign-in modal:`, oauthErr);
-              if (typeof clerk.openSignIn === 'function') {
-                cleanup();
-                props.onClose();
-                clerk.openSignIn();
-                return;
+              try {
+                if (typeof clerk.openSignIn === 'function') {
+                  cleanup();
+                  props.onClose();
+                  clerk.openSignIn();
+                  return;
+                }
+              } catch (modalErr) {
+                console.warn('[Clerk] openSignIn modal failed after direct redirect error:', modalErr);
               }
               if (typeof clerk.redirectToSignIn === 'function') {
                 await clerk.redirectToSignIn({ redirectUrl: window.location.href });
@@ -318,11 +326,15 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           }
 
           // Open Clerk's modal
-          if (typeof clerk.openSignIn === 'function') {
-            cleanup();
-            props.onClose();
-            clerk.openSignIn();
-            return;
+          try {
+            if (typeof clerk.openSignIn === 'function') {
+              cleanup();
+              props.onClose();
+              clerk.openSignIn();
+              return;
+            }
+          } catch (modalErr) {
+            console.warn('[Clerk] openSignIn modal failed, falling back to redirectToSignIn:', modalErr);
           }
 
           // Hosted redirect
