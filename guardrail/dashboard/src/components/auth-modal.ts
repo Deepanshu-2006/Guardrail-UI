@@ -50,6 +50,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const modal = document.createElement('div');
   modal.className = 'gd-auth-modal-card';
 
+  const isAuth = Boolean(props.profile?.isAuthenticated);
+
   // --- Header ---
   const header = document.createElement('div');
   header.className = 'gd-auth-modal-header';
@@ -57,14 +59,25 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-auth-modal-title-group';
 
+  // Subtle brand badge pill above title
+  const brandBadge = document.createElement('div');
+  brandBadge.className = 'gd-auth-brand-badge';
+  brandBadge.appendChild(createIcon('shield', 'gd-auth-badge-icon'));
+  const badgeLabel = document.createElement('span');
+  badgeLabel.textContent = 'Guardrail Trusted Contact Identity';
+  brandBadge.appendChild(badgeLabel);
+  titleGroup.appendChild(brandBadge);
+
   const title = document.createElement('h2');
   title.id = 'gd-auth-modal-title';
   title.className = 'gd-auth-modal-title';
-  title.textContent = 'Authentication';
+  title.textContent = isAuth ? 'Account & Session' : 'Sign in to Guardrail';
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-auth-modal-subtitle';
-  subtitle.textContent = 'Manage identity session and trusted contact access.';
+  subtitle.textContent = isAuth
+    ? 'Manage your active identity session and trusted contact access.'
+    : 'Review, evaluate, and approve sensitive browser actions on behalf of your wards.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
@@ -87,9 +100,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const body = document.createElement('div');
   body.className = 'gd-auth-modal-body';
 
-  // 1. Active Session
+  // 1. Active Session (only rendered when authenticated)
   const sessionSection = document.createElement('div');
   sessionSection.className = 'gd-auth-session-section';
+  if (!isAuth) {
+    sessionSection.style.display = 'none';
+  }
 
   const sessionRow = document.createElement('div');
   sessionRow.className = 'gd-auth-session-row';
@@ -103,15 +119,14 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   const sessionName = document.createElement('div');
   sessionName.className = 'gd-auth-session-name';
-  sessionName.textContent = props.profile?.isAuthenticated
-    ? (props.profile.email || props.profile.actorId)
-    : 'Not authenticated';
+  sessionName.textContent = props.profile?.fullName || props.profile?.email || props.profile?.actorId || 'Not authenticated';
 
   const sessionSub = document.createElement('div');
   sessionSub.className = 'gd-auth-session-sub';
-  if (props.profile?.isAuthenticated) {
-    const roleText = props.profile.relationshipLabel || (props.profile.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : props.profile.role);
-    sessionSub.textContent = `${roleText} · Secure session`;
+  if (isAuth) {
+    const roleText = props.profile?.relationshipLabel || (props.profile?.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : props.profile?.role);
+    const emailPrefix = props.profile?.email ? `${props.profile.email} · ` : '';
+    sessionSub.textContent = `${emailPrefix}${roleText} · Secure session`;
   } else {
     sessionSub.textContent = 'Sign in to access trusted contact approvals';
   }
@@ -189,9 +204,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   sessionSection.appendChild(sessionRow);
   body.appendChild(sessionSection);
 
-  // Divider
+  // Divider (only shown when authenticated to separate active session from details)
   const divider1 = document.createElement('hr');
   divider1.className = 'gd-auth-divider';
+  if (!isAuth) {
+    divider1.style.display = 'none';
+  }
   body.appendChild(divider1);
 
   // 2. Error message banner (initially hidden)
@@ -371,7 +389,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   const closeFooterBtn = document.createElement('button');
   closeFooterBtn.type = 'button';
-  closeFooterBtn.className = 'gd-auth-btn-close';
+  closeFooterBtn.className = props.profile?.isAuthenticated ? 'gd-auth-btn-done' : 'gd-auth-btn-close gd-auth-btn-cancel';
   closeFooterBtn.textContent = props.profile?.isAuthenticated ? 'Done' : 'Cancel';
   closeFooterBtn.addEventListener('click', () => {
     cleanup();
@@ -503,6 +521,14 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       renderPhoneView();
     });
     socialButtonsContainer.appendChild(phoneBtn);
+
+    const securityPill = document.createElement('div');
+    securityPill.className = 'gd-auth-security-guarantee';
+    securityPill.appendChild(createIcon('shield-check', 'gd-auth-guarantee-icon'));
+    const guaranteeText = document.createElement('span');
+    guaranteeText.textContent = 'End-to-End Cryptographic Security · Zero Credentials Stored';
+    securityPill.appendChild(guaranteeText);
+    socialButtonsContainer.appendChild(securityPill);
 
     socialBody.appendChild(socialButtonsContainer);
   }
