@@ -927,36 +927,79 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     const simulatedContact = provider === 'google' ? 'carol.guardian@gmail.com' : 'carol.guardian@appleid.com';
 
     try {
-      const clerk = await getClerk();
-      const isRealBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined' && Boolean(window.location.href);
+      const isRealBrowser =
+        typeof window !== 'undefined' &&
+        typeof window.location !== 'undefined' &&
+        typeof window.location.assign === 'function' &&
+        !(typeof process !== 'undefined' && Boolean(process.versions?.node));
 
-      // In real browser environment with Clerk loaded, trigger OAuth redirect so user can choose their Google account
-      if (clerk && isRealBrowser && clerk.loaded) {
-        const strategy = provider === 'google' ? 'oauth_google' : 'oauth_apple';
-        const currentOrigin = window.location.origin;
+      if (isRealBrowser) {
+        // 1. Sign out of any existing Clerk session so the user can choose an account
+        try {
+          const clerk = await getClerk();
+          if (clerk && clerk.session && typeof clerk.signOut === 'function') {
+            await clerk.signOut();
+          }
+        } catch {
+          // Ignore signout cleanup errors
+        }
+
+        const currentOrigin =
+          typeof window.location.origin === 'string' && window.location.origin
+            ? (window.location.origin.endsWith('/') ? window.location.origin : `${window.location.origin}/`)
+            : 'http://localhost:5173/';
+
+        // 2. Fetch the direct Google OAuth URL with prompt=select_account from the backend
+        const baseUrl =
+          props.apiBaseUrl ||
+          (typeof window !== 'undefined' && window.location.port !== '5173'
+            ? window.location.origin
+            : 'http://127.0.0.1:3000');
 
         try {
-          if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
-            await clerk.client.signIn.authenticateWithRedirect({
-              strategy,
+          const res = await fetch(`${baseUrl}/api/v1/auth/oauth-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider,
               redirectUrl: currentOrigin,
-              redirectUrlComplete: currentOrigin,
-            });
+              oidcPrompt: 'select_account',
+            }),
+          });
+          const json = (await res.json()) as any;
+          if (json.success && json.data?.redirectUrl) {
+            window.location.href = json.data.redirectUrl;
             return;
           }
-        } catch (signInErr: any) {
-          const errMsg = String(signInErr?.message || signInErr).toLowerCase();
-          if (errMsg.includes('not found') || errMsg.includes('sign up')) {
-            if (clerk.client?.signUp && typeof clerk.client.signUp.authenticateWithRedirect === 'function') {
+        } catch (fetchErr) {
+          console.warn('[Social Sign In] Backend oauth-url fetch error:', fetchErr);
+        }
+
+        // 3. Fallback: Clerk SDK client authenticateWithRedirect
+        try {
+          const clerk = await getClerk();
+          if (clerk && clerk.loaded) {
+            const strategy = provider === 'google' ? 'oauth_google' : 'oauth_apple';
+            if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
+              await clerk.client.signIn.authenticateWithRedirect({
+                strategy,
+                redirectUrl: currentOrigin,
+                redirectUrlComplete: currentOrigin,
+                oidcPrompt: 'select_account',
+              });
+              return;
+            } else if (clerk.client?.signUp && typeof clerk.client.signUp.authenticateWithRedirect === 'function') {
               await clerk.client.signUp.authenticateWithRedirect({
                 strategy,
                 redirectUrl: currentOrigin,
                 redirectUrlComplete: currentOrigin,
+                oidcPrompt: 'select_account',
               });
               return;
             }
           }
-          throw signInErr;
+        } catch (clerkErr) {
+          console.warn('[Social Sign In] Clerk client redirect error:', clerkErr);
         }
       }
 
@@ -967,14 +1010,26 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       );
     } catch (err) {
       console.warn('[Social Sign In Error]', err);
-      try {
-        await authenticateClerkSession(
-          { provider, email: provider === 'google' ? 'deepanshukhatri20061972@gmail.com' : undefined },
-          simulatedContact
-        );
-      } catch {
+      const isRealBrowser =
+        typeof window !== 'undefined' &&
+        typeof window.location !== 'undefined' &&
+        typeof window.location.assign === 'function' &&
+        !(typeof process !== 'undefined' && Boolean(process.versions?.node));
+
+      if (!isRealBrowser) {
+        try {
+          await authenticateClerkSession(
+            { provider, email: provider === 'google' ? 'deepanshukhatri20061972@gmail.com' : undefined },
+            simulatedContact
+          );
+        } catch {
+          btn.disabled = false;
+          labelSpan.textContent = originalText;
+        }
+      } else {
         btn.disabled = false;
         labelSpan.textContent = originalText;
+        showError('Unable to start Google sign-in. Please check connection and try again.');
       }
     }
   }

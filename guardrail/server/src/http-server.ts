@@ -207,6 +207,55 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       return;
     }
 
+    // 3c. Fetch OAuth External Redirect URL for Social Login (Google / Apple)
+    if (request.method === 'POST' && requestPath === '/api/v1/auth/oauth-url') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          const provider = body.provider || 'google';
+          const strategy = provider === 'google' ? 'oauth_google' : 'oauth_apple';
+          const redirectUrl = body.redirectUrl || 'http://localhost:5173/';
+          const oidcPrompt = body.oidcPrompt || 'select_account';
+
+          const params = new URLSearchParams({
+            strategy,
+            redirect_url: redirectUrl,
+            action_complete_redirect_url: redirectUrl,
+            oidc_prompt: oidcPrompt,
+          });
+
+          const clerkDomain = process.env.CLERK_FRONTEND_API || 'harmless-snipe-9044.clerk.accounts.dev';
+          const fapiRes = await fetch(`https://${clerkDomain}/v1/client/sign_ins`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString(),
+          });
+
+          const fapiData = (await fapiRes.json()) as any;
+          const externalUrl = fapiData?.response?.first_factor_verification?.external_verification_redirect_url;
+
+          if (externalUrl) {
+            response.statusCode = 200;
+            response.end(JSON.stringify({ success: true, data: { redirectUrl: externalUrl } }));
+          } else {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ success: false, error: { message: 'Failed to generate OAuth redirect URL', details: fapiData } }));
+          }
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({ success: false, error: { message: err?.message || 'Internal server error' } }));
+        }
+      });
+      return;
+    }
+
     // 4. Authenticated Actor Identity Verification (/api/v1/auth/me)
     if (request.method === 'GET' && requestPath === '/api/v1/auth/me') {
       applyCorsHeaders(response, request.headers.origin);
