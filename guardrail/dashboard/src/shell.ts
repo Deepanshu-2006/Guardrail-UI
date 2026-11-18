@@ -1593,13 +1593,6 @@ export class DashboardShell {
       if (this.pollIntervalMs && this.pollIntervalMs > 0 && !this.pollTimer) {
         this.startPolling();
       }
-      // If auth modal is currently displayed, dismiss it so user sees their authenticated portal immediately
-      if (typeof document !== 'undefined') {
-        const modal = document.getElementById('gd-auth-modal-root');
-        if (modal) {
-          modal.remove();
-        }
-      }
     } else {
       this.stopPolling();
       this.isPollingHaltedDueToAuth = true;

@@ -1187,58 +1187,126 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 }
 
 /**
- * Renders a centered celebration modal confirming that the Trusted Contact has connected successfully.
+ * Renders a loading / connecting modal when returning from an OAuth callback.
+ */
+export function showConnectingModal(): HTMLElement {
+  if (typeof document === 'undefined') {
+    return {} as HTMLElement;
+  }
+  let backdrop = document.getElementById('gd-auth-modal-root');
+  let card: HTMLElement;
+  if (backdrop) {
+    const existingCard = backdrop.querySelector('.gd-auth-modal-card') as HTMLElement | null;
+    if (existingCard) {
+      card = existingCard;
+      card.innerHTML = '';
+    } else {
+      backdrop.innerHTML = '';
+      card = document.createElement('div');
+      backdrop.appendChild(card);
+    }
+  } else {
+    backdrop = document.createElement('div');
+    backdrop.id = 'gd-auth-modal-root';
+    backdrop.className = 'gd-auth-modal-backdrop';
+    card = document.createElement('div');
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+  }
+
+  card.className = 'gd-auth-modal-card gd-connected-card';
+  card.style.maxWidth = '380px';
+  card.style.textAlign = 'center';
+  card.style.padding = '36px 28px';
+
+  card.innerHTML = `
+    <div style="width: 44px; height: 44px; margin: 0 auto 16px; border: 3px solid rgba(39, 49, 33, 0.15); border-top-color: #273121; border-radius: 50%; animation: gd-spin 0.8s linear infinite;"></div>
+    <h3 style="font-size: 18px; font-weight: 700; color: #273121; margin: 0 0 6px 0;">Signing In...</h3>
+    <p style="font-size: 13px; color: #5F6656; margin: 0;">Connecting your trusted contact session...</p>
+    <style>
+      @keyframes gd-spin { to { transform: rotate(360deg); } }
+      @keyframes gd-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    </style>
+  `;
+
+  return backdrop;
+}
+
+/**
+ * Renders or transforms the sign-in modal into the "Connected / Signed In" confirmation view.
+ * All previous elements (social buttons, inputs) in the modal are cleared out, and the
+ * authenticated identity card with a green checkmark and "Continue" button is shown.
  */
 export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: () => void): HTMLElement {
   if (typeof document === 'undefined') {
     return {} as HTMLElement;
   }
 
-  // Remove any existing connected modal
-  const existing = document.getElementById('gd-connected-modal-root');
-  if (existing) existing.remove();
+  // Remove any obsolete separate connected modal root if present
+  const oldConnected = document.getElementById('gd-connected-modal-root');
+  if (oldConnected) oldConnected.remove();
 
-  const backdrop = document.createElement('div');
-  backdrop.id = 'gd-connected-modal-root';
-  backdrop.className = 'gd-auth-modal-backdrop';
-  backdrop.setAttribute('role', 'dialog');
-  backdrop.setAttribute('aria-modal', 'true');
-  backdrop.setAttribute('aria-labelledby', 'gd-connected-title');
+  // If the sign-in modal (#gd-auth-modal-root) is currently in the DOM, reuse it!
+  let backdrop = document.getElementById('gd-auth-modal-root');
+  let card: HTMLElement;
 
-  const card = document.createElement('div');
+  if (backdrop) {
+    const existingCard = backdrop.querySelector('.gd-auth-modal-card') as HTMLElement | null;
+    if (existingCard) {
+      card = existingCard;
+      card.innerHTML = ''; // Remove all original elements of the sign-in popup!
+    } else {
+      backdrop.innerHTML = '';
+      card = document.createElement('div');
+      backdrop.appendChild(card);
+    }
+  } else {
+    backdrop = document.createElement('div');
+    backdrop.id = 'gd-auth-modal-root';
+    backdrop.className = 'gd-auth-modal-backdrop';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    card = document.createElement('div');
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+  }
+
   card.className = 'gd-auth-modal-card gd-connected-card';
   card.style.maxWidth = '420px';
   card.style.textAlign = 'center';
   card.style.padding = '32px 28px 28px';
 
-  // Checkmark Badge Icon
+  // Checkmark Badge Icon with pulse animation
   const iconWrap = document.createElement('div');
-  iconWrap.style.cssText = 'width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: rgba(39, 49, 33, 0.08); display: flex; align-items: center; justify-content: center; color: #273121;';
+  iconWrap.style.cssText =
+    'width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); display: flex; align-items: center; justify-content: center; color: #10B981; animation: gd-pulse 2s infinite ease-in-out;';
   iconWrap.innerHTML = `
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
       <polyline points="22 4 12 14.01 9 11.01"></polyline>
     </svg>
   `;
 
   const title = document.createElement('h2');
-  title.id = 'gd-connected-title';
   title.className = 'gd-auth-modal-title';
-  title.textContent = 'Connected Successfully';
+  title.textContent = 'Signed In Successfully';
   title.style.fontSize = '22px';
   title.style.marginBottom = '6px';
+  title.style.color = '#273121';
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-auth-modal-subtitle';
-  subtitle.textContent = 'Your trusted contact session is now active.';
+  subtitle.textContent = 'Connected as Designated Caretaker';
   subtitle.style.marginBottom = '22px';
 
-  // Profile container
+  // Profile Card
   const profileBox = document.createElement('div');
-  profileBox.style.cssText = 'background: rgba(39, 49, 33, 0.04); border: 1px solid #CCD6C0; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-align: left; margin-bottom: 22px;';
+  profileBox.style.cssText =
+    'background: rgba(39, 49, 33, 0.04); border: 1px solid #CCD6C0; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-align: left; margin-bottom: 22px;';
 
   const avatarWrap = document.createElement('div');
-  avatarWrap.style.cssText = 'width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #273121; color: #FAF7F0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0;';
+  avatarWrap.style.cssText =
+    'width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #273121; color: #FAF7F0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0;';
   if (profile.avatarUrl || profile.imageUrl) {
     const img = document.createElement('img');
     img.src = profile.avatarUrl || profile.imageUrl || '';
@@ -1256,18 +1324,20 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
   infoWrap.style.cssText = 'display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;';
 
   const nameEl = document.createElement('div');
-  nameEl.style.cssText = 'font-weight: 700; font-size: 15px; color: #273121; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-  nameEl.textContent = profile.fullName || 'Trusted Contact';
+  nameEl.style.cssText =
+    'font-weight: 700; font-size: 15px; color: #273121; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+  nameEl.textContent = profile.fullName || 'Deepanshu Khatri';
 
   const emailEl = document.createElement('div');
-  emailEl.style.cssText = 'font-size: 13px; color: #5F6656; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+  emailEl.style.cssText =
+    'font-size: 13px; color: #5F6656; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
   emailEl.textContent = profile.email || 'Authenticated Contact';
 
   const badgeRow = document.createElement('div');
   badgeRow.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-top: 4px;';
   badgeRow.innerHTML = `
     <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #10B981;"></span>
-    <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #10B981;">Session Active</span>
+    <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #10B981;">Connected • Active</span>
   `;
 
   infoWrap.appendChild(nameEl);
@@ -1281,7 +1351,8 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
   const continueBtn = document.createElement('button');
   continueBtn.type = 'button';
   continueBtn.className = 'gd-auth-btn-primary';
-  continueBtn.style.cssText = 'width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: none; background: #273121; color: #FAF7F0;';
+  continueBtn.style.cssText =
+    'width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: none; background: #273121; color: #FAF7F0;';
   continueBtn.textContent = 'Continue to Dashboard';
 
   const dismiss = () => {
@@ -1302,9 +1373,9 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
   card.appendChild(subtitle);
   card.appendChild(profileBox);
   card.appendChild(continueBtn);
-  backdrop.appendChild(card);
 
-  document.body.appendChild(backdrop);
-  continueBtn.focus();
+  if (typeof continueBtn.focus === 'function') {
+    continueBtn.focus();
+  }
   return backdrop;
 }

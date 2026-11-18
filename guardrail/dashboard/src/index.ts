@@ -22,7 +22,7 @@ import { DashboardShellOptions, TrustedContactProfile } from './types.js';
 import { resolveEnvironmentConfig } from '../../extension/src/config/environment.js';
 import { ApprovalApiClient, TokenProvider } from '../../extension/src/approval/client.js';
 import { getClerk } from './services/clerk-service.js';
-import { showConnectedModal } from './components/auth-modal.js';
+import { showConnectedModal, showConnectingModal } from './components/auth-modal.js';
 
 /**
  * Convenience bootstrap function to mount the dashboard shell into the page.
@@ -252,10 +252,16 @@ if (typeof document !== 'undefined') {
     getClerk().then(async (clerk) => {
       if (!clerk) return;
 
-      const isOAuthRedirect = typeof window !== 'undefined' && (
-        window.location.search.includes('__clerk') ||
-        window.location.hash.includes('__clerk') ||
-        window.location.search.includes('status=')
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      const isOAuthRedirect = Boolean(
+        search.includes('rotating_token_nonce') ||
+        search.includes('__clerk') ||
+        hash.includes('__clerk') ||
+        search.includes('status=') ||
+        search.includes('__clerk_status') ||
+        search.includes('__clerk_created_session') ||
+        search.includes('__clerk_handshake')
       );
 
       let wasAuthenticated = false;
@@ -353,21 +359,20 @@ if (typeof document !== 'undefined') {
           // Immediately render authoritative Caretaker profile card in the sidebar
           shell.setProfile(verifiedProfile);
 
-          // Dismiss any open auth sign-in modal dialog
+          // Show connected modal (reusing and clearing any existing auth popup elements)
           if (typeof document !== 'undefined') {
-            const modalRoot = document.getElementById('gd-auth-modal-root');
-            if (modalRoot) {
-              modalRoot.remove();
+            const hasAuthModal = Boolean(document.getElementById('gd-auth-modal-root'));
+            if (showPopup || hasAuthModal) {
+              showConnectedModal(verifiedProfile);
             }
           }
 
-          // Show centered celebration connected popup if just signed in
-          if (showPopup && typeof document !== 'undefined') {
-            showConnectedModal(verifiedProfile);
-          }
-
           // Clean up address bar query params after successful redirect handling
-          if (typeof window !== 'undefined' && (window.location.search.includes('__clerk') || window.location.search.includes('status='))) {
+          if (typeof window !== 'undefined' && (
+            window.location.search.includes('rotating_token_nonce') ||
+            window.location.search.includes('__clerk') ||
+            window.location.search.includes('status=')
+          )) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
 
@@ -399,17 +404,20 @@ if (typeof document !== 'undefined') {
         }
       };
 
-      // 1. Process OAuth redirect callback if returning from Google / external identity provider
-      if (isOAuthRedirect && typeof clerk.handleRedirectCallback === 'function') {
-        try {
-          await clerk.handleRedirectCallback({
-            afterSignInUrl: window.location.origin,
-            afterSignUpUrl: window.location.origin,
-          });
-        } catch (cbErr) {
-          console.warn('[Clerk] handleRedirectCallback error:', cbErr);
+      // 1. If returning from an OAuth callback, show the connecting indicator while session hydrates
+      if (isOAuthRedirect) {
+        showConnectingModal();
+
+        // Wait and ensure active session is selected locally without navigating away
+        await ensureActiveSession();
+        let retries = 25;
+        while (!clerk.session && !(clerk.client?.signedInSessions?.length) && retries > 0) {
+          await new Promise((r) => setTimeout(r, 100));
+          await ensureActiveSession();
+          retries--;
         }
-        // Immediately trigger session sync with centered celebration modal
+
+        // Immediately trigger session sync with centered connected confirmation modal
         await syncClerkSession(true);
       }
 
@@ -444,8 +452,8 @@ if (typeof document !== 'undefined') {
         (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
         (clerk.client?.sessions && clerk.client.sessions.length > 0)
       );
-      if (initialActive) {
-        await syncClerkSession(isOAuthRedirect);
+      if (initialActive && !isOAuthRedirect) {
+        await syncClerkSession(false);
       }
     }).catch((err) => {
       console.warn('[Clerk] Initialization error:', err);
