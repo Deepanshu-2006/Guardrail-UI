@@ -21,3 +21,8 @@ data/
 *.sqlite-journal
 .vscode/
 .idea/
+
+# Environment and Secrets
+.env
+.env.*
+.clerk/

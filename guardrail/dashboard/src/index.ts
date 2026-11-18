@@ -12,6 +12,7 @@ export * from './components/pending.js';
 export * from './components/history.js';
 export * from './components/settings.js';
 export * from './components/relationships.js';
+export * from './services/clerk-service.js';
 export * from '../../extension/src/settings/types.js';
 export * from '../../extension/src/settings/controller.js';
 export * from '../../extension/src/settings/component.js';
@@ -20,6 +21,7 @@ import { DashboardShell } from './shell.js';
 import { DashboardShellOptions, TrustedContactProfile } from './types.js';
 import { resolveEnvironmentConfig } from '../../extension/src/config/environment.js';
 import { ApprovalApiClient, TokenProvider } from '../../extension/src/approval/client.js';
+import { getClerk } from './services/clerk-service.js';
 
 /**
  * Convenience bootstrap function to mount the dashboard shell into the page.
@@ -131,15 +133,20 @@ if (typeof document !== 'undefined') {
       localStorage.setItem('guardrail_auth_token', redirectToken);
     }
     const storageToken = redirectToken || (typeof localStorage !== 'undefined'
-      ? (localStorage.getItem('guardrail_auth_token') || (envConfig.environment === 'development' ? 'test-contact-token' : null))
+      ? localStorage.getItem('guardrail_auth_token')
       : null);
     const tokenProvider: TokenProvider | undefined = globalProvider ?? (storageToken ? () => storageToken : undefined);
-    const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken) || {
-      actorId: 'tc_carol',
+    const initialProfile: TrustedContactProfile | null = storageToken ? (parseJwtProfile(storageToken) || (storageToken.startsWith('test-') ? {
+      actorId: storageToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
+      role: storageToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
+      isAuthenticated: true,
+      relationshipLabel: storageToken === 'test-ward-token' ? 'Ward User' : 'Designated Caretaker',
+    } : {
+      actorId: 'tc_reviewer',
       role: 'TRUSTED_CONTACT',
       isAuthenticated: true,
-      relationshipLabel: 'Designated Caretaker',
-    }) : null;
+      relationshipLabel: 'Authorized Contact',
+    })) : null;
     const apiClient = tokenProvider ? new ApprovalApiClient({
       baseUrl: envConfig.apiBaseUrl,
       environment: envConfig.environment,
@@ -182,5 +189,69 @@ if (typeof document !== 'undefined') {
           // Retain initial fallback profile if network is offline
         });
     }
+
+    // Sync active Clerk session in real-time
+    getClerk().then(async (clerk) => {
+      if (!clerk) return;
+
+      const syncClerkSession = async () => {
+        if (clerk.user && clerk.session) {
+          try {
+            const clerkToken = await clerk.session.getToken();
+            if (clerkToken) {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('guardrail_auth_token', clerkToken);
+              }
+              const userEmail = clerk.user.primaryEmailAddress?.emailAddress || clerk.user.username || clerk.user.id;
+              shell.setProfile({
+                actorId: clerk.user.id,
+                role: 'TRUSTED_CONTACT',
+                email: userEmail,
+                isAuthenticated: true,
+                relationshipLabel: 'Designated Caretaker',
+              });
+              fetch(`${envConfig.apiBaseUrl}/api/v1/auth/me`, {
+                headers: { Authorization: `Bearer ${clerkToken}` },
+              })
+                .then((res) => res.json())
+                .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
+                  if (payload.success && payload.data) {
+                    shell.setProfile({
+                      actorId: payload.data.actorId,
+                      role: payload.data.role,
+                      email: payload.data.email ?? userEmail,
+                      isAuthenticated: true,
+                      relationshipLabel: 'Designated Caretaker',
+                    });
+                  }
+                })
+                .catch(() => {});
+            }
+          } catch (err) {
+            console.warn('[Clerk] Failed to fetch session token:', err);
+          }
+        }
+      };
+
+      if (typeof clerk.addListener === 'function') {
+        clerk.addListener(async (emission) => {
+          if (emission.user && emission.session) {
+            await syncClerkSession();
+          } else if (!emission.session) {
+            const current = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
+            if (current && (current.startsWith('ey') || current.includes('.'))) {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('guardrail_auth_token');
+              }
+              shell.setProfile(null);
+            }
+          }
+        });
+      }
+
+      if (clerk.user && clerk.session) {
+        await syncClerkSession();
+      }
+    }).catch(() => {});
   }
 }

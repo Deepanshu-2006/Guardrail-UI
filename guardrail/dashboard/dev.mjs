@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs';
 import { resolveBackendUrl } from '../build/backend-url.mjs';
 
 const require = createRequire(new URL('../extension/package.json', import.meta.url));
@@ -12,6 +13,19 @@ const port = Number(process.env.PORT) || 5173;
 const host = process.env.HOST || '127.0.0.1';
 
 const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
+
+let clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || '';
+if (!clerkPublishableKey) {
+  try {
+    const envFile = fs.readFileSync(path.join(dashboardDir, '.env.local'), 'utf-8');
+    const match = envFile.match(/^CLERK_PUBLISHABLE_KEY=(.+)$/m);
+    if (match) {
+      clerkPublishableKey = match[1].trim();
+    }
+  } catch {
+    // optional .env.local
+  }
+}
 
 /**
  * Creates and starts the Guardrail Dashboard development server.
@@ -33,6 +47,7 @@ export async function startDevServer(options = {}) {
       'process.env.GUARDRAIL_ENV': JSON.stringify(environment),
       'process.env.NODE_ENV': JSON.stringify(environment === 'production' ? 'production' : 'development'),
       '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
+      '__CLERK_PUBLISHABLE_KEY__': JSON.stringify(clerkPublishableKey),
     },
   });
 

@@ -5,7 +5,7 @@ import { SqliteIdentityStore } from './identity-store.js';
 
 export interface OidcTokenVerifierConfig {
   readonly issuer: string;
-  readonly audience: string;
+  readonly audience?: string;
   readonly jwksUrl: string;
   /** Signed claim containing exactly one Guardrail role value. */
   readonly roleClaim: string;
@@ -14,11 +14,28 @@ export interface OidcTokenVerifierConfig {
 }
 
 export function tryLoadOidcTokenVerifierConfig(env: NodeJS.ProcessEnv = process.env): OidcTokenVerifierConfig | undefined {
-  const issuer = env.GUARDRAIL_OIDC_ISSUER?.trim();
-  const audience = env.GUARDRAIL_OIDC_AUDIENCE?.trim();
-  const jwksUrl = env.GUARDRAIL_OIDC_JWKS_URL?.trim();
+  let issuer = env.GUARDRAIL_OIDC_ISSUER?.trim();
+  let audience = env.GUARDRAIL_OIDC_AUDIENCE?.trim();
+  let jwksUrl = env.GUARDRAIL_OIDC_JWKS_URL?.trim();
   const roleClaim = env.GUARDRAIL_OIDC_ROLE_CLAIM?.trim() || 'role';
-  if (!issuer || !audience || !jwksUrl) {
+  const defaultRole = (env.GUARDRAIL_OIDC_DEFAULT_ROLE?.trim() as ActorRole) || ActorRole.TRUSTED_CONTACT;
+
+  // Auto-discover Clerk configuration if explicit OIDC issuer is not supplied
+  const clerkPubKey = env.CLERK_PUBLISHABLE_KEY?.trim() || env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
+  if ((!issuer || !jwksUrl) && clerkPubKey && clerkPubKey.startsWith('pk_')) {
+    try {
+      const parts = clerkPubKey.split('_');
+      if (parts.length >= 3) {
+        const domain = Buffer.from(parts[2], 'base64').toString('utf-8').replace(/\$$/, '');
+        issuer = `https://${domain}`;
+        jwksUrl = `https://${domain}/.well-known/jwks.json`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!issuer || !jwksUrl) {
     return undefined;
   }
   try {
@@ -41,7 +58,7 @@ export function tryLoadOidcTokenVerifierConfig(env: NodeJS.ProcessEnv = process.
     ) {
       return undefined;
     }
-    return Object.freeze({ issuer, audience, jwksUrl: jwks.href, roleClaim });
+    return Object.freeze({ issuer, audience: audience || undefined, jwksUrl: jwks.href, roleClaim, defaultRole });
   } catch {
     return undefined;
   }
@@ -100,13 +117,16 @@ export class OidcTokenVerifier implements TokenVerifier {
   public async verifyToken(token: string): Promise<AuthContext | undefined> {
     if (typeof token !== 'string' || !token.trim() || token.length > 16_384 || token !== token.trim()) return undefined;
     try {
-      const { payload } = await jwtVerify(token, this.getKey, {
+      const verifyOptions: Parameters<typeof jwtVerify>[2] = {
         algorithms: ['RS256', 'ES256'],
         issuer: this.config.issuer,
-        audience: this.config.audience,
         requiredClaims: ['sub', 'exp'],
         clockTolerance: 0,
-      });
+      };
+      if (this.config.audience) {
+        verifyOptions.audience = this.config.audience;
+      }
+      const { payload } = await jwtVerify(token, this.getKey, verifyOptions);
       if (typeof payload.sub !== 'string' || !payload.sub.trim() || typeof payload.exp !== 'number') return undefined;
       const role = parseRole(payload[this.config.roleClaim], this.config.defaultRole);
       if (!role) return undefined;

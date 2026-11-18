@@ -3,8 +3,38 @@ import { loadGuardrailServerConfig } from './runtime-config.js';
 import { InMemoryTrustedContactRegistry, TrustedContactStatus, ActorRole } from '../../extension/src/approval/authorization.js';
 import { SqliteIdentityStore } from './identity-store.js';
 import { tryLoadOidcTokenVerifierConfig, OidcTokenVerifier, HybridTokenVerifier } from './oidc-token-verifier.js';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 async function main(): Promise<void> {
+  // Load dashboard .env.local if present into process.env for local dev
+  try {
+    const candidatePaths = [
+      path.resolve(process.cwd(), '../dashboard/.env.local'),
+      path.resolve(process.cwd(), 'guardrail/dashboard/.env.local'),
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dashboard/.env.local'),
+    ];
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        const envFile = fs.readFileSync(p, 'utf-8');
+        for (const line of envFile.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+            const [key, ...rest] = trimmed.split('=');
+            const val = rest.join('=').trim();
+            if (key && !process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+        break;
+      }
+    }
+  } catch {
+    // optional .env.local
+  }
+
   const serverConfig = loadGuardrailServerConfig(process.env, {
     port: 3000,
     host: '127.0.0.1',

@@ -4781,6 +4781,7 @@ async function runDashboardTests() {
   if (passedTests !== totalTests) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 runDashboardTests().catch((err) => {
