@@ -1188,6 +1188,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
 /**
  * Renders a loading / connecting modal when returning from an OAuth callback.
+ * Renders an animated SVG circle ring that can smoothly morph/convert into a checkmark tick.
  */
 export function showConnectingModal(): HTMLElement {
   if (typeof document === 'undefined') {
@@ -1215,17 +1216,159 @@ export function showConnectingModal(): HTMLElement {
   }
 
   card.className = 'gd-auth-modal-card gd-connected-card';
-  card.style.maxWidth = '380px';
+  card.style.maxWidth = '420px';
   card.style.textAlign = 'center';
-  card.style.padding = '36px 28px';
+  card.style.padding = '38px 28px 30px';
 
   card.innerHTML = `
-    <div style="width: 44px; height: 44px; margin: 0 auto 16px; border: 3px solid rgba(39, 49, 33, 0.15); border-top-color: #273121; border-radius: 50%; animation: gd-spin 0.8s linear infinite;"></div>
-    <h3 style="font-size: 18px; font-weight: 700; color: #273121; margin: 0 0 6px 0;">Signing In...</h3>
-    <p style="font-size: 13px; color: #5F6656; margin: 0;">Connecting your trusted contact session...</p>
-    <style>
-      @keyframes gd-spin { to { transform: rotate(360deg); } }
-      @keyframes gd-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    <div class="gd-auth-anim-box" id="gd-auth-loader-anim">
+      <div class="gd-loader-halo" id="gd-loader-halo"></div>
+      <!-- SVG 1: Circular ring (spins during connection, then smoothly closes into complete circle) -->
+      <svg class="gd-auth-circle-svg" width="72" height="72" viewBox="0 0 72 72">
+        <circle class="gd-loader-bg-track" cx="36" cy="36" r="30" fill="none" stroke="rgba(39, 49, 33, 0.12)" stroke-width="3.5" />
+        <circle class="gd-loader-circle" cx="36" cy="36" r="30" fill="none" stroke="#273121" stroke-width="3.5" stroke-linecap="round" />
+      </svg>
+      <!-- SVG 2: Genuine Checkmark Tick (strictly un-rotated, always upright ✓) -->
+      <svg class="gd-auth-tick-svg" width="72" height="72" viewBox="0 0 72 72">
+        <path class="gd-loader-tick-path" fill="none" stroke="#3E562A" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M22 37 L32 47 L51 25" />
+      </svg>
+    </div>
+    <h3 class="gd-auth-status-title" id="gd-auth-status-title" style="font-size: 21px; font-weight: 700; color: #273121; margin: 0 0 6px 0; font-family: 'Space Grotesk', sans-serif; transition: all 0.3s ease;">Signing In...</h3>
+    <p class="gd-auth-status-subtitle" id="gd-auth-status-subtitle" style="font-size: 13.5px; color: #5F6656; margin: 0; transition: all 0.3s ease;">Connecting your trusted contact session...</p>
+    <div class="gd-auth-connected-details" id="gd-auth-connected-details" style="display: none; opacity: 0; margin-top: 24px;"></div>
+    <style id="gd-auth-anim-style">
+      @keyframes gd-circle-spin {
+        0% { transform: rotate(-90deg); }
+        100% { transform: rotate(270deg); }
+      }
+      @keyframes gd-pop-bounce {
+        0% { transform: scale(0.92); }
+        45% { transform: scale(1.08); }
+        75% { transform: scale(0.98); }
+        100% { transform: scale(1); }
+      }
+      @keyframes gd-halo-expand {
+        0% { transform: scale(0.85); opacity: 0.65; }
+        100% { transform: scale(1.35); opacity: 0; }
+      }
+      @keyframes gd-draw-tick {
+        0% { stroke-dashoffset: 48; opacity: 0; }
+        25% { opacity: 1; }
+        100% { stroke-dashoffset: 0; opacity: 1; }
+      }
+      @keyframes gd-details-slide-up {
+        0% { opacity: 0; transform: translateY(12px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+
+      .gd-auth-anim-box {
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 18px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .gd-loader-halo {
+        position: absolute;
+        inset: -2px;
+        border-radius: 50%;
+        border: 2px solid rgba(62, 86, 42, 0.4);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .gd-auth-circle-svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 72px;
+        height: 72px;
+        transform: rotate(-90deg);
+        transform-origin: 36px 36px;
+        animation: gd-circle-spin 0.9s linear infinite;
+      }
+      .gd-auth-tick-svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 72px;
+        height: 72px;
+        pointer-events: none;
+        transform: none !important;
+      }
+      .gd-auth-anim-box .gd-loader-circle {
+        stroke: #273121;
+        stroke-dasharray: 188.5;
+        stroke-dashoffset: 135;
+        transition: stroke-dashoffset 0.45s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.35s ease;
+      }
+      .gd-auth-anim-box .gd-loader-tick-path {
+        stroke: #3E562A;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        opacity: 0;
+      }
+
+      /* Success / Connected Mode */
+      .gd-auth-anim-box.gd-success {
+        animation: gd-pop-bounce 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .gd-auth-anim-box.gd-success .gd-loader-halo {
+        animation: gd-halo-expand 0.6s ease-out forwards;
+      }
+      .gd-auth-anim-box.gd-success .gd-auth-circle-svg {
+        animation: none;
+        transform: rotate(-90deg);
+      }
+      .gd-auth-anim-box.gd-success .gd-loader-circle {
+        stroke: #3E562A !important;
+        stroke-dasharray: 188.5 !important;
+        stroke-dashoffset: 0 !important;
+      }
+      .gd-auth-anim-box.gd-success .gd-loader-tick-path {
+        stroke: #3E562A !important;
+        opacity: 1 !important;
+        animation: gd-draw-tick 0.42s 0.16s cubic-bezier(0.65, 0, 0.45, 1) forwards !important;
+      }
+      .gd-auth-connected-details.visible {
+        display: block !important;
+        opacity: 1 !important;
+        animation: gd-details-slide-up 0.38s 0.18s ease-out forwards;
+      }
+
+      .gd-continue-dashboard-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 48px;
+        background: #273121;
+        color: #FAF7F0;
+        border: none;
+        border-radius: 10px;
+        font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+        font-size: 14.5px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(39, 49, 33, 0.18);
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        outline: none !important;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .gd-continue-dashboard-btn:hover {
+        background: #1A2215;
+        color: #FFFFFF;
+        transform: translateY(-1.5px);
+        box-shadow: 0 5px 14px rgba(39, 49, 33, 0.28);
+      }
+      .gd-continue-dashboard-btn:active {
+        background: #11170E;
+        transform: translateY(0);
+        box-shadow: 0 1px 3px rgba(39, 49, 33, 0.2);
+      }
     </style>
   `;
 
@@ -1234,8 +1377,8 @@ export function showConnectingModal(): HTMLElement {
 
 /**
  * Renders or transforms the sign-in modal into the "Connected / Signed In" confirmation view.
- * All previous elements (social buttons, inputs) in the modal are cleared out, and the
- * authenticated identity card with a green checkmark and "Continue" button is shown.
+ * If the connecting modal is already mounted, it animates the circular spinner smoothly into
+ * the theme's deep forest olive checkmark (tick), updates titles, and reveals the authenticated identity card.
  */
 export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: () => void): HTMLElement {
   if (typeof document === 'undefined') {
@@ -1246,136 +1389,140 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
   const oldConnected = document.getElementById('gd-connected-modal-root');
   if (oldConnected) oldConnected.remove();
 
-  // If the sign-in modal (#gd-auth-modal-root) is currently in the DOM, reuse it!
   let backdrop = document.getElementById('gd-auth-modal-root');
-  let card: HTMLElement;
+  let card = backdrop?.querySelector('.gd-auth-modal-card') as HTMLElement | null;
+  let animBox = document.getElementById('gd-auth-loader-anim');
+  let titleEl = document.getElementById('gd-auth-status-title');
+  let subtitleEl = document.getElementById('gd-auth-status-subtitle');
+  let detailsContainer = document.getElementById('gd-auth-connected-details');
 
-  if (backdrop) {
-    const existingCard = backdrop.querySelector('.gd-auth-modal-card') as HTMLElement | null;
-    if (existingCard) {
-      card = existingCard;
-      card.innerHTML = ''; // Remove all original elements of the sign-in popup!
+  // If connecting modal is not already in DOM, mount it first
+  if (!backdrop || !card || !animBox || !titleEl || !subtitleEl || !detailsContainer) {
+    backdrop = showConnectingModal();
+    card = backdrop.querySelector('.gd-auth-modal-card') as HTMLElement | null;
+    animBox = document.getElementById('gd-auth-loader-anim');
+    titleEl = document.getElementById('gd-auth-status-title');
+    subtitleEl = document.getElementById('gd-auth-status-subtitle');
+    detailsContainer = document.getElementById('gd-auth-connected-details');
+  }
+
+  // 1. Animate loader ring into tick with theme colors
+  if (animBox) {
+    animBox.classList.add('gd-success');
+  }
+
+  // 2. Transition titles with refined typography
+  if (titleEl) {
+    titleEl.textContent = 'Signed In Successfully';
+    titleEl.style.fontSize = '22px';
+    titleEl.style.fontWeight = '700';
+    titleEl.style.color = '#273121';
+    titleEl.style.fontFamily = "'Space Grotesk', sans-serif";
+    titleEl.style.letterSpacing = '-0.02em';
+  }
+  if (subtitleEl) {
+    subtitleEl.textContent = 'Connected as Designated Caretaker';
+    subtitleEl.style.fontSize = '14px';
+    subtitleEl.style.color = '#5F6656';
+    subtitleEl.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+  }
+
+  // 3. Build details content (Unboxed profile typography + Continue button)
+  if (detailsContainer) {
+    detailsContainer.innerHTML = '';
+
+    const profileBox = document.createElement('div');
+    profileBox.style.cssText =
+      'background: transparent; border-top: 1px solid #E5DFD3; border-bottom: 1px solid #E5DFD3; padding: 18px 4px 20px; display: flex; align-items: center; gap: 16px; text-align: left; margin: 22px 0 24px;';
+
+    const avatarWrap = document.createElement('div');
+    avatarWrap.style.cssText =
+      'width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #273121; color: #FAF7F0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; font-family: "Space Grotesk", sans-serif; flex-shrink: 0; box-shadow: 0 1px 4px rgba(39, 49, 33, 0.12);';
+    if (profile.avatarUrl || profile.imageUrl) {
+      const img = document.createElement('img');
+      img.src = profile.avatarUrl || profile.imageUrl || '';
+      img.alt = profile.fullName || 'User';
+      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+      img.onerror = () => {
+        avatarWrap.textContent = (profile.fullName || profile.email || 'U').charAt(0).toUpperCase();
+      };
+      avatarWrap.appendChild(img);
     } else {
-      backdrop.innerHTML = '';
-      card = document.createElement('div');
-      backdrop.appendChild(card);
-    }
-  } else {
-    backdrop = document.createElement('div');
-    backdrop.id = 'gd-auth-modal-root';
-    backdrop.className = 'gd-auth-modal-backdrop';
-    backdrop.setAttribute('role', 'dialog');
-    backdrop.setAttribute('aria-modal', 'true');
-    card = document.createElement('div');
-    backdrop.appendChild(card);
-    document.body.appendChild(backdrop);
-  }
-
-  card.className = 'gd-auth-modal-card gd-connected-card';
-  card.style.maxWidth = '420px';
-  card.style.textAlign = 'center';
-  card.style.padding = '32px 28px 28px';
-
-  // Checkmark Badge Icon with pulse animation
-  const iconWrap = document.createElement('div');
-  iconWrap.style.cssText =
-    'width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); display: flex; align-items: center; justify-content: center; color: #10B981; animation: gd-pulse 2s infinite ease-in-out;';
-  iconWrap.innerHTML = `
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-    </svg>
-  `;
-
-  const title = document.createElement('h2');
-  title.className = 'gd-auth-modal-title';
-  title.textContent = 'Signed In Successfully';
-  title.style.fontSize = '22px';
-  title.style.marginBottom = '6px';
-  title.style.color = '#273121';
-
-  const subtitle = document.createElement('p');
-  subtitle.className = 'gd-auth-modal-subtitle';
-  subtitle.textContent = 'Connected as Designated Caretaker';
-  subtitle.style.marginBottom = '22px';
-
-  // Profile Card
-  const profileBox = document.createElement('div');
-  profileBox.style.cssText =
-    'background: rgba(39, 49, 33, 0.04); border: 1px solid #CCD6C0; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; text-align: left; margin-bottom: 22px;';
-
-  const avatarWrap = document.createElement('div');
-  avatarWrap.style.cssText =
-    'width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #273121; color: #FAF7F0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0;';
-  if (profile.avatarUrl || profile.imageUrl) {
-    const img = document.createElement('img');
-    img.src = profile.avatarUrl || profile.imageUrl || '';
-    img.alt = profile.fullName || 'User';
-    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-    img.onerror = () => {
       avatarWrap.textContent = (profile.fullName || profile.email || 'U').charAt(0).toUpperCase();
+    }
+
+    const infoWrap = document.createElement('div');
+    infoWrap.style.cssText = 'display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;';
+
+    const nameEl = document.createElement('div');
+    nameEl.style.cssText =
+      'font-weight: 700; font-size: 16px; color: #273121; font-family: "Space Grotesk", sans-serif; letter-spacing: -0.01em; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    nameEl.textContent = profile.fullName || 'Deepanshu Khatri';
+
+    const emailEl = document.createElement('div');
+    emailEl.style.cssText =
+      'font-size: 13.5px; color: #5F6656; font-family: "Plus Jakarta Sans", sans-serif; font-weight: 450; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    emailEl.textContent = profile.email || 'deepanshukhatri20061972@gmail.com';
+
+    const badgeRow = document.createElement('div');
+    badgeRow.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;';
+    badgeRow.innerHTML = `
+      <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3E562A;"></span>
+      <span style="font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #3E562A;">Connected • Active</span>
+    `;
+
+    infoWrap.appendChild(nameEl);
+    infoWrap.appendChild(emailEl);
+    infoWrap.appendChild(badgeRow);
+
+    profileBox.appendChild(avatarWrap);
+    profileBox.appendChild(infoWrap);
+
+    // Continue Button with theme styling
+    const continueBtn = document.createElement('button');
+    continueBtn.type = 'button';
+    continueBtn.className = 'gd-continue-dashboard-btn';
+    continueBtn.id = 'gd-continue-dashboard-btn';
+    continueBtn.textContent = 'Continue to Dashboard';
+
+    const dismissModal = () => {
+      if (backdrop) {
+        backdrop.style.opacity = '0';
+        backdrop.style.transition = 'opacity 0.2s ease';
+        if (card) {
+          card.style.transform = 'scale(0.96) translateY(8px)';
+          card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+        }
+        setTimeout(() => {
+          backdrop?.remove();
+          onDismiss?.();
+        }, 200);
+      }
     };
-    avatarWrap.appendChild(img);
-  } else {
-    avatarWrap.textContent = (profile.fullName || profile.email || 'U').charAt(0).toUpperCase();
+
+    continueBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismissModal();
+    });
+
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        dismissModal();
+      }
+    });
+
+    const keydownHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        window.removeEventListener('keydown', keydownHandler);
+        dismissModal();
+      }
+    };
+    window.addEventListener('keydown', keydownHandler);
+
+    detailsContainer.appendChild(profileBox);
+    detailsContainer.appendChild(continueBtn);
+    detailsContainer.classList.add('visible');
   }
 
-  const infoWrap = document.createElement('div');
-  infoWrap.style.cssText = 'display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;';
-
-  const nameEl = document.createElement('div');
-  nameEl.style.cssText =
-    'font-weight: 700; font-size: 15px; color: #273121; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-  nameEl.textContent = profile.fullName || 'Deepanshu Khatri';
-
-  const emailEl = document.createElement('div');
-  emailEl.style.cssText =
-    'font-size: 13px; color: #5F6656; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-  emailEl.textContent = profile.email || 'Authenticated Contact';
-
-  const badgeRow = document.createElement('div');
-  badgeRow.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-top: 4px;';
-  badgeRow.innerHTML = `
-    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #10B981;"></span>
-    <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #10B981;">Connected • Active</span>
-  `;
-
-  infoWrap.appendChild(nameEl);
-  infoWrap.appendChild(emailEl);
-  infoWrap.appendChild(badgeRow);
-
-  profileBox.appendChild(avatarWrap);
-  profileBox.appendChild(infoWrap);
-
-  // Continue Button
-  const continueBtn = document.createElement('button');
-  continueBtn.type = 'button';
-  continueBtn.className = 'gd-auth-btn-primary';
-  continueBtn.style.cssText =
-    'width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: none; background: #273121; color: #FAF7F0;';
-  continueBtn.textContent = 'Continue to Dashboard';
-
-  const dismiss = () => {
-    backdrop.classList.add('closing');
-    setTimeout(() => {
-      backdrop.remove();
-      onDismiss?.();
-    }, 150);
-  };
-
-  continueBtn.addEventListener('click', dismiss);
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) dismiss();
-  });
-
-  card.appendChild(iconWrap);
-  card.appendChild(title);
-  card.appendChild(subtitle);
-  card.appendChild(profileBox);
-  card.appendChild(continueBtn);
-
-  if (typeof continueBtn.focus === 'function') {
-    continueBtn.focus();
-  }
-  return backdrop;
+  return backdrop!;
 }
