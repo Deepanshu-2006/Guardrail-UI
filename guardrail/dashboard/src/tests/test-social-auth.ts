@@ -44,7 +44,19 @@ class MockElement {
   public placeholder: string = '';
   public autocomplete: string = '';
   public spellcheck: boolean = false;
-  public innerHTML: string = '';
+  private _innerHTML: string = '';
+  get innerHTML(): string {
+    return this._innerHTML;
+  }
+  set innerHTML(val: string) {
+    this._innerHTML = val;
+    if (val === '') {
+      this.children = [];
+    }
+  }
+  get firstChild(): MockElement | null {
+    return this.children.length > 0 ? this.children[0] : null;
+  }
   public classList: MockClassList;
   private listeners: Record<string, Function[]> = {};
 
@@ -108,7 +120,10 @@ class MockElement {
     }
   }
 
-  dispatchEvent(event: { type: string }): boolean {
+  dispatchEvent(event: { type: string; preventDefault?: () => void }): boolean {
+    if (typeof event.preventDefault !== 'function') {
+      event.preventDefault = () => {};
+    }
     const handlers = this.listeners[event.type] || [];
     handlers.forEach((h) => h(event));
     return true;
@@ -354,6 +369,80 @@ assert.strictEqual(capturedProfile?.email, 'carol.guardian@gmail.com', 'Hydrated
 assert.strictEqual(capturedProfile?.role, 'TRUSTED_CONTACT', 'Role is TRUSTED_CONTACT');
 assert.strictEqual(closedCalled, true, 'Dialog closed upon successful sign in');
 console.log('  ✓ Clicking "Continue with Google" seamlessly authenticated as carol.guardian@gmail.com');
+
+// -----------------------------------------------------------------------------
+// Test Suite 4: In-Modal Phone Number & OTP Verification Flow
+// -----------------------------------------------------------------------------
+console.log('\n▶ Test Suite 4: In-Modal Phone Number & OTP Verification Flow');
+
+let phoneToken: string | null = null;
+let phoneProfile: TrustedContactProfile | null = null;
+let phoneModalClosed = false;
+
+const phoneModalEl = renderAuthModal({
+  profile: null,
+  apiBaseUrl: 'http://127.0.0.1:3000',
+  onAuthSuccess: (token, profile) => {
+    phoneToken = token;
+    phoneProfile = profile;
+  },
+  onSignOut: () => {},
+  onClose: () => {
+    phoneModalClosed = true;
+  },
+}) as unknown as MockElement;
+
+// 1. Initial State: Options View contains Phone Button
+const phoneOptionBtn = phoneModalEl.querySelector('.gd-auth-phone-btn');
+assert(phoneOptionBtn, 'Phone button exists in options view');
+
+// 2. Click "Continue with Phone Number" -> Transitions to Phone Input View
+phoneOptionBtn.dispatchEvent({ type: 'click' });
+const phoneForm = phoneModalEl.querySelector('.gd-auth-phone-form');
+assert(phoneForm, 'Transitions to .gd-auth-phone-form without leaving modal');
+const phoneInput = phoneModalEl.querySelector('.gd-auth-phone-input') as unknown as { value: string };
+assert(phoneInput, 'Renders .gd-auth-phone-input for mobile number');
+console.log('  ✓ Clicking "Continue with Phone Number" transitions in-modal to phone input form');
+
+// 3. Test Back Navigation
+const backToOptionsBtn = phoneModalEl.querySelector('.gd-auth-btn-back');
+assert(backToOptionsBtn, 'Renders back to options button');
+backToOptionsBtn.dispatchEvent({ type: 'click' });
+assert.strictEqual(phoneModalEl.querySelector('.gd-auth-phone-form'), null, 'Phone form dismissed');
+assert(phoneModalEl.querySelector('.gd-auth-phone-btn'), 'Returned to social options view');
+console.log('  ✓ "← Back to all options" seamlessly returns to initial button list');
+
+// 4. Return to Phone View and Submit Number
+phoneModalEl.querySelector('.gd-auth-phone-btn')?.dispatchEvent({ type: 'click' });
+const activePhoneForm = phoneModalEl.querySelector('.gd-auth-phone-form')!;
+const activePhoneInput = phoneModalEl.querySelector('.gd-auth-phone-input') as unknown as { value: string };
+activePhoneInput.value = '+1 (555) 555-0100';
+
+activePhoneForm.dispatchEvent({ type: 'submit' });
+await new Promise((resolve) => setTimeout(resolve, 50));
+
+// 5. Transitions to OTP Verification View
+const otpForm = phoneModalEl.querySelector('.gd-auth-otp-form');
+assert(otpForm, 'Transitions to .gd-auth-otp-form after submitting phone number');
+const otpInput = phoneModalEl.querySelector('.gd-auth-otp-input') as unknown as { value: string };
+assert(otpInput, 'Renders 6-digit .gd-auth-otp-input');
+const resendBtn = phoneModalEl.querySelector('.gd-auth-resend-btn');
+assert(resendBtn, 'Renders "Resend code" button');
+const changePhoneBtn = phoneModalEl.querySelector('.gd-auth-change-phone-btn');
+assert(changePhoneBtn, 'Renders "← Use different number" button');
+console.log('  ✓ Submitting phone number transitions to 6-digit OTP verification view');
+
+// 6. Submit OTP Code (e.g. 424242)
+otpInput.value = '424242';
+otpForm.dispatchEvent({ type: 'submit' });
+await new Promise((resolve) => setTimeout(resolve, 50));
+
+assert.strictEqual(phoneToken, 'test-contact-token', 'Successfully authenticated with token');
+assert(phoneProfile, 'Hydrated authenticated profile');
+assert.strictEqual(phoneProfile?.actorId, 'tc_carol', 'Authenticated actor');
+assert.strictEqual(phoneProfile?.email, '+15555550100', 'Hydrated verified phone number');
+assert.strictEqual(phoneModalClosed, true, 'Modal automatically closed on successful OTP verification');
+console.log('  ✓ Verifying 6-digit code completes authentication and dismisses modal');
 
 console.log('\n======================================================');
 console.log('🎉 TASK 2.1 VERIFICATION COMPLETE: ALL ASSERTIONS PASSED!');
