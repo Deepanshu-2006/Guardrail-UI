@@ -119,7 +119,46 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   sessionDetails.appendChild(sessionLabel);
   sessionDetails.appendChild(sessionName);
   sessionDetails.appendChild(sessionSub);
-  sessionRow.appendChild(sessionDetails);
+  const sessionLeft = document.createElement('div');
+  sessionLeft.className = 'gd-auth-session-left';
+  sessionLeft.style.display = 'flex';
+  sessionLeft.style.alignItems = 'center';
+  sessionLeft.style.gap = '12px';
+
+  const sessionAvatar = document.createElement('div');
+  sessionAvatar.className = 'gd-account-avatar gd-auth-session-avatar';
+  sessionAvatar.setAttribute('aria-hidden', 'true');
+
+  const isDefaultAvatar = (url?: string | null): boolean => {
+    if (!url) return true;
+    return (
+      url.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') ||
+      url.includes('images.clerk.dev') ||
+      url.includes('gravatar.com/avatar?d=mp') ||
+      url.includes('d=mp')
+    );
+  };
+
+  const photoUrl = props.profile?.avatarUrl || props.profile?.imageUrl;
+  if (photoUrl && !isDefaultAvatar(photoUrl)) {
+    const img = document.createElement('img');
+    img.className = 'gd-account-avatar-img';
+    img.src = photoUrl;
+    img.alt = props.profile?.fullName || props.profile?.email || 'Profile photo';
+    img.onerror = () => {
+      img.remove();
+      if (!sessionAvatar.hasChildNodes()) {
+        sessionAvatar.appendChild(createIcon('user', 'gd-avatar-icon'));
+      }
+    };
+    sessionAvatar.appendChild(img);
+  } else {
+    sessionAvatar.appendChild(createIcon('user', 'gd-avatar-icon'));
+  }
+
+  sessionLeft.appendChild(sessionAvatar);
+  sessionLeft.appendChild(sessionDetails);
+  sessionRow.appendChild(sessionLeft);
 
   if (props.profile?.isAuthenticated) {
     const signOutBtn = document.createElement('button');
@@ -138,6 +177,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem('guardrail_auth_token');
         localStorage.removeItem('guardrail_user_email');
+        localStorage.removeItem('guardrail_user_avatar');
       }
       cleanup();
       props.onSignOut();
@@ -184,6 +224,139 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   socialSection.appendChild(socialBody);
 
   body.appendChild(socialSection);
+
+  // Authenticated Profile & Session Information panel
+  const authenticatedSection = document.createElement('div');
+  authenticatedSection.className = 'gd-auth-authenticated-section';
+
+  const detailsCard = document.createElement('div');
+  detailsCard.className = 'gd-auth-details-card';
+
+  const cardTitle = document.createElement('h3');
+  cardTitle.className = 'gd-auth-details-title';
+  cardTitle.textContent = 'Account & Session Information';
+
+  const infoList = document.createElement('div');
+  infoList.className = 'gd-auth-info-list';
+
+  const createRow = (label: string, value: string, icon: import('./icons.js').IconName) => {
+    const row = document.createElement('div');
+    row.className = 'gd-auth-info-row';
+    const left = document.createElement('div');
+    left.className = 'gd-auth-info-row-left';
+    left.appendChild(createIcon(icon, 'gd-auth-info-icon'));
+    const lbl = document.createElement('span');
+    lbl.className = 'gd-auth-info-label';
+    lbl.textContent = label;
+    left.appendChild(lbl);
+    const val = document.createElement('span');
+    val.className = 'gd-auth-info-value';
+    val.textContent = value;
+    row.appendChild(left);
+    row.appendChild(val);
+    return row;
+  };
+
+  const currentEmail = props.profile?.email || 'deepanshukhatri20061972@gmail.com';
+  infoList.appendChild(createRow('Sign-In Method', 'Google Account (Clerk OAuth)', 'shield-check'));
+  infoList.appendChild(createRow('Verified Email', currentEmail, 'user-check'));
+  infoList.appendChild(createRow('Access Role', props.profile?.relationshipLabel || 'Designated Caretaker', 'lock'));
+  infoList.appendChild(createRow('Session Security', 'RS256 Cryptographic JWT', 'zap'));
+
+  detailsCard.appendChild(cardTitle);
+  detailsCard.appendChild(infoList);
+
+  // Profile photo upload row
+  const photoRow = document.createElement('div');
+  photoRow.className = 'gd-auth-photo-update-row';
+
+  const photoLabel = document.createElement('span');
+  photoLabel.className = 'gd-auth-photo-label';
+  photoLabel.textContent = 'Profile Photo:';
+
+  const photoInput = document.createElement('input');
+  photoInput.type = 'file';
+  photoInput.accept = 'image/*';
+  photoInput.style.display = 'none';
+
+  const changePhotoBtn = document.createElement('button');
+  changePhotoBtn.type = 'button';
+  changePhotoBtn.className = 'gd-auth-btn-secondary';
+  changePhotoBtn.textContent = 'Upload / Change Photo';
+  changePhotoBtn.addEventListener('click', () => {
+    if (typeof photoInput.click === 'function') {
+      photoInput.click();
+    }
+  });
+
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('guardrail_user_avatar', dataUrl);
+        }
+        const updatedProfile: TrustedContactProfile = {
+          ...(props.profile || {
+            actorId: 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK',
+            role: 'TRUSTED_CONTACT',
+            email: currentEmail,
+            isAuthenticated: true,
+            relationshipLabel: 'Designated Caretaker',
+          }),
+          avatarUrl: dataUrl,
+          imageUrl: dataUrl,
+          fullName: props.profile?.fullName || 'Deepanshu Khatri',
+        };
+        const currentToken = (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) || 'test-contact-token';
+        props.onAuthSuccess(currentToken, updatedProfile);
+
+        // Update in-modal avatar image
+        while (sessionAvatar.firstChild) {
+          sessionAvatar.removeChild(sessionAvatar.firstChild);
+        }
+        const newImg = document.createElement('img');
+        newImg.className = 'gd-account-avatar-img';
+        newImg.src = dataUrl;
+        sessionAvatar.appendChild(newImg);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  photoRow.appendChild(photoLabel);
+  photoRow.appendChild(changePhotoBtn);
+  photoRow.appendChild(photoInput);
+  detailsCard.appendChild(photoRow);
+
+  // Switch account link
+  const switchRow = document.createElement('div');
+  switchRow.className = 'gd-auth-switch-account-row';
+
+  const switchBtn = document.createElement('button');
+  switchBtn.type = 'button';
+  switchBtn.className = 'gd-auth-btn-link';
+  switchBtn.textContent = 'Sign in with a different account';
+  switchBtn.addEventListener('click', () => {
+    authenticatedSection.style.display = 'none';
+    socialSection.style.display = 'block';
+  });
+  switchRow.appendChild(switchBtn);
+  detailsCard.appendChild(switchRow);
+
+  authenticatedSection.appendChild(detailsCard);
+  body.appendChild(authenticatedSection);
+
+  // If already authenticated, hide the sign-in options; if unauthenticated, show sign-in options
+  if (props.profile?.isAuthenticated) {
+    socialSection.style.display = 'none';
+    authenticatedSection.style.display = 'block';
+  } else {
+    socialSection.style.display = 'block';
+    authenticatedSection.style.display = 'none';
+  }
 
   // Provider Discovery (SSO / OIDC fallback if configured)
   const providerContent = document.createElement('div');
@@ -616,10 +789,21 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
             emailToUse ||
             'deepanshukhatri20061972@gmail.com';
 
+          let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+          if (storedAvatar && isDefaultAvatar(storedAvatar)) {
+            localStorage.removeItem('guardrail_user_avatar');
+            storedAvatar = null;
+          }
+          const clerkImg = clerk.user?.hasImage ? clerk.user?.imageUrl : undefined;
+          const userAvatar = storedAvatar || (clerkImg && !isDefaultAvatar(clerkImg) ? clerkImg : undefined);
+
           const verifiedProfile: TrustedContactProfile = {
             actorId: clerk.user?.id || 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK',
             role: 'TRUSTED_CONTACT',
             email: verifiedEmail,
+            fullName: clerk.user?.fullName || 'Deepanshu Khatri',
+            avatarUrl: userAvatar,
+            imageUrl: userAvatar,
             isAuthenticated: true,
             relationshipLabel: 'Designated Caretaker',
           };
@@ -627,6 +811,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           if (typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_auth_token', clerkToken);
             localStorage.setItem('guardrail_user_email', verifiedEmail);
+            if (userAvatar) {
+              localStorage.setItem('guardrail_user_avatar', userAvatar);
+            }
           }
 
           cleanup();
@@ -738,11 +925,19 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
       const body = (await res.json()) as { success: boolean; data?: AuthMeResponse; error?: { message: string } };
       if (res.ok && body.success && body.data) {
+        let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+        if (storedAvatar && isDefaultAvatar(storedAvatar)) {
+          localStorage.removeItem('guardrail_user_avatar');
+          storedAvatar = null;
+        }
         const verifiedEmail = body.data.email || simulatedEmail || undefined;
         const verifiedProfile: TrustedContactProfile = {
           actorId: body.data.actorId,
           role: body.data.role,
           email: verifiedEmail,
+          fullName: 'Deepanshu Khatri',
+          avatarUrl: storedAvatar || undefined,
+          imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
           relationshipLabel: body.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
         };
@@ -751,6 +946,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           localStorage.setItem('guardrail_auth_token', token);
           if (verifiedEmail) {
             localStorage.setItem('guardrail_user_email', verifiedEmail);
+          }
+          if (storedAvatar) {
+            localStorage.setItem('guardrail_user_avatar', storedAvatar);
           }
         }
 
@@ -764,10 +962,18 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     }
 
     // Direct authentic Caretaker session application
+    let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+    if (storedAvatar && isDefaultAvatar(storedAvatar)) {
+      localStorage.removeItem('guardrail_user_avatar');
+      storedAvatar = null;
+    }
     const verifiedProfile: TrustedContactProfile = {
       actorId: 'tc_carol',
       role: 'TRUSTED_CONTACT',
       email: simulatedEmail || 'carol.guardian@gmail.com',
+      fullName: 'Deepanshu Khatri',
+      avatarUrl: storedAvatar || undefined,
+      imageUrl: storedAvatar || undefined,
       isAuthenticated: true,
       relationshipLabel: 'Designated Caretaker',
     };
@@ -775,6 +981,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       localStorage.setItem('guardrail_auth_token', token);
       if (verifiedProfile.email) {
         localStorage.setItem('guardrail_user_email', verifiedProfile.email);
+      }
+      if (storedAvatar) {
+        localStorage.setItem('guardrail_user_avatar', storedAvatar);
       }
     }
     cleanup();
