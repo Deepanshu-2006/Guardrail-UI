@@ -40,6 +40,67 @@ interface AuthMeResponse {
   environment: string;
 }
 
+export interface CountryOption {
+  code: string;
+  iso: string;
+  name: string;
+  flag: string;
+  placeholder: string;
+}
+
+export const COUNTRIES: CountryOption[] = [
+  { code: '+1', iso: 'US', name: 'United States', flag: '🇺🇸', placeholder: '(555) 000-0000' },
+  { code: '+1', iso: 'CA', name: 'Canada', flag: '🇨🇦', placeholder: '(555) 000-0000' },
+  { code: '+44', iso: 'GB', name: 'United Kingdom', flag: '🇬🇧', placeholder: '7911 123456' },
+  { code: '+91', iso: 'IN', name: 'India', flag: '🇮🇳', placeholder: '98765 43210' },
+  { code: '+61', iso: 'AU', name: 'Australia', flag: '🇦🇺', placeholder: '0412 345 678' },
+  { code: '+49', iso: 'DE', name: 'Germany', flag: '🇩🇪', placeholder: '151 23456789' },
+  { code: '+33', iso: 'FR', name: 'France', flag: '🇫🇷', placeholder: '06 12 34 56 78' },
+  { code: '+81', iso: 'JP', name: 'Japan', flag: '🇯🇵', placeholder: '90 1234 5678' },
+  { code: '+86', iso: 'CN', name: 'China', flag: '🇨🇳', placeholder: '138 0013 8000' },
+  { code: '+55', iso: 'BR', name: 'Brazil', flag: '🇧🇷', placeholder: '(11) 91234-5678' },
+  { code: '+52', iso: 'MX', name: 'Mexico', flag: '🇲🇽', placeholder: '55 1234 5678' },
+  { code: '+34', iso: 'ES', name: 'Spain', flag: '🇪🇸', placeholder: '612 34 56 78' },
+  { code: '+39', iso: 'IT', name: 'Italy', flag: '🇮🇹', placeholder: '312 345 6789' },
+  { code: '+31', iso: 'NL', name: 'Netherlands', flag: '🇳🇱', placeholder: '06 12345678' },
+  { code: '+41', iso: 'CH', name: 'Switzerland', flag: '🇨🇭', placeholder: '079 123 45 67' },
+  { code: '+46', iso: 'SE', name: 'Sweden', flag: '🇸🇪', placeholder: '070 123 45 67' },
+  { code: '+47', iso: 'NO', name: 'Norway', flag: '🇳🇴', placeholder: '412 34 567' },
+  { code: '+45', iso: 'DK', name: 'Denmark', flag: '🇩🇰', placeholder: '20 12 34 56' },
+  { code: '+358', iso: 'FI', name: 'Finland', flag: '🇫🇮', placeholder: '040 1234567' },
+  { code: '+353', iso: 'IE', name: 'Ireland', flag: '🇮🇪', placeholder: '085 123 4567' },
+  { code: '+65', iso: 'SG', name: 'Singapore', flag: '🇸🇬', placeholder: '8123 4567' },
+  { code: '+64', iso: 'NZ', name: 'New Zealand', flag: '🇳🇿', placeholder: '021 123 4567' },
+  { code: '+82', iso: 'KR', name: 'South Korea', flag: '🇰🇷', placeholder: '010-1234-5678' },
+  { code: '+971', iso: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', placeholder: '50 123 4567' },
+  { code: '+966', iso: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', placeholder: '50 123 4567' },
+  { code: '+27', iso: 'ZA', name: 'South Africa', flag: '🇿🇦', placeholder: '071 123 4567' },
+  { code: '+234', iso: 'NG', name: 'Nigeria', flag: '🇳🇬', placeholder: '0802 123 4567' },
+  { code: '+254', iso: 'KE', name: 'Kenya', flag: '🇰🇪', placeholder: '0712 345678' },
+  { code: '+62', iso: 'ID', name: 'Indonesia', flag: '🇮🇩', placeholder: '0812-3456-789' },
+  { code: '+60', iso: 'MY', name: 'Malaysia', flag: '🇲🇾', placeholder: '012-345 6789' },
+  { code: '+63', iso: 'PH', name: 'Philippines', flag: '🇵🇭', placeholder: '0917 123 4567' },
+  { code: '+84', iso: 'VN', name: 'Vietnam', flag: '🇻🇳', placeholder: '091 234 56 78' },
+  { code: '+92', iso: 'PK', name: 'Pakistan', flag: '🇵🇰', placeholder: '0301 1234567' },
+  { code: '+880', iso: 'BD', name: 'Bangladesh', flag: '🇧🇩', placeholder: '01712-345678' },
+  { code: '+972', iso: 'IL', name: 'Israel', flag: '🇮🇱', placeholder: '050-123-4567' },
+  { code: '+90', iso: 'TR', name: 'Turkey', flag: '🇹🇷', placeholder: '532 123 45 67' },
+  { code: '+48', iso: 'PL', name: 'Poland', flag: '🇵🇱', placeholder: '512 345 678' },
+  { code: '+351', iso: 'PT', name: 'Portugal', flag: '🇵🇹', placeholder: '912 345 678' },
+  { code: '+30', iso: 'GR', name: 'Greece', flag: '🇬🇷', placeholder: '691 234 5678' },
+  { code: '+43', iso: 'AT', name: 'Austria', flag: '🇦🇹', placeholder: '0664 1234567' },
+  { code: '+32', iso: 'BE', name: 'Belgium', flag: '🇧🇪', placeholder: '0470 12 34 56' },
+  { code: '+420', iso: 'CZ', name: 'Czech Republic', flag: '🇨🇿', placeholder: '601 123 456' },
+  { code: '+36', iso: 'HU', name: 'Hungary', flag: '🇭🇺', placeholder: '20 123 4567' },
+  { code: '+40', iso: 'RO', name: 'Romania', flag: '🇷🇴', placeholder: '0712 345 678' },
+  { code: '+380', iso: 'UA', name: 'Ukraine', flag: '🇺🇦', placeholder: '50 123 4567' },
+  { code: '+54', iso: 'AR', name: 'Argentina', flag: '🇦🇷', placeholder: '11 1234-5678' },
+  { code: '+56', iso: 'CL', name: 'Chile', flag: '🇨🇱', placeholder: '9 1234 5678' },
+  { code: '+57', iso: 'CO', name: 'Colombia', flag: '🇨🇴', placeholder: '300 123 4567' },
+  { code: '+51', iso: 'PE', name: 'Peru', flag: '🇵🇪', placeholder: '912 345 678' },
+  { code: '+20', iso: 'EG', name: 'Egypt', flag: '🇪🇬', placeholder: '0100 123 4567' },
+];
+
 export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const backdrop = document.createElement('div');
   backdrop.className = 'gd-modal-backdrop gd-auth-modal-backdrop';
@@ -113,27 +174,22 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     props.profile?.relationshipLabel ||
     (props.profile?.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'Trusted Contact');
 
-  const profileCard = document.createElement('div');
-  profileCard.className = 'gd-auth-profile-card';
+  const profileSection = document.createElement('div');
+  profileSection.className = 'gd-auth-profile-section';
 
   // Identity Row: Avatar + Details
   const profileMain = document.createElement('div');
   profileMain.className = 'gd-auth-profile-main';
 
-  // Avatar + photo update button
-  const avatarWrap = document.createElement('div');
-  avatarWrap.className = 'gd-auth-profile-avatar-wrap';
-
+  // Avatar Circle (perfect alignment with text)
   const avatarContainer = document.createElement('div');
   avatarContainer.className = 'gd-auth-profile-avatar';
   avatarContainer.setAttribute('aria-hidden', 'true');
 
-  const renderAvatarImg = (src: string) => {
-    while (avatarContainer.firstChild) {
-      avatarContainer.removeChild(avatarContainer.firstChild);
-    }
+  if (photoUrl && !isDefaultAvatar(photoUrl)) {
     const img = document.createElement('img');
-    img.src = src;
+    img.className = 'gd-auth-profile-avatar-img';
+    img.src = photoUrl;
     img.alt = fullName;
     img.onerror = () => {
       img.remove();
@@ -142,64 +198,11 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       }
     };
     avatarContainer.appendChild(img);
-  };
-
-  if (photoUrl && !isDefaultAvatar(photoUrl)) {
-    renderAvatarImg(photoUrl);
   } else {
     avatarContainer.appendChild(createIcon('user', 'gd-avatar-icon'));
   }
 
-  const photoInput = document.createElement('input');
-  photoInput.type = 'file';
-  photoInput.accept = 'image/*';
-  photoInput.style.display = 'none';
-
-  const changePhotoBtn = document.createElement('button');
-  changePhotoBtn.type = 'button';
-  changePhotoBtn.className = 'gd-auth-change-photo-btn';
-  changePhotoBtn.textContent = 'Change photo';
-  changePhotoBtn.addEventListener('click', () => {
-    if (typeof photoInput.click === 'function') {
-      photoInput.click();
-    }
-  });
-
-  photoInput.addEventListener('change', () => {
-    const file = photoInput.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('guardrail_user_avatar', dataUrl);
-        }
-        const updatedProfile: TrustedContactProfile = {
-          ...(props.profile || {
-            actorId: 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK',
-            role: 'TRUSTED_CONTACT',
-            email: currentEmail,
-            isAuthenticated: true,
-            relationshipLabel: roleLabel,
-          }),
-          avatarUrl: dataUrl,
-          imageUrl: dataUrl,
-          fullName,
-        };
-        const currentToken =
-          (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) ||
-          'test-contact-token';
-        props.onAuthSuccess(currentToken, updatedProfile);
-        renderAvatarImg(dataUrl);
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  avatarWrap.appendChild(avatarContainer);
-  avatarWrap.appendChild(changePhotoBtn);
-  avatarWrap.appendChild(photoInput);
-  profileMain.appendChild(avatarWrap);
+  profileMain.appendChild(avatarContainer);
 
   // Identity Details
   const profileInfo = document.createElement('div');
@@ -222,12 +225,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   profileInfo.appendChild(roleBadge);
   profileMain.appendChild(profileInfo);
 
-  profileCard.appendChild(profileMain);
+  profileSection.appendChild(profileMain);
 
   // Hairline separator
   const cardDivider = document.createElement('hr');
   cardDivider.className = 'gd-auth-profile-divider';
-  profileCard.appendChild(cardDivider);
+  profileSection.appendChild(cardDivider);
 
   // Actions row: Switch Account (left) and Sign Out (right)
   const actionsRow = document.createElement('div');
@@ -236,9 +239,11 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const switchBtn = document.createElement('button');
   switchBtn.type = 'button';
   switchBtn.className = 'gd-auth-switch-btn';
-  switchBtn.textContent = 'Sign in with a different account';
+  switchBtn.textContent = 'Switch account';
+  switchBtn.title = 'Sign in with a different account';
+  switchBtn.setAttribute('aria-label', 'Switch account');
   switchBtn.addEventListener('click', () => {
-    profileCard.style.display = 'none';
+    profileSection.style.display = 'none';
     socialSection.style.display = 'block';
     title.textContent = 'Sign in to Guardrail';
     subtitle.textContent = 'Access your trusted contact dashboard.';
@@ -248,6 +253,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   signOutBtn.type = 'button';
   signOutBtn.className = 'gd-auth-signout-btn';
   signOutBtn.textContent = 'Sign out';
+  signOutBtn.setAttribute('aria-label', 'Sign out');
   signOutBtn.addEventListener('click', async () => {
     try {
       const clerk = await getClerk();
@@ -269,9 +275,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   actionsRow.appendChild(switchBtn);
   actionsRow.appendChild(signOutBtn);
-  profileCard.appendChild(actionsRow);
+  profileSection.appendChild(actionsRow);
 
-  body.appendChild(profileCard);
+  body.appendChild(profileSection);
 
   // 2. Error message banner (initially hidden)
   const errorBanner = document.createElement('div');
@@ -291,10 +297,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   // Toggle view visibility depending on auth state
   if (props.profile?.isAuthenticated) {
-    profileCard.style.display = 'flex';
+    profileSection.style.display = 'flex';
     socialSection.style.display = 'none';
   } else {
-    profileCard.style.display = 'none';
+    profileSection.style.display = 'none';
     socialSection.style.display = 'block';
   }
 
@@ -326,6 +332,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   // --- State & Phone / OTP Flows ---
   let cachedAuthConfig: AuthConfigResponse | null = null;
   let currentPhone = '';
+  let selectedCountry: CountryOption = COUNTRIES[0];
   let authMode: 'signIn' | 'signUp' = 'signIn';
   let currentSignIn: any = null;
   let currentSignUp: any = null;
@@ -352,6 +359,16 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       return `+1${digitsAndPlus}`;
     }
     return `+${digitsAndPlus}`;
+  }
+
+  function getFullPhoneNumber(inputVal: string, dialCode: string): string {
+    const trimmed = inputVal.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('+')) {
+      return cleanPhoneNumber(trimmed);
+    }
+    const code = dialCode.startsWith('+') ? dialCode : `+${dialCode}`;
+    return cleanPhoneNumber(`${code}${trimmed}`);
   }
 
   function extractClerkError(err: unknown): string {
@@ -444,7 +461,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     divider.appendChild(dividerSpan);
     socialBody.appendChild(divider);
 
-    // Inline Phone Number Form
+    // Inline Phone Number Form with Integrated Country Code Dropdown
     const phoneForm = document.createElement('form');
     phoneForm.className = 'gd-auth-phone-form';
     phoneForm.setAttribute('novalidate', 'true');
@@ -452,22 +469,107 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     const phoneLabel = document.createElement('label');
     phoneLabel.className = 'gd-auth-field-label';
     phoneLabel.textContent = 'Phone number';
+    phoneLabel.htmlFor = 'gd-auth-phone-number-input';
 
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'gd-auth-phone-input-group';
+
+    // 1. Country Code Dropdown Trigger
+    const countryPicker = document.createElement('div');
+    countryPicker.className = 'gd-auth-country-picker';
+
+    const countryDisplay = document.createElement('div');
+    countryDisplay.className = 'gd-auth-country-display';
+
+    const flagSpan = document.createElement('span');
+    flagSpan.className = 'gd-auth-country-flag';
+    flagSpan.textContent = selectedCountry.flag;
+
+    const codeSpan = document.createElement('span');
+    codeSpan.className = 'gd-auth-country-code';
+    codeSpan.textContent = selectedCountry.code;
+
+    const arrowSpan = document.createElement('span');
+    arrowSpan.className = 'gd-auth-country-arrow';
+    arrowSpan.setAttribute('aria-hidden', 'true');
+    arrowSpan.innerHTML = '<svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1.25L4.5 4.75L8 1.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    countryDisplay.appendChild(flagSpan);
+    countryDisplay.appendChild(codeSpan);
+    countryDisplay.appendChild(arrowSpan);
+    countryPicker.appendChild(countryDisplay);
+
+    const countrySelect = document.createElement('select');
+    countrySelect.className = 'gd-auth-country-select';
+    countrySelect.setAttribute('aria-label', 'Select country calling code');
+
+    COUNTRIES.forEach((c, idx) => {
+      const opt = document.createElement('option');
+      opt.value = c.code;
+      opt.textContent = `${c.flag} ${c.name} (${c.code})`;
+      if (c.iso === selectedCountry.iso) {
+        opt.selected = true;
+        (countrySelect as any).selectedIndex = idx;
+      }
+      countrySelect.appendChild(opt);
+    });
+
+    countryPicker.appendChild(countrySelect);
+    inputGroup.appendChild(countryPicker);
+
+    // 2. Hairline Divider
+    const dividerEl = document.createElement('div');
+    dividerEl.className = 'gd-auth-phone-divider';
+    dividerEl.setAttribute('aria-hidden', 'true');
+    inputGroup.appendChild(dividerEl);
+
+    // 3. Phone Input Wrap
     const inputWrap = document.createElement('div');
     inputWrap.className = 'gd-auth-phone-input-wrap';
 
-    const phoneIconSpan = document.createElement('span');
-    phoneIconSpan.className = 'gd-auth-phone-icon';
-    phoneIconSpan.appendChild(createIcon('phone'));
-    inputWrap.appendChild(phoneIconSpan);
-
     const phoneInput = document.createElement('input');
     phoneInput.type = 'tel';
+    phoneInput.id = 'gd-auth-phone-number-input';
     phoneInput.className = 'gd-auth-phone-input';
-    phoneInput.placeholder = '+1 (555) 000-0000';
-    phoneInput.autocomplete = 'tel';
+    phoneInput.placeholder = selectedCountry.placeholder;
+    phoneInput.autocomplete = 'tel-national';
     phoneInput.value = currentPhone;
     inputWrap.appendChild(phoneInput);
+
+    inputGroup.appendChild(inputWrap);
+
+    // Event listener: Country change
+    countrySelect.addEventListener('change', () => {
+      const idx = (countrySelect as any).selectedIndex ?? 0;
+      const chosen = COUNTRIES[idx] || COUNTRIES[0];
+      selectedCountry = chosen;
+      flagSpan.textContent = chosen.flag;
+      codeSpan.textContent = chosen.code;
+      phoneInput.placeholder = chosen.placeholder;
+      if (typeof phoneInput.focus === 'function') {
+        phoneInput.focus();
+      }
+    });
+
+    // Auto-detect country code if user types or pastes +... into the phone input
+    phoneInput.addEventListener('input', () => {
+      const val = phoneInput.value.trim();
+      if (val.startsWith('+')) {
+        const match = [...COUNTRIES]
+          .sort((a, b) => b.code.length - a.code.length)
+          .find((c) => val.startsWith(c.code));
+        if (match && match.iso !== selectedCountry.iso) {
+          selectedCountry = match;
+          flagSpan.textContent = match.flag;
+          codeSpan.textContent = match.code;
+          phoneInput.placeholder = match.placeholder;
+          const matchIdx = COUNTRIES.findIndex((c) => c.iso === match.iso);
+          if (matchIdx >= 0) {
+            (countrySelect as any).selectedIndex = matchIdx;
+          }
+        }
+      }
+    });
 
     const submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
@@ -479,7 +581,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     caption.innerHTML = "We'll text you a 6-digit code. In dev mode, test number is <strong>+1 (555) 555-0100</strong>.";
 
     phoneForm.appendChild(phoneLabel);
-    phoneForm.appendChild(inputWrap);
+    phoneForm.appendChild(inputGroup);
     phoneForm.appendChild(submitBtn);
     phoneForm.appendChild(caption);
 
@@ -487,7 +589,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       if (typeof e?.preventDefault === 'function') {
         e.preventDefault();
       }
-      void handleSendPhoneCode(phoneInput.value, submitBtn);
+      const fullPhone = getFullPhoneNumber(phoneInput.value, selectedCountry.code);
+      void handleSendPhoneCode(fullPhone, submitBtn);
     });
 
     socialBody.appendChild(phoneForm);
@@ -532,6 +635,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     resendBtn.type = 'button';
     resendBtn.className = 'gd-auth-btn-link gd-auth-resend-btn';
     resendBtn.textContent = 'Resend code';
+    resendBtn.setAttribute('aria-label', 'Resend verification code');
     resendBtn.addEventListener('click', () => {
       void handleResendCode(resendBtn);
     });
@@ -539,7 +643,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     const changePhoneBtn = document.createElement('button');
     changePhoneBtn.type = 'button';
     changePhoneBtn.className = 'gd-auth-btn-link gd-auth-change-phone-btn';
-    changePhoneBtn.textContent = '← Use different number';
+    changePhoneBtn.textContent = 'Use different number';
+    changePhoneBtn.setAttribute('aria-label', 'Use different phone number');
     changePhoneBtn.addEventListener('click', () => {
       renderOptionsView();
     });

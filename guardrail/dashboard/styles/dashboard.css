@@ -523,102 +523,87 @@ textarea:focus-visible,
   stroke: var(--gd-deep-olive, #273121);
 }
 
-/* Authenticated Profile Card (Clean, minimal identity presentation) */
-.gd-auth-profile-card {
-  background-color: var(--gd-olive-box-bg, #DFE7D4);
-  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  border-radius: 14px;
-  padding: 18px 20px;
+/* Authenticated Profile Section (Clean, no green background box) */
+.gd-auth-profile-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  box-sizing: border-box;
+  width: 100%;
+  margin-top: 4px;
 }
 
 .gd-auth-profile-main {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.gd-auth-profile-avatar-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  width: 100%;
 }
 
 .gd-auth-profile-avatar {
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
   border-radius: 50%;
-  background: #FFFFFF;
-  border: 2px solid var(--gd-olive-box-border, #CCD6C0);
+  background-color: #EDE8DE;
+  border: 1.5px solid var(--gd-olive-box-border, #CCD6C0);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.08);
 }
 
+.gd-auth-profile-avatar-img,
 .gd-auth-profile-avatar img {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
 
-.gd-auth-profile-avatar .gd-avatar-icon {
-  width: 26px;
-  height: 26px;
+.gd-auth-profile-avatar .gd-avatar-icon,
+.gd-auth-profile-avatar .gd-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   color: var(--gd-deep-olive, #273121);
 }
 
-.gd-auth-change-photo-btn {
-  background: transparent;
-  border: none;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--gd-text-secondary, #5F6656);
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  transition: color 0.15s ease;
-}
-
-.gd-auth-change-photo-btn:hover {
-  color: var(--gd-deep-olive, #273121);
+.gd-auth-profile-avatar .gd-avatar-icon svg,
+.gd-auth-profile-avatar .gd-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--gd-deep-olive, #273121);
+  stroke-width: 2;
+  display: block;
 }
 
 .gd-auth-profile-info {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 3px;
   min-width: 0;
+  flex: 1;
 }
 
 .gd-auth-profile-name {
   font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 16.5px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--gd-deep-olive, #273121);
   letter-spacing: -0.015em;
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .gd-auth-profile-email {
   font-size: 13px;
   color: var(--gd-text-secondary, #5F6656);
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-all;
 }
 
 .gd-auth-role-badge {
@@ -626,7 +611,7 @@ textarea:focus-visible,
   align-items: center;
   align-self: flex-start;
   margin-top: 4px;
-  background: #FFFFFF;
+  background: rgba(39, 49, 33, 0.07);
   border: 1px solid var(--gd-olive-box-border, #CCD6C0);
   color: var(--gd-deep-olive, #273121);
   font-size: 11px;
@@ -639,54 +624,76 @@ textarea:focus-visible,
 .gd-auth-profile-divider {
   border: none;
   border-top: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  opacity: 0.65;
-  margin: 0;
+  opacity: 0.55;
+  margin: 20px 0 16px 0;
 }
 
 .gd-auth-profile-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  width: 100%;
+}
+
+.gd-auth-switch-btn,
+.gd-auth-signout-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  outline: none;
+  box-sizing: border-box;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .gd-auth-switch-btn {
-  background: transparent;
-  border: none;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gd-text-secondary, #5F6656);
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 0.15s ease;
+  background: #FFFFFF;
+  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
+  color: var(--gd-deep-olive, #273121);
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
 }
 
 .gd-auth-switch-btn:hover {
+  background: #F4EFE6;
+  border-color: var(--gd-deep-olive, #273121);
   color: var(--gd-deep-olive, #273121);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.08);
+}
+
+.gd-auth-switch-btn:active {
+  background: #EAE3D5;
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.gd-auth-switch-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(39, 49, 33, 0.15);
 }
 
 .gd-auth-signout-btn {
   background: #FFFFFF;
-  border: 1px solid rgba(180, 52, 35, 0.35);
+  border: 1px solid rgba(180, 52, 35, 0.28);
   color: #B43423;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-  outline: none;
-  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(180, 52, 35, 0.04);
 }
 
 .gd-auth-signout-btn:hover {
   background: #FDF2F0;
   border-color: #B43423;
+  color: #9B2516;
   transform: translateY(-0.5px);
   box-shadow: 0 2px 6px rgba(180, 52, 35, 0.12);
 }
@@ -694,6 +701,11 @@ textarea:focus-visible,
 .gd-auth-signout-btn:active {
   background: #FCE8E6;
   transform: translateY(0);
+  box-shadow: none;
+}
+
+.gd-auth-signout-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(180, 52, 35, 0.18);
 }
 
 .gd-account-details {
@@ -8495,55 +8507,137 @@ article.gd-card-collapsed,
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--gd-text-secondary, #5F6656);
-  margin-bottom: 1px;
+  margin-bottom: 2px;
+}
+
+/* Integrated Phone Input Group: Country Code Select + Number Input */
+.gd-auth-phone-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 42px;
+  background: #FFFFFF;
+  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.gd-auth-phone-input-group:focus-within {
+  border-color: var(--gd-deep-olive, #273121);
+  box-shadow: 0 0 0 3px rgba(39, 49, 33, 0.12);
+}
+
+.gd-auth-country-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px 0 12px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.gd-auth-country-picker:hover {
+  background-color: rgba(39, 49, 33, 0.04);
+}
+
+.gd-auth-country-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gd-deep-olive, #273121);
+  pointer-events: none;
+  user-select: none;
+}
+
+.gd-auth-country-flag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.gd-auth-country-code {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-deep-olive, #273121);
+  letter-spacing: -0.01em;
+}
+
+.gd-auth-country-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  color: var(--gd-text-secondary, #5F6656);
+  opacity: 0.75;
+  margin-left: 1px;
+}
+
+.gd-auth-country-arrow svg {
+  width: 9px;
+  height: 6px;
+  display: block;
+}
+
+.gd-auth-country-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  font-size: 14px;
+}
+
+.gd-auth-country-select:focus-visible ~ .gd-auth-country-display {
+  outline: 2px solid var(--gd-deep-olive, #273121);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.gd-auth-phone-divider {
+  width: 1px;
+  height: 22px;
+  background-color: var(--gd-olive-box-border, #CCD6C0);
+  flex-shrink: 0;
 }
 
 .gd-auth-phone-input-wrap {
   position: relative;
-  width: 100%;
+  flex: 1;
+  height: 100%;
   display: flex;
   align-items: center;
-}
-
-.gd-auth-phone-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  color: var(--gd-text-muted, #88907E);
-  pointer-events: none;
-}
-
-.gd-auth-phone-icon svg {
-  width: 15px;
-  height: 15px;
-  stroke: currentColor;
+  min-width: 0;
 }
 
 .gd-auth-phone-input {
   width: 100%;
-  height: 40px;
-  padding-left: 36px;
-  padding-right: 12px;
-  background: #FFFFFF;
-  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  border-radius: 8px;
+  height: 100%;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13.5px;
+  font-weight: 500;
   color: var(--gd-deep-olive, #273121);
   outline: none;
-  transition: all 0.15s ease;
   box-sizing: border-box;
 }
 
-.gd-auth-phone-input:focus {
-  border-color: var(--gd-deep-olive, #273121);
-  box-shadow: 0 0 0 3px rgba(39, 49, 33, 0.12);
+.gd-auth-phone-input::placeholder {
+  color: var(--gd-text-muted, #88907E);
+  font-weight: 400;
 }
 
 .gd-auth-phone-submit-btn,
@@ -8700,28 +8794,75 @@ article.gd-card-collapsed,
 .gd-auth-form-links {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 2px;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gd-olive-box-border, #CCD6C0);
 }
 
+.gd-auth-resend-btn,
+.gd-auth-change-phone-btn,
 .gd-auth-btn-back,
 .gd-auth-btn-link {
-  background: transparent;
-  border: none;
-  color: #555E4E;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 10px;
+  background: #FFFFFF;
+  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
+  border-radius: 8px;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--gd-deep-olive, #273121);
   cursor: pointer;
-  padding: 4px 0;
-  transition: color 0.12s ease;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  outline: none;
+  box-sizing: border-box;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
+  white-space: nowrap;
 }
 
+.gd-auth-resend-btn:hover,
+.gd-auth-change-phone-btn:hover,
 .gd-auth-btn-back:hover,
 .gd-auth-btn-link:hover {
-  color: #1F241A;
+  background: #F4EFE6;
+  border-color: var(--gd-deep-olive, #273121);
+  color: var(--gd-deep-olive, #273121);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 5px rgba(39, 49, 33, 0.08);
+}
+
+.gd-auth-resend-btn:active,
+.gd-auth-change-phone-btn:active,
+.gd-auth-btn-back:active,
+.gd-auth-btn-link:active {
+  background: #EAE3D5;
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.gd-auth-resend-btn:disabled,
+.gd-auth-change-phone-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+  background: #F7F5EE;
+  border-color: var(--gd-olive-box-border, #CCD6C0);
+  color: var(--gd-text-secondary, #5F6656);
+}
+
+.gd-auth-resend-btn:focus-visible,
+.gd-auth-change-phone-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(39, 49, 33, 0.15);
 }
 
 /* Labeled Divider */

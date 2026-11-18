@@ -294,11 +294,15 @@ console.log('  ✓ "Continue with Apple" button rendered with official Apple SVG
 // 4. Inline Phone Number Form & Submit button
 const phoneFormEl = modalEl.querySelector('.gd-auth-phone-form');
 assert(phoneFormEl, 'Renders inline .gd-auth-phone-form in initial view');
+const countrySelectEl = modalEl.querySelector('.gd-auth-country-select');
+assert(countrySelectEl, 'Renders .gd-auth-country-select dropdown for international dialing codes');
+const phoneInputGroupEl = modalEl.querySelector('.gd-auth-phone-input-group');
+assert(phoneInputGroupEl, 'Renders integrated .gd-auth-phone-input-group container');
 const phoneInputEl = modalEl.querySelector('.gd-auth-phone-input');
 assert(phoneInputEl, 'Renders .gd-auth-phone-input field for mobile number');
 const phoneBtn = modalEl.querySelector('.gd-auth-phone-btn');
 assert(phoneBtn, 'Renders .gd-auth-phone-btn submit button');
-console.log('  ✓ Inline phone number input and submit button rendered directly in initial view');
+console.log('  ✓ Inline phone input with country code dropdown and submit button rendered directly in initial view');
 
 // 5. Verification that "Sign in with Clerk" is NOT present (Clerk is the underlying engine, not consumer brand)
 const clerkBtn = modalEl.querySelector('.gd-auth-clerk-btn');
