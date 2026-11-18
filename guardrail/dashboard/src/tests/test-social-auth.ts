@@ -291,14 +291,14 @@ assert(appleIcon, 'Apple button contains social icon container');
 assert(appleIcon.innerHTML.includes('M18.71'), 'Apple icon contains official Apple SVG path');
 console.log('  ✓ "Continue with Apple" button rendered with official Apple SVG icon');
 
-// 4. Phone Number button (Clerk-powered Phone SMS Auth)
+// 4. Inline Phone Number Form & Submit button
+const phoneFormEl = modalEl.querySelector('.gd-auth-phone-form');
+assert(phoneFormEl, 'Renders inline .gd-auth-phone-form in initial view');
+const phoneInputEl = modalEl.querySelector('.gd-auth-phone-input');
+assert(phoneInputEl, 'Renders .gd-auth-phone-input field for mobile number');
 const phoneBtn = modalEl.querySelector('.gd-auth-phone-btn');
-assert(phoneBtn, 'Renders .gd-auth-phone-btn button');
-assert(phoneBtn.textContent.includes('Continue with Phone Number'), 'Phone button has "Continue with Phone Number" label');
-const phoneIcon = phoneBtn.querySelector('.gd-auth-social-icon');
-assert(phoneIcon, 'Phone button contains social icon container');
-assert(phoneIcon.innerHTML.includes('M22 16.92v3a2'), 'Phone icon contains official phone SVG path');
-console.log('  ✓ "Continue with Phone Number" button rendered with official phone SVG icon');
+assert(phoneBtn, 'Renders .gd-auth-phone-btn submit button');
+console.log('  ✓ Inline phone number input and submit button rendered directly in initial view');
 
 // 5. Verification that "Sign in with Clerk" is NOT present (Clerk is the underlying engine, not consumer brand)
 const clerkBtn = modalEl.querySelector('.gd-auth-clerk-btn');
@@ -396,36 +396,21 @@ const phoneModalEl = renderAuthModal({
   },
 }) as unknown as MockElement;
 
-// 1. Initial State: Options View contains Phone Button
-const phoneOptionBtn = phoneModalEl.querySelector('.gd-auth-phone-btn');
-assert(phoneOptionBtn, 'Phone button exists in options view');
-
-// 2. Click "Continue with Phone Number" -> Transitions to Phone Input View
-phoneOptionBtn.dispatchEvent({ type: 'click' });
+// 1. Initial State: Options View contains Inline Phone Input Form
 const phoneForm = phoneModalEl.querySelector('.gd-auth-phone-form');
-assert(phoneForm, 'Transitions to .gd-auth-phone-form without leaving modal');
+assert(phoneForm, 'Inline phone form exists in options view');
 const phoneInput = phoneModalEl.querySelector('.gd-auth-phone-input') as unknown as { value: string };
 assert(phoneInput, 'Renders .gd-auth-phone-input for mobile number');
-console.log('  ✓ Clicking "Continue with Phone Number" transitions in-modal to phone input form');
+const phoneSubmitBtn = phoneModalEl.querySelector('.gd-auth-phone-btn');
+assert(phoneSubmitBtn, 'Phone submit button exists in options view');
+console.log('  ✓ Inline phone input and submit button are present directly in initial view');
 
-// 3. Test Back Navigation
-const backToOptionsBtn = phoneModalEl.querySelector('.gd-auth-btn-back');
-assert(backToOptionsBtn, 'Renders back to options button');
-backToOptionsBtn.dispatchEvent({ type: 'click' });
-assert.strictEqual(phoneModalEl.querySelector('.gd-auth-phone-form'), null, 'Phone form dismissed');
-assert(phoneModalEl.querySelector('.gd-auth-phone-btn'), 'Returned to social options view');
-console.log('  ✓ "← Back to all options" seamlessly returns to initial button list');
-
-// 4. Return to Phone View and Submit Number
-phoneModalEl.querySelector('.gd-auth-phone-btn')?.dispatchEvent({ type: 'click' });
-const activePhoneForm = phoneModalEl.querySelector('.gd-auth-phone-form')!;
-const activePhoneInput = phoneModalEl.querySelector('.gd-auth-phone-input') as unknown as { value: string };
-activePhoneInput.value = '+1 (555) 555-0100';
-
-activePhoneForm.dispatchEvent({ type: 'submit' });
+// 2. Submit Phone Number -> Transitions to OTP Verification View
+phoneInput.value = '+1 (555) 555-0100';
+phoneForm.dispatchEvent({ type: 'submit' });
 await new Promise((resolve) => setTimeout(resolve, 50));
 
-// 5. Transitions to OTP Verification View
+// 3. Transitions to OTP Verification View
 const otpForm = phoneModalEl.querySelector('.gd-auth-otp-form');
 assert(otpForm, 'Transitions to .gd-auth-otp-form after submitting phone number');
 const otpInput = phoneModalEl.querySelector('.gd-auth-otp-input') as unknown as { value: string };
@@ -436,9 +421,19 @@ const changePhoneBtn = phoneModalEl.querySelector('.gd-auth-change-phone-btn');
 assert(changePhoneBtn, 'Renders "← Use different number" button');
 console.log('  ✓ Submitting phone number transitions to 6-digit OTP verification view');
 
-// 6. Submit OTP Code (e.g. 424242)
-otpInput.value = '424242';
-otpForm.dispatchEvent({ type: 'submit' });
+// 4. Test "← Use different number" returns to options view
+changePhoneBtn.dispatchEvent({ type: 'click' });
+assert.strictEqual(phoneModalEl.querySelector('.gd-auth-otp-form'), null, 'OTP form dismissed');
+assert(phoneModalEl.querySelector('.gd-auth-phone-form'), 'Returned to options view with inline phone input');
+console.log('  ✓ "← Use different number" seamlessly returns to initial options view');
+
+// 5. Re-submit and verify OTP Code
+phoneModalEl.querySelector('.gd-auth-phone-form')?.dispatchEvent({ type: 'submit' });
+await new Promise((resolve) => setTimeout(resolve, 50));
+const activeOtpForm = phoneModalEl.querySelector('.gd-auth-otp-form')!;
+const activeOtpInput = phoneModalEl.querySelector('.gd-auth-otp-input') as unknown as { value: string };
+activeOtpInput.value = '424242';
+activeOtpForm.dispatchEvent({ type: 'submit' });
 await new Promise((resolve) => setTimeout(resolve, 50));
 
 assert.strictEqual(phoneToken, 'test-contact-token', 'Successfully authenticated with token');

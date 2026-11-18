@@ -59,15 +59,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-auth-modal-title-group';
 
-  // Subtle brand badge pill above title
-  const brandBadge = document.createElement('div');
-  brandBadge.className = 'gd-auth-brand-badge';
-  brandBadge.appendChild(createIcon('shield', 'gd-auth-badge-icon'));
-  const badgeLabel = document.createElement('span');
-  badgeLabel.textContent = 'Guardrail Trusted Contact Identity';
-  brandBadge.appendChild(badgeLabel);
-  titleGroup.appendChild(brandBadge);
-
   const title = document.createElement('h2');
   title.id = 'gd-auth-modal-title';
   title.className = 'gd-auth-modal-title';
@@ -77,7 +68,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   subtitle.className = 'gd-auth-modal-subtitle';
   subtitle.textContent = isAuth
     ? 'Manage your active identity session and trusted contact access.'
-    : 'Review, evaluate, and approve sensitive browser actions on behalf of your wards.';
+    : 'Sign in to access your trusted contact portal.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
@@ -218,24 +209,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   errorBanner.style.display = 'none';
   body.appendChild(errorBanner);
 
-  // 3. 1-Click Consumer Social & In-Modal Phone Authentication (Clerk-powered)
+  // 3. 1-Click Consumer Social & Inline Phone Authentication (Clerk-powered)
   const socialSection = document.createElement('div');
   socialSection.className = 'gd-auth-section gd-auth-social-section';
-
-  const socialHeader = document.createElement('div');
-  socialHeader.className = 'gd-auth-section-header';
-
-  const socialTitle = document.createElement('span');
-  socialTitle.className = 'gd-auth-section-title';
-  socialTitle.textContent = 'Sign in with your account';
-
-  const socialHint = document.createElement('span');
-  socialHint.className = 'gd-auth-section-hint';
-  socialHint.textContent = '1-click secure access';
-
-  socialHeader.appendChild(socialTitle);
-  socialHeader.appendChild(socialHint);
-  socialSection.appendChild(socialHeader);
 
   const socialBody = document.createElement('div');
   socialBody.className = 'gd-auth-social-body';
@@ -476,8 +452,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   function renderOptionsView(): void {
     hideError();
-    socialTitle.textContent = 'Sign in with your account';
-    socialHint.textContent = '1-click secure access';
+    title.textContent = isAuth ? 'Account & Session' : 'Sign in to Guardrail';
+    subtitle.textContent = isAuth
+      ? 'Manage your active identity session and trusted contact access.'
+      : 'Sign in to access your trusted contact portal.';
     clearContainer(socialBody);
 
     const socialButtonsContainer = document.createElement('div');
@@ -509,94 +487,63 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     });
     socialButtonsContainer.appendChild(appleBtn);
 
-    // Phone Number Sign-In Button (In-modal Phone + SMS OTP)
-    const phoneBtn = document.createElement('button');
-    phoneBtn.type = 'button';
-    phoneBtn.className = 'gd-auth-social-btn gd-auth-phone-btn';
-    phoneBtn.appendChild(createIcon('phone', 'gd-auth-social-icon'));
-    const phoneText = document.createElement('span');
-    phoneText.textContent = 'Continue with Phone Number';
-    phoneBtn.appendChild(phoneText);
-    phoneBtn.addEventListener('click', () => {
-      renderPhoneView();
-    });
-    socialButtonsContainer.appendChild(phoneBtn);
-
-    const securityPill = document.createElement('div');
-    securityPill.className = 'gd-auth-security-guarantee';
-    securityPill.appendChild(createIcon('shield-check', 'gd-auth-guarantee-icon'));
-    const guaranteeText = document.createElement('span');
-    guaranteeText.textContent = 'End-to-End Cryptographic Security · Zero Credentials Stored';
-    securityPill.appendChild(guaranteeText);
-    socialButtonsContainer.appendChild(securityPill);
-
     socialBody.appendChild(socialButtonsContainer);
-  }
 
-  function renderPhoneView(): void {
-    hideError();
-    socialTitle.textContent = 'Sign in with Phone';
-    socialHint.textContent = 'SMS verification';
-    clearContainer(socialBody);
+    // Fine hairline divider: "or"
+    const divider = document.createElement('div');
+    divider.className = 'gd-auth-divider-text';
+    const dividerSpan = document.createElement('span');
+    dividerSpan.textContent = 'or';
+    divider.appendChild(dividerSpan);
+    socialBody.appendChild(divider);
 
-    const form = document.createElement('form');
-    form.className = 'gd-auth-phone-form';
-    form.setAttribute('novalidate', 'true');
+    // Inline Phone Number Form
+    const phoneForm = document.createElement('form');
+    phoneForm.className = 'gd-auth-phone-form';
+    phoneForm.setAttribute('novalidate', 'true');
 
-    const label = document.createElement('label');
-    label.className = 'gd-auth-field-label';
-    label.textContent = 'Mobile Phone Number';
+    const phoneRow = document.createElement('div');
+    phoneRow.className = 'gd-auth-phone-inline-row';
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'gd-auth-phone-input-wrap';
+
+    const phoneIconSpan = document.createElement('span');
+    phoneIconSpan.className = 'gd-auth-phone-icon';
+    phoneIconSpan.appendChild(createIcon('phone'));
+    inputWrap.appendChild(phoneIconSpan);
 
     const phoneInput = document.createElement('input');
     phoneInput.type = 'tel';
     phoneInput.className = 'gd-auth-phone-input';
-    phoneInput.placeholder = '+1 (555) 555-0100';
+    phoneInput.placeholder = 'Phone number (e.g. +1 555 0100)';
     phoneInput.autocomplete = 'tel';
     phoneInput.value = currentPhone;
-
-    const hint = document.createElement('p');
-    hint.className = 'gd-auth-field-hint';
-    hint.textContent = 'Include country code (e.g. +1 for US/Canada, +91 for India). Dev test number: +1 (555) 555-0100';
+    inputWrap.appendChild(phoneInput);
 
     const submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
-    submitBtn.className = 'gd-auth-btn-primary';
-    submitBtn.textContent = 'Send Verification Code';
+    submitBtn.className = 'gd-auth-btn-primary gd-auth-phone-btn gd-auth-phone-submit-btn';
+    submitBtn.textContent = 'Continue';
 
-    const backBtn = document.createElement('button');
-    backBtn.type = 'button';
-    backBtn.className = 'gd-auth-btn-back';
-    backBtn.textContent = '← Back to all options';
-    backBtn.addEventListener('click', () => {
-      renderOptionsView();
-    });
+    phoneRow.appendChild(inputWrap);
+    phoneRow.appendChild(submitBtn);
+    phoneForm.appendChild(phoneRow);
 
-    form.appendChild(label);
-    form.appendChild(phoneInput);
-    form.appendChild(hint);
-    form.appendChild(submitBtn);
-    form.appendChild(backBtn);
-
-    form.addEventListener('submit', (e) => {
+    phoneForm.addEventListener('submit', (e) => {
       if (typeof e?.preventDefault === 'function') {
         e.preventDefault();
       }
       void handleSendPhoneCode(phoneInput.value, submitBtn);
     });
 
-    socialBody.appendChild(form);
-
-    setTimeout(() => {
-      if (typeof phoneInput.focus === 'function') {
-        phoneInput.focus();
-      }
-    }, 50);
+    socialBody.appendChild(phoneForm);
   }
 
   function renderOtpView(phone: string, mode: 'signIn' | 'signUp'): void {
     hideError();
-    socialTitle.textContent = 'Verify Phone Number';
-    socialHint.textContent = '6-digit code';
+    title.textContent = 'Verify Phone Number';
+    subtitle.textContent = `Enter the 6-digit verification code sent to ${phone}`;
     clearContainer(socialBody);
 
     const form = document.createElement('form');
@@ -641,7 +588,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     changePhoneBtn.className = 'gd-auth-btn-link gd-auth-change-phone-btn';
     changePhoneBtn.textContent = '← Use different number';
     changePhoneBtn.addEventListener('click', () => {
-      renderPhoneView();
+      renderOptionsView();
     });
 
     linksRow.appendChild(resendBtn);
