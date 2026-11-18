@@ -194,6 +194,17 @@ if (typeof document !== 'undefined') {
     getClerk().then(async (clerk) => {
       if (!clerk) return;
 
+      // Handle OAuth redirect callback if query params contain Clerk redirect state
+      if (typeof window !== 'undefined' && (window.location.search.includes('__clerk') || window.location.search.includes('session_token'))) {
+        try {
+          if (typeof clerk.handleRedirectCallback === 'function') {
+            await clerk.handleRedirectCallback({ redirectUrl: window.location.origin });
+          }
+        } catch (cbErr) {
+          console.warn('[Clerk] handleRedirectCallback error:', cbErr);
+        }
+      }
+
       let wasAuthenticated = false;
 
       const syncClerkSession = async () => {
