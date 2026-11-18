@@ -272,16 +272,16 @@ assert(appleIcon, 'Apple button contains social icon container');
 assert(appleIcon.innerHTML.includes('M18.71'), 'Apple icon contains official Apple SVG path');
 console.log('  ✓ "Continue with Apple" button rendered with official Apple SVG icon');
 
-// 4. Developer wrapper
-const devWrapper = modalEl.querySelector('.gd-auth-dev-wrapper');
-assert(devWrapper, 'Renders .gd-auth-dev-wrapper container');
+// 4. Clerk button
+const clerkBtn = modalEl.querySelector('.gd-auth-clerk-btn');
+assert(clerkBtn, 'Renders .gd-auth-clerk-btn button');
+assert(clerkBtn.textContent.includes('Sign in with Clerk'), 'Clerk button has "Sign in with Clerk" label');
+console.log('  ✓ "Sign in with Clerk" button rendered with official Clerk shield icon');
 
-// 5. Developer chips & manual input
-const chips = modalEl.querySelectorAll('.gd-auth-chip');
-assert.strictEqual(chips.length, 2, 'Renders 2 development profile chips (Carol, Alice)');
-const bearerInput = modalEl.querySelector('.gd-auth-input');
-assert(bearerInput, 'Renders custom Bearer token override input');
-console.log('  ✓ Developer tools section cleanly grouped under developer shortcuts');
+// 5. Verification that developer shortcuts are removed in production
+const devWrapper = modalEl.querySelector('.gd-auth-dev-wrapper');
+assert.strictEqual(devWrapper, null, 'Developer shortcuts are cleanly removed for production');
+console.log('  ✓ Production verification: developer shortcuts and test switchers are completely excluded');
 
 // -----------------------------------------------------------------------------
 // Test Suite 3: Interactive Click Simulation & Zero-Friction Dev Fallback

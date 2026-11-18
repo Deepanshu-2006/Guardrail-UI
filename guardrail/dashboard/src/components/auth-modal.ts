@@ -111,9 +111,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   sessionSub.className = 'gd-auth-session-sub';
   if (props.profile?.isAuthenticated) {
     const roleText = props.profile.relationshipLabel || (props.profile.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : props.profile.role);
-    sessionSub.textContent = `${roleText} · Local environment`;
+    sessionSub.textContent = `${roleText} · Secure session`;
   } else {
-    sessionSub.textContent = 'Guest mode · Actions require authentication';
+    sessionSub.textContent = 'Sign in to access trusted contact approvals';
   }
 
   sessionDetails.appendChild(sessionLabel);
@@ -243,114 +243,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   providerContent.className = 'gd-auth-provider-content';
   body.appendChild(providerContent);
 
-  // 4. Developer Tools & Manual Token Section (Adaptive: hidden in production)
-  const devContainer = document.createElement('div');
-  devContainer.className = 'gd-auth-dev-wrapper';
-
-  const devDivider = document.createElement('div');
-  devDivider.className = 'gd-auth-divider-with-label';
-  const devDividerLabel = document.createElement('span');
-  devDividerLabel.textContent = 'Developer shortcuts';
-  devDivider.appendChild(devDividerLabel);
-  devContainer.appendChild(devDivider);
-
-  const devSection = document.createElement('div');
-  devSection.className = 'gd-auth-section gd-auth-dev-section';
-
-  const devHeader = document.createElement('div');
-  devHeader.className = 'gd-auth-section-header';
-
-  const devTitle = document.createElement('span');
-  devTitle.className = 'gd-auth-section-title';
-  devTitle.textContent = 'Switch profile';
-
-  const devHint = document.createElement('span');
-  devHint.className = 'gd-auth-section-hint';
-  devHint.textContent = 'Local simulation';
-
-  devHeader.appendChild(devTitle);
-  devHeader.appendChild(devHint);
-  devSection.appendChild(devHeader);
-
-  const devButtonsContainer = document.createElement('div');
-  devButtonsContainer.className = 'gd-auth-dev-buttons';
-
-  const isCarol = props.profile?.actorId === 'tc_carol' && props.profile?.isAuthenticated;
-  const isAlice = props.profile?.actorId === 'test-ward' && props.profile?.isAuthenticated;
-
-  // Caretaker button
-  const caretakerBtn = document.createElement('button');
-  caretakerBtn.type = 'button';
-  caretakerBtn.className = `gd-auth-chip ${isCarol ? 'selected' : ''}`;
-  caretakerBtn.textContent = 'Carol (Caretaker)';
-  caretakerBtn.addEventListener('click', () => {
-    void verifyAndApplyToken('test-contact-token', 'carol.guardian@gmail.com');
-  });
-  devButtonsContainer.appendChild(caretakerBtn);
-
-  // Ward user button
-  const wardBtn = document.createElement('button');
-  wardBtn.type = 'button';
-  wardBtn.className = `gd-auth-chip ${isAlice ? 'selected' : ''}`;
-  wardBtn.textContent = 'Alice (Ward)';
-  wardBtn.addEventListener('click', () => {
-    void verifyAndApplyToken('test-ward-token', 'alice.ward@gmail.com');
-  });
-  devButtonsContainer.appendChild(wardBtn);
-
-  devSection.appendChild(devButtonsContainer);
-  devContainer.appendChild(devSection);
-
-  // 5. Custom Bearer Token Input
-  const tokenSection = document.createElement('div');
-  tokenSection.className = 'gd-auth-section';
-
-  const tokenHeader = document.createElement('div');
-  tokenHeader.className = 'gd-auth-section-header';
-
-  const tokenTitle = document.createElement('span');
-  tokenTitle.className = 'gd-auth-section-title';
-  tokenTitle.textContent = 'Bearer token';
-
-  const tokenHint = document.createElement('span');
-  tokenHint.className = 'gd-auth-section-hint';
-  tokenHint.textContent = 'Manual JWT override';
-
-  tokenHeader.appendChild(tokenTitle);
-  tokenHeader.appendChild(tokenHint);
-  tokenSection.appendChild(tokenHeader);
-
-  const tokenInputRow = document.createElement('div');
-  tokenInputRow.className = 'gd-auth-input-group';
-
-  const tokenInput = document.createElement('input');
-  tokenInput.type = 'text';
-  tokenInput.className = 'gd-auth-input';
-  tokenInput.placeholder = 'Paste JWT or authorization token...';
-  tokenInput.autocomplete = 'off';
-  tokenInput.spellcheck = false;
-
-  const applyBtn = document.createElement('button');
-  applyBtn.type = 'button';
-  applyBtn.className = 'gd-auth-btn-apply';
-  applyBtn.textContent = 'Apply';
-  applyBtn.addEventListener('click', () => {
-    const rawVal = tokenInput.value.trim();
-    if (!rawVal) {
-      showError('Please enter a valid authentication token.');
-      return;
-    }
-    const cleanToken = rawVal.startsWith('Bearer ') ? rawVal.slice(7).trim() : rawVal;
-    void verifyAndApplyToken(cleanToken);
-  });
-
-  tokenInputRow.appendChild(tokenInput);
-  tokenInputRow.appendChild(applyBtn);
-  tokenSection.appendChild(tokenInputRow);
-  devContainer.appendChild(tokenSection);
-
-  body.appendChild(devContainer);
-
   modal.appendChild(body);
 
   // --- Footer ---
@@ -360,7 +252,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const closeFooterBtn = document.createElement('button');
   closeFooterBtn.type = 'button';
   closeFooterBtn.className = 'gd-auth-btn-close';
-  closeFooterBtn.textContent = 'Done';
+  closeFooterBtn.textContent = props.profile?.isAuthenticated ? 'Done' : 'Cancel';
   closeFooterBtn.addEventListener('click', () => {
     cleanup();
     props.onClose();
@@ -479,8 +371,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   async function verifyAndApplyToken(token: string, simulatedEmail?: string): Promise<void> {
     hideError();
-    applyBtn.disabled = true;
-    applyBtn.textContent = 'Verifying...';
 
     const baseUrl =
       props.apiBaseUrl ||
@@ -499,8 +389,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       const body = (await res.json()) as { success: boolean; data?: AuthMeResponse; error?: { message: string } };
       if (!res.ok || !body.success || !body.data) {
         showError(body.error?.message || `Server rejected token (HTTP ${res.status}).`);
-        applyBtn.disabled = false;
-        applyBtn.textContent = 'Apply';
         return;
       }
 
@@ -518,8 +406,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       props.onClose();
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Network error communicating with authentication service.');
-      applyBtn.disabled = false;
-      applyBtn.textContent = 'Apply';
     }
   }
 
