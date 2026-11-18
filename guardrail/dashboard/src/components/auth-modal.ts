@@ -68,7 +68,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   subtitle.className = 'gd-auth-modal-subtitle';
   subtitle.textContent = isAuth
     ? 'Manage your active identity session and trusted contact access.'
-    : 'Sign in to access your trusted contact portal.';
+    : 'Access your trusted contact dashboard.';
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
@@ -359,9 +359,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   modal.appendChild(body);
 
-  // --- Footer ---
+  // --- Footer (only needed for authenticated account view) ---
   const footer = document.createElement('div');
   footer.className = 'gd-auth-modal-footer';
+  if (!isAuth) {
+    footer.style.display = 'none';
+  }
 
   const closeFooterBtn = document.createElement('button');
   closeFooterBtn.type = 'button';
@@ -502,8 +505,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     phoneForm.className = 'gd-auth-phone-form';
     phoneForm.setAttribute('novalidate', 'true');
 
-    const phoneRow = document.createElement('div');
-    phoneRow.className = 'gd-auth-phone-inline-row';
+    const phoneLabel = document.createElement('label');
+    phoneLabel.className = 'gd-auth-field-label';
+    phoneLabel.textContent = 'Phone number';
 
     const inputWrap = document.createElement('div');
     inputWrap.className = 'gd-auth-phone-input-wrap';
@@ -516,7 +520,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     const phoneInput = document.createElement('input');
     phoneInput.type = 'tel';
     phoneInput.className = 'gd-auth-phone-input';
-    phoneInput.placeholder = 'Phone number (e.g. +1 555 0100)';
+    phoneInput.placeholder = '+1 (555) 000-0000';
     phoneInput.autocomplete = 'tel';
     phoneInput.value = currentPhone;
     inputWrap.appendChild(phoneInput);
@@ -524,11 +528,16 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     const submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
     submitBtn.className = 'gd-auth-btn-primary gd-auth-phone-btn gd-auth-phone-submit-btn';
-    submitBtn.textContent = 'Continue';
+    submitBtn.textContent = 'Send code';
 
-    phoneRow.appendChild(inputWrap);
-    phoneRow.appendChild(submitBtn);
-    phoneForm.appendChild(phoneRow);
+    const caption = document.createElement('p');
+    caption.className = 'gd-auth-form-caption';
+    caption.innerHTML = "We'll text you a 6-digit code. In dev mode, test number is <strong>+1 (555) 555-0100</strong>.";
+
+    phoneForm.appendChild(phoneLabel);
+    phoneForm.appendChild(inputWrap);
+    phoneForm.appendChild(submitBtn);
+    phoneForm.appendChild(caption);
 
     phoneForm.addEventListener('submit', (e) => {
       if (typeof e?.preventDefault === 'function') {
@@ -569,8 +578,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
     const submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
-    submitBtn.className = 'gd-auth-btn-primary';
-    submitBtn.textContent = 'Verify & Sign In';
+    submitBtn.className = 'gd-auth-btn-primary gd-auth-otp-submit-btn';
+    submitBtn.textContent = 'Verify code';
 
     const linksRow = document.createElement('div');
     linksRow.className = 'gd-auth-form-links';

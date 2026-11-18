@@ -8111,12 +8111,12 @@ article.gd-card-collapsed,
 
 .gd-auth-modal-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 384px;
   background: var(--gd-bg-surface, #FAF7F0);
   border: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  border-radius: 14px;
-  box-shadow: 0 20px 48px -8px rgba(27, 33, 23, 0.28),
-              0 4px 12px rgba(27, 33, 23, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -12px rgba(27, 33, 23, 0.28),
+              0 4px 16px rgba(27, 33, 23, 0.06);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -8140,7 +8140,7 @@ article.gd-card-collapsed,
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 24px 24px 14px 24px;
+  padding: 26px 26px 0 26px;
   background: transparent;
 }
 
@@ -8153,7 +8153,7 @@ article.gd-card-collapsed,
 .gd-auth-modal-title {
   margin: 0;
   font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.025em;
   color: var(--gd-deep-olive, #273121);
@@ -8162,7 +8162,7 @@ article.gd-card-collapsed,
 
 .gd-auth-modal-subtitle {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--gd-text-secondary, #5F6656);
   line-height: 1.4;
 }
@@ -8191,10 +8191,10 @@ article.gd-card-collapsed,
 }
 
 .gd-auth-modal-body {
-  padding: 0 24px 16px 24px;
+  padding: 20px 26px 26px 26px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
 }
 
 .gd-auth-divider {
@@ -8313,7 +8313,7 @@ article.gd-card-collapsed,
 .gd-auth-social-buttons {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
 }
 
 .gd-auth-social-btn {
@@ -8322,17 +8322,18 @@ article.gd-card-collapsed,
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 44px;
-  border-radius: 9px;
+  height: 42px;
+  border-radius: 8px;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
-  gap: 12px;
+  transition: all 0.15s ease;
+  gap: 10px;
   padding: 0 16px;
   user-select: none;
   outline: none;
+  box-sizing: border-box;
 }
 
 .gd-auth-social-btn:focus-visible {
@@ -8342,15 +8343,14 @@ article.gd-card-collapsed,
 .gd-auth-google-btn {
   background: #FFFFFF;
   color: var(--gd-deep-olive, #273121);
-  border: 1.5px solid var(--gd-olive-box-border, #CCD6C0);
+  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
   box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
 }
 
 .gd-auth-google-btn:hover {
   background: #F7F3EA;
   border-color: var(--gd-deep-olive, #273121);
-  box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);
-  transform: translateY(-0.5px);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.08);
 }
 
 .gd-auth-google-btn:active {
@@ -8366,7 +8366,7 @@ article.gd-card-collapsed,
 .gd-auth-apple-btn {
   background: var(--gd-deep-olive, #273121);
   color: var(--gd-sidebar-primary, #EDE6D6);
-  border: 1.5px solid var(--gd-deep-olive, #273121);
+  border: 1px solid var(--gd-deep-olive, #273121);
   box-shadow: 0 1px 3px rgba(39, 49, 33, 0.12);
 }
 
@@ -8374,8 +8374,7 @@ article.gd-card-collapsed,
   background: #1A2215;
   border-color: #1A2215;
   color: #FFFFFF;
-  box-shadow: 0 3px 10px rgba(39, 49, 33, 0.2);
-  transform: translateY(-0.5px);
+  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.2);
 }
 
 .gd-auth-apple-btn:active {
@@ -8408,10 +8407,12 @@ article.gd-card-collapsed,
   display: flex;
   align-items: center;
   text-align: center;
-  margin: 12px 0 10px 0;
+  margin: 16px 0 14px 0;
   color: var(--gd-text-muted, #88907E);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .gd-auth-divider-text::before,
@@ -8419,31 +8420,34 @@ article.gd-card-collapsed,
   content: '';
   flex: 1;
   border-bottom: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
 .gd-auth-divider-text span {
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
-/* Inline Phone Input Form */
+/* Stacked Phone Verification Form with clean gap */
 .gd-auth-phone-form {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin-top: 0;
-}
-
-.gd-auth-phone-inline-row {
-  display: flex;
-  align-items: center;
   gap: 8px;
   width: 100%;
 }
 
+.gd-auth-field-label {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gd-text-secondary, #5F6656);
+  margin-bottom: 1px;
+}
+
 .gd-auth-phone-input-wrap {
   position: relative;
-  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
 }
@@ -8470,12 +8474,12 @@ article.gd-card-collapsed,
 
 .gd-auth-phone-input {
   width: 100%;
-  height: 44px;
+  height: 40px;
   padding-left: 36px;
   padding-right: 12px;
   background: #FFFFFF;
-  border: 1.5px solid var(--gd-olive-box-border, #CCD6C0);
-  border-radius: 9px;
+  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
+  border-radius: 8px;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13.5px;
   color: var(--gd-deep-olive, #273121);
@@ -8491,19 +8495,27 @@ article.gd-card-collapsed,
 
 .gd-auth-phone-submit-btn,
 .gd-auth-phone-btn {
-  height: 44px;
-  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: auto;
+  min-width: 120px;
+  height: 35px;
+  padding: 0 22px;
   background: var(--gd-deep-olive, #273121);
   color: var(--gd-sidebar-primary, #EDE6D6);
-  border: 1.5px solid var(--gd-deep-olive, #273121);
-  border-radius: 9px;
+  border: 1px solid var(--gd-deep-olive, #273121);
+  border-radius: 8px;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  flex-shrink: 0;
-  white-space: nowrap;
+  user-select: none;
+  outline: none;
+  box-sizing: border-box;
+  margin: 5px auto 0 auto;
 }
 
 .gd-auth-phone-submit-btn:hover,
@@ -8512,6 +8524,27 @@ article.gd-card-collapsed,
   border-color: #1A2215;
   color: #FFFFFF;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.18);
+}
+
+.gd-auth-phone-submit-btn:active,
+.gd-auth-phone-btn:active {
+  background: #131A10;
+  transform: translateY(0);
+}
+
+.gd-auth-form-caption {
+  font-size: 11px;
+  color: var(--gd-text-muted, #88907E);
+  line-height: 1.45;
+  text-align: center;
+  margin: 6px 0 0 0;
+}
+
+.gd-auth-form-caption strong {
+  color: var(--gd-text-secondary, #5F6656);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* In-Modal OTP Verification Form */
@@ -8597,6 +8630,18 @@ article.gd-card-collapsed,
 .gd-auth-btn-primary:disabled {
   opacity: 0.65;
   cursor: wait;
+}
+
+.gd-auth-otp-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: auto;
+  min-width: 130px;
+  height: 35px;
+  padding: 0 22px;
+  margin: 6px auto 0 auto;
 }
 
 .gd-auth-form-links {
