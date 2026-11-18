@@ -14,14 +14,10 @@
   <!-- Dashboard Design System -->
   <link rel="stylesheet" href="styles/dashboard.css?v=20261116-v20">
 
-  <!-- Clerk Authentication Infrastructure (Latest v6.44.0 SDK with UI Components) -->
-  <script
-    async
-    crossorigin="anonymous"
-    data-clerk-publishable-key="pk_test_aGFybWxlc3Mtc25pcGUtOTA0NC5jbGVyay5hY2NvdW50cy5kZXYk"
-    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-    type="text/javascript"
-  ></script>
+  <!-- Clerk Authentication Infrastructure Configuration -->
+  <script>
+    window.__CLERK_PUBLISHABLE_KEY__ = "pk_test_aGFybWxlc3Mtc25pcGUtOTA0NC5jbGVyay5hY2NvdW50cy5kZXYk";
+  </script>
 </head>
 <body>
   <!-- Dashboard Mount Container -->

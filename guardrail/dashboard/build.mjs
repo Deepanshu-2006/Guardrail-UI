@@ -6,6 +6,7 @@ const esbuild = require('esbuild');
 
 const environment = process.env.GUARDRAIL_ENV ?? (process.env.NODE_ENV === 'production' ? 'production' : 'development');
 const backendUrl = resolveBackendUrl(process.env, environment);
+const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_aGFybWxlc3Mtc25pcGUtOTA0NC5jbGVyay5hY2NvdW50cy5kZXYk';
 
 if (process.argv.includes('--serve')) {
   const { startDevServer } = await import('./dev.mjs');
@@ -32,6 +33,7 @@ if (process.argv.includes('--serve')) {
       'process.env.GUARDRAIL_ENV': JSON.stringify(environment),
       'process.env.NODE_ENV': JSON.stringify(environment === 'production' ? 'production' : 'development'),
       '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
+      '__CLERK_PUBLISHABLE_KEY__': JSON.stringify(clerkPublishableKey),
     },
   });
   await ctx.watch();
@@ -47,6 +49,7 @@ if (process.argv.includes('--serve')) {
       'process.env.GUARDRAIL_ENV': JSON.stringify(environment),
       'process.env.NODE_ENV': JSON.stringify(environment === 'production' ? 'production' : 'development'),
       '__GUARDRAIL_API_BASE_URL__': JSON.stringify(backendUrl),
+      '__CLERK_PUBLISHABLE_KEY__': JSON.stringify(clerkPublishableKey),
     },
   });
   console.log(`Dashboard build completed (${environment}); backend origin configured.`);

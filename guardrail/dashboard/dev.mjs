@@ -26,6 +26,9 @@ if (!clerkPublishableKey) {
     // optional .env.local
   }
 }
+if (!clerkPublishableKey) {
+  clerkPublishableKey = 'pk_test_aGFybWxlc3Mtc25pcGUtOTA0NC5jbGVyay5hY2NvdW50cy5kZXYk';
+}
 
 /**
  * Creates and starts the Guardrail Dashboard development server.

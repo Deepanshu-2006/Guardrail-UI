@@ -67,11 +67,20 @@ function parseJwtProfile(token: string): TrustedContactProfile | null {
     const payload = JSON.parse(jsonPayload);
     const role = payload['https://guardrail.local/role'] || payload.role || 'TRUSTED_CONTACT';
     const actorId = payload.sub || 'tc_reviewer';
+    const email =
+      payload.email ||
+      payload.email_address ||
+      payload.primary_email_address ||
+      payload.phone_number ||
+      payload.preferred_username ||
+      payload.name ||
+      undefined;
     return {
       actorId,
       role,
+      email,
       isAuthenticated: true,
-      relationshipLabel: 'Authorized Contact',
+      relationshipLabel: role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
     };
   } catch {
     return null;
@@ -194,68 +203,102 @@ if (typeof document !== 'undefined') {
     getClerk().then(async (clerk) => {
       if (!clerk) return;
 
-      // Handle OAuth redirect callback if query params contain Clerk redirect state
-      if (typeof window !== 'undefined' && (window.location.search.includes('__clerk') || window.location.search.includes('session_token'))) {
-        try {
-          if (typeof clerk.handleRedirectCallback === 'function') {
-            await clerk.handleRedirectCallback({ redirectUrl: window.location.origin });
-          }
-        } catch (cbErr) {
-          console.warn('[Clerk] handleRedirectCallback error:', cbErr);
-        }
-      }
-
       let wasAuthenticated = false;
 
-      const syncClerkSession = async () => {
-        if (clerk.user && clerk.session) {
-          try {
-            const clerkToken = await clerk.session.getToken();
-            if (clerkToken) {
-              if (typeof localStorage !== 'undefined') {
-                localStorage.setItem('guardrail_auth_token', clerkToken);
-              }
-              const userEmail =
-                clerk.user.primaryEmailAddress?.emailAddress ||
-                clerk.user.primaryPhoneNumber?.phoneNumber ||
-                clerk.user.username ||
-                clerk.user.id;
-              wasAuthenticated = true;
-              shell.setProfile({
-                actorId: clerk.user.id,
-                role: 'TRUSTED_CONTACT',
-                email: userEmail,
-                isAuthenticated: true,
-                relationshipLabel: 'Designated Caretaker',
-              });
-              fetch(`${envConfig.apiBaseUrl}/api/v1/auth/me`, {
-                headers: { Authorization: `Bearer ${clerkToken}` },
-              })
-                .then((res) => res.json())
-                .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
-                  if (payload.success && payload.data) {
-                    shell.setProfile({
-                      actorId: payload.data.actorId,
-                      role: payload.data.role,
-                      email: payload.data.email ?? userEmail,
-                      isAuthenticated: true,
-                      relationshipLabel: 'Designated Caretaker',
-                    });
-                  }
-                })
-                .catch(() => {});
+      // Ensure an active session is selected if signedInSessions exists but clerk.session is not set
+      const ensureActiveSession = async () => {
+        if (!clerk.session && clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) {
+          const targetSession = clerk.client.lastActiveSessionId
+            ? clerk.client.signedInSessions.find((s: any) => s.id === clerk.client?.lastActiveSessionId) || clerk.client.signedInSessions[0]
+            : clerk.client.signedInSessions[0];
+          if (targetSession && typeof clerk.setActive === 'function') {
+            try {
+              await clerk.setActive({ session: targetSession.id });
+            } catch (actErr) {
+              console.warn('[Clerk] setActive error:', actErr);
             }
-          } catch (err) {
-            console.warn('[Clerk] Failed to fetch session token:', err);
           }
         }
       };
 
+      const syncClerkSession = async () => {
+        await ensureActiveSession();
+        const activeSession = clerk.session || clerk.client?.signedInSessions?.[0] || clerk.client?.sessions?.[0];
+        const activeUser = clerk.user || activeSession?.user;
+        if (!activeSession) return;
+
+        try {
+          const clerkToken = typeof activeSession.getToken === 'function' ? await activeSession.getToken() : null;
+          if (clerkToken && typeof localStorage !== 'undefined') {
+            localStorage.setItem('guardrail_auth_token', clerkToken);
+          }
+
+          const userEmail =
+            activeUser?.primaryEmailAddress?.emailAddress ||
+            (Array.isArray(activeUser?.emailAddresses) && activeUser.emailAddresses[0]?.emailAddress) ||
+            activeUser?.primaryPhoneNumber?.phoneNumber ||
+            (Array.isArray(activeUser?.phoneNumbers) && activeUser.phoneNumbers[0]?.phoneNumber) ||
+            activeUser?.username ||
+            activeUser?.fullName ||
+            activeUser?.firstName ||
+            activeUser?.id ||
+            'Designated Caretaker';
+
+          const actorId = activeUser?.id || activeSession.id || 'tc_caretaker';
+
+          wasAuthenticated = true;
+
+          // Immediately render authoritative Caretaker profile card in the sidebar
+          shell.setProfile({
+            actorId,
+            role: 'TRUSTED_CONTACT',
+            email: userEmail,
+            isAuthenticated: true,
+            relationshipLabel: 'Designated Caretaker',
+          });
+
+          // Dismiss any open auth modal dialog
+          if (typeof document !== 'undefined') {
+            const modalRoot = document.getElementById('gd-auth-modal-root');
+            if (modalRoot) {
+              modalRoot.remove();
+            }
+          }
+
+          // Authoritative backend verification via /api/v1/auth/me
+          if (clerkToken) {
+            fetch(`${envConfig.apiBaseUrl}/api/v1/auth/me`, {
+              headers: { Authorization: `Bearer ${clerkToken}` },
+            })
+              .then((res) => res.json())
+              .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
+                if (payload.success && payload.data) {
+                  shell.setProfile({
+                    actorId: payload.data.actorId,
+                    role: payload.data.role,
+                    email: payload.data.email ?? userEmail,
+                    isAuthenticated: true,
+                    relationshipLabel: 'Designated Caretaker',
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        } catch (err) {
+          console.warn('[Clerk] Session sync error:', err);
+        }
+      };
+
       if (typeof clerk.addListener === 'function') {
-        clerk.addListener(async (emission) => {
-          if (emission.user && emission.session) {
+        clerk.addListener(async (emission: any) => {
+          const hasSession = Boolean(
+            emission?.session ||
+            clerk.session ||
+            (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0)
+          );
+          if (hasSession) {
             await syncClerkSession();
-          } else if (!emission.session && wasAuthenticated) {
+          } else if (!hasSession && wasAuthenticated) {
             wasAuthenticated = false;
             const current = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
             if (current && (current.startsWith('ey') || current.includes('.'))) {
@@ -268,9 +311,17 @@ if (typeof document !== 'undefined') {
         });
       }
 
-      if (clerk.user && clerk.session) {
+      // Initial check on page load / hydration
+      const initialActive = Boolean(
+        clerk.session ||
+        (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
+        (clerk.client?.sessions && clerk.client.sessions.length > 0)
+      );
+      if (initialActive) {
         await syncClerkSession();
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[Clerk] Initialization error:', err);
+    });
   }
 }

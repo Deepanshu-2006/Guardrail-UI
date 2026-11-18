@@ -165,6 +165,10 @@ class MockElement {
 let replacedHistoryUrls: string[] = [];
 (globalThis as any).window = {
   location: {
+    href: 'http://localhost:5173/dashboard',
+    protocol: 'http:',
+    host: 'localhost:5173',
+    hostname: 'localhost',
     hash: '',
     search: '',
     pathname: '/dashboard',

@@ -655,14 +655,32 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     // 1. If Clerk SDK is active, execute direct OAuth redirect
     try {
       const clerk = await getClerk();
-      if (clerk && clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
-        await clerk.client.signIn.authenticateWithRedirect({
-          strategy: provider === 'google' ? 'oauth_google' : 'oauth_apple',
-          redirectUrl: window.location.href,
-          redirectUrlComplete: window.location.href,
-          continueSignUp: true,
-        });
-        return;
+      if (clerk) {
+        const targetRedirect =
+          typeof window !== 'undefined' && window.location?.origin
+            ? `${window.location.origin}/`
+            : 'http://localhost:5173/';
+        const strategy = provider === 'google' ? 'oauth_google' : 'oauth_apple';
+
+        // Prefer signUp.authenticateWithRedirect:
+        // - For new users, creates account and completes sign-in seamlessly without "Account not found" error
+        // - For existing accounts, Clerk automatically recognizes the identity and transfers to sign-in
+        if (clerk.client?.signUp && typeof clerk.client.signUp.authenticateWithRedirect === 'function') {
+          await clerk.client.signUp.authenticateWithRedirect({
+            strategy,
+            redirectUrl: targetRedirect,
+            redirectUrlComplete: targetRedirect,
+          });
+          return;
+        } else if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
+          await clerk.client.signIn.authenticateWithRedirect({
+            strategy,
+            redirectUrl: targetRedirect,
+            redirectUrlComplete: targetRedirect,
+            continueSignUp: true,
+          });
+          return;
+        }
       }
     } catch (err) {
       console.warn('[Clerk Auth Error]', err);
