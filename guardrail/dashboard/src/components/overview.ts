@@ -16,6 +16,7 @@
 
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
+import { showConnectWardModal } from './connect-modal.js';
 
 export interface OverviewProps {
   profile: TrustedContactProfile | null;
@@ -657,29 +658,29 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       input.disabled = true;
       connectBtn.textContent = 'Connecting...';
 
-      try {
-        const result = await props.onConnectInvitation(rawCode);
-        if (result.success) {
+      showConnectWardModal({
+        code: rawCode,
+        onConnect: async (code) => {
+          try {
+            return await props.onConnectInvitation!(code);
+          } catch (err: unknown) {
+            return {
+              success: false,
+              error: err instanceof Error ? err.message : 'An unexpected error occurred while connecting.',
+            };
+          }
+        },
+        onSuccess: (wardId) => {
           feedback.className = 'gd-setup-feedback success';
-          feedback.textContent = `Successfully connected to ward ${result.wardId || 'assigned'}! Pending approval requests will now appear in your review queue.`;
+          feedback.textContent = `Successfully connected to ward ${wardId}! Pending approval requests will now appear in your review queue.`;
           input.value = '';
-        } else {
-          feedback.className = 'gd-setup-feedback error';
-          feedback.textContent =
-            result.error ||
-            'Failed to connect. The invitation code may be invalid, expired, or already accepted.';
+        },
+        onClose: () => {
           connectBtn.disabled = false;
           input.disabled = false;
           connectBtn.textContent = 'Connect Ward';
-        }
-      } catch (err: unknown) {
-        feedback.className = 'gd-setup-feedback error';
-        feedback.textContent =
-          err instanceof Error ? err.message : 'An unexpected error occurred while connecting.';
-        connectBtn.disabled = false;
-        input.disabled = false;
-        connectBtn.textContent = 'Connect Ward';
-      }
+        },
+      });
     });
 
     setupCard.appendChild(form);

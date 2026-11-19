@@ -3280,6 +3280,19 @@ async function runDashboardTests() {
       'Error message identifies that review deadline elapsed'
     );
     const expiredErrorBanner = rootElement.querySelector('.gd-decision-error-banner');
+    if (!expiredErrorBanner) {
+      const viewPending = rootElement.querySelector('#view-pending');
+      console.log('DEBUG: viewPending found?', Boolean(viewPending));
+      if (viewPending) {
+        const layoutEl = (viewPending as any).children[1];
+        console.log('DEBUG: layout classes:', layoutEl?.className);
+        console.log('DEBUG: layout children count:', layoutEl?.children?.length);
+        console.log('DEBUG: layout children classNames:', JSON.stringify(layoutEl?.children?.map((c: any) => c.className)));
+        for (const c of (layoutEl?.children || [])) {
+          console.log('DEBUG: child ' + c.className + ' children classes: ' + JSON.stringify(c.children.map((x: any) => x.className)));
+        }
+      }
+    }
     assert(expiredErrorBanner !== null, 'Decision error banner displayed for expired request attempt');
     expiredShell.destroy();
 
