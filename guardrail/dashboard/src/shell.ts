@@ -1069,6 +1069,8 @@ export class DashboardShell {
           }
         }
       } else {
+        if (this.isDestroyed) return;
+        if (seq < this.lastAppliedPendingSeq) return;
         const err = result.error;
         let userMessage = err.message;
 
