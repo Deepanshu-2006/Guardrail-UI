@@ -8175,8 +8175,9 @@ article.gd-card-collapsed,
 }
 
 .gd-auth-modal-card {
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
   background: var(--gd-bg-surface, #FAF7F0);
   border: 1px solid var(--gd-olive-box-border, #CCD6C0);
   border-radius: 20px;
@@ -8189,6 +8190,8 @@ article.gd-card-collapsed,
   animation: gdFadeScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: var(--gd-text-primary, #273121);
+  padding: 36px 28px 30px 28px;
+  box-sizing: border-box;
 }
 
 @keyframes gdFadeScaleIn {
@@ -8202,41 +8205,10 @@ article.gd-card-collapsed,
   }
 }
 
-.gd-auth-modal-header {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 28px 28px 0 28px;
-  background: transparent;
-}
-
-.gd-auth-modal-header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.gd-auth-brand-emblem {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--gd-olive-box-bg, #DFE7D4);
-  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  color: var(--gd-deep-olive, #273121);
-  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.06);
-}
-
-.gd-auth-brand-icon svg {
-  width: 22px;
-  height: 22px;
-  display: block;
-}
-
 .gd-auth-modal-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
   width: 32px;
   height: 32px;
   background: transparent;
@@ -8249,6 +8221,7 @@ article.gd-card-collapsed,
   justify-content: center;
   transition: all 0.15s ease;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .gd-auth-modal-close-btn:hover {
@@ -8257,40 +8230,64 @@ article.gd-card-collapsed,
   border-color: var(--gd-olive-box-border, #CCD6C0);
 }
 
+.gd-auth-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0;
+  margin-bottom: 22px;
+  background: transparent;
+}
+
+.gd-auth-brand-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--gd-olive-box-bg, #DFE7D4);
+  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
+  color: var(--gd-deep-olive, #273121);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.06);
+  margin-bottom: 14px;
+}
+
+.gd-auth-brand-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
 .gd-auth-modal-title-group {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
-}
-
-.gd-auth-modal-eyebrow {
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gd-text-secondary, #5F6656);
 }
 
 .gd-auth-modal-title {
   margin: 0;
   font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   color: var(--gd-deep-olive, #273121);
   line-height: 1.25;
+  text-align: center;
 }
 
 .gd-auth-modal-subtitle {
   margin: 0;
   font-size: 13.5px;
   color: var(--gd-text-secondary, #5F6656);
-  line-height: 1.45;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .gd-auth-modal-body {
-  padding: 22px 28px 28px 28px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -8504,109 +8501,7 @@ article.gd-card-collapsed,
   display: block;
 }
 
-/* Trust & Safeguards Card (Quiet Assurance Design System) */
-.gd-auth-trust-card {
-  margin-top: 20px;
-  padding: 14px 16px;
-  background: rgba(223, 231, 212, 0.45);
-  border: 1px solid rgba(204, 214, 192, 0.7);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-sizing: border-box;
-}
 
-.gd-auth-trust-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gd-text-secondary, #5F6656);
-}
-
-.gd-auth-trust-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  background: rgba(39, 49, 33, 0.08);
-  border-radius: 999px;
-  font-size: 9.5px;
-  color: var(--gd-deep-olive, #273121);
-  font-weight: 600;
-}
-
-.gd-auth-trust-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.gd-auth-trust-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.gd-auth-trust-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: var(--gd-deep-olive, #273121);
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.gd-auth-trust-icon svg {
-  width: 15px;
-  height: 15px;
-}
-
-.gd-auth-trust-text {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--gd-text-secondary, #5F6656);
-}
-
-.gd-auth-trust-text strong {
-  display: block;
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--gd-deep-olive, #273121);
-  margin-bottom: 1px;
-}
-
-.gd-auth-footer-note {
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--gd-text-muted, #88907E);
-  text-align: center;
-  line-height: 1.4;
-}
-
-.gd-auth-footer-shield {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gd-text-muted, #88907E);
-  flex-shrink: 0;
-}
-
-.gd-auth-footer-shield svg {
-  width: 13px;
-  height: 13px;
-}
 
 /* Hairline Divider */
 .gd-auth-divider-text {
