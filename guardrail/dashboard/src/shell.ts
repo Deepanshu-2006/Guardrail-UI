@@ -615,7 +615,7 @@ export class DashboardShell {
         this.selectRequest(id);
       },
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
-      onConnectInvitation: this.apiClient ? (code: string) => this.connectInvitation(code) : undefined,
+      onConnectInvitation: (this.apiClient || this.isMockService) ? (code: string) => this.connectInvitation(code) : undefined,
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
@@ -747,7 +747,7 @@ export class DashboardShell {
       onCreateInvitation: this.apiClient ? (payload) => this.createInvitation(payload) : undefined,
       onRevokeInvitation: this.apiClient ? (id) => this.revokeInvitation(id) : undefined,
       onRevokeTrustedContact: this.apiClient ? (id) => this.revokeTrustedContact(id) : undefined,
-      onConnectInvitation: this.apiClient ? (code) => this.connectInvitation(code) : undefined,
+      onConnectInvitation: (this.apiClient || this.isMockService) ? (code) => this.connectInvitation(code) : undefined,
       onDisconnectWard: () => this.disconnectWard(),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onClearSession: () => {
@@ -2312,6 +2312,20 @@ export class DashboardShell {
       return { success: false, error: 'An action is already in progress. Please wait.' };
     }
     if (!this.apiClient) {
+      if (this.isMockService) {
+        const wardId = 'usr_alice';
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('guardrail_assigned_ward_id', wardId);
+        }
+        if (this.state.contactProfile) {
+          this.state.contactProfile = {
+            ...this.state.contactProfile,
+            assignedWardId: wardId,
+          };
+        }
+        this.render();
+        return { success: true, wardId };
+      }
       return { success: false, error: 'Dashboard is running in standalone mode without an active backend.' };
     }
 

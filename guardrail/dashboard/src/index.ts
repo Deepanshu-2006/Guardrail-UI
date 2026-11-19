@@ -7,6 +7,7 @@ export * from './shell.js';
 export * from './components/navigation.js';
 export * from './components/account.js';
 export * from './components/auth-modal.js';
+export * from './components/connect-modal.js';
 export * from './components/overview.js';
 export * from './components/pending.js';
 export * from './components/history.js';
