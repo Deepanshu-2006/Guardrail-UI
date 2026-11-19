@@ -690,9 +690,19 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     wardCard.className = 'gd-card gd-active-ward-card';
     wardCard.id = 'gd-active-ward-card';
 
+    const wardHeader = document.createElement('div');
+    wardHeader.className = 'gd-active-ward-header';
+
+    const statusPill = document.createElement('div');
+    statusPill.className = 'gd-active-ward-pill';
+    statusPill.innerHTML = '<span class="gd-status-dot-pulse"></span><span>Active Guardian Oversight</span>';
+
     const wardTitle = document.createElement('h2');
     wardTitle.className = 'gd-section-title';
     wardTitle.textContent = 'Active Ward Association & Authorized Oversight';
+
+    wardHeader.appendChild(statusPill);
+    wardHeader.appendChild(wardTitle);
 
     const wardGrid = document.createElement('div');
     wardGrid.className = 'gd-ward-meta-grid';
@@ -751,7 +761,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     dutyNotice.textContent =
       `Separation of Duties Enforced: You are authorized to review and evaluate intercepted actions for ward ${props.profile.assignedWardId}. Approval decisions register consent on the backend; the user in Staging Mode retains ultimate agency to execute or cancel the action. Multi-tenant isolation guarantees no access to data belonging to other users.`;
 
-    wardCard.appendChild(wardTitle);
+    wardCard.appendChild(wardHeader);
     wardCard.appendChild(wardGrid);
     wardCard.appendChild(dutyNotice);
 
