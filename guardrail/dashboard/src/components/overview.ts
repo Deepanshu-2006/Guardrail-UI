@@ -296,27 +296,25 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const notifItem = document.createElement('div');
     notifItem.className = 'gd-notification-item gd-notif-warning';
 
-    const notifIcn = document.createElement('span');
-    notifIcn.className = 'gd-notif-icon';
+    const notifIcn = document.createElement('div');
+    notifIcn.className = 'gd-notif-icon-badge';
     notifIcn.setAttribute('aria-hidden', 'true');
-    notifIcn.appendChild(createIcon('clock'));
+    notifIcn.appendChild(createIcon('clock', 'gd-notif-icon-svg'));
 
     const notifContent = document.createElement('div');
     notifContent.className = 'gd-notif-content';
 
+    const notifTitle = document.createElement('h3');
+    notifTitle.className = 'gd-notif-title';
+    notifTitle.textContent = 'Action Required';
+
     const notifMsg = document.createElement('p');
     notifMsg.className = 'gd-notif-text';
-
-    const strong = document.createElement('strong');
-    strong.textContent = 'Action Required: ';
-    notifMsg.appendChild(strong);
-
-    const txt = document.createElement('span');
-    txt.textContent = `You have ${props.pendingCount} pending approval request${
+    notifMsg.textContent = `You have ${props.pendingCount} pending approval request${
       props.pendingCount > 1 ? 's' : ''
     } awaiting your evaluation.`;
-    notifMsg.appendChild(txt);
 
+    notifContent.appendChild(notifTitle);
     notifContent.appendChild(notifMsg);
     notifItem.appendChild(notifIcn);
     notifItem.appendChild(notifContent);
@@ -337,21 +335,35 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const notifItem = document.createElement('div');
     notifItem.className = 'gd-notification-item gd-notif-success';
 
-    const notifIcn = document.createElement('span');
-    notifIcn.className = 'gd-notif-icon';
+    const notifIcn = document.createElement('div');
+    notifIcn.className = 'gd-notif-icon-badge';
     notifIcn.setAttribute('aria-hidden', 'true');
-    notifIcn.appendChild(createIcon('check-circle-2'));
+    notifIcn.appendChild(createIcon('shield-check', 'gd-notif-icon-svg'));
 
     const notifContent = document.createElement('div');
     notifContent.className = 'gd-notif-content';
 
+    const notifTitle = document.createElement('h3');
+    notifTitle.className = 'gd-notif-title';
+    notifTitle.textContent = 'All Systems Normal';
+
     const notifMsg = document.createElement('p');
     notifMsg.className = 'gd-notif-text';
-    notifMsg.textContent = 'All Systems Normal: No unresolved safety items or pending approvals requiring attention.';
+    notifMsg.textContent = 'No unresolved safety items or pending approvals requiring attention.';
 
+    notifContent.appendChild(notifTitle);
     notifContent.appendChild(notifMsg);
+
+    const notifBadge = document.createElement('div');
+    notifBadge.className = 'gd-notif-status-badge';
+    notifBadge.innerHTML = `
+      <span class="gd-notif-status-dot" aria-hidden="true"></span>
+      <span>Active Oversight</span>
+    `;
+
     notifItem.appendChild(notifIcn);
     notifItem.appendChild(notifContent);
+    notifItem.appendChild(notifBadge);
     section.appendChild(notifItem);
   }
 
