@@ -296,11 +296,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const notifItem = document.createElement('div');
     notifItem.className = 'gd-notification-item gd-notif-warning';
 
-    const notifIcn = document.createElement('div');
-    notifIcn.className = 'gd-notif-icon-badge';
-    notifIcn.setAttribute('aria-hidden', 'true');
-    notifIcn.appendChild(createIcon('clock', 'gd-notif-icon-svg'));
-
     const notifContent = document.createElement('div');
     notifContent.className = 'gd-notif-content';
 
@@ -316,7 +311,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
     notifContent.appendChild(notifTitle);
     notifContent.appendChild(notifMsg);
-    notifItem.appendChild(notifIcn);
     notifItem.appendChild(notifContent);
 
     if (props.onViewPending) {
@@ -335,11 +329,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const notifItem = document.createElement('div');
     notifItem.className = 'gd-notification-item gd-notif-success';
 
-    const notifIcn = document.createElement('div');
-    notifIcn.className = 'gd-notif-icon-badge';
-    notifIcn.setAttribute('aria-hidden', 'true');
-    notifIcn.appendChild(createIcon('shield-check', 'gd-notif-icon-svg'));
-
     const notifContent = document.createElement('div');
     notifContent.className = 'gd-notif-content';
 
@@ -354,16 +343,12 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     notifContent.appendChild(notifTitle);
     notifContent.appendChild(notifMsg);
 
-    const notifBadge = document.createElement('div');
-    notifBadge.className = 'gd-notif-status-badge';
-    notifBadge.innerHTML = `
-      <span class="gd-notif-status-dot" aria-hidden="true"></span>
-      <span>Active Oversight</span>
-    `;
+    const notifStatus = document.createElement('div');
+    notifStatus.className = 'gd-notif-status-label';
+    notifStatus.textContent = 'Active Oversight';
 
-    notifItem.appendChild(notifIcn);
     notifItem.appendChild(notifContent);
-    notifItem.appendChild(notifBadge);
+    notifItem.appendChild(notifStatus);
     section.appendChild(notifItem);
   }
 
