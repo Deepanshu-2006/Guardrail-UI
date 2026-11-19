@@ -31,9 +31,10 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
     const iconSpan = document.createElement('span');
     iconSpan.className = 'gd-sidebar-sign-in-icon';
     iconSpan.setAttribute('aria-hidden', 'true');
-    iconSpan.appendChild(createIcon('user'));
+    iconSpan.appendChild(createIcon('log-in'));
 
     const textSpan = document.createElement('span');
+    textSpan.className = 'gd-sidebar-sign-in-text';
     textSpan.textContent = 'Sign In';
 
     signInBtn.appendChild(iconSpan);

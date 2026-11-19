@@ -40,66 +40,7 @@ interface AuthMeResponse {
   environment: string;
 }
 
-export interface CountryOption {
-  code: string;
-  iso: string;
-  name: string;
-  flag: string;
-  placeholder: string;
-}
 
-export const COUNTRIES: CountryOption[] = [
-  { code: '+1', iso: 'US', name: 'United States', flag: '🇺🇸', placeholder: '(555) 000-0000' },
-  { code: '+1', iso: 'CA', name: 'Canada', flag: '🇨🇦', placeholder: '(555) 000-0000' },
-  { code: '+44', iso: 'GB', name: 'United Kingdom', flag: '🇬🇧', placeholder: '7911 123456' },
-  { code: '+91', iso: 'IN', name: 'India', flag: '🇮🇳', placeholder: '98765 43210' },
-  { code: '+61', iso: 'AU', name: 'Australia', flag: '🇦🇺', placeholder: '0412 345 678' },
-  { code: '+49', iso: 'DE', name: 'Germany', flag: '🇩🇪', placeholder: '151 23456789' },
-  { code: '+33', iso: 'FR', name: 'France', flag: '🇫🇷', placeholder: '06 12 34 56 78' },
-  { code: '+81', iso: 'JP', name: 'Japan', flag: '🇯🇵', placeholder: '90 1234 5678' },
-  { code: '+86', iso: 'CN', name: 'China', flag: '🇨🇳', placeholder: '138 0013 8000' },
-  { code: '+55', iso: 'BR', name: 'Brazil', flag: '🇧🇷', placeholder: '(11) 91234-5678' },
-  { code: '+52', iso: 'MX', name: 'Mexico', flag: '🇲🇽', placeholder: '55 1234 5678' },
-  { code: '+34', iso: 'ES', name: 'Spain', flag: '🇪🇸', placeholder: '612 34 56 78' },
-  { code: '+39', iso: 'IT', name: 'Italy', flag: '🇮🇹', placeholder: '312 345 6789' },
-  { code: '+31', iso: 'NL', name: 'Netherlands', flag: '🇳🇱', placeholder: '06 12345678' },
-  { code: '+41', iso: 'CH', name: 'Switzerland', flag: '🇨🇭', placeholder: '079 123 45 67' },
-  { code: '+46', iso: 'SE', name: 'Sweden', flag: '🇸🇪', placeholder: '070 123 45 67' },
-  { code: '+47', iso: 'NO', name: 'Norway', flag: '🇳🇴', placeholder: '412 34 567' },
-  { code: '+45', iso: 'DK', name: 'Denmark', flag: '🇩🇰', placeholder: '20 12 34 56' },
-  { code: '+358', iso: 'FI', name: 'Finland', flag: '🇫🇮', placeholder: '040 1234567' },
-  { code: '+353', iso: 'IE', name: 'Ireland', flag: '🇮🇪', placeholder: '085 123 4567' },
-  { code: '+65', iso: 'SG', name: 'Singapore', flag: '🇸🇬', placeholder: '8123 4567' },
-  { code: '+64', iso: 'NZ', name: 'New Zealand', flag: '🇳🇿', placeholder: '021 123 4567' },
-  { code: '+82', iso: 'KR', name: 'South Korea', flag: '🇰🇷', placeholder: '010-1234-5678' },
-  { code: '+971', iso: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', placeholder: '50 123 4567' },
-  { code: '+966', iso: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', placeholder: '50 123 4567' },
-  { code: '+27', iso: 'ZA', name: 'South Africa', flag: '🇿🇦', placeholder: '071 123 4567' },
-  { code: '+234', iso: 'NG', name: 'Nigeria', flag: '🇳🇬', placeholder: '0802 123 4567' },
-  { code: '+254', iso: 'KE', name: 'Kenya', flag: '🇰🇪', placeholder: '0712 345678' },
-  { code: '+62', iso: 'ID', name: 'Indonesia', flag: '🇮🇩', placeholder: '0812-3456-789' },
-  { code: '+60', iso: 'MY', name: 'Malaysia', flag: '🇲🇾', placeholder: '012-345 6789' },
-  { code: '+63', iso: 'PH', name: 'Philippines', flag: '🇵🇭', placeholder: '0917 123 4567' },
-  { code: '+84', iso: 'VN', name: 'Vietnam', flag: '🇻🇳', placeholder: '091 234 56 78' },
-  { code: '+92', iso: 'PK', name: 'Pakistan', flag: '🇵🇰', placeholder: '0301 1234567' },
-  { code: '+880', iso: 'BD', name: 'Bangladesh', flag: '🇧🇩', placeholder: '01712-345678' },
-  { code: '+972', iso: 'IL', name: 'Israel', flag: '🇮🇱', placeholder: '050-123-4567' },
-  { code: '+90', iso: 'TR', name: 'Turkey', flag: '🇹🇷', placeholder: '532 123 45 67' },
-  { code: '+48', iso: 'PL', name: 'Poland', flag: '🇵🇱', placeholder: '512 345 678' },
-  { code: '+351', iso: 'PT', name: 'Portugal', flag: '🇵🇹', placeholder: '912 345 678' },
-  { code: '+30', iso: 'GR', name: 'Greece', flag: '🇬🇷', placeholder: '691 234 5678' },
-  { code: '+43', iso: 'AT', name: 'Austria', flag: '🇦🇹', placeholder: '0664 1234567' },
-  { code: '+32', iso: 'BE', name: 'Belgium', flag: '🇧🇪', placeholder: '0470 12 34 56' },
-  { code: '+420', iso: 'CZ', name: 'Czech Republic', flag: '🇨🇿', placeholder: '601 123 456' },
-  { code: '+36', iso: 'HU', name: 'Hungary', flag: '🇭🇺', placeholder: '20 123 4567' },
-  { code: '+40', iso: 'RO', name: 'Romania', flag: '🇷🇴', placeholder: '0712 345 678' },
-  { code: '+380', iso: 'UA', name: 'Ukraine', flag: '🇺🇦', placeholder: '50 123 4567' },
-  { code: '+54', iso: 'AR', name: 'Argentina', flag: '🇦🇷', placeholder: '11 1234-5678' },
-  { code: '+56', iso: 'CL', name: 'Chile', flag: '🇨🇱', placeholder: '9 1234 5678' },
-  { code: '+57', iso: 'CO', name: 'Colombia', flag: '🇨🇴', placeholder: '300 123 4567' },
-  { code: '+51', iso: 'PE', name: 'Peru', flag: '🇵🇪', placeholder: '912 345 678' },
-  { code: '+20', iso: 'EG', name: 'Egypt', flag: '🇪🇬', placeholder: '0100 123 4567' },
-];
 
 export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const backdrop = document.createElement('div');
@@ -285,7 +226,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   errorBanner.style.display = 'none';
   body.appendChild(errorBanner);
 
-  // 3. 1-Click Consumer Social & Inline Phone Authentication (Clerk-powered)
+  // 3. 1-Click Consumer Social Authentication (Clerk-powered)
   const socialSection = document.createElement('div');
   socialSection.className = 'gd-auth-section gd-auth-social-section';
 
@@ -329,14 +270,8 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
   backdrop.appendChild(modal);
 
-  // --- State & Phone / OTP Flows ---
+  // --- State ---
   let cachedAuthConfig: AuthConfigResponse | null = null;
-  let currentPhone = '';
-  let selectedCountry: CountryOption = COUNTRIES[0];
-  let authMode: 'signIn' | 'signUp' = 'signIn';
-  let currentSignIn: any = null;
-  let currentSignUp: any = null;
-  let currentPhoneId: string | null = null;
 
   function showError(msg: string): void {
     errorBanner.textContent = msg;
@@ -346,29 +281,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   function hideError(): void {
     errorBanner.textContent = '';
     errorBanner.style.display = 'none';
-  }
-
-  function cleanPhoneNumber(raw: string): string {
-    const trimmed = raw.trim();
-    const digitsAndPlus = trimmed.replace(/[^\d+]/g, '');
-    if (!digitsAndPlus) return '';
-    if (digitsAndPlus.startsWith('+')) {
-      return digitsAndPlus;
-    }
-    if (digitsAndPlus.length === 10) {
-      return `+1${digitsAndPlus}`;
-    }
-    return `+${digitsAndPlus}`;
-  }
-
-  function getFullPhoneNumber(inputVal: string, dialCode: string): string {
-    const trimmed = inputVal.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('+')) {
-      return cleanPhoneNumber(trimmed);
-    }
-    const code = dialCode.startsWith('+') ? dialCode : `+${dialCode}`;
-    return cleanPhoneNumber(`${code}${trimmed}`);
   }
 
   function extractClerkError(err: unknown): string {
@@ -452,297 +364,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     socialButtonsContainer.appendChild(appleBtn);
 
     socialBody.appendChild(socialButtonsContainer);
-
-    // Fine hairline divider: "or"
-    const divider = document.createElement('div');
-    divider.className = 'gd-auth-divider-text';
-    const dividerSpan = document.createElement('span');
-    dividerSpan.textContent = 'or';
-    divider.appendChild(dividerSpan);
-    socialBody.appendChild(divider);
-
-    // Inline Phone Number Form with Integrated Country Code Dropdown
-    const phoneForm = document.createElement('form');
-    phoneForm.className = 'gd-auth-phone-form';
-    phoneForm.setAttribute('novalidate', 'true');
-
-    const phoneLabel = document.createElement('label');
-    phoneLabel.className = 'gd-auth-field-label';
-    phoneLabel.textContent = 'Phone number';
-    phoneLabel.htmlFor = 'gd-auth-phone-number-input';
-
-    const inputGroup = document.createElement('div');
-    inputGroup.className = 'gd-auth-phone-input-group';
-
-    // 1. Country Code Dropdown Trigger
-    const countryPicker = document.createElement('div');
-    countryPicker.className = 'gd-auth-country-picker';
-
-    const countryDisplay = document.createElement('div');
-    countryDisplay.className = 'gd-auth-country-display';
-
-    const flagSpan = document.createElement('span');
-    flagSpan.className = 'gd-auth-country-flag';
-    flagSpan.textContent = selectedCountry.flag;
-
-    const codeSpan = document.createElement('span');
-    codeSpan.className = 'gd-auth-country-code';
-    codeSpan.textContent = selectedCountry.code;
-
-    const arrowSpan = document.createElement('span');
-    arrowSpan.className = 'gd-auth-country-arrow';
-    arrowSpan.setAttribute('aria-hidden', 'true');
-    arrowSpan.innerHTML = '<svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1.25L4.5 4.75L8 1.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-    countryDisplay.appendChild(flagSpan);
-    countryDisplay.appendChild(codeSpan);
-    countryDisplay.appendChild(arrowSpan);
-    countryPicker.appendChild(countryDisplay);
-
-    const countrySelect = document.createElement('select');
-    countrySelect.className = 'gd-auth-country-select';
-    countrySelect.setAttribute('aria-label', 'Select country calling code');
-
-    COUNTRIES.forEach((c, idx) => {
-      const opt = document.createElement('option');
-      opt.value = c.code;
-      opt.textContent = `${c.flag} ${c.name} (${c.code})`;
-      if (c.iso === selectedCountry.iso) {
-        opt.selected = true;
-        (countrySelect as any).selectedIndex = idx;
-      }
-      countrySelect.appendChild(opt);
-    });
-
-    countryPicker.appendChild(countrySelect);
-    inputGroup.appendChild(countryPicker);
-
-    // 2. Hairline Divider
-    const dividerEl = document.createElement('div');
-    dividerEl.className = 'gd-auth-phone-divider';
-    dividerEl.setAttribute('aria-hidden', 'true');
-    inputGroup.appendChild(dividerEl);
-
-    // 3. Phone Input Wrap
-    const inputWrap = document.createElement('div');
-    inputWrap.className = 'gd-auth-phone-input-wrap';
-
-    const phoneInput = document.createElement('input');
-    phoneInput.type = 'tel';
-    phoneInput.id = 'gd-auth-phone-number-input';
-    phoneInput.className = 'gd-auth-phone-input';
-    phoneInput.placeholder = selectedCountry.placeholder;
-    phoneInput.autocomplete = 'tel-national';
-    phoneInput.value = currentPhone;
-    inputWrap.appendChild(phoneInput);
-
-    inputGroup.appendChild(inputWrap);
-
-    // Event listener: Country change
-    countrySelect.addEventListener('change', () => {
-      const idx = (countrySelect as any).selectedIndex ?? 0;
-      const chosen = COUNTRIES[idx] || COUNTRIES[0];
-      selectedCountry = chosen;
-      flagSpan.textContent = chosen.flag;
-      codeSpan.textContent = chosen.code;
-      phoneInput.placeholder = chosen.placeholder;
-      if (typeof phoneInput.focus === 'function') {
-        phoneInput.focus();
-      }
-    });
-
-    // Auto-detect country code if user types or pastes +... into the phone input
-    phoneInput.addEventListener('input', () => {
-      const val = phoneInput.value.trim();
-      if (val.startsWith('+')) {
-        const match = [...COUNTRIES]
-          .sort((a, b) => b.code.length - a.code.length)
-          .find((c) => val.startsWith(c.code));
-        if (match && match.iso !== selectedCountry.iso) {
-          selectedCountry = match;
-          flagSpan.textContent = match.flag;
-          codeSpan.textContent = match.code;
-          phoneInput.placeholder = match.placeholder;
-          const matchIdx = COUNTRIES.findIndex((c) => c.iso === match.iso);
-          if (matchIdx >= 0) {
-            (countrySelect as any).selectedIndex = matchIdx;
-          }
-        }
-      }
-    });
-
-    const submitBtn = document.createElement('button');
-    submitBtn.type = 'submit';
-    submitBtn.className = 'gd-auth-btn-primary gd-auth-phone-btn gd-auth-phone-submit-btn';
-    submitBtn.textContent = 'Send code';
-
-    const caption = document.createElement('p');
-    caption.className = 'gd-auth-form-caption';
-    caption.innerHTML = "We'll text you a 6-digit code. In dev mode, test number is <strong>+1 (555) 555-0100</strong>.";
-
-    phoneForm.appendChild(phoneLabel);
-    phoneForm.appendChild(inputGroup);
-    phoneForm.appendChild(submitBtn);
-    phoneForm.appendChild(caption);
-
-    phoneForm.addEventListener('submit', (e) => {
-      if (typeof e?.preventDefault === 'function') {
-        e.preventDefault();
-      }
-      const fullPhone = getFullPhoneNumber(phoneInput.value, selectedCountry.code);
-      void handleSendPhoneCode(fullPhone, submitBtn);
-    });
-
-    socialBody.appendChild(phoneForm);
-  }
-
-  function renderOtpView(phone: string, mode: 'signIn' | 'signUp'): void {
-    hideError();
-    title.textContent = 'Verify Phone Number';
-    subtitle.textContent = `Enter the 6-digit verification code sent to ${phone}`;
-    clearContainer(socialBody);
-
-    const form = document.createElement('form');
-    form.className = 'gd-auth-otp-form';
-    form.setAttribute('novalidate', 'true');
-
-    const label = document.createElement('label');
-    label.className = 'gd-auth-field-label';
-    label.textContent = 'Verification Code';
-
-    const otpInput = document.createElement('input');
-    otpInput.type = 'text';
-    otpInput.inputMode = 'numeric';
-    otpInput.maxLength = 6;
-    otpInput.pattern = '[0-9]*';
-    otpInput.className = 'gd-auth-otp-input';
-    otpInput.placeholder = '123456';
-    otpInput.autocomplete = 'one-time-code';
-
-    const hint = document.createElement('p');
-    hint.className = 'gd-auth-field-hint';
-    hint.innerHTML = `Code sent to <strong>${phone}</strong>. In dev mode, test code is <strong>424242</strong>.`;
-
-    const submitBtn = document.createElement('button');
-    submitBtn.type = 'submit';
-    submitBtn.className = 'gd-auth-btn-primary gd-auth-otp-submit-btn';
-    submitBtn.textContent = 'Verify code';
-
-    const linksRow = document.createElement('div');
-    linksRow.className = 'gd-auth-form-links';
-
-    const resendBtn = document.createElement('button');
-    resendBtn.type = 'button';
-    resendBtn.className = 'gd-auth-btn-link gd-auth-resend-btn';
-    resendBtn.textContent = 'Resend code';
-    resendBtn.setAttribute('aria-label', 'Resend verification code');
-    resendBtn.addEventListener('click', () => {
-      void handleResendCode(resendBtn);
-    });
-
-    const changePhoneBtn = document.createElement('button');
-    changePhoneBtn.type = 'button';
-    changePhoneBtn.className = 'gd-auth-btn-link gd-auth-change-phone-btn';
-    changePhoneBtn.textContent = 'Use different number';
-    changePhoneBtn.setAttribute('aria-label', 'Use different phone number');
-    changePhoneBtn.addEventListener('click', () => {
-      renderOptionsView();
-    });
-
-    linksRow.appendChild(resendBtn);
-    linksRow.appendChild(changePhoneBtn);
-
-    form.appendChild(label);
-    form.appendChild(otpInput);
-    form.appendChild(hint);
-    form.appendChild(submitBtn);
-    form.appendChild(linksRow);
-
-    form.addEventListener('submit', (e) => {
-      if (typeof e?.preventDefault === 'function') {
-        e.preventDefault();
-      }
-      void handleVerifyOtpCode(otpInput.value, submitBtn);
-    });
-
-    socialBody.appendChild(form);
-
-    setTimeout(() => {
-      if (typeof otpInput.focus === 'function') {
-        otpInput.focus();
-      }
-    }, 50);
-  }
-
-  async function handleSendPhoneCode(phoneVal: string, submitBtn: HTMLButtonElement): Promise<void> {
-    hideError();
-    const cleanPhone = cleanPhoneNumber(phoneVal);
-    if (!cleanPhone || cleanPhone.length < 8) {
-      showError('Please enter a valid phone number with country code (e.g. +1 555-555-0100 or +91 ...).');
-      return;
-    }
-
-    currentPhone = cleanPhone;
-    submitBtn.disabled = true;
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Sending code...';
-
-    try {
-      const clerk = await getClerk();
-      const isPhoneEnabled = Boolean((clerk?.environment?.userSettings?.attributes as any)?.phone_number?.enabled);
-      if (clerk && clerk.client && isPhoneEnabled) {
-        try {
-          const signInAttempt = await clerk.client.signIn.create({
-            identifier: cleanPhone,
-          });
-          currentSignIn = signInAttempt;
-          currentSignUp = null;
-          authMode = 'signIn';
-
-          if (signInAttempt.status === 'needs_first_factor') {
-            const factor = signInAttempt.supportedFirstFactors?.find(
-              (f: any) => f.strategy === 'phone_code'
-            ) as any;
-            if (factor) {
-              currentPhoneId = factor.phoneNumberId;
-              await signInAttempt.prepareFirstFactor({
-                strategy: 'phone_code',
-                phoneNumberId: factor.phoneNumberId,
-              });
-            }
-          }
-          renderOtpView(cleanPhone, authMode);
-          return;
-        } catch (signInErr: any) {
-          if (isAccountNotFoundError(signInErr) || !currentSignIn) {
-            try {
-              const signUpAttempt = await clerk.client.signUp.create({
-                phoneNumber: cleanPhone,
-              });
-              currentSignUp = signUpAttempt;
-              currentSignIn = null;
-              authMode = 'signUp';
-              await signUpAttempt.preparePhoneNumberVerification({
-                strategy: 'phone_code',
-              });
-              renderOtpView(cleanPhone, authMode);
-              return;
-            } catch {
-              // Fall through to in-modal OTP view
-            }
-          }
-        }
-      }
-    } catch {
-      // Fall through to in-modal OTP view
-    }
-
-    // Seamless in-modal verification code flow
-    renderOtpView(cleanPhone, 'signIn');
   }
 
   async function authenticateClerkSession(
-    hint?: { email?: string; phone?: string; provider?: string },
+    hint?: { email?: string; provider?: string },
     simulatedFallbackEmail?: string
   ): Promise<void> {
     const defaultEmail = 'deepanshukhatri20061972@gmail.com';
@@ -862,56 +487,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
     // 4. Clean fallback for test runners / offline mode
     await verifyAndApplyToken('test-contact-token', simulatedFallbackEmail || emailToUse);
-  }
-
-  async function handleVerifyOtpCode(codeVal: string, submitBtn: HTMLButtonElement): Promise<void> {
-    hideError();
-    const code = codeVal.trim();
-    if (!code || code.length < 6) {
-      showError('Please enter the 6-digit verification code.');
-      return;
-    }
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Verifying code...';
-
-    try {
-      await authenticateClerkSession({ phone: currentPhone }, currentPhone);
-    } catch {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Verify & Sign In';
-    }
-  }
-
-  async function handleResendCode(resendBtn: HTMLButtonElement): Promise<void> {
-    hideError();
-    resendBtn.disabled = true;
-    resendBtn.textContent = 'Resending...';
-
-    try {
-      const clerk = await getClerk();
-      if (clerk) {
-        if (authMode === 'signIn' && currentSignIn && currentPhoneId) {
-          await currentSignIn.prepareFirstFactor({
-            strategy: 'phone_code',
-            phoneNumberId: currentPhoneId,
-          });
-        } else if (authMode === 'signUp' && currentSignUp) {
-          await currentSignUp.preparePhoneNumberVerification({
-            strategy: 'phone_code',
-          });
-        }
-      }
-      resendBtn.textContent = 'Code resent!';
-      setTimeout(() => {
-        resendBtn.textContent = 'Resend code';
-        resendBtn.disabled = false;
-      }, 4000);
-    } catch (err) {
-      showError(`Resend failed: ${extractClerkError(err)}`);
-      resendBtn.textContent = 'Resend code';
-      resendBtn.disabled = false;
-    }
   }
 
   async function handleSocialSignIn(
@@ -1034,7 +609,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     }
   }
 
-  // Initial render: show options view (Google, Apple, Phone)
+  // Initial render: show options view (Google, Apple)
   renderOptionsView();
 
   async function verifyAndApplyToken(token: string, simulatedEmail?: string): Promise<void> {

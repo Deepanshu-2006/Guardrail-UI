@@ -9089,43 +9089,54 @@ article.gd-card-collapsed,
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 40px;
-  padding: 0 16px;
-  background-color: rgba(237, 230, 214, 0.08);
-  color: #EDE6D6;
-  border: 1px solid rgba(237, 230, 214, 0.16);
-  border-radius: 8px;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
+  height: 44px;
+  padding: 0 20px;
+  background: #3E562A;
+  color: #FAF7F0;
+  border: 1px solid rgba(204, 214, 192, 0.28);
+  border-radius: 11px;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  gap: 9px;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .gd-sidebar-sign-in-btn:hover {
-  background-color: rgba(237, 230, 214, 0.15);
-  border-color: rgba(237, 230, 214, 0.28);
+  background: #4A6832;
   color: #FFFFFF;
-  transform: translateY(-0.5px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-color: rgba(204, 214, 192, 0.5);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .gd-sidebar-sign-in-btn:active {
-  background-color: rgba(237, 230, 214, 0.06);
+  background: #324622;
+  color: #FAF7F0;
   transform: translateY(0);
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .gd-sidebar-sign-in-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  opacity: 0.85;
-  color: currentColor;
+  width: 17px;
+  height: 17px;
+  color: #FAF7F0;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+}
+
+.gd-sidebar-sign-in-btn:hover .gd-sidebar-sign-in-icon {
+  color: #FFFFFF;
+  transform: translateX(-1px);
 }
 
 .gd-sidebar-sign-in-icon .gd-icon,
@@ -9133,9 +9144,19 @@ article.gd-card-collapsed,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.gd-sidebar-sign-in-text {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: inherit;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 .gd-account-sign-in-btn {

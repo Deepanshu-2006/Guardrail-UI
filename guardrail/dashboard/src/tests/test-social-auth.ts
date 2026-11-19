@@ -291,23 +291,15 @@ assert(appleIcon, 'Apple button contains social icon container');
 assert(appleIcon.innerHTML.includes('M18.71'), 'Apple icon contains official Apple SVG path');
 console.log('  ✓ "Continue with Apple" button rendered with official Apple SVG icon');
 
-// 4. Inline Phone Number Form & Submit button
+// 4. Verification that phone form is cleanly removed from consumer view
 const phoneFormEl = modalEl.querySelector('.gd-auth-phone-form');
-assert(phoneFormEl, 'Renders inline .gd-auth-phone-form in initial view');
-const countrySelectEl = modalEl.querySelector('.gd-auth-country-select');
-assert(countrySelectEl, 'Renders .gd-auth-country-select dropdown for international dialing codes');
-const phoneInputGroupEl = modalEl.querySelector('.gd-auth-phone-input-group');
-assert(phoneInputGroupEl, 'Renders integrated .gd-auth-phone-input-group container');
-const phoneInputEl = modalEl.querySelector('.gd-auth-phone-input');
-assert(phoneInputEl, 'Renders .gd-auth-phone-input field for mobile number');
-const phoneBtn = modalEl.querySelector('.gd-auth-phone-btn');
-assert(phoneBtn, 'Renders .gd-auth-phone-btn submit button');
-console.log('  ✓ Inline phone input with country code dropdown and submit button rendered directly in initial view');
+assert.strictEqual(phoneFormEl, null, 'Phone verification form is cleanly excluded from the sign-in modal');
+console.log('  ✓ Clean consumer experience: Phone verification form is removed in favor of 1-click social sign-in');
 
 // 5. Verification that "Sign in with Clerk" is NOT present (Clerk is the underlying engine, not consumer brand)
 const clerkBtn = modalEl.querySelector('.gd-auth-clerk-btn');
-assert.strictEqual(clerkBtn, null, 'Zero "Sign in with Clerk" buttons rendered (Clerk powers Google/Apple/Phone under the hood)');
-console.log('  ✓ Consumer branding verification: "Sign in with Clerk" is excluded; Clerk seamlessly powers Google, Apple, and Phone');
+assert.strictEqual(clerkBtn, null, 'Zero "Sign in with Clerk" buttons rendered (Clerk powers Google/Apple under the hood)');
+console.log('  ✓ Consumer branding verification: "Sign in with Clerk" is excluded; Clerk seamlessly powers Google and Apple');
 
 // 6. Verification that developer shortcuts are removed in production
 const devWrapper = modalEl.querySelector('.gd-auth-dev-wrapper');
@@ -379,73 +371,27 @@ assert.strictEqual(closedCalled, true, 'Dialog closed upon successful sign in');
 console.log('  ✓ Clicking "Continue with Google" seamlessly authenticated as carol.guardian@gmail.com');
 
 // -----------------------------------------------------------------------------
-// Test Suite 4: In-Modal Phone Number & OTP Verification Flow
+// Test Suite 4: Streamlined 1-Click Social Sign-In Modal Architecture
 // -----------------------------------------------------------------------------
-console.log('\n▶ Test Suite 4: In-Modal Phone Number & OTP Verification Flow');
+console.log('\n▶ Test Suite 4: Streamlined 1-Click Social Sign-In Modal Architecture');
 
-let phoneToken: string | null = null;
-let phoneProfile: TrustedContactProfile | null = null;
-let phoneModalClosed = false;
-
-const phoneModalEl = renderAuthModal({
+const streamlinedModal = renderAuthModal({
   profile: null,
   apiBaseUrl: 'http://127.0.0.1:3000',
-  onAuthSuccess: (token, profile) => {
-    phoneToken = token;
-    phoneProfile = profile;
-  },
+  onAuthSuccess: () => {},
   onSignOut: () => {},
-  onClose: () => {
-    phoneModalClosed = true;
-  },
+  onClose: () => {},
 }) as unknown as MockElement;
 
-// 1. Initial State: Options View contains Inline Phone Input Form
-const phoneForm = phoneModalEl.querySelector('.gd-auth-phone-form');
-assert(phoneForm, 'Inline phone form exists in options view');
-const phoneInput = phoneModalEl.querySelector('.gd-auth-phone-input') as unknown as { value: string };
-assert(phoneInput, 'Renders .gd-auth-phone-input for mobile number');
-const phoneSubmitBtn = phoneModalEl.querySelector('.gd-auth-phone-btn');
-assert(phoneSubmitBtn, 'Phone submit button exists in options view');
-console.log('  ✓ Inline phone input and submit button are present directly in initial view');
+// 1. Verify phone form is completely absent
+assert.strictEqual(streamlinedModal.querySelector('.gd-auth-phone-form'), null, 'Zero phone form elements in modal');
+assert.strictEqual(streamlinedModal.querySelector('.gd-auth-country-select'), null, 'Zero country select elements in modal');
+assert.strictEqual(streamlinedModal.querySelector('.gd-auth-divider-text'), null, 'Zero dividing text in streamlined social modal');
 
-// 2. Submit Phone Number -> Transitions to OTP Verification View
-phoneInput.value = '+1 (555) 555-0100';
-phoneForm.dispatchEvent({ type: 'submit' });
-await new Promise((resolve) => setTimeout(resolve, 50));
-
-// 3. Transitions to OTP Verification View
-const otpForm = phoneModalEl.querySelector('.gd-auth-otp-form');
-assert(otpForm, 'Transitions to .gd-auth-otp-form after submitting phone number');
-const otpInput = phoneModalEl.querySelector('.gd-auth-otp-input') as unknown as { value: string };
-assert(otpInput, 'Renders 6-digit .gd-auth-otp-input');
-const resendBtn = phoneModalEl.querySelector('.gd-auth-resend-btn');
-assert(resendBtn, 'Renders "Resend code" button');
-const changePhoneBtn = phoneModalEl.querySelector('.gd-auth-change-phone-btn');
-assert(changePhoneBtn, 'Renders "← Use different number" button');
-console.log('  ✓ Submitting phone number transitions to 6-digit OTP verification view');
-
-// 4. Test "← Use different number" returns to options view
-changePhoneBtn.dispatchEvent({ type: 'click' });
-assert.strictEqual(phoneModalEl.querySelector('.gd-auth-otp-form'), null, 'OTP form dismissed');
-assert(phoneModalEl.querySelector('.gd-auth-phone-form'), 'Returned to options view with inline phone input');
-console.log('  ✓ "← Use different number" seamlessly returns to initial options view');
-
-// 5. Re-submit and verify OTP Code
-phoneModalEl.querySelector('.gd-auth-phone-form')?.dispatchEvent({ type: 'submit' });
-await new Promise((resolve) => setTimeout(resolve, 50));
-const activeOtpForm = phoneModalEl.querySelector('.gd-auth-otp-form')!;
-const activeOtpInput = phoneModalEl.querySelector('.gd-auth-otp-input') as unknown as { value: string };
-activeOtpInput.value = '424242';
-activeOtpForm.dispatchEvent({ type: 'submit' });
-await new Promise((resolve) => setTimeout(resolve, 50));
-
-assert.strictEqual(phoneToken, 'test-contact-token', 'Successfully authenticated with token');
-assert(phoneProfile, 'Hydrated authenticated profile');
-assert.strictEqual(phoneProfile?.actorId, 'tc_carol', 'Authenticated actor');
-assert.strictEqual(phoneProfile?.email, '+15555550100', 'Hydrated verified phone number');
-assert.strictEqual(phoneModalClosed, true, 'Modal automatically closed on successful OTP verification');
-console.log('  ✓ Verifying 6-digit code completes authentication and dismisses modal');
+// 2. Verify Google and Apple buttons are present
+assert(streamlinedModal.querySelector('.gd-auth-google-btn'), 'Google sign-in button present');
+assert(streamlinedModal.querySelector('.gd-auth-apple-btn'), 'Apple sign-in button present');
+console.log('  ✓ Verified sign-in modal is streamlined purely to 1-click social sign-in without phone verification');
 
 console.log('\n======================================================');
 console.log('🎉 TASK 2.1 VERIFICATION COMPLETE: ALL ASSERTIONS PASSED!');
