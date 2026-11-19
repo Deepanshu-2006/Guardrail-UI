@@ -58,22 +58,13 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const header = document.createElement('div');
   header.className = 'gd-auth-modal-header';
 
-  const titleGroup = document.createElement('div');
-  titleGroup.className = 'gd-auth-modal-title-group';
+  const headerTop = document.createElement('div');
+  headerTop.className = 'gd-auth-modal-header-top';
 
-  const title = document.createElement('h2');
-  title.id = 'gd-auth-modal-title';
-  title.className = 'gd-auth-modal-title';
-  title.textContent = isAuth ? 'Account' : 'Sign in to Guardrail';
-
-  const subtitle = document.createElement('p');
-  subtitle.className = 'gd-auth-modal-subtitle';
-  subtitle.textContent = isAuth
-    ? 'Signed in as a trusted contact.'
-    : 'Access your trusted contact dashboard.';
-
-  titleGroup.appendChild(title);
-  titleGroup.appendChild(subtitle);
+  const brandEmblem = document.createElement('div');
+  brandEmblem.className = 'gd-auth-brand-emblem';
+  brandEmblem.setAttribute('aria-hidden', 'true');
+  brandEmblem.appendChild(createIcon('shield-check', 'gd-auth-brand-icon'));
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -85,8 +76,32 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     props.onClose();
   });
 
+  headerTop.appendChild(brandEmblem);
+  headerTop.appendChild(closeBtn);
+  header.appendChild(headerTop);
+
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'gd-auth-modal-title-group';
+
+  const eyebrow = document.createElement('span');
+  eyebrow.className = 'gd-auth-modal-eyebrow';
+  eyebrow.textContent = isAuth ? 'IDENTITY & SESSION' : 'TRUSTED CONTACT ACCESS';
+
+  const title = document.createElement('h2');
+  title.id = 'gd-auth-modal-title';
+  title.className = 'gd-auth-modal-title';
+  title.textContent = isAuth ? 'Account & Session' : 'Sign in to Guardrail';
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'gd-auth-modal-subtitle';
+  subtitle.textContent = isAuth
+    ? 'Manage your active identity session and trusted contact access.'
+    : 'Authorize sensitive security interventions and monitor emergency protections.';
+
+  titleGroup.appendChild(eyebrow);
+  titleGroup.appendChild(title);
+  titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
-  header.appendChild(closeBtn);
   modal.appendChild(header);
 
   // --- Body ---
@@ -186,8 +201,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   switchBtn.addEventListener('click', () => {
     profileSection.style.display = 'none';
     socialSection.style.display = 'block';
+    eyebrow.textContent = 'TRUSTED CONTACT ACCESS';
     title.textContent = 'Sign in to Guardrail';
-    subtitle.textContent = 'Access your trusted contact dashboard.';
+    subtitle.textContent = 'Authorize sensitive security interventions and monitor emergency protections.';
   });
 
   const signOutBtn = document.createElement('button');
@@ -331,7 +347,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     title.textContent = isAuth ? 'Account & Session' : 'Sign in to Guardrail';
     subtitle.textContent = isAuth
       ? 'Manage your active identity session and trusted contact access.'
-      : 'Sign in to access your trusted contact portal.';
+      : 'Authorize sensitive security interventions and monitor emergency protections.';
+    if (eyebrow) {
+      eyebrow.textContent = isAuth ? 'IDENTITY & SESSION' : 'TRUSTED CONTACT ACCESS';
+    }
     clearContainer(socialBody);
 
     const socialButtonsContainer = document.createElement('div');
@@ -364,6 +383,68 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     socialButtonsContainer.appendChild(appleBtn);
 
     socialBody.appendChild(socialButtonsContainer);
+
+    // Trust & Safeguards Card (Quiet Assurance Value Proposition)
+    const trustCard = document.createElement('div');
+    trustCard.className = 'gd-auth-trust-card';
+
+    const trustHeader = document.createElement('div');
+    trustHeader.className = 'gd-auth-trust-header';
+    const trustHeaderTitle = document.createElement('span');
+    trustHeaderTitle.textContent = 'Trusted Contact Safeguards';
+    const trustBadge = document.createElement('span');
+    trustBadge.className = 'gd-auth-trust-badge';
+    trustBadge.textContent = 'Hardware Attestation';
+    trustHeader.appendChild(trustHeaderTitle);
+    trustHeader.appendChild(trustBadge);
+    trustCard.appendChild(trustHeader);
+
+    const trustList = document.createElement('div');
+    trustList.className = 'gd-auth-trust-list';
+
+    // Safeguard 1: Cryptographic Signatures
+    const item1 = document.createElement('div');
+    item1.className = 'gd-auth-trust-item';
+    const icon1 = document.createElement('span');
+    icon1.className = 'gd-auth-trust-icon';
+    icon1.setAttribute('aria-hidden', 'true');
+    icon1.appendChild(createIcon('lock'));
+    const text1 = document.createElement('div');
+    text1.className = 'gd-auth-trust-text';
+    text1.innerHTML = '<strong>Cryptographic Attestation</strong>All decisions are digitally signed and cryptographically recorded.';
+    item1.appendChild(icon1);
+    item1.appendChild(text1);
+    trustList.appendChild(item1);
+
+    // Safeguard 2: Instant Priority Escalations
+    const item2 = document.createElement('div');
+    item2.className = 'gd-auth-trust-item';
+    const icon2 = document.createElement('span');
+    icon2.className = 'gd-auth-trust-icon';
+    icon2.setAttribute('aria-hidden', 'true');
+    icon2.appendChild(createIcon('zap'));
+    const text2 = document.createElement('div');
+    text2.className = 'gd-auth-trust-text';
+    text2.innerHTML = '<strong>Instant Escalation Alerts</strong>Receive real-time notifications when critical interventions require approval.';
+    item2.appendChild(icon2);
+    item2.appendChild(text2);
+    trustList.appendChild(item2);
+
+    trustCard.appendChild(trustList);
+    socialBody.appendChild(trustCard);
+
+    // Footer Security Guarantee
+    const footerNote = document.createElement('div');
+    footerNote.className = 'gd-auth-footer-note';
+    const shieldIcon = document.createElement('span');
+    shieldIcon.className = 'gd-auth-footer-shield';
+    shieldIcon.setAttribute('aria-hidden', 'true');
+    shieldIcon.appendChild(createIcon('shield'));
+    const noteText = document.createElement('span');
+    noteText.textContent = 'Zero passwords stored • Protected by Clerk secure session management';
+    footerNote.appendChild(shieldIcon);
+    footerNote.appendChild(noteText);
+    socialBody.appendChild(footerNote);
   }
 
   async function authenticateClerkSession(
