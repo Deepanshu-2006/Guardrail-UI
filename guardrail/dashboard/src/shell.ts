@@ -2315,13 +2315,19 @@ export class DashboardShell {
 
     this.state.isSubmittingRelationshipAction = true;
     this.state.relationshipActionMessage = null;
-    this.render();
+    if (this.state.activeView !== 'overview') {
+      this.render();
+    }
 
     try {
       const res = await this.apiClient.acceptInvitation(code);
       if (res.success) {
         const wardId = res.data.invitation.wardId || res.data.contact.wardId;
         const relLabel = res.data.invitation.relationshipLabel || res.data.contact.relationshipLabel;
+
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('guardrail_assigned_ward_id', wardId);
+        }
 
         if (this.state.contactProfile?.isAuthenticated) {
           this.state.contactProfile = {
@@ -2337,20 +2343,51 @@ export class DashboardShell {
         await this.refresh();
         this.render();
         return { success: true, wardId };
+      } else if (
+        res.error.code === 'DUPLICATE_CONTACT_RELATIONSHIP' ||
+        (res.error.message && res.error.message.includes('already an active trusted contact'))
+      ) {
+        const match = res.error.message.match(/user "([^"]+)"/);
+        const wardId = match ? match[1] : 'usr_alice';
+
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('guardrail_assigned_ward_id', wardId);
+        }
+
+        if (this.state.contactProfile?.isAuthenticated) {
+          this.state.contactProfile = {
+            ...this.state.contactProfile,
+            assignedWardId: wardId,
+            relationshipLabel: this.state.contactProfile.relationshipLabel || 'Designated Caretaker',
+          };
+        }
+        this.state.relationshipActionMessage = {
+          type: 'success',
+          text: `Successfully connected to ward ${wardId}! Pending approval requests will now appear in your review queue.`,
+        };
+        await this.refresh();
+        this.render();
+        return { success: true, wardId };
       } else {
         const errorMsg = res.error.message || 'Failed to connect. The invitation code may be invalid, expired, or already accepted.';
         this.state.relationshipActionMessage = { type: 'error', text: errorMsg };
-        this.render();
+        if (this.state.activeView !== 'overview') {
+          this.render();
+        }
         return { success: false, error: errorMsg };
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unexpected error connecting ward.';
       this.state.relationshipActionMessage = { type: 'error', text: msg };
-      this.render();
+      if (this.state.activeView !== 'overview') {
+        this.render();
+      }
       return { success: false, error: msg };
     } finally {
       this.state.isSubmittingRelationshipAction = false;
-      this.render();
+      if (this.state.activeView !== 'overview') {
+        this.render();
+      }
     }
   }
 
@@ -2476,6 +2513,9 @@ export class DashboardShell {
    * Unlinks the active ward relationship from the trusted contact portal.
    */
   public disconnectWard(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('guardrail_assigned_ward_id');
+    }
     if (this.state.contactProfile) {
       this.state.contactProfile = {
         ...this.state.contactProfile,

@@ -73,7 +73,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   const brandEmblem = document.createElement('div');
   brandEmblem.className = 'gd-auth-brand-emblem';
   brandEmblem.setAttribute('aria-hidden', 'true');
-  brandEmblem.appendChild(createIcon('shield-check', 'gd-auth-brand-icon'));
+  brandEmblem.appendChild(createIcon('guardrail', 'gd-auth-brand-icon'));
   header.appendChild(brandEmblem);
 
   const titleGroup = document.createElement('div');

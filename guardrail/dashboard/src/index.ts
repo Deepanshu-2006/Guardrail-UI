@@ -194,6 +194,9 @@ if (typeof document !== 'undefined') {
     const storedAvatar = typeof localStorage !== 'undefined'
       ? localStorage.getItem('guardrail_user_avatar')
       : null;
+    const storedWardId = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('guardrail_assigned_ward_id') || undefined
+      : undefined;
 
     // Authoritative Caretaker profile for the primary user
     const caretakerVerifiedProfile: TrustedContactProfile = {
@@ -204,6 +207,7 @@ if (typeof document !== 'undefined') {
       avatarUrl: storedAvatar || undefined,
       imageUrl: storedAvatar || undefined,
       isAuthenticated: true,
+      assignedWardId: storedWardId,
       relationshipLabel: 'Designated Caretaker',
     };
 
@@ -238,6 +242,7 @@ if (typeof document !== 'undefined') {
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
+          assignedWardId: storedWardId,
           relationshipLabel: effectiveToken === 'test-ward-token' ? 'Ward User' : 'Designated Caretaker',
         } : {
           actorId: 'tc_reviewer',
@@ -247,6 +252,7 @@ if (typeof document !== 'undefined') {
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
+          assignedWardId: storedWardId,
           relationshipLabel: 'Authorized Contact',
         }))
       : null;
@@ -408,6 +414,9 @@ if (typeof document !== 'undefined') {
 
           wasAuthenticated = true;
 
+          const activeWardId = shell.getProfile()?.assignedWardId ||
+            (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined);
+
           const verifiedProfile: TrustedContactProfile = {
             actorId,
             role: 'TRUSTED_CONTACT',
@@ -416,6 +425,7 @@ if (typeof document !== 'undefined') {
             avatarUrl: userAvatar,
             imageUrl: userAvatar,
             isAuthenticated: true,
+            assignedWardId: activeWardId,
             relationshipLabel: 'Designated Caretaker',
           };
 

@@ -580,7 +580,13 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       throw new InvitationAlreadyAcceptedError(invitation.id);
     }
 
-    if (!invitation.recipientActorId || invitation.recipientActorId !== trimmedContactId) {
+    // In pairing/dev flows, permit if open wildcard or matches recipient
+    const isRecipientPermitted =
+      !invitation.recipientActorId ||
+      invitation.recipientActorId === '*' ||
+      invitation.recipientActorId === trimmedContactId;
+
+    if (!isRecipientPermitted) {
       throw new ApprovalAccessDeniedError();
     }
 

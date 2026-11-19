@@ -8207,27 +8207,44 @@ article.gd-card-collapsed,
 
 .gd-auth-modal-close-btn {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 16px;
+  right: 16px;
   width: 32px;
   height: 32px;
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   color: var(--gd-text-muted, #88907E);
   cursor: pointer;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
   z-index: 10;
+  outline: none;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .gd-auth-modal-close-btn:hover {
-  background-color: var(--gd-olive-box-bg, #DFE7D4);
+  background-color: rgba(39, 49, 33, 0.08);
   color: var(--gd-deep-olive, #273121);
-  border-color: var(--gd-olive-box-border, #CCD6C0);
+  border: none;
+}
+
+.gd-auth-modal-close-btn:active {
+  background-color: rgba(39, 49, 33, 0.14);
+  transform: scale(0.94);
+}
+
+.gd-auth-modal-close-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(39, 49, 33, 0.25);
+}
+
+.gd-auth-modal-close-btn svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .gd-auth-modal-header {
@@ -8244,19 +8261,30 @@ article.gd-card-collapsed,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: var(--gd-olive-box-bg, #DFE7D4);
-  border: 1px solid var(--gd-olive-box-border, #CCD6C0);
-  color: var(--gd-deep-olive, #273121);
-  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.06);
-  margin-bottom: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  background: var(--gd-deep-olive, #273121);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px -4px rgba(39, 49, 33, 0.28),
+              0 2px 6px rgba(39, 49, 33, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  margin: 0 auto 16px auto;
+  flex-shrink: 0;
 }
 
-.gd-auth-brand-icon svg {
-  width: 24px;
-  height: 24px;
+.gd-auth-brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.gd-auth-brand-icon svg,
+.gd-auth-brand-icon .gd-brand-icon-svg {
+  width: 32px;
+  height: 32px;
   display: block;
 }
 

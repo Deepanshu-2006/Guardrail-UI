@@ -71,6 +71,17 @@ async function main(): Promise<void> {
     createdAt: new Date().toISOString(),
   });
 
+  // Pre-seed the pairing invitation code from the extension popup as open wildcard
+  try {
+    contactRegistry.createInvitation('usr_alice', {
+      customCode: 'GR-INV-U6GA-4WZY',
+      recipientActorId: '*',
+      relationshipLabel: 'Family Guardian',
+    });
+  } catch {
+    // Ignore if already present
+  }
+
   const runtime = await startGuardrailHttpServer({
     tokenVerifier,
     databasePath: serverConfig.databasePath,
