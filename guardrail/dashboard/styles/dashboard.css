@@ -686,28 +686,28 @@ textarea:focus-visible,
 }
 
 .gd-auth-signout-btn {
-  background: rgba(185, 56, 56, 0.08);
-  border: 1px solid rgba(185, 56, 56, 0.22);
-  color: #B43423;
-  box-shadow: 0 1px 2px rgba(180, 52, 35, 0.04);
+  background: var(--gd-surface-subtle, #EDE6D6);
+  border: 1px solid var(--gd-border-subtle, #DDD5C2);
+  color: #8C2E24;
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
 }
 
 .gd-auth-signout-btn:hover {
-  background: rgba(185, 56, 56, 0.15);
-  border-color: rgba(185, 56, 56, 0.38);
-  color: #9B2516;
+  background: #FAF0EE;
+  border-color: #D8ACA4;
+  color: #6E1F17;
   transform: translateY(-0.5px);
-  box-shadow: 0 2px 6px rgba(180, 52, 35, 0.1);
+  box-shadow: 0 2px 6px rgba(140, 46, 36, 0.08);
 }
 
 .gd-auth-signout-btn:active {
-  background: rgba(185, 56, 56, 0.22);
+  background: #F4E2DE;
   transform: translateY(0);
   box-shadow: none;
 }
 
 .gd-auth-signout-btn:focus-visible {
-  box-shadow: 0 0 0 3px rgba(180, 52, 35, 0.18);
+  box-shadow: 0 0 0 3px rgba(140, 46, 36, 0.18);
 }
 
 .gd-account-details {
