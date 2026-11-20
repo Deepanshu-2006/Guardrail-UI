@@ -1233,116 +1233,133 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Settings View: Sequential Staggered Entrance ("revealed one by one")
+   Settings View: Sequential Staggered Entrance ("revealed slowly one by one")
    ----------------------------------------------------------------------------- */
 
 /* Subtitle */
 #view-settings.gd-view-initial-enter .gd-section-subtitle {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
 }
 
 /* 1. Reviewer Identity Card (if present) */
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-card-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(1) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(3) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(4) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
 }
 
 /* 2. Connected Users & Trusted Contacts */
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-settings-card-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.45s both;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty,
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-list {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both;
 }
 
 /* 3. Trusted Contact Invitations Header & Content */
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.75s both;
 }
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty,
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-list {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both;
 }
 
 /* 4. Issue New Trusted Contact Invitation Section */
 #view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.05s both;
 }
 #view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(1) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.20s both;
 }
 #view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(2) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.35s both;
 }
 #view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(3) {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both;
 }
 #view-settings.gd-view-initial-enter .gd-invite-submit-row {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both;
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.65s both;
 }
 
-/* 5. Ward Protection Policy & Invariants Card (if present) */
-#view-settings.gd-view-initial-enter #gd-card-ward-policy {
-  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both;
+/* -----------------------------------------------------------------------------
+   Settings View: Scroll-Triggered Reveal for Bottom Sections
+   ----------------------------------------------------------------------------- */
+
+/* Hidden until scrolled into view */
+.gd-scroll-reveal:not(.is-revealed) {
+  opacity: 0 !important;
+  transform: translateY(20px) !important;
+  pointer-events: none;
 }
 
-/* 6. Protection Policy History & Transparency Card (if present) */
-#view-settings.gd-view-initial-enter #gd-card-policy-history {
-  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
+.gd-scroll-reveal.is-revealed {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  transition: opacity 0.52s cubic-bezier(0.16, 1, 0.3, 1), transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 7. Backend Connection & Synchronization Card */
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-card-header {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-action-row {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both;
+/* 5. Ward Protection Policy & Invariants Card (when scrolled to) */
+#gd-card-ward-policy.is-revealed {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 
-/* 8. Safety Invariants & Zero-Trust Guarantees Card */
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-section-title {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 1.16s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.28s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both;
+/* 6. Protection Policy History & Transparency Card (when scrolled to) */
+#gd-card-policy-history.is-revealed {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 
-/* 9. Session Management Card */
-#view-settings.gd-view-initial-enter #gd-card-session .gd-section-title {
-  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both;
+/* 7. Backend Connection & Synchronization Card (when scrolled to) */
+#gd-card-backend.is-revealed .gd-settings-card-header {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
-#view-settings.gd-view-initial-enter #gd-card-session .gd-settings-action-row {
-  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.52s both;
+#gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+#gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+#gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+#gd-card-backend.is-revealed .gd-settings-action-row {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
+}
+
+/* 8. Safety Invariants & Zero-Trust Guarantees Card (when scrolled to) */
+#gd-card-invariants.is-revealed .gd-section-title {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
+}
+
+/* 9. Session Management Card (when scrolled to) */
+#gd-card-session.is-revealed .gd-section-title {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+#gd-card-session.is-revealed .gd-settings-action-row {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
 }
 
 @media (prefers-reduced-motion: reduce) {

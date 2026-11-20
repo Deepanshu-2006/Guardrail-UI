@@ -168,7 +168,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   // Card 2b: Assigned Ward Protection Policy & Invariants
   if (props.profile?.assignedWardId) {
     const policyCard = document.createElement('div');
-    policyCard.className = 'gd-card gd-settings-card';
+    policyCard.className = 'gd-card gd-settings-card gd-scroll-reveal';
     policyCard.id = 'gd-card-ward-policy';
 
     const pHeader = document.createElement('div');
@@ -324,7 +324,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     // Card 2c: Protection Policy History & Transparency
     const historyCard = document.createElement('div');
-    historyCard.className = 'gd-card gd-settings-card';
+    historyCard.className = 'gd-card gd-settings-card gd-scroll-reveal';
     historyCard.id = 'gd-card-policy-history';
 
     const hHeader = document.createElement('div');
@@ -445,7 +445,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   // Card 3: Backend Connection & Runtime Environment
   const backendCard = document.createElement('div');
-  backendCard.className = 'gd-card gd-settings-card';
+  backendCard.className = 'gd-card gd-settings-card gd-scroll-reveal';
   backendCard.id = 'gd-card-backend';
 
   const backendHeader = document.createElement('div');
@@ -531,7 +531,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   // Card 3: Safety & Governance Architecture Invariants (Refined Verified Pills)
   const invariantsCard = document.createElement('div');
-  invariantsCard.className = 'gd-card gd-settings-card';
+  invariantsCard.className = 'gd-card gd-settings-card gd-scroll-reveal';
   invariantsCard.id = 'gd-card-invariants';
 
   const invTitle = document.createElement('h2');
@@ -566,7 +566,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   // Card 4: Session Management (Minimal)
   const sessionCard = document.createElement('div');
-  sessionCard.className = 'gd-card gd-settings-card gd-session-card';
+  sessionCard.className = 'gd-card gd-settings-card gd-session-card gd-scroll-reveal';
   sessionCard.id = 'gd-card-session';
 
   const sessTitle = document.createElement('h2');
@@ -590,5 +590,47 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   sessionCard.appendChild(sessActions);
   section.appendChild(sessionCard);
 
+  setupSettingsScrollReveal(section);
+
   return section;
+}
+
+/**
+ * Sets up IntersectionObserver for below-the-fold cards in Settings so they
+ * render and reveal slowly one by one as the user scrolls to them.
+ */
+function setupSettingsScrollReveal(container: HTMLElement): void {
+  const revealCards = container.querySelectorAll('.gd-scroll-reveal');
+  if (revealCards.length === 0) return;
+
+  if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+    // In mock/test environments or SSR, immediately reveal
+    revealCards.forEach((el) => el.classList.add('is-revealed'));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          obs.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.08,
+      rootMargin: '0px 0px -20px 0px',
+    }
+  );
+
+  const register = () => {
+    revealCards.forEach((el) => observer.observe(el));
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(register);
+  } else {
+    setTimeout(register, 0);
+  }
 }
