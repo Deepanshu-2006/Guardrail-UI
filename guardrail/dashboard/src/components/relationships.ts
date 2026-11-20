@@ -758,6 +758,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     recipientInput.placeholder = 'tc_carol (verified contact ID)';
     recipientInput.required = true;
     recipientInput.maxLength = 64;
+    recipientInput.autocomplete = 'off';
     recipientInput.disabled = Boolean(props.isSubmitting);
     recipientGroup.appendChild(recipientLabel);
     recipientGroup.appendChild(recipientInput);
@@ -774,6 +775,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     labelInput.className = 'gd-input-text';
     labelInput.placeholder = 'e.g. Guardian, Financial Advisor';
     labelInput.maxLength = 64;
+    labelInput.autocomplete = 'off';
     labelInput.disabled = Boolean(props.isSubmitting);
     labelGroup.appendChild(labelLabel);
     labelGroup.appendChild(labelInput);
@@ -788,6 +790,38 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     ttlSelect.id = 'gd-select-ttl';
     ttlSelect.className = 'gd-select';
     ttlSelect.disabled = Boolean(props.isSubmitting);
+
+    const blurTtl = () => {
+      if (typeof ttlSelect.blur === 'function') {
+        ttlSelect.blur();
+      }
+    };
+
+    if (typeof ttlSelect.addEventListener === 'function') {
+      ttlSelect.addEventListener('change', blurTtl);
+      ttlSelect.addEventListener('input', blurTtl);
+      ttlSelect.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          blurTtl();
+        }
+      });
+    }
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('focus', () => {
+        if (typeof document !== 'undefined' && document.activeElement === ttlSelect) {
+          blurTtl();
+        }
+      });
+    }
+
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('click', (e) => {
+        if (document.activeElement === ttlSelect && e.target !== ttlSelect) {
+          blurTtl();
+        }
+      });
+    }
 
     const opt24h = document.createElement('option');
     opt24h.value = String(24 * 60 * 60 * 1000);

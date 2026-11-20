@@ -8068,8 +8068,8 @@ article.gd-card-collapsed,
   color: var(--gd-accent-olive, #54683E);
 }
 
-.gd-input-text,
-.gd-select {
+/* Input Text Fields (Architectural Underline) */
+.gd-input-text {
   width: 100%;
   height: 38px;
   padding: 6px 0 8px 0 !important;
@@ -8084,8 +8084,10 @@ article.gd-card-collapsed,
   border-bottom: 1.5px solid rgba(39, 49, 33, 0.22) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  outline: none !important;
   box-sizing: border-box;
-  transition: border-bottom-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-bottom-color 0.18s ease, color 0.18s ease;
 }
 
 .gd-input-text::placeholder {
@@ -8096,44 +8098,136 @@ article.gd-card-collapsed,
   letter-spacing: -0.01em;
 }
 
-.gd-input-text:hover,
-.gd-select:hover {
+.gd-input-text:hover {
   background: transparent !important;
   background-color: transparent !important;
-  border-bottom-color: rgba(39, 49, 33, 0.55) !important;
+  border-bottom-color: rgba(39, 49, 33, 0.50) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Clicked / Active / Focused State for Text Inputs:
+   - 100% transparent canvas (zero white box)
+   - Consistent 1.5px hairline bottom-border in deep olive (#273121)
+   - Zero layout jump, zero blurry/heavy box-shadow
+   - Zero default browser blue outline ring
+*/
+.gd-input-text:focus,
+.gd-input-text:focus-visible,
+.gd-input-text:active {
+  outline: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom: 1.5px solid var(--gd-deep-olive, #273121) !important;
+  border-bottom-color: var(--gd-deep-olive, #273121) !important;
   box-shadow: none !important;
 }
 
-.gd-input-text:focus,
-.gd-select:focus {
-  outline: none;
-  background: transparent !important;
-  background-color: transparent !important;
-  border-bottom: 2px solid var(--gd-deep-olive, #273121) !important;
-  box-shadow: 0 1px 0 0 var(--gd-deep-olive, #273121) !important;
+/* After-click / blur return cleanly to normal resting baseline */
+.gd-input-text:not(:focus):not(:active) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-.gd-input-text:disabled,
-.gd-select:disabled {
+/* WebKit / Blink Autofill Override to prevent browser from painting a white background */
+.gd-input-text:-webkit-autofill,
+.gd-input-text:-webkit-autofill:hover,
+.gd-input-text:-webkit-autofill:focus,
+.gd-input-text:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #EDE6D6 inset !important;
+  -webkit-text-fill-color: var(--gd-deep-olive, #273121) !important;
+  caret-color: var(--gd-deep-olive, #273121) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.gd-input-text:disabled {
   background: transparent !important;
   background-color: transparent !important;
   color: rgba(39, 49, 33, 0.35);
   border-bottom-color: rgba(39, 49, 33, 0.12) !important;
   cursor: not-allowed;
   box-shadow: none !important;
+  outline: none !important;
 }
 
-/* Custom Styled Dropdown Select (Underline) */
+/* Custom Styled Dropdown Select (Architectural Underline) */
 .gd-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  padding-right: 28px !important;
+  width: 100%;
+  height: 38px;
+  padding: 6px 28px 8px 0 !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--gd-deep-olive, #273121);
+  background-color: transparent !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23273121' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 4px center !important;
   background-size: 14px 14px !important;
+  border: none !important;
+  border-bottom: 1.5px solid rgba(39, 49, 33, 0.22) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
   cursor: pointer;
+  transition: border-bottom-color 0.18s ease, color 0.18s ease;
+}
+
+.gd-select:hover {
+  background-color: transparent !important;
+  border-bottom-color: rgba(39, 49, 33, 0.50) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23273121' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 4px center !important;
+  background-size: 14px 14px !important;
+}
+
+/* Clicked / Active / Focused State for Dropdown:
+   - 100% transparent canvas (zero white box)
+   - Consistent 1.5px hairline bottom-border in deep olive (#273121)
+   - Chevron arrow clearly maintained (never disappears)
+   - Zero layout jump, zero blurry/heavy box-shadow
+   - Zero default browser blue outline ring
+*/
+.gd-select:focus,
+.gd-select:focus-visible,
+.gd-select:active {
+  outline: none !important;
+  background-color: transparent !important;
+  border-bottom: 1.5px solid var(--gd-deep-olive, #273121) !important;
+  border-bottom-color: var(--gd-deep-olive, #273121) !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23273121' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 4px center !important;
+  background-size: 14px 14px !important;
+}
+
+/* After-click / blur return cleanly to normal resting baseline */
+.gd-select:not(:focus):not(:active) {
+  outline: none !important;
+  box-shadow: none !important;
+  border-bottom: 1.5px solid rgba(39, 49, 33, 0.22) !important;
+}
+
+.gd-select:disabled {
+  background-color: transparent !important;
+  color: rgba(39, 49, 33, 0.35);
+  border-bottom-color: rgba(39, 49, 33, 0.12) !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .gd-select option {
@@ -8177,6 +8271,15 @@ article.gd-card-collapsed,
 .gd-btn-submit-invite:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(39, 49, 33, 0.12);
+}
+
+.gd-btn-submit-invite:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.gd-btn-submit-invite:focus-visible {
+  outline: 2px solid var(--gd-deep-olive, #273121);
+  outline-offset: 2px;
 }
 
 .gd-btn-submit-invite:disabled {
