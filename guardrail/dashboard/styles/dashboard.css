@@ -1512,58 +1512,76 @@ textarea:focus-visible,
   }
 }
 
-/* Dynamic in-place stagger when expanding "View all 50 decisions" (Sequential Kinetic Entrance Cascade) */
-.gd-history-card.gd-card-animating-in {
+/* Decision Archive Scroll-Reveal & In-Place Expansion (Sequential Kinetic Entrance Cascade) */
+.gd-history-card.gd-scroll-reveal:not(.is-revealed):not(.gd-card-collapsed) {
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+}
+
+.gd-history-card.gd-card-animating-in,
+.gd-history-card.is-revealed {
   animation: gd-history-card-enter 0.44s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(var(--expand-idx, 0) * 0.16s) !important;
 }
 
 .gd-history-list.has-selection .gd-history-card.gd-card-animating-in:not(.selected),
-.gd-history-list:has(.gd-history-card.selected) .gd-history-card.gd-card-animating-in:not(.selected) {
+.gd-history-list:has(.gd-history-card.selected) .gd-history-card.gd-card-animating-in:not(.selected),
+.gd-history-list.has-selection .gd-history-card.is-revealed:not(.selected),
+.gd-history-list:has(.gd-history-card.selected) .gd-history-card.is-revealed:not(.selected) {
   animation: gd-history-card-enter-dimmed 0.44s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 1. Request Number (01, 02...): slides in from left */
-.gd-history-card.gd-card-animating-in .gd-request-num {
+.gd-history-card.gd-card-animating-in .gd-request-num,
+.gd-history-card.is-revealed .gd-request-num {
   animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.04s + var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 2. Action Description / Title: reveals smoothly from left with clip wipe */
-.gd-history-card.gd-card-animating-in .gd-request-description {
+.gd-history-card.gd-card-animating-in .gd-request-description,
+.gd-history-card.is-revealed .gd-request-description {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.10s + var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 3. Status Pill Icon: reveals FIRST from left with kinetic rotation & scale */
-.gd-history-card.gd-card-animating-in .gd-detail-status-pill::before {
+.gd-history-card.gd-card-animating-in .gd-detail-status-pill::before,
+.gd-history-card.is-revealed .gd-detail-status-pill::before {
   animation: gd-status-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.20s + var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 4. Status Pill Label: reveals from left AFTER the icon */
 .gd-history-card.gd-card-animating-in .gd-detail-status-label,
-.gd-history-card.gd-card-animating-in .gd-detail-status-pill:not(:has(.gd-detail-status-label)) {
+.gd-history-card.gd-card-animating-in .gd-detail-status-pill:not(:has(.gd-detail-status-label)),
+.gd-history-card.is-revealed .gd-detail-status-label,
+.gd-history-card.is-revealed .gd-detail-status-pill:not(:has(.gd-detail-status-label)) {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.30s + var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 5. Risk Badge Icon: reveals FIRST from left */
-.gd-history-card.gd-card-animating-in .gd-risk-badge::before {
+.gd-history-card.gd-card-animating-in .gd-risk-badge::before,
+.gd-history-card.is-revealed .gd-risk-badge::before {
   animation: gd-status-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.40s + var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 6. Risk Badge Label: reveals from left AFTER the icon */
 .gd-history-card.gd-card-animating-in .gd-risk-badge-label,
-.gd-history-card.gd-card-animating-in .gd-risk-badge:not(:has(.gd-risk-badge-label)) {
+.gd-history-card.gd-card-animating-in .gd-risk-badge:not(:has(.gd-risk-badge-label)),
+.gd-history-card.is-revealed .gd-risk-badge-label,
+.gd-history-card.is-revealed .gd-risk-badge:not(:has(.gd-risk-badge-label)) {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.48s + var(--expand-idx, 0) * 0.16s) !important;
 }
 
 /* 7. Subheading Metadata (Hostname, Ward, Timestamp, Reviewer): slides in from left */
-.gd-history-card.gd-card-animating-in .gd-request-subheading {
+.gd-history-card.gd-card-animating-in .gd-request-subheading,
+.gd-history-card.is-revealed .gd-request-subheading {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.56s + var(--expand-idx, 0) * 0.16s) !important;
 }

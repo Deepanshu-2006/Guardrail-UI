@@ -903,7 +903,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
       const card = document.createElement('article');
       const statusClass = (req.status || ApprovalStatus.APPROVED).toLowerCase();
-      card.className = `gd-request-card gd-history-card status-${statusClass} ${isSelected ? 'selected is-opened' : ''} ${isBeyondLimit ? 'gd-card-collapsed' : ''}`;
+      card.className = `gd-request-card gd-history-card gd-scroll-reveal status-${statusClass} ${isSelected ? 'selected is-opened' : ''} ${isBeyondLimit ? 'gd-card-collapsed' : ''}`;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -1114,82 +1114,35 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
           expandScrollObserver = null;
         }
 
-        // In-place card visibility toggle: ZERO page rebuild, ZERO scroll jump!
         const cards = listPane.querySelectorAll('.gd-history-card');
         for (let i = 0; i < cards.length; i++) {
           if (i < newLimitNum) {
             cards[i].classList.remove('gd-card-collapsed');
             if (i >= 10 && !isCurrentlyExpanded) {
               const cardEl = cards[i] as HTMLElement;
+              cardEl.classList.remove('is-revealed');
               cardEl.classList.remove('gd-card-animating-in');
               if (typeof cardEl.style?.setProperty === 'function') {
                 cardEl.style.setProperty('--expand-idx', String(i - 10));
               } else if (cardEl.style) {
                 (cardEl.style as any)['--expand-idx'] = String(i - 10);
               }
-              // Force reflow and re-add animation class
-              try { void (cardEl as any)?.offsetHeight; } catch {}
-              cardEl.classList.add('gd-card-animating-in');
+              if ((listPane as any).__historyScrollObserver) {
+                try {
+                  (listPane as any).__historyScrollObserver.observe(cardEl);
+                } catch {}
+              }
             }
           } else {
             cards[i].classList.add('gd-card-collapsed');
+            cards[i].classList.remove('is-revealed');
             cards[i].classList.remove('gd-card-animating-in');
           }
         }
 
-        // Kinetic Scroll & Stagger Orchestration:
-        // As below-the-fold cards enter the scroll viewport, reveal with immediate mini-stagger
-        if (!isCurrentlyExpanded && typeof window !== 'undefined' && typeof IntersectionObserver !== 'undefined') {
-          const scrollParent = (listPane.closest && listPane.closest('.gd-content-body'))
-            || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') as HTMLElement | null : null);
-
-          if (scrollParent) {
-            try {
-              let batchIdx = 0;
-              let lastBatchTime = Date.now();
-              expandScrollObserver = new IntersectionObserver((entries, obs) => {
-                const now = Date.now();
-                if (now - lastBatchTime > 350) {
-                  batchIdx = 0;
-                }
-                lastBatchTime = now;
-
-                entries.forEach((entry) => {
-                  if (entry.isIntersecting) {
-                    const target = entry.target as HTMLElement;
-                    if (typeof target.style?.setProperty === 'function') {
-                      target.style.setProperty('--expand-idx', String(batchIdx++));
-                    }
-                    obs.unobserve(target);
-                  }
-                });
-              }, {
-                root: scrollParent,
-                threshold: 0.05,
-              });
-
-              for (let i = 10; i < cards.length; i++) {
-                expandScrollObserver.observe(cards[i]);
-              }
-            } catch {
-              // Ignore if observer setup fails
-            }
-          }
-        }
-
-        // Clean up temporary animation classes after stagger settles across all records
-        if (!isCurrentlyExpanded) {
-          expandAnimTimer = setTimeout(() => {
-            const currentCards = listPane.querySelectorAll('.gd-history-card');
-            for (let i = 10; i < currentCards.length; i++) {
-              currentCards[i].classList.remove('gd-card-animating-in');
-            }
-            if (expandScrollObserver) {
-              try { expandScrollObserver.disconnect(); } catch {}
-              expandScrollObserver = null;
-            }
-            expandAnimTimer = null;
-          }, 8500);
+        // Trigger immediate check for newly uncollapsed cards in viewport
+        if (!isCurrentlyExpanded && (listPane as any).__checkHistoryScroll) {
+          (listPane as any).__checkHistoryScroll();
         }
 
         const showingAllNow = newLimitNum >= total;
@@ -1259,5 +1212,136 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   section.appendChild(layout);
   section.appendChild(createNoticeBox());
 
+  // Attach scroll-reveal observation for history cards
+  setupHistoryScrollReveal(listPane);
+
   return section;
+}
+
+/**
+ * Sets up IntersectionObserver and scroll listeners for Decision Archive cards so they
+ * render and reveal with kinetic animation as the user scrolls down to them.
+ */
+function setupHistoryScrollReveal(container: HTMLElement): void {
+  const cards = container.querySelectorAll('.gd-history-card');
+  if (cards.length === 0) return;
+
+  if (typeof window === 'undefined') {
+    // In mock/test environments or SSR, immediately reveal
+    cards.forEach((el) => el.classList.add('is-revealed'));
+    return;
+  }
+
+  const getScrollContainer = (): HTMLElement | null => {
+    return (container.closest && container.closest('.gd-content-body'))
+      || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') as HTMLElement | null : null);
+  };
+
+  let batchIdx = 0;
+  let lastRevealTime = Date.now();
+
+  const revealCard = (card: HTMLElement) => {
+    if (card.classList.contains('is-revealed') || card.classList.contains('gd-card-collapsed')) return;
+    const now = Date.now();
+    if (now - lastRevealTime > 300) {
+      batchIdx = 0;
+    }
+    lastRevealTime = now;
+
+    if (typeof card.style?.setProperty === 'function') {
+      card.style.setProperty('--expand-idx', String(batchIdx++));
+    } else if (card.style) {
+      (card.style as any)['--expand-idx'] = String(batchIdx++);
+    }
+
+    card.classList.add('is-revealed');
+  };
+
+  const checkScroll = () => {
+    const scrollParent = getScrollContainer();
+    const parentBottom = scrollParent && typeof scrollParent.getBoundingClientRect === 'function'
+      ? scrollParent.getBoundingClientRect().bottom
+      : (typeof window !== 'undefined' ? window.innerHeight : 800);
+
+    const parentTop = scrollParent && typeof scrollParent.getBoundingClientRect === 'function'
+      ? scrollParent.getBoundingClientRect().top
+      : 0;
+
+    const allCards = container.querySelectorAll('.gd-history-card');
+    allCards.forEach((el) => {
+      const card = el as HTMLElement;
+      if (card.classList.contains('is-revealed') || card.classList.contains('gd-card-collapsed')) return;
+
+      if (typeof card.getBoundingClientRect === 'function') {
+        const rect = card.getBoundingClientRect();
+        if (rect.height === 0 && rect.width === 0) return;
+
+        // Card is within visible viewport area of the scroll container
+        if (rect.top < parentBottom + 30 && rect.bottom > parentTop - 30) {
+          revealCard(card);
+        }
+      }
+    });
+  };
+
+  (container as any).__checkHistoryScroll = checkScroll;
+
+  const init = () => {
+    const scrollParent = getScrollContainer();
+
+    if (scrollParent && typeof IntersectionObserver !== 'undefined') {
+      try {
+        const observer = new IntersectionObserver(
+          (entries, obs) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const target = entry.target as HTMLElement;
+                if (!target.classList.contains('gd-card-collapsed')) {
+                  revealCard(target);
+                  obs.unobserve(target);
+                }
+              }
+            });
+          },
+          {
+            root: scrollParent,
+            threshold: 0.05,
+            rootMargin: '20px 0px 40px 0px',
+          }
+        );
+
+        cards.forEach((card) => {
+          if (!card.classList.contains('is-revealed') && !card.classList.contains('gd-card-collapsed')) {
+            observer.observe(card);
+          }
+        });
+
+        (container as any).__historyScrollObserver = observer;
+      } catch {
+        // Fallback to checkScroll
+      }
+    }
+
+    if (scrollParent && typeof scrollParent.addEventListener === 'function') {
+      scrollParent.addEventListener('scroll', checkScroll, { passive: true });
+    }
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('scroll', checkScroll, { capture: true, passive: true });
+    }
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('scroll', checkScroll, { capture: true, passive: true });
+      window.addEventListener('resize', checkScroll, { passive: true });
+    }
+
+    // Initial check
+    checkScroll();
+    setTimeout(checkScroll, 100);
+    setTimeout(checkScroll, 300);
+  };
+
+  if (typeof requestAnimationFrame !== 'undefined') {
+    requestAnimationFrame(init);
+  } else {
+    setTimeout(init, 0);
+  }
 }
