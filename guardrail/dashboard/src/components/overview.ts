@@ -1103,69 +1103,96 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 }
 
 /**
- * Sets up IntersectionObserver for below-the-fold cards on the Overview page so they
+ * Sets up IntersectionObserver and scroll listeners for below-the-fold cards on the Overview page so they
  * render and reveal slowly one by one as the user scrolls to them.
  */
 function setupOverviewScrollReveal(container: HTMLElement): void {
   const revealCards = container.querySelectorAll('.gd-scroll-reveal');
   if (revealCards.length === 0) return;
 
-  if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+  if (typeof window === 'undefined') {
     // In mock/test environments or SSR, immediately reveal
     revealCards.forEach((el) => el.classList.add('is-revealed'));
     return;
   }
 
-  const scrollParent = (container.closest && container.closest('.gd-content-body'))
-    || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') : null);
+  const getScrollContainer = (): HTMLElement | null => {
+    return (container.closest && container.closest('.gd-content-body'))
+      || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') as HTMLElement | null : null);
+  };
 
-  const observer = new IntersectionObserver(
-    (entries, obs) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-revealed');
-          obs.unobserve(entry.target);
-        }
-      });
-    },
-    {
-      root: scrollParent as Element | null,
-      threshold: 0.05,
-      rootMargin: '0px 0px 40px 0px',
-    }
-  );
-
-  const checkPositions = () => {
+  const checkScroll = () => {
+    const scrollParent = getScrollContainer();
     const parentBottom = scrollParent && typeof scrollParent.getBoundingClientRect === 'function'
       ? scrollParent.getBoundingClientRect().bottom
       : (typeof window !== 'undefined' ? window.innerHeight : 800);
+
+    const parentTop = scrollParent && typeof scrollParent.getBoundingClientRect === 'function'
+      ? scrollParent.getBoundingClientRect().top
+      : 0;
 
     revealCards.forEach((el) => {
       if (el.classList.contains('is-revealed')) return;
       if (typeof el.getBoundingClientRect === 'function') {
         const rect = el.getBoundingClientRect();
-        if (rect.top <= parentBottom + 60) {
+        // Ignore unrendered/zero-dimension elements
+        if (rect.height === 0 && rect.width === 0) return;
+
+        // Card is within visible viewport area of the scroll parent
+        if (rect.top < parentBottom - 30 && rect.bottom > parentTop + 20) {
           el.classList.add('is-revealed');
-          observer.unobserve(el);
         }
       }
     });
   };
 
-  const register = () => {
-    revealCards.forEach((el) => observer.observe(el));
-    checkPositions();
+  const init = () => {
+    const scrollParent = getScrollContainer();
+
+    if (scrollParent && typeof IntersectionObserver !== 'undefined') {
+      try {
+        const observer = new IntersectionObserver(
+          (entries, obs) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-revealed');
+                obs.unobserve(entry.target);
+              }
+            });
+          },
+          {
+            root: scrollParent,
+            threshold: 0.05,
+            rootMargin: '0px 0px -30px 0px',
+          }
+        );
+        revealCards.forEach((el) => {
+          if (!el.classList.contains('is-revealed')) {
+            observer.observe(el);
+          }
+        });
+      } catch {
+        // Fallback to checkScroll if IntersectionObserver with root fails
+      }
+    }
+
     if (scrollParent && typeof scrollParent.addEventListener === 'function') {
-      scrollParent.addEventListener('scroll', checkPositions, { passive: true });
+      scrollParent.addEventListener('scroll', checkScroll, { passive: true });
+    }
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('scroll', checkScroll, { capture: true, passive: true });
     }
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('scroll', checkPositions, { passive: true });
+      window.addEventListener('scroll', checkScroll, { capture: true, passive: true });
+      window.addEventListener('resize', checkScroll, { passive: true });
     }
+
+    // Check once mounted, but only for cards that are truly in view initially
+    checkScroll();
+    setTimeout(checkScroll, 120);
+    setTimeout(checkScroll, 350);
   };
 
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(register);
-  } else {
-    setTimeout(register, 0);
-  }
+  // Allow shell to append container to .gd-content-body before binding
+  setTimeout(init, 50);
 }
