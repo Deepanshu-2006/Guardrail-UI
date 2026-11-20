@@ -1026,7 +1026,24 @@ export function renderOverview(props: OverviewProps): HTMLElement {
         ? 'Cancelled'
         : (req.status || 'Approved');
 
-      statusPill.textContent = statusText;
+      const statusIcon = req.status === ApprovalStatus.APPROVED
+        ? '✓'
+        : req.status === ApprovalStatus.REJECTED
+        ? '✕'
+        : '';
+
+      if (statusIcon) {
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'gd-activity-status-icon';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        iconSpan.textContent = statusIcon;
+        statusPill.appendChild(iconSpan);
+      }
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'gd-activity-status-label';
+      labelSpan.textContent = statusText;
+      statusPill.appendChild(labelSpan);
 
       item.appendChild(itemLeft);
       item.appendChild(statusPill);

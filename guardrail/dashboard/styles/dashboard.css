@@ -1044,6 +1044,24 @@ textarea:focus-visible,
   }
 }
 
+@keyframes gd-status-icon-enter-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-18px) scale(0.72) rotate(-8deg);
+    filter: blur(1.5px);
+  }
+  68% {
+    opacity: 1;
+    transform: translateX(1.5px) scale(1.08) rotate(1deg);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1) rotate(0deg);
+    filter: blur(0);
+  }
+}
+
 /* Base static state: crisp, inline, no animation once settled or on re-renders */
 .gd-section-title .gd-char {
   display: inline;
@@ -1192,6 +1210,7 @@ textarea:focus-visible,
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both;
 }
 
+/* Row 1 */
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1),
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-empty-state-card {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.02s both;
@@ -1199,32 +1218,71 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both;
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both;
 }
 
+/* Row 2 */
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.14s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.20s both;
 }
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both;
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.24s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both;
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.28s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both;
 }
 
+/* Row 3 */
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.38s both;
 }
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.42s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.58s both;
+}
+
+/* Row 4 */
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.56s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.60s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.64s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both;
+}
+
+/* Row 5 */
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.74s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.78s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.82s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.94s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-btn-view-all-history {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.56s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 2.06s both;
 }
 
 /* Overview: Right Column (Connect a Ward) */
@@ -1662,35 +1720,78 @@ textarea:focus-visible,
 #gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-text {
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
+/* Row 1 */
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
 }
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+
+/* Row 2 */
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
 }
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+}
+
+/* Row 3 */
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
+}
+
+/* Row 4 */
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both;
 }
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
+}
+
+/* Row 5 */
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
 }
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon {
+  animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both;
+}
+
 #gd-overview-recent-activity.is-revealed .gd-btn-view-all-history {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both;
 }
 
 /* 12. Connect a Ward Card (when scrolled to) */
@@ -2599,8 +2700,7 @@ textarea:focus-visible,
   color: #2D4C18 !important;
 }
 
-.gd-recent-activity-item .gd-detail-status-pill.approved::before,
-.gd-recent-activity-item .gd-activity-status-text.approved::before {
+.gd-recent-activity-item .gd-detail-status-pill.approved::before {
   content: "✓" !important;
   font-weight: 700 !important;
   font-size: 13px !important;
@@ -2612,12 +2712,39 @@ textarea:focus-visible,
   color: #8F2B2B !important;
 }
 
-.gd-recent-activity-item .gd-detail-status-pill.rejected::before,
-.gd-recent-activity-item .gd-activity-status-text.rejected::before {
+.gd-recent-activity-item .gd-detail-status-pill.rejected::before {
   content: "✕" !important;
   font-weight: 700 !important;
   font-size: 11px !important;
   color: #8F2B2B !important;
+}
+
+.gd-recent-activity-item .gd-activity-status-text::before {
+  content: none !important;
+}
+
+.gd-recent-activity-item .gd-activity-status-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.gd-recent-activity-item .gd-activity-status-text.approved .gd-activity-status-icon {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: #2D4C18 !important;
+}
+
+.gd-recent-activity-item .gd-activity-status-text.rejected .gd-activity-status-icon {
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  color: #8F2B2B !important;
+}
+
+.gd-recent-activity-item .gd-activity-status-label {
+  display: inline-block !important;
 }
 
 .gd-recent-activity-item .gd-detail-status-pill.expired,
