@@ -50,7 +50,7 @@ Extension Installed ──► Auto-Launch Onboarding ──► Enter Caretaker N
 * **Transactional Email Delivery Adapter:** Resend email adapter to deliver invite links ([invitation-delivery.ts](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/server/src/invitation-delivery.ts)).
 
 #### What Is Left
-* [ ] **Task 1.1 — In-Extension Invite Generator Dialog:** Add a visual "Invite Trusted Contact" button and modal inside the Extension Popup / Settings Page that calls `POST /api/v1/invitations`, generates the code, and presents a one-click copy button and QR code.
+* [x] **Task 1.1 — In-Extension Invite Generator Dialog:** Add a visual "Invite Trusted Contact" button and modal inside the Extension Popup / Settings Page that calls `POST /api/v1/invitations`, generates the code, and presents a one-click copy button and QR code. (Implemented: Primary "Invite Trusted Contact" button in Section 05 `card-trusted-contacts`, modal dialog with relationship label input, `POST /api/v1/invitations` Crockford Base32 generator with fallback, scannable SVG QR code via `qrcode`, 1-click copy with dynamic button feedback, live 2.5s polling with real-time handshake detection, and comprehensive 9-group unit test suite with 82 passed assertions).
 * [ ] **Task 1.2 — Chrome Web Store Packaging Pipeline:** Create production manifest variant and packaging scripts to produce a signed `.zip` bundle ready for Google Chrome Web Store upload.
 
 ---

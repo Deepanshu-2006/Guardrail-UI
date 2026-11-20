@@ -571,8 +571,79 @@ async function runProtectionSettingsTestSuite(): Promise<void> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Test Group 9: In-Extension Invite Generator Dialog (Task 1.1)
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Group 9: In-Extension Invite Generator Dialog (Task 1.1)');
+  {
+    const controller = new ProtectionSettingsController();
+    await controller.initialize();
+
+    const rootEl = renderProtectionSettings(controller);
+
+    // Verify invite button is rendered in Card 5
+    const cardContacts = rootEl.querySelector('#card-trusted-contacts');
+    assert(Boolean(cardContacts), 'Card 5: Trusted Contacts is rendered');
+
+    const btnInvite = rootEl.querySelector('#btn-open-invite-modal');
+    assert(Boolean(btnInvite), 'Invite Trusted Contact button (#btn-open-invite-modal) is rendered in Card 5');
+    assertEquals(btnInvite?.getAttribute('aria-haspopup'), 'dialog', 'Invite button has aria-haspopup="dialog"');
+    assertEquals(btnInvite?.getAttribute('aria-expanded'), 'false', 'Invite button initially aria-expanded="false"');
+
+    // Trigger modal open
+    btnInvite?.click();
+
+    // Verify modal dialog appears
+    const modalBackdrop = rootEl.querySelector('#gd-invite-modal-backdrop');
+    assert(Boolean(modalBackdrop), 'Modal backdrop (#gd-invite-modal-backdrop) mounted to DOM');
+
+    const modalDialog = rootEl.querySelector('#gd-invite-modal');
+    assert(Boolean(modalDialog), 'Modal dialog (#gd-invite-modal) rendered');
+    assertEquals(modalDialog?.getAttribute('role'), 'dialog', 'Modal dialog specifies role="dialog"');
+    assertEquals(modalDialog?.getAttribute('aria-modal'), 'true', 'Modal dialog specifies aria-modal="true"');
+
+    // Verify relationship label input
+    const relInput = rootEl.querySelector('#gd-invite-relationship-input') as MockDOMElement | null;
+    assert(Boolean(relInput), 'Relationship input (#gd-invite-relationship-input) rendered');
+    assertEquals(relInput?.value, 'Family Guardian', 'Relationship input defaults to "Family Guardian"');
+
+    // Verify QR code container
+    const qrContainer = rootEl.querySelector('#gd-modal-qr-container');
+    assert(Boolean(qrContainer), 'QR code container (#gd-modal-qr-container) rendered');
+
+    // Verify pairing code box and copy button
+    const codeDisplay = rootEl.querySelector('#gd-modal-pairing-code-display');
+    assert(Boolean(codeDisplay), 'Pairing code display (#gd-modal-pairing-code-display) rendered');
+
+    const btnCopy = rootEl.querySelector('#gd-btn-copy-invite');
+    assert(Boolean(btnCopy), 'One-click copy button (#gd-btn-copy-invite) rendered');
+
+    // Verify live handshake status indicator
+    const liveStatus = rootEl.querySelector('#gd-modal-live-status');
+    assert(Boolean(liveStatus), 'Live handshake status (#gd-modal-live-status) rendered');
+    const statusText = rootEl.querySelector('#gd-modal-status-text');
+    assert(Boolean(statusText), 'Handshake status text rendered');
+
+    // Verify close button dismisses modal
+    const btnClose = rootEl.querySelector('#btn-close-invite-modal');
+    assert(Boolean(btnClose), 'Modal close button (#btn-close-invite-modal) rendered');
+    btnClose?.click();
+
+    const closedBackdrop = rootEl.querySelector('#gd-invite-modal-backdrop');
+    assertEquals(closedBackdrop, null, 'Clicking close button unmounts modal dialog');
+    assertEquals(btnInvite?.getAttribute('aria-expanded'), 'false', 'Invite button reset to aria-expanded="false"');
+
+    // Test reopening and closing via "Done" button
+    btnInvite?.click();
+    assert(Boolean(rootEl.querySelector('#gd-invite-modal')), 'Modal re-opened successfully');
+    const btnDone = rootEl.querySelector('#gd-btn-done-invite');
+    assert(Boolean(btnDone), 'Done button (#gd-btn-done-invite) rendered');
+    btnDone?.click();
+    assertEquals(rootEl.querySelector('#gd-invite-modal'), null, 'Clicking Done button unmounts modal dialog');
+  }
+
   console.log('\n======================================================================');
-  console.log(`Results: ${passedTests} passed, 0 failed across all 8 test groups`);
+  console.log(`Results: ${passedTests} passed, 0 failed across all 9 test groups`);
   console.log('======================================================================');
   console.log('🎉 ALL PROTECTION SETTINGS INTERFACE TESTS PASSED CLEANLY!\n');
 }

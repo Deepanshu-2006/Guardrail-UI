@@ -37,6 +37,7 @@ import {
   savePolicyConfigToStorage,
 } from '../config/registry.js';
 import { resolveEnvironmentConfig } from '../config/environment.js';
+import { getStoredWardToken } from '../approval/auth-manager.js';
 import { evaluateProtectionStatus } from '../onboarding/state.js';
 import { ProtectionStatusReport } from '../onboarding/types.js';
 import {
@@ -312,6 +313,47 @@ export class ProtectionSettingsController {
    */
   public setTrustedContactCoverage(coverage: TrustedContactCoverage): void {
     this.updateState({ trustedContactCoverage: coverage });
+  }
+
+  /**
+   * Refreshes active trusted-contact relationship coverage from backend if reachable.
+   */
+  public async refreshTrustedContactCoverage(): Promise<TrustedContactCoverage> {
+    try {
+      const env = resolveEnvironmentConfig();
+      const token = await getStoredWardToken();
+      if (!token) return this.state.trustedContactCoverage;
+
+      if (typeof fetch === 'function') {
+        const res = await fetch(`${env.apiBaseUrl}/api/v1/trusted-contacts`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+          },
+        });
+        if (res.ok) {
+          const body = (await res.json()) as {
+            success: boolean;
+            data?: Array<{ id: string; relationshipLabel?: string }>;
+          };
+          if (body.success && Array.isArray(body.data)) {
+            const coverage: TrustedContactCoverage = {
+              hasActiveContact: body.data.length > 0,
+              activeContacts: body.data.map((c) => ({
+                id: c.id,
+                relationshipLabel: c.relationshipLabel,
+              })),
+            };
+            this.setTrustedContactCoverage(coverage);
+            return coverage;
+          }
+        }
+      }
+    } catch {
+      // offline or mock environment
+    }
+    return this.state.trustedContactCoverage;
   }
 
   /**
