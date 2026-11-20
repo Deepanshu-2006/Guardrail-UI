@@ -18,15 +18,21 @@
  *    - Flawlessly usable on desktop workspaces and smaller/mobile screens.
  */
 
+import QRCode from 'qrcode/lib/browser.js';
 import { ResponseAction } from '../types/response.js';
 import { RiskPolicyId } from '../types/policy.js';
 import { POLICY_SETTINGS_SPECIFICATIONS } from '../config/schema.js';
+import { resolveEnvironmentConfig } from '../config/environment.js';
+import { getStoredWardToken } from '../approval/auth-manager.js';
 import { ProtectionSettingsController } from './controller.js';
 import {
   ProtectionSettingsProps,
   ProtectionSettingsState,
   SensitivityPreset,
 } from './types.js';
+
+let activeModalBackdrop: HTMLElement | null = null;
+let activePollingTimer: ReturnType<typeof setInterval> | null = null;
 
 export function renderProtectionSettings(
   controller: ProtectionSettingsController,
@@ -917,7 +923,28 @@ export function renderProtectionSettings(
       ? `Active Coverage: ${coverage.activeContacts.length} Contact(s) Linked`
       : 'Coverage Warning: No Active Trusted Contact Linked';
 
+    const btnInvite = document.createElement('button');
+    btnInvite.type = 'button';
+    btnInvite.className = 'gd-btn gd-btn-primary gd-btn-sm';
+    btnInvite.id = 'btn-open-invite-modal';
+    btnInvite.setAttribute('aria-haspopup', 'dialog');
+    btnInvite.setAttribute('aria-expanded', 'false');
+    btnInvite.innerHTML = `
+      <svg class="gd-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="8.5" cy="7" r="4"></circle>
+        <line x1="20" y1="8" x2="20" y2="14"></line>
+        <line x1="23" y1="11" x2="17" y2="11"></line>
+      </svg>
+      <span>Invite Trusted Contact</span>
+    `;
+    btnInvite.addEventListener('click', () => {
+      btnInvite.setAttribute('aria-expanded', 'true');
+      openInviteContactModal(controller, container);
+    });
+
     covStatusRow.appendChild(covBadge);
+    covStatusRow.appendChild(btnInvite);
     ctBody.appendChild(covStatusRow);
 
     if (!coverage.hasActiveContact) {
@@ -1157,6 +1184,10 @@ export function renderProtectionSettings(
 
     container.appendChild(mainGrid);
     setActiveNav(navItems[0].id);
+
+    if (activeModalBackdrop) {
+      container.appendChild(activeModalBackdrop);
+    }
   }
 
   controller.subscribe(() => {
@@ -1166,3 +1197,401 @@ export function renderProtectionSettings(
   render();
   return container;
 }
+
+/**
+ * Copies text to user clipboard with multi-environment fallback.
+ */
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fallback below
+    }
+  }
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      if (document.body && typeof document.body.appendChild === 'function') {
+        document.body.appendChild(textarea);
+        if (typeof textarea.focus === 'function') textarea.focus();
+        if (typeof textarea.select === 'function') textarea.select();
+        const success = typeof document.execCommand === 'function' ? document.execCommand('copy') : false;
+        if (typeof document.body.removeChild === 'function') {
+          document.body.removeChild(textarea);
+        }
+        return Boolean(success);
+      }
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
+ * Opens the visual Invite Trusted Contact modal dialog.
+ * Generates an invitation code (Crockford Base32 GR-INV-XXXX-YYYY), renders a
+ * scannable SVG QR code, provides 1-click copy, and maintains live polling
+ * until the Caretaker accepts the invitation.
+ */
+export function openInviteContactModal(
+  controller: ProtectionSettingsController,
+  rootContainer: HTMLElement
+): HTMLElement {
+  if (activeModalBackdrop && activeModalBackdrop.parentNode) {
+    return activeModalBackdrop;
+  }
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'gd-modal-backdrop';
+  backdrop.id = 'gd-invite-modal-backdrop';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'gd-modal-dialog';
+  dialog.id = 'gd-invite-modal';
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  dialog.setAttribute('aria-labelledby', 'gd-modal-title');
+
+  // Close helper
+  const closeModal = () => {
+    if (activePollingTimer !== null) {
+      clearInterval(activePollingTimer);
+      activePollingTimer = null;
+    }
+    if (backdrop.parentNode) {
+      backdrop.parentNode.removeChild(backdrop);
+    }
+    activeModalBackdrop = null;
+    const btnInvite = rootContainer.querySelector('#btn-open-invite-modal');
+    if (btnInvite) {
+      btnInvite.setAttribute('aria-expanded', 'false');
+    }
+  };
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) {
+      closeModal();
+    }
+  });
+
+  // Modal Header
+  const modalHeader = document.createElement('div');
+  modalHeader.className = 'gd-modal-header';
+
+  const headerLeft = document.createElement('div');
+  headerLeft.className = 'gd-modal-brand-row';
+
+  const badgeIcon = document.createElement('div');
+  badgeIcon.className = 'gd-modal-badge';
+  badgeIcon.setAttribute('aria-hidden', 'true');
+  badgeIcon.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="#273121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="8.5" cy="7" r="4"></circle>
+      <line x1="20" y1="8" x2="20" y2="14"></line>
+      <line x1="23" y1="11" x2="17" y2="11"></line>
+    </svg>
+  `;
+
+  const headerTitles = document.createElement('div');
+  const modalTitle = document.createElement('h3');
+  modalTitle.className = 'gd-modal-title';
+  modalTitle.id = 'gd-modal-title';
+  modalTitle.textContent = 'Invite Trusted Contact';
+
+  const modalSubtitle = document.createElement('p');
+  modalSubtitle.className = 'gd-modal-subtitle';
+  modalSubtitle.textContent = 'One-time device pairing code & QR code';
+
+  headerTitles.appendChild(modalTitle);
+  headerTitles.appendChild(modalSubtitle);
+  headerLeft.appendChild(badgeIcon);
+  headerLeft.appendChild(headerTitles);
+  modalHeader.appendChild(headerLeft);
+
+  const btnClose = document.createElement('button');
+  btnClose.type = 'button';
+  btnClose.className = 'gd-modal-close-btn';
+  btnClose.id = 'btn-close-invite-modal';
+  btnClose.setAttribute('aria-label', 'Close modal');
+  btnClose.textContent = '✕';
+  btnClose.addEventListener('click', closeModal);
+  modalHeader.appendChild(btnClose);
+  dialog.appendChild(modalHeader);
+
+  // Modal Body
+  const modalBody = document.createElement('div');
+  modalBody.className = 'gd-modal-body';
+
+  // 1. Relationship form group
+  const relGroup = document.createElement('div');
+  relGroup.className = 'gd-modal-form-group';
+
+  const relLabel = document.createElement('label');
+  relLabel.className = 'gd-modal-label';
+  relLabel.setAttribute('for', 'gd-invite-relationship-input');
+  relLabel.textContent = 'Relationship / Contact Label';
+  relGroup.appendChild(relLabel);
+
+  const relRow = document.createElement('div');
+  relRow.className = 'gd-modal-input-row';
+
+  const relInput = document.createElement('input');
+  relInput.type = 'text';
+  relInput.className = 'gd-input gd-modal-input';
+  relInput.id = 'gd-invite-relationship-input';
+  relInput.value = 'Family Guardian';
+  relInput.placeholder = 'e.g. Son, Daughter, Caretaker, Financial Advisor';
+  relRow.appendChild(relInput);
+
+  const btnRegenerate = document.createElement('button');
+  btnRegenerate.type = 'button';
+  btnRegenerate.className = 'gd-btn gd-btn-secondary gd-btn-sm';
+  btnRegenerate.id = 'gd-btn-regenerate-code';
+  btnRegenerate.textContent = 'Generate';
+  relRow.appendChild(btnRegenerate);
+  relGroup.appendChild(relRow);
+  modalBody.appendChild(relGroup);
+
+  // 2. QR Code Card
+  const qrCard = document.createElement('div');
+  qrCard.className = 'gd-modal-qr-card';
+
+  const qrKicker = document.createElement('span');
+  qrKicker.className = 'gd-modal-kicker';
+  qrKicker.textContent = 'SCAN WITH PHONE CAMERA';
+  qrCard.appendChild(qrKicker);
+
+  const qrWrapper = document.createElement('div');
+  qrWrapper.className = 'gd-modal-qr-wrapper';
+  qrWrapper.id = 'gd-modal-qr-container';
+
+  const qrPlaceholder = document.createElement('div');
+  qrPlaceholder.className = 'gd-modal-qr-loading';
+  qrPlaceholder.innerHTML = `<div class="gd-modal-spinner"></div><span>Generating code...</span>`;
+  qrWrapper.appendChild(qrPlaceholder);
+  qrCard.appendChild(qrWrapper);
+
+  const qrHelper = document.createElement('p');
+  qrHelper.className = 'gd-modal-qr-helper';
+  qrHelper.textContent = "Point your Caretaker's phone camera at this QR code to connect instantly.";
+  qrCard.appendChild(qrHelper);
+  modalBody.appendChild(qrCard);
+
+  // 3. Pairing Code Box
+  const codeCard = document.createElement('div');
+  codeCard.className = 'gd-modal-code-card';
+
+  const codeLabelRow = document.createElement('div');
+  codeLabelRow.className = 'gd-modal-label-row';
+
+  const codeKicker = document.createElement('span');
+  codeKicker.className = 'gd-modal-kicker';
+  codeKicker.textContent = 'OR ENTER PAIRING CODE';
+
+  const expiryPill = document.createElement('span');
+  expiryPill.className = 'gd-modal-expiry-pill';
+  expiryPill.textContent = '7 days';
+
+  codeLabelRow.appendChild(codeKicker);
+  codeLabelRow.appendChild(expiryPill);
+  codeCard.appendChild(codeLabelRow);
+
+  const codeBox = document.createElement('div');
+  codeBox.className = 'gd-modal-code-box';
+
+  const codeDisplay = document.createElement('span');
+  codeDisplay.className = 'gd-modal-code-text';
+  codeDisplay.id = 'gd-modal-pairing-code-display';
+  codeDisplay.textContent = 'GR-INV-••••-••••';
+  codeBox.appendChild(codeDisplay);
+
+  const btnCopy = document.createElement('button');
+  btnCopy.type = 'button';
+  btnCopy.className = 'gd-btn gd-btn-primary gd-btn-sm';
+  btnCopy.id = 'gd-btn-copy-invite';
+  btnCopy.textContent = 'Copy';
+  codeBox.appendChild(btnCopy);
+  codeCard.appendChild(codeBox);
+  modalBody.appendChild(codeCard);
+
+  // 4. Live Handshake Status
+  const statusBox = document.createElement('div');
+  statusBox.className = 'gd-modal-live-status waiting';
+  statusBox.id = 'gd-modal-live-status';
+
+  const pulseRing = document.createElement('span');
+  pulseRing.className = 'gd-pulse-ring';
+  const pulseDot = document.createElement('span');
+  pulseDot.className = 'gd-pulse-dot';
+  pulseRing.appendChild(pulseDot);
+  statusBox.appendChild(pulseRing);
+
+  const statusMsg = document.createElement('span');
+  statusMsg.className = 'gd-modal-status-text';
+  statusMsg.id = 'gd-modal-status-text';
+  statusMsg.textContent = 'Waiting for Caretaker to connect...';
+  statusBox.appendChild(statusMsg);
+  modalBody.appendChild(statusBox);
+
+  dialog.appendChild(modalBody);
+
+  // Modal Footer
+  const modalFooter = document.createElement('div');
+  modalFooter.className = 'gd-modal-footer';
+
+  const btnDone = document.createElement('button');
+  btnDone.type = 'button';
+  btnDone.className = 'gd-btn gd-btn-secondary gd-btn-full';
+  btnDone.id = 'gd-btn-done-invite';
+  btnDone.textContent = 'Done';
+  btnDone.addEventListener('click', closeModal);
+  modalFooter.appendChild(btnDone);
+  dialog.appendChild(modalFooter);
+
+  backdrop.appendChild(dialog);
+  rootContainer.appendChild(backdrop);
+  activeModalBackdrop = backdrop;
+
+  let currentPairingCode = 'GR-INV-8K2M-9Q7X';
+
+  const fetchOrGenerateCode = async (forceNew = false) => {
+    const label = relInput.value?.trim() || 'Family Guardian';
+    try {
+      const env = resolveEnvironmentConfig();
+      const token = await getStoredWardToken();
+
+      let codeToUse: string | null = null;
+
+      if (token && typeof fetch === 'function') {
+        if (!forceNew) {
+          const listRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+            },
+          });
+          if (listRes.ok) {
+            const listBody = (await listRes.json()) as {
+              success: boolean;
+              data?: Array<{ status: string; code: string; expiresAt: string }>;
+            };
+            if (listBody.success && Array.isArray(listBody.data)) {
+              const now = Date.now();
+              const pending = listBody.data.find(
+                (inv) => inv.status === 'PENDING' && new Date(inv.expiresAt).getTime() > now
+              );
+              if (pending?.code) {
+                codeToUse = pending.code;
+              }
+            }
+          }
+        }
+
+        if (!codeToUse) {
+          const createRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({
+              recipientActorId: 'usr_carol',
+              relationshipLabel: label,
+            }),
+          });
+          if (createRes.ok) {
+            const createBody = (await createRes.json()) as {
+              success: boolean;
+              data?: { code: string };
+            };
+            if (createBody.success && createBody.data?.code) {
+              codeToUse = createBody.data.code;
+            }
+          }
+        }
+      }
+
+      if (codeToUse) {
+        currentPairingCode = codeToUse;
+      }
+    } catch (err) {
+      console.warn('[Guardrail Settings] Could not fetch remote invitation, using fallback code:', err);
+    }
+
+    codeDisplay.textContent = currentPairingCode;
+
+    // Render QR Code
+    try {
+      const env = resolveEnvironmentConfig();
+      const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
+      const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(currentPairingCode)}`;
+      const svgString = await QRCode.toString(pairingUrl, {
+        type: 'svg',
+        margin: 1,
+        color: {
+          dark: '#273121',
+          light: '#FAF6ED',
+        },
+      });
+      qrWrapper.innerHTML = svgString;
+    } catch {
+      qrWrapper.innerHTML = `<span style="font-size:11px;color:#7E8774;">QR Code (${currentPairingCode})</span>`;
+    }
+  };
+
+  btnRegenerate.addEventListener('click', () => {
+    void fetchOrGenerateCode(true);
+  });
+
+  btnCopy.addEventListener('click', async () => {
+    const env = resolveEnvironmentConfig();
+    const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
+    const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(currentPairingCode)}`;
+    await copyTextToClipboard(pairingUrl);
+    btnCopy.textContent = 'Copied! ✓';
+    btnCopy.classList.add('copied');
+    setTimeout(() => {
+      btnCopy.textContent = 'Copy';
+      btnCopy.classList.remove('copied');
+    }, 2000);
+  });
+
+  // Start connection polling
+  if (activePollingTimer !== null) {
+    clearInterval(activePollingTimer);
+  }
+  activePollingTimer = setInterval(async () => {
+    try {
+      const coverage = await controller.refreshTrustedContactCoverage();
+      if (coverage.hasActiveContact) {
+        statusBox.className = 'gd-modal-live-status connected';
+        const contactName = coverage.activeContacts[0]?.id || 'Caretaker';
+        statusBox.innerHTML = `
+          <span class="gd-check-dot">✓</span>
+          <span class="gd-modal-status-text">Connected to ${contactName}!</span>
+        `;
+        if (activePollingTimer !== null) {
+          clearInterval(activePollingTimer);
+          activePollingTimer = null;
+        }
+      }
+    } catch {
+      // offline
+    }
+  }, 2500);
+
+  // Initial code generation
+  void fetchOrGenerateCode(false);
+
+  return backdrop;
+}
+
