@@ -356,7 +356,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   // SECTION D: PENDING APPROVAL REQUESTS
   // =========================================================================
   const pendingSection = document.createElement('div');
-  pendingSection.className = 'gd-card gd-overview-pending-section';
+  pendingSection.className = 'gd-card gd-overview-pending-section gd-scroll-reveal';
   pendingSection.id = 'gd-overview-pending-section';
 
   const pendingSecHeader = document.createElement('div');
@@ -533,7 +533,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   // =========================================================================
   if (!props.profile?.assignedWardId) {
     const setupCard = document.createElement('div');
-    setupCard.className = 'gd-card gd-setup-card';
+    setupCard.className = 'gd-card gd-setup-card gd-scroll-reveal';
     setupCard.id = 'gd-setup-card';
 
     const setupHeader = document.createElement('div');
@@ -685,7 +685,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   } else {
     // Linked State: Active Ward Association Card
     const wardCard = document.createElement('div');
-    wardCard.className = 'gd-card gd-active-ward-card';
+    wardCard.className = 'gd-card gd-active-ward-card gd-scroll-reveal';
     wardCard.id = 'gd-active-ward-card';
 
     const wardTitle = document.createElement('h2');
@@ -824,8 +824,8 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   // SECTION F: DECOUPLED EXECUTION ARCHITECTURE (Compact Note)
   // =========================================================================
   const callout = document.createElement('div');
-  callout.className = 'gd-callout';
-  callout.setAttribute('role', 'note');
+  callout.className = 'gd-callout gd-scroll-reveal';
+  callout.id = 'gd-overview-callout';
 
   const calloutIcon = document.createElement('div');
   calloutIcon.className = 'gd-callout-icon';
@@ -853,7 +853,8 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   // SECTION G: RECENT ACTIVITY
   // =========================================================================
   const activitySection = document.createElement('div');
-  activitySection.className = 'gd-card gd-recent-activity-card';
+  activitySection.className = 'gd-card gd-recent-activity-card gd-scroll-reveal';
+  activitySection.id = 'gd-overview-recent-activity';
 
   const activityHeader = document.createElement('div');
   activityHeader.className = 'gd-recent-activity-header';
@@ -1079,5 +1080,47 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   mainGrid.appendChild(colSecondary);
   section.appendChild(mainGrid);
 
+  setupOverviewScrollReveal(section);
+
   return section;
+}
+
+/**
+ * Sets up IntersectionObserver for below-the-fold cards on the Overview page so they
+ * render and reveal slowly one by one as the user scrolls to them.
+ */
+function setupOverviewScrollReveal(container: HTMLElement): void {
+  const revealCards = container.querySelectorAll('.gd-scroll-reveal');
+  if (revealCards.length === 0) return;
+
+  if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+    // In mock/test environments or SSR, immediately reveal
+    revealCards.forEach((el) => el.classList.add('is-revealed'));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          obs.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.08,
+      rootMargin: '0px 0px -20px 0px',
+    }
+  );
+
+  const register = () => {
+    revealCards.forEach((el) => observer.observe(el));
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(register);
+  } else {
+    setTimeout(register, 0);
+  }
 }

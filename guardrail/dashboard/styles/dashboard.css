@@ -1598,6 +1598,139 @@ textarea:focus-visible,
   animation: gd-icon-svg-gleam 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.29s both;
 }
 
+/* -----------------------------------------------------------------------------
+   Overview View: Scroll-Triggered Reveal for Below-The-Fold Sections
+   ----------------------------------------------------------------------------- */
+
+/* 10. Overview Pending Approvals Section (when scrolled to) */
+#gd-overview-pending-section.is-revealed .gd-overview-pending-header {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-icon {
+  animation: gd-icon-enter-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-icon svg {
+  animation: gd-icon-svg-gleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-title {
+  animation: gd-text-reveal-left 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-text {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) .gd-risk-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) .gd-overview-pending-desc {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) .gd-risk-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) .gd-overview-pending-desc {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) .gd-risk-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) .gd-overview-pending-desc {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both;
+}
+
+/* 11. Overview Recent Decisions / Activity (when scrolled to) */
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-header {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-icon {
+  animation: gd-icon-enter-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-icon svg {
+  animation: gd-icon-svg-gleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-title {
+  animation: gd-text-reveal-left 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-text {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
+}
+#gd-overview-recent-activity.is-revealed .gd-btn-view-all-history {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
+}
+
+/* 12. Connect a Ward Card (when scrolled to) */
+#gd-setup-card.is-revealed .gd-setup-header {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-number {
+  animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-text {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-number {
+  animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+}
+#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-text {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+}
+#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-number {
+  animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-text {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+#gd-setup-card.is-revealed .gd-setup-form {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
+}
+
+#gd-active-ward-card.is-revealed {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+
+/* 13. Decoupled Architecture Callout (when scrolled to) */
+#gd-overview-callout.is-revealed .gd-callout-title {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+#gd-overview-callout.is-revealed .gd-callout-text {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-search-input-wrap,
   .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap,
