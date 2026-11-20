@@ -527,56 +527,38 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   section.appendChild(backendCard);
 
-  // Card 3: Safety Invariants & Zero-Trust Guarantees (Editorial Architecture Grid)
+  // Card 3: Safety & Governance Architecture Invariants (Refined Verified Pills)
   const invariantsCard = document.createElement('div');
   invariantsCard.className = 'gd-card gd-settings-card';
-
-  const invHeader = document.createElement('div');
-  invHeader.className = 'gd-settings-card-header';
 
   const invTitle = document.createElement('h2');
   invTitle.className = 'gd-section-title';
   invTitle.textContent = 'Safety Invariants & Zero-Trust Guarantees';
+  invariantsCard.appendChild(invTitle);
 
-  const invBadge = document.createElement('span');
-  invBadge.className = 'gd-settings-badge gd-badge-active';
-  invBadge.textContent = 'Enforced at Runtime';
+  const invList = document.createElement('div');
+  invList.className = 'gd-settings-invariants-chips';
 
-  invHeader.appendChild(invTitle);
-  invHeader.appendChild(invBadge);
-  invariantsCard.appendChild(invHeader);
-
-  const invGrid = document.createElement('div');
-  invGrid.className = 'gd-invariants-editorial-grid';
-
-  const addInvariantItem = (indexText: string, titleText: string, metricText: string) => {
-    const col = document.createElement('div');
-    col.className = 'gd-invariant-col';
-
-    const idx = document.createElement('span');
-    idx.className = 'gd-invariant-index';
-    idx.textContent = indexText;
-
-    const heading = document.createElement('h3');
-    heading.className = 'gd-invariant-name';
-    heading.textContent = titleText;
-
-    const metric = document.createElement('span');
-    metric.className = 'gd-invariant-metric';
-    metric.textContent = metricText;
-
-    col.appendChild(idx);
-    col.appendChild(heading);
-    col.appendChild(metric);
-    invGrid.appendChild(col);
+  const addInvariantPill = (titleText: string) => {
+    const pill = document.createElement('div');
+    pill.className = 'gd-settings-invariant-chip';
+    pill.innerHTML = `
+      <span class="gd-invariant-pill-icon" aria-hidden="true">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 7.5 5.5 10 11 4.5"></polyline>
+        </svg>
+      </span>
+      <span class="gd-invariant-pill-label">${titleText}</span>
+    `;
+    invList.appendChild(pill);
   };
 
-  addInvariantItem('01 · ARCHITECTURE', 'Decoupled Action Execution', 'Server Consent Only');
-  addInvariantItem('02 · BOUNDARY', 'Strict Multi-Tenant Boundary', 'Isolated Ward Scope');
-  addInvariantItem('03 · PRIVACY', 'Zero-Trust Data Scrubbing', 'Pre-Ingest Redaction');
-  addInvariantItem('04 · AUTHORITY', 'Ward Policy Authority Separation', 'Sovereign Rules');
+  addInvariantPill('Decoupled Action Execution');
+  addInvariantPill('Strict Multi-Tenant Boundary');
+  addInvariantPill('Zero-Trust Data Scrubbing');
+  addInvariantPill('Ward Policy Authority Separation');
 
-  invariantsCard.appendChild(invGrid);
+  invariantsCard.appendChild(invList);
   section.appendChild(invariantsCard);
 
   // Card 4: Session Management (Minimal)

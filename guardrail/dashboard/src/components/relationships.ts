@@ -186,7 +186,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     empIcon.className = 'gd-placeholder-icon';
     empIcon.setAttribute('aria-hidden', 'true');
     empIcon.innerHTML = `
-      <svg class="gd-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
         <circle cx="9" cy="7" r="4"></circle>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -194,12 +194,22 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       </svg>
     `;
 
+    const empBody = document.createElement('div');
+    empBody.className = 'gd-relationships-empty-body';
+
     const empTitle = document.createElement('h3');
     empTitle.className = 'gd-placeholder-title';
     empTitle.textContent = 'No Connected Users or Contacts';
 
+    const empDesc = document.createElement('p');
+    empDesc.className = 'gd-placeholder-text';
+    empDesc.textContent = 'No active trusted-contact relationships are linked to this profile.';
+
+    empBody.appendChild(empTitle);
+    empBody.appendChild(empDesc);
+
     emptyEl.appendChild(empIcon);
-    emptyEl.appendChild(empTitle);
+    emptyEl.appendChild(empBody);
     usersCard.appendChild(emptyEl);
   } else {
     // List container
@@ -516,18 +526,28 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     empIcon.className = 'gd-placeholder-icon';
     empIcon.setAttribute('aria-hidden', 'true');
     empIcon.innerHTML = `
-      <svg class="gd-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
         <polyline points="22,6 12,13 2,6"></polyline>
       </svg>
     `;
 
+    const empBody = document.createElement('div');
+    empBody.className = 'gd-relationships-empty-body';
+
     const empTitle = document.createElement('h3');
     empTitle.className = 'gd-placeholder-title';
     empTitle.textContent = 'No Invitations Issued';
 
+    const empDesc = document.createElement('p');
+    empDesc.className = 'gd-placeholder-text';
+    empDesc.textContent = 'Generate a secure pairing code below to invite a designated contact.';
+
+    empBody.appendChild(empTitle);
+    empBody.appendChild(empDesc);
+
     emptyEl.appendChild(empIcon);
-    emptyEl.appendChild(empTitle);
+    emptyEl.appendChild(empBody);
     invitesCard.appendChild(emptyEl);
   } else {
     // List of Invitations
