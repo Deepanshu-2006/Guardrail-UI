@@ -72,7 +72,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent =
-    'Manage your trusted contact profile, connected wards, and security preferences.';
+    'Profile, connections, and system preferences.';
 
   header.appendChild(title);
   header.appendChild(subtitle);
@@ -141,13 +141,6 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   );
 
   identityCard.appendChild(idGrid);
-
-  const tenantNotice = document.createElement('p');
-  tenantNotice.className = 'gd-settings-notice';
-  tenantNotice.textContent =
-    'Scoped to your designated ward. Other accounts and browser sessions are strictly isolated.';
-  identityCard.appendChild(tenantNotice);
-
   section.appendChild(identityCard);
 
   // Card 2: Trusted Contacts & Connected Users Lifecycle Management
@@ -507,8 +500,6 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   addBackendItem('API Endpoint', originVal, true);
   addBackendItem('Deployment Environment', (props.environment ?? 'development').toUpperCase());
-  addBackendItem('Architecture', props.isMockService ? 'Development Fixture' : 'Pilot Backend');
-  addBackendItem('Polling Cadence', `${(props.pollIntervalMs ?? 10000) / 1000}s interval (auto-pauses in background)`);
   addBackendItem('Last Synchronized', formatLastSync(props.lastSynchronizedAt));
 
   backendCard.appendChild(backendGrid);
@@ -524,7 +515,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
       <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
       </svg>
-      <span>Test Connection & Sync Now</span>
+      <span>Sync Now</span>
     `;
     syncBtn.addEventListener('click', () => {
       props.onRefresh?.();
@@ -536,7 +527,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   section.appendChild(backendCard);
 
-  // Card 3: Safety & Governance Architecture Invariants
+  // Card 3: Safety Invariants & Zero-Trust Guarantees (Minimal Chip Row)
   const invariantsCard = document.createElement('div');
   invariantsCard.className = 'gd-card gd-settings-card';
 
@@ -545,56 +536,34 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   invTitle.textContent = 'Safety Invariants & Zero-Trust Guarantees';
   invariantsCard.appendChild(invTitle);
 
-  const invList = document.createElement('ul');
-  invList.className = 'gd-settings-invariants-list';
+  const invList = document.createElement('div');
+  invList.className = 'gd-settings-invariants-chips';
 
-  const addInvariant = (titleText: string, bodyText: string) => {
-    const li = document.createElement('li');
-    li.className = 'gd-settings-invariant-item';
-
-    const strong = document.createElement('strong');
-    strong.textContent = titleText + ': ';
-
-    const span = document.createElement('span');
-    span.textContent = bodyText;
-
-    li.appendChild(strong);
-    li.appendChild(span);
-    invList.appendChild(li);
+  const addInvariantChip = (titleText: string) => {
+    const chip = document.createElement('div');
+    chip.className = 'gd-settings-invariant-chip';
+    chip.innerHTML = `
+      <svg class="gd-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>${titleText}</span>
+    `;
+    invList.appendChild(chip);
   };
 
-  addInvariant(
-    'Decoupled Action Execution',
-    'Approving records server consent, but never automatically executes actions in the browser.'
-  );
-  addInvariant(
-    'Strict Multi-Tenant Boundary',
-    'Access is authenticated and restricted solely to your assigned ward.'
-  );
-  addInvariant(
-    'Zero-Trust Data Scrubbing',
-    'Credentials, payment cards, and authentication tokens are scrubbed before reaching this dashboard.'
-  );
-  addInvariant(
-    'Ward Policy Authority Separation',
-    'Protection policies are set by the protected user; trusted contacts cannot alter security rules.'
-  );
+  addInvariantChip('Decoupled Action Execution');
+  addInvariantChip('Strict Multi-Tenant Boundary');
+  addInvariantChip('Zero-Trust Data Scrubbing');
+  addInvariantChip('Ward Policy Authority Separation');
 
   invariantsCard.appendChild(invList);
   section.appendChild(invariantsCard);
 
-  // Card 4: Session Management
+  // Card 4: Session Management (Minimal)
   const sessionCard = document.createElement('div');
-  sessionCard.className = 'gd-card gd-settings-card';
+  sessionCard.className = 'gd-card gd-settings-card gd-session-card';
 
   const sessTitle = document.createElement('h2');
   sessTitle.className = 'gd-section-title';
   sessTitle.textContent = 'Session Management';
-
-  const sessDesc = document.createElement('p');
-  sessDesc.className = 'gd-settings-desc';
-  sessDesc.textContent =
-    'Sign out or disconnect this browser from your current profile.';
 
   const sessActions = document.createElement('div');
   sessActions.className = 'gd-settings-action-row';
@@ -603,14 +572,13 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   clearBtn.type = 'button';
   clearBtn.className = 'gd-btn-clear-session';
   clearBtn.id = 'gd-btn-clear-session';
-  clearBtn.textContent = 'Clear Session / Sign Out';
+  clearBtn.textContent = 'Sign out';
   clearBtn.addEventListener('click', () => {
     props.onClearSession?.();
   });
 
   sessActions.appendChild(clearBtn);
   sessionCard.appendChild(sessTitle);
-  sessionCard.appendChild(sessDesc);
   sessionCard.appendChild(sessActions);
   section.appendChild(sessionCard);
 

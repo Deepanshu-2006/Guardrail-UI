@@ -5367,7 +5367,7 @@ article.gd-card-collapsed,
 }
 
 .gd-empty-state {
-  padding: 32px 20px;
+  padding: 44px 20px 32px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -5378,7 +5378,7 @@ article.gd-card-collapsed,
   border-radius: 0 !important;
   box-shadow: none !important;
   gap: 10px;
-  max-width: 480px;
+  max-width: 500px;
   margin: 0 auto;
 }
 
@@ -5388,39 +5388,45 @@ article.gd-card-collapsed,
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  color: var(--gd-deep-olive, #273121);
+  color: var(--gd-accent-olive, #54683E);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .gd-empty-icon svg,
 .gd-empty-icon-svg {
   width: 32px;
   height: 32px;
-  stroke: var(--gd-deep-olive, #273121);
-  opacity: 0.8;
+  stroke: var(--gd-accent-olive, #54683E);
+  stroke-width: 1.6;
+  opacity: 0.9;
 }
 
-.gd-empty-title {
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--gd-deep-olive, #273121);
-  margin: 0;
-  line-height: 1.25;
+.gd-empty-title,
+.gd-empty-state .gd-placeholder-title,
+.gd-list-pane .gd-empty-state .gd-placeholder-title {
+  font-family: var(--gd-font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+  color: var(--gd-deep-olive, #273121) !important;
+  margin: 0 !important;
+  line-height: 1.25 !important;
 }
 
-.gd-empty-desc {
-  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
-  font-size: 14px;
-  font-weight: 450;
-  color: var(--gd-text-secondary, #5F6656);
-  max-width: 420px;
-  margin: 0 auto;
-  line-height: 1.5;
+.gd-empty-desc,
+.gd-empty-state .gd-placeholder-text,
+.gd-list-pane .gd-empty-state .gd-placeholder-text {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  font-size: 14.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--gd-text-secondary, #5F6656) !important;
+  max-width: 440px !important;
+  margin: 0 auto !important;
+  line-height: 1.55 !important;
 }
 
 .gd-history-card {
@@ -7361,7 +7367,7 @@ article.gd-card-collapsed,
 }
 
 .gd-detail-pane .gd-placeholder-title,
-.gd-list-pane .gd-placeholder-title {
+.gd-list-pane .gd-placeholder:not(.gd-empty-state) .gd-placeholder-title {
   font-family: var(--gd-font-display);
   font-size: 18px;
   font-weight: 700;
@@ -7371,7 +7377,7 @@ article.gd-card-collapsed,
 }
 
 .gd-detail-pane .gd-placeholder-text,
-.gd-list-pane .gd-placeholder-text {
+.gd-list-pane .gd-placeholder:not(.gd-empty-state) .gd-placeholder-text {
   font-family: var(--gd-font-sans);
   font-size: 13px;
   color: var(--gd-text-secondary);
@@ -7789,7 +7795,16 @@ article.gd-card-collapsed,
    ----------------------------------------------------------------------------- */
 
 .gd-settings-card {
-  margin-bottom: 56px;
+  padding-bottom: 36px;
+  margin-bottom: 36px;
+  border-bottom: 1px solid var(--gd-border-subtle, rgba(39, 49, 33, 0.08));
+}
+
+.gd-settings-card:last-child,
+.gd-session-card {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 16px;
 }
 
 .gd-settings-card-header {
@@ -7874,6 +7889,28 @@ article.gd-card-collapsed,
   margin-top: 12px;
   margin-bottom: 0;
   max-width: 680px;
+.gd-relationships-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 6px;
+  color: var(--gd-text-secondary, #5F6656);
+}
+
+.gd-relationships-empty .gd-placeholder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gd-accent-olive, #54683E);
+  opacity: 0.8;
+}
+
+.gd-relationships-empty .gd-placeholder-title {
+  font-family: var(--gd-font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gd-text-secondary, #5F6656);
+  margin: 0;
 }
 
 .gd-relationship-item {
@@ -8115,49 +8152,50 @@ article.gd-card-collapsed,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
+  height: 38px;
   padding: 0 20px;
-  font-family: var(--gd-font-display);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gd-critical-primary);
-  background: transparent !important;
-  border: 1px solid rgba(197, 48, 48, 0.35) !important;
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #B33939;
+  background: rgba(179, 57, 57, 0.05) !important;
+  border: 1px solid rgba(179, 57, 57, 0.25) !important;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .gd-btn-clear-session:hover {
-  background-color: rgba(197, 48, 48, 0.06) !important;
-  border-color: var(--gd-critical-primary) !important;
+  background-color: rgba(179, 57, 57, 0.12) !important;
+  border-color: #B33939 !important;
 }
 
-.gd-settings-invariants-list {
-  list-style: none;
-  padding: 0;
-  margin: 16px 0 0 0;
+.gd-settings-invariants-chips {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
 }
 
-.gd-settings-invariant-item {
+.gd-settings-invariant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background-color: rgba(62, 86, 42, 0.05);
+  border: 1px solid rgba(62, 86, 42, 0.15);
+  border-radius: 20px;
   font-family: var(--gd-font-sans);
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--gd-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gd-deep-olive, #273121);
+  letter-spacing: -0.01em;
 }
 
-.gd-settings-invariant-item strong {
-  font-family: var(--gd-font-display);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gd-text-primary);
-  display: block;
-  margin-bottom: 2px;
+.gd-settings-invariant-chip .gd-icon {
+  stroke: var(--gd-accent-olive, #54683E);
+  flex-shrink: 0;
 }
 
 /* -----------------------------------------------------------------------------

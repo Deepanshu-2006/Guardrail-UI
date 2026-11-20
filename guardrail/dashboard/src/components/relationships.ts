@@ -132,12 +132,6 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   usersHeader.appendChild(usersBadge);
   usersCard.appendChild(usersHeader);
 
-  const usersSubtitle = document.createElement('p');
-  usersSubtitle.className = 'gd-section-subtitle';
-  usersSubtitle.textContent =
-    'Users and trusted contacts associated with your account.';
-  usersCard.appendChild(usersSubtitle);
-
   // Status handling for connected users
   if (props.connectedUsersStatus === 'loading') {
     const loadingEl = document.createElement('div');
@@ -204,14 +198,8 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     empTitle.className = 'gd-placeholder-title';
     empTitle.textContent = 'No Connected Users or Contacts';
 
-    const empDesc = document.createElement('p');
-    empDesc.className = 'gd-placeholder-text';
-    empDesc.textContent =
-      'No active trusted-contact relationships are established. Generate an invitation below to designate a trusted contact, or connect with a pairing code.';
-
     emptyEl.appendChild(empIcon);
     emptyEl.appendChild(empTitle);
-    emptyEl.appendChild(empDesc);
     usersCard.appendChild(emptyEl);
   } else {
     // List container
@@ -484,12 +472,6 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   invitesHeader.appendChild(invitesBadge);
   invitesCard.appendChild(invitesHeader);
 
-  const invitesSubtitle = document.createElement('p');
-  invitesSubtitle.className = 'gd-section-subtitle';
-  invitesSubtitle.textContent =
-    'Active invitation codes and pending pairings.';
-  invitesCard.appendChild(invitesSubtitle);
-
   // Invitations Status
   if (props.invitationsStatus === 'loading') {
     const loadingEl = document.createElement('div');
@@ -544,14 +526,8 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     empTitle.className = 'gd-placeholder-title';
     empTitle.textContent = 'No Invitations Issued';
 
-    const empDesc = document.createElement('p');
-    empDesc.className = 'gd-placeholder-text';
-    empDesc.textContent =
-      'You have not generated any trusted-contact pairing codes yet. Fill out the form below to invite a designated contact.';
-
     emptyEl.appendChild(empIcon);
     emptyEl.appendChild(empTitle);
-    emptyEl.appendChild(empDesc);
     invitesCard.appendChild(emptyEl);
   } else {
     // List of Invitations
@@ -760,13 +736,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     createTitle.className = 'gd-subsection-title';
     createTitle.textContent = 'Issue New Trusted Contact Invitation';
 
-    const createDesc = document.createElement('p');
-    createDesc.className = 'gd-section-subtitle';
-    createDesc.textContent =
-      'Generate a secure pairing code to invite a trusted contact.';
-
     createSection.appendChild(createTitle);
-    createSection.appendChild(createDesc);
 
     const form = document.createElement('form');
     form.className = 'gd-create-invite-form';
