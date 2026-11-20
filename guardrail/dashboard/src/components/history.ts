@@ -1093,6 +1093,9 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         ? 'Show 10 decisions'
         : `View all ${total} decisions`;
 
+      let expandAnimTimer: any = null;
+      let expandScrollObserver: any = null;
+
       viewAllBtn.addEventListener('click', (e) => {
         e?.preventDefault?.();
         e?.stopPropagation?.();
@@ -1102,19 +1105,31 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         currentLimit = nextLimit;
         const newLimitNum = nextLimit === 'ALL' ? total : nextLimit;
 
+        if (expandAnimTimer) {
+          clearTimeout(expandAnimTimer);
+          expandAnimTimer = null;
+        }
+        if (expandScrollObserver) {
+          try { expandScrollObserver.disconnect(); } catch {}
+          expandScrollObserver = null;
+        }
+
         // In-place card visibility toggle: ZERO page rebuild, ZERO scroll jump!
         const cards = listPane.querySelectorAll('.gd-history-card');
         for (let i = 0; i < cards.length; i++) {
           if (i < newLimitNum) {
             cards[i].classList.remove('gd-card-collapsed');
             if (i >= 10 && !isCurrentlyExpanded) {
-              cards[i].classList.add('gd-card-animating-in');
               const cardEl = cards[i] as HTMLElement;
+              cardEl.classList.remove('gd-card-animating-in');
               if (typeof cardEl.style?.setProperty === 'function') {
                 cardEl.style.setProperty('--expand-idx', String(i - 10));
               } else if (cardEl.style) {
                 (cardEl.style as any)['--expand-idx'] = String(i - 10);
               }
+              // Force reflow and re-add animation class
+              try { void (cardEl as any)?.offsetHeight; } catch {}
+              cardEl.classList.add('gd-card-animating-in');
             }
           } else {
             cards[i].classList.add('gd-card-collapsed');
@@ -1122,14 +1137,59 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
           }
         }
 
-        // Clean up temporary animation classes after stagger settles
+        // Kinetic Scroll & Stagger Orchestration:
+        // As below-the-fold cards enter the scroll viewport, reveal with immediate mini-stagger
+        if (!isCurrentlyExpanded && typeof window !== 'undefined' && typeof IntersectionObserver !== 'undefined') {
+          const scrollParent = (listPane.closest && listPane.closest('.gd-content-body'))
+            || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') as HTMLElement | null : null);
+
+          if (scrollParent) {
+            try {
+              let batchIdx = 0;
+              let lastBatchTime = Date.now();
+              expandScrollObserver = new IntersectionObserver((entries, obs) => {
+                const now = Date.now();
+                if (now - lastBatchTime > 350) {
+                  batchIdx = 0;
+                }
+                lastBatchTime = now;
+
+                entries.forEach((entry) => {
+                  if (entry.isIntersecting) {
+                    const target = entry.target as HTMLElement;
+                    if (typeof target.style?.setProperty === 'function') {
+                      target.style.setProperty('--expand-idx', String(batchIdx++));
+                    }
+                    obs.unobserve(target);
+                  }
+                });
+              }, {
+                root: scrollParent,
+                threshold: 0.05,
+              });
+
+              for (let i = 10; i < cards.length; i++) {
+                expandScrollObserver.observe(cards[i]);
+              }
+            } catch {
+              // Ignore if observer setup fails
+            }
+          }
+        }
+
+        // Clean up temporary animation classes after stagger settles across all records
         if (!isCurrentlyExpanded) {
-          setTimeout(() => {
+          expandAnimTimer = setTimeout(() => {
             const currentCards = listPane.querySelectorAll('.gd-history-card');
             for (let i = 10; i < currentCards.length; i++) {
               currentCards[i].classList.remove('gd-card-animating-in');
             }
-          }, 1100);
+            if (expandScrollObserver) {
+              try { expandScrollObserver.disconnect(); } catch {}
+              expandScrollObserver = null;
+            }
+            expandAnimTimer = null;
+          }, 8500);
         }
 
         const showingAllNow = newLimitNum >= total;
