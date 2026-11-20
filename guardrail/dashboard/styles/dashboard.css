@@ -2365,36 +2365,7 @@ textarea:focus-visible,
 }
 
 .gd-protection-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--gd-font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: #2E4B24;
-  background: rgba(46, 75, 36, 0.07);
-  border: 1px solid rgba(46, 75, 36, 0.12);
-  border-radius: 999px;
-  padding: 4px 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.gd-protection-badge.badge-active::before {
-  content: "";
-  display: inline-block;
-  width: 6.5px;
-  height: 6.5px;
-  border-radius: 50%;
-  background-color: #388427;
-  box-shadow: 0 0 0 2px rgba(56, 132, 39, 0.2);
-  animation: gd-status-pulse 2.2s infinite ease-in-out;
-}
-
-.gd-protection-badge.badge-offline {
-  color: var(--gd-critical-primary);
-  background: rgba(185, 28, 28, 0.07);
-  border-color: rgba(185, 28, 28, 0.15);
+  display: none !important;
 }
 
 .gd-protection-chips-row {
@@ -2602,7 +2573,7 @@ textarea:focus-visible,
   border: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  margin-bottom: 56px !important;
+  margin-bottom: 28px !important;
   box-shadow: none !important;
 }
 
@@ -2787,11 +2758,35 @@ textarea:focus-visible,
   border: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  margin-top: 36px !important;
+  margin-top: 0 !important;
   margin-bottom: 48px !important;
   box-shadow: none !important;
   min-width: 0 !important;
   max-width: 100% !important;
+}
+
+/* Recent Activity: Heading is visible initially, while the list & placeholder wait for scroll */
+#view-overview #gd-overview-recent-activity.gd-scroll-reveal:not(.is-revealed) {
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+#gd-overview-recent-activity:not(.is-revealed) .gd-recent-activity-list,
+#gd-overview-recent-activity:not(.is-revealed) .gd-placeholder,
+#gd-overview-recent-activity:not(.is-revealed) .gd-btn-view-all-history {
+  opacity: 0 !important;
+  transform: translateY(18px) !important;
+  pointer-events: none !important;
+}
+
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list,
+#gd-overview-recent-activity.is-revealed .gd-placeholder,
+#gd-overview-recent-activity.is-revealed .gd-btn-view-all-history {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
+  transition: opacity 0.44s cubic-bezier(0.16, 1, 0.3, 1), transform 0.44s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .gd-recent-activity-header {

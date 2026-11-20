@@ -1165,13 +1165,20 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
     return;
   }
 
+  let hasScrolledDown = false;
+
   const getScrollContainer = (): HTMLElement | null => {
     return (container.closest && container.closest('.gd-content-body'))
       || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') as HTMLElement | null : null);
   };
 
-  const checkScroll = () => {
+  const checkScroll = (fromScroll: boolean = false) => {
     const scrollParent = getScrollContainer();
+    const currentScrollTop = scrollParent ? scrollParent.scrollTop : (typeof window !== 'undefined' ? window.scrollY : 0);
+    if (fromScroll || currentScrollTop > 10) {
+      hasScrolledDown = true;
+    }
+
     const parentBottom = scrollParent && typeof scrollParent.getBoundingClientRect === 'function'
       ? scrollParent.getBoundingClientRect().bottom
       : (typeof window !== 'undefined' ? window.innerHeight : 800);
@@ -1182,6 +1189,14 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
 
     revealCards.forEach((el) => {
       if (el.classList.contains('is-revealed')) return;
+
+      // Special handling for Recent Activity:
+      // The heading is always visible initially, but its list/placeholder items
+      // only reveal and render with cascade animation when the user scrolls down.
+      if (el.id === 'gd-overview-recent-activity' && !hasScrolledDown) {
+        return;
+      }
+
       if (typeof el.getBoundingClientRect === 'function') {
         const rect = el.getBoundingClientRect();
         // Ignore unrendered/zero-dimension elements
@@ -1195,6 +1210,10 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
     });
   };
 
+  const onScrollEvent = () => {
+    checkScroll(true);
+  };
+
   const init = () => {
     const scrollParent = getScrollContainer();
 
@@ -1204,6 +1223,10 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
           (entries, obs) => {
             entries.forEach((entry) => {
               if (entry.isIntersecting) {
+                // If it's recent activity and user hasn't scrolled down yet, wait for scroll event
+                if (entry.target.id === 'gd-overview-recent-activity' && !hasScrolledDown) {
+                  return;
+                }
                 entry.target.classList.add('is-revealed');
                 obs.unobserve(entry.target);
               }
@@ -1226,20 +1249,20 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
     }
 
     if (scrollParent && typeof scrollParent.addEventListener === 'function') {
-      scrollParent.addEventListener('scroll', checkScroll, { passive: true });
+      scrollParent.addEventListener('scroll', onScrollEvent, { passive: true });
     }
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-      document.addEventListener('scroll', checkScroll, { capture: true, passive: true });
+      document.addEventListener('scroll', onScrollEvent, { capture: true, passive: true });
     }
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('scroll', checkScroll, { capture: true, passive: true });
-      window.addEventListener('resize', checkScroll, { passive: true });
+      window.addEventListener('scroll', onScrollEvent, { capture: true, passive: true });
+      window.addEventListener('resize', onScrollEvent, { passive: true });
     }
 
     // Check once mounted, but only for cards that are truly in view initially
-    checkScroll();
-    setTimeout(checkScroll, 120);
-    setTimeout(checkScroll, 350);
+    checkScroll(false);
+    setTimeout(() => checkScroll(false), 120);
+    setTimeout(() => checkScroll(false), 350);
   };
 
   // Allow shell to append container to .gd-content-body before binding
