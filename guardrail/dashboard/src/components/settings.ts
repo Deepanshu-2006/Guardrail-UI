@@ -81,6 +81,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   // Card 1: Reviewer Identity & Authorization Hierarchy
   const identityCard = document.createElement('div');
   identityCard.className = 'gd-card gd-settings-card';
+  identityCard.id = 'gd-card-identity';
 
   const idHeader = document.createElement('div');
   idHeader.className = 'gd-settings-card-header';
@@ -445,6 +446,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   // Card 3: Backend Connection & Runtime Environment
   const backendCard = document.createElement('div');
   backendCard.className = 'gd-card gd-settings-card';
+  backendCard.id = 'gd-card-backend';
 
   const backendHeader = document.createElement('div');
   backendHeader.className = 'gd-settings-card-header';
@@ -530,6 +532,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   // Card 3: Safety & Governance Architecture Invariants (Refined Verified Pills)
   const invariantsCard = document.createElement('div');
   invariantsCard.className = 'gd-card gd-settings-card';
+  invariantsCard.id = 'gd-card-invariants';
 
   const invTitle = document.createElement('h2');
   invTitle.className = 'gd-section-title';
@@ -564,6 +567,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   // Card 4: Session Management (Minimal)
   const sessionCard = document.createElement('div');
   sessionCard.className = 'gd-card gd-settings-card gd-session-card';
+  sessionCard.id = 'gd-card-session';
 
   const sessTitle = document.createElement('h2');
   sessTitle.className = 'gd-section-title';

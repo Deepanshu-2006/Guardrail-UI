@@ -1232,6 +1232,119 @@ textarea:focus-visible,
   animation-name: gd-history-card-enter-dimmed !important;
 }
 
+/* -----------------------------------------------------------------------------
+   Settings View: Sequential Staggered Entrance ("revealed one by one")
+   ----------------------------------------------------------------------------- */
+
+/* Subtitle */
+#view-settings.gd-view-initial-enter .gd-section-subtitle {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
+}
+
+/* 1. Reviewer Identity Card (if present) */
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-card-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(1) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-item:nth-child(4) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both;
+}
+
+/* 2. Connected Users & Trusted Contacts */
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-settings-card-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty,
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-list {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+
+/* 3. Trusted Contact Invitations Header & Content */
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty,
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-list {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+
+/* 4. Issue New Trusted Contact Invitation Section */
+#view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
+}
+#view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(1) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
+}
+#view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(2) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both;
+}
+#view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(3) {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+}
+#view-settings.gd-view-initial-enter .gd-invite-submit-row {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both;
+}
+
+/* 5. Ward Protection Policy & Invariants Card (if present) */
+#view-settings.gd-view-initial-enter #gd-card-ward-policy {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both;
+}
+
+/* 6. Protection Policy History & Transparency Card (if present) */
+#view-settings.gd-view-initial-enter #gd-card-policy-history {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
+}
+
+/* 7. Backend Connection & Synchronization Card */
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-card-header {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-action-row {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both;
+}
+
+/* 8. Safety Invariants & Zero-Trust Guarantees Card */
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-section-title {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 1.16s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.28s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both;
+}
+
+/* 9. Session Management Card */
+#view-settings.gd-view-initial-enter #gd-card-session .gd-section-title {
+  animation: gd-render-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-session .gd-settings-action-row {
+  animation: gd-render-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 1.52s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-search-input-wrap,
   .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap,
@@ -1267,6 +1380,7 @@ textarea:focus-visible,
   .gd-rejected-cross-1,
   .gd-rejected-cross-2,
   .gd-rejected-pulse,
+  #view-settings.gd-view-initial-enter *,
   .gd-rejected-ring {
     animation: none !important;
     opacity: 1 !important;
