@@ -128,7 +128,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protectionCard.classList.add('status-operational');
     protIcon.appendChild(createIcon('shield-check', 'gd-status-icon-operational'));
     protBadge.className = 'gd-protection-badge badge-active';
-    protBadge.textContent = 'Live Guardrail Protection Active';
+    protBadge.textContent = 'Connected · Real-Time';
     protTitle.textContent = 'Live Guardrail Protection Active';
     protDesc.textContent =
       'Connected and actively protecting your contacts. Any approval requests will appear below.';
@@ -202,27 +202,45 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const wardHeader = document.createElement('div');
   wardHeader.className = 'gd-metric-header';
+
+  const wardIndex = document.createElement('span');
+  wardIndex.className = 'gd-metric-index';
+  wardIndex.textContent = '01 /';
+
   const wardLabel = document.createElement('span');
   wardLabel.className = 'gd-metric-label';
-  wardLabel.textContent = 'Assigned Wards';
+  wardLabel.textContent = 'Wards';
+
   const wardBadge = document.createElement('span');
   wardBadge.className = 'gd-metric-badge';
   wardBadge.textContent = props.profile?.assignedWardId ? 'Linked' : 'Unlinked';
+
+  wardHeader.appendChild(wardIndex);
   wardHeader.appendChild(wardLabel);
   wardHeader.appendChild(wardBadge);
+
+  const wardValueRow = document.createElement('div');
+  wardValueRow.className = 'gd-metric-value-row';
 
   const wardValue = document.createElement('span');
   wardValue.className = 'gd-metric-value';
   wardValue.textContent = props.profile?.assignedWardId ? '1' : '0';
 
+  const wardUnit = document.createElement('span');
+  wardUnit.className = 'gd-metric-unit';
+  wardUnit.textContent = 'Connected';
+
+  wardValueRow.appendChild(wardValue);
+  wardValueRow.appendChild(wardUnit);
+
   const wardDesc = document.createElement('span');
   wardDesc.className = 'gd-metric-desc';
   wardDesc.textContent = props.profile?.assignedWardId
     ? `Designated reviewer for ${props.profile.assignedWardId}`
-    : 'No accounts linked yet. Enter an invitation code below to begin.';
+    : 'Awaiting ward invitation';
 
   wardCard.appendChild(wardHeader);
-  wardCard.appendChild(wardValue);
+  wardCard.appendChild(wardValueRow);
   wardCard.appendChild(wardDesc);
   grid.appendChild(wardCard);
 
@@ -232,58 +250,89 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const pendingHeader = document.createElement('div');
   pendingHeader.className = 'gd-metric-header';
+
+  const pendingIndex = document.createElement('span');
+  pendingIndex.className = 'gd-metric-index';
+  pendingIndex.textContent = '02 /';
+
   const pendingLabel = document.createElement('span');
   pendingLabel.className = 'gd-metric-label';
-  pendingLabel.textContent = 'Pending Actions';
+  pendingLabel.textContent = 'Approvals';
+
   const pendingBadge = document.createElement('span');
   pendingBadge.className = 'gd-metric-badge';
   pendingBadge.textContent = props.pendingCount > 0 ? 'Action Required' : 'All Clear';
+
+  pendingHeader.appendChild(pendingIndex);
   pendingHeader.appendChild(pendingLabel);
   pendingHeader.appendChild(pendingBadge);
+
+  const pendingValueRow = document.createElement('div');
+  pendingValueRow.className = 'gd-metric-value-row';
 
   const pendingValue = document.createElement('span');
   pendingValue.className = 'gd-metric-value';
   pendingValue.textContent = String(props.pendingCount);
 
+  const pendingUnit = document.createElement('span');
+  pendingUnit.className = 'gd-metric-unit';
+  pendingUnit.textContent = props.pendingCount === 1 ? 'Needs Review' : props.pendingCount > 0 ? 'Needs Review' : 'Needs Review';
+
+  pendingValueRow.appendChild(pendingValue);
+  pendingValueRow.appendChild(pendingUnit);
+
   const pendingDesc = document.createElement('span');
   pendingDesc.className = 'gd-metric-desc';
   pendingDesc.textContent =
     props.pendingCount > 0
-      ? 'Requests waiting for your review and approval.'
-      : 'No actions currently waiting for approval.';
+      ? 'Requests waiting for your review'
+      : 'Queue is all clear';
 
   pendingCard.appendChild(pendingHeader);
-  pendingCard.appendChild(pendingValue);
+  pendingCard.appendChild(pendingValueRow);
   pendingCard.appendChild(pendingDesc);
   grid.appendChild(pendingCard);
 
-  // Metric 3: Portal Status
+  // Metric 3: Enforcement / Security Posture
   const statusCard = document.createElement('div');
   statusCard.className = 'gd-metric-card';
 
   const statusHeader = document.createElement('div');
   statusHeader.className = 'gd-metric-header';
+
+  const statusIndex = document.createElement('span');
+  statusIndex.className = 'gd-metric-index';
+  statusIndex.textContent = '03 /';
+
   const statusLabel = document.createElement('span');
   statusLabel.className = 'gd-metric-label';
-  statusLabel.textContent = 'Portal Status';
+  statusLabel.textContent = 'Enforcement';
+
   const statusBadge = document.createElement('span');
   statusBadge.className = 'gd-metric-badge';
   statusBadge.textContent = props.profile?.isAuthenticated ? 'Connected' : 'Standalone';
+
+  statusHeader.appendChild(statusIndex);
   statusHeader.appendChild(statusLabel);
   statusHeader.appendChild(statusBadge);
 
+  const statusValueRow = document.createElement('div');
+  statusValueRow.className = 'gd-metric-value-row';
+
   const statusValue = document.createElement('span');
   statusValue.className = 'gd-metric-value';
-  statusValue.textContent = props.profile?.isAuthenticated ? 'Active' : 'Shell Mode';
+  statusValue.textContent = props.profile?.isAuthenticated ? 'Active' : 'Standby';
+
+  statusValueRow.appendChild(statusValue);
 
   const statusDesc = document.createElement('span');
   statusDesc.className = 'gd-metric-desc';
   statusDesc.textContent = props.profile?.isAuthenticated
-    ? 'Active and protecting your assigned contacts.'
-    : 'Running in preview mode. Connect a contact to get started.';
+    ? 'Consent-only execution active'
+    : 'Running in preview mode';
 
   statusCard.appendChild(statusHeader);
-  statusCard.appendChild(statusValue);
+  statusCard.appendChild(statusValueRow);
   statusCard.appendChild(statusDesc);
   grid.appendChild(statusCard);
 
