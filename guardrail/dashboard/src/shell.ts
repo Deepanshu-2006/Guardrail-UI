@@ -843,7 +843,7 @@ export class DashboardShell {
         const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
         enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
       }
-    }, 1600);
+    }, 4200);
   }
 
   /**

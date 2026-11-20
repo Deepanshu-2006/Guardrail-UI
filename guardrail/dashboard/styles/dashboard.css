@@ -1301,144 +1301,187 @@ textarea:focus-visible,
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-list .gd-list-header {
-  animation: gd-history-card-enter 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+  animation: gd-render-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.10s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-history-list .gd-history-list-title {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
+}
+.gd-view-section.gd-view-initial-enter .gd-history-list .gd-history-total-count {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
 
-/* Decision History Cards: Sequential slow cascade row by row */
+/* Decision History Cards: Deliberate slow cascade row by row */
 .gd-view-section.gd-view-initial-enter .gd-history-card {
-  animation: gd-history-card-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.40s + var(--card-idx, 0) * 0.14s) !important;
+  animation: gd-history-card-enter 0.44s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  animation-delay: calc(0.28s + var(--card-idx, 0) * 0.28s) !important;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-card .gd-request-num {
   animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(0.44s + var(--card-idx, 0) * 0.14s);
+  animation-delay: calc(0.32s + var(--card-idx, 0) * 0.28s);
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-card .gd-request-description {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(0.48s + var(--card-idx, 0) * 0.14s);
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(0.38s + var(--card-idx, 0) * 0.28s);
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-card .gd-detail-status-pill::before {
   animation: gd-status-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(0.54s + var(--card-idx, 0) * 0.14s);
+  animation-delay: calc(0.48s + var(--card-idx, 0) * 0.28s);
 }
 
-.gd-view-section.gd-view-initial-enter .gd-history-card .gd-detail-status-pill {
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-detail-status-pill:not(:has(.gd-detail-status-label)) {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(0.60s + var(--card-idx, 0) * 0.14s);
+  animation-delay: calc(0.58s + var(--card-idx, 0) * 0.28s);
 }
 
-.gd-view-section.gd-view-initial-enter .gd-history-card .gd-risk-badge {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(0.66s + var(--card-idx, 0) * 0.14s);
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-risk-badge::before {
+  animation: gd-status-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(0.68s + var(--card-idx, 0) * 0.28s);
+}
+
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-risk-badge:not(:has(.gd-risk-badge-label)) {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(0.76s + var(--card-idx, 0) * 0.28s);
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-card .gd-request-subheading {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(0.70s + var(--card-idx, 0) * 0.14s);
+  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(0.84s + var(--card-idx, 0) * 0.28s);
 }
 
-/* Fallback explicit per-card stagger for rows 1 to 10 */
+/* Explicit fallback per-card stagger for rows 1 to 10 */
 /* Card 1 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) { animation-delay: 0.40s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-request-num { animation-delay: 0.44s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-request-description { animation-delay: 0.48s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-pill::before { animation-delay: 0.54s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-pill { animation-delay: 0.60s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-risk-badge { animation-delay: 0.66s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-request-subheading { animation-delay: 0.70s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) { animation-delay: 0.28s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-request-num { animation-delay: 0.32s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-request-description { animation-delay: 0.38s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-pill::before { animation-delay: 0.48s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 0.58s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-risk-badge::before { animation-delay: 0.68s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 0.76s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-request-subheading { animation-delay: 0.84s !important; }
 
 /* Card 2 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) { animation-delay: 0.54s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-request-num { animation-delay: 0.58s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-request-description { animation-delay: 0.62s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-pill::before { animation-delay: 0.68s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-pill { animation-delay: 0.74s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-risk-badge { animation-delay: 0.80s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-request-subheading { animation-delay: 0.84s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) { animation-delay: 0.56s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-request-num { animation-delay: 0.60s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-request-description { animation-delay: 0.66s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-pill::before { animation-delay: 0.76s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 0.86s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-risk-badge::before { animation-delay: 0.96s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 1.04s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-request-subheading { animation-delay: 1.12s !important; }
 
 /* Card 3 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) { animation-delay: 0.68s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-request-num { animation-delay: 0.72s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-request-description { animation-delay: 0.76s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-pill::before { animation-delay: 0.82s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-pill { animation-delay: 0.88s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-risk-badge { animation-delay: 0.94s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-request-subheading { animation-delay: 0.98s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) { animation-delay: 0.84s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-request-num { animation-delay: 0.88s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-request-description { animation-delay: 0.94s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-pill::before { animation-delay: 1.04s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 1.14s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-risk-badge::before { animation-delay: 1.24s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 1.32s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-request-subheading { animation-delay: 1.40s !important; }
 
 /* Card 4 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) { animation-delay: 0.82s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-request-num { animation-delay: 0.86s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-request-description { animation-delay: 0.90s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-pill::before { animation-delay: 0.96s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-pill { animation-delay: 1.02s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-risk-badge { animation-delay: 1.08s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-request-subheading { animation-delay: 1.12s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) { animation-delay: 1.12s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-request-num { animation-delay: 1.16s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-request-description { animation-delay: 1.22s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-pill::before { animation-delay: 1.32s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 1.42s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-risk-badge::before { animation-delay: 1.52s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 1.60s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-request-subheading { animation-delay: 1.68s !important; }
 
 /* Card 5 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) { animation-delay: 0.96s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-request-num { animation-delay: 1.00s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-request-description { animation-delay: 1.04s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-pill::before { animation-delay: 1.10s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-pill { animation-delay: 1.16s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-risk-badge { animation-delay: 1.22s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-request-subheading { animation-delay: 1.26s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) { animation-delay: 1.40s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-request-num { animation-delay: 1.44s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-request-description { animation-delay: 1.50s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-pill::before { animation-delay: 1.60s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 1.70s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-risk-badge::before { animation-delay: 1.80s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 1.88s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-request-subheading { animation-delay: 1.96s !important; }
 
 /* Card 6 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) { animation-delay: 1.10s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-request-num { animation-delay: 1.14s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-request-description { animation-delay: 1.18s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-detail-status-pill::before { animation-delay: 1.24s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-detail-status-pill { animation-delay: 1.30s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-risk-badge { animation-delay: 1.36s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-request-subheading { animation-delay: 1.40s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) { animation-delay: 1.68s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-request-num { animation-delay: 1.72s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-request-description { animation-delay: 1.78s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-detail-status-pill::before { animation-delay: 1.88s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 1.98s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-risk-badge::before { animation-delay: 2.08s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 2.16s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(6) .gd-request-subheading { animation-delay: 2.24s !important; }
 
 /* Card 7 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) { animation-delay: 1.24s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-request-num { animation-delay: 1.28s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-request-description { animation-delay: 1.32s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-detail-status-pill::before { animation-delay: 1.38s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-detail-status-pill { animation-delay: 1.44s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-risk-badge { animation-delay: 1.50s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-request-subheading { animation-delay: 1.54s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) { animation-delay: 1.96s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-request-num { animation-delay: 2.00s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-request-description { animation-delay: 2.06s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-detail-status-pill::before { animation-delay: 2.16s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 2.26s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-risk-badge::before { animation-delay: 2.36s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 2.44s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(7) .gd-request-subheading { animation-delay: 2.52s !important; }
 
 /* Card 8 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) { animation-delay: 1.38s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-request-num { animation-delay: 1.42s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-request-description { animation-delay: 1.46s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-detail-status-pill::before { animation-delay: 1.52s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-detail-status-pill { animation-delay: 1.58s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-risk-badge { animation-delay: 1.64s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-request-subheading { animation-delay: 1.68s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) { animation-delay: 2.24s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-request-num { animation-delay: 2.28s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-request-description { animation-delay: 2.34s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-detail-status-pill::before { animation-delay: 2.44s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 2.54s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-risk-badge::before { animation-delay: 2.64s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 2.72s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) .gd-request-subheading { animation-delay: 2.80s !important; }
 
 /* Card 9 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) { animation-delay: 1.52s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-request-num { animation-delay: 1.56s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-request-description { animation-delay: 1.60s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-detail-status-pill::before { animation-delay: 1.66s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-detail-status-pill { animation-delay: 1.72s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-risk-badge { animation-delay: 1.78s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-request-subheading { animation-delay: 1.82s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) { animation-delay: 2.52s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-request-num { animation-delay: 2.56s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-request-description { animation-delay: 2.62s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-detail-status-pill::before { animation-delay: 2.72s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 2.82s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-risk-badge::before { animation-delay: 2.92s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 3.00s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) .gd-request-subheading { animation-delay: 3.08s !important; }
 
 /* Card 10 */
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) { animation-delay: 1.66s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-request-num { animation-delay: 1.70s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-request-description { animation-delay: 1.74s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-detail-status-pill::before { animation-delay: 1.80s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-detail-status-pill { animation-delay: 1.86s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-risk-badge { animation-delay: 1.92s !important; }
-.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-request-subheading { animation-delay: 1.96s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) { animation-delay: 2.80s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-request-num { animation-delay: 2.84s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-request-description { animation-delay: 2.90s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-detail-status-pill::before { animation-delay: 3.00s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-detail-status-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-detail-status-pill:not(:has(.gd-detail-status-label)) { animation-delay: 3.10s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-risk-badge::before { animation-delay: 3.20s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-risk-badge-label,
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-risk-badge:not(:has(.gd-risk-badge-label)) { animation-delay: 3.28s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) .gd-request-subheading { animation-delay: 3.36s !important; }
 
 /* Master-detail state */
 .gd-view-section.gd-view-initial-enter .gd-history-list.has-selection .gd-history-card:not(.selected) {
   animation: gd-history-card-enter-dimmed 0.40s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.40s + var(--card-idx, 0) * 0.14s) !important;
+  animation-delay: calc(0.28s + var(--card-idx, 0) * 0.28s) !important;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-pagination-footer {
-  animation: gd-history-card-enter 0.36s cubic-bezier(0.16, 1, 0.3, 1) 2.05s both !important;
+  animation: gd-history-card-enter 0.36s cubic-bezier(0.16, 1, 0.3, 1) 3.45s both !important;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-history-detail-pane,
@@ -5320,6 +5363,12 @@ textarea:focus-visible,
   padding: 14px 4px 10px;
   border-top: 1px solid rgba(39, 49, 33, 0.08);
   margin-top: 6px;
+}
+
+.gd-history-pagination,
+#gd-btn-load-more,
+.gd-btn-load-more {
+  display: none !important;
 }
 
 .gd-request-card.gd-card-collapsed,

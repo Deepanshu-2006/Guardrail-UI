@@ -943,13 +943,19 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       // Prominent resolved status pill
       const statusPill = document.createElement('span');
       statusPill.className = `gd-detail-status-pill ${statusClass}`;
-      statusPill.textContent = req.status || 'RESOLVED';
+      const statusLabel = document.createElement('span');
+      statusLabel.className = 'gd-detail-status-label';
+      statusLabel.textContent = req.status || 'RESOLVED';
+      statusPill.appendChild(statusLabel);
       badgesWrap.appendChild(statusPill);
 
       const riskBadge = document.createElement('span');
       const riskClass = (req.riskLevel || 'LOW').toLowerCase();
       riskBadge.className = `gd-risk-badge ${riskClass}`;
-      riskBadge.textContent = req.riskLevel || 'LOW';
+      const riskLabel = document.createElement('span');
+      riskLabel.className = 'gd-risk-badge-label';
+      riskLabel.textContent = req.riskLevel || 'LOW';
+      riskBadge.appendChild(riskLabel);
       badgesWrap.appendChild(riskBadge);
 
       titleRow.appendChild(badgesWrap);
