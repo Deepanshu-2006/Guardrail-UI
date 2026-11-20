@@ -16,7 +16,7 @@ import { ApprovalRequest, ApprovalStatus, RequestFilters, RiskLevel, ViewStatus 
 import { renderDecisionConfirmation } from './decision-confirmation.js';
 import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isRequestExpired } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
-import { setAnimatedHeading } from './icons.js';
+import { createIcon, setAnimatedHeading } from './icons.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
@@ -572,11 +572,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       const iconWrap = document.createElement('div');
       iconWrap.className = 'gd-empty-icon';
       iconWrap.setAttribute('aria-hidden', 'true');
-      iconWrap.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-      `;
+      iconWrap.appendChild(createIcon('inbox', 'gd-empty-icon-svg'));
 
       const emptyHeadline = document.createElement('h2');
       emptyHeadline.className = 'gd-empty-title gd-placeholder-title';

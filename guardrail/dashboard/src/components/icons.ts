@@ -31,9 +31,12 @@ export type IconName =
   | 'phone'
   | 'log-in'
   | 'guardrail'
+  | 'inbox'
   | 'x';
 
 export const ICONS: Record<IconName, string> = {
+  inbox:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
   guardrail:
     '<svg class="gd-brand-icon-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#EDE6D6" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#EDE6D6" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="22" y="34" width="56" height="32" rx="16" fill="#EDE6D6"/><path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#273121" stroke-width="4.5" stroke-linecap="round"/><path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#273121" stroke="#EDE6D6" stroke-width="3" stroke-linejoin="round"/></svg>',
   google:
