@@ -1218,10 +1218,12 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both;
 }
 
@@ -1232,10 +1234,12 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.24s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.28s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both;
 }
 
@@ -1246,10 +1250,12 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.42s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.58s both;
 }
 
@@ -1260,10 +1266,12 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.60s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.64s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both;
 }
 
@@ -1274,10 +1282,12 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.78s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.82s both;
 }
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label {
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label,
+.gd-view-section.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.94s both;
 }
 
@@ -1393,6 +1403,32 @@ textarea:focus-visible,
 .gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(8) { animation-delay: 0.755s !important; }
 .gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(9) { animation-delay: 0.80s !important; }
 .gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(10) { animation-delay: 0.845s !important; }
+
+/* History Card status pill & description entrance */
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-request-description {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-detail-status-pill::before {
+  animation: gd-status-icon-enter-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.gd-view-section.gd-view-initial-enter .gd-history-card .gd-detail-status-pill {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-pill::before { animation-delay: 0.50s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(1) .gd-detail-status-pill { animation-delay: 0.58s !important; }
+
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-pill::before { animation-delay: 0.56s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(2) .gd-detail-status-pill { animation-delay: 0.64s !important; }
+
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-pill::before { animation-delay: 0.62s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(3) .gd-detail-status-pill { animation-delay: 0.70s !important; }
+
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-pill::before { animation-delay: 0.68s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(4) .gd-detail-status-pill { animation-delay: 0.76s !important; }
+
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-pill::before { animation-delay: 0.74s !important; }
+.gd-view-section.gd-view-initial-enter .gd-history-card:nth-of-type(5) .gd-detail-status-pill { animation-delay: 0.82s !important; }
 
 .gd-view-section.gd-view-initial-enter .gd-history-list.has-selection .gd-history-card:not(.selected) {
   animation: gd-history-card-enter-dimmed 0.40s cubic-bezier(0.16, 1, 0.3, 1) both !important;
@@ -1727,10 +1763,12 @@ textarea:focus-visible,
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
 }
 
@@ -1741,10 +1779,12 @@ textarea:focus-visible,
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
 }
 
@@ -1755,10 +1795,12 @@ textarea:focus-visible,
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
 }
 
@@ -1769,10 +1811,12 @@ textarea:focus-visible,
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
 }
 
@@ -1783,10 +1827,12 @@ textarea:focus-visible,
 #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label {
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label,
+#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both;
 }
 

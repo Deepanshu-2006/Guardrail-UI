@@ -1116,6 +1116,9 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
     return;
   }
 
+  const scrollParent = (container.closest && container.closest('.gd-content-body'))
+    || (typeof document !== 'undefined' ? document.querySelector('.gd-content-body') : null);
+
   const observer = new IntersectionObserver(
     (entries, obs) => {
       entries.forEach((entry) => {
@@ -1126,13 +1129,38 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
       });
     },
     {
-      threshold: 0.08,
-      rootMargin: '0px 0px -20px 0px',
+      root: scrollParent as Element | null,
+      threshold: 0.05,
+      rootMargin: '0px 0px 40px 0px',
     }
   );
 
+  const checkPositions = () => {
+    const parentBottom = scrollParent && typeof scrollParent.getBoundingClientRect === 'function'
+      ? scrollParent.getBoundingClientRect().bottom
+      : (typeof window !== 'undefined' ? window.innerHeight : 800);
+
+    revealCards.forEach((el) => {
+      if (el.classList.contains('is-revealed')) return;
+      if (typeof el.getBoundingClientRect === 'function') {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= parentBottom + 60) {
+          el.classList.add('is-revealed');
+          observer.unobserve(el);
+        }
+      }
+    });
+  };
+
   const register = () => {
     revealCards.forEach((el) => observer.observe(el));
+    checkPositions();
+    if (scrollParent && typeof scrollParent.addEventListener === 'function') {
+      scrollParent.addEventListener('scroll', checkPositions, { passive: true });
+    }
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('scroll', checkPositions, { passive: true });
+    }
   };
 
   if (typeof requestAnimationFrame === 'function') {
