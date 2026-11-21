@@ -399,44 +399,112 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
           const emailHtml = `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
   <title>Guardrail Trusted Contact Invitation</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
   <style>
-    body, table, td, p, a, div, span {
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      height: 100% !important;
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table, td {
+      mso-table-lspace: 0pt !important;
+      mso-table-rspace: 0pt !important;
+      border-collapse: collapse;
+    }
+    *, *:before, *:after {
       box-sizing: border-box;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-    @media only screen and (max-width: 560px) {
+    img {
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 520px) {
+      .email-wrapper-cell {
+        padding: 16px 10px !important;
+      }
       .email-card {
-        padding: 24px 20px !important;
+        padding: 24px 16px !important;
+        border-radius: 14px !important;
+      }
+      .title-heading {
+        font-size: 23px !important;
+        line-height: 1.2 !important;
+        margin-bottom: 12px !important;
+      }
+      .lede-text {
+        font-size: 14.5px !important;
+        line-height: 1.45 !important;
+        margin-bottom: 20px !important;
+      }
+      .pairing-pass-card {
+        padding: 18px 12px 16px !important;
         border-radius: 12px !important;
+      }
+      .qr-img {
+        width: 130px !important;
+        height: 130px !important;
       }
       .btn-connect {
         display: block !important;
         width: 100% !important;
-        padding: 14px 20px !important;
+        box-sizing: border-box !important;
+        padding: 14px 16px !important;
+        text-align: center !important;
+      }
+      .code-gif-img {
+        max-width: 100% !important;
+        height: auto !important;
       }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 40px 16px; background-color: #EDE6D6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #273121;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+<body style="margin: 0; padding: 0; width: 100% !important; background-color: #EDE6D6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #273121; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  <!-- Outer Centering Table -->
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; width: 100%; margin: 0; padding: 0; table-layout: fixed;">
     <tr>
-      <td align="center">
-        <!-- Clean, minimal card -->
-        <table class="email-card" width="520" border="0" cellspacing="0" cellpadding="0" style="background-color: #FAF6ED; border: 1px solid #D8D2C2; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(39, 49, 33, 0.06); padding: 36px 32px; max-width: 520px; width: 100%;">
+      <td class="email-wrapper-cell" align="center" valign="top" style="padding: 36px 16px;">
+        <!--[if (gte mso 9)|(IE)]>
+        <table role="presentation" width="480" align="center" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+        <td>
+        <![endif]-->
+        <!-- Main Card: Fluid 100% on mobile, max-width 480px on desktop, always centered -->
+        <table role="presentation" class="email-card" width="100%" border="0" cellspacing="0" cellpadding="0" align="center" style="background-color: #FAF6ED; border: 1px solid #D8D2C2; border-radius: 16px; box-shadow: 0 4px 20px rgba(39, 49, 33, 0.06); padding: 32px 28px; width: 100%; max-width: 480px; margin: 0 auto; border-collapse: separate;">
           <tr>
-            <td>
+            <td style="padding: 0; margin: 0;">
               
-              <!-- Brand Header with Table for 100% rock-solid vertical alignment across all email clients -->
-              <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border-collapse: collapse;">
+              <!-- Brand Header with Table for 100% rock-solid alignment -->
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 22px; border-collapse: collapse;">
                 <tr>
-                  <td valign="middle" style="vertical-align: middle; padding-right: 12px; line-height: 0;">
-                    <table border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; width: 34px; height: 34px; border-collapse: separate;">
+                  <td valign="middle" style="vertical-align: middle; padding-right: 10px; line-height: 0;">
+                    <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; width: 34px; height: 34px; border-collapse: separate;">
                       <tr>
                         <td align="center" valign="middle" style="width: 34px; height: 34px; line-height: 0; text-align: center; vertical-align: middle;">
                           ${logoB64 ? `<img src="cid:guardrail-logo" width="22" height="22" style="display: block; margin: 0 auto; width: 22px; height: 22px; border: 0;" alt="Guardrail UI" />` : `<span style="font-size: 18px; line-height: 1;">🛡️</span>`}
@@ -445,33 +513,33 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                     </table>
                   </td>
                   <td valign="middle" style="vertical-align: middle; line-height: 1;">
-                    <span style="font-size: 19px; font-weight: 700; color: #273121; letter-spacing: -0.3px; line-height: 1; vertical-align: middle; display: inline-block;">Guardrail UI</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #273121; letter-spacing: -0.3px; line-height: 1; vertical-align: middle; display: inline-block;">Guardrail UI</span>
                   </td>
                 </tr>
               </table>
 
               <!-- Big Bold Classy Title -->
-              <h1 style="font-size: 28px; font-weight: 800; color: #172013; margin: 0 0 14px 0; letter-spacing: -0.8px; line-height: 1.15;">
+              <h1 class="title-heading" style="font-size: 26px; font-weight: 800; color: #172013; margin: 0 0 12px 0; letter-spacing: -0.6px; line-height: 1.2; word-break: break-word;">
                 Trusted Contact Invitation
               </h1>
 
               <!-- Big Bold Classy Body Lede -->
-              <p style="font-size: 16px; line-height: 1.5; color: #36412F; margin: 0 0 26px 0; letter-spacing: -0.2px;">
+              <p class="lede-text" style="font-size: 15px; line-height: 1.5; color: #36412F; margin: 0 0 22px 0; letter-spacing: -0.2px;">
                 <strong style="color: #141C10; font-weight: 700;">${escapeHtml(inviterName)}</strong> invited you to be their <strong style="color: #141C10; font-weight: 700;">${escapeHtml(role)}</strong> to help review and approve sensitive online actions.
               </p>
 
               <!-- Unified Pairing Pass Card -->
-              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 14px; margin-bottom: 26px; border-collapse: separate;">
+              <table role="presentation" class="pairing-pass-card" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 14px; margin-bottom: 24px; border-collapse: separate; width: 100%;">
                 <tr>
-                  <td style="padding: 22px 20px 20px;">
+                  <td style="padding: 20px 14px 18px; text-align: center;">
                     <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; text-align: center; margin-bottom: 12px;">
                       SCAN WITH PHONE CAMERA
                     </div>
-                    <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
                       <tr>
-                        <td align="center" valign="middle" style="line-height: 0;">
+                        <td align="center" valign="middle" style="line-height: 0; text-align: center;">
                           ${qrGifB64
-                            ? `<img src="cid:pairing-qr" width="140" height="140" style="display: block; margin: 0 auto; width: 140px; height: 140px; border-radius: 9px; border: 0; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code" />`
+                            ? `<img class="qr-img" src="cid:pairing-qr" width="136" height="136" style="display: block; margin: 0 auto; width: 136px; height: 136px; border-radius: 9px; border: 0; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code" />`
                             : `<div style="font-size: 12px; color: #7E8774;">Scan in Guardrail App</div>`
                           }
                         </td>
@@ -482,23 +550,23 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                     </p>
 
                     <!-- Divider inside card -->
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 18px;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 18px 0 16px;">
                       <tr>
-                        <td style="border-bottom: 1px solid #D8D2C2; font-size: 0; line-height: 0;" width="32%">&nbsp;</td>
-                        <td style="text-align: center; padding: 0 10px; font-size: 10px; font-weight: 700; color: #8A9480; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap;">
+                        <td style="border-bottom: 1px solid #D8D2C2; font-size: 0; line-height: 0;" width="26%">&nbsp;</td>
+                        <td style="text-align: center; padding: 0 8px; font-size: 10px; font-weight: 700; color: #8A9480; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap;">
                           OR ENTER CODE
                         </td>
-                        <td style="border-bottom: 1px solid #D8D2C2; font-size: 0; line-height: 0;" width="32%">&nbsp;</td>
+                        <td style="border-bottom: 1px solid #D8D2C2; font-size: 0; line-height: 0;" width="26%">&nbsp;</td>
                       </tr>
                     </table>
 
                     <!-- Segmented Pairing Code Animation -->
-                    <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto; width: 100%; max-width: ${gifCssWidth}px;">
                       <tr>
-                        <td align="center" valign="middle" style="line-height: 0;">
+                        <td align="center" valign="middle" style="line-height: 0; text-align: center;">
                           ${gifB64
-                            ? `<img src="cid:pairing-code" width="${gifCssWidth}" height="${gifCssHeight}" style="display: block; margin: 0 auto; width: ${gifCssWidth}px; height: ${gifCssHeight}px; border: 0;" alt="${escapeHtml(codeString)}" />`
-                            : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
+                            ? `<img class="code-gif-img" src="cid:pairing-code" width="${gifCssWidth}" height="${gifCssHeight}" style="display: block; margin: 0 auto; width: 100%; max-width: ${gifCssWidth}px; height: auto; border: 0;" alt="${escapeHtml(codeString)}" />`
+                            : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 19px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
                           }
                         </td>
                       </tr>
@@ -508,26 +576,35 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               </table>
 
               <!-- Primary Action Button -->
-              <div style="text-align: center; margin: 0 0 24px 0;">
-                <a href="${pairingUrl}" class="btn-connect" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 14px 36px; border-radius: 9999px; font-size: 14.5px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.16); letter-spacing: -0.2px;">
-                  Accept Invitation &amp; Connect &rarr;
-                </a>
-              </div>
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto 22px auto;">
+                <tr>
+                  <td align="center" style="border-radius: 9999px; background-color: #273121;">
+                    <a href="${pairingUrl}" class="btn-connect" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 14px 32px; border-radius: 9999px; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.16); letter-spacing: -0.2px; border: 1px solid #273121;">
+                      Accept Invitation &amp; Connect &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
 
               <!-- Security Expiration Notice & Safety Guarantee -->
-              <p style="font-size: 12px; line-height: 1.6; color: #7E8774; text-align: center; margin: 0 0 22px 0;">
+              <p style="font-size: 12px; line-height: 1.6; color: #7E8774; text-align: center; margin: 0 0 20px 0;">
                 This invitation expires in 24 hours.<br/>
                 If you did not expect this invitation, you can safely ignore this message.
               </p>
 
               <!-- Footer Attribution -->
-              <div style="border-top: 1px solid #E2DCCF; padding-top: 16px; font-size: 11px; color: #9AA392; text-align: center;">
+              <div style="border-top: 1px solid #E2DCCF; padding-top: 14px; font-size: 11px; color: #9AA392; text-align: center;">
                 Guardrail Protection Network &middot; Privacy &amp; Safety Guard
               </div>
 
             </td>
           </tr>
         </table>
+        <!--[if (gte mso 9)|(IE)]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
       </td>
     </tr>
   </table>
