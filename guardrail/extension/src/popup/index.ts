@@ -282,20 +282,20 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
         <div class="active-guardian-item">
           <div class="active-guardian-info">
             <div class="active-guardian-avatar" aria-hidden="true">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
             <div class="active-guardian-meta">
               <span class="active-guardian-id">${c.id}</span>
-              <span class="active-guardian-role">(${c.relationshipLabel || 'Guardian'})</span>
+              <span class="active-guardian-role">${c.relationshipLabel || 'Designated Caretaker'}</span>
             </div>
           </div>
-          <span class="active-guardian-badge">
+          <div class="active-guardian-status">
             <span class="active-guardian-dot"></span>
-            Active
-          </span>
+            <span>Active</span>
+          </div>
         </div>
       `
       )
@@ -348,6 +348,29 @@ function getPairingButtonDefaultText(): string {
   return isPaired ? 'Pairing Info →' : 'Setup →';
 }
 
+function morphBanner(targetBtnText: string, targetDescText: string): void {
+  const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
+  const desc = document.getElementById('onboarding-status-desc');
+
+  if (btn) btn.classList.add('btn-morph-out');
+  if (desc) desc.classList.add('banner-morph-out');
+
+  setTimeout(() => {
+    if (btn) {
+      btn.textContent = targetBtnText;
+      btn.classList.remove('btn-morph-out');
+      btn.classList.add('btn-morph-in');
+      setTimeout(() => btn.classList.remove('btn-morph-in'), 200);
+    }
+    if (desc) {
+      desc.textContent = targetDescText;
+      desc.classList.remove('banner-morph-out');
+      desc.classList.add('banner-morph-in');
+      setTimeout(() => desc.classList.remove('banner-morph-in'), 200);
+    }
+  }, 90);
+}
+
 /**
  * Opens the pairing panel expanding to the left with cinematic ease.
  */
@@ -366,9 +389,7 @@ export function openPairingPanel(): void {
     savedDescBeforeOpen = desc.textContent || '';
   }
 
-  const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
-  if (btn) btn.textContent = 'Close ✕';
-  if (desc) desc.textContent = 'Pairing in progress...';
+  morphBanner('Close ✕', 'Pairing in progress...');
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
@@ -383,6 +404,12 @@ export function closePairingPanel(): void {
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
 
+  const targetBtn = getPairingButtonDefaultText();
+  const targetDesc = savedDescBeforeOpen || 'Not Connected';
+  savedDescBeforeOpen = '';
+
+  morphBanner(targetBtn, targetDesc);
+
   setTimeout(() => {
     document.documentElement.classList.remove('pairing-open');
     document.body.classList.remove('pairing-open', 'pairing-closing');
@@ -390,14 +417,6 @@ export function closePairingPanel(): void {
     document.body.style.width = '360px';
     const stage = document.getElementById('popup-stage');
     if (stage) stage.style.width = '360px';
-
-    const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
-    if (btn) btn.textContent = getPairingButtonDefaultText();
-    const desc = document.getElementById('onboarding-status-desc');
-    if (desc && savedDescBeforeOpen) {
-      desc.textContent = savedDescBeforeOpen;
-      savedDescBeforeOpen = '';
-    }
 
     isClosingPanel = false;
   }, 260);

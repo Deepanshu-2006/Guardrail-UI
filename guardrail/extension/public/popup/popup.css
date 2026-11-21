@@ -278,20 +278,21 @@ body.pairing-open .pairing-footer {
   background-color: rgba(39, 49, 33, 0.045);
   border: 1px solid rgba(39, 49, 33, 0.12);
   border-radius: 12px;
-  padding: 12px 13px;
+  padding: 12px 14px;
   gap: 10px;
 }
 
-.active-count-pill {
+.active-count-pill,
+.active-count-text {
   font-family: var(--gd-font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--gd-deep-olive);
-  background: rgba(39, 49, 33, 0.08);
-  border: 1px solid rgba(39, 49, 33, 0.14);
-  padding: 2px 8px;
-  border-radius: 9999px;
-  letter-spacing: 0.02em;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gd-text-muted);
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
 }
 
 .active-guardians-list {
@@ -304,41 +305,42 @@ body.pairing-open .pairing-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: rgba(39, 49, 33, 0.05);
-  border: 1px solid rgba(39, 49, 33, 0.12);
+  background-color: rgba(39, 49, 33, 0.045);
+  border: 1px solid rgba(39, 49, 33, 0.09);
   border-radius: 9px;
   padding: 8px 11px;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .active-guardian-item:hover {
-  background-color: rgba(39, 49, 33, 0.075);
-  border-color: rgba(39, 49, 33, 0.18);
+  background-color: rgba(39, 49, 33, 0.07);
+  border-color: rgba(39, 49, 33, 0.16);
 }
 
 .active-guardian-info {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .active-guardian-avatar {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background-color: rgba(39, 49, 33, 0.09);
+  background-color: rgba(39, 49, 33, 0.07);
   color: var(--gd-deep-olive);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid rgba(39, 49, 33, 0.12);
 }
 
 .active-guardian-meta {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
 .active-guardian-id {
@@ -347,6 +349,7 @@ body.pairing-open .pairing-footer {
   font-weight: 700;
   color: var(--gd-deep-olive);
   letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .active-guardian-role {
@@ -354,30 +357,30 @@ body.pairing-open .pairing-footer {
   font-size: 10.5px;
   color: var(--gd-text-muted);
   font-weight: 500;
+  line-height: 1.2;
 }
 
-.active-guardian-badge {
+.active-guardian-status {
   display: inline-flex;
   align-items: center;
   gap: 4.5px;
   font-family: var(--gd-font-mono);
   font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--gd-deep-olive);
-  background-color: rgba(39, 49, 33, 0.07);
-  border: 1px solid rgba(39, 49, 33, 0.14);
-  padding: 2.5px 7.5px;
-  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  color: #415D30;
   text-transform: uppercase;
+  flex-shrink: 0;
+  padding-left: 6px;
 }
 
 .active-guardian-dot {
-  width: 4.5px;
-  height: 4.5px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background-color: #4D6836;
+  background-color: #55773F;
   display: inline-block;
+  box-shadow: 0 0 0 2px rgba(85, 119, 63, 0.2);
 }
 
 .btn-add-another-contact {
@@ -386,7 +389,7 @@ body.pairing-open .pairing-footer {
   justify-content: center;
   gap: 6px;
   width: 100%;
-  padding: 7px 12px;
+  padding: 8px 14px;
   border-radius: 9999px;
   border: 1px solid transparent;
   background-color: var(--gd-deep-olive);
@@ -399,7 +402,7 @@ body.pairing-open .pairing-footer {
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(39, 49, 33, 0.12);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .btn-add-another-contact:hover {
@@ -821,6 +824,23 @@ body.pairing-open #btn-open-onboarding:hover {
   border-color: var(--gd-deep-olive);
 }
 
+/* Smooth shrink for pulsing dot on close */
+body.pairing-closing .onboarding-desc::before {
+  animation: gdDotShrink 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+@keyframes gdDotShrink {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* While pairing is closing, smoothly morph button style back to filled olive */
+body.pairing-closing #btn-open-onboarding {
+  background-color: var(--gd-deep-olive) !important;
+  color: var(--gd-bg-canvas) !important;
+  border-color: transparent !important;
+}
+
 /* -----------------------------------------------------------------------------
    Header: Brand Masthead & Badges
    ----------------------------------------------------------------------------- */
@@ -1037,7 +1057,20 @@ body.pairing-open #btn-open-onboarding:hover {
   font-size: 12px;
   font-weight: 600;
   color: var(--gd-deep-olive);
-  transition: color 0.25s ease;
+  transition: opacity 0.20s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.20s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.25s ease;
+  will-change: opacity, transform;
+}
+
+.onboarding-desc.banner-morph-out {
+  opacity: 0.35;
+  transform: translateY(-2px);
+}
+
+.onboarding-desc.banner-morph-in {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .setup-progress-track {
@@ -1070,8 +1103,19 @@ body.pairing-open #btn-open-onboarding:hover {
   transition: background-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
               color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
               border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+              opacity 0.20s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.20s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+}
+
+.btn-action.btn-morph-out {
+  opacity: 0.60;
+  transform: scale(0.95);
+}
+
+.btn-action.btn-morph-in {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .btn-action:hover {
