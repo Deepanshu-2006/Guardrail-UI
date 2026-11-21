@@ -741,8 +741,13 @@ body.pairing-open .onboarding-desc::before {
   border-radius: 50%;
   background: #54683E;
   box-shadow: 0 0 0 0 rgba(84, 104, 62, 0.5);
-  animation: gdLivePing 2.2s infinite;
+  animation: gdLivePing 2.2s infinite, gdDotPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
   flex-shrink: 0;
+}
+
+@keyframes gdDotPop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 body.pairing-open #btn-open-onboarding {
@@ -943,7 +948,9 @@ body.pairing-open #btn-open-onboarding:hover {
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .onboarding-row {
@@ -973,6 +980,15 @@ body.pairing-open #btn-open-onboarding:hover {
   font-size: 12px;
   font-weight: 600;
   color: var(--gd-deep-olive);
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.25s ease;
+  will-change: opacity, transform;
+}
+
+.onboarding-desc.banner-text-shifting {
+  opacity: 0;
+  transform: translateY(-3px);
 }
 
 .setup-progress-track {
@@ -993,7 +1009,7 @@ body.pairing-open #btn-open-onboarding:hover {
 .btn-action {
   background-color: var(--gd-deep-olive);
   color: var(--gd-bg-canvas);
-  border: none;
+  border: 1px solid transparent;
   border-radius: 9999px;
   padding: 6px 13px;
   font-family: var(--gd-font-display);
@@ -1002,8 +1018,18 @@ body.pairing-open #btn-open-onboarding:hover {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: background-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.18s ease;
   white-space: nowrap;
+  will-change: transform, opacity, background-color;
+}
+
+.btn-action.btn-animating {
+  opacity: 0.45;
+  transform: scale(0.93);
 }
 
 .btn-action:hover {

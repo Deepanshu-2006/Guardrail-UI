@@ -338,6 +338,26 @@ function getPairingButtonDefaultText(): string {
   return isPaired ? 'Pairing Info →' : 'Setup →';
 }
 
+function animateBannerDesc(newText: string): void {
+  const desc = document.getElementById('onboarding-status-desc');
+  if (!desc) return;
+  desc.classList.add('banner-text-shifting');
+  setTimeout(() => {
+    desc.textContent = newText;
+    desc.classList.remove('banner-text-shifting');
+  }, 100);
+}
+
+function animateBannerButton(newText: string): void {
+  const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
+  if (!btn) return;
+  btn.classList.add('btn-animating');
+  setTimeout(() => {
+    btn.textContent = newText;
+    btn.classList.remove('btn-animating');
+  }, 100);
+}
+
 /**
  * Opens the pairing panel expanding to the left with cinematic ease.
  */
@@ -351,16 +371,13 @@ export function openPairingPanel(): void {
   const stage = document.getElementById('popup-stage');
   if (stage) stage.style.width = '710px';
 
-  const btn = document.getElementById('btn-open-onboarding');
-  if (btn) btn.textContent = 'Close ✕';
-
   const desc = document.getElementById('onboarding-status-desc');
-  if (desc) {
-    if (!savedDescBeforeOpen) {
-      savedDescBeforeOpen = desc.textContent || '';
-    }
-    desc.textContent = 'Pairing in progress...';
+  if (desc && !savedDescBeforeOpen) {
+    savedDescBeforeOpen = desc.textContent || '';
   }
+
+  animateBannerButton('Close ✕');
+  animateBannerDesc('Pairing in progress...');
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
@@ -375,12 +392,9 @@ export function closePairingPanel(): void {
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
 
-  const btn = document.getElementById('btn-open-onboarding');
-  if (btn) btn.textContent = getPairingButtonDefaultText();
-
-  const desc = document.getElementById('onboarding-status-desc');
-  if (desc && savedDescBeforeOpen) {
-    desc.textContent = savedDescBeforeOpen;
+  animateBannerButton(getPairingButtonDefaultText());
+  if (savedDescBeforeOpen) {
+    animateBannerDesc(savedDescBeforeOpen);
     savedDescBeforeOpen = '';
   }
 
