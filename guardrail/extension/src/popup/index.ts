@@ -218,6 +218,10 @@ export function renderPopupStatus(
   if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Setup →';
 }
 
+function escapeHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
+}
+
 /**
  * Updates UI when Caretaker pairing is confirmed active.
  */
@@ -248,10 +252,26 @@ function updatePopupToPairedState(
 
   const liveStatus = document.getElementById('pairing-live-status');
   if (liveStatus) {
-    liveStatus.className = 'pairing-live-status connected status-updated';
+    liveStatus.className = 'pairing-live-status connected status-updated is-animating';
     liveStatus.innerHTML = `
-      <span class="check-dot">✓</span>
-      <span class="status-msg">Connected to ${caretakerName}!</span>
+      <span class="connected-pill-gleam" aria-hidden="true"></span>
+      <span class="connected-badge-container">
+        <span class="connected-sonar-ring" aria-hidden="true"></span>
+        <svg class="connected-check-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle class="connected-circle-fill" cx="8" cy="8" r="6.8" />
+          <path class="connected-check-path" d="M4.6 8.3L7 10.7L11.6 5.8" />
+        </svg>
+      </span>
+      <span class="status-msg connected-msg">
+        <span class="msg-prefix">Connected to</span>
+        <strong class="connected-target-name">${escapeHtml(caretakerName)}!</strong>
+        <span class="connected-verified-badge" title="Verified Guardrail Handshake">
+          <svg class="shield-check-icon" viewBox="0 0 12 12" fill="none" width="10" height="10">
+            <path d="M6 1L10 2.8V6C10 8.5 8.2 10.5 6 11C3.8 10.5 2 8.5 2 6V2.8L6 1Z" fill="#55773F" fill-opacity="0.2" stroke="#55773F" stroke-width="1.1"/>
+            <path d="M4.5 6.2L5.5 7.2L7.8 4.8" stroke="#38572A" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </span>
     `;
   }
 
@@ -418,7 +438,7 @@ export function openPairingPanel(): void {
 
   const initialH = container?.offsetHeight || 546;
   savedClosedHeight = initialH;
-  const targetOpenH = 598;
+  const targetOpenH = 580;
 
   // Set explicit starting dimensions BEFORE adding classes or triggering transition
   document.documentElement.style.transition = 'none';
@@ -467,9 +487,22 @@ export function openPairingPanel(): void {
   const codeToDisplay = activePairingCode || 'GR-INV-8K2M-9Q7X';
   renderPairingCodeCharacters(codeToDisplay, true);
   triggerQrCodeAnimation(false);
+  triggerConnectedPillAnimation();
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
+}
+
+/**
+ * Triggers or restarts the connected pill animation when the pairing panel is opened in paired state.
+ */
+export function triggerConnectedPillAnimation(): void {
+  const liveStatus = document.getElementById('pairing-live-status');
+  if (liveStatus && liveStatus.classList.contains('connected')) {
+    liveStatus.classList.remove('is-animating');
+    void liveStatus.offsetWidth;
+    liveStatus.classList.add('is-animating');
+  }
 }
 
 /**

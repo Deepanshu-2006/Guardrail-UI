@@ -102,9 +102,9 @@ body.pairing-open .pairing-panel {
   min-width: 350px;
   max-width: 350px;
   flex-shrink: 0;
-  padding: 10px 14px 8px;
+  padding: 12px 14px 10px;
   flex-direction: column;
-  gap: 6px;
+  gap: 6.5px;
   background-color: var(--gd-bg-canvas);
   border-right: none;
   box-shadow: none;
@@ -293,8 +293,8 @@ body.pairing-open .pairing-footer {
 .pairing-card {
   background-color: var(--gd-card-bg);
   border: 1px solid var(--gd-card-border);
-  border-radius: 11px;
-  padding: 8px 12px;
+  border-radius: 10px;
+  padding: 7.5px 11px;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -305,9 +305,9 @@ body.pairing-open .pairing-footer {
 .active-guardians-card {
   background-color: rgba(39, 49, 33, 0.045);
   border: 1px solid rgba(39, 49, 33, 0.12);
-  border-radius: 10px;
-  padding: 7px 11px 7px;
-  gap: 5px;
+  border-radius: 9px;
+  padding: 6px 11px 6px;
+  gap: 4px;
 }
 
 .active-guardians-header {
@@ -414,15 +414,15 @@ body.pairing-open .pairing-footer {
   justify-content: center;
   align-items: center;
   width: 100%;
-  margin: 1px 0 8px;
+  margin: 0;
 }
 
 .role-compact-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 27px;
-  padding: 0 11px;
+  height: 25px;
+  padding: 0 10px;
   border-radius: 9999px;
   background: rgba(39, 49, 33, 0.05);
   border: 1px solid rgba(39, 49, 33, 0.15);
@@ -453,7 +453,7 @@ body.pairing-open .pairing-footer {
   background: transparent;
   color: var(--gd-deep-olive);
   font-family: var(--gd-font-sans);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   outline: none;
   width: 100px;
@@ -466,7 +466,7 @@ body.pairing-open .pairing-footer {
 .role-compact-input::placeholder {
   color: var(--gd-text-muted);
   font-weight: 400;
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 .role-icon-edit {
@@ -485,7 +485,8 @@ body.pairing-open .pairing-footer {
 .qr-card {
   align-items: center;
   text-align: center;
-  padding: 9px 12px 8px;
+  padding: 8px 11px 7px;
+  gap: 4px;
 }
 
 .card-kicker-row {
@@ -507,8 +508,8 @@ body.pairing-open .pairing-footer {
 
 .qr-code-wrapper {
   position: relative;
-  width: 116px;
-  height: 116px;
+  width: 122px;
+  height: 122px;
   border-radius: 9px;
   background: #FAF6ED;
   border: 1px solid rgba(39, 49, 33, 0.14);
@@ -642,8 +643,8 @@ body.pairing-open .pairing-footer {
 }
 
 .qr-reveal-container {
-  width: 108px;
-  height: 108px;
+  width: 114px;
+  height: 114px;
   position: relative;
   overflow: hidden;
   border-radius: 6px;
@@ -791,7 +792,8 @@ body.pairing-open .pairing-footer {
   font-size: 11px;
   color: var(--gd-text-secondary);
   line-height: 1.35;
-  max-width: 260px;
+  max-width: 250px;
+  margin: 0;
 }
 
 .pairing-label-row {
@@ -816,7 +818,7 @@ body.pairing-open .pairing-footer {
   background: rgba(39, 49, 33, 0.05);
   border: 1px solid rgba(39, 49, 33, 0.16);
   border-radius: 8px;
-  padding: 6px 8px 6px 12px;
+  padding: 5px 8px 5px 11px;
 }
 
 .pairing-code-text {
@@ -906,7 +908,7 @@ body.pairing-open .pairing-footer {
   flex: 1;
   display: flex;
   align-items: center;
-  height: 35px;
+  height: 33px;
   background: rgba(39, 49, 33, 0.045);
   border: 1px solid rgba(39, 49, 33, 0.16);
   border-radius: 8px;
@@ -982,14 +984,14 @@ body.pairing-open .pairing-footer {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 35px;
-  padding: 0 14px;
+  height: 33px;
+  padding: 0 13px;
   background: var(--gd-deep-olive);
   color: #FAF6ED;
   border: 1px solid rgba(39, 49, 33, 0.28);
   border-radius: 8px;
   font-family: var(--gd-font-sans);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
@@ -1281,8 +1283,9 @@ body.pairing-open .btn-send-icon {
 }
 
 .pairing-footer {
-  margin-top: 2px;
-  padding-top: 0;
+  margin-top: auto;
+  padding-top: 4px;
+  padding-bottom: 2px;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -1294,11 +1297,11 @@ body.pairing-open .btn-send-icon {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 21px;
+  height: 22px;
   padding: 0 10px 0 7px;
   border-radius: 9999px;
   background: rgba(39, 49, 33, 0.032);
-  border: 1px solid rgba(39, 49, 33, 0.07);
+  border: 1px solid rgba(39, 49, 33, 0.08);
   font-family: var(--gd-font-sans);
   font-size: 10.5px;
   color: #4F6B3C;
@@ -1363,26 +1366,144 @@ body.pairing-open .btn-send-icon {
   }
 }
 
+/* =============================================================================
+   Creative Connected Status Pill & Verified Signal Choreography
+   ============================================================================= */
+
 .pairing-live-status.connected {
-  background: rgba(71, 99, 54, 0.08);
-  border-color: rgba(71, 99, 54, 0.16);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 11px 0 7px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(85, 119, 63, 0.12) 0%, rgba(132, 175, 96, 0.05) 100%);
+  border: 1px solid rgba(85, 119, 63, 0.28);
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
   color: #1F2E17;
-  font-weight: 600;
+  font-family: var(--gd-font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.012em;
+  overflow: hidden;
+  user-select: none;
+  box-sizing: border-box;
+  transition: all 0.22s ease;
 }
 
-.check-dot {
-  font-size: 11px;
+.pairing-live-status.connected:hover {
+  background: linear-gradient(135deg, rgba(85, 119, 63, 0.18) 0%, rgba(132, 175, 96, 0.09) 100%);
+  border-color: rgba(85, 119, 63, 0.42);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 6px rgba(85, 119, 63, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+/* Badge Icon Container & Radiating Sonar Energy */
+.connected-badge-container {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.connected-sonar-ring {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: rgba(85, 119, 63, 0.45);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.connected-check-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
+
+.connected-circle-fill {
+  fill: #55773F;
+  stroke: #415C2E;
+  stroke-width: 1.2;
+  transform-origin: 8px 8px;
+}
+
+.connected-check-path {
+  stroke: #FAF6ED;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 0;
+}
+
+/* Optical Prism Gleam that sweeps across the pill */
+.connected-pill-gleam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(226, 247, 202, 0.15) 30%,
+    rgba(226, 247, 202, 0.75) 60%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+}
+
+/* Status Message and Name Highlight */
+.connected-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+}
+
+.connected-msg .msg-prefix {
+  color: #4A6337;
+  font-weight: 500;
+  font-size: 10.5px;
+  opacity: 0.9;
+}
+
+.connected-target-name {
+  color: #1A2813;
   font-weight: 700;
-  color: #38572A;
-  margin-right: 1px;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+}
+
+.connected-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 1px;
+  line-height: 1;
+}
+
+.shield-check-icon {
+  display: block;
 }
 
 /* =============================================================================
-   Choreographed Entry Sequence: Radar Signal Ignition
+   Choreographed Entry Sequence: Radar Signal Ignition & Connected Bloom
    ============================================================================= */
 
-/* 1. Pill Aperture Expansion from Center */
-body.pairing-open .pairing-live-status {
+/* 1. Waiting Pill Aperture Expansion from Center */
+body.pairing-open .pairing-live-status.waiting {
   animation: gdPillApertureOpen 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.54s both;
   will-change: transform, opacity;
 }
@@ -1402,8 +1523,8 @@ body.pairing-open .pairing-live-status {
   }
 }
 
-/* 2. Beacon Dot Energy Ignition */
-body.pairing-open .pairing-live-status .pulse-dot {
+/* 2. Waiting Beacon Dot Energy Ignition */
+body.pairing-open .pairing-live-status.waiting .pulse-dot {
   animation:
     gdBeaconIgnite 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) 1.70s both,
     gdLivePing 2.5s cubic-bezier(0, 0, 0.2, 1) 2.18s infinite;
@@ -1427,8 +1548,8 @@ body.pairing-open .pairing-live-status .pulse-dot {
   }
 }
 
-/* 3. Sonar Wave Shockwave Burst */
-body.pairing-open .pulse-ring::before {
+/* 3. Waiting Sonar Wave Shockwave Burst */
+body.pairing-open .pairing-live-status.waiting .pulse-ring::before {
   animation: gdSonarBurst 0.90s cubic-bezier(0.16, 1, 0.3, 1) 1.76s forwards;
 }
 
@@ -1443,14 +1564,9 @@ body.pairing-open .pulse-ring::before {
   }
 }
 
-/* 4. Status Message Gentle Glide & Tracking Settle on initial open */
-body.pairing-open .pairing-live-status:not(.status-updated) .status-msg {
+/* 4. Waiting Status Message Gentle Glide */
+body.pairing-open .pairing-live-status.waiting:not(.status-updated) .status-msg {
   animation: gdStatusTextGlide 0.44s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both;
-}
-.pairing-live-status.status-updated .status-msg,
-.pairing-live-status.connected .status-msg {
-  animation: none;
-  opacity: 1;
 }
 
 @keyframes gdStatusTextGlide {
@@ -1463,6 +1579,188 @@ body.pairing-open .pairing-live-status:not(.status-updated) .status-msg {
     opacity: 1;
     transform: translateX(0);
     letter-spacing: 0.012em;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Connected Pill Choreography: Bloom, Sonar Wave, Check Draw, Light Gleam
+   ----------------------------------------------------------------------------- */
+
+/* Initial Flyout Cascade Entry (when opening panel already connected) */
+body.pairing-open .pairing-live-status.connected:not(.is-animating) {
+  animation: gdConnectedBloom 0.58s cubic-bezier(0.16, 1, 0.3, 1) 1.44s both;
+}
+
+body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-circle-fill {
+  animation: gdBadgeCirclePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 1.52s both;
+}
+
+body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-sonar-ring {
+  animation: gdConnectedSonarWave 0.85s cubic-bezier(0.16, 1, 0.3, 1) 1.56s both;
+}
+
+body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-check-path {
+  animation: gdCheckmarkDraw 0.42s cubic-bezier(0.16, 1, 0.3, 1) 1.66s forwards;
+}
+
+body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-msg {
+  animation: gdConnectedTextSlide 0.44s cubic-bezier(0.16, 1, 0.3, 1) 1.60s both;
+}
+
+body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-pill-gleam {
+  animation: gdConnectedGleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 1.72s both;
+}
+
+body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-verified-badge {
+  animation: gdShieldLock 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 1.76s both;
+}
+
+/* Dynamic Live Transition Entry (when pairing completes in real time or re-triggered) */
+.pairing-live-status.connected.is-animating {
+  animation: gdConnectedBloom 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both !important;
+}
+
+.pairing-live-status.connected.is-animating .connected-circle-fill {
+  animation: gdBadgeCirclePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s both !important;
+}
+
+.pairing-live-status.connected.is-animating .connected-sonar-ring {
+  animation: gdConnectedSonarWave 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both !important;
+}
+
+.pairing-live-status.connected.is-animating .connected-check-path {
+  animation: gdCheckmarkDraw 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.22s forwards !important;
+}
+
+.pairing-live-status.connected.is-animating .connected-msg {
+  animation: gdConnectedTextSlide 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
+}
+
+.pairing-live-status.connected.is-animating .connected-pill-gleam {
+  animation: gdConnectedGleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
+}
+
+.pairing-live-status.connected.is-animating .connected-verified-badge {
+  animation: gdShieldLock 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.32s both !important;
+}
+
+/* Connected Keyframes */
+@keyframes gdConnectedBloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+    box-shadow: 0 0 0 0 rgba(85, 119, 63, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 0 16px 3px rgba(85, 119, 63, 0.34);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 1px 3px rgba(39, 49, 33, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+}
+
+@keyframes gdBadgeCirclePop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes gdConnectedSonarWave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+@keyframes gdCheckmarkDraw {
+  0% {
+    stroke-dashoffset: 14;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gdConnectedTextSlide {
+  0% {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gdConnectedGleam {
+  0% {
+    left: -40px;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% + 25px);
+    opacity: 0;
+  }
+}
+
+@keyframes gdShieldLock {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-25deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.2) rotate(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Ambient Heartbeat Radar Pulse every 3.5 seconds */
+.pairing-live-status.connected .connected-badge-container::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(85, 119, 63, 0.5);
+  animation: gdConnectedPulseBeacon 3.5s cubic-bezier(0.16, 1, 0.3, 1) 2.2s infinite;
+  pointer-events: none;
+}
+
+@keyframes gdConnectedPulseBeacon {
+  0% {
+    box-shadow: 0 0 0 0 rgba(85, 119, 63, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(85, 119, 63, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(85, 119, 63, 0);
   }
 }
 
@@ -2073,6 +2371,7 @@ body.pairing-closing #btn-open-onboarding {
   gap: 5px;
   padding-top: 2px;
   text-align: center;
+  margin-top: auto;
 }
 
 .footer-icon {
