@@ -521,14 +521,14 @@ body.pairing-open .pairing-footer {
 /* Viewfinder Optical Reticles */
 .viewfinder-corner {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-color: #55773F;
   border-style: solid;
   pointer-events: none;
   z-index: 10;
   opacity: 0.85;
-  transition: all 0.3s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .corner-tl { top: 3px; left: 3px; border-width: 2px 0 0 2px; border-top-left-radius: 2px; }
 .corner-tr { top: 3px; right: 3px; border-width: 2px 2px 0 0; border-top-right-radius: 2px; }
@@ -540,37 +540,64 @@ body.pairing-open .pairing-footer {
 }
 
 @keyframes gdReticleLock {
-  0% { transform: scale(1.4); opacity: 0; }
-  100% { transform: scale(1); opacity: 0.85; }
+  0% { transform: scale(1.45); opacity: 0; }
+  100% { transform: scale(1); opacity: 0.9; }
 }
 
-/* Luminous Olive Laser Scanner */
+/* Luminous Optical Laser Scanner with Filament Core */
 .qr-laser-scanner {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent 4%, #55773F 22%, #7BA45A 50%, #55773F 78%, transparent 96%);
-  box-shadow: 0 0 8px rgba(123, 164, 90, 0.9), 0 0 16px rgba(85, 119, 63, 0.5);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(85, 119, 63, 0) 5%,
+    #55773F 18%,
+    #84AF60 38%,
+    #E2F7CA 50%,
+    #84AF60 62%,
+    #55773F 82%,
+    rgba(85, 119, 63, 0) 95%,
+    transparent 100%
+  );
+  box-shadow: 
+    0 0 4px #A8D97D,
+    0 0 10px rgba(132, 175, 96, 0.85),
+    0 0 20px rgba(85, 119, 63, 0.5);
   z-index: 8;
   pointer-events: none;
   opacity: 0;
 }
 
-.qr-laser-scanner::after {
+/* Upward trailing optical wash */
+.qr-laser-scanner::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 2px;
-  height: 26px;
-  background: linear-gradient(to top, rgba(85, 119, 63, 0.22), transparent);
+  height: 30px;
+  background: linear-gradient(to top, rgba(85, 119, 63, 0.24) 0%, rgba(85, 119, 63, 0.06) 65%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Soft downward leading glow */
+.qr-laser-scanner::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 2px;
+  height: 4px;
+  background: linear-gradient(to bottom, rgba(168, 217, 125, 0.35), transparent);
   pointer-events: none;
 }
 
 .qr-code-wrapper.animating .qr-laser-scanner {
-  animation: gdLaserMove 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.55s forwards;
+  animation: gdLaserMove 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.52s forwards;
 }
 
 @keyframes gdLaserMove {
@@ -597,23 +624,34 @@ body.pairing-open .pairing-footer {
   display: block;
 }
 
-/* 3 Corner Finder Targets Animation */
-.qr-code-wrapper.animating .qr-finders-group {
+/* Staggered Triangulation Snap for the 3 Corner Finder Targets */
+.qr-code-wrapper.animating .qr-eye {
   opacity: 0;
-  transform-origin: center;
-  animation: gdFinderSnap 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.20s forwards;
+  animation: gdEyeSnap 0.40s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.qr-code-wrapper.animating .qr-eye-tl { animation-delay: 0.12s; }
+.qr-code-wrapper.animating .qr-eye-tr { animation-delay: 0.24s; }
+.qr-code-wrapper.animating .qr-eye-bl { animation-delay: 0.36s; }
+
+@keyframes gdEyeSnap {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-@keyframes gdFinderSnap {
-  0% { opacity: 0; transform: scale(0.6); }
-  70% { opacity: 1; transform: scale(1.05); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-/* Data Matrix Wipe Animation */
+/* Data Matrix Wipe Animation following the Laser */
 .qr-code-wrapper.animating .qr-data-group {
   clip-path: inset(0 0 100% 0);
-  animation: gdDataWipe 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.55s forwards;
+  animation: gdDataWipe 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.52s forwards;
 }
 
 @keyframes gdDataWipe {
@@ -627,27 +665,32 @@ body.pairing-open .pairing-footer {
   position: absolute;
   inset: 0;
   border-radius: 10px;
-  box-shadow: inset 0 0 0 2px rgba(85, 119, 63, 0.6);
+  box-shadow: inset 0 0 0 2px rgba(85, 119, 63, 0.7);
   opacity: 0;
   pointer-events: none;
   animation: gdReadyPulse 0.55s ease 1.70s forwards;
 }
 
 @keyframes gdReadyPulse {
-  0% { opacity: 0; }
-  50% { opacity: 0.9; }
-  100% { opacity: 0; }
+  0% { opacity: 0; transform: scale(0.98); }
+  50% { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
 
-/* Interactive Laser Sweep on Hover */
+/* Interactive Hover: Reticles tighten + Laser fast scan */
+.qr-code-wrapper:not(.animating):hover .viewfinder-corner {
+  border-color: #384A2A;
+  transform: scale(0.92);
+}
+
 .qr-code-wrapper:not(.animating):hover .qr-laser-scanner {
-  animation: gdLaserHover 0.75s ease forwards;
+  animation: gdLaserHover 0.70s ease forwards;
 }
 
 @keyframes gdLaserHover {
   0% { top: 0%; opacity: 0; }
-  15% { opacity: 0.85; }
-  85% { opacity: 0.85; }
+  15% { opacity: 0.9; }
+  85% { opacity: 0.9; }
   100% { top: 100%; opacity: 0; }
 }
 

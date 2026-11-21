@@ -623,7 +623,8 @@ export function triggerQrCodeAnimation(delayMs = 800): void {
 
 /**
  * Generates an SVG string for the QR code separating the 3 Corner Finder targets
- * from the data matrix to enable cinematic targeting and laser wipe animations.
+ * individually from the data matrix to enable optical triangulation locking
+ * and filament laser sweep animations.
  */
 export function generateCreativeQrSvg(pairingUrl: string): string {
   const qr = QRCode.create(pairingUrl, { errorCorrectionLevel: 'M' });
@@ -631,29 +632,44 @@ export function generateCreativeQrSvg(pairingUrl: string): string {
   const margin = 1;
   const viewBoxSize = size + margin * 2;
 
-  let findersSvg = '';
+  let eyeTLSvg = '';
+  let eyeTRSvg = '';
+  let eyeBLSvg = '';
   let dataSvg = '';
 
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if (qr.modules.get(r, c)) {
-        const isFinder = (r < 7 && c < 7) || (r < 7 && c >= size - 7) || (r >= size - 7 && c < 7);
+        const isTL = r < 7 && c < 7;
+        const isTR = r < 7 && c >= size - 7;
+        const isBL = r >= size - 7 && c < 7;
         const x = c + margin;
         const y = r + margin;
-        if (isFinder) {
-          findersSvg += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="#273121"/>`;
-        } else {
-          dataSvg += `<rect class="qr-data-cell" x="${x}" y="${y}" width="1.02" height="1.02" fill="#273121"/>`;
-        }
+        const rect = `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="#273121"/>`;
+
+        if (isTL) eyeTLSvg += rect;
+        else if (isTR) eyeTRSvg += rect;
+        else if (isBL) eyeBLSvg += rect;
+        else dataSvg += rect;
       }
     }
   }
 
+  const tlCenter = `${((4 / viewBoxSize) * 100).toFixed(1)}% ${((4 / viewBoxSize) * 100).toFixed(1)}%`;
+  const trCenter = `${(((size - 3) / viewBoxSize) * 100).toFixed(1)}% ${((4 / viewBoxSize) * 100).toFixed(1)}%`;
+  const blCenter = `${((4 / viewBoxSize) * 100).toFixed(1)}% ${(((size - 3) / viewBoxSize) * 100).toFixed(1)}%`;
+
   return `
     <svg class="qr-svg-matrix" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" shape-rendering="crispEdges">
       <rect width="${viewBoxSize}" height="${viewBoxSize}" fill="#FAF6ED" rx="1.5"/>
-      <g class="qr-finders-group">
-        ${findersSvg}
+      <g class="qr-eye qr-eye-tl" style="transform-origin: ${tlCenter};">
+        ${eyeTLSvg}
+      </g>
+      <g class="qr-eye qr-eye-tr" style="transform-origin: ${trCenter};">
+        ${eyeTRSvg}
+      </g>
+      <g class="qr-eye qr-eye-bl" style="transform-origin: ${blCenter};">
+        ${eyeBLSvg}
       </g>
       <g class="qr-data-group">
         ${dataSvg}
