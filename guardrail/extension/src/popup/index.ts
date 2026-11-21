@@ -250,29 +250,16 @@ function updatePopupToPairedState(
 
   renderActiveGuardians(contacts);
 
+  // When contacts are linked, remove the redundant connected status pill from the footer
   const liveStatus = document.getElementById('pairing-live-status');
   if (liveStatus) {
-    liveStatus.className = 'pairing-live-status connected status-updated is-animating';
-    liveStatus.innerHTML = `
-      <span class="connected-pill-gleam" aria-hidden="true"></span>
-      <span class="connected-badge-container">
-        <span class="connected-sonar-ring" aria-hidden="true"></span>
-        <svg class="connected-check-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <circle class="connected-circle-fill" cx="8" cy="8" r="6.8" />
-          <path class="connected-check-path" d="M4.6 8.3L7 10.7L11.6 5.8" />
-        </svg>
-      </span>
-      <span class="status-msg connected-msg">
-        <span class="msg-prefix">Connected to</span>
-        <strong class="connected-target-name">${escapeHtml(caretakerName)}!</strong>
-        <span class="connected-verified-badge" title="Verified Guardrail Handshake">
-          <svg class="shield-check-icon" viewBox="0 0 12 12" fill="none" width="10" height="10">
-            <path d="M6 1L10 2.8V6C10 8.5 8.2 10.5 6 11C3.8 10.5 2 8.5 2 6V2.8L6 1Z" fill="#55773F" fill-opacity="0.2" stroke="#55773F" stroke-width="1.1"/>
-            <path d="M4.5 6.2L5.5 7.2L7.8 4.8" stroke="#38572A" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </span>
-      </span>
-    `;
+    liveStatus.style.display = 'none';
+    liveStatus.innerHTML = '';
+    liveStatus.className = 'pairing-live-status';
+  }
+  const pairingFooter = liveStatus?.closest('.pairing-footer') as HTMLElement | null;
+  if (pairingFooter) {
+    pairingFooter.style.display = 'none';
   }
 
   // Clear extension badge if set
@@ -919,7 +906,12 @@ function setupPairingPanelActions(): void {
   // "+ Add Another Contact" Button (delegated for dynamically rendered items)
   const handleAddAnother = () => {
     const liveStatus = document.getElementById('pairing-live-status');
+    const pairingFooter = liveStatus?.closest('.pairing-footer') as HTMLElement | null;
+    if (pairingFooter) {
+      pairingFooter.style.display = 'flex';
+    }
     if (liveStatus) {
+      liveStatus.style.display = 'inline-flex';
       liveStatus.className = 'pairing-live-status waiting';
       liveStatus.innerHTML = `
         <span class="pulse-ring"><span class="pulse-dot"></span></span>
@@ -989,20 +981,32 @@ function setupPairingPanelActions(): void {
 
   if (btnSend && inputContact && feedback) {
     const handleSend = async () => {
+      const inputRow = (document.getElementById('share-input-row') || inputContact.closest('.share-input-row')) as HTMLElement | null;
+      const inputBox = (document.getElementById('share-input-box') || inputContact.closest('.share-input-box')) as HTMLElement | null;
       const val = inputContact.value.trim();
-      if (!val) {
-        feedback.className = 'invite-feedback error';
-        feedback.textContent = 'Please enter caretaker email.';
-        feedback.style.display = 'block';
-        return;
-      }
 
       // Check email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(val)) {
-        feedback.className = 'invite-feedback error';
-        feedback.textContent = 'Please enter a valid email address (e.g. caretaker@example.com)';
-        feedback.style.display = 'block';
+      if (!val || !emailRegex.test(val)) {
+        if (inputBox) {
+          inputBox.classList.remove('is-invalid');
+          void inputBox.offsetWidth;
+          inputBox.classList.add('is-invalid');
+          setTimeout(() => {
+            inputBox.classList.remove('is-invalid');
+          }, 1500);
+        }
+        const label = btnSend.querySelector('.btn-send-label');
+        if (label) {
+          const orig = label.textContent || 'Send';
+          label.textContent = !val ? 'Enter Email' : 'Invalid Email';
+          setTimeout(() => {
+            if (label && label.textContent !== 'Sending...' && label.textContent !== 'Sent') {
+              label.textContent = orig;
+            }
+          }, 1400);
+        }
+        inputContact.focus();
         return;
       }
 
@@ -1010,25 +1014,31 @@ function setupPairingPanelActions(): void {
       btnSend.disabled = true;
       inputContact.disabled = true;
 
-      // Dynamic flight launch on the paper plane icon
-      btnSend.classList.remove('is-launching');
-      void btnSend.offsetWidth;
-      btnSend.classList.add('is-launching');
+      // Animate: arrow tilts right and moves fast, input collapses, button centers
+      btnSend.classList.add('arrow-launching', 'is-launching');
+      if (inputRow) {
+        inputRow.classList.add('is-sending');
+      }
 
-      // Loading feedback
-      feedback.className = 'invite-feedback loading';
-      feedback.textContent = `Dispatching invitation via Resend to ${val}...`;
-      feedback.style.display = 'block';
+      // Update button label to "Sending..." after arrow launch starts
+      setTimeout(() => {
+        btnSend.innerHTML = `
+          <span class="btn-send-pulse"></span>
+          <span class="btn-send-label">Sending...</span>
+        `;
+      }, 180);
 
       const role = roleInput?.value.trim() || 'Designated Caretaker';
       const code = activePairingCode || document.getElementById('pairing-code-display')?.textContent || 'GR-INV-U6GA-4WZY';
       const cleanCode = code.replace(/[^A-Za-z0-9-]/g, '');
 
+      const minAnimationWait = new Promise((resolve) => setTimeout(resolve, 650));
+
       try {
         const env = resolveEnvironmentConfig();
         const token = await getStoredWardToken();
 
-        const res = await fetch(`${env.apiBaseUrl}/api/v1/invitations/send`, {
+        const fetchPromise = fetch(`${env.apiBaseUrl}/api/v1/invitations/send`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1042,6 +1052,8 @@ function setupPairingPanelActions(): void {
           }),
         });
 
+        const [res] = await Promise.all([fetchPromise, minAnimationWait]);
+
         const data = (await res.json().catch(() => ({}))) as {
           success?: boolean;
           data?: { simulated?: boolean; messageId?: string };
@@ -1049,41 +1061,74 @@ function setupPairingPanelActions(): void {
         };
 
         if (res.ok && data.success) {
-          feedback.className = 'invite-feedback success';
-          const isSimulated = data.data?.simulated;
-          feedback.textContent = `✓ Invitation sent to ${val}${isSimulated ? ' (Resend dev mode)' : ' via Resend'}!`;
-          feedback.style.display = 'block';
+          // Success: transform to centered "Sent" pill
+          if (inputRow) {
+            inputRow.classList.remove('is-sending');
+            inputRow.classList.add('is-sent');
+          }
+          btnSend.classList.remove('arrow-launching', 'is-launching');
+          btnSend.innerHTML = `
+            <span class="btn-sent-check">
+              <svg viewBox="0 0 16 16" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3.2 8.5L6.5 11.8L12.8 4.8"/>
+              </svg>
+            </span>
+            <span class="btn-send-label">Sent</span>
+          `;
           inputContact.value = '';
 
-          // Update live status footer message
-          const liveStatus = document.getElementById('pairing-live-status');
-          if (liveStatus) {
-            liveStatus.className = 'pairing-live-status waiting status-updated';
-            liveStatus.innerHTML = `
-              <span class="pulse-ring"><span class="pulse-dot"></span></span>
-              <span class="status-msg" id="pairing-status-msg">Sent to ${val} · Waiting to connect...</span>
-            `;
-          }
-
+          // Revert back smoothly after 2.6s
           setTimeout(() => {
-            feedback.style.display = 'none';
-          }, 6000);
+            if (inputRow) {
+              inputRow.classList.remove('is-sent');
+            }
+            btnSend.classList.remove('arrow-launching', 'is-launching');
+            btnSend.innerHTML = `
+              <span class="btn-send-label">Send</span>
+              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            `;
+            btnSend.disabled = false;
+            inputContact.disabled = false;
+          }, 2600);
         } else {
-          feedback.className = 'invite-feedback error';
-          feedback.textContent = data.error?.message || 'Failed to dispatch via Resend. Please check connection.';
-          feedback.style.display = 'block';
+          if (inputRow) {
+            inputRow.classList.remove('is-sending');
+          }
+          btnSend.classList.remove('arrow-launching', 'is-launching');
+          btnSend.innerHTML = `<span class="btn-send-label">Failed · Retry</span>`;
+          setTimeout(() => {
+            btnSend.innerHTML = `
+              <span class="btn-send-label">Send</span>
+              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            `;
+            btnSend.disabled = false;
+            inputContact.disabled = false;
+          }, 2000);
         }
       } catch (err) {
         console.error('[Guardrail Popup] Resend dispatch error:', err);
-        feedback.className = 'invite-feedback error';
-        feedback.textContent = 'Network error: Guardrail server unavailable.';
-        feedback.style.display = 'block';
-      } finally {
-        btnSend.disabled = false;
-        inputContact.disabled = false;
+        if (inputRow) {
+          inputRow.classList.remove('is-sending');
+        }
+        btnSend.classList.remove('arrow-launching', 'is-launching');
+        btnSend.innerHTML = `<span class="btn-send-label">Failed · Retry</span>`;
         setTimeout(() => {
-          btnSend.classList.remove('is-launching');
-        }, 700);
+          btnSend.innerHTML = `
+            <span class="btn-send-label">Send</span>
+            <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          `;
+          btnSend.disabled = false;
+          inputContact.disabled = false;
+        }, 2000);
       }
     };
 

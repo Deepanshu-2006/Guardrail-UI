@@ -333,9 +333,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           const emailText = [
             `Guardrail Protection Network`,
             `----------------------------`,
-            `${inviterName} has invited you to serve as their ${role} on Guardrail.`,
-            ``,
-            `As a trusted contact, you will be able to review and approve sensitive or high-risk actions to keep them safe online.`,
+            `${inviterName} invited you to be their ${role} on Guardrail to help review and approve sensitive online actions.`,
             ``,
             `Connect your account by clicking the link below:`,
             `${pairingUrl}`,
@@ -394,6 +392,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 qrGifB64 = fs.readFileSync(tmpQrGifPath).toString('base64');
               }
             }
+
           } catch (genErr) {
             console.warn('[Invitation] Could not generate animated GIF, falling back to static text:', genErr);
           }
@@ -451,14 +450,14 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 </tr>
               </table>
 
-              <!-- Clean Heading -->
-              <h1 style="font-size: 22px; font-weight: 700; color: #273121; margin: 0 0 10px 0; letter-spacing: -0.3px; line-height: 1.3;">
+              <!-- Big Bold Classy Title -->
+              <h1 style="font-size: 28px; font-weight: 800; color: #172013; margin: 0 0 14px 0; letter-spacing: -0.8px; line-height: 1.15;">
                 Trusted Contact Invitation
               </h1>
 
-              <!-- Human Body Copy -->
-              <p style="font-size: 14.5px; line-height: 1.6; color: #4B5542; margin: 0 0 24px 0;">
-                <strong>${escapeHtml(inviterName)}</strong> has invited you to serve as their <strong>${escapeHtml(role)}</strong> on Guardrail. As their trusted contact, you'll help protect and approve high-risk actions to keep them safe online.
+              <!-- Big Bold Classy Body Lede -->
+              <p style="font-size: 16px; line-height: 1.5; color: #36412F; margin: 0 0 26px 0; letter-spacing: -0.2px;">
+                <strong style="color: #141C10; font-weight: 700;">${escapeHtml(inviterName)}</strong> invited you to be their <strong style="color: #141C10; font-weight: 700;">${escapeHtml(role)}</strong> to help review and approve sensitive online actions.
               </p>
 
               <!-- Unified Pairing Pass Card -->
@@ -510,7 +509,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
               <!-- Primary Action Button -->
               <div style="text-align: center; margin: 0 0 24px 0;">
-                <a href="${pairingUrl}" class="btn-connect" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 13px 34px; border-radius: 9999px; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.16); letter-spacing: -0.2px;">
+                <a href="${pairingUrl}" class="btn-connect" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 14px 36px; border-radius: 9999px; font-size: 14.5px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.16); letter-spacing: -0.2px;">
                   Accept Invitation &amp; Connect &rarr;
                 </a>
               </div>
