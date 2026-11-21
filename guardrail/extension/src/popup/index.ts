@@ -1100,22 +1100,37 @@ function setupPairingPanelActions(): void {
             inputContact.value = '';
           }, 360);
 
-          // Revert back smoothly after 2.6s
+          // Phase 1: "Sent" dissolves softly (after 2.2s)
           setTimeout(() => {
-            if (inputRow) {
-              inputRow.classList.remove('is-sent');
-            }
-            btnSend.classList.remove('arrow-launching', 'is-launching', 'is-delivering', 'has-landed');
-            btnSend.innerHTML = `
-              <span class="btn-send-label">Send</span>
-              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-            `;
-            btnSend.disabled = false;
-            inputContact.disabled = false;
-          }, 3300);
+            btnSend.classList.add('is-unwinding');
+
+            // Phase 2 (200ms later): input unrolls smoothly and arrow swoops back to re-dock
+            setTimeout(() => {
+              if (inputRow) {
+                inputRow.classList.remove('is-sent');
+                inputRow.classList.add('is-unrolling');
+              }
+              btnSend.classList.remove('arrow-launching', 'is-launching', 'is-delivering', 'has-landed', 'is-unwinding');
+              btnSend.classList.add('is-docking');
+              btnSend.innerHTML = `
+                <span class="btn-send-label">Send</span>
+                <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              `;
+
+              // Phase 3 (480ms later): complete settle and re-enable inputs
+              setTimeout(() => {
+                if (inputRow) {
+                  inputRow.classList.remove('is-unrolling');
+                }
+                btnSend.classList.remove('is-docking');
+                btnSend.disabled = false;
+                inputContact.disabled = false;
+              }, 480);
+            }, 200);
+          }, 2200);
         } else {
           if (inputRow) {
             inputRow.classList.remove('is-sending');
