@@ -14,6 +14,9 @@ async function main(): Promise<void> {
       path.resolve(process.cwd(), '../dashboard/.env.local'),
       path.resolve(process.cwd(), 'guardrail/dashboard/.env.local'),
       path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dashboard/.env.local'),
+      path.resolve(process.cwd(), '.env'),
+      path.resolve(process.cwd(), 'guardrail/server/.env'),
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.env'),
     ];
     for (const p of candidatePaths) {
       if (fs.existsSync(p)) {

@@ -102,9 +102,9 @@ body.pairing-open .pairing-panel {
   min-width: 350px;
   max-width: 350px;
   flex-shrink: 0;
-  padding: 18px 18px 16px;
+  padding: 10px 14px 8px;
   flex-direction: column;
-  gap: 11px;
+  gap: 6px;
   background-color: var(--gd-bg-canvas);
   border-right: none;
   box-shadow: none;
@@ -293,11 +293,11 @@ body.pairing-open .pairing-footer {
 .pairing-card {
   background-color: var(--gd-card-bg);
   border: 1px solid var(--gd-card-border);
-  border-radius: 12px;
-  padding: 11px 13px;
+  border-radius: 11px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
 
 /* Active Guardians List Card */
@@ -507,16 +507,16 @@ body.pairing-open .pairing-footer {
 
 .qr-code-wrapper {
   position: relative;
-  width: 142px;
-  height: 142px;
-  border-radius: 10px;
+  width: 116px;
+  height: 116px;
+  border-radius: 9px;
   background: #FAF6ED;
   border: 1px solid rgba(39, 49, 33, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px;
-  margin: 2px 0 3px;
+  padding: 3px;
+  margin: 0;
   box-shadow: inset 0 1px 2px rgba(39, 49, 33, 0.04);
   overflow: hidden;
   box-sizing: border-box;
@@ -642,8 +642,8 @@ body.pairing-open .pairing-footer {
 }
 
 .qr-reveal-container {
-  width: 132px;
-  height: 132px;
+  width: 108px;
+  height: 108px;
   position: relative;
   overflow: hidden;
   border-radius: 6px;
@@ -1022,6 +1022,17 @@ body.pairing-open .pairing-footer {
   box-shadow: 0 1px 2px rgba(39, 49, 33, 0.12);
 }
 
+.btn-send-invite:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.share-input-box:has(.gd-input-field:disabled) {
+  opacity: 0.72;
+}
+
 /* Dynamic input responsiveness: lighting up Send button and animating plane when text is entered */
 .share-input-row:has(.gd-input-field:not(:placeholder-shown)) .btn-send-invite {
   background: #2E3E26;
@@ -1232,24 +1243,46 @@ body.pairing-open .btn-send-icon {
 
 .invite-feedback {
   font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 5px;
-  margin-top: 4px;
+  line-height: 1.45;
+  padding: 5px 9px;
+  border-radius: 6px;
+  margin-top: 5px;
+  animation: gdFeedbackFadeIn 0.22s ease-out both;
+  box-sizing: border-box;
+}
+
+@keyframes gdFeedbackFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .invite-feedback.success {
-  color: #2B4E22;
-  background: rgba(43, 78, 34, 0.08);
+  color: #27401C;
+  background: rgba(85, 119, 63, 0.12);
+  border: 1px solid rgba(85, 119, 63, 0.22);
 }
 
 .invite-feedback.error {
   color: #8F3B2C;
   background: rgba(143, 59, 44, 0.08);
+  border: 1px solid rgba(143, 59, 44, 0.2);
+}
+
+.invite-feedback.loading {
+  color: #3F4C36;
+  background: rgba(39, 49, 33, 0.07);
+  border: 1px solid rgba(39, 49, 33, 0.14);
 }
 
 .pairing-footer {
-  margin-top: auto;
-  padding-top: 6px;
+  margin-top: 2px;
+  padding-top: 0;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -1260,14 +1293,14 @@ body.pairing-open .btn-send-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 23px;
-  padding: 0 11px 0 8px;
+  gap: 6px;
+  height: 21px;
+  padding: 0 10px 0 7px;
   border-radius: 9999px;
   background: rgba(39, 49, 33, 0.032);
   border: 1px solid rgba(39, 49, 33, 0.07);
   font-family: var(--gd-font-sans);
-  font-size: 11px;
+  font-size: 10.5px;
   color: #4F6B3C;
   font-weight: 500;
   letter-spacing: 0.012em;
@@ -1410,9 +1443,14 @@ body.pairing-open .pulse-ring::before {
   }
 }
 
-/* 4. Status Message Gentle Glide & Tracking Settle */
-body.pairing-open .pairing-live-status .status-msg {
+/* 4. Status Message Gentle Glide & Tracking Settle on initial open */
+body.pairing-open .pairing-live-status:not(.status-updated) .status-msg {
   animation: gdStatusTextGlide 0.44s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both;
+}
+.pairing-live-status.status-updated .status-msg,
+.pairing-live-status.connected .status-msg {
+  animation: none;
+  opacity: 1;
 }
 
 @keyframes gdStatusTextGlide {

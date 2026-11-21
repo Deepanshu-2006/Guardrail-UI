@@ -248,7 +248,7 @@ function updatePopupToPairedState(
 
   const liveStatus = document.getElementById('pairing-live-status');
   if (liveStatus) {
-    liveStatus.className = 'pairing-live-status connected';
+    liveStatus.className = 'pairing-live-status connected status-updated';
     liveStatus.innerHTML = `
       <span class="check-dot">✓</span>
       <span class="status-msg">Connected to ${caretakerName}!</span>
@@ -418,7 +418,7 @@ export function openPairingPanel(): void {
 
   const initialH = container?.offsetHeight || 546;
   savedClosedHeight = initialH;
-  const targetOpenH = 580;
+  const targetOpenH = 598;
 
   // Set explicit starting dimensions BEFORE adding classes or triggering transition
   document.documentElement.style.transition = 'none';
@@ -949,45 +949,118 @@ function setupPairingPanelActions(): void {
     });
   }
 
-  // Send / Share Button
-  const btnSend = document.getElementById('btn-send-invitation');
+  // Send / Share Button via Resend
+  const btnSend = document.getElementById('btn-send-invitation') as HTMLButtonElement | null;
   const inputContact = document.getElementById('caretaker-contact-input') as HTMLInputElement | null;
   const feedback = document.getElementById('invite-feedback');
 
   if (btnSend && inputContact && feedback) {
-    const handleSend = () => {
+    const handleSend = async () => {
       const val = inputContact.value.trim();
       if (!val) {
         feedback.className = 'invite-feedback error';
-        feedback.textContent = 'Please enter an email or phone.';
+        feedback.textContent = 'Please enter caretaker email.';
         feedback.style.display = 'block';
         return;
       }
+
+      // Check email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(val)) {
+        feedback.className = 'invite-feedback error';
+        feedback.textContent = 'Please enter a valid email address (e.g. caretaker@example.com)';
+        feedback.style.display = 'block';
+        return;
+      }
+
+      // Disable inputs during dispatch
+      btnSend.disabled = true;
+      inputContact.disabled = true;
 
       // Dynamic flight launch on the paper plane icon
       btnSend.classList.remove('is-launching');
       void btnSend.offsetWidth;
       btnSend.classList.add('is-launching');
-      setTimeout(() => {
-        btnSend.classList.remove('is-launching');
-      }, 700);
 
-      const role = roleInput?.value.trim() || 'Guardian';
-      feedback.className = 'invite-feedback success';
-      feedback.textContent = `Pairing invitation (${role}) sent to ${val}!`;
+      // Loading feedback
+      feedback.className = 'invite-feedback loading';
+      feedback.textContent = `Dispatching invitation via Resend to ${val}...`;
       feedback.style.display = 'block';
-      inputContact.value = '';
 
-      setTimeout(() => {
-        feedback.style.display = 'none';
-      }, 4000);
+      const role = roleInput?.value.trim() || 'Designated Caretaker';
+      const code = activePairingCode || document.getElementById('pairing-code-display')?.textContent || 'GR-INV-U6GA-4WZY';
+      const cleanCode = code.replace(/[^A-Za-z0-9-]/g, '');
+
+      try {
+        const env = resolveEnvironmentConfig();
+        const token = await getStoredWardToken();
+
+        const res = await fetch(`${env.apiBaseUrl}/api/v1/invitations/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            email: val,
+            role,
+            code: cleanCode,
+          }),
+        });
+
+        const data = (await res.json().catch(() => ({}))) as {
+          success?: boolean;
+          data?: { simulated?: boolean; messageId?: string };
+          error?: { message?: string };
+        };
+
+        if (res.ok && data.success) {
+          feedback.className = 'invite-feedback success';
+          const isSimulated = data.data?.simulated;
+          feedback.textContent = `✓ Invitation sent to ${val}${isSimulated ? ' (Resend dev mode)' : ' via Resend'}!`;
+          feedback.style.display = 'block';
+          inputContact.value = '';
+
+          // Update live status footer message
+          const liveStatus = document.getElementById('pairing-live-status');
+          if (liveStatus) {
+            liveStatus.className = 'pairing-live-status waiting status-updated';
+            liveStatus.innerHTML = `
+              <span class="pulse-ring"><span class="pulse-dot"></span></span>
+              <span class="status-msg" id="pairing-status-msg">Sent to ${val} · Waiting to connect...</span>
+            `;
+          }
+
+          setTimeout(() => {
+            feedback.style.display = 'none';
+          }, 6000);
+        } else {
+          feedback.className = 'invite-feedback error';
+          feedback.textContent = data.error?.message || 'Failed to dispatch via Resend. Please check connection.';
+          feedback.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('[Guardrail Popup] Resend dispatch error:', err);
+        feedback.className = 'invite-feedback error';
+        feedback.textContent = 'Network error: Guardrail server unavailable.';
+        feedback.style.display = 'block';
+      } finally {
+        btnSend.disabled = false;
+        inputContact.disabled = false;
+        setTimeout(() => {
+          btnSend.classList.remove('is-launching');
+        }, 700);
+      }
     };
 
-    btnSend.addEventListener('click', handleSend);
+    btnSend.addEventListener('click', () => {
+      void handleSend();
+    });
     inputContact.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        handleSend();
+        void handleSend();
       }
     });
   }

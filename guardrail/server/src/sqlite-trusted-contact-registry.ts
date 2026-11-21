@@ -360,6 +360,9 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       const recipient = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(contactId) as { role: string; status: string } | undefined;
       if (!recipient || recipient.role !== 'TRUSTED_CONTACT' || recipient.status !== 'ACTIVE') throw new ApprovalAccessDeniedError();
       if (this.isTrustedContactForUser(contactId, invitation.userId)) {
+        if (invitation.recipientActorId !== '*') {
+          throw new DuplicateContactRelationshipError(contactId, invitation.userId);
+        }
         const acceptedAt = generateTimestamp();
         const updated: TrustedContactInvitation = Object.freeze({ ...invitation, status: InvitationStatus.ACCEPTED, acceptedByContactId: contactId, acceptedAt });
         const existingRow = this.database.prepare('SELECT payload_json FROM trusted_contacts WHERE user_id=? AND id=?').get(invitation.userId, contactId) as { payload_json: string } | undefined;
