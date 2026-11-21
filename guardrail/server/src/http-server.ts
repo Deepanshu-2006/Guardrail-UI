@@ -1,4 +1,8 @@
 import { createServer, Server } from 'node:http';
+import fs from 'node:fs';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ApprovalApiRouter, ApprovalApiRouterConfig, DEFAULT_ALLOWED_ORIGINS, InMemoryRateLimiter, InvitationDeliveryHandler, TokenVerifier } from '../../extension/src/approval/api.js';
 import { ActionOwnershipRegistry, TrustedContactRegistry, ActorRole } from '../../extension/src/approval/authorization.js';
 import { createPersistentApprovalService } from './persistent-approval-service.js';
@@ -339,18 +343,33 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             `If you did not expect this invitation, you can safely ignore this message.`,
           ].join('\n');
 
-          // Generate character-by-character animated pairing code
+          // Generate animated pairing code GIF and load brand logo for CID embedding (supported by Gmail)
+          let logoB64 = '';
+          let gifB64 = '';
           const codeString = code || 'GR-INV-XXXX-XXXX';
-          const codeCharsHtml = codeString.split('').map((ch, idx) => {
-            const cls = `c${idx + 1}`;
-            return `<span class="code-char ${cls}" style="display: inline-block;">${escapeHtml(ch)}</span>`;
-          }).join('');
 
-          // Generate staggered animation delays
-          const delayRules = Array.from({ length: 24 }, (_, i) => {
-            const delay = ((i + 1) * 0.03).toFixed(2);
-            return `.c${i + 1} { animation-delay: ${delay}s; }`;
-          }).join('\n    ');
+          try {
+            const logoPath = path.resolve(process.cwd(), '../extension/public/icons/icon-48.png');
+            const altLogoPath = path.resolve(process.cwd(), 'guardrail/extension/public/icons/icon-48.png');
+            const targetLogoPath = fs.existsSync(logoPath) ? logoPath : (fs.existsSync(altLogoPath) ? altLogoPath : '');
+            if (targetLogoPath) {
+              logoB64 = fs.readFileSync(targetLogoPath).toString('base64');
+            }
+
+            const tmpGifPath = path.resolve('/tmp', `code_${codeString.replace(/[^a-zA-Z0-9_-]/g, '_')}.gif`);
+            const scriptPath = path.resolve(process.cwd(), 'src/generate-code-gif.py');
+            const altScriptPath = path.resolve(process.cwd(), 'guardrail/server/src/generate-code-gif.py');
+            const targetScript = fs.existsSync(scriptPath) ? scriptPath : altScriptPath;
+
+            if (fs.existsSync(targetScript)) {
+              execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 3000 });
+              if (fs.existsSync(tmpGifPath)) {
+                gifB64 = fs.readFileSync(tmpGifPath).toString('base64');
+              }
+            }
+          } catch (genErr) {
+            console.warn('[Invitation] Could not generate animated GIF, falling back to static text:', genErr);
+          }
 
           const emailHtml = `
 <!DOCTYPE html>
@@ -365,34 +384,10 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
-
-    /* Character-by-character generation animation from bottom */
-    @keyframes charRise {
-      0% {
-        opacity: 0;
-        transform: translateY(14px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .code-char {
-      display: inline-block;
-      animation: charRise 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-    }
-
-    ${delayRules}
-
     @media only screen and (max-width: 560px) {
       .email-card {
         padding: 24px 20px !important;
         border-radius: 12px !important;
-      }
-      .code-display {
-        font-size: 20px !important;
-        letter-spacing: 2px !important;
       }
       .btn-connect {
         display: block !important;
@@ -411,16 +406,10 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           <tr>
             <td>
               
-              <!-- Brand Header with Official Guardrail Logo -->
+              <!-- Brand Header with CID Inline Logo (100% Gmail compatible) -->
               <div style="display: flex; align-items: center; margin-bottom: 24px;">
-                <div style="width: 32px; height: 32px; background: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
-                  <svg width="22" height="22" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#273121" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#273121" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-                    <rect x="22" y="34" width="56" height="32" rx="16" fill="#273121"/>
-                    <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#EDE6D6" stroke-width="4.5" stroke-linecap="round"/>
-                    <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#EDE6D6" stroke="#273121" stroke-width="3" stroke-linejoin="round"/>
-                  </svg>
+                <div style="width: 32px; height: 32px; background: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; overflow: hidden;">
+                  ${logoB64 ? `<img src="cid:guardrail-logo" width="24" height="24" style="display: block; width: 24px; height: 24px;" alt="Guardrail UI" />` : `<span style="font-size: 18px;">🛡️</span>`}
                 </div>
                 <span style="font-size: 19px; font-weight: 700; color: #273121; letter-spacing: -0.3px;">Guardrail UI</span>
               </div>
@@ -435,13 +424,16 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 You have been invited to serve as a <strong>${escapeHtml(role)}</strong>. As a trusted contact, you'll help protect and approve high-risk actions to keep your family member safe online.
               </p>
 
-              <!-- Pairing Code Box with Character-by-Character Generation -->
-              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 22px 16px; text-align: center; margin: 0 0 28px 0;">
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 10px;">
+              <!-- Animated Pairing Code Container -->
+              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 18px 16px; text-align: center; margin: 0 0 28px 0;">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 8px;">
                   Your One-Time Pairing Code
                 </div>
-                <div class="code-display" style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 24px; font-weight: 700; color: #273121; letter-spacing: 3px;">
-                  ${codeCharsHtml}
+                <div style="text-align: center; line-height: 1;">
+                  ${gifB64
+                    ? `<img src="cid:pairing-code" width="380" height="48" style="display: block; margin: 0 auto; max-width: 100%; height: auto; border: 0;" alt="${escapeHtml(codeString)}" />`
+                    : `<div style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 24px; font-weight: 700; color: #273121; letter-spacing: 3px;">${escapeHtml(codeString)}</div>`
+                  }
                 </div>
               </div>
 
@@ -477,6 +469,24 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
           if (apiKey) {
             try {
+              const attachments: Array<{ filename: string; content: string; content_id: string; contentId: string }> = [];
+              if (logoB64) {
+                attachments.push({
+                  filename: 'guardrail-logo.png',
+                  content: logoB64,
+                  content_id: 'guardrail-logo',
+                  contentId: 'guardrail-logo',
+                });
+              }
+              if (gifB64) {
+                attachments.push({
+                  filename: 'pairing-code.gif',
+                  content: gifB64,
+                  content_id: 'pairing-code',
+                  contentId: 'pairing-code',
+                });
+              }
+
               const resendResponse = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
@@ -489,6 +499,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                   subject: emailSubject,
                   text: emailText,
                   html: emailHtml,
+                  ...(attachments.length > 0 ? { attachments } : {}),
                 }),
               });
 
