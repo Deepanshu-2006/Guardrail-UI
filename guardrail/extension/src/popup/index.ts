@@ -1128,6 +1128,7 @@ function setupPairingPanelActions(): void {
                 btnSend.classList.remove('is-docking');
                 btnSend.disabled = false;
                 inputContact.disabled = false;
+                updateTypingState();
               }, 480);
             }, 200);
           }, 2200);
@@ -1179,6 +1180,119 @@ function setupPairingPanelActions(): void {
         void handleSend();
       }
     });
+
+    // =========================================================================
+    // Animative & Creative Typing / Email Entering Interactions
+    // =========================================================================
+    const inputRow = document.getElementById('share-input-row');
+    const inputBox = document.getElementById('share-input-box');
+    const btnClear = document.getElementById('btn-clear-contact');
+    const domainRow = document.getElementById('domain-pills-row');
+
+    const updateTypingState = (e?: Event) => {
+      const val = inputContact.value;
+      const trimmed = val.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const isValid = emailRegex.test(trimmed);
+
+      // Toggle has-text on input box for clear button
+      if (inputBox) {
+        if (val.length > 0) {
+          inputBox.classList.add('has-text');
+        } else {
+          inputBox.classList.remove('has-text');
+        }
+      }
+
+      // Valid email visual badge on mail icon
+      if (inputRow) {
+        if (isValid) {
+          inputRow.classList.add('is-valid-email');
+        } else {
+          inputRow.classList.remove('is-valid-email');
+        }
+      }
+
+      // Send button readiness & throttle animations
+      if (btnSend && !btnSend.classList.contains('is-launching') && !btnSend.classList.contains('has-landed')) {
+        if (isValid) {
+          btnSend.classList.add('is-ready');
+        } else {
+          btnSend.classList.remove('is-ready');
+        }
+
+        // Plane micro-reaction on typing keystroke
+        const planeIcon = btnSend.querySelector('.btn-send-icon');
+        if (planeIcon && e && e.type === 'input') {
+          const inputEvent = e as InputEvent;
+          if (inputEvent.data === '@') {
+            planeIcon.classList.remove('plane-keystroke-bounce', 'plane-at-roll');
+            void (planeIcon as HTMLElement).offsetWidth;
+            planeIcon.classList.add('plane-at-roll');
+          } else {
+            planeIcon.classList.remove('plane-keystroke-bounce');
+            void (planeIcon as HTMLElement).offsetWidth;
+            planeIcon.classList.add('plane-keystroke-bounce');
+          }
+        }
+      }
+
+      // Domain pills visibility: show when user is typing user handle and hasn't finished domain
+      if (domainRow) {
+        if (trimmed.length >= 1 && !trimmed.includes('.') && document.activeElement === inputContact) {
+          domainRow.classList.add('is-visible');
+        } else {
+          domainRow.classList.remove('is-visible');
+        }
+      }
+    };
+
+    inputContact.addEventListener('input', (e) => {
+      updateTypingState(e);
+    });
+
+    inputContact.addEventListener('focus', () => {
+      updateTypingState();
+    });
+
+    inputContact.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (domainRow && document.activeElement !== inputContact) {
+          domainRow.classList.remove('is-visible');
+        }
+      }, 180);
+    });
+
+    // Clear Button (✕)
+    if (btnClear) {
+      btnClear.addEventListener('click', () => {
+        inputContact.value = '';
+        inputContact.focus();
+        updateTypingState();
+      });
+    }
+
+    // Quick Domain Suggestion Pills (@gmail.com, etc.)
+    if (domainRow) {
+      domainRow.addEventListener('click', (e) => {
+        const target = (e.target as HTMLElement).closest('.domain-pill') as HTMLElement | null;
+        if (!target) return;
+        const domain = target.getAttribute('data-domain') || '@gmail.com';
+        const current = inputContact.value.trim();
+
+        if (!current) {
+          inputContact.value = domain;
+        } else if (current.includes('@')) {
+          const prefix = current.substring(0, current.indexOf('@'));
+          inputContact.value = prefix + domain;
+        } else {
+          inputContact.value = current + domain;
+        }
+
+        inputContact.focus();
+        updateTypingState();
+      });
+    }
   }
 }
 

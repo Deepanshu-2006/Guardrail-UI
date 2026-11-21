@@ -970,18 +970,62 @@ body.pairing-open .pairing-footer {
   box-shadow: 0 0 0 3px rgba(85, 119, 63, 0.16), inset 0 1px 2px rgba(39, 49, 33, 0.03);
 }
 
+.share-icon-wrapper {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .share-input-icon {
   width: 14px;
   height: 14px;
   color: #7E8774;
   flex-shrink: 0;
-  margin-right: 8px;
   pointer-events: none;
   transition: color 0.20s ease, transform 0.20s ease;
 }
 
 .share-input-box:focus-within .share-input-icon {
   color: var(--gd-deep-olive);
+  transform: scale(1.08);
+}
+
+.input-valid-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #4E8039;
+  border: 1.5px solid #FAF6ED;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.2);
+  pointer-events: none;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.20s ease;
+}
+
+.input-valid-badge svg {
+  width: 7.5px;
+  height: 7.5px;
+  display: block;
+}
+
+.share-input-row.is-valid-email .input-valid-badge {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.share-input-row.is-valid-email .share-input-icon {
+  color: #4E8039;
   transform: scale(1.08);
 }
 
@@ -1003,6 +1047,61 @@ body.pairing-open .pairing-footer {
   color: var(--gd-text-muted);
   font-weight: 400;
   opacity: 0.85;
+}
+
+/* Quick Clear Button */
+.btn-clear-contact {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(39, 49, 33, 0.12);
+  color: #556649;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  opacity: 0;
+  transform: scale(0.5) rotate(-45deg);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.btn-clear-contact:hover {
+  background: rgba(39, 49, 33, 0.24);
+  color: #273121;
+}
+
+.share-input-box.has-text .btn-clear-contact {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  pointer-events: auto;
+}
+
+/* Animated Caret Focus Beam on input floor */
+.input-focus-beam {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #55773F;
+  border-radius: 9999px;
+  transform: translateX(-50%);
+  transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.20s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.share-input-box:focus-within .input-focus-beam {
+  width: calc(100% - 16px);
+  opacity: 1;
 }
 
 /* Luminous leading optical beam that sweeps across as the input expands */
@@ -1093,7 +1192,7 @@ body.pairing-open .pairing-footer {
   box-shadow: 0 2px 7px rgba(85, 119, 63, 0.28);
 }
 
-.share-input-row:has(.gd-input-field:not(:placeholder-shown)) .btn-send-invite:not(:hover):not(.is-launching):not(.arrow-launching) .btn-send-icon {
+.share-input-row:has(.gd-input-field:not(:placeholder-shown)) .btn-send-invite:not(:hover):not(.is-launching):not(.arrow-launching):not(.is-ready) .btn-send-icon:not(.plane-keystroke-bounce):not(.plane-at-roll) {
   animation: gdPlaneReadyFloat 1.5s ease-in-out infinite alternate;
 }
 
@@ -1101,6 +1200,102 @@ body.pairing-open .pairing-footer {
   0% { transform: translate3d(1px, 0, 0) rotate(7deg) scale(1.05); }
   50% { transform: translate3d(3px, -2px, 0) rotate(14deg) scale(1.14); }
   100% { transform: translate3d(1.5px, -1px, 0) rotate(9deg) scale(1.08); }
+}
+
+/* Keystroke engine throttle animation */
+.btn-send-icon.plane-keystroke-bounce {
+  animation: gdPlaneKeystroke 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+}
+
+@keyframes gdPlaneKeystroke {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  45% { transform: translate3d(2.8px, -2px, 0) rotate(16deg) scale(1.18); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+
+/* @ Symbol 360-degree aerial barrel roll */
+.btn-send-icon.plane-at-roll {
+  animation: gdPlaneAtRoll 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+}
+
+@keyframes gdPlaneAtRoll {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(3.5px, -3.5px, 0) rotate(190deg) scale(1.28); }
+  100% { transform: translate3d(0, 0, 0) rotate(360deg) scale(1); }
+}
+
+/* Primed launch state when a valid email format is entered */
+.btn-send-invite.is-ready:not(.is-launching):not(.arrow-launching) {
+  background: #223719 !important;
+  border-color: #5E8842 !important;
+  box-shadow: 0 3px 12px rgba(45, 74, 31, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
+}
+
+.btn-send-invite.is-ready:not(.is-launching):not(.arrow-launching) .btn-send-icon:not(.plane-keystroke-bounce):not(.plane-at-roll) {
+  transform: translate3d(3px, -2.5px, 0) rotate(16deg) scale(1.14);
+  color: #D3F3B4;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.20s ease;
+}
+
+/* Smart Domain Suggestion Pills */
+.domain-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
+  transition: max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.22s ease,
+              margin-top 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.domain-pills-row.is-visible {
+  max-height: 32px;
+  opacity: 1;
+  margin-top: 8px;
+  pointer-events: auto;
+}
+
+.domain-pills-label {
+  font-size: 9.5px;
+  color: #7E8774;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.domain-pill {
+  border: 1px solid #D8D2C2;
+  background: #FAF6ED;
+  color: #36442E;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 7px;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  user-select: none;
+  outline: none;
+}
+
+.domain-pill:hover {
+  background: #EDE6D6;
+  border-color: #55773F;
+  color: #172413;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(39, 49, 33, 0.1);
+}
+
+.domain-pill:active {
+  transform: translateY(0);
 }
 
 /* Centered & expanded state during sending */
