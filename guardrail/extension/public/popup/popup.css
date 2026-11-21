@@ -152,8 +152,7 @@ body.pairing-open .active-guardians-card,
 body.pairing-open .role-centered-bar,
 body.pairing-open .qr-card,
 body.pairing-open .code-card,
-body.pairing-open .share-card,
-body.pairing-open .pairing-footer {
+body.pairing-open .share-card {
   opacity: 0;
   transform: translateY(24px);
   will-change: transform, opacity;
@@ -193,8 +192,13 @@ body.pairing-open .share-card {
 }
 
 body.pairing-open .pairing-footer {
-  animation-duration: 0.65s;
-  animation-delay: 1.50s;
+  opacity: 0;
+  animation: gdFooterFadeIn 0.50s ease 1.50s both;
+}
+
+@keyframes gdFooterFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 @keyframes gdCascadeUp {
@@ -1245,34 +1249,42 @@ body.pairing-open .btn-send-icon {
 
 .pairing-footer {
   margin-top: auto;
-  padding-top: 4px;
+  padding-top: 6px;
   display: flex;
   justify-content: center;
   width: 100%;
 }
 
 .pairing-live-status {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 27px;
-  padding: 0 13px;
+  gap: 7px;
+  height: 23px;
+  padding: 0 11px 0 8px;
   border-radius: 9999px;
-  background: rgba(39, 49, 33, 0.04);
-  border: 1px solid rgba(39, 49, 33, 0.11);
+  background: rgba(39, 49, 33, 0.032);
+  border: 1px solid rgba(39, 49, 33, 0.07);
   font-family: var(--gd-font-sans);
   font-size: 11px;
-  color: var(--gd-text-secondary);
+  color: #4F6B3C;
   font-weight: 500;
+  letter-spacing: 0.012em;
   box-sizing: border-box;
-  transition: all 0.2s ease;
+  transition: all 0.20s ease;
+  user-select: none;
+}
+
+.pairing-live-status:hover {
+  background: rgba(39, 49, 33, 0.055);
+  border-color: rgba(39, 49, 33, 0.12);
 }
 
 .pulse-ring {
   position: relative;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1280,32 +1292,47 @@ body.pairing-open .btn-send-icon {
 }
 
 .pulse-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: #476336;
+  background: #4F6B3C;
   display: block;
-  animation: gdLivePing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Concentric Sonar Ring */
+.pulse-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: rgba(79, 107, 60, 0.35);
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* Ambient radar ping when waiting */
+.pairing-live-status.waiting .pulse-dot {
+  animation: gdLivePing 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 @keyframes gdLivePing {
   0% {
     transform: scale(0.9);
-    box-shadow: 0 0 0 0 rgba(71, 99, 54, 0.5);
+    box-shadow: 0 0 0 0 rgba(79, 107, 60, 0.55);
   }
   60% {
     transform: scale(1.05);
-    box-shadow: 0 0 0 5px rgba(71, 99, 54, 0);
+    box-shadow: 0 0 0 6px rgba(79, 107, 60, 0);
   }
   100% {
     transform: scale(0.9);
-    box-shadow: 0 0 0 0 rgba(71, 99, 54, 0);
+    box-shadow: 0 0 0 0 rgba(79, 107, 60, 0);
   }
 }
 
 .pairing-live-status.connected {
-  background: rgba(71, 99, 54, 0.10);
-  border-color: rgba(71, 99, 54, 0.22);
+  background: rgba(71, 99, 54, 0.08);
+  border-color: rgba(71, 99, 54, 0.16);
   color: #1F2E17;
   font-weight: 600;
 }
@@ -1315,6 +1342,90 @@ body.pairing-open .btn-send-icon {
   font-weight: 700;
   color: #38572A;
   margin-right: 1px;
+}
+
+/* =============================================================================
+   Choreographed Entry Sequence: Radar Signal Ignition
+   ============================================================================= */
+
+/* 1. Pill Aperture Expansion from Center */
+body.pairing-open .pairing-live-status {
+  animation: gdPillApertureOpen 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.54s both;
+  will-change: transform, opacity;
+}
+
+@keyframes gdPillApertureOpen {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.35) scaleY(0.75);
+  }
+  65% {
+    opacity: 1;
+    transform: scaleX(1.06) scaleY(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 2. Beacon Dot Energy Ignition */
+body.pairing-open .pairing-live-status .pulse-dot {
+  animation:
+    gdBeaconIgnite 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) 1.70s both,
+    gdLivePing 2.5s cubic-bezier(0, 0, 0.2, 1) 2.18s infinite;
+}
+
+@keyframes gdBeaconIgnite {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(79, 107, 60, 0);
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 1;
+    box-shadow: 0 0 10px 3px rgba(79, 107, 60, 0.75);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(79, 107, 60, 0);
+  }
+}
+
+/* 3. Sonar Wave Shockwave Burst */
+body.pairing-open .pulse-ring::before {
+  animation: gdSonarBurst 0.90s cubic-bezier(0.16, 1, 0.3, 1) 1.76s forwards;
+}
+
+@keyframes gdSonarBurst {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* 4. Status Message Gentle Glide & Tracking Settle */
+body.pairing-open .pairing-live-status .status-msg {
+  animation: gdStatusTextGlide 0.44s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both;
+}
+
+@keyframes gdStatusTextGlide {
+  0% {
+    opacity: 0;
+    transform: translateX(6px);
+    letter-spacing: 0.05em;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    letter-spacing: 0.012em;
+  }
 }
 
 /* =============================================================================
