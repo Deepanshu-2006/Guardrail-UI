@@ -955,7 +955,7 @@ function setupPairingPanelActions(): void {
   const feedback = document.getElementById('invite-feedback');
 
   if (btnSend && inputContact && feedback) {
-    btnSend.addEventListener('click', () => {
+    const handleSend = () => {
       const val = inputContact.value.trim();
       if (!val) {
         feedback.className = 'invite-feedback error';
@@ -963,6 +963,14 @@ function setupPairingPanelActions(): void {
         feedback.style.display = 'block';
         return;
       }
+
+      // Dynamic flight launch on the paper plane icon
+      btnSend.classList.remove('is-launching');
+      void btnSend.offsetWidth;
+      btnSend.classList.add('is-launching');
+      setTimeout(() => {
+        btnSend.classList.remove('is-launching');
+      }, 700);
 
       const role = roleInput?.value.trim() || 'Guardian';
       feedback.className = 'invite-feedback success';
@@ -973,6 +981,14 @@ function setupPairingPanelActions(): void {
       setTimeout(() => {
         feedback.style.display = 'none';
       }, 4000);
+    };
+
+    btnSend.addEventListener('click', handleSend);
+    inputContact.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSend();
+      }
     });
   }
 }

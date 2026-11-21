@@ -209,8 +209,21 @@
           <span class="pairing-kicker">SEND TO CARETAKER</span>
         </div>
         <div class="share-input-row">
-          <input type="text" id="caretaker-contact-input" placeholder="Caretaker email or name..." class="gd-input-field" autocomplete="off" />
-          <button type="button" id="btn-send-invitation" class="btn-send-invite">Send</button>
+          <div class="share-input-box">
+            <span class="share-input-leading-beam" aria-hidden="true"></span>
+            <svg class="share-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <input type="text" id="caretaker-contact-input" placeholder="Caretaker email or name..." class="gd-input-field" autocomplete="off" spellcheck="false" />
+          </div>
+          <button type="button" id="btn-send-invitation" class="btn-send-invite" aria-label="Send invitation to Caretaker">
+            <span class="btn-send-label">Send</span>
+            <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
         </div>
         <div class="invite-feedback" id="invite-feedback" style="display:none"></div>
       </section>
