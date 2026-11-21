@@ -2,7 +2,8 @@
 """
 Generate an animated GIF of a cryptographic pairing code rising character by character from the bottom
 inside segmented rounded boxes separated by dashes (e.g. [ GR ] - [ INV ] - [ U6GA ] - [ 4WZY ]).
-Matches the exact font (Menlo Bold 700), colors, and cubic-bezier easing from Guardrail.
+Cinematic, slow-paced motion with luxurious cubic-bezier easing and deliberate segment cadence.
+Matches the exact font (Menlo Bold 700) and Guardrail color palette.
 Plays once when the user opens the email and settles permanently on the final frame (no infinite repeating).
 """
 import sys
@@ -10,8 +11,8 @@ import os
 import json
 from PIL import Image, ImageDraw, ImageFont
 
-def cubic_bezier_y(t, p1x=0.16, p1y=1.0, p2x=0.3, p2y=1.0):
-    """Solve cubic-bezier(0.16, 1, 0.3, 1) curve for given progress t in [0, 1]."""
+def cubic_bezier_y(t, p1x=0.08, p1y=0.95, p2x=0.18, p2y=1.0):
+    """Solve luxurious ease-out cubic-bezier(0.08, 0.95, 0.18, 1.0) curve for given progress t in [0, 1]."""
     s = t
     for _ in range(8):
         bx = 3*(1-s)**2 * s * p1x + 3*(1-s) * s**2 * p2x + s**3
@@ -26,13 +27,13 @@ def cubic_bezier_y(t, p1x=0.16, p1y=1.0, p2x=0.3, p2y=1.0):
 
 def generate_pairing_code_gif(code_str: str, output_path: str):
     code_str = code_str.strip() or 'GR-INV-U6GA-4WZY'
-    
+
     if '-' in code_str:
         segments = [s.strip() for s in code_str.split('-') if s.strip()]
     else:
         chunk_size = 4 if len(code_str) >= 8 else 3
         segments = [code_str[i:i+chunk_size] for i in range(0, len(code_str), chunk_size)]
-        
+
     if not segments:
         segments = ['GR', 'INV', 'U6GA', '4WZY']
 
@@ -42,7 +43,7 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
     w_render = w_out * scale
     h_render = h_out * scale
 
-    # Font: Menlo Bold (700) matching --gd-font-mono in extension popup
+    # Font: Menlo Bold (700) matching --gd-font-mono
     font_candidates = [
         ('/System/Library/Fonts/Menlo.ttc', 1), # macOS Menlo Bold
         ('/System/Library/Fonts/SFCompactMono.ttf', 0),
@@ -87,13 +88,20 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
     box_h = 56 * scale
     box_y = (h_render - box_h) // 2
 
-    # Base static image with canvas, boxes, and hyphens
+    # Pre-render static base frame
     base_img = Image.new('RGB', (w_render, h_render), bg_canvas)
     base_draw = ImageDraw.Draw(base_img)
 
     cur_x = start_x
     boxes = []
     char_items = []
+
+    # Cinematic timeline pacing:
+    # Deliberate initial pause so user notices the empty segmented boxes
+    t_clock = 0.22      # 220ms initial pause
+    char_step = 0.080   # 80ms between characters in same segment
+    seg_pause = 0.070   # 70ms breathing beat between segment boxes
+    char_dur = 0.65     # 650ms float duration per character for a slow, cinematic dock
 
     for seg_idx, s in enumerate(segments):
         sw = seg_widths[seg_idx]
@@ -105,6 +113,9 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
         tx = cur_x + (sw - text_w) // 2
         ty = box_y + (box_h - char_h) // 2 - sample_bbox[1]
 
+        if seg_idx > 0:
+            t_clock += seg_pause
+
         for ch_idx, ch in enumerate(s):
             char_items.append({
                 'char': ch,
@@ -112,7 +123,9 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
                 'target_y': ty,
                 'box_idx': seg_idx,
                 'box_rect': box_rect,
+                't_start': t_clock,
             })
+            t_clock += char_step
 
         cur_x += sw
         if seg_idx < len(segments) - 1:
@@ -121,14 +134,8 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
             base_draw.line([(dash_x, dash_y), (dash_x + 12 * scale, dash_y)], fill=dash_color, width=3 * scale)
             cur_x += gap
 
-    # Animation timeline:
-    # 30 fps (dt = 0.033s), smooth character stagger
-    dt = 0.033
-    step = 0.045
-    char_dur = 0.38
-    initial_pause = 0.04
-
-    total_time = initial_pause + len(char_items) * step + char_dur
+    total_time = char_items[-1]['t_start'] + char_dur + 0.10
+    dt = 0.033 # 30 fps
     num_frames = int(round(total_time / dt))
 
     rendered_frames = []
@@ -147,8 +154,7 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
 
             any_drawn = False
             for c in box_chars:
-                idx = char_items.index(c)
-                t_start = initial_pause + idx * step
+                t_start = c['t_start']
                 t_char = t_curr - t_start
 
                 rel_x = c['target_x'] - box_rect[0]
@@ -162,9 +168,10 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
                 else:
                     tau = t_char / char_dur
                     p = cubic_bezier_y(tau)
-                    max_offset = int(round(box_h * 1.10))
+                    max_offset = int(round(box_h * 1.15))
                     y_off = max_offset * (1.0 - p)
-                    alpha = min(1.0, tau / 0.50)
+                    # Filmic opacity ramp
+                    alpha = min(1.0, tau / 0.65)
 
                     col = (
                         int(box_bg[0] + (text_color[0] - box_bg[0]) * alpha),
@@ -180,21 +187,22 @@ def generate_pairing_code_gif(code_str: str, output_path: str):
                 mask_draw.rounded_rectangle([2*scale, 2*scale, b_w - 2*scale, b_h - 2*scale], radius=8*scale, fill=255)
                 f_img.paste(box_char_img, (box_rect[0], box_rect[1]), mask)
 
-        # Supersampled downscaling for ultra-smooth subpixel edges
+        # Supersampled downscaling for silky subpixel edges
         down_f = f_img.resize((w_out, h_out), Image.Resampling.LANCZOS)
         rendered_frames.append(down_f)
 
-    # Global palette shared across ALL frames to guarantee 0% flicker/jitter
-    comp = Image.new('RGB', (w_out * 3, h_out))
+    # Master palette across start, middle, and end frames for 0% flicker
+    comp = Image.new('RGB', (w_out * 4, h_out))
     comp.paste(rendered_frames[0], (0, 0))
-    comp.paste(rendered_frames[len(rendered_frames)//2], (w_out, 0))
-    comp.paste(rendered_frames[-1], (w_out * 2, 0))
+    comp.paste(rendered_frames[len(rendered_frames)//3], (w_out, 0))
+    comp.paste(rendered_frames[2*len(rendered_frames)//3], (w_out * 2, 0))
+    comp.paste(rendered_frames[-1], (w_out * 3, 0))
     master_palette = comp.quantize(colors=128, method=Image.Quantize.MAXCOVERAGE)
 
-    # Quantize every frame with the fixed global palette
+    # Quantize all frames with identical global palette
     p_frames = [f.quantize(palette=master_palette, dither=Image.Dither.NONE) for f in rendered_frames]
 
-    # Save WITHOUT loop parameter so animation plays ONCE and stops on final frame
+    # Save WITHOUT loop parameter (plays once and stays on final frame)
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     durations = [33] * len(p_frames)
     durations[-1] = 100

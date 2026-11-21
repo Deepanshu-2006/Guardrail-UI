@@ -325,18 +325,22 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
           }[c] || c));
 
+          const inviterName = typeof body.inviterName === 'string' && body.inviterName.trim()
+            ? body.inviterName.trim()
+            : (actorId === 'usr_alice' ? 'Alice' : 'Your family member');
+
           const emailSubject = `🛡️ You're invited to be a Guardrail Trusted Contact (${role})`;
           const emailText = [
             `Guardrail Protection Network`,
             `----------------------------`,
-            `You have been invited to serve as a ${role} on Guardrail UI.`,
+            `${inviterName} has invited you to serve as their ${role} on Guardrail.`,
             ``,
-            `As a trusted contact, you will be able to review and approve sensitive or high-risk actions to keep your family member protected online.`,
+            `As a trusted contact, you will be able to review and approve sensitive or high-risk actions to keep them safe online.`,
             ``,
             `Connect your account by clicking the link below:`,
             `${pairingUrl}`,
             ``,
-            `Or manually enter this pairing code after signing in:`,
+            `Or scan the QR code / manually enter this pairing code after signing in:`,
             `Pairing Code: ${code}`,
             ``,
             `This invitation expires in 24 hours.`,
@@ -365,7 +369,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             const targetScript = fs.existsSync(scriptPath) ? scriptPath : altScriptPath;
 
             if (fs.existsSync(targetScript)) {
-              const genOut = execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 6000 }).toString();
+              const genOut = execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 12000 }).toString();
               try {
                 const parsed = JSON.parse(genOut.trim());
                 if (parsed.cssWidth && parsed.cssHeight) {
@@ -385,7 +389,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             const targetQrScript = fs.existsSync(qrScriptPath) ? qrScriptPath : altQrScriptPath;
 
             if (fs.existsSync(targetQrScript)) {
-              execSync(`python3 "${targetQrScript}" "${pairingUrl}" "${tmpQrGifPath}"`, { timeout: 8000 });
+              execSync(`python3 "${targetQrScript}" "${pairingUrl}" "${tmpQrGifPath}"`, { timeout: 12000 });
               if (fs.existsSync(tmpQrGifPath)) {
                 qrGifB64 = fs.readFileSync(tmpQrGifPath).toString('base64');
               }
@@ -454,56 +458,67 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
               <!-- Human Body Copy -->
               <p style="font-size: 14.5px; line-height: 1.6; color: #4B5542; margin: 0 0 24px 0;">
-                You have been invited to serve as a <strong>${escapeHtml(role)}</strong>. As a trusted contact, you'll help protect and approve high-risk actions to keep your family member safe online.
+                <strong>${escapeHtml(inviterName)}</strong> has invited you to serve as their <strong>${escapeHtml(role)}</strong> on Guardrail. As their trusted contact, you'll help protect and approve high-risk actions to keep them safe online.
               </p>
 
-              <!-- QR Code Scan Container (Above Pairing Code) -->
-              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 20px 16px; text-align: center; margin: 0 0 18px 0;">
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 12px;">
-                  SCAN WITH PHONE CAMERA
-                </div>
-                <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
-                  <tr>
-                    <td align="center" valign="middle" style="line-height: 0;">
-                      ${qrGifB64
-                        ? `<img src="cid:pairing-qr" width="140" height="140" style="display: block; margin: 0 auto; width: 140px; height: 140px; border-radius: 9px; border: 0; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code with phone camera" />`
-                        : `<div style="font-size: 12px; color: #7E8774;">Scan in Guardrail App</div>`
-                      }
-                    </td>
-                  </tr>
-                </table>
-                <p style="font-size: 11.5px; color: #6E7964; margin: 12px 0 0 0; line-height: 1.4;">
-                  Point your Caretaker's phone camera at this QR code to connect instantly.
-                </p>
-              </div>
+              <!-- Unified Pairing Pass Card -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 14px; margin-bottom: 26px; border-collapse: separate;">
+                <tr>
+                  <td style="padding: 22px 20px 20px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; text-align: center; margin-bottom: 12px;">
+                      SCAN WITH PHONE CAMERA
+                    </div>
+                    <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                      <tr>
+                        <td align="center" valign="middle" style="line-height: 0;">
+                          ${qrGifB64
+                            ? `<img src="cid:pairing-qr" width="140" height="140" style="display: block; margin: 0 auto; width: 140px; height: 140px; border-radius: 9px; border: 0; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code" />`
+                            : `<div style="font-size: 12px; color: #7E8774;">Scan in Guardrail App</div>`
+                          }
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="font-size: 11.5px; color: #6E7964; margin: 10px 0 0 0; text-align: center; line-height: 1.4;">
+                      Point your phone camera at this QR code to connect instantly.
+                    </p>
 
-              <!-- Animated Pairing Code Container -->
-              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 18px 16px; text-align: center; margin: 0 0 28px 0;">
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 12px;">
-                  OR ENTER PAIRING CODE
-                </div>
-                <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
-                  <tr>
-                    <td align="center" valign="middle" style="line-height: 0;">
-                      ${gifB64
-                        ? `<img src="cid:pairing-code" width="${gifCssWidth}" height="${gifCssHeight}" style="display: block; margin: 0 auto; width: ${gifCssWidth}px; height: ${gifCssHeight}px; border: 0;" alt="${escapeHtml(codeString)}" />`
-                        : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
-                      }
-                    </td>
-                  </tr>
-                </table>
-              </div>
+                    <!-- Divider inside card -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 18px;">
+                      <tr>
+                        <td style="border-bottom: 1px solid #D8D2C2; font-size: 0; line-height: 0;" width="32%">&nbsp;</td>
+                        <td style="text-align: center; padding: 0 10px; font-size: 10px; font-weight: 700; color: #8A9480; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap;">
+                          OR ENTER CODE
+                        </td>
+                        <td style="border-bottom: 1px solid #D8D2C2; font-size: 0; line-height: 0;" width="32%">&nbsp;</td>
+                      </tr>
+                    </table>
+
+                    <!-- Segmented Pairing Code Animation -->
+                    <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                      <tr>
+                        <td align="center" valign="middle" style="line-height: 0;">
+                          ${gifB64
+                            ? `<img src="cid:pairing-code" width="${gifCssWidth}" height="${gifCssHeight}" style="display: block; margin: 0 auto; width: ${gifCssWidth}px; height: ${gifCssHeight}px; border: 0;" alt="${escapeHtml(codeString)}" />`
+                            : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
+                          }
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
 
               <!-- Primary Action Button -->
-              <div style="text-align: center; margin: 0 0 26px 0;">
+              <div style="text-align: center; margin: 0 0 24px 0;">
                 <a href="${pairingUrl}" class="btn-connect" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 13px 34px; border-radius: 9999px; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.16); letter-spacing: -0.2px;">
-                  Accept &amp; Connect in Dashboard &rarr;
+                  Accept Invitation &amp; Connect &rarr;
                 </a>
               </div>
 
-              <!-- Security Expiration Notice -->
-              <p style="font-size: 12px; line-height: 1.5; color: #7E8774; text-align: center; margin: 0 0 22px 0;">
-                This invitation expires in 24 hours. For security, never share this link or code with anyone else.
+              <!-- Security Expiration Notice & Safety Guarantee -->
+              <p style="font-size: 12px; line-height: 1.6; color: #7E8774; text-align: center; margin: 0 0 22px 0;">
+                This invitation expires in 24 hours.<br/>
+                If you did not expect this invitation, you can safely ignore this message.
               </p>
 
               <!-- Footer Attribution -->
