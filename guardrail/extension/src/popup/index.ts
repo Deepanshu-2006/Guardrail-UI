@@ -1040,27 +1040,64 @@ function setupPairingPanelActions(): void {
               </span>
             </div>
             <div class="stage-sent">
-              <div class="sent-burst-ring" aria-hidden="true"></div>
-              <div class="sent-sparks-cluster" aria-hidden="true">
-                <span class="spark sp-1"></span>
-                <span class="spark sp-2"></span>
-                <span class="spark sp-3"></span>
-                <span class="spark sp-4"></span>
-                <span class="spark sp-5"></span>
-                <span class="spark sp-6"></span>
-                <span class="spark sp-7"></span>
-                <span class="spark sp-8"></span>
+              <!-- Dual Expanding Shockwave Rings -->
+              <div class="sent-burst-ring ring-inner" aria-hidden="true"></div>
+              <div class="sent-burst-ring ring-outer" aria-hidden="true"></div>
+
+              <!-- Celebration Confetti Cannon (14 animated physics particles) -->
+              <div class="sent-confetti-field" aria-hidden="true">
+                <span class="confetti c-star-1">✦</span>
+                <span class="confetti c-star-2">★</span>
+                <span class="confetti c-star-3">✧</span>
+                <span class="confetti c-ribbon-1"></span>
+                <span class="confetti c-ribbon-2"></span>
+                <span class="confetti c-ribbon-3"></span>
+                <span class="confetti c-ribbon-4"></span>
+                <span class="confetti c-dot-1"></span>
+                <span class="confetti c-dot-2"></span>
+                <span class="confetti c-dot-3"></span>
+                <span class="confetti c-dot-4"></span>
+                <span class="confetti c-dot-5"></span>
+                <span class="confetti c-diamond-1"></span>
+                <span class="confetti c-diamond-2"></span>
               </div>
-              <div class="sent-badge">
-                <svg class="sent-badge-svg" viewBox="0 0 24 24" fill="none">
-                  <circle class="sent-badge-circle" cx="12" cy="12" r="9.5" stroke="#96E062" stroke-width="2" />
-                  <path class="sent-badge-check" d="M7.5 12.2L10.5 15.2L16.8 8.8" stroke="#FAF6ED" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+
+              <!-- Animated Envelope Airmail Touchdown & Wax Seal Stamp -->
+              <div class="sent-envelope-capsule" aria-hidden="true">
+                <svg class="sent-envelope-svg" viewBox="0 0 28 22" fill="none">
+                  <!-- Envelope Body -->
+                  <rect class="env-body" x="2" y="5" width="24" height="15" rx="3" fill="#223B1E" stroke="#8ED45E" stroke-width="1.6" />
+                  <!-- Inner Letter Paper (tucks in) -->
+                  <rect class="env-letter" x="5" y="2.5" width="18" height="11" rx="1.5" fill="#FAF6ED" />
+                  <line class="env-letter-line-1" x1="7.5" y1="5.5" x2="15" y2="5.5" stroke="#7E8774" stroke-width="1.2" stroke-linecap="round" />
+                  <line class="env-letter-line-2" x1="7.5" y1="8.5" x2="18.5" y2="8.5" stroke="#7E8774" stroke-width="1.2" stroke-linecap="round" />
+                  <!-- Bottom Fold Creases -->
+                  <path class="env-folds" d="M2.5 19.5L11 12M25.5 19.5L17 12" stroke="#8ED45E" stroke-width="1.3" stroke-linecap="round" opacity="0.65" />
+                  <!-- Envelope Flap (snaps down) -->
+                  <path class="env-flap" d="M2.5 5.5L14 13.5L25.5 5.5" stroke="#8ED45E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="#1C3018" />
+                  <!-- Wax Seal Stamp with Checkmark -->
+                  <g class="env-seal-group">
+                    <circle class="env-seal-circle" cx="14" cy="13.2" r="4.8" fill="#96E062" stroke="#FAF6ED" stroke-width="1.1" />
+                    <path class="env-seal-check" d="M12.1 13.2L13.5 14.6L16.1 11.8" stroke="#172413" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
                 </svg>
               </div>
-              <span class="stage-sent-text">
-                <span class="sent-title">Sent</span>
-                <span class="sent-sparkle">✦</span>
-              </span>
+
+              <!-- Dynamic Bouncy Text: "Sent!" with individual letter pop -->
+              <div class="sent-text-group">
+                <span class="sent-word">
+                  <span class="sent-letter sl-1">S</span>
+                  <span class="sent-letter sl-2">e</span>
+                  <span class="sent-letter sl-3">n</span>
+                  <span class="sent-letter sl-4">t</span>
+                  <span class="sent-letter sl-5">!</span>
+                </span>
+                <span class="sent-sparkle-star s-star-1">✦</span>
+                <span class="sent-sparkle-star s-star-2">✧</span>
+              </div>
+
+              <!-- Countdown Hairline indicator at base of button -->
+              <div class="sent-countdown-hairline" aria-hidden="true"></div>
             </div>
           </div>
         `;
@@ -1113,7 +1150,7 @@ function setupPairingPanelActions(): void {
             inputContact.value = '';
           }, 360);
 
-          // Revert back smoothly after 2.9s
+          // Revert back smoothly after 3.3s
           setTimeout(() => {
             if (inputRow) {
               inputRow.classList.remove('is-sent');
@@ -1128,7 +1165,7 @@ function setupPairingPanelActions(): void {
             `;
             btnSend.disabled = false;
             inputContact.disabled = false;
-          }, 2900);
+          }, 3300);
         } else {
           if (inputRow) {
             inputRow.classList.remove('is-sending');
