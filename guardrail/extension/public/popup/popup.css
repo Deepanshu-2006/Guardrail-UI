@@ -1104,22 +1104,34 @@ body.pairing-open .pairing-footer {
 
 /* Centered & expanded state during sending */
 .share-input-row.is-sending .btn-send-invite {
-  min-width: 122px;
+  min-width: 126px;
+  height: 36px;
   padding: 0 16px;
-  background: #24321E !important;
-  border-color: #486337 !important;
-  box-shadow: 0 4px 14px rgba(36, 50, 30, 0.28) !important;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #24341E 0%, #172413 100%) !important;
+  border-color: rgba(132, 175, 96, 0.45) !important;
+  box-shadow: 0 4px 16px rgba(23, 36, 19, 0.38), inset 0 0 12px rgba(85, 119, 63, 0.22) !important;
   cursor: default;
 }
 
 /* Centered & expanded state when sent */
 .share-input-row.is-sent .btn-send-invite {
-  min-width: 114px;
+  min-width: 118px;
+  height: 36px;
   padding: 0 16px;
-  background: #2D481F !important;
-  border-color: #55773F !important;
-  box-shadow: 0 4px 14px rgba(45, 72, 31, 0.32) !important;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #2D4A1F 0%, #1A3111 100%) !important;
+  border-color: #6DA447 !important;
+  box-shadow: 0 4px 18px rgba(45, 74, 31, 0.42), 0 0 0 1.5px rgba(109, 164, 71, 0.32) !important;
+  animation: gdButtonJellyBounce 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   cursor: default;
+}
+
+@keyframes gdButtonJellyBounce {
+  0% { transform: scale(0.90); }
+  45% { transform: scale(1.08); }
+  75% { transform: scale(0.97); }
+  100% { transform: scale(1); }
 }
 
 /* Gleam sweep while in sending state */
@@ -1133,7 +1145,7 @@ body.pairing-open .pairing-footer {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.20) 50%,
+    rgba(255, 255, 255, 0.22) 50%,
     transparent 100%
   );
   animation: gdSendGleamSweep 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
@@ -1145,27 +1157,99 @@ body.pairing-open .pairing-footer {
   100% { left: 100%; }
 }
 
-/* Pulse dot during sending */
-.btn-send-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #B6DEAC;
-  display: inline-block;
-  animation: gdSendDotPulse 1.0s ease-in-out infinite;
-  margin-right: 2px;
+/* =============================================================================
+   Sending Creative Typography & Miniature Flight Animation
+   ============================================================================= */
+
+.btn-sending-creative {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+.sending-plane-orbit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
 }
 
-@keyframes gdSendDotPulse {
-  0%, 100% {
-    transform: scale(0.85);
-    opacity: 0.6;
+.sending-mini-plane {
+  width: 13px;
+  height: 13px;
+  color: #B6DEAC;
+  transform-origin: 50% 50%;
+  animation: gdMiniPlaneHover 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+@keyframes gdMiniPlaneHover {
+  0% {
+    transform: translate3d(-1px, 1px, 0) rotate(16deg) scale(0.95);
   }
   50% {
-    transform: scale(1.3);
+    transform: translate3d(1px, -1.5px, 0) rotate(32deg) scale(1.08);
+  }
+  100% {
+    transform: translate3d(2px, 0.5px, 0) rotate(22deg) scale(1);
+  }
+}
+
+.sending-vapor-trail {
+  position: absolute;
+  top: 8px;
+  left: -7px;
+  width: 7px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(182, 222, 172, 0.8));
+  animation: gdVaporStream 0.55s linear infinite;
+}
+
+@keyframes gdVaporStream {
+  0% {
+    transform: scaleX(0.3) translateX(0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scaleX(1.3) translateX(-3px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scaleX(0.2) translateX(-6px);
+    opacity: 0;
+  }
+}
+
+/* Kinetic wave jumping dots */
+.sending-dots {
+  display: inline-flex;
+  letter-spacing: 0.5px;
+}
+
+.sending-dots .sdot {
+  display: inline-block;
+  animation: gdDotWave 1.1s ease-in-out infinite;
+}
+
+.sending-dots .d1 { animation-delay: 0s; }
+.sending-dots .d2 { animation-delay: 0.16s; }
+.sending-dots .d3 { animation-delay: 0.32s; }
+
+@keyframes gdDotWave {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-2.5px);
     opacity: 1;
-    box-shadow: 0 0 8px rgba(182, 222, 172, 0.85);
+    color: #CBECC1;
   }
 }
 
@@ -1181,44 +1265,139 @@ body.pairing-open .pairing-footer {
     opacity: 1;
   }
   20% {
-    /* Tilts downwards to the right (aiming horizontally) */
     transform: translate3d(-2px, 1.5px, 0) rotate(26deg) scale(0.96);
     opacity: 1;
   }
   45% {
-    /* Accelerates fast to the right */
     transform: translate3d(18px, -1px, 0) rotate(48deg) scale(1.14);
     opacity: 1;
   }
   100% {
-    /* Streaks across fast off the right edge */
     transform: translate3d(70px, -3px, 0) rotate(58deg) scale(0.35);
     opacity: 0;
   }
 }
 
-/* Sent checkmark pop-in */
-.btn-sent-check {
+/* =============================================================================
+   Sent Creative Micro-Interaction (Checkmark Draw + Spark Burst + Sparkle)
+   ============================================================================= */
+
+.btn-sent-creative {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  color: #FAF6ED;
-  animation: gdSentCheckPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  gap: 7px;
+  position: relative;
+  z-index: 2;
 }
 
-@keyframes gdSentCheckPop {
+/* Badge containing animated circular draw & checkmark stroke */
+.btn-sent-badge {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-sent-svg {
+  width: 17px;
+  height: 17px;
+  overflow: visible;
+}
+
+.btn-sent-circle {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: gdCircleDraw 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes gdCircleDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+.btn-sent-check-path {
+  stroke-dasharray: 18;
+  stroke-dashoffset: 18;
+  animation: gdCheckDraw 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.16s forwards;
+}
+
+@keyframes gdCheckDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Radial micro-spark burst around checkmark */
+.btn-sent-burst {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.btn-sent-burst .spark {
+  position: absolute;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: #FAF6ED;
+  animation: gdSparkBurst 0.60s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.btn-sent-burst .s1 { --tx: 14px; --ty: -11px; background: #9FE074; animation-delay: 0.08s; }
+.btn-sent-burst .s2 { --tx: -13px; --ty: -9px; background: #FAF6ED; animation-delay: 0.10s; }
+.btn-sent-burst .s3 { --tx: 14px; --ty: 9px; background: #EEDB99; animation-delay: 0.12s; }
+.btn-sent-burst .s4 { --tx: -12px; --ty: 10px; background: #9FE074; animation-delay: 0.09s; }
+.btn-sent-burst .s5 { --tx: 0px; --ty: -15px; background: #FAF6ED; animation-delay: 0.11s; }
+.btn-sent-burst .s6 { --tx: 0px; --ty: 14px; background: #C5E0B4; animation-delay: 0.13s; }
+
+@keyframes gdSparkBurst {
   0% {
-    transform: scale(0.2) rotate(-35deg);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.22) rotate(6deg);
+    transform: translate(0, 0) scale(1.2);
     opacity: 1;
   }
   100% {
-    transform: scale(1) rotate(0deg);
+    transform: translate(var(--tx), var(--ty)) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* Sent label typography with subtle 3D rise & sparkle */
+.sent-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  animation: gdSentTextRise 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes gdSentTextRise {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sent-sparkle {
+  color: #E2F59E;
+  font-size: 11px;
+  display: inline-block;
+  animation: gdSparkleTwinkle 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes gdSparkleTwinkle {
+  0% {
+    transform: scale(0.8) rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.25) rotate(45deg);
     opacity: 1;
   }
 }
