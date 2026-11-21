@@ -502,6 +502,7 @@ body.pairing-open .pairing-footer {
 }
 
 .qr-code-wrapper {
+  position: relative;
   width: 142px;
   height: 142px;
   border-radius: 10px;
@@ -513,12 +514,141 @@ body.pairing-open .pairing-footer {
   padding: 5px;
   margin: 2px 0 3px;
   box-shadow: inset 0 1px 2px rgba(39, 49, 33, 0.04);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.qr-code-wrapper svg {
+/* Viewfinder Optical Reticles */
+.viewfinder-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: #55773F;
+  border-style: solid;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.85;
+  transition: all 0.3s ease;
+}
+.corner-tl { top: 3px; left: 3px; border-width: 2px 0 0 2px; border-top-left-radius: 2px; }
+.corner-tr { top: 3px; right: 3px; border-width: 2px 2px 0 0; border-top-right-radius: 2px; }
+.corner-bl { bottom: 3px; left: 3px; border-width: 0 0 2px 2px; border-bottom-left-radius: 2px; }
+.corner-br { bottom: 3px; right: 3px; border-width: 0 2px 2px 0; border-bottom-right-radius: 2px; }
+
+.qr-code-wrapper.animating .viewfinder-corner {
+  animation: gdReticleLock 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+}
+
+@keyframes gdReticleLock {
+  0% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 0.85; }
+}
+
+/* Luminous Olive Laser Scanner */
+.qr-laser-scanner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 4%, #55773F 22%, #7BA45A 50%, #55773F 78%, transparent 96%);
+  box-shadow: 0 0 8px rgba(123, 164, 90, 0.9), 0 0 16px rgba(85, 119, 63, 0.5);
+  z-index: 8;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.qr-laser-scanner::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 26px;
+  background: linear-gradient(to top, rgba(85, 119, 63, 0.22), transparent);
+  pointer-events: none;
+}
+
+.qr-code-wrapper.animating .qr-laser-scanner {
+  animation: gdLaserMove 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.55s forwards;
+}
+
+@keyframes gdLaserMove {
+  0% { top: 0%; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.qr-reveal-container {
+  width: 132px;
+  height: 132px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-reveal-container svg {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+/* 3 Corner Finder Targets Animation */
+.qr-code-wrapper.animating .qr-finders-group {
+  opacity: 0;
+  transform-origin: center;
+  animation: gdFinderSnap 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.20s forwards;
+}
+
+@keyframes gdFinderSnap {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Data Matrix Wipe Animation */
+.qr-code-wrapper.animating .qr-data-group {
+  clip-path: inset(0 0 100% 0);
+  animation: gdDataWipe 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.55s forwards;
+}
+
+@keyframes gdDataWipe {
+  0% { clip-path: inset(0 0 100% 0); }
+  100% { clip-path: inset(0 0 0% 0); }
+}
+
+/* Ready Confirmation Pulse */
+.qr-code-wrapper.animating::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px rgba(85, 119, 63, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: gdReadyPulse 0.55s ease 1.70s forwards;
+}
+
+@keyframes gdReadyPulse {
+  0% { opacity: 0; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* Interactive Laser Sweep on Hover */
+.qr-code-wrapper:not(.animating):hover .qr-laser-scanner {
+  animation: gdLaserHover 0.75s ease forwards;
+}
+
+@keyframes gdLaserHover {
+  0% { top: 0%; opacity: 0; }
+  15% { opacity: 0.85; }
+  85% { opacity: 0.85; }
+  100% { top: 100%; opacity: 0; }
 }
 
 .qr-loading-placeholder {

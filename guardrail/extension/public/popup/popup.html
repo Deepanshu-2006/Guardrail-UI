@@ -176,9 +176,16 @@
           <span class="card-kicker">SCAN WITH PHONE CAMERA</span>
         </div>
         <div class="qr-code-wrapper" id="qr-code-container">
-          <div class="qr-loading-placeholder">
-            <div class="qr-spinner"></div>
-            <span>Generating code...</span>
+          <div class="viewfinder-corner corner-tl" aria-hidden="true"></div>
+          <div class="viewfinder-corner corner-tr" aria-hidden="true"></div>
+          <div class="viewfinder-corner corner-bl" aria-hidden="true"></div>
+          <div class="viewfinder-corner corner-br" aria-hidden="true"></div>
+          <div class="qr-laser-scanner" aria-hidden="true"></div>
+          <div class="qr-reveal-container" id="qr-svg-target">
+            <div class="qr-loading-placeholder">
+              <div class="qr-spinner"></div>
+              <span>Generating code...</span>
+            </div>
           </div>
         </div>
         <p class="qr-helper-text">Point your Caretaker's phone camera at this QR code to connect instantly.</p>
