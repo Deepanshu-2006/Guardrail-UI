@@ -446,13 +446,10 @@ export function openPairingPanel(): void {
 
   morphBanner('Close ✕', 'Pairing in progress...');
 
-  if (activePairingCode) {
-    renderPairingCodeCharacters(activePairingCode, true);
-    const env = resolveEnvironmentConfig();
-    const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
-    const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(activePairingCode)}`;
-    void renderQrCodeSvg(pairingUrl, true);
-  }
+  // Start choreographed slow animations
+  const codeToDisplay = activePairingCode || 'GR-INV-8K2M-9Q7X';
+  renderPairingCodeCharacters(codeToDisplay, true);
+  triggerQrCodeDraw(850, 1500);
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
@@ -553,9 +550,9 @@ export function renderPairingCodeCharacters(code: string, animate = true): void 
   }
 
   codeDisplay.innerHTML = '';
-  // Stagger delays starting from 0.46s (aligns with .code-card cascade at 0.44s)
-  const baseDelay = 0.46;
-  const step = 0.032;
+  // Base delay: 1.15s (after .code-card finishes rising into view at 0.95s)
+  const baseDelay = 1.15;
+  const step = 0.040; // 40ms stagger per character
   const chars = code.split('');
 
   chars.forEach((ch, idx) => {
@@ -573,9 +570,60 @@ export function renderPairingCodeCharacters(code: string, animate = true): void 
 let qrAnimationTimer: number | null = null;
 
 /**
- * Renders the QR code SVG and triggers the stroke-draw animation.
+ * Triggers the continuous, slow stroke-draw animation on the QR code SVG.
+ * Starts after delayMs (when QR card has entered) and smoothly draws over durationMs.
  */
-export async function renderQrCodeSvg(pairingUrl: string, animate = true): Promise<void> {
+export function triggerQrCodeDraw(delayMs = 850, durationMs = 1500): void {
+  if (qrAnimationTimer) {
+    cancelAnimationFrame(qrAnimationTimer);
+    qrAnimationTimer = null;
+  }
+
+  const qrContainer = document.getElementById('qr-code-container');
+  if (!qrContainer) return;
+
+  const strokePath = qrContainer.querySelector('svg path:nth-of-type(2)') as SVGPathElement | null;
+  if (!strokePath) return;
+
+  // Typical total length of the stroke in a 35x35 QR code is ~574
+  const totalLen = Math.max(574, Math.ceil(strokePath.getTotalLength() || 574));
+  strokePath.style.strokeDasharray = `${totalLen}`;
+  strokePath.style.strokeDashoffset = `${totalLen}`;
+
+  const startTime = performance.now() + delayMs;
+
+  const animateStroke = (currentTime: number) => {
+    if (!document.body.classList.contains('pairing-open') || document.body.classList.contains('pairing-closing')) {
+      return;
+    }
+    if (currentTime < startTime) {
+      qrAnimationTimer = requestAnimationFrame(animateStroke);
+      return;
+    }
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    // Cubic ease-out: starts with intent and gently settles
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const currentOffset = totalLen * (1 - ease);
+    strokePath.style.strokeDashoffset = `${currentOffset.toFixed(2)}`;
+
+    if (progress < 1) {
+      qrAnimationTimer = requestAnimationFrame(animateStroke);
+    } else {
+      // Clear dash styles on completion for pixel-sharp edges
+      strokePath.style.strokeDasharray = '';
+      strokePath.style.strokeDashoffset = '';
+      qrAnimationTimer = null;
+    }
+  };
+
+  qrAnimationTimer = requestAnimationFrame(animateStroke);
+}
+
+/**
+ * Renders the QR code SVG into the container with its stroke initially pre-hidden.
+ */
+export async function renderQrCodeSvg(pairingUrl: string): Promise<void> {
   const qrContainer = document.getElementById('qr-code-container');
   if (!qrContainer) return;
 
@@ -591,49 +639,11 @@ export async function renderQrCodeSvg(pairingUrl: string, animate = true): Promi
 
     qrContainer.innerHTML = svgString;
 
-    if (animate) {
-      const svgEl = qrContainer.querySelector('svg');
-      const paths = svgEl ? svgEl.querySelectorAll('path') : null;
-      // In QRCode.toString({ type: 'svg' }):
-      // paths[0] is the background <path fill="#FAF6ED" d="M0 0h35v35H0z"/>
-      // paths[1] is the stroke path <path stroke="#273121" d="..."/>
-      const strokePath = (paths && paths.length > 1 ? paths[1] : null) as SVGPathElement | null;
-
-      if (strokePath && typeof strokePath.getTotalLength === 'function') {
-        const totalLen = Math.ceil(strokePath.getTotalLength());
-        // Set initial stroke-dash offset to hide the stroke entirely
-        strokePath.style.strokeDasharray = `${totalLen}`;
-        strokePath.style.strokeDashoffset = `${totalLen}`;
-
-        // Delay starting the draw slightly until the QR card has entered (~360ms)
-        const delayMs = 360;
-        const durationMs = 850;
-        const startTime = performance.now() + delayMs;
-
-        const animateStroke = (currentTime: number) => {
-          if (currentTime < startTime) {
-            qrAnimationTimer = requestAnimationFrame(animateStroke);
-            return;
-          }
-          const elapsed = currentTime - startTime;
-          const progress = Math.min(1, elapsed / durationMs);
-          // Cubic ease-out: starts fast, gently settles
-          const ease = 1 - Math.pow(1 - progress, 3);
-          const currentOffset = totalLen * (1 - ease);
-          strokePath.style.strokeDashoffset = `${currentOffset.toFixed(2)}`;
-
-          if (progress < 1) {
-            qrAnimationTimer = requestAnimationFrame(animateStroke);
-          } else {
-            // Remove dash styles upon completion for 100% sharp rendering
-            strokePath.style.strokeDasharray = '';
-            strokePath.style.strokeDashoffset = '';
-          }
-        };
-
-        if (qrAnimationTimer) cancelAnimationFrame(qrAnimationTimer);
-        qrAnimationTimer = requestAnimationFrame(animateStroke);
-      }
+    const strokePath = qrContainer.querySelector('svg path:nth-of-type(2)') as SVGPathElement | null;
+    if (strokePath) {
+      const totalLen = Math.max(574, Math.ceil(strokePath.getTotalLength() || 574));
+      strokePath.style.strokeDasharray = `${totalLen}`;
+      strokePath.style.strokeDashoffset = `${totalLen}`;
     }
   } catch (qrErr) {
     console.error('[Guardrail Popup] QR generation error:', qrErr);
@@ -721,14 +731,21 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
     inviteCode = 'GR-INV-8K2M-9Q7X';
   }
 
+  const codeChanged = activePairingCode !== inviteCode;
   activePairingCode = inviteCode;
-  renderPairingCodeCharacters(inviteCode, true);
 
-  // 3. Always render QR Code SVG for active code
+  // Render QR Code SVG if none exists or code changed
   if (qrContainer) {
     const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
     const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(inviteCode)}`;
-    await renderQrCodeSvg(pairingUrl, true);
+
+    if (!qrContainer.querySelector('svg') || codeChanged) {
+      await renderQrCodeSvg(pairingUrl);
+      if (document.body.classList.contains('pairing-open') && !document.body.classList.contains('pairing-closing')) {
+        renderPairingCodeCharacters(inviteCode, true);
+        triggerQrCodeDraw(850, 1500);
+      }
+    }
   }
 }
 

@@ -147,42 +147,64 @@ body.pairing-closing .pairing-panel {
 }
 
 /* Staggered slow, graceful entry cascade for pairing panel items */
+body.pairing-open .pairing-header,
+body.pairing-open .active-guardians-card,
+body.pairing-open .role-centered-bar,
+body.pairing-open .qr-card,
+body.pairing-open .code-card,
+body.pairing-open .share-card,
+body.pairing-open .pairing-footer {
+  opacity: 0;
+  transform: translateY(24px);
+  will-change: transform, opacity;
+  animation-name: gdCascadeUp;
+  animation-fill-mode: forwards;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 body.pairing-open .pairing-header {
-  animation: gdPanelItemCascade 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.10s backwards;
+  animation-duration: 0.60s;
+  animation-delay: 0.12s;
 }
 
 body.pairing-open .active-guardians-card {
-  animation: gdPanelItemCascade 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.18s backwards;
+  animation-duration: 0.60s;
+  animation-delay: 0.28s;
 }
 
 body.pairing-open .role-centered-bar {
-  animation: gdPanelItemCascade 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.26s backwards;
+  animation-duration: 0.60s;
+  animation-delay: 0.44s;
 }
 
 body.pairing-open .qr-card {
-  animation: gdPanelItemCascade 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.34s backwards;
+  animation-duration: 0.65s;
+  animation-delay: 0.62s;
 }
 
 body.pairing-open .code-card {
-  animation: gdPanelItemCascade 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.44s backwards;
+  animation-duration: 0.65s;
+  animation-delay: 0.95s;
 }
 
 body.pairing-open .share-card {
-  animation: gdPanelItemCascade 0.60s cubic-bezier(0.16, 1, 0.3, 1) 0.54s backwards;
+  animation-duration: 0.65s;
+  animation-delay: 1.25s;
 }
 
 body.pairing-open .pairing-footer {
-  animation: gdPanelItemCascade 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.64s backwards;
+  animation-duration: 0.65s;
+  animation-delay: 1.50s;
 }
 
-@keyframes gdPanelItemCascade {
+@keyframes gdCascadeUp {
   0% {
     opacity: 0;
-    transform: translate3d(0, 14px, 0);
+    transform: translateY(24px);
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translateY(0);
   }
 }
 
