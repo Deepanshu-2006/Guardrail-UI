@@ -339,49 +339,129 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             `If you did not expect this invitation, you can safely ignore this message.`,
           ].join('\n');
 
+          // Generate character-by-character animated pairing code
+          const codeString = code || 'GR-INV-XXXX-XXXX';
+          const codeCharsHtml = codeString.split('').map((ch, idx) => {
+            const cls = `c${idx + 1}`;
+            return `<span class="code-char ${cls}" style="display: inline-block;">${escapeHtml(ch)}</span>`;
+          }).join('');
+
+          // Generate staggered animation delays
+          const delayRules = Array.from({ length: 24 }, (_, i) => {
+            const delay = ((i + 1) * 0.03).toFixed(2);
+            return `.c${i + 1} { animation-delay: ${delay}s; }`;
+          }).join('\n    ');
+
           const emailHtml = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guardrail Trusted Contact Invitation</title>
+  <style>
+    body, table, td, p, a, div, span {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Character-by-character generation animation from bottom */
+    @keyframes charRise {
+      0% {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .code-char {
+      display: inline-block;
+      animation: charRise 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    ${delayRules}
+
+    @media only screen and (max-width: 560px) {
+      .email-card {
+        padding: 24px 20px !important;
+        border-radius: 12px !important;
+      }
+      .code-display {
+        font-size: 20px !important;
+        letter-spacing: 2px !important;
+      }
+      .btn-connect {
+        display: block !important;
+        width: 100% !important;
+        padding: 14px 20px !important;
+      }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 28px 0; background-color: #EDE6D6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #273121;">
+<body style="margin: 0; padding: 40px 16px; background-color: #EDE6D6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #273121;">
   <table width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
       <td align="center">
-        <table width="520" border="0" cellspacing="0" cellpadding="0" style="background-color: #FAF6ED; border: 1px solid #D8D2C2; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(39, 49, 33, 0.06); padding: 32px 28px;">
+        <!-- Clean, minimal card -->
+        <table class="email-card" width="520" border="0" cellspacing="0" cellpadding="0" style="background-color: #FAF6ED; border: 1px solid #D8D2C2; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(39, 49, 33, 0.06); padding: 36px 32px; max-width: 520px; width: 100%;">
           <tr>
             <td>
+              
+              <!-- Brand Header with Official Guardrail Logo -->
               <div style="display: flex; align-items: center; margin-bottom: 24px;">
-                <span style="font-size: 24px; margin-right: 10px;">🛡️</span>
-                <span style="font-size: 20px; font-weight: 700; color: #273121; letter-spacing: -0.4px;">Guardrail UI</span>
+                <div style="width: 32px; height: 32px; background: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                  <svg width="22" height="22" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#273121" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#273121" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <rect x="22" y="34" width="56" height="32" rx="16" fill="#273121"/>
+                    <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#EDE6D6" stroke-width="4.5" stroke-linecap="round"/>
+                    <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#EDE6D6" stroke="#273121" stroke-width="3" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <span style="font-size: 19px; font-weight: 700; color: #273121; letter-spacing: -0.3px;">Guardrail UI</span>
               </div>
-              <h1 style="font-size: 22px; font-weight: 700; color: #273121; margin: 0 0 10px 0; letter-spacing: -0.3px;">
+
+              <!-- Clean Heading -->
+              <h1 style="font-size: 22px; font-weight: 700; color: #273121; margin: 0 0 10px 0; letter-spacing: -0.3px; line-height: 1.3;">
                 Trusted Contact Invitation
               </h1>
-              <p style="font-size: 14px; line-height: 1.6; color: #4B5542; margin: 0 0 20px 0;">
+
+              <!-- Human Body Copy -->
+              <p style="font-size: 14.5px; line-height: 1.6; color: #4B5542; margin: 0 0 24px 0;">
                 You have been invited to serve as a <strong>${escapeHtml(role)}</strong>. As a trusted contact, you'll help protect and approve high-risk actions to keep your family member safe online.
               </p>
-              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 8px;">
+
+              <!-- Pairing Code Box with Character-by-Character Generation -->
+              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 22px 16px; text-align: center; margin: 0 0 28px 0;">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 10px;">
                   Your One-Time Pairing Code
                 </div>
-                <div style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 24px; font-weight: 700; color: #273121; letter-spacing: 3px;">
-                  ${escapeHtml(code || '')}
+                <div class="code-display" style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 24px; font-weight: 700; color: #273121; letter-spacing: 3px;">
+                  ${codeCharsHtml}
                 </div>
               </div>
-              <div style="text-align: center; margin: 28px 0 24px 0;">
-                <a href="${pairingUrl}" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 13px 32px; border-radius: 9999px; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.18);">
+
+              <!-- Primary Action Button -->
+              <div style="text-align: center; margin: 0 0 26px 0;">
+                <a href="${pairingUrl}" class="btn-connect" style="background-color: #273121; color: #FAF6ED; display: inline-block; padding: 13px 34px; border-radius: 9999px; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 10px rgba(39, 49, 33, 0.16); letter-spacing: -0.2px;">
                   Accept &amp; Connect in Dashboard &rarr;
                 </a>
               </div>
-              <p style="font-size: 12px; line-height: 1.5; color: #7E8774; text-align: center; margin: 0 0 20px 0;">
+
+              <!-- Security Expiration Notice -->
+              <p style="font-size: 12px; line-height: 1.5; color: #7E8774; text-align: center; margin: 0 0 22px 0;">
                 This invitation expires in 24 hours. For security, never share this link or code with anyone else.
               </p>
+
+              <!-- Footer Attribution -->
               <div style="border-top: 1px solid #E2DCCF; padding-top: 16px; font-size: 11px; color: #9AA392; text-align: center;">
                 Guardrail Protection Network &middot; Privacy &amp; Safety Guard
               </div>
+
             </td>
           </tr>
         </table>
