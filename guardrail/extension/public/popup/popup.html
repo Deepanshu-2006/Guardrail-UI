@@ -146,20 +146,20 @@
         </button>
       </section>
 
-      <!-- Minimal Relationship / Role Selector -->
-      <div class="role-minimal-bar" id="pairing-role-card">
-        <span class="role-minimal-label">ROLE</span>
-        <div class="role-quick-chips" id="role-quick-chips">
-          <button type="button" class="role-chip active" data-role="Family Guardian">Family</button>
-          <button type="button" class="role-chip" data-role="Son">Son</button>
-          <button type="button" class="role-chip" data-role="Daughter">Daughter</button>
-          <button type="button" class="role-chip" data-role="Financial Advisor">Advisor</button>
-          <button type="button" class="role-chip" id="chip-custom-toggle" data-role="Custom">+ Other</button>
+      <!-- Minimal Circular Role Input -->
+      <div class="role-pill-container" id="pairing-role-card">
+        <label for="caretaker-role-input" class="role-pill-label">ROLE</label>
+        <div class="role-pill-input-wrapper">
+          <input
+            type="text"
+            id="caretaker-role-input"
+            class="role-pill-input"
+            value="Family Guardian"
+            placeholder="e.g. Family Guardian, Son, Advisor..."
+            autocomplete="off"
+            spellcheck="false"
+          />
         </div>
-      </div>
-      <div class="role-custom-row" id="role-custom-row" style="display: none;">
-        <input type="text" id="caretaker-role-input" class="role-custom-input" value="Family Guardian" placeholder="Type custom role (e.g. Brother, Attorney)" autocomplete="off" />
-        <button type="button" id="btn-update-role" class="btn-role-update">Set</button>
       </div>
 
       <!-- QR Code Card -->

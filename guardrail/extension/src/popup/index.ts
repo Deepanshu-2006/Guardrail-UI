@@ -536,50 +536,28 @@ function setupPairingPanelActions(): void {
     }
   });
 
-  // Role Chips Interaction (Minimal & Simple)
-  const chips = document.querySelectorAll<HTMLButtonElement>('.role-chip');
+  // Minimal Circular Role Input Interaction
   const roleInput = document.getElementById('caretaker-role-input') as HTMLInputElement | null;
-  const customRow = document.getElementById('role-custom-row');
-  const chipCustom = document.getElementById('chip-custom-toggle') as HTMLButtonElement | null;
-
-  chips.forEach((chip) => {
-    chip.addEventListener('click', () => {
-      chips.forEach((c) => c.classList.remove('active'));
-      chip.classList.add('active');
-
-      if (chip.id === 'chip-custom-toggle') {
-        if (customRow) {
-          customRow.style.display = 'flex';
-          roleInput?.focus();
-        }
-      } else {
-        if (customRow) customRow.style.display = 'none';
-        const role = chip.getAttribute('data-role') || 'Family Guardian';
-        if (roleInput) roleInput.value = role;
-        void loadOrGenerateInvitation(true, role);
-      }
-    });
-  });
-
-  // Apply Custom Role
-  const applyCustomRole = (): void => {
-    const role = roleInput?.value.trim() || 'Family Guardian';
-    if (chipCustom) {
-      chipCustom.textContent = role.length > 12 ? `${role.slice(0, 11)}…` : role;
-    }
-    void loadOrGenerateInvitation(true, role);
-  };
-
-  const btnUpdateRole = document.getElementById('btn-update-role');
-  if (btnUpdateRole) {
-    btnUpdateRole.addEventListener('click', applyCustomRole);
-  }
   if (roleInput) {
+    let lastRoleValue = roleInput.value.trim();
+
+    const triggerRoleUpdate = (): void => {
+      const currentVal = roleInput.value.trim() || 'Family Guardian';
+      if (currentVal !== lastRoleValue) {
+        lastRoleValue = currentVal;
+        void loadOrGenerateInvitation(true, currentVal);
+      }
+    };
+
     roleInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        applyCustomRole();
+        roleInput.blur();
       }
+    });
+
+    roleInput.addEventListener('change', () => {
+      triggerRoleUpdate();
     });
   }
 
