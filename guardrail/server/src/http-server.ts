@@ -346,6 +346,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           // Generate animated pairing code GIF and load brand logo for CID embedding (supported by Gmail)
           let logoB64 = '';
           let gifB64 = '';
+          let gifCssWidth = 254;
+          let gifCssHeight = 38;
           const codeString = code || 'GR-INV-XXXX-XXXX';
 
           try {
@@ -362,7 +364,14 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             const targetScript = fs.existsSync(scriptPath) ? scriptPath : altScriptPath;
 
             if (fs.existsSync(targetScript)) {
-              execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 3000 });
+              const genOut = execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 6000 }).toString();
+              try {
+                const parsed = JSON.parse(genOut.trim());
+                if (parsed.cssWidth && parsed.cssHeight) {
+                  gifCssWidth = parsed.cssWidth;
+                  gifCssHeight = parsed.cssHeight;
+                }
+              } catch {}
               if (fs.existsSync(tmpGifPath)) {
                 gifB64 = fs.readFileSync(tmpGifPath).toString('base64');
               }
@@ -406,13 +415,23 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           <tr>
             <td>
               
-              <!-- Brand Header with CID Inline Logo (100% Gmail compatible) -->
-              <div style="display: flex; align-items: center; margin-bottom: 24px;">
-                <div style="width: 32px; height: 32px; background: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; overflow: hidden;">
-                  ${logoB64 ? `<img src="cid:guardrail-logo" width="24" height="24" style="display: block; width: 24px; height: 24px;" alt="Guardrail UI" />` : `<span style="font-size: 18px;">🛡️</span>`}
-                </div>
-                <span style="font-size: 19px; font-weight: 700; color: #273121; letter-spacing: -0.3px;">Guardrail UI</span>
-              </div>
+              <!-- Brand Header with Table for 100% rock-solid vertical alignment across all email clients -->
+              <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px; border-collapse: collapse;">
+                <tr>
+                  <td valign="middle" style="vertical-align: middle; padding-right: 12px; line-height: 0;">
+                    <table border="0" cellspacing="0" cellpadding="0" style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 8px; width: 34px; height: 34px; border-collapse: separate;">
+                      <tr>
+                        <td align="center" valign="middle" style="width: 34px; height: 34px; line-height: 0; text-align: center; vertical-align: middle;">
+                          ${logoB64 ? `<img src="cid:guardrail-logo" width="22" height="22" style="display: block; margin: 0 auto; width: 22px; height: 22px; border: 0;" alt="Guardrail UI" />` : `<span style="font-size: 18px; line-height: 1;">🛡️</span>`}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td valign="middle" style="vertical-align: middle; line-height: 1;">
+                    <span style="font-size: 19px; font-weight: 700; color: #273121; letter-spacing: -0.3px; line-height: 1; vertical-align: middle; display: inline-block;">Guardrail UI</span>
+                  </td>
+                </tr>
+              </table>
 
               <!-- Clean Heading -->
               <h1 style="font-size: 22px; font-weight: 700; color: #273121; margin: 0 0 10px 0; letter-spacing: -0.3px; line-height: 1.3;">
@@ -426,15 +445,19 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
               <!-- Animated Pairing Code Container -->
               <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 18px 16px; text-align: center; margin: 0 0 28px 0;">
-                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 8px;">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 12px;">
                   Your One-Time Pairing Code
                 </div>
-                <div style="text-align: center; line-height: 1;">
-                  ${gifB64
-                    ? `<img src="cid:pairing-code" width="380" height="48" style="display: block; margin: 0 auto; max-width: 100%; height: auto; border: 0;" alt="${escapeHtml(codeString)}" />`
-                    : `<div style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 24px; font-weight: 700; color: #273121; letter-spacing: 3px;">${escapeHtml(codeString)}</div>`
-                  }
-                </div>
+                <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                  <tr>
+                    <td align="center" valign="middle" style="line-height: 0;">
+                      ${gifB64
+                        ? `<img src="cid:pairing-code" width="${gifCssWidth}" height="${gifCssHeight}" style="display: block; margin: 0 auto; width: ${gifCssWidth}px; height: ${gifCssHeight}px; border: 0;" alt="${escapeHtml(codeString)}" />`
+                        : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 22px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
+                      }
+                    </td>
+                  </tr>
+                </table>
               </div>
 
               <!-- Primary Action Button -->
