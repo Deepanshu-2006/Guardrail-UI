@@ -277,32 +277,45 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
     section.style.display = 'flex';
     const kickerEl = section.querySelector('.pairing-kicker');
     if (kickerEl) {
-      kickerEl.textContent = contacts.length > 1 ? `LINKED GUARDIANS (${contacts.length})` : 'LINKED GUARDIAN';
+      kickerEl.textContent = contacts.length > 1 ? 'LINKED GUARDIANS' : 'LINKED GUARDIAN';
     }
-    if (countEl) countEl.textContent = `${contacts.length} Connected`;
+    if (countEl) {
+      if (contacts.length > 1) {
+        countEl.style.display = 'inline';
+        countEl.textContent = `${contacts.length} Connected`;
+      } else {
+        countEl.style.display = 'none';
+      }
+    }
     if (titleEl) titleEl.textContent = 'Trusted Contacts';
     if (subtitleEl) subtitleEl.textContent = 'Active guardians & device pairing';
 
     list.innerHTML = contacts
       .map(
-        (c) => `
+        (c, idx) => `
         <div class="active-guardian-item">
           <div class="active-guardian-info">
             <div class="active-guardian-avatar" aria-hidden="true">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
-            <div class="active-guardian-meta">
-              <span class="active-guardian-id">${c.id}</span>
-              <span class="active-guardian-role">(${c.relationshipLabel ? c.relationshipLabel.replace(/^Designated\s+/i, '') : 'Caretaker'})</span>
-            </div>
+            <span class="active-guardian-id">${c.id}</span>
           </div>
-          <div class="active-guardian-status">
-            <span class="active-guardian-dot"></span>
-            <span>Active</span>
-          </div>
+          ${
+            idx === contacts.length - 1
+              ? `
+          <button type="button" class="btn-add-contact-compact" id="btn-add-another-contact" title="Add another contact">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Contact</span>
+          </button>
+          `
+              : ''
+          }
         </div>
       `
       )
@@ -838,23 +851,35 @@ function setupPairingPanelActions(): void {
     });
   }
 
-  // "+ Add Another Contact" Button
+  // "+ Add Another Contact" Button (delegated for dynamically rendered items)
+  const handleAddAnother = () => {
+    const liveStatus = document.getElementById('pairing-live-status');
+    if (liveStatus) {
+      liveStatus.className = 'pairing-live-status waiting';
+      liveStatus.innerHTML = `
+        <span class="pulse-ring"><span class="pulse-dot"></span></span>
+        <span class="status-msg" id="pairing-status-msg">Waiting for new Caretaker to connect...</span>
+      `;
+    }
+    startConnectionPolling();
+    const role = roleInput?.value.trim() || 'Family Guardian';
+    void loadOrGenerateInvitation(true, role);
+    document.getElementById('pairing-role-card')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const activeSection = document.getElementById('active-guardians-section');
+  if (activeSection) {
+    activeSection.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest('#btn-add-another-contact');
+      if (target) {
+        handleAddAnother();
+      }
+    });
+  }
+
   const btnAddAnother = document.getElementById('btn-add-another-contact');
   if (btnAddAnother) {
-    btnAddAnother.addEventListener('click', () => {
-      const liveStatus = document.getElementById('pairing-live-status');
-      if (liveStatus) {
-        liveStatus.className = 'pairing-live-status waiting';
-        liveStatus.innerHTML = `
-          <span class="pulse-ring"><span class="pulse-dot"></span></span>
-          <span class="status-msg" id="pairing-status-msg">Waiting for new Caretaker to connect...</span>
-        `;
-      }
-      startConnectionPolling();
-      const role = roleInput?.value.trim() || 'Family Guardian';
-      void loadOrGenerateInvitation(true, role);
-      document.getElementById('pairing-role-card')?.scrollIntoView({ behavior: 'smooth' });
-    });
+    btnAddAnother.addEventListener('click', handleAddAnother);
   }
 
   // Copy Code Button

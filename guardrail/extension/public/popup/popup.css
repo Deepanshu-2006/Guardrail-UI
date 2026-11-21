@@ -302,49 +302,60 @@ body.pairing-open .pairing-footer {
   background-color: rgba(39, 49, 33, 0.045);
   border: 1px solid rgba(39, 49, 33, 0.12);
   border-radius: 10px;
-  padding: 6px 11px 7px;
-  gap: 4px;
+  padding: 7px 11px 7px;
+  gap: 5px;
 }
 
 .active-guardians-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 22px;
+  min-height: 16px;
+  line-height: 1;
 }
 
-.active-guardians-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.active-count-text {
+  font-family: var(--gd-font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gd-text-muted);
+  letter-spacing: 0.02em;
 }
 
 .btn-add-contact-compact {
   display: inline-flex;
   align-items: center;
-  gap: 4.5px;
+  gap: 4px;
   height: 22px;
-  padding: 0 9px;
+  padding: 0 10px;
   border-radius: 9999px;
-  border: 1px solid rgba(39, 49, 33, 0.20);
-  background: rgba(39, 49, 33, 0.06);
-  color: var(--gd-deep-olive);
+  border: none;
+  background-color: var(--gd-deep-olive);
+  color: var(--gd-bg-canvas);
   font-family: var(--gd-font-sans);
   font-size: 10.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.22);
+}
+
+.btn-add-contact-compact svg {
+  stroke: var(--gd-bg-canvas);
+  flex-shrink: 0;
 }
 
 .btn-add-contact-compact:hover {
-  background: rgba(39, 49, 33, 0.12);
-  border-color: var(--gd-deep-olive);
+  background-color: #172014;
   transform: translateY(-0.5px);
+  box-shadow: 0 2px 5px rgba(39, 49, 33, 0.32);
 }
 
 .btn-add-contact-compact:active {
   transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.18);
 }
 
 .active-guardians-list {
@@ -361,6 +372,7 @@ body.pairing-open .pairing-footer {
   border: none;
   border-radius: 0;
   padding: 1px 0 0;
+  gap: 8px;
 }
 
 .active-guardian-info {
@@ -371,10 +383,11 @@ body.pairing-open .pairing-footer {
 }
 
 .active-guardian-avatar {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background-color: rgba(39, 49, 33, 0.08);
+  border: 1px solid rgba(39, 49, 33, 0.16);
   color: var(--gd-deep-olive);
   display: flex;
   align-items: center;
@@ -382,51 +395,13 @@ body.pairing-open .pairing-footer {
   flex-shrink: 0;
 }
 
-.active-guardian-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  min-width: 0;
-}
-
 .active-guardian-id {
   font-family: var(--gd-font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--gd-deep-olive);
   letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.active-guardian-role {
-  font-family: var(--gd-font-sans);
-  font-size: 10.5px;
-  color: var(--gd-text-muted);
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.active-guardian-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--gd-font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #415D30;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  padding-left: 6px;
-}
-
-.active-guardian-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: #55773F;
-  display: inline-block;
-  box-shadow: 0 0 0 2px rgba(85, 119, 63, 0.2);
+  line-height: 1;
 }
 
 /* Compact Centered Role Pill */
