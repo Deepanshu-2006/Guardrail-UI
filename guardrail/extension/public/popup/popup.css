@@ -104,7 +104,7 @@ body.pairing-open .pairing-panel {
   flex-shrink: 0;
   padding: 12px 14px 10px;
   flex-direction: column;
-  gap: 6.5px;
+  gap: 8px;
   background-color: var(--gd-bg-canvas);
   border-right: none;
   box-shadow: none;
@@ -294,10 +294,11 @@ body.pairing-open .pairing-footer {
   background-color: var(--gd-card-bg);
   border: 1px solid var(--gd-card-border);
   border-radius: 10px;
-  padding: 7.5px 11px;
+  padding: 9px 12px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Active Guardians List Card */
@@ -305,9 +306,9 @@ body.pairing-open .pairing-footer {
 .active-guardians-card {
   background-color: rgba(39, 49, 33, 0.045);
   border: 1px solid rgba(39, 49, 33, 0.12);
-  border-radius: 9px;
-  padding: 6px 11px 6px;
-  gap: 4px;
+  border-radius: 10px;
+  padding: 7px 12px;
+  gap: 5px;
 }
 
 .active-guardians-header {
@@ -414,15 +415,16 @@ body.pairing-open .pairing-footer {
   justify-content: center;
   align-items: center;
   width: 100%;
-  margin: 0;
+  margin: 0 0 2px;
+  flex-shrink: 0;
 }
 
 .role-compact-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 25px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 11px;
   border-radius: 9999px;
   background: rgba(39, 49, 33, 0.05);
   border: 1px solid rgba(39, 49, 33, 0.15);
@@ -453,7 +455,7 @@ body.pairing-open .pairing-footer {
   background: transparent;
   color: var(--gd-deep-olive);
   font-family: var(--gd-font-sans);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   outline: none;
   width: 100px;
@@ -466,7 +468,7 @@ body.pairing-open .pairing-footer {
 .role-compact-input::placeholder {
   color: var(--gd-text-muted);
   font-weight: 400;
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .role-icon-edit {
@@ -485,8 +487,8 @@ body.pairing-open .pairing-footer {
 .qr-card {
   align-items: center;
   text-align: center;
-  padding: 8px 11px 7px;
-  gap: 4px;
+  padding: 10px 14px 9px;
+  gap: 6px;
 }
 
 .card-kicker-row {
@@ -508,8 +510,8 @@ body.pairing-open .pairing-footer {
 
 .qr-code-wrapper {
   position: relative;
-  width: 122px;
-  height: 122px;
+  width: 136px;
+  height: 136px;
   border-radius: 9px;
   background: #FAF6ED;
   border: 1px solid rgba(39, 49, 33, 0.14);
@@ -643,8 +645,8 @@ body.pairing-open .pairing-footer {
 }
 
 .qr-reveal-container {
-  width: 114px;
-  height: 114px;
+  width: 126px;
+  height: 126px;
   position: relative;
   overflow: hidden;
   border-radius: 6px;
@@ -818,7 +820,7 @@ body.pairing-open .pairing-footer {
   background: rgba(39, 49, 33, 0.05);
   border: 1px solid rgba(39, 49, 33, 0.16);
   border-radius: 8px;
-  padding: 5px 8px 5px 11px;
+  padding: 6px 10px 6px 13px;
 }
 
 .pairing-code-text {
@@ -892,7 +894,7 @@ body.pairing-open .pairing-footer {
 
 .share-card {
   position: relative;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .share-input-row {
@@ -908,7 +910,7 @@ body.pairing-open .pairing-footer {
   flex: 1;
   display: flex;
   align-items: center;
-  height: 33px;
+  height: 35px;
   background: rgba(39, 49, 33, 0.045);
   border: 1px solid rgba(39, 49, 33, 0.16);
   border-radius: 8px;
@@ -984,8 +986,8 @@ body.pairing-open .pairing-footer {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 33px;
-  padding: 0 13px;
+  height: 35px;
+  padding: 0 14px;
   background: var(--gd-deep-olive);
   color: #FAF6ED;
   border: 1px solid rgba(39, 49, 33, 0.28);
@@ -1289,6 +1291,7 @@ body.pairing-open .btn-send-icon {
   display: flex;
   justify-content: center;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .pairing-live-status {
@@ -1297,11 +1300,11 @@ body.pairing-open .btn-send-icon {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 22px;
-  padding: 0 10px 0 7px;
+  height: 24px;
+  padding: 0 11px 0 8px;
   border-radius: 9999px;
-  background: rgba(39, 49, 33, 0.032);
-  border: 1px solid rgba(39, 49, 33, 0.08);
+  background: rgba(39, 49, 33, 0.035);
+  border: 1px solid rgba(39, 49, 33, 0.09);
   font-family: var(--gd-font-sans);
   font-size: 10.5px;
   color: #4F6B3C;

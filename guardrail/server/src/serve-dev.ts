@@ -31,7 +31,6 @@ async function main(): Promise<void> {
             }
           }
         }
-        break;
       }
     }
   } catch {

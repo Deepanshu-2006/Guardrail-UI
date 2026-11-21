@@ -393,7 +393,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           `.trim();
 
           const apiKey = process.env.RESEND_API_KEY?.trim();
-          const fromAddress = process.env.GUARDRAIL_EMAIL_FROM?.trim() || 'Guardrail <onboarding@resend.dev>';
+          const fromAddress = process.env.GUARDRAIL_EMAIL_FROM?.trim() || 'Guardrail <notifications@swiftsend.email>';
 
           if (apiKey) {
             try {
