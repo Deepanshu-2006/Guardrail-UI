@@ -146,19 +146,27 @@
         </button>
       </section>
 
-      <!-- Minimal Circular Role Input -->
-      <div class="role-pill-container" id="pairing-role-card">
-        <label for="caretaker-role-input" class="role-pill-label">ROLE</label>
-        <div class="role-pill-input-wrapper">
+      <!-- Compact Centered Role Pill -->
+      <div class="role-centered-bar" id="pairing-role-card">
+        <div class="role-compact-pill" id="role-capsule" title="Click to edit caretaker relationship role">
+          <svg class="role-icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
           <input
             type="text"
             id="caretaker-role-input"
-            class="role-pill-input"
+            class="role-compact-input"
             value="Family Guardian"
-            placeholder="e.g. Family Guardian, Son, Advisor..."
+            placeholder="Role name..."
             autocomplete="off"
             spellcheck="false"
+            aria-label="Caretaker Relationship Role"
           />
+          <svg class="role-icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11" aria-hidden="true">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
         </div>
       </div>
 

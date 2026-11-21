@@ -536,13 +536,31 @@ function setupPairingPanelActions(): void {
     }
   });
 
-  // Minimal Circular Role Input Interaction
+  // Sleek Role Capsule Input Interaction
   const roleInput = document.getElementById('caretaker-role-input') as HTMLInputElement | null;
+  const capsule = document.getElementById('role-capsule');
+
+  if (capsule && roleInput) {
+    capsule.addEventListener('click', (e) => {
+      if (e.target !== roleInput) {
+        roleInput.focus();
+      }
+    });
+  }
+
   if (roleInput) {
     let lastRoleValue = roleInput.value.trim();
 
+    const resizeInput = (): void => {
+      const len = roleInput.value.length || 10;
+      roleInput.style.width = `${Math.max(76, Math.min(160, len * 7.4 + 8))}px`;
+    };
+    resizeInput();
+    roleInput.addEventListener('input', resizeInput);
+
     const triggerRoleUpdate = (): void => {
       const currentVal = roleInput.value.trim() || 'Family Guardian';
+      resizeInput();
       if (currentVal !== lastRoleValue) {
         lastRoleValue = currentVal;
         void loadOrGenerateInvitation(true, currentVal);
