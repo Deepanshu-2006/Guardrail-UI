@@ -60,7 +60,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 html.pairing-open,
@@ -116,7 +116,8 @@ body.pairing-open .pairing-panel {
   backface-visibility: hidden;
   transform: translateZ(0);
   overflow-y: auto;
-  max-height: 580px;
+  height: 100%;
+  max-height: 100%;
   scrollbar-width: thin;
   scrollbar-color: rgba(39, 49, 33, 0.2) transparent;
 }
@@ -145,31 +146,39 @@ body.pairing-closing .pairing-panel {
   }
 }
 
-/* Staggered micro-cascades for slow, cinematic reveal */
+/* Staggered slow, graceful entry cascade for pairing panel items */
 body.pairing-open .pairing-header {
-  animation: gdCardCascade 0.54s cubic-bezier(0.12, 1, 0.22, 1) 0.06s backwards;
+  animation: gdPanelItemCascade 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.10s backwards;
+}
+
+body.pairing-open .active-guardians-card {
+  animation: gdPanelItemCascade 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.18s backwards;
+}
+
+body.pairing-open .role-centered-bar {
+  animation: gdPanelItemCascade 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.26s backwards;
 }
 
 body.pairing-open .qr-card {
-  animation: gdCardCascade 0.58s cubic-bezier(0.12, 1, 0.22, 1) 0.14s backwards;
+  animation: gdPanelItemCascade 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.34s backwards;
 }
 
 body.pairing-open .code-card {
-  animation: gdCardCascade 0.60s cubic-bezier(0.12, 1, 0.22, 1) 0.22s backwards;
+  animation: gdPanelItemCascade 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.44s backwards;
 }
 
 body.pairing-open .share-card {
-  animation: gdCardCascade 0.62s cubic-bezier(0.12, 1, 0.22, 1) 0.30s backwards;
+  animation: gdPanelItemCascade 0.60s cubic-bezier(0.16, 1, 0.3, 1) 0.54s backwards;
 }
 
 body.pairing-open .pairing-footer {
-  animation: gdCardCascade 0.64s cubic-bezier(0.12, 1, 0.22, 1) 0.38s backwards;
+  animation: gdPanelItemCascade 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.64s backwards;
 }
 
-@keyframes gdCardCascade {
+@keyframes gdPanelItemCascade {
   0% {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
+    transform: translate3d(0, 14px, 0);
   }
   100% {
     opacity: 1;
@@ -523,18 +532,6 @@ body.pairing-open .pairing-footer {
   width: 100%;
   height: 100%;
   display: block;
-  animation: gdQrReveal 0.52s cubic-bezier(0.12, 1, 0.22, 1) 0.16s backwards;
-}
-
-@keyframes gdQrReveal {
-  0% {
-    opacity: 0;
-    transform: scale(0.90);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 .qr-loading-placeholder {
@@ -598,6 +595,41 @@ body.pairing-open .pairing-footer {
   letter-spacing: 0.06em;
   color: var(--gd-deep-olive);
   user-select: all;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.code-char-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  height: 1.3em;
+  line-height: 1.3em;
+  vertical-align: middle;
+}
+
+.code-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(120%);
+  animation: gdCharFromBottom 0.40s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes gdCharFromBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(120%);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .btn-copy-code {

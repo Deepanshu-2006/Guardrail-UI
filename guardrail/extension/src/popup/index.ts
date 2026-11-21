@@ -105,6 +105,9 @@ export async function initializePopup(): Promise<void> {
 
   setupPopupActions();
   setupPairingPanelActions();
+
+  // Pre-load invitation & QR code in background so initial open cascade runs without network delay
+  void loadOrGenerateInvitation();
 }
 
 export interface ActiveGuardianContact {
@@ -342,6 +345,7 @@ function setupPopupActions(): void {
 
 let isClosingPanel = false;
 let savedDescBeforeOpen = '';
+let savedClosedHeight = 0;
 
 function getPairingButtonDefaultText(): string {
   const isPaired = document.getElementById('onboarding-banner')?.classList.contains('completed');
@@ -384,13 +388,10 @@ const SLIDE_EASING = 'cubic-bezier(0.38, 0, 0.22, 1)';
  */
 export function openPairingPanel(): void {
   if (isClosingPanel) return;
-  document.body.classList.remove('pairing-closing');
-  document.documentElement.classList.remove('pairing-closing');
-  document.documentElement.classList.add('pairing-open');
-  document.body.classList.add('pairing-open');
 
   const stage = document.getElementById('popup-stage');
   const panel = document.getElementById('pairing-panel');
+  const container = document.querySelector('.popup-container') as HTMLElement | null;
 
   if (panel) {
     panel.style.transition = '';
@@ -398,14 +399,45 @@ export function openPairingPanel(): void {
     panel.style.opacity = '';
   }
 
-  // Smoothly expand the popup card
-  document.documentElement.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
-  document.body.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
-  if (stage) stage.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  const initialH = container?.offsetHeight || 546;
+  savedClosedHeight = initialH;
+  const targetOpenH = 580;
+
+  // Set explicit starting dimensions BEFORE adding classes or triggering transition
+  document.documentElement.style.transition = 'none';
+  document.body.style.transition = 'none';
+  if (stage) stage.style.transition = 'none';
+
+  document.documentElement.style.width = '360px';
+  document.body.style.width = '360px';
+  if (stage) stage.style.width = '360px';
+
+  document.documentElement.style.height = `${initialH}px`;
+  document.body.style.height = `${initialH}px`;
+  if (stage) stage.style.height = `${initialH}px`;
+
+  // Force reflow so the browser commits the 360px x initialH starting state
+  void document.documentElement.offsetHeight;
+  void document.body.offsetWidth;
+
+  // Smoothly expand width AND height together
+  const transitionRule = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}, height ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  document.documentElement.style.transition = transitionRule;
+  document.body.style.transition = transitionRule;
+  if (stage) stage.style.transition = transitionRule;
+
+  document.body.classList.remove('pairing-closing');
+  document.documentElement.classList.remove('pairing-closing');
+  document.documentElement.classList.add('pairing-open');
+  document.body.classList.add('pairing-open');
 
   document.documentElement.style.width = '710px';
   document.body.style.width = '710px';
   if (stage) stage.style.width = '710px';
+
+  document.documentElement.style.height = `${targetOpenH}px`;
+  document.body.style.height = `${targetOpenH}px`;
+  if (stage) stage.style.height = `${targetOpenH}px`;
 
   const desc = document.getElementById('onboarding-status-desc');
   if (desc && !savedDescBeforeOpen) {
@@ -413,6 +445,14 @@ export function openPairingPanel(): void {
   }
 
   morphBanner('Close ✕', 'Pairing in progress...');
+
+  if (activePairingCode) {
+    renderPairingCodeCharacters(activePairingCode, true);
+    const env = resolveEnvironmentConfig();
+    const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
+    const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(activePairingCode)}`;
+    void renderQrCodeSvg(pairingUrl, true);
+  }
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
@@ -424,6 +464,10 @@ export function openPairingPanel(): void {
 export function closePairingPanel(): void {
   if (isClosingPanel || !document.body.classList.contains('pairing-open')) return;
   isClosingPanel = true;
+  if (qrAnimationTimer) {
+    cancelAnimationFrame(qrAnimationTimer);
+    qrAnimationTimer = null;
+  }
   document.documentElement.classList.add('pairing-closing');
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
@@ -437,15 +481,21 @@ export function closePairingPanel(): void {
 
   const stage = document.getElementById('popup-stage');
   const panel = document.getElementById('pairing-panel');
+  const targetClosedH = savedClosedHeight || 546;
 
-  // Smoothly collapse the popup card and slide contents together
-  document.documentElement.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
-  document.body.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
-  if (stage) stage.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  // Smoothly collapse width AND height together
+  const transitionRule = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}, height ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  document.documentElement.style.transition = transitionRule;
+  document.body.style.transition = transitionRule;
+  if (stage) stage.style.transition = transitionRule;
 
   document.documentElement.style.width = '360px';
   document.body.style.width = '360px';
   if (stage) stage.style.width = '360px';
+
+  document.documentElement.style.height = `${targetClosedH}px`;
+  document.body.style.height = `${targetClosedH}px`;
+  if (stage) stage.style.height = `${targetClosedH}px`;
 
   if (panel) {
     panel.style.transition = `transform ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}, opacity ${Math.round(SLIDE_DURATION_MS * 0.85)}ms ease`;
@@ -463,7 +513,12 @@ export function closePairingPanel(): void {
     document.body.classList.remove('pairing-open', 'pairing-closing');
     document.documentElement.style.transition = '';
     document.body.style.transition = '';
-    if (stage) stage.style.transition = '';
+    document.documentElement.style.height = '';
+    document.body.style.height = '';
+    if (stage) {
+      stage.style.transition = '';
+      stage.style.height = '';
+    }
     if (panel) {
       panel.style.transition = '';
       panel.style.transform = '';
@@ -482,6 +537,107 @@ export function togglePairingPanel(): void {
     closePairingPanel();
   } else if (!isClosingPanel) {
     openPairingPanel();
+  }
+}
+
+/**
+ * Renders the pairing code character-by-character with staggered upward entry animation.
+ */
+export function renderPairingCodeCharacters(code: string, animate = true): void {
+  const codeDisplay = document.getElementById('pairing-code-display');
+  if (!codeDisplay) return;
+
+  if (!animate) {
+    codeDisplay.textContent = code;
+    return;
+  }
+
+  codeDisplay.innerHTML = '';
+  // Stagger delays starting from 0.46s (aligns with .code-card cascade at 0.44s)
+  const baseDelay = 0.46;
+  const step = 0.032;
+  const chars = code.split('');
+
+  chars.forEach((ch, idx) => {
+    const wrap = document.createElement('span');
+    wrap.className = 'code-char-wrapper';
+    const span = document.createElement('span');
+    span.className = 'code-char';
+    span.textContent = ch === ' ' ? '\u00A0' : ch;
+    span.style.animationDelay = `${(baseDelay + idx * step).toFixed(3)}s`;
+    wrap.appendChild(span);
+    codeDisplay.appendChild(wrap);
+  });
+}
+
+let qrAnimationTimer: number | null = null;
+
+/**
+ * Renders the QR code SVG and triggers the stroke-draw animation.
+ */
+export async function renderQrCodeSvg(pairingUrl: string, animate = true): Promise<void> {
+  const qrContainer = document.getElementById('qr-code-container');
+  if (!qrContainer) return;
+
+  try {
+    const svgString = await QRCode.toString(pairingUrl, {
+      type: 'svg',
+      margin: 1,
+      color: {
+        dark: '#273121',
+        light: '#FAF6ED',
+      },
+    });
+
+    qrContainer.innerHTML = svgString;
+
+    if (animate) {
+      const svgEl = qrContainer.querySelector('svg');
+      const paths = svgEl ? svgEl.querySelectorAll('path') : null;
+      // In QRCode.toString({ type: 'svg' }):
+      // paths[0] is the background <path fill="#FAF6ED" d="M0 0h35v35H0z"/>
+      // paths[1] is the stroke path <path stroke="#273121" d="..."/>
+      const strokePath = (paths && paths.length > 1 ? paths[1] : null) as SVGPathElement | null;
+
+      if (strokePath && typeof strokePath.getTotalLength === 'function') {
+        const totalLen = Math.ceil(strokePath.getTotalLength());
+        // Set initial stroke-dash offset to hide the stroke entirely
+        strokePath.style.strokeDasharray = `${totalLen}`;
+        strokePath.style.strokeDashoffset = `${totalLen}`;
+
+        // Delay starting the draw slightly until the QR card has entered (~360ms)
+        const delayMs = 360;
+        const durationMs = 850;
+        const startTime = performance.now() + delayMs;
+
+        const animateStroke = (currentTime: number) => {
+          if (currentTime < startTime) {
+            qrAnimationTimer = requestAnimationFrame(animateStroke);
+            return;
+          }
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(1, elapsed / durationMs);
+          // Cubic ease-out: starts fast, gently settles
+          const ease = 1 - Math.pow(1 - progress, 3);
+          const currentOffset = totalLen * (1 - ease);
+          strokePath.style.strokeDashoffset = `${currentOffset.toFixed(2)}`;
+
+          if (progress < 1) {
+            qrAnimationTimer = requestAnimationFrame(animateStroke);
+          } else {
+            // Remove dash styles upon completion for 100% sharp rendering
+            strokePath.style.strokeDasharray = '';
+            strokePath.style.strokeDashoffset = '';
+          }
+        };
+
+        if (qrAnimationTimer) cancelAnimationFrame(qrAnimationTimer);
+        qrAnimationTimer = requestAnimationFrame(animateStroke);
+      }
+    }
+  } catch (qrErr) {
+    console.error('[Guardrail Popup] QR generation error:', qrErr);
+    qrContainer.innerHTML = `<span style="font-size:11px;color:#7E8774;">QR Code Unavailable</span>`;
   }
 }
 
@@ -566,29 +722,13 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
   }
 
   activePairingCode = inviteCode;
-  if (codeDisplay) {
-    codeDisplay.textContent = inviteCode;
-  }
+  renderPairingCodeCharacters(inviteCode, true);
 
   // 3. Always render QR Code SVG for active code
   if (qrContainer) {
     const dashboardUrl = env.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
     const pairingUrl = `${dashboardUrl}/?invite=${encodeURIComponent(inviteCode)}`;
-
-    try {
-      const svgString = await QRCode.toString(pairingUrl, {
-        type: 'svg',
-        margin: 1,
-        color: {
-          dark: '#273121',
-          light: '#FAF6ED',
-        },
-      });
-      qrContainer.innerHTML = svgString;
-    } catch (qrErr) {
-      console.error('[Guardrail Popup] QR generation error:', qrErr);
-      qrContainer.innerHTML = `<span style="font-size:11px;color:#7E8774;">QR Code Unavailable</span>`;
-    }
+    await renderQrCodeSvg(pairingUrl, true);
   }
 }
 
