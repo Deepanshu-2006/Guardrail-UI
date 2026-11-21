@@ -1020,21 +1020,49 @@ function setupPairingPanelActions(): void {
         inputRow.classList.add('is-sending');
       }
 
-      // Update button label to creative "Sending..." after arrow launch starts
+      // Update button to cinematic in-flight stage after arrow launch starts
       setTimeout(() => {
         btnSend.innerHTML = `
-          <span class="btn-sending-creative">
-            <span class="sending-plane-orbit">
-              <svg class="sending-mini-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 2L11 13"></path>
-                <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
-              </svg>
-              <span class="sending-vapor-trail"></span>
-            </span>
-            <span class="btn-send-label">
-              Sending<span class="sending-dots"><span class="sdot d1">.</span><span class="sdot d2">.</span><span class="sdot d3">.</span></span>
-            </span>
-          </span>
+          <div class="send-morph-stage">
+            <div class="stage-sending">
+              <div class="flight-track">
+                <span class="flight-plane-wrapper">
+                  <svg class="flight-plane-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                  </svg>
+                  <span class="flight-thrust-glow"></span>
+                  <span class="flight-vapor-trail"></span>
+                </span>
+              </div>
+              <span class="stage-sending-text">
+                Sending<span class="sending-dots"><span class="sdot d1">.</span><span class="sdot d2">.</span><span class="sdot d3">.</span></span>
+              </span>
+            </div>
+            <div class="stage-sent">
+              <div class="sent-burst-ring" aria-hidden="true"></div>
+              <div class="sent-sparks-cluster" aria-hidden="true">
+                <span class="spark sp-1"></span>
+                <span class="spark sp-2"></span>
+                <span class="spark sp-3"></span>
+                <span class="spark sp-4"></span>
+                <span class="spark sp-5"></span>
+                <span class="spark sp-6"></span>
+                <span class="spark sp-7"></span>
+                <span class="spark sp-8"></span>
+              </div>
+              <div class="sent-badge">
+                <svg class="sent-badge-svg" viewBox="0 0 24 24" fill="none">
+                  <circle class="sent-badge-circle" cx="12" cy="12" r="9.5" stroke="#96E062" stroke-width="2" />
+                  <path class="sent-badge-check" d="M7.5 12.2L10.5 15.2L16.8 8.8" stroke="#FAF6ED" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+              <span class="stage-sent-text">
+                <span class="sent-title">Sent</span>
+                <span class="sent-sparkle">✦</span>
+              </span>
+            </div>
+          </div>
         `;
       }, 180);
 
@@ -1042,7 +1070,7 @@ function setupPairingPanelActions(): void {
       const code = activePairingCode || document.getElementById('pairing-code-display')?.textContent || 'GR-INV-U6GA-4WZY';
       const cleanCode = code.replace(/[^A-Za-z0-9-]/g, '');
 
-      const minAnimationWait = new Promise((resolve) => setTimeout(resolve, 750));
+      const minAnimationWait = new Promise((resolve) => setTimeout(resolve, 800));
 
       try {
         const env = resolveEnvironmentConfig();
@@ -1071,42 +1099,26 @@ function setupPairingPanelActions(): void {
         };
 
         if (res.ok && data.success) {
-          // Success: transform to centered creative "Sent" pill
-          if (inputRow) {
-            inputRow.classList.remove('is-sending');
-            inputRow.classList.add('is-sent');
-          }
-          btnSend.classList.remove('arrow-launching', 'is-launching');
-          btnSend.innerHTML = `
-            <span class="btn-sent-creative">
-              <div class="btn-sent-burst" aria-hidden="true">
-                <span class="spark s1"></span>
-                <span class="spark s2"></span>
-                <span class="spark s3"></span>
-                <span class="spark s4"></span>
-                <span class="spark s5"></span>
-                <span class="spark s6"></span>
-              </div>
-              <span class="btn-sent-badge">
-                <svg class="btn-sent-svg" viewBox="0 0 24 24" fill="none">
-                  <circle class="btn-sent-circle" cx="12" cy="12" r="9.5" stroke="#92C76E" stroke-width="2" />
-                  <path class="btn-sent-check-path" d="M7.5 12.2L10.5 15.2L16.8 8.8" stroke="#FAF6ED" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-              <span class="btn-send-label sent-label">
-                <span class="sent-word">Sent</span>
-                <span class="sent-sparkle">✦</span>
-              </span>
-            </span>
-          `;
-          inputContact.value = '';
+          // Transition: plane kicks into supersonic 360-loop & afterburner dive
+          btnSend.classList.add('is-delivering');
 
-          // Revert back smoothly after 2.8s
+          // Touchdown at apex of the loop (360ms)
+          setTimeout(() => {
+            if (inputRow) {
+              inputRow.classList.remove('is-sending');
+              inputRow.classList.add('is-sent');
+            }
+            btnSend.classList.remove('arrow-launching', 'is-launching', 'is-delivering');
+            btnSend.classList.add('has-landed');
+            inputContact.value = '';
+          }, 360);
+
+          // Revert back smoothly after 2.9s
           setTimeout(() => {
             if (inputRow) {
               inputRow.classList.remove('is-sent');
             }
-            btnSend.classList.remove('arrow-launching', 'is-launching');
+            btnSend.classList.remove('arrow-launching', 'is-launching', 'is-delivering', 'has-landed');
             btnSend.innerHTML = `
               <span class="btn-send-label">Send</span>
               <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1116,12 +1128,12 @@ function setupPairingPanelActions(): void {
             `;
             btnSend.disabled = false;
             inputContact.disabled = false;
-          }, 2800);
+          }, 2900);
         } else {
           if (inputRow) {
             inputRow.classList.remove('is-sending');
           }
-          btnSend.classList.remove('arrow-launching', 'is-launching');
+          btnSend.classList.remove('arrow-launching', 'is-launching', 'is-delivering', 'has-landed');
           btnSend.innerHTML = `<span class="btn-send-label">Failed · Retry</span>`;
           setTimeout(() => {
             btnSend.innerHTML = `
@@ -1140,7 +1152,7 @@ function setupPairingPanelActions(): void {
         if (inputRow) {
           inputRow.classList.remove('is-sending');
         }
-        btnSend.classList.remove('arrow-launching', 'is-launching');
+        btnSend.classList.remove('arrow-launching', 'is-launching', 'is-delivering', 'has-landed');
         btnSend.innerHTML = `<span class="btn-send-label">Failed · Retry</span>`;
         setTimeout(() => {
           btnSend.innerHTML = `
