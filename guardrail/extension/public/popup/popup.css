@@ -108,6 +108,19 @@ body.pairing-open .pairing-panel {
   will-change: transform, opacity;
   backface-visibility: hidden;
   transform: translateZ(0);
+  overflow-y: auto;
+  max-height: 580px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(39, 49, 33, 0.2) transparent;
+}
+
+.pairing-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pairing-panel::-webkit-scrollbar-thumb {
+  background: rgba(39, 49, 33, 0.2);
+  border-radius: 9999px;
 }
 
 body.pairing-closing .pairing-panel {
@@ -253,6 +266,145 @@ body.pairing-closing .pairing-footer {
   display: flex;
   flex-direction: column;
   gap: 7px;
+}
+
+/* Active Guardians List Card */
+.active-guardians-card {
+  background-color: rgba(39, 49, 33, 0.04);
+}
+
+.active-count-pill {
+  font-family: var(--gd-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #2B4E22;
+  background: rgba(43, 78, 34, 0.1);
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+.active-guardians-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 2px 0 4px;
+}
+
+.active-guardian-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FAF6ED;
+  border: 1px solid rgba(39, 49, 33, 0.12);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.active-guardian-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--gd-deep-olive);
+}
+
+.active-guardian-role {
+  font-size: 10px;
+  color: var(--gd-text-muted);
+  font-weight: 500;
+}
+
+.active-guardian-badge {
+  font-family: var(--gd-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #2B4E22;
+  background: rgba(43, 78, 34, 0.12);
+  padding: 2px 6px;
+  border-radius: 9999px;
+}
+
+.btn-add-another-contact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px dashed rgba(39, 49, 33, 0.28);
+  background: rgba(39, 49, 33, 0.03);
+  color: var(--gd-deep-olive);
+  font-family: var(--gd-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-add-another-contact:hover {
+  background: rgba(39, 49, 33, 0.08);
+  border-color: var(--gd-deep-olive);
+}
+
+/* Relationship / Role Card */
+.role-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-role-update {
+  height: 31px;
+  padding: 0 11px;
+  background: var(--gd-deep-olive);
+  color: var(--gd-bg-canvas);
+  border: none;
+  border-radius: 7px;
+  font-family: var(--gd-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-role-update:hover {
+  background: #38462F;
+}
+
+.role-quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.role-chip {
+  padding: 2px 9px;
+  border-radius: 9999px;
+  border: 1px solid rgba(39, 49, 33, 0.14);
+  background: rgba(39, 49, 33, 0.04);
+  color: var(--gd-text-secondary);
+  font-family: var(--gd-font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.role-chip:hover {
+  background: rgba(39, 49, 33, 0.09);
+  color: var(--gd-deep-olive);
+  border-color: rgba(39, 49, 33, 0.26);
+}
+
+.role-chip.active {
+  background: var(--gd-deep-olive);
+  color: var(--gd-bg-canvas);
+  border-color: var(--gd-deep-olive);
+  font-weight: 600;
 }
 
 .qr-card {

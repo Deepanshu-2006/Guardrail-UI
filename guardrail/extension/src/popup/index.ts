@@ -16,7 +16,7 @@
  *    - Never displays or queries authentication credentials or secrets.
  */
 
-import QRCode from 'qrcode';
+import QRCode from 'qrcode/lib/browser.js';
 import { resolveEnvironmentConfig } from '../config/environment.js';
 import { loadPolicyConfigFromStorage } from '../config/registry.js';
 import { ConfigHealthStatus } from '../types/config.js';
@@ -97,22 +97,31 @@ export async function initializePopup(): Promise<void> {
   renderPopupStatus(report, onboardingState, isBackendLive);
 
   // Check guardian coverage (truthful caretaker link status)
-  const isGuardianLinked = await checkActiveGuardianCoverage();
-  if (isGuardianLinked) {
-    updatePopupToPairedState();
+  const coverage = await checkActiveGuardianCoverage();
+  if (coverage.isLinked) {
+    const primaryName = coverage.contacts[0]?.id || 'Caretaker';
+    updatePopupToPairedState(primaryName, coverage.contacts);
   }
 
   setupPopupActions();
   setupPairingPanelActions();
 }
 
+export interface ActiveGuardianContact {
+  id: string;
+  relationshipLabel?: string;
+}
+
 /**
- * Checks whether the current ward has an active trusted contact linked.
+ * Checks whether the current ward has active trusted contact(s) linked.
  */
-async function checkActiveGuardianCoverage(): Promise<boolean> {
+async function checkActiveGuardianCoverage(): Promise<{
+  isLinked: boolean;
+  contacts: ActiveGuardianContact[];
+}> {
   const env = resolveEnvironmentConfig();
   const token = await getStoredWardToken();
-  if (!token) return false;
+  if (!token) return { isLinked: false, contacts: [] };
 
   try {
     const res = await fetch(`${env.apiBaseUrl}/api/v1/trusted-contacts`, {
@@ -122,11 +131,15 @@ async function checkActiveGuardianCoverage(): Promise<boolean> {
         Accept: 'application/json',
       },
     });
-    if (!res.ok) return false;
-    const body = (await res.json()) as { success: boolean; data?: unknown[] };
-    return Boolean(body.success && Array.isArray(body.data) && body.data.length > 0);
+    if (!res.ok) return { isLinked: false, contacts: [] };
+    const body = (await res.json()) as { success: boolean; data?: ActiveGuardianContact[] };
+    const contacts = Array.isArray(body.data) ? body.data : [];
+    return {
+      isLinked: contacts.length > 0,
+      contacts,
+    };
   } catch {
-    return false;
+    return { isLinked: false, contacts: [] };
   }
 }
 
@@ -205,7 +218,10 @@ export function renderPopupStatus(
 /**
  * Updates UI when Caretaker pairing is confirmed active.
  */
-function updatePopupToPairedState(caretakerName = 'Caretaker'): void {
+function updatePopupToPairedState(
+  caretakerName = 'Caretaker',
+  contacts: ActiveGuardianContact[] = []
+): void {
   const onboardingBanner = document.getElementById('onboarding-banner');
   const onboardingTitle = document.getElementById('onboarding-status-title');
   const onboardingDesc = document.getElementById('onboarding-status-desc');
@@ -213,8 +229,15 @@ function updatePopupToPairedState(caretakerName = 'Caretaker'): void {
 
   if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
   if (onboardingTitle) onboardingTitle.textContent = 'Guardian Linked';
-  if (onboardingDesc) onboardingDesc.textContent = `Protected by ${caretakerName} ✓`;
+  if (onboardingDesc) {
+    onboardingDesc.textContent =
+      contacts.length > 1
+        ? `Protected by ${contacts.length} Guardians ✓`
+        : `Protected by ${caretakerName} ✓`;
+  }
   if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Pairing Info →';
+
+  renderActiveGuardians(contacts);
 
   const liveStatus = document.getElementById('pairing-live-status');
   if (liveStatus) {
@@ -228,6 +251,45 @@ function updatePopupToPairedState(caretakerName = 'Caretaker'): void {
   // Clear extension badge if set
   if (typeof chrome !== 'undefined' && chrome.action?.setBadgeText) {
     chrome.action.setBadgeText({ text: '' });
+  }
+}
+
+/**
+ * Renders currently connected guardians in the left pairing flyout.
+ */
+function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
+  const section = document.getElementById('active-guardians-section');
+  const list = document.getElementById('active-guardians-list');
+  const countEl = document.getElementById('active-guardians-count');
+  const titleEl = document.getElementById('pairing-panel-title');
+  const subtitleEl = document.getElementById('pairing-panel-subtitle');
+
+  if (!section || !list) return;
+
+  if (contacts.length > 0) {
+    section.style.display = 'flex';
+    if (countEl) countEl.textContent = `${contacts.length} Connected`;
+    if (titleEl) titleEl.textContent = 'Trusted Contacts';
+    if (subtitleEl) subtitleEl.textContent = 'Active guardians & device pairing';
+
+    list.innerHTML = contacts
+      .map(
+        (c) => `
+        <div class="active-guardian-item">
+          <div class="active-guardian-info">
+            <span>👤</span>
+            <span>${c.id}</span>
+            <span class="active-guardian-role">(${c.relationshipLabel || 'Guardian'})</span>
+          </div>
+          <span class="active-guardian-badge">✓ Active</span>
+        </div>
+      `
+      )
+      .join('');
+  } else {
+    section.style.display = 'none';
+    if (titleEl) titleEl.textContent = 'Connect Caretaker';
+    if (subtitleEl) subtitleEl.textContent = 'One-time device pairing';
   }
 }
 
@@ -328,11 +390,13 @@ export function togglePairingPanel(): void {
 /**
  * Loads an existing active invitation or generates a new one.
  */
-export async function loadOrGenerateInvitation(): Promise<void> {
+export async function loadOrGenerateInvitation(forceNew = false, customRole?: string): Promise<void> {
   const env = resolveEnvironmentConfig();
   const token = await getStoredWardToken();
   const codeDisplay = document.getElementById('pairing-code-display');
   const qrContainer = document.getElementById('qr-code-container');
+  const roleInput = document.getElementById('caretaker-role-input') as HTMLInputElement | null;
+  const targetRole = customRole?.trim() || roleInput?.value?.trim() || 'Family Guardian';
 
   if (!token) {
     if (codeDisplay) codeDisplay.textContent = 'Offline (Sign In)';
@@ -342,32 +406,34 @@ export async function loadOrGenerateInvitation(): Promise<void> {
   let inviteCode: string | null = null;
 
   try {
-    // 1. Check existing invitations
-    const listRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
+    // 1. Check existing invitations if not forcing new
+    if (!forceNew) {
+      const listRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
 
-    if (listRes.ok) {
-      const listBody = (await listRes.json()) as {
-        success: boolean;
-        data?: Array<{ status: string; code: string; expiresAt: string }>;
-      };
-      if (listBody.success && Array.isArray(listBody.data)) {
-        const now = Date.now();
-        const pending = listBody.data.find(
-          (inv) => inv.status === 'PENDING' && new Date(inv.expiresAt).getTime() > now
-        );
-        if (pending && pending.code) {
-          inviteCode = pending.code;
+      if (listRes.ok) {
+        const listBody = (await listRes.json()) as {
+          success: boolean;
+          data?: Array<{ status: string; code: string; expiresAt: string }>;
+        };
+        if (listBody.success && Array.isArray(listBody.data)) {
+          const now = Date.now();
+          const pending = listBody.data.find(
+            (inv) => inv.status === 'PENDING' && new Date(inv.expiresAt).getTime() > now
+          );
+          if (pending && pending.code) {
+            inviteCode = pending.code;
+          }
         }
       }
     }
 
-    // 2. Generate a new invitation if none active
+    // 2. Generate a new invitation if none active or forced new
     if (!inviteCode) {
       const createRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
         method: 'POST',
@@ -378,7 +444,7 @@ export async function loadOrGenerateInvitation(): Promise<void> {
         },
         body: JSON.stringify({
           recipientActorId: 'usr_carol',
-          relationshipLabel: 'Family Guardian',
+          relationshipLabel: targetRole,
         }),
       });
 
@@ -434,9 +500,10 @@ export async function loadOrGenerateInvitation(): Promise<void> {
 function startConnectionPolling(): void {
   stopConnectionPolling();
   connectionPollingTimer = setInterval(() => {
-    void checkActiveGuardianCoverage().then((connected) => {
-      if (connected) {
-        updatePopupToPairedState();
+    void checkActiveGuardianCoverage().then(({ isLinked, contacts }) => {
+      if (isLinked) {
+        const primaryName = contacts[0]?.id || 'Caretaker';
+        updatePopupToPairedState(primaryName, contacts);
         stopConnectionPolling();
       }
     });
@@ -451,7 +518,7 @@ function stopConnectionPolling(): void {
 }
 
 /**
- * Setup left pairing panel interactions (Close, Copy, Send).
+ * Setup left pairing panel interactions (Close, Copy, Send, Roles, Add Another).
  */
 function setupPairingPanelActions(): void {
   // Close Button
@@ -468,6 +535,47 @@ function setupPairingPanelActions(): void {
       closePairingPanel();
     }
   });
+
+  // Role Chips Interaction
+  const chips = document.querySelectorAll<HTMLButtonElement>('.role-chip');
+  const roleInput = document.getElementById('caretaker-role-input') as HTMLInputElement | null;
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      const role = chip.getAttribute('data-role') || 'Family Guardian';
+      if (roleInput) roleInput.value = role;
+      void loadOrGenerateInvitation(true, role);
+    });
+  });
+
+  // Role Update Button
+  const btnUpdateRole = document.getElementById('btn-update-role');
+  if (btnUpdateRole && roleInput) {
+    btnUpdateRole.addEventListener('click', () => {
+      const role = roleInput.value.trim() || 'Family Guardian';
+      void loadOrGenerateInvitation(true, role);
+    });
+  }
+
+  // "+ Add Another Contact" Button
+  const btnAddAnother = document.getElementById('btn-add-another-contact');
+  if (btnAddAnother) {
+    btnAddAnother.addEventListener('click', () => {
+      const liveStatus = document.getElementById('pairing-live-status');
+      if (liveStatus) {
+        liveStatus.className = 'pairing-live-status waiting';
+        liveStatus.innerHTML = `
+          <span class="pulse-ring"><span class="pulse-dot"></span></span>
+          <span class="status-msg" id="pairing-status-msg">Waiting for new Caretaker to connect...</span>
+        `;
+      }
+      startConnectionPolling();
+      const role = roleInput?.value.trim() || 'Family Guardian';
+      void loadOrGenerateInvitation(true, role);
+      document.getElementById('pairing-role-card')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
 
   // Copy Code Button
   const btnCopy = document.getElementById('btn-copy-code');
@@ -518,8 +626,9 @@ function setupPairingPanelActions(): void {
         return;
       }
 
+      const role = roleInput?.value.trim() || 'Guardian';
       feedback.className = 'invite-feedback success';
-      feedback.textContent = `Pairing invitation sent to ${val}!`;
+      feedback.textContent = `Pairing invitation (${role}) sent to ${val}!`;
       feedback.style.display = 'block';
       inputContact.value = '';
 

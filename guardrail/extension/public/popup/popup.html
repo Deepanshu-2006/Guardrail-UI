@@ -127,12 +127,41 @@
             </svg>
           </div>
           <div class="pairing-header-text">
-            <h2 class="pairing-title">Connect Caretaker</h2>
-            <p class="pairing-subtitle">One-time device pairing</p>
+            <h2 class="pairing-title" id="pairing-panel-title">Connect Caretaker</h2>
+            <p class="pairing-subtitle" id="pairing-panel-subtitle">One-time device pairing & management</p>
           </div>
         </div>
         <button type="button" class="btn-close-pairing" id="btn-close-pairing" aria-label="Close pairing panel" title="Close">✕</button>
       </div>
+
+      <!-- Active Guardians Card (shown if 1+ contacts are already connected) -->
+      <section class="pairing-card active-guardians-card" id="active-guardians-section" style="display:none">
+        <div class="pairing-label-row">
+          <span class="pairing-kicker">LINKED GUARDIANS</span>
+          <span class="active-count-pill" id="active-guardians-count">0 Linked</span>
+        </div>
+        <div class="active-guardians-list" id="active-guardians-list"></div>
+        <button type="button" class="btn-add-another-contact" id="btn-add-another-contact">
+          <span>+ Add Another Contact</span>
+        </button>
+      </section>
+
+      <!-- Relationship / Role Selector Card -->
+      <section class="pairing-card role-card" id="pairing-role-card">
+        <div class="pairing-label-row">
+          <span class="pairing-kicker">RELATIONSHIP / ROLE</span>
+        </div>
+        <div class="role-input-row">
+          <input type="text" id="caretaker-role-input" class="gd-input-field" value="Family Guardian" placeholder="e.g. Son, Daughter, Financial Advisor" autocomplete="off" />
+          <button type="button" id="btn-update-role" class="btn-role-update">Update</button>
+        </div>
+        <div class="role-quick-chips" id="role-quick-chips">
+          <button type="button" class="role-chip active" data-role="Family Guardian">Family</button>
+          <button type="button" class="role-chip" data-role="Son">Son</button>
+          <button type="button" class="role-chip" data-role="Daughter">Daughter</button>
+          <button type="button" class="role-chip" data-role="Financial Advisor">Advisor</button>
+        </div>
+      </section>
 
       <!-- QR Code Card -->
       <section class="pairing-card qr-card">
