@@ -343,10 +343,11 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             `If you did not expect this invitation, you can safely ignore this message.`,
           ].join('\n');
 
-          // Generate animated pairing code GIF and load brand logo for CID embedding (supported by Gmail)
+          // Generate animated pairing code GIF, animated QR GIF, and load brand logo for CID embedding (supported by Gmail)
           let logoB64 = '';
           let gifB64 = '';
-          let gifCssWidth = 254;
+          let qrGifB64 = '';
+          let gifCssWidth = 260;
           let gifCssHeight = 38;
           const codeString = code || 'GR-INV-XXXX-XXXX';
 
@@ -374,6 +375,19 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               } catch {}
               if (fs.existsSync(tmpGifPath)) {
                 gifB64 = fs.readFileSync(tmpGifPath).toString('base64');
+              }
+            }
+
+            // Generate animated QR code matching extension popup animation
+            const tmpQrGifPath = path.resolve('/tmp', `qr_${codeString.replace(/[^a-zA-Z0-9_-]/g, '_')}.gif`);
+            const qrScriptPath = path.resolve(process.cwd(), 'src/generate-qr-gif.py');
+            const altQrScriptPath = path.resolve(process.cwd(), 'guardrail/server/src/generate-qr-gif.py');
+            const targetQrScript = fs.existsSync(qrScriptPath) ? qrScriptPath : altQrScriptPath;
+
+            if (fs.existsSync(targetQrScript)) {
+              execSync(`python3 "${targetQrScript}" "${pairingUrl}" "${tmpQrGifPath}"`, { timeout: 8000 });
+              if (fs.existsSync(tmpQrGifPath)) {
+                qrGifB64 = fs.readFileSync(tmpQrGifPath).toString('base64');
               }
             }
           } catch (genErr) {
@@ -443,17 +457,37 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 You have been invited to serve as a <strong>${escapeHtml(role)}</strong>. As a trusted contact, you'll help protect and approve high-risk actions to keep your family member safe online.
               </p>
 
+              <!-- QR Code Scan Container (Above Pairing Code) -->
+              <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 20px 16px; text-align: center; margin: 0 0 18px 0;">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 12px;">
+                  SCAN WITH PHONE CAMERA
+                </div>
+                <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                  <tr>
+                    <td align="center" valign="middle" style="line-height: 0;">
+                      ${qrGifB64
+                        ? `<img src="cid:pairing-qr" width="140" height="140" style="display: block; margin: 0 auto; width: 140px; height: 140px; border-radius: 9px; border: 0; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code with phone camera" />`
+                        : `<div style="font-size: 12px; color: #7E8774;">Scan in Guardrail App</div>`
+                      }
+                    </td>
+                  </tr>
+                </table>
+                <p style="font-size: 11.5px; color: #6E7964; margin: 12px 0 0 0; line-height: 1.4;">
+                  Point your Caretaker's phone camera at this QR code to connect instantly.
+                </p>
+              </div>
+
               <!-- Animated Pairing Code Container -->
               <div style="background-color: #EDE6D6; border: 1px solid #D4CCA8; border-radius: 12px; padding: 18px 16px; text-align: center; margin: 0 0 28px 0;">
                 <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #6E7964; font-weight: 700; margin-bottom: 12px;">
-                  Your One-Time Pairing Code
+                  OR ENTER PAIRING CODE
                 </div>
                 <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
                   <tr>
                     <td align="center" valign="middle" style="line-height: 0;">
                       ${gifB64
                         ? `<img src="cid:pairing-code" width="${gifCssWidth}" height="${gifCssHeight}" style="display: block; margin: 0 auto; width: ${gifCssWidth}px; height: ${gifCssHeight}px; border: 0;" alt="${escapeHtml(codeString)}" />`
-                        : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 22px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
+                        : `<div style="font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #273121; letter-spacing: 0.06em;">${escapeHtml(codeString)}</div>`
                       }
                     </td>
                   </tr>
@@ -499,6 +533,14 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                   content: logoB64,
                   content_id: 'guardrail-logo',
                   contentId: 'guardrail-logo',
+                });
+              }
+              if (qrGifB64) {
+                attachments.push({
+                  filename: 'pairing-qr.gif',
+                  content: qrGifB64,
+                  content_id: 'pairing-qr',
+                  contentId: 'pairing-qr',
                 });
               }
               if (gifB64) {
