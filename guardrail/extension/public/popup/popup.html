@@ -211,29 +211,36 @@
         <div class="share-input-row" id="share-input-row">
           <div class="share-input-box" id="share-input-box">
             <div class="share-icon-wrapper" aria-hidden="true">
-              <div class="share-icon-flipper">
-                <svg class="share-icon-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                <svg class="share-icon-check" viewBox="0 0 24 24" fill="none" stroke="#4E8039" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path class="check-draw-path" d="M4.5 12.5L9.5 17.5L19.5 6.5"></path>
-                </svg>
-              </div>
-              <span class="icon-valid-ripple" aria-hidden="true"></span>
+              <svg class="envelope-interactive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Letter card peeking from inside envelope -->
+                <g class="env-letter-card">
+                  <rect x="6" y="3" width="12" height="9" rx="1.5" fill="#FAF6ED" stroke="#55773F" stroke-width="1.2" />
+                  <line x1="8.5" y1="5.8" x2="15.5" y2="5.8" stroke="#7E8774" stroke-width="1" />
+                  <line x1="8.5" y1="8.2" x2="13" y2="8.2" stroke="#7E8774" stroke-width="1" />
+                </g>
+                <!-- Envelope Body Pocket -->
+                <path class="env-body" d="M4 8.5C4 7.67 4.67 7 5.5 7H18.5C19.33 7 20 7.67 20 8.5V18.5C20 19.33 19.33 20 18.5 20H5.5C4.67 20 4 19.33 4 18.5V8.5Z" fill="#FAF6ED" stroke="currentColor" stroke-width="1.8" />
+                <!-- Envelope Fold Line -->
+                <path class="env-crease" d="M4 8.5L12 14L20 8.5" stroke="currentColor" stroke-width="1.8" fill="none" />
+                <!-- Envelope Flap that folds down -->
+                <path class="env-flap" d="M4 8.5L12 3L20 8.5" stroke="currentColor" stroke-width="1.8" fill="#EDE6D6" />
+                <!-- Wax Seal Stamp that seals the envelope when valid -->
+                <g class="env-wax-seal">
+                  <circle cx="12" cy="13.8" r="2.8" fill="#4E8039" stroke="#FAF6ED" stroke-width="1" />
+                  <path d="M10.8 13.8L11.6 14.6L13.2 13" stroke="#FAF6ED" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+                </g>
+              </svg>
+              <span class="env-seal-halo" aria-hidden="true"></span>
             </div>
             <input type="text" id="caretaker-contact-input" placeholder="Caretaker email or name..." class="gd-input-field" autocomplete="off" spellcheck="false" />
             <button type="button" class="btn-clear-contact" id="btn-clear-contact" aria-label="Clear contact input" tabindex="-1">✕</button>
           </div>
           <button type="button" id="btn-send-invitation" class="btn-send-invite" aria-label="Send invitation to Caretaker">
             <span class="btn-send-label">Send</span>
-            <span class="btn-send-icon-wrapper">
-              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-              <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
-            </span>
+            <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
           </button>
         </div>
         <div class="invite-feedback" id="invite-feedback" style="display:none"></div>

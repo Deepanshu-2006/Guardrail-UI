@@ -1114,13 +1114,10 @@ function setupPairingPanelActions(): void {
               btnSend.classList.add('is-docking');
               btnSend.innerHTML = `
                 <span class="btn-send-label">Send</span>
-                <span class="btn-send-icon-wrapper">
-                  <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                  <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
-                </span>
+                <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
               `;
 
               // Phase 3 (480ms later): complete settle and re-enable inputs
@@ -1144,13 +1141,10 @@ function setupPairingPanelActions(): void {
           setTimeout(() => {
             btnSend.innerHTML = `
               <span class="btn-send-label">Send</span>
-              <span class="btn-send-icon-wrapper">
-                <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-                <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
-              </span>
+              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
             `;
             btnSend.disabled = false;
             inputContact.disabled = false;
@@ -1166,13 +1160,10 @@ function setupPairingPanelActions(): void {
         setTimeout(() => {
           btnSend.innerHTML = `
             <span class="btn-send-label">Send</span>
-            <span class="btn-send-icon-wrapper">
-              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-              <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
-            </span>
+            <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
           `;
           btnSend.disabled = false;
           inputContact.disabled = false;
@@ -1212,7 +1203,7 @@ function setupPairingPanelActions(): void {
         }
       }
 
-      // Valid email visual toggle on input row (triggers 3D envelope-to-tick flip & check stroke draw)
+      // Valid email visual toggle on input row (triggers envelope sealing animation)
       if (inputRow) {
         if (isValid) {
           inputRow.classList.add('is-valid-email');
@@ -1221,27 +1212,12 @@ function setupPairingPanelActions(): void {
         }
       }
 
-      // Send button readiness & kinetic flight throttle
+      // Send button readiness (clean power-on with horizon gleam, stable arrow)
       if (btnSend && !btnSend.classList.contains('is-launching') && !btnSend.classList.contains('has-landed')) {
         if (isValid) {
           btnSend.classList.add('is-ready');
         } else {
           btnSend.classList.remove('is-ready');
-        }
-
-        // Plane micro-reaction on typing keystroke
-        const planeIcon = btnSend.querySelector('.btn-send-icon');
-        if (planeIcon && e && e.type === 'input') {
-          const inputEvent = e as InputEvent;
-          if (inputEvent.data === '@') {
-            planeIcon.classList.remove('plane-keystroke-bounce', 'plane-at-roll');
-            void (planeIcon as HTMLElement).offsetWidth;
-            planeIcon.classList.add('plane-at-roll');
-          } else {
-            planeIcon.classList.remove('plane-keystroke-bounce');
-            void (planeIcon as HTMLElement).offsetWidth;
-            planeIcon.classList.add('plane-keystroke-bounce');
-          }
         }
       }
     };

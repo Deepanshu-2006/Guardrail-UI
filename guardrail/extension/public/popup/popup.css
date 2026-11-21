@@ -970,109 +970,101 @@ body.pairing-open .pairing-footer {
   box-shadow: 0 0 0 3px rgba(85, 119, 63, 0.16), inset 0 1px 2px rgba(39, 49, 33, 0.03);
 }
 
-/* Creative 3D Transforming Icon: Mail Envelope flips into Drawn Tick */
+/* Interactive Origami Sealing Envelope */
 .share-icon-wrapper {
   position: relative;
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   margin-right: 8px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 260px;
 }
 
-.share-icon-flipper {
-  position: relative;
+.envelope-interactive {
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
-}
-
-.share-icon-mail,
-.share-icon-check {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
   display: block;
-}
-
-.share-icon-mail {
+  overflow: visible;
   color: #7E8774;
-  transform: rotateY(0deg) scale(1);
+  transition: color 0.25s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.share-input-box:focus-within .envelope-interactive {
+  color: #36442E;
+}
+
+/* Letter inside envelope */
+.env-letter-card {
+  transform-origin: center bottom;
+  transform: translateY(0);
   opacity: 1;
-  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
-              opacity 0.20s ease,
-              color 0.20s ease;
-}
-
-.share-input-box:focus-within .share-icon-mail {
-  color: #273121;
-}
-
-.share-icon-check {
-  color: #4E8039;
-  stroke: #4E8039;
-  transform: rotateY(-180deg) scale(0.35);
-  opacity: 0;
-  transition: transform 0.44s cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 0.30s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.20s ease;
-  filter: drop-shadow(0 1px 3px rgba(78, 128, 57, 0.38));
 }
 
-.share-icon-check .check-draw-path {
-  stroke-dasharray: 26;
-  stroke-dashoffset: 26;
-  transition: stroke-dashoffset 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.10s;
+/* Envelope Flap: folds down when valid */
+.env-flap {
+  transform-origin: 12px 8.5px;
+  transform: scaleY(1);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s,
+              fill 0.25s ease;
 }
 
-/* Valid email state: Origami 3D flip & dynamic checkmark stroke draw */
-.share-input-row.is-valid-email .share-icon-mail {
-  transform: rotateY(180deg) scale(0.3);
+/* Wax Seal Stamp: pops onto flap center */
+.env-wax-seal {
+  transform-origin: 12px 13.8px;
+  transform: scale(0);
   opacity: 0;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.22s,
+              opacity 0.16s ease 0.22s;
 }
 
-.share-input-row.is-valid-email .share-icon-check {
-  transform: rotateY(0deg) scale(1.12);
-  opacity: 1;
-}
-
-.share-input-row.is-valid-email .share-icon-check .check-draw-path {
-  stroke-dashoffset: 0;
-}
-
-/* Radiant micro-halo ring when verified */
-.icon-valid-ripple {
+.env-seal-halo {
   position: absolute;
-  inset: -3px;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  margin-left: -7px;
   border-radius: 50%;
-  border: 1.5px solid rgba(78, 128, 57, 0.65);
+  border: 1.5px solid rgba(78, 128, 57, 0.7);
   opacity: 0;
   transform: scale(0.5);
   pointer-events: none;
 }
 
-.share-input-row.is-valid-email .icon-valid-ripple {
-  animation: gdIconPing 0.70s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* When email is completed (.com) and valid: PACK & SEAL LETTER */
+.share-input-row.is-valid-email .envelope-interactive {
+  color: #36442E;
+  transform: scale(1.06);
 }
 
-@keyframes gdIconPing {
-  0% {
-    transform: scale(0.5);
-    opacity: 0.9;
-    border-color: rgba(78, 128, 57, 0.8);
-  }
-  50% {
-    opacity: 0.45;
-  }
-  100% {
-    transform: scale(1.95);
-    opacity: 0;
-    border-color: rgba(78, 128, 57, 0);
-  }
+.share-input-row.is-valid-email .env-letter-card {
+  transform: translateY(5px);
+  opacity: 0;
+}
+
+.share-input-row.is-valid-email .env-flap {
+  transform: scaleY(-1);
+  fill: #E2DAC8;
+}
+
+.share-input-row.is-valid-email .env-wax-seal {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.share-input-row.is-valid-email .env-seal-halo {
+  animation: gdSealHaloPing 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+@keyframes gdSealHaloPing {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  60% { opacity: 0.4; }
+  100% { transform: scale(2.1); opacity: 0; }
 }
 
 .share-input-box .gd-input-field {
@@ -1168,16 +1160,6 @@ body.pairing-open .pairing-footer {
   box-shadow: 0 3px 8px rgba(39, 49, 33, 0.22);
 }
 
-.btn-send-invite:hover:not(.is-launching):not(.arrow-launching) .btn-send-icon {
-  animation: gdPlaneHoverThrust 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-@keyframes gdPlaneHoverThrust {
-  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  35% { transform: translate3d(-2px, 2px, 0) rotate(-8deg) scale(0.92); }
-  100% { transform: translate3d(3.5px, -2.5px, 0) rotate(14deg) scale(1.15); }
-}
-
 .btn-send-invite:active {
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(39, 49, 33, 0.12);
@@ -1193,93 +1175,48 @@ body.pairing-open .pairing-footer {
   opacity: 0.72;
 }
 
-/* Dynamic input responsiveness: lighting up Send button and animating plane when text is entered */
-.share-input-row:has(.gd-input-field:not(:placeholder-shown)) .btn-send-invite:not(.is-launching):not(.arrow-launching) {
-  background: #2E3E26;
-  border-color: #55773F;
-  box-shadow: 0 2px 7px rgba(85, 119, 63, 0.28);
-}
-
-.share-input-row:has(.gd-input-field:not(:placeholder-shown)) .btn-send-invite:not(:hover):not(.is-launching):not(.arrow-launching):not(.is-ready) .btn-send-icon:not(.plane-keystroke-bounce):not(.plane-at-roll) {
-  animation: gdPlaneReadyFloat 1.5s ease-in-out infinite alternate;
-}
-
-@keyframes gdPlaneReadyFloat {
-  0% { transform: translate3d(1px, 0, 0) rotate(7deg) scale(1.05); }
-  50% { transform: translate3d(3px, -2px, 0) rotate(14deg) scale(1.14); }
-  100% { transform: translate3d(1.5px, -1px, 0) rotate(9deg) scale(1.08); }
-}
-
-/* Keystroke engine throttle animation */
-.btn-send-icon.plane-keystroke-bounce {
-  animation: gdPlaneKeystroke 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
-}
-
-@keyframes gdPlaneKeystroke {
-  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  45% { transform: translate3d(2.8px, -2px, 0) rotate(16deg) scale(1.18); }
-  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-}
-
-/* @ Symbol 360-degree aerial barrel roll */
-.btn-send-icon.plane-at-roll {
-  animation: gdPlaneAtRoll 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
-}
-
-@keyframes gdPlaneAtRoll {
-  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  50% { transform: translate3d(3.5px, -3.5px, 0) rotate(190deg) scale(1.28); }
-  100% { transform: translate3d(0, 0, 0) rotate(360deg) scale(1); }
-}
-
-/* Primed launch state when a valid email format is entered */
-.btn-send-invite.is-ready:not(.is-launching):not(.arrow-launching) {
-  background: #223719 !important;
-  border-color: #5E8842 !important;
-  box-shadow: 0 3px 12px rgba(45, 74, 31, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
-}
-
-.btn-send-invite.is-ready:not(.is-launching):not(.arrow-launching) .btn-send-icon:not(.plane-keystroke-bounce):not(.plane-at-roll) {
-  transform: translate3d(3px, -2.5px, 0) rotate(16deg) scale(1.14);
-  color: #D3F3B4;
-  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.20s ease;
-}
-
-/* Send Icon Wrapper & Thruster Glow */
-.btn-send-icon-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-left: 2px;
-}
-
-.btn-plane-thruster-glow {
+/* Stable, non-jittery Send button with luminous power-on gleam */
+.btn-send-invite::before {
+  content: '';
   position: absolute;
-  bottom: 0px;
-  left: 0px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #A5E474 20%, rgba(132, 175, 96, 0.7) 60%, transparent 100%);
-  opacity: 0;
-  transform: scale(0.4);
-  filter: blur(1.5px);
+  top: 0;
+  bottom: 0;
+  left: -120%;
+  width: 70%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0;
 }
 
-.btn-send-invite.is-ready .btn-plane-thruster-glow {
-  opacity: 1;
-  transform: scale(1.4);
-  animation: gdThrusterPulse 1.2s ease-in-out infinite alternate;
+/* Primed launch state when valid email (.com) is entered */
+.btn-send-invite.is-ready:not(.is-launching):not(.arrow-launching) {
+  background: #273121 !important;
+  color: #FAF6ED !important;
+  border-color: #3E4E35 !important;
+  box-shadow: 0 3px 12px rgba(39, 49, 33, 0.26), inset 0 1px 1px rgba(255, 255, 255, 0.14) !important;
+  cursor: pointer !important;
 }
 
-@keyframes gdThrusterPulse {
-  0% { transform: scale(1.1); opacity: 0.65; }
-  100% { transform: scale(1.6); opacity: 1; filter: blur(2px); }
+.btn-send-invite.is-ready:not(.is-launching):not(.arrow-launching)::before {
+  animation: gdReadyGleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes gdReadyGleam {
+  0% { left: -120%; opacity: 0; }
+  25% { opacity: 1; }
+  100% { left: 160%; opacity: 0; }
+}
+
+.btn-send-invite.is-ready:hover:not(.is-launching):not(.arrow-launching) {
+  background: #1F2819 !important;
+  box-shadow: 0 5px 16px rgba(39, 49, 33, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
+  transform: translateY(-1px);
 }
 
 /* Centered & expanded state during sending */
@@ -1644,7 +1581,7 @@ body.pairing-open .pairing-footer {
 }
 
 /* Phase 2 of reverse: input unrolls from left to right like silk */
-.share-input-row.is-unrolling .share-input-icon {
+.share-input-row.is-unrolling .share-icon-wrapper {
   animation: gdInputIconRollIn 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -1780,7 +1717,7 @@ body.pairing-open .share-input-box {
 }
 
 /* Mail icon pop & micro-rotation snap on panel open */
-body.pairing-open .share-icon-flipper {
+body.pairing-open .share-icon-wrapper {
   animation: gdMailIconPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 1.48s both;
 }
 
