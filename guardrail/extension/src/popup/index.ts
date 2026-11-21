@@ -281,11 +281,21 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
         (c) => `
         <div class="active-guardian-item">
           <div class="active-guardian-info">
-            <span>👤</span>
-            <span>${c.id}</span>
-            <span class="active-guardian-role">(${c.relationshipLabel || 'Guardian'})</span>
+            <div class="active-guardian-avatar" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="active-guardian-meta">
+              <span class="active-guardian-id">${c.id}</span>
+              <span class="active-guardian-role">(${c.relationshipLabel || 'Guardian'})</span>
+            </div>
           </div>
-          <span class="active-guardian-badge">✓ Active</span>
+          <span class="active-guardian-badge">
+            <span class="active-guardian-dot"></span>
+            Active
+          </span>
         </div>
       `
       )
@@ -338,26 +348,6 @@ function getPairingButtonDefaultText(): string {
   return isPaired ? 'Pairing Info →' : 'Setup →';
 }
 
-function animateBannerDesc(newText: string): void {
-  const desc = document.getElementById('onboarding-status-desc');
-  if (!desc) return;
-  desc.classList.add('banner-text-shifting');
-  setTimeout(() => {
-    desc.textContent = newText;
-    desc.classList.remove('banner-text-shifting');
-  }, 100);
-}
-
-function animateBannerButton(newText: string): void {
-  const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
-  if (!btn) return;
-  btn.classList.add('btn-animating');
-  setTimeout(() => {
-    btn.textContent = newText;
-    btn.classList.remove('btn-animating');
-  }, 100);
-}
-
 /**
  * Opens the pairing panel expanding to the left with cinematic ease.
  */
@@ -376,27 +366,22 @@ export function openPairingPanel(): void {
     savedDescBeforeOpen = desc.textContent || '';
   }
 
-  animateBannerButton('Close ✕');
-  animateBannerDesc('Pairing in progress...');
+  const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
+  if (btn) btn.textContent = 'Close ✕';
+  if (desc) desc.textContent = 'Pairing in progress...';
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
 }
 
 /**
- * Closes the pairing panel with a smooth slide-out transition.
+ * Closes the pairing panel with a smooth slide-out transition without flickering the main popup.
  */
 export function closePairingPanel(): void {
   if (isClosingPanel || !document.body.classList.contains('pairing-open')) return;
   isClosingPanel = true;
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
-
-  animateBannerButton(getPairingButtonDefaultText());
-  if (savedDescBeforeOpen) {
-    animateBannerDesc(savedDescBeforeOpen);
-    savedDescBeforeOpen = '';
-  }
 
   setTimeout(() => {
     document.documentElement.classList.remove('pairing-open');
@@ -405,8 +390,17 @@ export function closePairingPanel(): void {
     document.body.style.width = '360px';
     const stage = document.getElementById('popup-stage');
     if (stage) stage.style.width = '360px';
+
+    const btn = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
+    if (btn) btn.textContent = getPairingButtonDefaultText();
+    const desc = document.getElementById('onboarding-status-desc');
+    if (desc && savedDescBeforeOpen) {
+      desc.textContent = savedDescBeforeOpen;
+      savedDescBeforeOpen = '';
+    }
+
     isClosingPanel = false;
-  }, 300);
+  }, 260);
 }
 
 /**
