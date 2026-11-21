@@ -229,13 +229,17 @@ function updatePopupToPairedState(
 
   if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
   if (onboardingTitle) onboardingTitle.textContent = 'Guardian Linked';
-  if (onboardingDesc) {
-    onboardingDesc.textContent =
-      contacts.length > 1
-        ? `Protected by ${contacts.length} Guardians ✓`
-        : `Protected by ${caretakerName} ✓`;
+  const newDesc =
+    contacts.length > 1
+      ? `Protected by ${contacts.length} Guardians ✓`
+      : `Protected by ${caretakerName} ✓`;
+  savedDescBeforeOpen = newDesc;
+  if (onboardingDesc && !document.body.classList.contains('pairing-open')) {
+    onboardingDesc.textContent = newDesc;
   }
-  if (btnOpenOnboarding) btnOpenOnboarding.textContent = 'Pairing Info →';
+  if (btnOpenOnboarding && !document.body.classList.contains('pairing-open')) {
+    btnOpenOnboarding.textContent = 'Pairing Info →';
+  }
 
   renderActiveGuardians(contacts);
 
@@ -327,6 +331,7 @@ function setupPopupActions(): void {
 }
 
 let isClosingPanel = false;
+let savedDescBeforeOpen = '';
 
 function getPairingButtonDefaultText(): string {
   const isPaired = document.getElementById('onboarding-banner')?.classList.contains('completed');
@@ -349,6 +354,14 @@ export function openPairingPanel(): void {
   const btn = document.getElementById('btn-open-onboarding');
   if (btn) btn.textContent = 'Close ✕';
 
+  const desc = document.getElementById('onboarding-status-desc');
+  if (desc) {
+    if (!savedDescBeforeOpen) {
+      savedDescBeforeOpen = desc.textContent || '';
+    }
+    desc.textContent = 'Pairing in progress...';
+  }
+
   void loadOrGenerateInvitation();
   startConnectionPolling();
 }
@@ -364,6 +377,12 @@ export function closePairingPanel(): void {
 
   const btn = document.getElementById('btn-open-onboarding');
   if (btn) btn.textContent = getPairingButtonDefaultText();
+
+  const desc = document.getElementById('onboarding-status-desc');
+  if (desc && savedDescBeforeOpen) {
+    desc.textContent = savedDescBeforeOpen;
+    savedDescBeforeOpen = '';
+  }
 
   setTimeout(() => {
     document.documentElement.classList.remove('pairing-open');

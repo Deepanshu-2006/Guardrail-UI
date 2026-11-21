@@ -204,13 +204,21 @@ body.pairing-closing .pairing-footer {
 }
 
 .pairing-badge-icon {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   border-radius: 9px;
   background-color: rgba(39, 49, 33, 0.05);
+  padding: 3px;
+}
+
+.pairing-badge-icon .gd-brand-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .pairing-header-text {
@@ -623,55 +631,76 @@ body.pairing-closing .pairing-footer {
 
 .pairing-footer {
   margin-top: auto;
-  padding-top: 2px;
+  padding-top: 4px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .pairing-live-status {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 7px 11px;
-  border-radius: 8px;
+  height: 27px;
+  padding: 0 13px;
+  border-radius: 9999px;
   background: rgba(39, 49, 33, 0.04);
-  border: 1px solid rgba(39, 49, 33, 0.08);
-  font-size: 11.5px;
+  border: 1px solid rgba(39, 49, 33, 0.11);
+  font-family: var(--gd-font-sans);
+  font-size: 11px;
   color: var(--gd-text-secondary);
   font-weight: 500;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
 }
 
 .pulse-ring {
   position: relative;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .pulse-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #54683E;
+  background: #476336;
   display: block;
-  animation: gdPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: gdLivePing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
-@keyframes gdPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.85); }
+@keyframes gdLivePing {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(71, 99, 54, 0.5);
+  }
+  60% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 5px rgba(71, 99, 54, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(71, 99, 54, 0);
+  }
 }
 
 .pairing-live-status.connected {
-  background: rgba(84, 104, 62, 0.12);
-  border-color: rgba(84, 104, 62, 0.28);
-  color: #273121;
+  background: rgba(71, 99, 54, 0.10);
+  border-color: rgba(71, 99, 54, 0.22);
+  color: #1F2E17;
+  font-weight: 600;
 }
 
 .check-dot {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #38572A;
+  margin-right: 1px;
 }
 
 /* =============================================================================
@@ -692,8 +721,42 @@ body.pairing-closing .pairing-footer {
 }
 
 body.pairing-open .onboarding-banner {
-  border-color: rgba(39, 49, 33, 0.28);
-  box-shadow: 0 0 0 1px rgba(84, 104, 62, 0.16);
+  background-color: rgba(39, 49, 33, 0.055);
+  border-color: rgba(39, 49, 33, 0.22);
+}
+
+body.pairing-open .onboarding-desc {
+  color: var(--gd-accent-olive);
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.pairing-open .onboarding-desc::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #54683E;
+  box-shadow: 0 0 0 0 rgba(84, 104, 62, 0.5);
+  animation: gdLivePing 2.2s infinite;
+  flex-shrink: 0;
+}
+
+body.pairing-open #btn-open-onboarding {
+  background-color: rgba(39, 49, 33, 0.08);
+  color: var(--gd-deep-olive);
+  border: 1px solid rgba(39, 49, 33, 0.20);
+  font-weight: 700;
+  box-shadow: none;
+  transform: none;
+}
+
+body.pairing-open #btn-open-onboarding:hover {
+  background-color: rgba(39, 49, 33, 0.14);
+  border-color: var(--gd-deep-olive);
 }
 
 /* -----------------------------------------------------------------------------
