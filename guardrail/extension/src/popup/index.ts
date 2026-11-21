@@ -536,25 +536,50 @@ function setupPairingPanelActions(): void {
     }
   });
 
-  // Role Chips Interaction
+  // Role Chips Interaction (Minimal & Simple)
   const chips = document.querySelectorAll<HTMLButtonElement>('.role-chip');
   const roleInput = document.getElementById('caretaker-role-input') as HTMLInputElement | null;
+  const customRow = document.getElementById('role-custom-row');
+  const chipCustom = document.getElementById('chip-custom-toggle') as HTMLButtonElement | null;
+
   chips.forEach((chip) => {
     chip.addEventListener('click', () => {
       chips.forEach((c) => c.classList.remove('active'));
       chip.classList.add('active');
-      const role = chip.getAttribute('data-role') || 'Family Guardian';
-      if (roleInput) roleInput.value = role;
-      void loadOrGenerateInvitation(true, role);
+
+      if (chip.id === 'chip-custom-toggle') {
+        if (customRow) {
+          customRow.style.display = 'flex';
+          roleInput?.focus();
+        }
+      } else {
+        if (customRow) customRow.style.display = 'none';
+        const role = chip.getAttribute('data-role') || 'Family Guardian';
+        if (roleInput) roleInput.value = role;
+        void loadOrGenerateInvitation(true, role);
+      }
     });
   });
 
-  // Role Update Button
+  // Apply Custom Role
+  const applyCustomRole = (): void => {
+    const role = roleInput?.value.trim() || 'Family Guardian';
+    if (chipCustom) {
+      chipCustom.textContent = role.length > 12 ? `${role.slice(0, 11)}…` : role;
+    }
+    void loadOrGenerateInvitation(true, role);
+  };
+
   const btnUpdateRole = document.getElementById('btn-update-role');
-  if (btnUpdateRole && roleInput) {
-    btnUpdateRole.addEventListener('click', () => {
-      const role = roleInput.value.trim() || 'Family Guardian';
-      void loadOrGenerateInvitation(true, role);
+  if (btnUpdateRole) {
+    btnUpdateRole.addEventListener('click', applyCustomRole);
+  }
+  if (roleInput) {
+    roleInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyCustomRole();
+      }
     });
   }
 
