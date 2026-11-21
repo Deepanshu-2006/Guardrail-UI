@@ -92,6 +92,8 @@ body.pairing-open .popup-stage {
   width: 0;
   box-sizing: border-box;
   opacity: 0;
+  position: relative;
+  z-index: 5;
 }
 
 body.pairing-open .pairing-panel {
@@ -104,10 +106,12 @@ body.pairing-open .pairing-panel {
   flex-direction: column;
   gap: 11px;
   background-color: var(--gd-bg-canvas);
-  border-right: 1px solid rgba(39, 49, 33, 0.12);
-  box-shadow: 4px 0 24px rgba(39, 49, 33, 0.07);
+  border-right: none;
+  box-shadow: none;
   box-sizing: border-box;
-  animation: gdPairingSlideIn 0.64s cubic-bezier(0.12, 1, 0.22, 1) forwards;
+  position: relative;
+  z-index: 5;
+  animation: gdPairingSlideIn 0.52s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
   backface-visibility: hidden;
   transform: translateZ(0);
@@ -127,29 +131,17 @@ body.pairing-open .pairing-panel {
 }
 
 body.pairing-closing .pairing-panel {
-  animation: gdPairingSlideOut 0.26s cubic-bezier(0.25, 1, 0.5, 1) forwards;
   pointer-events: none;
 }
 
 @keyframes gdPairingSlideIn {
   0% {
     opacity: 0;
-    transform: translate3d(-38px, 0, 0);
+    transform: translate3d(60px, 0, 0);
   }
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes gdPairingSlideOut {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(-36px, 0, 0) scale(0.98);
   }
 }
 
@@ -177,7 +169,7 @@ body.pairing-open .pairing-footer {
 @keyframes gdCardCascade {
   0% {
     opacity: 0;
-    transform: translate3d(-16px, 12px, 0);
+    transform: translate3d(0, 8px, 0);
   }
   100% {
     opacity: 1;
@@ -778,6 +770,18 @@ body.pairing-open .pairing-footer {
   gap: 12px;
   background-color: var(--gd-bg-canvas);
   box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+  border-left: 1px solid transparent;
+  min-height: 100%;
+  height: 100%;
+  transition: border-color 0.46s ease, box-shadow 0.46s ease;
+}
+
+body.pairing-open .popup-container,
+body.pairing-closing .popup-container {
+  border-left-color: rgba(39, 49, 33, 0.12);
+  box-shadow: -4px 0 20px rgba(39, 49, 33, 0.08);
 }
 
 body.pairing-open .onboarding-banner {
@@ -787,27 +791,45 @@ body.pairing-open .onboarding-banner {
 
 body.pairing-open .onboarding-desc {
   color: var(--gd-accent-olive);
-  font-size: 11.5px;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
 }
 
-body.pairing-open .onboarding-desc::before {
+/* Caretaker beacon dot only renders when is-pairing class is explicitly present and not closing */
+body.pairing-open:not(.pairing-closing) .onboarding-desc.is-pairing::before {
   content: "";
   display: inline-block;
   width: 6px;
   height: 6px;
+  margin-right: 6px;
   border-radius: 50%;
   background: #54683E;
   box-shadow: 0 0 0 0 rgba(84, 104, 62, 0.5);
-  animation: gdLivePing 2.2s infinite, gdDotPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: gdLivePing 2.2s infinite, gdDotPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   flex-shrink: 0;
 }
 
+body.pairing-closing .onboarding-desc::before,
+.onboarding-desc:not(.is-pairing)::before {
+  display: none !important;
+  content: none !important;
+}
+
 @keyframes gdDotPop {
-  0% { transform: scale(0); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    width: 0;
+    margin-right: 0;
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    width: 6px;
+    margin-right: 6px;
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 body.pairing-open #btn-open-onboarding {
@@ -824,21 +846,11 @@ body.pairing-open #btn-open-onboarding:hover {
   border-color: var(--gd-deep-olive);
 }
 
-/* Smooth shrink for pulsing dot on close */
-body.pairing-closing .onboarding-desc::before {
-  animation: gdDotShrink 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
-}
-
-@keyframes gdDotShrink {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0); opacity: 0; }
-}
-
-/* While pairing is closing, smoothly morph button style back to filled olive */
+/* While pairing is closing, smoothly transition button style back to filled olive */
 body.pairing-closing #btn-open-onboarding {
-  background-color: var(--gd-deep-olive) !important;
-  color: var(--gd-bg-canvas) !important;
-  border-color: transparent !important;
+  background-color: var(--gd-deep-olive);
+  color: var(--gd-bg-canvas);
+  border-color: transparent;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1057,14 +1069,19 @@ body.pairing-closing #btn-open-onboarding {
   font-size: 12px;
   font-weight: 600;
   color: var(--gd-deep-olive);
-  transition: opacity 0.20s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.20s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 18px;
+  line-height: 18px;
+  transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.20s ease;
   will-change: opacity, transform;
 }
 
 .onboarding-desc.banner-morph-out {
-  opacity: 0.35;
+  opacity: 0;
   transform: translateY(-2px);
 }
 
@@ -1100,17 +1117,22 @@ body.pairing-closing #btn-open-onboarding {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.20s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.20s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 76px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
 .btn-action.btn-morph-out {
-  opacity: 0.60;
-  transform: scale(0.95);
+  opacity: 0;
+  transform: scale(0.96);
 }
 
 .btn-action.btn-morph-in {

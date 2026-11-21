@@ -360,16 +360,24 @@ function morphBanner(targetBtnText: string, targetDescText: string): void {
       btn.textContent = targetBtnText;
       btn.classList.remove('btn-morph-out');
       btn.classList.add('btn-morph-in');
-      setTimeout(() => btn.classList.remove('btn-morph-in'), 200);
+      setTimeout(() => btn.classList.remove('btn-morph-in'), 160);
     }
     if (desc) {
+      if (targetDescText.includes('Pairing in progress')) {
+        desc.classList.add('is-pairing');
+      } else {
+        desc.classList.remove('is-pairing');
+      }
       desc.textContent = targetDescText;
       desc.classList.remove('banner-morph-out');
       desc.classList.add('banner-morph-in');
-      setTimeout(() => desc.classList.remove('banner-morph-in'), 200);
+      setTimeout(() => desc.classList.remove('banner-morph-in'), 160);
     }
-  }, 90);
+  }, 80);
 }
+
+const SLIDE_DURATION_MS = 520;
+const SLIDE_EASING = 'cubic-bezier(0.38, 0, 0.22, 1)';
 
 /**
  * Opens the pairing panel expanding to the left with cinematic ease.
@@ -377,11 +385,26 @@ function morphBanner(targetBtnText: string, targetDescText: string): void {
 export function openPairingPanel(): void {
   if (isClosingPanel) return;
   document.body.classList.remove('pairing-closing');
+  document.documentElement.classList.remove('pairing-closing');
   document.documentElement.classList.add('pairing-open');
   document.body.classList.add('pairing-open');
+
+  const stage = document.getElementById('popup-stage');
+  const panel = document.getElementById('pairing-panel');
+
+  if (panel) {
+    panel.style.transition = '';
+    panel.style.transform = '';
+    panel.style.opacity = '';
+  }
+
+  // Smoothly expand the popup card
+  document.documentElement.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  document.body.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  if (stage) stage.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+
   document.documentElement.style.width = '710px';
   document.body.style.width = '710px';
-  const stage = document.getElementById('popup-stage');
   if (stage) stage.style.width = '710px';
 
   const desc = document.getElementById('onboarding-status-desc');
@@ -401,6 +424,7 @@ export function openPairingPanel(): void {
 export function closePairingPanel(): void {
   if (isClosingPanel || !document.body.classList.contains('pairing-open')) return;
   isClosingPanel = true;
+  document.documentElement.classList.add('pairing-closing');
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
 
@@ -408,18 +432,46 @@ export function closePairingPanel(): void {
   const targetDesc = savedDescBeforeOpen || 'Not Connected';
   savedDescBeforeOpen = '';
 
-  morphBanner(targetBtn, targetDesc);
+  const desc = document.getElementById('onboarding-status-desc');
+  if (desc) desc.classList.remove('is-pairing');
+
+  const stage = document.getElementById('popup-stage');
+  const panel = document.getElementById('pairing-panel');
+
+  // Smoothly collapse the popup card and slide contents together
+  document.documentElement.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  document.body.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+  if (stage) stage.style.transition = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
+
+  document.documentElement.style.width = '360px';
+  document.body.style.width = '360px';
+  if (stage) stage.style.width = '360px';
+
+  if (panel) {
+    panel.style.transition = `transform ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}, opacity ${Math.round(SLIDE_DURATION_MS * 0.85)}ms ease`;
+    panel.style.transform = 'translate3d(100px, 0, 0)';
+    panel.style.opacity = '0';
+  }
+
+  // Morph banner mid-way through the slide as panel tucks into the main card
+  setTimeout(() => {
+    morphBanner(targetBtn, targetDesc);
+  }, 220);
 
   setTimeout(() => {
-    document.documentElement.classList.remove('pairing-open');
+    document.documentElement.classList.remove('pairing-open', 'pairing-closing');
     document.body.classList.remove('pairing-open', 'pairing-closing');
-    document.documentElement.style.width = '360px';
-    document.body.style.width = '360px';
-    const stage = document.getElementById('popup-stage');
-    if (stage) stage.style.width = '360px';
+    document.documentElement.style.transition = '';
+    document.body.style.transition = '';
+    if (stage) stage.style.transition = '';
+    if (panel) {
+      panel.style.transition = '';
+      panel.style.transform = '';
+      panel.style.opacity = '';
+    }
 
     isClosingPanel = false;
-  }, 260);
+  }, SLIDE_DURATION_MS);
 }
 
 /**
