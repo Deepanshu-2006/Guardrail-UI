@@ -970,71 +970,109 @@ body.pairing-open .pairing-footer {
   box-shadow: 0 0 0 3px rgba(85, 119, 63, 0.16), inset 0 1px 2px rgba(39, 49, 33, 0.03);
 }
 
+/* Creative 3D Transforming Icon: Mail Envelope flips into Drawn Tick */
 .share-icon-wrapper {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   margin-right: 8px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  perspective: 260px;
 }
 
-.share-input-icon {
-  width: 14px;
-  height: 14px;
-  color: #7E8774;
-  flex-shrink: 0;
-  pointer-events: none;
-  transition: color 0.20s ease, transform 0.20s ease;
+.share-icon-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
 }
 
-.share-input-box:focus-within .share-input-icon {
-  color: var(--gd-deep-olive);
-  transform: scale(1.08);
-}
-
-.input-valid-badge {
+.share-icon-mail,
+.share-icon-check {
   position: absolute;
-  bottom: -3px;
-  right: -5px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #4E8039;
-  border: 1.5px solid #FAF6ED;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.2);
-  pointer-events: none;
-  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.20s ease;
-}
-
-.input-valid-badge svg {
-  width: 7.5px;
-  height: 7.5px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
   display: block;
 }
 
-.share-input-row.is-valid-email .input-valid-badge {
+.share-icon-mail {
+  color: #7E8774;
+  transform: rotateY(0deg) scale(1);
   opacity: 1;
-  transform: scale(1);
-  animation: gdValidPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.20s ease,
+              color 0.20s ease;
 }
 
-@keyframes gdValidPop {
-  0% { transform: scale(0.2); }
-  60% { transform: scale(1.24); }
-  100% { transform: scale(1); }
+.share-input-box:focus-within .share-icon-mail {
+  color: #273121;
 }
 
-.share-input-row.is-valid-email .share-input-icon {
+.share-icon-check {
   color: #4E8039;
-  transform: scale(1.08);
-  filter: drop-shadow(0 0 3px rgba(78, 128, 57, 0.35));
+  stroke: #4E8039;
+  transform: rotateY(-180deg) scale(0.35);
+  opacity: 0;
+  transition: transform 0.44s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.20s ease;
+  filter: drop-shadow(0 1px 3px rgba(78, 128, 57, 0.38));
+}
+
+.share-icon-check .check-draw-path {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  transition: stroke-dashoffset 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.10s;
+}
+
+/* Valid email state: Origami 3D flip & dynamic checkmark stroke draw */
+.share-input-row.is-valid-email .share-icon-mail {
+  transform: rotateY(180deg) scale(0.3);
+  opacity: 0;
+}
+
+.share-input-row.is-valid-email .share-icon-check {
+  transform: rotateY(0deg) scale(1.12);
+  opacity: 1;
+}
+
+.share-input-row.is-valid-email .share-icon-check .check-draw-path {
+  stroke-dashoffset: 0;
+}
+
+/* Radiant micro-halo ring when verified */
+.icon-valid-ripple {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(78, 128, 57, 0.65);
+  opacity: 0;
+  transform: scale(0.5);
+  pointer-events: none;
+}
+
+.share-input-row.is-valid-email .icon-valid-ripple {
+  animation: gdIconPing 0.70s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes gdIconPing {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+    border-color: rgba(78, 128, 57, 0.8);
+  }
+  50% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1.95);
+    opacity: 0;
+    border-color: rgba(78, 128, 57, 0);
+  }
 }
 
 .share-input-box .gd-input-field {
@@ -1090,44 +1128,6 @@ body.pairing-open .pairing-footer {
   opacity: 1;
   transform: scale(1) rotate(0deg);
   pointer-events: auto;
-}
-
-/* Animated Caret Focus Beam on input floor */
-.input-focus-beam {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 0;
-  height: 2px;
-  background: #55773F;
-  border-radius: 9999px;
-  transform: translateX(-50%);
-  transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.20s ease;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.share-input-box:focus-within .input-focus-beam {
-  width: calc(100% - 16px);
-  opacity: 1;
-}
-
-/* Luminous leading optical beam that sweeps across as the input expands */
-.share-input-leading-beam {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 14px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(85, 119, 63, 0.45) 50%,
-    rgba(226, 247, 202, 0.85) 85%,
-    transparent 100%
-  );
-  pointer-events: none;
-  opacity: 0;
-  z-index: 5;
 }
 
 .btn-send-invite {
@@ -1280,13 +1280,6 @@ body.pairing-open .pairing-footer {
 @keyframes gdThrusterPulse {
   0% { transform: scale(1.1); opacity: 0.65; }
   100% { transform: scale(1.6); opacity: 1; filter: blur(2px); }
-}
-
-/* Dynamic keystroke energy surge along the input focus runway beam */
-.share-input-box.beam-surge .input-focus-beam {
-  box-shadow: 0 0 8px rgba(104, 153, 75, 0.75), 0 0 14px rgba(85, 119, 63, 0.4);
-  background: #73A754;
-  height: 2.5px;
 }
 
 /* Centered & expanded state during sending */
@@ -1786,30 +1779,8 @@ body.pairing-open .share-input-box {
   }
 }
 
-/* Luminous leading optical beam sweeping across */
-body.pairing-open .share-input-leading-beam {
-  animation: gdBeamSweep 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both;
-}
-
-@keyframes gdBeamSweep {
-  0% {
-    left: -12px;
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    left: calc(100% + 6px);
-    opacity: 0;
-  }
-}
-
-/* Mail icon pop & micro-rotation snap */
-body.pairing-open .share-input-icon {
+/* Mail icon pop & micro-rotation snap on panel open */
+body.pairing-open .share-icon-flipper {
   animation: gdMailIconPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 1.48s both;
 }
 

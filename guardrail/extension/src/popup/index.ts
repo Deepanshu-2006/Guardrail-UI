@@ -1200,7 +1200,7 @@ function setupPairingPanelActions(): void {
     const updateTypingState = (e?: Event) => {
       const val = inputContact.value;
       const trimmed = val.trim();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
       const isValid = emailRegex.test(trimmed);
 
       // Toggle has-text on input box for clear button
@@ -1210,17 +1210,9 @@ function setupPairingPanelActions(): void {
         } else {
           inputBox.classList.remove('has-text');
         }
-
-        // Luminous energy pulse on the floor beam during typing
-        if (e && e.type === 'input') {
-          inputBox.classList.remove('beam-surge');
-          void inputBox.offsetWidth;
-          inputBox.classList.add('beam-surge');
-          setTimeout(() => inputBox.classList.remove('beam-surge'), 160);
-        }
       }
 
-      // Valid email visual badge on mail icon
+      // Valid email visual toggle on input row (triggers 3D envelope-to-tick flip & check stroke draw)
       if (inputRow) {
         if (isValid) {
           inputRow.classList.add('is-valid-email');

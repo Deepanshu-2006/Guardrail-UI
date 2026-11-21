@@ -210,21 +210,20 @@
         </div>
         <div class="share-input-row" id="share-input-row">
           <div class="share-input-box" id="share-input-box">
-            <span class="share-input-leading-beam" aria-hidden="true"></span>
-            <div class="share-icon-wrapper">
-              <svg class="share-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              <span class="input-valid-badge" aria-hidden="true">
-                <svg viewBox="0 0 12 12" fill="none">
-                  <path d="M2.5 6L5 8.5L9.5 3.5" stroke="#FAF6ED" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <div class="share-icon-wrapper" aria-hidden="true">
+              <div class="share-icon-flipper">
+                <svg class="share-icon-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-              </span>
+                <svg class="share-icon-check" viewBox="0 0 24 24" fill="none" stroke="#4E8039" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path class="check-draw-path" d="M4.5 12.5L9.5 17.5L19.5 6.5"></path>
+                </svg>
+              </div>
+              <span class="icon-valid-ripple" aria-hidden="true"></span>
             </div>
             <input type="text" id="caretaker-contact-input" placeholder="Caretaker email or name..." class="gd-input-field" autocomplete="off" spellcheck="false" />
             <button type="button" class="btn-clear-contact" id="btn-clear-contact" aria-label="Clear contact input" tabindex="-1">✕</button>
-            <span class="input-focus-beam" aria-hidden="true"></span>
           </div>
           <button type="button" id="btn-send-invitation" class="btn-send-invite" aria-label="Send invitation to Caretaker">
             <span class="btn-send-label">Send</span>
