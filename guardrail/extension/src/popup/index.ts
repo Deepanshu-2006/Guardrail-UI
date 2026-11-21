@@ -275,6 +275,10 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
 
   if (contacts.length > 0) {
     section.style.display = 'flex';
+    const kickerEl = section.querySelector('.pairing-kicker');
+    if (kickerEl) {
+      kickerEl.textContent = contacts.length > 1 ? `LINKED GUARDIANS (${contacts.length})` : 'LINKED GUARDIAN';
+    }
     if (countEl) countEl.textContent = `${contacts.length} Connected`;
     if (titleEl) titleEl.textContent = 'Trusted Contacts';
     if (subtitleEl) subtitleEl.textContent = 'Active guardians & device pairing';
@@ -285,14 +289,14 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
         <div class="active-guardian-item">
           <div class="active-guardian-info">
             <div class="active-guardian-avatar" aria-hidden="true">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
             <div class="active-guardian-meta">
               <span class="active-guardian-id">${c.id}</span>
-              <span class="active-guardian-role">${c.relationshipLabel || 'Designated Caretaker'}</span>
+              <span class="active-guardian-role">(${c.relationshipLabel ? c.relationshipLabel.replace(/^Designated\s+/i, '') : 'Caretaker'})</span>
             </div>
           </div>
           <div class="active-guardian-status">

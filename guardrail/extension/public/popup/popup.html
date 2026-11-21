@@ -139,18 +139,20 @@
 
       <!-- Active Guardians Card (shown if 1+ contacts are already connected) -->
       <section class="pairing-card active-guardians-card" id="active-guardians-section" style="display:none">
-        <div class="pairing-label-row">
-          <span class="pairing-kicker">LINKED GUARDIANS</span>
-          <span class="active-count-pill" id="active-guardians-count">0 Linked</span>
+        <div class="active-guardians-header">
+          <div class="active-guardians-title-wrap">
+            <span class="pairing-kicker">LINKED GUARDIAN</span>
+            <span class="active-count-text" id="active-guardians-count" style="display:none">1 Connected</span>
+          </div>
+          <button type="button" class="btn-add-contact-compact" id="btn-add-another-contact" title="Add another contact">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Contact</span>
+          </button>
         </div>
         <div class="active-guardians-list" id="active-guardians-list"></div>
-        <button type="button" class="btn-add-another-contact" id="btn-add-another-contact">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span>Add Another Contact</span>
-        </button>
       </section>
 
       <!-- Compact Centered Role Pill -->
