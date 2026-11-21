@@ -466,7 +466,7 @@ export function openPairingPanel(): void {
   // Start choreographed slow animations
   const codeToDisplay = activePairingCode || 'GR-INV-8K2M-9Q7X';
   renderPairingCodeCharacters(codeToDisplay, true);
-  triggerQrCodeAnimation(800);
+  triggerQrCodeAnimation(false);
 
   void loadOrGenerateInvitation();
   startConnectionPolling();
@@ -484,7 +484,7 @@ export function closePairingPanel(): void {
   }
   const qrBox = document.getElementById('qr-code-container');
   if (qrBox) {
-    qrBox.classList.remove('animating', 'completed');
+    qrBox.classList.remove('animating', 'completed', 'rescan');
   }
   document.documentElement.classList.add('pairing-closing');
   document.body.classList.add('pairing-closing');
@@ -592,10 +592,10 @@ let qrAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Triggers the optical laser scan and modular finder snap animation on the QR code.
- * Begins after delayMs (when QR card has entered) and orchestrates reticles, finder pop,
- * laser beam descent, and data wipe reveal.
+ * Immediately applies .animating (with optional .rescan) so pre-hidden CSS takes effect
+ * with zero flash, using CSS animation-delay and animation-fill-mode: both.
  */
-export function triggerQrCodeAnimation(delayMs = 800): void {
+export function triggerQrCodeAnimation(isRescan = false): void {
   if (qrAnimationTimer) {
     clearTimeout(qrAnimationTimer);
     qrAnimationTimer = null;
@@ -604,21 +604,25 @@ export function triggerQrCodeAnimation(delayMs = 800): void {
   const box = document.getElementById('qr-code-container');
   if (!box) return;
 
-  // Reset classes and force reflow
-  box.classList.remove('animating', 'completed');
+  // Reset classes and force reflow so keyframe animations cleanly restart
+  box.classList.remove('animating', 'completed', 'rescan');
   void box.offsetWidth;
 
-  qrAnimationTimer = setTimeout(() => {
-    if (!document.body.classList.contains('pairing-open') || document.body.classList.contains('pairing-closing')) {
-      return;
-    }
-    box.classList.add('animating');
+  if (!document.body.classList.contains('pairing-open') || document.body.classList.contains('pairing-closing')) {
+    return;
+  }
 
-    qrAnimationTimer = setTimeout(() => {
-      box.classList.add('completed');
-      qrAnimationTimer = null;
-    }, 1800);
-  }, delayMs);
+  box.classList.add('animating');
+  if (isRescan) {
+    box.classList.add('rescan');
+  }
+
+  const completeDelay = isRescan ? 2300 : 2900;
+  qrAnimationTimer = setTimeout(() => {
+    box.classList.remove('animating', 'rescan');
+    box.classList.add('completed');
+    qrAnimationTimer = null;
+  }, completeDelay);
 }
 
 /**
@@ -787,7 +791,7 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
       await renderQrCodeSvg(pairingUrl);
       if (document.body.classList.contains('pairing-open') && !document.body.classList.contains('pairing-closing')) {
         renderPairingCodeCharacters(inviteCode, true);
-        triggerQrCodeAnimation(800);
+        triggerQrCodeAnimation(forceNew);
       }
     }
   }
@@ -862,6 +866,7 @@ function setupPairingPanelActions(): void {
       resizeInput();
       if (currentVal !== lastRoleValue) {
         lastRoleValue = currentVal;
+        triggerQrCodeAnimation(true);
         void loadOrGenerateInvitation(true, currentVal);
       }
     };
@@ -890,7 +895,7 @@ function setupPairingPanelActions(): void {
     }
     startConnectionPolling();
     const role = roleInput?.value.trim() || 'Family Guardian';
-    triggerQrCodeAnimation(200);
+    triggerQrCodeAnimation(true);
     void loadOrGenerateInvitation(true, role);
     document.getElementById('pairing-role-card')?.scrollIntoView({ behavior: 'smooth' });
   };

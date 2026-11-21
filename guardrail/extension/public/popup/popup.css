@@ -518,6 +518,25 @@ body.pairing-open .pairing-footer {
   box-sizing: border-box;
 }
 
+/* Pre-hidden state: ensure QR elements NEVER flash before or during animation */
+.qr-code-wrapper:not(.completed) .viewfinder-corner {
+  opacity: 0;
+  transform: scale(1.45);
+}
+
+.qr-code-wrapper:not(.completed) .qr-eye {
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+.qr-code-wrapper:not(.completed) .qr-data-group {
+  clip-path: inset(0 0 100% 0);
+}
+
+.qr-code-wrapper:not(.completed) .qr-laser-scanner {
+  opacity: 0;
+}
+
 /* Viewfinder Optical Reticles */
 .viewfinder-corner {
   position: absolute;
@@ -527,7 +546,6 @@ body.pairing-open .pairing-footer {
   border-style: solid;
   pointer-events: none;
   z-index: 10;
-  opacity: 0.85;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .corner-tl { top: 3px; left: 3px; border-width: 2px 0 0 2px; border-top-left-radius: 2px; }
@@ -535,8 +553,14 @@ body.pairing-open .pairing-footer {
 .corner-bl { bottom: 3px; left: 3px; border-width: 0 0 2px 2px; border-bottom-left-radius: 2px; }
 .corner-br { bottom: 3px; right: 3px; border-width: 0 2px 2px 0; border-bottom-right-radius: 2px; }
 
-.qr-code-wrapper.animating .viewfinder-corner {
-  animation: gdReticleLock 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+/* Initial Open cascade: reticles lock at 0.65s (when .qr-card finishes rising) */
+.qr-code-wrapper.animating:not(.rescan) .viewfinder-corner {
+  animation: gdReticleLock 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
+}
+
+/* Re-scan cascade (when panel is already open) */
+.qr-code-wrapper.animating.rescan .viewfinder-corner {
+  animation: gdReticleLock 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
 }
 
 @keyframes gdReticleLock {
@@ -596,8 +620,14 @@ body.pairing-open .pairing-footer {
   pointer-events: none;
 }
 
-.qr-code-wrapper.animating .qr-laser-scanner {
-  animation: gdLaserMove 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.52s forwards;
+/* Initial Open cascade: Laser descends at 1.12s */
+.qr-code-wrapper.animating:not(.rescan) .qr-laser-scanner {
+  animation: gdLaserMove 1.15s cubic-bezier(0.35, 0, 0.25, 1) 1.12s both;
+}
+
+/* Re-scan cascade: Laser descends at 0.52s */
+.qr-code-wrapper.animating.rescan .qr-laser-scanner {
+  animation: gdLaserMove 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.52s both;
 }
 
 @keyframes gdLaserMove {
@@ -625,13 +655,19 @@ body.pairing-open .pairing-footer {
 }
 
 /* Staggered Triangulation Snap for the 3 Corner Finder Targets */
-.qr-code-wrapper.animating .qr-eye {
-  opacity: 0;
-  animation: gdEyeSnap 0.40s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.qr-code-wrapper.animating:not(.rescan) .qr-eye {
+  animation: gdEyeSnap 0.40s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.qr-code-wrapper.animating .qr-eye-tl { animation-delay: 0.12s; }
-.qr-code-wrapper.animating .qr-eye-tr { animation-delay: 0.24s; }
-.qr-code-wrapper.animating .qr-eye-bl { animation-delay: 0.36s; }
+.qr-code-wrapper.animating:not(.rescan) .qr-eye-tl { animation-delay: 0.72s; }
+.qr-code-wrapper.animating:not(.rescan) .qr-eye-tr { animation-delay: 0.84s; }
+.qr-code-wrapper.animating:not(.rescan) .qr-eye-bl { animation-delay: 0.96s; }
+
+.qr-code-wrapper.animating.rescan .qr-eye {
+  animation: gdEyeSnap 0.40s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.qr-code-wrapper.animating.rescan .qr-eye-tl { animation-delay: 0.12s; }
+.qr-code-wrapper.animating.rescan .qr-eye-tr { animation-delay: 0.24s; }
+.qr-code-wrapper.animating.rescan .qr-eye-bl { animation-delay: 0.36s; }
 
 @keyframes gdEyeSnap {
   0% {
@@ -649,9 +685,12 @@ body.pairing-open .pairing-footer {
 }
 
 /* Data Matrix Wipe Animation following the Laser */
-.qr-code-wrapper.animating .qr-data-group {
-  clip-path: inset(0 0 100% 0);
-  animation: gdDataWipe 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.52s forwards;
+.qr-code-wrapper.animating:not(.rescan) .qr-data-group {
+  animation: gdDataWipe 1.15s cubic-bezier(0.35, 0, 0.25, 1) 1.12s both;
+}
+
+.qr-code-wrapper.animating.rescan .qr-data-group {
+  animation: gdDataWipe 1.15s cubic-bezier(0.35, 0, 0.25, 1) 0.52s both;
 }
 
 @keyframes gdDataWipe {
@@ -660,7 +699,7 @@ body.pairing-open .pairing-footer {
 }
 
 /* Ready Confirmation Pulse */
-.qr-code-wrapper.animating::after {
+.qr-code-wrapper.animating:not(.rescan)::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -668,7 +707,18 @@ body.pairing-open .pairing-footer {
   box-shadow: inset 0 0 0 2px rgba(85, 119, 63, 0.7);
   opacity: 0;
   pointer-events: none;
-  animation: gdReadyPulse 0.55s ease 1.70s forwards;
+  animation: gdReadyPulse 0.55s ease 2.30s both;
+}
+
+.qr-code-wrapper.animating.rescan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px rgba(85, 119, 63, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  animation: gdReadyPulse 0.55s ease 1.70s both;
 }
 
 @keyframes gdReadyPulse {
@@ -677,13 +727,30 @@ body.pairing-open .pairing-footer {
   100% { opacity: 0; transform: scale(1); }
 }
 
+/* Completed Scannable State */
+.qr-code-wrapper.completed .viewfinder-corner {
+  opacity: 0.9;
+  transform: scale(1);
+}
+
+.qr-code-wrapper.completed .qr-eye {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.qr-code-wrapper.completed .qr-data-group {
+  clip-path: none;
+  opacity: 1;
+}
+
 /* Interactive Hover: Reticles tighten + Laser fast scan */
-.qr-code-wrapper:not(.animating):hover .viewfinder-corner {
+.qr-code-wrapper.completed:hover .viewfinder-corner {
   border-color: #384A2A;
   transform: scale(0.92);
 }
 
-.qr-code-wrapper:not(.animating):hover .qr-laser-scanner {
+.qr-code-wrapper.completed:hover .qr-laser-scanner {
   animation: gdLaserHover 0.70s ease forwards;
 }
 
