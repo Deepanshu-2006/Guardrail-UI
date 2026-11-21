@@ -1114,10 +1114,13 @@ function setupPairingPanelActions(): void {
               btnSend.classList.add('is-docking');
               btnSend.innerHTML = `
                 <span class="btn-send-label">Send</span>
-                <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+                <span class="btn-send-icon-wrapper">
+                  <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                  <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
+                </span>
               `;
 
               // Phase 3 (480ms later): complete settle and re-enable inputs
@@ -1141,10 +1144,13 @@ function setupPairingPanelActions(): void {
           setTimeout(() => {
             btnSend.innerHTML = `
               <span class="btn-send-label">Send</span>
-              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
+              <span class="btn-send-icon-wrapper">
+                <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
+              </span>
             `;
             btnSend.disabled = false;
             inputContact.disabled = false;
@@ -1160,10 +1166,13 @@ function setupPairingPanelActions(): void {
         setTimeout(() => {
           btnSend.innerHTML = `
             <span class="btn-send-label">Send</span>
-            <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
+            <span class="btn-send-icon-wrapper">
+              <svg class="btn-send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              <span class="btn-plane-thruster-glow" aria-hidden="true"></span>
+            </span>
           `;
           btnSend.disabled = false;
           inputContact.disabled = false;
@@ -1182,12 +1191,11 @@ function setupPairingPanelActions(): void {
     });
 
     // =========================================================================
-    // Animative & Creative Typing / Email Entering Interactions
+    // Cinematic Typing & Email Entering Experience
     // =========================================================================
     const inputRow = document.getElementById('share-input-row');
     const inputBox = document.getElementById('share-input-box');
     const btnClear = document.getElementById('btn-clear-contact');
-    const domainRow = document.getElementById('domain-pills-row');
 
     const updateTypingState = (e?: Event) => {
       const val = inputContact.value;
@@ -1202,6 +1210,14 @@ function setupPairingPanelActions(): void {
         } else {
           inputBox.classList.remove('has-text');
         }
+
+        // Luminous energy pulse on the floor beam during typing
+        if (e && e.type === 'input') {
+          inputBox.classList.remove('beam-surge');
+          void inputBox.offsetWidth;
+          inputBox.classList.add('beam-surge');
+          setTimeout(() => inputBox.classList.remove('beam-surge'), 160);
+        }
       }
 
       // Valid email visual badge on mail icon
@@ -1213,7 +1229,7 @@ function setupPairingPanelActions(): void {
         }
       }
 
-      // Send button readiness & throttle animations
+      // Send button readiness & kinetic flight throttle
       if (btnSend && !btnSend.classList.contains('is-launching') && !btnSend.classList.contains('has-landed')) {
         if (isValid) {
           btnSend.classList.add('is-ready');
@@ -1236,15 +1252,6 @@ function setupPairingPanelActions(): void {
           }
         }
       }
-
-      // Domain pills visibility: show when user is typing user handle and hasn't finished domain
-      if (domainRow) {
-        if (trimmed.length >= 1 && !trimmed.includes('.') && document.activeElement === inputContact) {
-          domainRow.classList.add('is-visible');
-        } else {
-          domainRow.classList.remove('is-visible');
-        }
-      }
     };
 
     inputContact.addEventListener('input', (e) => {
@@ -1255,40 +1262,10 @@ function setupPairingPanelActions(): void {
       updateTypingState();
     });
 
-    inputContact.addEventListener('blur', () => {
-      setTimeout(() => {
-        if (domainRow && document.activeElement !== inputContact) {
-          domainRow.classList.remove('is-visible');
-        }
-      }, 180);
-    });
-
     // Clear Button (✕)
     if (btnClear) {
       btnClear.addEventListener('click', () => {
         inputContact.value = '';
-        inputContact.focus();
-        updateTypingState();
-      });
-    }
-
-    // Quick Domain Suggestion Pills (@gmail.com, etc.)
-    if (domainRow) {
-      domainRow.addEventListener('click', (e) => {
-        const target = (e.target as HTMLElement).closest('.domain-pill') as HTMLElement | null;
-        if (!target) return;
-        const domain = target.getAttribute('data-domain') || '@gmail.com';
-        const current = inputContact.value.trim();
-
-        if (!current) {
-          inputContact.value = domain;
-        } else if (current.includes('@')) {
-          const prefix = current.substring(0, current.indexOf('@'));
-          inputContact.value = prefix + domain;
-        } else {
-          inputContact.value = current + domain;
-        }
-
         inputContact.focus();
         updateTypingState();
       });

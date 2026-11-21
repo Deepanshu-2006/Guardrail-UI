@@ -1022,11 +1022,19 @@ body.pairing-open .pairing-footer {
 .share-input-row.is-valid-email .input-valid-badge {
   opacity: 1;
   transform: scale(1);
+  animation: gdValidPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes gdValidPop {
+  0% { transform: scale(0.2); }
+  60% { transform: scale(1.24); }
+  100% { transform: scale(1); }
 }
 
 .share-input-row.is-valid-email .share-input-icon {
   color: #4E8039;
   transform: scale(1.08);
+  filter: drop-shadow(0 0 3px rgba(78, 128, 57, 0.35));
 }
 
 .share-input-box .gd-input-field {
@@ -1237,65 +1245,48 @@ body.pairing-open .pairing-footer {
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.20s ease;
 }
 
-/* Smart Domain Suggestion Pills */
-.domain-pills-row {
-  display: flex;
+/* Send Icon Wrapper & Thruster Glow */
+.btn-send-icon-wrapper {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  overflow: hidden;
-  max-height: 0;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+}
+
+.btn-plane-thruster-glow {
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #A5E474 20%, rgba(132, 175, 96, 0.7) 60%, transparent 100%);
   opacity: 0;
-  margin-top: 0;
+  transform: scale(0.4);
+  filter: blur(1.5px);
   pointer-events: none;
-  transition: max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.22s ease,
-              margin-top 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.domain-pills-row.is-visible {
-  max-height: 32px;
+.btn-send-invite.is-ready .btn-plane-thruster-glow {
   opacity: 1;
-  margin-top: 8px;
-  pointer-events: auto;
+  transform: scale(1.4);
+  animation: gdThrusterPulse 1.2s ease-in-out infinite alternate;
 }
 
-.domain-pills-label {
-  font-size: 9.5px;
-  color: #7E8774;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  margin-right: 2px;
+@keyframes gdThrusterPulse {
+  0% { transform: scale(1.1); opacity: 0.65; }
+  100% { transform: scale(1.6); opacity: 1; filter: blur(2px); }
 }
 
-.domain-pill {
-  border: 1px solid #D8D2C2;
-  background: #FAF6ED;
-  color: #36442E;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 3px 7px;
-  border-radius: 9999px;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
-  user-select: none;
-  outline: none;
-}
-
-.domain-pill:hover {
-  background: #EDE6D6;
-  border-color: #55773F;
-  color: #172413;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(39, 49, 33, 0.1);
-}
-
-.domain-pill:active {
-  transform: translateY(0);
+/* Dynamic keystroke energy surge along the input focus runway beam */
+.share-input-box.beam-surge .input-focus-beam {
+  box-shadow: 0 0 8px rgba(104, 153, 75, 0.75), 0 0 14px rgba(85, 119, 63, 0.4);
+  background: #73A754;
+  height: 2.5px;
 }
 
 /* Centered & expanded state during sending */
