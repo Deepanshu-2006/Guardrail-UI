@@ -11312,3 +11312,131 @@ article.gd-card-collapsed,
   transition: opacity 0.18s ease, transform 0.18s ease !important;
 }
 
+/* ====================================================================
+   UNAUTHENTICATED TOP NOTICE BANNER (QUIET ASSURANCE THEME)
+   ==================================================================== */
+.gd-unauth-header-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 28px;
+  background: #273121;
+  color: #FAF6ED;
+  border-bottom: 1px solid rgba(204, 214, 192, 0.25);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.4;
+  animation: gdFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gd-unauth-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.gd-unauth-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(237, 230, 214, 0.15);
+  color: #EDE6D6;
+  flex-shrink: 0;
+}
+
+.gd-unauth-banner-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.gd-unauth-banner-text {
+  color: rgba(250, 246, 237, 0.9);
+}
+
+.gd-unauth-banner-title {
+  color: #FAF6ED;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.gd-unauth-banner-desc {
+  color: rgba(250, 246, 237, 0.85);
+}
+
+.gd-unauth-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  background: #EDE6D6;
+  color: #273121;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.gd-unauth-banner-btn:hover {
+  background: #FFFFFF;
+  color: #1E2719;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gd-unauth-banner-btn:active {
+  transform: translateY(0);
+}
+
+.gd-btn-signin-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  background: #273121;
+  color: #FAF6ED;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(204, 214, 192, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: 12px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.2);
+}
+
+.gd-btn-signin-action:hover {
+  background: #36442E;
+  color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.3);
+}
+
+.gd-btn-signin-action:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .gd-unauth-header-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .gd-unauth-banner-btn {
+    align-self: flex-start;
+    width: 100%;
+  }
+}
+

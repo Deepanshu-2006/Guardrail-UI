@@ -37,6 +37,7 @@ export interface OverviewProps {
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
   onDisconnectWard?: () => void;
   onRefresh?: () => void;
+  onOpenAuth?: () => void;
 }
 
 export function renderOverview(props: OverviewProps): HTMLElement {
@@ -142,6 +143,17 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     protDesc.textContent =
       'Running in preview mode. Connect a contact below using an invitation code to begin.';
     protActions.appendChild(protBadge);
+
+    if (props.onOpenAuth) {
+      const signInBtn = document.createElement('button');
+      signInBtn.type = 'button';
+      signInBtn.className = 'gd-btn-signin-action';
+      signInBtn.textContent = 'Sign In to Connect';
+      signInBtn.addEventListener('click', () => {
+        props.onOpenAuth?.();
+      });
+      protActions.appendChild(signInBtn);
+    }
   }
 
   protTextGroup.appendChild(protTitle);

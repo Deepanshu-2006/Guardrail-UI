@@ -286,6 +286,15 @@ if (typeof document !== 'undefined') {
       }, 2200);
     }
 
+    // If caretaker is not signed in when opening dashboard, immediately prompt for sign-in
+    if (!initialProfile?.isAuthenticated && !isOAuthRedirect) {
+      setTimeout(() => {
+        if (!shell.getState().contactProfile?.isAuthenticated) {
+          shell.openAuthModal();
+        }
+      }, 150);
+    }
+
     // Verify token with backend asynchronously to hydrate authoritative identity
     if (storageToken) {
       fetch(`${envConfig.apiBaseUrl}/api/v1/auth/me`, {

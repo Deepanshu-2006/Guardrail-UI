@@ -34,6 +34,7 @@ import { filterRequests } from './components/filters.js';
 import { renderSettings } from './components/settings.js';
 import { isInvitationExpired } from './components/relationships.js';
 import { defaultDashboardPushService } from './services/push-notification-service.js';
+import { createIcon } from './components/icons.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -591,6 +592,50 @@ export class DashboardShell {
     const contentBody = document.createElement('div');
     contentBody.className = 'gd-content-body';
 
+    // If caretaker is not authenticated, render a prominent sign-in notice bar
+    if (!this.state.contactProfile?.isAuthenticated) {
+      const authBanner = document.createElement('div');
+      authBanner.className = 'gd-unauth-header-banner';
+      authBanner.setAttribute('role', 'alert');
+
+      const bannerLeft = document.createElement('div');
+      bannerLeft.className = 'gd-unauth-banner-left';
+
+      const lockIcon = document.createElement('span');
+      lockIcon.className = 'gd-unauth-banner-icon';
+      lockIcon.setAttribute('aria-hidden', 'true');
+      lockIcon.appendChild(createIcon('lock'));
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'gd-unauth-banner-text';
+
+      const bannerTitle = document.createElement('strong');
+      bannerTitle.className = 'gd-unauth-banner-title';
+      bannerTitle.textContent = 'Sign In Required:';
+
+      const bannerDesc = document.createElement('span');
+      bannerDesc.className = 'gd-unauth-banner-desc';
+      bannerDesc.textContent =
+        ' Authenticate your trusted contact account to connect with wards, review held actions, and receive real-time alerts.';
+
+      textWrap.appendChild(bannerTitle);
+      textWrap.appendChild(bannerDesc);
+      bannerLeft.appendChild(lockIcon);
+      bannerLeft.appendChild(textWrap);
+
+      const signInBtn = document.createElement('button');
+      signInBtn.type = 'button';
+      signInBtn.className = 'gd-unauth-banner-btn';
+      signInBtn.textContent = 'Sign In to Guardrail';
+      signInBtn.addEventListener('click', () => {
+        this.openAuthModal();
+      });
+
+      authBanner.appendChild(bannerLeft);
+      authBanner.appendChild(signInBtn);
+      contentBody.appendChild(authBanner);
+    }
+
     this.mainContentEl = document.createElement('main');
     this.mainContentEl.id = 'main-content';
     this.mainContentEl.setAttribute('id', 'main-content');
@@ -619,6 +664,7 @@ export class DashboardShell {
       onViewPending: () => this.setActiveView('pending'),
       onViewSettings: () => this.setActiveView('settings'),
       onDisconnectWard: () => this.disconnectWard(),
+      onOpenAuth: () => this.openAuthModal(),
       onSelectPending: (id) => {
         this.setActiveView('pending');
         this.selectRequest(id);
