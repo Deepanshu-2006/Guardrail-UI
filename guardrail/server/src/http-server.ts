@@ -274,24 +274,36 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           const redirectUrl = body.redirectUrl || 'http://localhost:5173/';
           const oidcPrompt = body.oidcPrompt || 'select_account';
 
+          const cbUrl = redirectUrl.includes('?') ? `${redirectUrl}&__clerk_oauth_cb=1` : `${redirectUrl}?__clerk_oauth_cb=1`;
           const params = new URLSearchParams({
             strategy,
-            redirect_url: redirectUrl,
+            redirect_url: cbUrl,
             action_complete_redirect_url: redirectUrl,
             oidc_prompt: oidcPrompt,
           });
 
           const clerkDomain = process.env.CLERK_FRONTEND_API || 'harmless-snipe-9044.clerk.accounts.dev';
-          let fapiRes = await fetch(`https://${clerkDomain}/v1/client/sign_ins`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: params.toString(),
-          });
+          let externalUrl: string | undefined;
+          let fapiData: any;
 
-          let fapiData = (await fapiRes.json()) as any;
-          let externalUrl = fapiData?.response?.first_factor_verification?.external_verification_redirect_url;
+          // 1. Try sign_ins first so existing social users sign in seamlessly
+          try {
+            const signInRes = await fetch(`https://${clerkDomain}/v1/client/sign_ins`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: params.toString(),
+            });
+            const signInData = (await signInRes.json()) as any;
+            const signInUrl = signInData?.response?.first_factor_verification?.external_verification_redirect_url;
+            if (signInUrl) {
+              externalUrl = signInUrl;
+              fapiData = signInData;
+            }
+          } catch {
+            // ignore sign in error, fallback to sign_up
+          }
 
-          // If sign_in fails to yield redirect URL (e.g. brand new user), try sign_up
+          // 2. If sign_ins fails or user does not exist, try sign_ups so brand new users are created
           if (!externalUrl) {
             try {
               const signUpRes = await fetch(`https://${clerkDomain}/v1/client/sign_ups`, {
@@ -304,9 +316,11 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               if (signUpUrl) {
                 externalUrl = signUpUrl;
                 fapiData = signUpData;
+              } else if (!fapiData) {
+                fapiData = signUpData;
               }
             } catch {
-              // ignore sign up fallback error
+              // ignore sign up error
             }
           }
 

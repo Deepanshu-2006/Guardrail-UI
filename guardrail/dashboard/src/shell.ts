@@ -1697,10 +1697,9 @@ export class DashboardShell {
    */
   public closeAuthModal(): void {
     if (typeof document === 'undefined') return;
-    const modal = document.getElementById('gd-auth-modal-root') || document.querySelector('.gd-auth-modal-backdrop');
-    if (modal) {
-      modal.remove();
-    }
+    document.querySelectorAll('#gd-auth-modal-root, .gd-auth-modal-backdrop, .gd-modal-backdrop').forEach((el) => {
+      el.remove();
+    });
   }
 
   /**
@@ -1730,6 +1729,10 @@ export class DashboardShell {
    */
   public openAuthModal(): void {
     if (typeof document === 'undefined') return;
+    if (this.state.contactProfile?.isAuthenticated) {
+      this.closeAuthModal();
+      return;
+    }
     if (document.getElementById('gd-auth-modal-root')) return;
 
     const modal = renderAuthModal({

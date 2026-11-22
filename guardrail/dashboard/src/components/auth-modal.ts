@@ -602,7 +602,35 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
             ? (window.location.origin.endsWith('/') ? window.location.origin : `${window.location.origin}/`)
             : 'http://localhost:5173/';
 
-        // 1. Fetch direct Google / Apple OAuth URL with prompt=select_account from the backend
+        // 1. Try Clerk SDK client signIn / signUp authenticateWithRedirect directly in browser
+        try {
+          const clerk = await getClerk();
+          if (clerk && clerk.loaded) {
+            const strategy = provider === 'google' ? 'oauth_google' : 'oauth_apple';
+            const redirectCallbackUrl = `${currentOrigin}?__clerk_oauth_cb=1`;
+            if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
+              await clerk.client.signIn.authenticateWithRedirect({
+                strategy,
+                redirectUrl: redirectCallbackUrl,
+                redirectUrlComplete: currentOrigin,
+                oidcPrompt: 'select_account',
+              });
+              return;
+            } else if (clerk.client?.signUp && typeof clerk.client.signUp.authenticateWithRedirect === 'function') {
+              await clerk.client.signUp.authenticateWithRedirect({
+                strategy,
+                redirectUrl: redirectCallbackUrl,
+                redirectUrlComplete: currentOrigin,
+                oidcPrompt: 'select_account',
+              });
+              return;
+            }
+          }
+        } catch (clerkErr) {
+          console.warn('[Social Sign In] Clerk client redirect error:', clerkErr);
+        }
+
+        // 2. Fallback: Fetch direct Google / Apple OAuth sign_up URL with prompt=select_account from the backend
         const baseUrl =
           props.apiBaseUrl ||
           (typeof window !== 'undefined' && window.location.port !== '5173'
@@ -626,33 +654,6 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           }
         } catch (fetchErr) {
           console.warn('[Social Sign In] Backend oauth-url fetch error:', fetchErr);
-        }
-
-        // 3. Fallback: Clerk SDK client authenticateWithRedirect
-        try {
-          const clerk = await getClerk();
-          if (clerk && clerk.loaded) {
-            const strategy = provider === 'google' ? 'oauth_google' : 'oauth_apple';
-            if (clerk.client?.signIn && typeof clerk.client.signIn.authenticateWithRedirect === 'function') {
-              await clerk.client.signIn.authenticateWithRedirect({
-                strategy,
-                redirectUrl: currentOrigin,
-                redirectUrlComplete: currentOrigin,
-                oidcPrompt: 'select_account',
-              });
-              return;
-            } else if (clerk.client?.signUp && typeof clerk.client.signUp.authenticateWithRedirect === 'function') {
-              await clerk.client.signUp.authenticateWithRedirect({
-                strategy,
-                redirectUrl: currentOrigin,
-                redirectUrlComplete: currentOrigin,
-                oidcPrompt: 'select_account',
-              });
-              return;
-            }
-          }
-        } catch (clerkErr) {
-          console.warn('[Social Sign In] Clerk client redirect error:', clerkErr);
         }
       }
 

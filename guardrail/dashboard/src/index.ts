@@ -307,7 +307,8 @@ if (typeof document !== 'undefined') {
         search.includes('status=') ||
         search.includes('__clerk_status') ||
         search.includes('__clerk_created_session') ||
-        search.includes('__clerk_handshake')
+        search.includes('__clerk_handshake') ||
+        search.includes('__clerk_oauth_cb')
       );
 
       let wasAuthenticated = false;
@@ -429,6 +430,12 @@ if (typeof document !== 'undefined') {
           shell.setProfile(verifiedProfile);
           shell.closeAuthModal();
 
+          if (typeof document !== 'undefined') {
+            document.querySelectorAll('#gd-auth-modal-root, .gd-auth-modal-backdrop, .gd-modal-backdrop').forEach((el) => {
+              el.remove();
+            });
+          }
+
           // Show connected modal only when explicitly requested
           if (typeof document !== 'undefined' && showPopup) {
             showConnectedModal(verifiedProfile);
@@ -472,24 +479,32 @@ if (typeof document !== 'undefined') {
         }
       };
 
-      // 1. If returning from an OAuth callback, safely sync live session in the background without blocking UI
+      // 1. Process OAuth redirect callback if returning from Google / Apple
       if (isOAuthRedirect) {
-        (async () => {
-          try {
-            if (typeof clerk.handleRedirectCallback === 'function') {
-              await clerk.handleRedirectCallback().catch((err) => console.warn('[Clerk] handleRedirectCallback:', err));
-            } else {
-              const nonce = typeof window !== 'undefined' ? new URLSearchParams(search).get('rotating_token_nonce') : null;
-              if (nonce && clerk.client && typeof (clerk.client as any).reload === 'function') {
-                await (clerk.client as any).reload({ rotatingTokenNonce: nonce }).catch(() => {});
+        try {
+          if (typeof clerk.handleRedirectCallback === 'function') {
+            await clerk.handleRedirectCallback(
+              {
+                redirectUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+                afterSignInUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+                afterSignUpUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+              },
+              async (to: string) => {
+                // Intercept navigation to prevent Clerk from navigating away to external accounts.dev signInUrl!
+                if (typeof window !== 'undefined' && to && !to.includes('accounts.dev')) {
+                  window.history.replaceState({}, document.title, window.location.pathname);
+                }
               }
+            ).catch((err) => console.warn('[Clerk] handleRedirectCallback:', err));
+          } else {
+            const nonce = typeof window !== 'undefined' ? new URLSearchParams(search).get('rotating_token_nonce') : null;
+            if (nonce && clerk.client && typeof (clerk.client as any).reload === 'function') {
+              await (clerk.client as any).reload({ rotatingTokenNonce: nonce }).catch(() => {});
             }
-            await ensureActiveSession();
-            await syncClerkSession(true);
-          } catch (e) {
-            console.warn('[Clerk] background OAuth sync error:', e);
           }
-        })();
+        } catch (e) {
+          console.warn('[Clerk] OAuth redirect handling error:', e);
+        }
       }
 
       // 2. Real-time session listener
@@ -517,17 +532,22 @@ if (typeof document !== 'undefined') {
         });
       }
 
-      // 3. Initial check on page load / hydration
-      const initialActive = Boolean(
+      // 3. Initial session sync
+      await ensureActiveSession();
+      await syncClerkSession(false);
+
+      // 4. Only prompt for sign in if user is confirmed unauthenticated and not mid-redirect
+      const isAuthNow = Boolean(
+        shell.getState().contactProfile?.isAuthenticated ||
         clerk.session ||
-        (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
-        (clerk.client?.sessions && clerk.client.sessions.length > 0)
+        (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0)
       );
-      if (initialActive) {
-        await syncClerkSession(false);
+
+      if (isAuthNow) {
+        shell.closeAuthModal();
       } else if (!isOAuthRedirect) {
-        // Only prompt for sign in once Clerk has confirmed there is no active session
-        if (!shell.getState().contactProfile?.isAuthenticated) {
+        const localTok = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
+        if (!localTok) {
           shell.openAuthModal();
         }
       }
