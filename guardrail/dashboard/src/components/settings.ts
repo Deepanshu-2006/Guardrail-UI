@@ -52,6 +52,17 @@ export interface SettingsProps {
   onDisconnectWard?: () => void;
   onClearSession?: () => void;
   onRefresh?: () => void;
+  pushStatus?: {
+    readonly supported: boolean;
+    readonly permission: NotificationPermission | 'unsupported';
+    readonly isSubscribed: boolean;
+    readonly endpoint?: string;
+  };
+  isSubscribingPush?: boolean;
+  pushActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
+  onSubscribePush?: () => Promise<void> | void;
+  onUnsubscribePush?: () => Promise<void> | void;
+  onSendTestPush?: () => Promise<void> | void;
 }
 
 export function renderSettings(props: SettingsProps): HTMLElement {
@@ -442,6 +453,197 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     section.appendChild(historyCard);
   }
+
+  // Card 2c: Out-of-Band Push Notifications & Lock-Screen Alerts (Web Push / VAPID)
+  const pushCard = document.createElement('div');
+  pushCard.className = 'gd-card gd-settings-card gd-scroll-reveal';
+  pushCard.id = 'gd-card-push-notifications';
+
+  const pushHeader = document.createElement('div');
+  pushHeader.className = 'gd-settings-card-header';
+
+  const pushTitle = document.createElement('h2');
+  pushTitle.className = 'gd-section-title';
+  pushTitle.textContent = 'Device Push Notifications & Lock-Screen Alerts';
+
+  const pushBadge = document.createElement('span');
+  if (!props.pushStatus?.supported) {
+    pushBadge.className = 'gd-settings-badge gd-badge-neutral';
+    pushBadge.textContent = 'Browser Unsupported';
+  } else if (props.pushStatus.permission === 'denied') {
+    pushBadge.className = 'gd-settings-badge gd-badge-danger';
+    pushBadge.textContent = 'Permission Blocked';
+  } else if (props.pushStatus.isSubscribed) {
+    pushBadge.className = 'gd-settings-badge gd-badge-active';
+    pushBadge.textContent = 'Active (Receiving Alerts)';
+  } else {
+    pushBadge.className = 'gd-settings-badge gd-badge-neutral';
+    pushBadge.textContent = 'Inactive';
+  }
+
+  pushHeader.appendChild(pushTitle);
+  pushHeader.appendChild(pushBadge);
+  pushCard.appendChild(pushHeader);
+
+  const pushDesc = document.createElement('p');
+  pushDesc.className = 'gd-settings-desc';
+  pushDesc.textContent =
+    'Receive immediate, out-of-band lock-screen alerts on your mobile phone or desktop whenever your protected ward encounters a paused high-risk action, even when this browser tab is closed.';
+  pushCard.appendChild(pushDesc);
+
+  const pushGrid = document.createElement('div');
+  pushGrid.className = 'gd-settings-grid';
+
+  const addPushItem = (label: string, value: string, isMono = false, sub = '') => {
+    const item = document.createElement('div');
+    item.className = 'gd-settings-item';
+    const lbl = document.createElement('span');
+    lbl.className = 'gd-settings-label';
+    lbl.textContent = label;
+    const val = document.createElement('span');
+    val.className = `gd-settings-value ${isMono ? 'gd-mono' : ''}`;
+    val.textContent = value;
+    item.appendChild(lbl);
+    item.appendChild(val);
+    if (sub) {
+      const s = document.createElement('span');
+      s.className = 'gd-settings-subbadge';
+      s.textContent = sub;
+      item.appendChild(s);
+    }
+    pushGrid.appendChild(item);
+  };
+
+  addPushItem(
+    'Web Push Engine',
+    props.pushStatus?.supported ? 'VAPID / Service Worker' : 'Not Supported',
+    false,
+    props.pushStatus?.supported ? 'Standard W3C Push API' : 'Requires Modern Browser'
+  );
+  addPushItem(
+    'Notification Permission',
+    props.pushStatus?.permission ? props.pushStatus.permission.toUpperCase() : 'DEFAULT',
+    true
+  );
+  addPushItem(
+    'Alert Status',
+    props.pushStatus?.isSubscribed ? 'Subscribed' : 'Not Subscribed',
+    false,
+    props.pushStatus?.isSubscribed ? 'Background Dispatch' : 'Standby'
+  );
+  addPushItem(
+    'Separation of Duties',
+    'Zero-Knowledge',
+    false,
+    'Encrypted / No Sensitive PII'
+  );
+
+  pushCard.appendChild(pushGrid);
+
+  if (props.pushActionMessage) {
+    const msgBanner = document.createElement('div');
+    msgBanner.className = `gd-action-message gd-message-${props.pushActionMessage.type}`;
+    msgBanner.id = 'gd-push-action-message';
+    msgBanner.setAttribute('role', 'status');
+    msgBanner.style.marginTop = '16px';
+    msgBanner.style.padding = '10px 14px';
+    msgBanner.style.borderRadius = '6px';
+    msgBanner.style.fontSize = '13px';
+    msgBanner.style.fontWeight = '500';
+    if (props.pushActionMessage.type === 'success') {
+      msgBanner.style.backgroundColor = 'rgba(74, 107, 66, 0.12)';
+      msgBanner.style.color = '#385332';
+      msgBanner.style.border = '1px solid rgba(74, 107, 66, 0.3)';
+    } else if (props.pushActionMessage.type === 'error') {
+      msgBanner.style.backgroundColor = 'rgba(185, 56, 56, 0.12)';
+      msgBanner.style.color = '#B93838';
+      msgBanner.style.border = '1px solid rgba(185, 56, 56, 0.3)';
+    } else {
+      msgBanner.style.backgroundColor = 'rgba(39, 49, 33, 0.08)';
+      msgBanner.style.color = 'var(--gd-deep-olive, #273121)';
+      msgBanner.style.border = '1px solid rgba(39, 49, 33, 0.18)';
+    }
+    msgBanner.textContent = props.pushActionMessage.text;
+    pushCard.appendChild(msgBanner);
+  }
+
+  const pushActions = document.createElement('div');
+  pushActions.className = 'gd-settings-action-row';
+  pushActions.style.display = 'flex';
+  pushActions.style.gap = '14px';
+  pushActions.style.alignItems = 'center';
+  pushActions.style.marginTop = '18px';
+  pushActions.style.flexWrap = 'wrap';
+
+  if (!props.pushStatus?.supported) {
+    const unsuppNotice = document.createElement('span');
+    unsuppNotice.className = 'gd-settings-desc';
+    unsuppNotice.style.fontSize = '12.5px';
+    unsuppNotice.textContent = 'Push notifications are not supported in this browser environment.';
+    pushActions.appendChild(unsuppNotice);
+  } else if (props.pushStatus.permission === 'denied') {
+    const blockedNotice = document.createElement('span');
+    blockedNotice.className = 'gd-settings-desc';
+    blockedNotice.style.color = 'var(--gd-critical-primary, #B93838)';
+    blockedNotice.textContent = 'Notifications are blocked in browser settings. Please allow notifications for this site to receive emergency alerts.';
+    pushActions.appendChild(blockedNotice);
+  } else if (props.pushStatus.isSubscribed) {
+    const testBtn = document.createElement('button');
+    testBtn.type = 'button';
+    testBtn.className = 'gd-btn-submit-invite';
+    testBtn.id = 'gd-btn-test-push';
+    testBtn.style.backgroundColor = '#38462F';
+    testBtn.innerHTML = `
+      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;" aria-hidden="true">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span>${props.isSubscribingPush ? 'Sending...' : 'Send Test Lock-Screen Alert'}</span>
+    `;
+    testBtn.disabled = Boolean(props.isSubscribingPush);
+    testBtn.addEventListener('click', () => {
+      props.onSendTestPush?.();
+    });
+    pushActions.appendChild(testBtn);
+
+    const unsubBtn = document.createElement('button');
+    unsubBtn.type = 'button';
+    unsubBtn.className = 'gd-btn-revoke';
+    unsubBtn.id = 'gd-btn-unsubscribe-push';
+    unsubBtn.textContent = 'Disable Notifications';
+    unsubBtn.disabled = Boolean(props.isSubscribingPush);
+    unsubBtn.addEventListener('click', () => {
+      props.onUnsubscribePush?.();
+    });
+    pushActions.appendChild(unsubBtn);
+  } else {
+    const subBtn = document.createElement('button');
+    subBtn.type = 'button';
+    subBtn.className = 'gd-btn-submit-invite';
+    subBtn.id = 'gd-btn-subscribe-push';
+    subBtn.innerHTML = `
+      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;" aria-hidden="true">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span>${props.isSubscribingPush ? 'Subscribing...' : 'Enable Device Push Notifications'}</span>
+    `;
+    subBtn.disabled = Boolean(props.isSubscribingPush);
+    subBtn.addEventListener('click', () => {
+      props.onSubscribePush?.();
+    });
+    pushActions.appendChild(subBtn);
+  }
+
+  pushCard.appendChild(pushActions);
+
+  const pushNotice = document.createElement('p');
+  pushNotice.className = 'gd-settings-notice';
+  pushNotice.textContent =
+    'Privacy & Out-of-Band Guarantee: Push notifications use RFC 8292 / VAPID cryptography. Alert payloads contain only safe high-level metadata (ward identifier, domain, action category) and strictly omit passwords, cookies, session credentials, or remote execution hooks.';
+  pushCard.appendChild(pushNotice);
+
+  section.appendChild(pushCard);
 
   // Card 3: Backend Connection & Runtime Environment
   const backendCard = document.createElement('div');
