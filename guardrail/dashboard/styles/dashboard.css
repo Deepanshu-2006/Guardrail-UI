@@ -11313,22 +11313,22 @@ article.gd-card-collapsed,
 }
 
 /* ====================================================================
-   UNAUTHENTICATED TOP NOTICE CAPSULE (QUIET ASSURANCE MINIMAL PILL)
+   UNAUTHENTICATED TOP NOTICE CAPSULE (QUIET ASSURANCE LIGHT PILL)
    ==================================================================== */
 .gd-unauth-header-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 5px 8px 5px 14px;
-  min-height: 40px;
+  padding: 6px 8px 6px 14px;
+  min-height: 48px;
   margin-bottom: 24px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(204, 214, 192, 0.7);
+  border: 1px solid rgba(204, 214, 192, 0.8);
   border-radius: 9999px;
-  box-shadow: 0 2px 8px rgba(39, 49, 33, 0.04), 0 1px 2px rgba(39, 49, 33, 0.02);
+  box-shadow: 0 2px 8px rgba(39, 49, 33, 0.05), 0 1px 3px rgba(39, 49, 33, 0.02);
   font-family: var(--gd-font-sans, 'DM Sans', sans-serif);
   animation: gdFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
@@ -11338,7 +11338,7 @@ article.gd-card-collapsed,
 .gd-unauth-banner-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   flex: 1;
 }
@@ -11347,39 +11347,18 @@ article.gd-card-collapsed,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 9px 3px 8px;
+  padding: 4px 10px;
   background: rgba(62, 86, 42, 0.08);
-  border: 1px solid rgba(62, 86, 42, 0.16);
+  border: 1px solid rgba(62, 86, 42, 0.18);
   border-radius: 9999px;
   font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #3E562A;
+  color: #273121;
   white-space: nowrap;
   flex-shrink: 0;
-}
-
-.gd-unauth-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #3E562A;
-  display: inline-block;
-  animation: gd-unauth-dot-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  flex-shrink: 0;
-}
-
-@keyframes gd-unauth-dot-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.8);
-  }
 }
 
 .gd-unauth-badge-icon {
@@ -11397,18 +11376,36 @@ article.gd-card-collapsed,
   height: 12px;
 }
 
-.gd-unauth-pill-divider {
+.gd-unauth-text-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.gd-unauth-title {
+  font-family: var(--gd-font-sans, 'DM Sans', sans-serif);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #273121;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.gd-unauth-divider {
   color: #8C9982;
-  font-size: 14px;
-  line-height: 1;
+  font-size: 13px;
   user-select: none;
   flex-shrink: 0;
 }
 
 .gd-unauth-pill-text {
-  font-size: 13px;
+  font-family: var(--gd-font-sans, 'DM Sans', sans-serif);
+  font-size: 13.5px;
   font-weight: 500;
-  color: #5A6553;
+  color: #55624E;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -11418,20 +11415,21 @@ article.gd-card-collapsed,
 .gd-unauth-banner-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 14px;
+  gap: 8px;
+  height: 35px;
+  padding: 0 18px;
   background: #273121;
   color: #FAF6ED;
   font-family: var(--gd-font-sans, 'DM Sans', sans-serif);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.005em;
   border: 1px solid #1E2719;
   border-radius: 9999px;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.16);
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   flex-shrink: 0;
   outline: none;
@@ -11440,12 +11438,12 @@ article.gd-card-collapsed,
 .gd-unauth-banner-btn:hover {
   background: #36442E;
   color: #FFFFFF;
-  transform: translateY(-0.5px);
-  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(39, 49, 33, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .gd-unauth-banner-btn:hover .gd-unauth-btn-arrow {
-  transform: translateX(2px);
+  transform: translateX(3px);
 }
 
 .gd-unauth-banner-btn:active {
@@ -11453,9 +11451,9 @@ article.gd-card-collapsed,
 }
 
 .gd-unauth-btn-arrow {
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1;
-  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .gd-btn-signin-action {

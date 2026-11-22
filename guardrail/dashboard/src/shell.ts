@@ -599,7 +599,7 @@ export class DashboardShell {
     this.mainContentEl.setAttribute('tabindex', '-1');
     this.mainContentEl.className = 'gd-content-container';
 
-    // If caretaker is not authenticated, render a sleek, minimal, creative sign-in capsule pill
+    // If caretaker is not authenticated, render a sleek, minimal, creative sign-in banner
     if (!this.state.contactProfile?.isAuthenticated) {
       const authBanner = document.createElement('div');
       authBanner.className = 'gd-unauth-header-banner';
@@ -612,10 +612,6 @@ export class DashboardShell {
       const badge = document.createElement('span');
       badge.className = 'gd-unauth-pill-badge';
 
-      const pulseDot = document.createElement('span');
-      pulseDot.className = 'gd-unauth-pulse-dot';
-      pulseDot.setAttribute('aria-hidden', 'true');
-
       const lockIcon = document.createElement('span');
       lockIcon.className = 'gd-unauth-badge-icon';
       lockIcon.setAttribute('aria-hidden', 'true');
@@ -624,22 +620,32 @@ export class DashboardShell {
       const badgeText = document.createElement('span');
       badgeText.textContent = 'Guest Mode';
 
-      badge.appendChild(pulseDot);
       badge.appendChild(lockIcon);
       badge.appendChild(badgeText);
 
+      const textWrap = document.createElement('div');
+      textWrap.className = 'gd-unauth-text-wrap';
+
+      const title = document.createElement('span');
+      title.className = 'gd-unauth-title';
+      title.textContent = 'Sign in required';
+
       const divider = document.createElement('span');
-      divider.className = 'gd-unauth-pill-divider';
+      divider.className = 'gd-unauth-divider';
       divider.setAttribute('aria-hidden', 'true');
       divider.textContent = '·';
 
       const message = document.createElement('span');
       message.className = 'gd-unauth-pill-text';
-      message.textContent = 'Sign in to connect with wards and review live approval requests';
+      message.textContent =
+        'Authenticate your account to connect with wards and review live approval requests';
+
+      textWrap.appendChild(title);
+      textWrap.appendChild(divider);
+      textWrap.appendChild(message);
 
       bannerLeft.appendChild(badge);
-      bannerLeft.appendChild(divider);
-      bannerLeft.appendChild(message);
+      bannerLeft.appendChild(textWrap);
 
       const signInBtn = document.createElement('button');
       signInBtn.type = 'button';
