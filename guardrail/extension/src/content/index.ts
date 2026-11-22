@@ -42,7 +42,12 @@ import {
   CancellationResult,
   defaultContinuationManager,
   defaultInterceptionController,
+  defaultRecoveryManager,
 } from '../interception/index.js';
+import {
+  mountRecoveryBanner,
+  dismissRecoveryBanner,
+} from '../ui/recovery-banner.js';
 import {
   createApprovalRequestIntent,
   createStagingActionContext,
@@ -224,6 +229,7 @@ function handleAuthoritativeApprovalResolution(
   if (status === ApprovalStatus.APPROVED) {
     activeApprovalSession.status = 'approved';
     const approver = request?.decision?.decidedBy || 'Trusted Contact';
+    void defaultRecoveryManager.updateStagedActionStatus(action.id, 'approved', approver);
 
     updatePendingApprovalPill('approved');
     updateWaitingScreenStatus('approved', {
@@ -235,6 +241,7 @@ function handleAuthoritativeApprovalResolution(
           return;
         }
         activeApprovalSession.hasExecutedContinuation = true;
+        void defaultRecoveryManager.clearRecovery(action.id);
 
         stopWarningStatusPolling();
         dismissPendingApprovalPill();
@@ -257,6 +264,7 @@ function handleAuthoritativeApprovalResolution(
     stopWarningStatusPolling();
   } else if (status === ApprovalStatus.REJECTED) {
     activeApprovalSession.status = 'rejected';
+    void defaultRecoveryManager.clearRecovery(action.id);
     const reason =
       request?.decision?.decisionReason ||
       (request?.decision as any)?.reason ||
@@ -288,6 +296,7 @@ function handleAuthoritativeApprovalResolution(
     stopWarningStatusPolling();
   } else if (status === ApprovalStatus.CANCELLED) {
     activeApprovalSession.status = 'cancelled';
+    void defaultRecoveryManager.clearRecovery(action.id);
     stopWarningStatusPolling();
     dismissPendingApprovalPill();
 
@@ -301,6 +310,7 @@ function handleAuthoritativeApprovalResolution(
     });
   } else if (status === ApprovalStatus.EXPIRED) {
     activeApprovalSession.status = 'expired';
+    void defaultRecoveryManager.clearRecovery(action.id);
     stopWarningStatusPolling();
     dismissPendingApprovalPill();
 
@@ -471,6 +481,7 @@ function handleModalCancel(action: GuardrailAction): void {
   console.log(`[Guardrail UI] Handling modal cancellation for action: ${action.id}`);
   stopWarningStatusPolling();
   dismissPendingApprovalPill();
+  void defaultRecoveryManager.clearRecovery(action.id);
 
   // 1. Safely cancel held action in continuation manager and interception controller
   try {
@@ -540,6 +551,7 @@ async function handleCancelApproval(action: GuardrailAction): Promise<void> {
   if (activeApprovalSession) {
     activeApprovalSession.status = 'cancelled';
   }
+  void defaultRecoveryManager.clearRecovery(action.id);
 
   // 1. Dispatch explicit cancellation message to background service worker
   if (reqId) {
@@ -652,6 +664,25 @@ function presentWarningWithApproval(
                 submittedAt: activeApprovalSession?.submittedAt,
               });
               startWaitingStatusPolling(reqId, action);
+
+              const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+              const domain = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : '';
+              const pageUrl = typeof window !== 'undefined' && window.location?.href ? window.location.href : '';
+              const destUrl = action.element?.targetUrl || action.element?.formAction || pageUrl;
+
+              void defaultRecoveryManager.saveStagedAction({
+                actionId: action.id,
+                requestId: reqId,
+                origin,
+                url: pageUrl,
+                domain,
+                description: latestStagingContext?.description || action.description || 'Action awaiting caretaker review',
+                category: action.category,
+                riskLevel: risk.level,
+                status: 'pending',
+                destinationUrl: destUrl,
+                elementId: action.element?.id,
+              });
             }
           })
           .catch((err) => {
@@ -1893,6 +1924,156 @@ function initResolutionControls(): void {
 }
 
 /**
+ * Cold Browser Restart Staged State Recovery:
+ * On tab load or browser launch, inspects if a previously held/approved action
+ * belongs to this origin and restores the pending confirmation state or surfaces
+ * the approved recovery notification banner: "You have an approved action waiting: Continue on [Domain]".
+ */
+export async function checkColdRestartRecovery(): Promise<void> {
+  if (typeof window === 'undefined' || !window.location?.origin) return;
+  if (isDashboardOrInternalPage()) return;
+
+  const currentOrigin = window.location.origin;
+  try {
+    const record = await defaultRecoveryManager.getActiveRecovery(currentOrigin);
+    if (!record) return;
+
+    if (record.status === 'approved') {
+      mountRecoveryBanner({
+        record,
+        onReviewAndContinue: (rec) => {
+          dismissRecoveryBanner();
+
+          const recoveredAction: GuardrailAction = {
+            id: rec.actionId,
+            type: ActionType.CLICK,
+            category: rec.category,
+            description: rec.description,
+            timestamp: rec.submittedAt,
+            page: { url: rec.url, origin: rec.origin, hostname: rec.domain },
+            element: rec.destinationUrl ? { targetUrl: rec.destinationUrl, id: rec.elementId } : undefined,
+          };
+
+          activeApprovalSession = {
+            action: recoveredAction,
+            risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
+            decision: { response: ResponseAction.WARN, reasons: [] },
+            requestId: rec.requestId,
+            status: 'approved',
+            hasExecutedContinuation: false,
+            submittedAt: rec.submittedAt,
+          };
+
+          showWarningModal({
+            action: recoveredAction,
+            risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
+            decision: { response: ResponseAction.WARN, reasons: [] },
+            onCloseWaiting: () => {
+              dismissWarningModal();
+            },
+            onCancelRequest: () => {
+              void defaultRecoveryManager.clearRecovery(rec.actionId);
+              dismissWarningModal();
+            },
+          });
+
+          updateWaitingScreenStatus('approved', {
+            requestId: rec.requestId,
+            approver: rec.approver || 'Trusted Contact',
+            submittedAt: rec.submittedAt,
+            onProceed: () => {
+              void defaultRecoveryManager.clearRecovery(rec.actionId);
+              dismissWarningModal();
+              if (rec.destinationUrl && typeof window !== 'undefined') {
+                window.location.href = rec.destinationUrl;
+              }
+            },
+          });
+        },
+        onDismiss: (rec) => {
+          dismissRecoveryBanner();
+          void defaultRecoveryManager.clearRecovery(rec.actionId);
+        },
+      });
+    } else if (record.status === 'pending') {
+      showPendingApprovalPill({
+        domain: record.domain,
+        requestId: record.requestId,
+        onOpen: () => {
+          const recoveredAction: GuardrailAction = {
+            id: record.actionId,
+            type: ActionType.CLICK,
+            category: record.category,
+            description: record.description,
+            timestamp: record.submittedAt,
+            page: { url: record.url, origin: record.origin, hostname: record.domain },
+            element: record.destinationUrl ? { targetUrl: record.destinationUrl, id: record.elementId } : undefined,
+          };
+
+          activeApprovalSession = {
+            action: recoveredAction,
+            risk: { level: record.riskLevel, score: 85, reasons: ['Action pending caretaker review'] },
+            decision: { response: ResponseAction.WARN, reasons: [] },
+            requestId: record.requestId,
+            status: 'pending',
+            hasExecutedContinuation: false,
+            submittedAt: record.submittedAt,
+          };
+
+          showWarningModal({
+            action: recoveredAction,
+            risk: { level: record.riskLevel, score: 85, reasons: ['Action pending caretaker review'] },
+            decision: { response: ResponseAction.WARN, reasons: [] },
+            onCloseWaiting: () => {
+              dismissWarningModal();
+            },
+            onCancelRequest: () => {
+              void defaultRecoveryManager.clearRecovery(record.actionId);
+              dismissWarningModal();
+            },
+          });
+
+          updateWaitingScreenStatus('pending', {
+            requestId: record.requestId,
+            submittedAt: record.submittedAt,
+          });
+
+          startWaitingStatusPolling(record.requestId, recoveredAction);
+        },
+        onCancel: () => {
+          void defaultRecoveryManager.clearRecovery(record.actionId);
+          dismissPendingApprovalPill();
+        },
+      });
+
+      // Poll background immediately for status
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          { type: 'GUARDRAIL_GET_APPROVAL_STATUS', requestId: record.requestId },
+          (res: any) => {
+            if (res?.success && res.status === 'APPROVED') {
+              void defaultRecoveryManager.updateStagedActionStatus(
+                record.actionId,
+                'approved',
+                res.approver || 'Trusted Contact'
+              ).then(() => {
+                dismissPendingApprovalPill();
+                checkColdRestartRecovery();
+              });
+            } else if (res?.status === 'REJECTED' || res?.status === 'CANCELLED' || res?.status === 'EXPIRED') {
+              void defaultRecoveryManager.clearRecovery(record.actionId);
+              dismissPendingApprovalPill();
+            }
+          }
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('[Guardrail Recovery] Cold restart recovery check error:', err);
+  }
+}
+
+/**
  * Guards against duplicate content script initialization within the same execution context.
  */
 function init(): void {
@@ -1906,6 +2087,7 @@ function init(): void {
     document.documentElement.setAttribute('data-guardrail-extension-active', 'true');
   }
   bootstrap();
+  void checkColdRestartRecovery();
 }
 
 // Ensure initialization occurs after the DOM tree is available in browser contexts

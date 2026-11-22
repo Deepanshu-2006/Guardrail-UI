@@ -105,7 +105,7 @@ High-Risk Action ──► Synchronous Staging ──► Request Approval ──
 * **Cryptographic Continuation Token:** `consume-continuation` prevents replay or hijacking of approved actions ([api.ts](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/extension/src/approval/api.ts#L430-L510)).
 
 #### What Is Left
-* [ ] **Task 4.1 — Cold Browser Restart Staged State Recovery:** Add persistent indexedDB/localStorage serialization so if Ward A closes Chrome while an action is pending approval, reopening the browser restores the pending confirmation state.
+* [x] **Task 4.1 — Cold Browser Restart Staged State Recovery:** Persistent storage serialization (`chrome.storage.local` with fallback to `window.localStorage` and in-memory) so if Ward A closes Chrome while an action is pending approval or approved, reopening the browser to the same origin restores the pending/approved state. Implemented `StagedActionRecoveryManager`, isolated Shadow DOM `RecoveryNotificationBanner` with exact copy `"You have an approved action waiting: Continue on [Domain]"`, strict origin isolation, anti-replay purge invariant, TTL auto-pruning, zero-knowledge serialization (zero passwords, CVVs, cookies, or auth headers), and automated test suite (30/30 tests passing).
 * [ ] **Task 4.2 — Native Mobile PWA / Companion Wrapper:** Configure dashboard as an installable Progressive Web App (PWA) with native biometric prompts (Face ID / Touch ID) for rapid one-tap approvals on mobile devices.
 
 ---

@@ -18,6 +18,7 @@
     "test:phase5": "esbuild src/response/test-phase5-complete-policy-integration.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-phase5-complete-policy-integration.js && node dist/test-phase5-complete-policy-integration.js",
     "test:risk": "esbuild src/risk/test-risk-engine.ts --bundle --format=esm --target=es2022 --outfile=dist/test-risk-engine.js && node dist/test-risk-engine.js",
     "test:response": "esbuild src/response/test-response-pipeline.ts --bundle --format=esm --target=es2022 --outfile=dist/test-response-pipeline.js && node dist/test-response-pipeline.js",
+    "test:recovery": "esbuild src/interception/test-staged-action-recovery.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-staged-action-recovery.js && node dist/test-staged-action-recovery.js",
     "test:interception": "esbuild src/interception/test-interception-model.ts --bundle --format=esm --target=es2022 --outfile=dist/test-interception-model.js && node dist/test-interception-model.js",
     "test:controller": "esbuild src/interception/test-interception-controller.ts --bundle --format=esm --target=es2022 --outfile=dist/test-interception-controller.js && node dist/test-interception-controller.js",
     "test:proof": "esbuild src/interception/test-action-interception.ts --bundle --format=esm --target=es2022 --outfile=dist/test-action-interception.js && node dist/test-action-interception.js",
