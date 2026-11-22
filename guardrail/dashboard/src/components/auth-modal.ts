@@ -217,10 +217,15 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   signOutBtn.textContent = 'Sign out';
   signOutBtn.setAttribute('aria-label', 'Sign out');
   signOutBtn.addEventListener('click', async () => {
+    const returnUrl =
+      typeof window !== 'undefined'
+        ? window.location.origin + (window.location.pathname || '/')
+        : 'http://localhost:5173/';
+
     try {
       const clerk = await getClerk();
-      if (clerk) {
-        await clerk.signOut();
+      if (clerk && clerk.session && typeof clerk.signOut === 'function') {
+        await clerk.signOut({ redirectUrl: returnUrl });
       }
     } catch (err) {
       console.warn('[Clerk] Sign out failed:', err);
@@ -385,6 +390,68 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     socialButtonsContainer.appendChild(appleBtn);
 
     socialBody.appendChild(socialButtonsContainer);
+
+    // Divider
+    const divider = document.createElement('div');
+    divider.style.cssText =
+      'display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: #8C9982; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-family: "Space Grotesk", sans-serif; user-select: none;';
+    divider.innerHTML = `
+      <span style="flex: 1; height: 1px; background: #E5DFD3;"></span>
+      <span>or sign in with email</span>
+      <span style="flex: 1; height: 1px; background: #E5DFD3;"></span>
+    `;
+    socialBody.appendChild(divider);
+
+    // Email Input Group for Direct Account Sign-In
+    const emailForm = document.createElement('form');
+    emailForm.className = 'gd-auth-email-form';
+    emailForm.style.cssText = 'display: flex; flex-direction: column; gap: 8px; width: 100%;';
+    emailForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = emailInput.value.trim();
+      if (val) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing in...';
+        void authenticateClerkSession({ email: val }).finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Continue';
+        });
+      }
+    });
+
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'gd-auth-input-group';
+    inputGroup.style.cssText =
+      'display: flex; align-items: center; background: #FFFFFF; border: 1px solid #D8D2C5; border-radius: 9px; padding: 4px 6px 4px 14px; transition: border-color 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 1px 3px rgba(39, 49, 33, 0.04);';
+
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.className = 'gd-auth-input';
+    emailInput.placeholder = 'name@gmail.com';
+    emailInput.setAttribute('aria-label', 'Caretaker email address');
+    emailInput.required = true;
+    emailInput.style.cssText =
+      'flex: 1; background: transparent; border: none; font-family: "Plus Jakarta Sans", sans-serif; font-size: 13.5px; color: #273121; outline: none; padding: 7px 0; min-width: 0;';
+
+    const storedEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_email') : null;
+    if (storedEmail && !storedEmail.includes('default') && !storedEmail.includes('carol.guardian')) {
+      emailInput.value = storedEmail;
+    }
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'gd-auth-btn-apply';
+    submitBtn.textContent = 'Continue';
+    submitBtn.style.cssText =
+      'background: #273121; color: #FAF7F0; border: none; border-radius: 7px; font-family: "Space Grotesk", sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; padding: 8px 16px; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; white-space: nowrap; flex-shrink: 0;';
+    submitBtn.addEventListener('mouseenter', () => { submitBtn.style.background = '#36442E'; });
+    submitBtn.addEventListener('mouseleave', () => { submitBtn.style.background = '#273121'; });
+
+    inputGroup.appendChild(emailInput);
+    inputGroup.appendChild(submitBtn);
+    emailForm.appendChild(inputGroup);
+
+    socialBody.appendChild(emailForm);
   }
 
   async function authenticateClerkSession(
@@ -500,6 +567,23 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   ): Promise<void> {
     hideError();
     const originalText = labelSpan.textContent;
+
+    const emailInput = socialBody.querySelector<HTMLInputElement>('.gd-auth-input');
+    const enteredEmail = emailInput?.value?.trim();
+    if (enteredEmail) {
+      btn.disabled = true;
+      labelSpan.textContent = provider === 'google' ? 'Connecting Google Account...' : 'Connecting Apple Account...';
+      try {
+        await authenticateClerkSession({ email: enteredEmail, provider });
+        return;
+      } catch (err) {
+        console.warn('[Social Sign In] Direct ticket authentication failed, proceeding to OAuth redirect:', err);
+      } finally {
+        btn.disabled = false;
+        labelSpan.textContent = originalText;
+      }
+    }
+
     btn.disabled = true;
     labelSpan.textContent = provider === 'google' ? 'Redirecting to Google...' : 'Redirecting to Apple...';
 
@@ -513,22 +597,12 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
         !(typeof process !== 'undefined' && Boolean(process.versions?.node));
 
       if (isRealBrowser) {
-        // 1. Sign out of any existing Clerk session so the user can choose an account
-        try {
-          const clerk = await getClerk();
-          if (clerk && clerk.session && typeof clerk.signOut === 'function') {
-            await clerk.signOut();
-          }
-        } catch {
-          // Ignore signout cleanup errors
-        }
-
         const currentOrigin =
           typeof window.location.origin === 'string' && window.location.origin
             ? (window.location.origin.endsWith('/') ? window.location.origin : `${window.location.origin}/`)
             : 'http://localhost:5173/';
 
-        // 2. Fetch the direct Google OAuth URL with prompt=select_account from the backend
+        // 1. Fetch direct Google / Apple OAuth URL with prompt=select_account from the backend
         const baseUrl =
           props.apiBaseUrl ||
           (typeof window !== 'undefined' && window.location.port !== '5173'

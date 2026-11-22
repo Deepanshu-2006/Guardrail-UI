@@ -268,15 +268,6 @@ if (typeof document !== 'undefined') {
     });
     (globalThis as unknown as { __GUARDRAIL_SHELL__?: DashboardShell }).__GUARDRAIL_SHELL__ = shell;
 
-    // If caretaker is not signed in when opening dashboard, immediately prompt for sign-in
-    if (!initialProfile?.isAuthenticated && !isOAuthRedirect) {
-      setTimeout(() => {
-        if (!shell.getState().contactProfile?.isAuthenticated) {
-          shell.openAuthModal();
-        }
-      }, 150);
-    }
-
     // Verify token with backend asynchronously to hydrate authoritative identity
     if (storageToken) {
       fetch(`${envConfig.apiBaseUrl}/api/v1/auth/me`, {
@@ -436,6 +427,7 @@ if (typeof document !== 'undefined') {
 
           // Immediately render authoritative Caretaker profile card in the sidebar
           shell.setProfile(verifiedProfile);
+          shell.closeAuthModal();
 
           // Show connected modal only when explicitly requested
           if (typeof document !== 'undefined' && showPopup) {
@@ -531,8 +523,13 @@ if (typeof document !== 'undefined') {
         (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
         (clerk.client?.sessions && clerk.client.sessions.length > 0)
       );
-      if (initialActive && !isOAuthRedirect) {
+      if (initialActive) {
         await syncClerkSession(false);
+      } else if (!isOAuthRedirect) {
+        // Only prompt for sign in once Clerk has confirmed there is no active session
+        if (!shell.getState().contactProfile?.isAuthenticated) {
+          shell.openAuthModal();
+        }
       }
     }).catch((err) => {
       console.warn('[Clerk] Initialization error:', err);

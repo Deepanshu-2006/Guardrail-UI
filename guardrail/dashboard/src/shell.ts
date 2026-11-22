@@ -1680,6 +1680,7 @@ export class DashboardShell {
   public setProfile(profile: TrustedContactProfile | null): void {
     this.state.contactProfile = profile;
     if (profile?.isAuthenticated) {
+      this.closeAuthModal();
       this.isPollingHaltedDueToAuth = false;
       if (this.pollIntervalMs && this.pollIntervalMs > 0 && !this.pollTimer) {
         this.startPolling();
@@ -1689,6 +1690,17 @@ export class DashboardShell {
       this.isPollingHaltedDueToAuth = true;
     }
     this.render();
+  }
+
+  /**
+   * Closes the Caretaker Authentication & Identity dialog if open.
+   */
+  public closeAuthModal(): void {
+    if (typeof document === 'undefined') return;
+    const modal = document.getElementById('gd-auth-modal-root') || document.querySelector('.gd-auth-modal-backdrop');
+    if (modal) {
+      modal.remove();
+    }
   }
 
   /**
