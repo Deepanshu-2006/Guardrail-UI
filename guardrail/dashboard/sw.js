@@ -19,10 +19,11 @@ self.addEventListener('push', (event) => {
   }
 
   let payload = {
-    title: '🛡️ Action Approval Required',
+    title: 'Guardrail · Action Approval Required',
     body: 'A protected action requires your review on Guardrail.',
-    icon: '/icons/icon-128.png',
+    icon: '/icons/icon-192.png',
     badge: '/icons/icon-48.png',
+    image: '/icons/alert-preview.png',
     data: {
       url: '/#overview',
     },
@@ -36,19 +37,26 @@ self.addEventListener('push', (event) => {
 
   const notificationOptions = {
     body: payload.body,
-    icon: payload.icon || '/icons/icon-128.png',
+    icon: payload.icon || '/icons/icon-192.png',
     badge: payload.badge || '/icons/icon-48.png',
+    image: payload.image || '/icons/alert-preview.png',
     tag: payload.tag || 'guardrail-alert',
     data: payload.data || { url: '/#overview' },
-    actions: payload.actions || [
-      { action: 'review', title: 'Review & Decide' },
-    ],
     requireInteraction: true,
-    vibrate: [200, 100, 200],
   };
 
+  if (payload.actions && Array.isArray(payload.actions)) {
+    notificationOptions.actions = payload.actions;
+  }
+
   event.waitUntil(
-    self.registration.showNotification(payload.title, notificationOptions)
+    self.registration.showNotification(payload.title, notificationOptions).catch((err) => {
+      console.warn('[Guardrail SW] showNotification rich failed, retrying standard:', err);
+      return self.registration.showNotification(payload.title, {
+        body: payload.body,
+        icon: '/icons/icon-192.png',
+      });
+    })
   );
 });
 

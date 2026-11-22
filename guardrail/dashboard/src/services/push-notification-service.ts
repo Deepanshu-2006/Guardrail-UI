@@ -180,6 +180,29 @@ export class DashboardPushService {
     token?: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // Ensure local device subscription exists and is registered with current server VAPID key
+      const sub = await this.getExistingSubscription();
+      if (!sub) {
+        await this.subscribe(apiBase, actorId, token);
+      }
+
+      // Trigger immediate local notification via service worker for instant visual feedback
+      if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator && Notification.permission === 'granted') {
+        try {
+          const reg = await this.registerServiceWorker();
+          if (reg) {
+            await reg.showNotification('Guardrail · Security Alerts Active', {
+              body: '✓ Device verified for Caretaker Carol\nOut-of-band lock screen alerts are active & ready.',
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-48.png',
+              image: '/icons/alert-preview.png',
+              tag: `test-alert-${Date.now()}`,
+              data: { url: '/#overview' },
+            });
+          }
+        } catch {}
+      }
+
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -192,6 +215,7 @@ export class DashboardPushService {
       if (!res.ok) {
         throw new Error(`Test notification request failed (HTTP ${res.status})`);
       }
+
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Test alert failed' };

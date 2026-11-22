@@ -48,6 +48,7 @@ export interface PushNotificationPayload {
   readonly body: string;
   readonly icon?: string;
   readonly badge?: string;
+  readonly image?: string;
   readonly tag?: string;
   readonly data?: Record<string, unknown>;
   readonly actions?: readonly { readonly action: string; readonly title: string }[];
@@ -82,7 +83,9 @@ export class PushNotificationService {
     this.contactRegistry = options.contactRegistry;
     this.dashboardUrl = options.dashboardUrl?.replace(/\/+$/, '') || 'http://localhost:5173';
 
-    // 1. Resolve or dynamically generate VAPID keys
+    this.initSchema();
+
+    // 1. Resolve or dynamically generate & persist VAPID keys
     const envPub = options.vapidPublicKey || process.env.GUARDRAIL_VAPID_PUBLIC_KEY;
     const envPriv = options.vapidPrivateKey || process.env.GUARDRAIL_VAPID_PRIVATE_KEY;
     const envSub = options.vapidSubject || process.env.GUARDRAIL_VAPID_SUBJECT || 'mailto:support@guardrail.app';
@@ -92,11 +95,31 @@ export class PushNotificationService {
       this.vapidPrivateKey = envPriv.trim();
       this.vapidSubject = envSub.trim();
     } else {
-      // Auto-generate for dev & testing environments
-      const generated = webpush.generateVAPIDKeys();
-      this.vapidPublicKey = generated.publicKey;
-      this.vapidPrivateKey = generated.privateKey;
-      this.vapidSubject = envSub.trim();
+      // Check SQLite for existing persistent VAPID keys to avoid invalidating client subscriptions across restarts
+      let storedPub: { value: string } | undefined;
+      let storedPriv: { value: string } | undefined;
+      try {
+        const getMeta = this.db.prepare('SELECT value FROM guardrail_server_metadata WHERE key = ?');
+        storedPub = getMeta.get('vapid_public_key') as { value: string } | undefined;
+        storedPriv = getMeta.get('vapid_private_key') as { value: string } | undefined;
+      } catch {}
+
+      if (storedPub?.value && storedPriv?.value) {
+        this.vapidPublicKey = storedPub.value;
+        this.vapidPrivateKey = storedPriv.value;
+        this.vapidSubject = envSub.trim();
+      } else {
+        const generated = webpush.generateVAPIDKeys();
+        this.vapidPublicKey = generated.publicKey;
+        this.vapidPrivateKey = generated.privateKey;
+        this.vapidSubject = envSub.trim();
+
+        try {
+          const insertMeta = this.db.prepare('INSERT OR REPLACE INTO guardrail_server_metadata (key, value) VALUES (?, ?)');
+          insertMeta.run('vapid_public_key', this.vapidPublicKey);
+          insertMeta.run('vapid_private_key', this.vapidPrivateKey);
+        } catch {}
+      }
     }
 
     try {
@@ -104,15 +127,17 @@ export class PushNotificationService {
     } catch (err) {
       console.warn('[PushNotificationService] Failed to initialize webpush VAPID details:', err);
     }
-
-    this.initSchema();
   }
 
   /**
-   * Initializes SQLite schema for persistent push notification subscriptions.
+   * Initializes SQLite schema for persistent push notification subscriptions and server metadata.
    */
   private initSchema(): void {
     this.db.exec(`
+      CREATE TABLE IF NOT EXISTS guardrail_server_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS guardrail_push_subscriptions (
         id TEXT PRIMARY KEY,
         actor_id TEXT NOT NULL,
@@ -233,9 +258,10 @@ export class PushNotificationService {
       });
       return { success: true };
     } catch (err: any) {
+      console.warn('[PushNotificationService] Push send error:', err?.message, 'body:', err?.body, 'status:', err?.statusCode);
       const statusCode = err?.statusCode;
-      if (statusCode === 410 || statusCode === 404) {
-        // Subscription is expired or invalid: prune from SQLite
+      if (statusCode === 410 || statusCode === 404 || statusCode === 403) {
+        // Subscription is expired, invalid, or VAPID key changed: prune from SQLite
         this.removeSubscription(subscription.endpoint);
         return { success: false, pruned: true, error: 'Subscription expired or unregistered' };
       }
@@ -286,11 +312,13 @@ export class PushNotificationService {
       domain = new URL(targetUrl).hostname;
     } catch {}
 
+    const wardName = requesterId === 'usr_alice' ? 'Alice' : requesterId;
     const payload: PushNotificationPayload = {
-      title: '🛡️ Action Approval Required',
-      body: `Ward ${requesterId === 'usr_alice' ? 'Alice' : requesterId} needs approval on ${domain}.`,
-      icon: `${this.dashboardUrl}/icons/icon-128.png`,
+      title: 'Guardrail · Action Approval Required',
+      body: `⚠️ ${wardName} held on ${domain}\n↳ High-risk action held in Staging Mode.\nTap to review risk context and decide.`,
+      icon: `${this.dashboardUrl}/icons/icon-192.png`,
       badge: `${this.dashboardUrl}/icons/icon-48.png`,
+      image: `${this.dashboardUrl}/icons/alert-preview.png`,
       tag: `guardrail-req-${event.requestId}`,
       data: {
         requestId: event.requestId,
@@ -333,16 +361,21 @@ export class PushNotificationService {
       return { attempted: 0, successful: 0, failed: 0, pruned: 0 };
     }
 
+    const caretakerName = actorId === 'tc_carol' ? 'Carol' : actorId;
     const payload: PushNotificationPayload = {
-      title: '🛡️ Guardrail Lock-Screen Alert Test',
-      body: 'Your device is successfully paired for instant out-of-band approvals.',
-      icon: `${this.dashboardUrl}/icons/icon-128.png`,
+      title: 'Guardrail · Security Alerts Active',
+      body: `✓ Device verified for Caretaker ${caretakerName}\nOut-of-band lock screen alerts are active & ready.`,
+      icon: `${this.dashboardUrl}/icons/icon-192.png`,
       badge: `${this.dashboardUrl}/icons/icon-48.png`,
+      image: `${this.dashboardUrl}/icons/alert-preview.png`,
       tag: `test-alert-${Date.now()}`,
       data: {
         url: `${this.dashboardUrl}/#overview`,
         timestamp: new Date().toISOString(),
       },
+      actions: [
+        { action: 'review', title: 'Open Dashboard' },
+      ],
     };
 
     let successful = 0;
