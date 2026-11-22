@@ -1689,6 +1689,35 @@ textarea:focus-visible,
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.05s both;
 }
 
+/* 4b. Push Notifications & Lock-Screen Alerts Card (Initial View Entrance) */
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-card-header .gd-section-title {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 2.15s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-card-header .gd-settings-badge {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 2.25s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-desc {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.35s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.45s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.55s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.65s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-action-row {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.75s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-action-row button svg {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 2.82s both;
+}
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-notice {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.90s both;
+}
+
 /* -----------------------------------------------------------------------------
    Settings View: Scroll-Triggered Reveal for Bottom Sections
    ----------------------------------------------------------------------------- */
@@ -1714,6 +1743,35 @@ textarea:focus-visible,
 /* 6. Protection Policy History & Transparency Card (when scrolled to) */
 #gd-card-policy-history.is-revealed {
   animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+
+/* 6b. Push Notifications & Lock-Screen Alerts Card (when scrolled to) */
+#gd-card-push-notifications.is-revealed .gd-settings-card-header .gd-section-title {
+  animation: gd-render-in 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-card-header .gd-settings-badge {
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-desc {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-action-row {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-action-row button svg {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-notice {
+  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both;
 }
 
 /* 7. Backend Connection & Synchronization Card (when scrolled to) */
@@ -8778,6 +8836,64 @@ article.gd-card-collapsed,
   padding-bottom: 36px;
   margin-bottom: 36px;
   border-bottom: 1px solid var(--gd-border-subtle, rgba(39, 49, 33, 0.08));
+}
+
+/* Push Notifications Card Refined Spacing & Button Aesthetics */
+#gd-card-push-notifications .gd-settings-desc {
+  margin-top: -8px;
+  margin-bottom: 24px;
+}
+
+#gd-card-push-notifications .gd-settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 36px;
+  margin-bottom: 24px;
+}
+
+#gd-card-push-notifications .gd-btn-test-push,
+#gd-card-push-notifications .gd-btn-subscribe-push {
+  background-color: var(--gd-deep-olive, #273121) !important;
+  color: var(--gd-sidebar-primary, #EDE6D6) !important;
+  border: 1px solid var(--gd-deep-olive, #273121) !important;
+  border-radius: 6px !important;
+  padding: 9px 18px !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.12) !important;
+}
+
+#gd-card-push-notifications .gd-btn-test-push:hover,
+#gd-card-push-notifications .gd-btn-subscribe-push:hover {
+  background-color: #38462F !important;
+  border-color: #38462F !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(39, 49, 33, 0.18) !important;
+}
+
+#gd-card-push-notifications .gd-btn-unsubscribe-push {
+  background: transparent !important;
+  color: var(--gd-text-secondary, #6E7569) !important;
+  border: 1px solid var(--gd-border-subtle, rgba(39, 49, 33, 0.18)) !important;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  text-decoration: none !important;
+}
+
+#gd-card-push-notifications .gd-btn-unsubscribe-push:hover {
+  color: var(--gd-critical-primary, #B93838) !important;
+  border-color: rgba(185, 56, 56, 0.35) !important;
+  background: rgba(185, 56, 56, 0.04) !important;
 }
 
 .gd-settings-card:last-child,

@@ -488,13 +488,13 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const pushDesc = document.createElement('p');
   pushDesc.className = 'gd-settings-desc';
   pushDesc.textContent =
-    'Receive immediate, out-of-band lock-screen alerts on your mobile phone or desktop whenever your protected ward encounters a paused high-risk action, even when this browser tab is closed.';
+    'Instant out-of-band lock-screen alerts whenever a high-risk action is held for review, even when this tab is closed.';
   pushCard.appendChild(pushDesc);
 
   const pushGrid = document.createElement('div');
   pushGrid.className = 'gd-settings-grid';
 
-  const addPushItem = (label: string, value: string, isMono = false, sub = '') => {
+  const addPushItem = (label: string, value: string, isMono = false) => {
     const item = document.createElement('div');
     item.className = 'gd-settings-item';
     const lbl = document.createElement('span');
@@ -505,37 +505,24 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     val.textContent = value;
     item.appendChild(lbl);
     item.appendChild(val);
-    if (sub) {
-      const s = document.createElement('span');
-      s.className = 'gd-settings-subbadge';
-      s.textContent = sub;
-      item.appendChild(s);
-    }
     pushGrid.appendChild(item);
   };
 
   addPushItem(
-    'Web Push Engine',
-    props.pushStatus?.supported ? 'VAPID / Service Worker' : 'Not Supported',
-    false,
-    props.pushStatus?.supported ? 'Standard W3C Push API' : 'Requires Modern Browser'
+    'Delivery Protocol',
+    props.pushStatus?.supported ? 'W3C Web Push (VAPID)' : 'Unsupported Browser'
   );
   addPushItem(
-    'Notification Permission',
-    props.pushStatus?.permission ? props.pushStatus.permission.toUpperCase() : 'DEFAULT',
-    true
+    'Alert Route',
+    props.pushStatus?.isSubscribed
+      ? 'Active · Lock Screen'
+      : props.pushStatus?.permission === 'denied'
+      ? 'Blocked in Browser'
+      : 'Standby / Unsubscribed'
   );
   addPushItem(
-    'Alert Status',
-    props.pushStatus?.isSubscribed ? 'Subscribed' : 'Not Subscribed',
-    false,
-    props.pushStatus?.isSubscribed ? 'Background Dispatch' : 'Standby'
-  );
-  addPushItem(
-    'Separation of Duties',
-    'Zero-Knowledge',
-    false,
-    'Encrypted / No Sensitive PII'
+    'Privacy Boundary',
+    'Zero-Knowledge (No PII)'
   );
 
   pushCard.appendChild(pushGrid);
@@ -569,11 +556,6 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   const pushActions = document.createElement('div');
   pushActions.className = 'gd-settings-action-row';
-  pushActions.style.display = 'flex';
-  pushActions.style.gap = '14px';
-  pushActions.style.alignItems = 'center';
-  pushActions.style.marginTop = '18px';
-  pushActions.style.flexWrap = 'wrap';
 
   if (!props.pushStatus?.supported) {
     const unsuppNotice = document.createElement('span');
@@ -590,11 +572,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   } else if (props.pushStatus.isSubscribed) {
     const testBtn = document.createElement('button');
     testBtn.type = 'button';
-    testBtn.className = 'gd-btn-submit-invite';
+    testBtn.className = 'gd-btn-test-push gd-btn-submit-invite';
     testBtn.id = 'gd-btn-test-push';
-    testBtn.style.backgroundColor = '#38462F';
     testBtn.innerHTML = `
-      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;" aria-hidden="true">
+      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
       </svg>
@@ -608,7 +589,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     const unsubBtn = document.createElement('button');
     unsubBtn.type = 'button';
-    unsubBtn.className = 'gd-btn-revoke';
+    unsubBtn.className = 'gd-btn-unsubscribe-push gd-btn-revoke';
     unsubBtn.id = 'gd-btn-unsubscribe-push';
     unsubBtn.textContent = 'Disable Notifications';
     unsubBtn.disabled = Boolean(props.isSubscribingPush);
@@ -619,10 +600,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   } else {
     const subBtn = document.createElement('button');
     subBtn.type = 'button';
-    subBtn.className = 'gd-btn-submit-invite';
+    subBtn.className = 'gd-btn-subscribe-push gd-btn-submit-invite';
     subBtn.id = 'gd-btn-subscribe-push';
     subBtn.innerHTML = `
-      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;" aria-hidden="true">
+      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
       </svg>
@@ -640,7 +621,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const pushNotice = document.createElement('p');
   pushNotice.className = 'gd-settings-notice';
   pushNotice.textContent =
-    'Privacy & Out-of-Band Guarantee: Push notifications use RFC 8292 / VAPID cryptography. Alert payloads contain only safe high-level metadata (ward identifier, domain, action category) and strictly omit passwords, cookies, session credentials, or remote execution hooks.';
+    'Zero-Knowledge Guarantee: Alerts use RFC 8292 / VAPID cryptography. Payloads contain only domain metadata, strictly omitting authentication secrets, cookies, and tokens.';
   pushCard.appendChild(pushNotice);
 
   section.appendChild(pushCard);
