@@ -54,6 +54,22 @@ declare global {
   }
 }
 
+/**
+ * Returns a human-friendly display name from an explicit name or an email address.
+ */
+export function formatDisplayName(name?: string | null, email?: string | null): string {
+  if (name && name.trim()) return name.trim();
+  if (email && email.trim()) {
+    const localPart = email.split('@')[0];
+    return localPart
+      .split(/[._-]/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return 'Designated Caretaker';
+}
+
 function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedContactProfile | null {
   try {
     const parts = token.split('.');
@@ -77,7 +93,7 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
       payload.preferred_username ||
       payload.name ||
       fallbackEmail ||
-      (actorId.includes('3MGvG7Te') ? 'deepanshukhatri20061972@gmail.com' : undefined);
+      undefined;
     
     const isDefaultAvatar = (url?: string | null): boolean => {
       if (!url) return true;
@@ -104,7 +120,7 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
       undefined;
 
     const avatarUrl = rawAvatar && !isDefaultAvatar(rawAvatar) ? rawAvatar : undefined;
-    const fullName = payload.name || payload.full_name || 'Deepanshu Khatri';
+    const fullName = payload.name || payload.full_name || formatDisplayName(null, email);
     return {
       actorId,
       role,
@@ -199,47 +215,21 @@ if (typeof document !== 'undefined') {
       ? localStorage.getItem('guardrail_assigned_ward_id') || undefined
       : undefined;
 
-    // Authoritative Caretaker profile for the primary user
-    const caretakerVerifiedProfile: TrustedContactProfile = {
-      actorId: 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK',
-      role: 'TRUSTED_CONTACT',
-      email: storedEmail || 'deepanshukhatri20061972@gmail.com',
-      fullName: 'Deepanshu Khatri',
-      avatarUrl: storedAvatar || undefined,
-      imageUrl: storedAvatar || undefined,
-      isAuthenticated: true,
-      assignedWardId: storedWardId,
-      relationshipLabel: 'Designated Caretaker',
-    };
-
     if (isOAuthRedirect) {
-      // 1. Immediately present the animated connecting modal
+      // Present the animated connecting modal while OAuth callback resolves
       showConnectingModal();
-
-      // 2. Persist caretaker credentials in local storage
-      if (typeof localStorage !== 'undefined') {
-        if (!storageToken) {
-          localStorage.setItem('guardrail_auth_token', 'test-contact-token');
-        }
-        localStorage.setItem('guardrail_user_email', caretakerVerifiedProfile.email);
-      }
-
-      // 3. Immediately sanitize the browser URL so reloads won't loop
-      if (typeof window !== 'undefined') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
     }
 
-    const effectiveToken = storageToken || (isOAuthRedirect ? 'test-contact-token' : null);
+    const effectiveToken = storageToken || null;
     const tokenProvider: TokenProvider | undefined = globalProvider ?? (effectiveToken ? () => effectiveToken : undefined);
     const initialProfile: TrustedContactProfile | null = isOAuthRedirect
-      ? caretakerVerifiedProfile
+      ? null
       : effectiveToken
       ? (parseJwtProfile(effectiveToken, storedEmail) || (effectiveToken.startsWith('test-') ? {
           actorId: effectiveToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
           role: effectiveToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
-          email: storedEmail || (effectiveToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'deepanshukhatri20061972@gmail.com'),
-          fullName: 'Deepanshu Khatri',
+          email: storedEmail || (effectiveToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'carol.guardian@gmail.com'),
+          fullName: effectiveToken === 'test-ward-token' ? 'Alice Ward' : 'Carol Guardian',
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
@@ -248,8 +238,8 @@ if (typeof document !== 'undefined') {
         } : {
           actorId: 'tc_reviewer',
           role: 'TRUSTED_CONTACT',
-          email: storedEmail || 'deepanshukhatri20061972@gmail.com',
-          fullName: 'Deepanshu Khatri',
+          email: storedEmail || undefined,
+          fullName: storedEmail ? formatDisplayName(null, storedEmail) : 'Designated Caretaker',
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
@@ -278,14 +268,6 @@ if (typeof document !== 'undefined') {
     });
     (globalThis as unknown as { __GUARDRAIL_SHELL__?: DashboardShell }).__GUARDRAIL_SHELL__ = shell;
 
-    // If OAuth redirect, ensure shell immediately reflects verified profile in sidebar and animate loader to tick after ~2 seconds
-    if (isOAuthRedirect) {
-      shell.setProfile(caretakerVerifiedProfile);
-      setTimeout(() => {
-        showConnectedModal(caretakerVerifiedProfile);
-      }, 2200);
-    }
-
     // If caretaker is not signed in when opening dashboard, immediately prompt for sign-in
     if (!initialProfile?.isAuthenticated && !isOAuthRedirect) {
       setTimeout(() => {
@@ -301,13 +283,14 @@ if (typeof document !== 'undefined') {
         headers: { Authorization: `Bearer ${storageToken}` },
       })
         .then((res) => res.json())
-        .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
+        .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null; fullName?: string } }) => {
           if (payload.success && payload.data) {
+            const currentName = payload.data.fullName || formatDisplayName(null, payload.data.email);
             shell.setProfile({
               actorId: payload.data.actorId,
               role: payload.data.role,
               email: payload.data.email ?? undefined,
-              fullName: 'Deepanshu Khatri',
+              fullName: currentName,
               avatarUrl: storedAvatar || undefined,
               imageUrl: storedAvatar || undefined,
               isAuthenticated: true,
@@ -359,25 +342,17 @@ if (typeof document !== 'undefined') {
         let activeSession = clerk.session || clerk.client?.signedInSessions?.[0] || clerk.client?.sessions?.[0];
         let activeUser = clerk.user || activeSession?.user;
 
-        // If no active session yet, attempt ticket exchange via backend
-        if (!activeSession && typeof fetch !== 'undefined') {
-          try {
-            const ticketRes = await fetch(`${envConfig.apiBaseUrl}/api/v1/auth/clerk-ticket`, { method: 'POST' });
-            const ticketData = (await ticketRes.json()) as any;
-            if (ticketData?.success && ticketData.data?.ticket && clerk.client?.signIn) {
-              const res = await clerk.client.signIn.create({
-                strategy: 'ticket',
-                ticket: ticketData.data.ticket,
-              });
-              if (res?.createdSessionId && typeof clerk.setActive === 'function') {
-                await clerk.setActive({ session: res.createdSessionId });
-                activeSession = clerk.session || clerk.client?.signedInSessions?.[0];
-                activeUser = clerk.user || activeSession?.user;
-              }
+        if (!activeSession) {
+          if (wasAuthenticated) {
+            wasAuthenticated = false;
+            if (typeof localStorage !== 'undefined') {
+              localStorage.removeItem('guardrail_auth_token');
+              localStorage.removeItem('guardrail_user_email');
+              localStorage.removeItem('guardrail_user_avatar');
             }
-          } catch (tErr) {
-            console.warn('[Clerk] ticket fallback error:', tErr);
+            shell.setProfile(null);
           }
+          return;
         }
 
         try {
@@ -385,8 +360,8 @@ if (typeof document !== 'undefined') {
             activeSession && typeof activeSession.getToken === 'function'
               ? await activeSession.getToken()
               : typeof localStorage !== 'undefined'
-                ? localStorage.getItem('guardrail_auth_token') || 'test-contact-token'
-                : 'test-contact-token';
+                ? localStorage.getItem('guardrail_auth_token') || ''
+                : '';
 
           if (clerkToken && typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_auth_token', clerkToken);
@@ -399,7 +374,7 @@ if (typeof document !== 'undefined') {
             (Array.isArray(activeUser?.phoneNumbers) && activeUser.phoneNumbers[0]?.phoneNumber) ||
             activeUser?.username ||
             (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_email') : null) ||
-            'deepanshukhatri20061972@gmail.com';
+            '';
 
           if (userEmail && typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_user_email', userEmail);
@@ -420,7 +395,10 @@ if (typeof document !== 'undefined') {
           if (userAvatar && typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_user_avatar', userAvatar);
           }
-          const fullName = activeUser?.fullName || activeUser?.firstName || 'Deepanshu Khatri';
+          const fullName =
+            activeUser?.fullName ||
+            (activeUser?.firstName ? `${activeUser.firstName} ${activeUser.lastName || ''}`.trim() : null) ||
+            formatDisplayName(null, userEmail);
 
           wasAuthenticated = true;
 
@@ -430,7 +408,7 @@ if (typeof document !== 'undefined') {
           const verifiedProfile: TrustedContactProfile = {
             actorId,
             role: 'TRUSTED_CONTACT',
-            email: userEmail,
+            email: userEmail || undefined,
             fullName,
             avatarUrl: userAvatar,
             imageUrl: userAvatar,
@@ -479,14 +457,15 @@ if (typeof document !== 'undefined') {
               headers: { Authorization: `Bearer ${clerkToken}` },
             })
               .then((res) => res.json())
-              .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null } }) => {
+              .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null; fullName?: string } }) => {
                 if (payload.success && payload.data) {
                   const currentAvatar = (payload.data as any).imageUrl || userAvatar;
+                  const authoritativeName = payload.data.fullName || fullName;
                   shell.setProfile({
                     actorId: payload.data.actorId,
                     role: payload.data.role,
                     email: payload.data.email ?? userEmail,
-                    fullName,
+                    fullName: authoritativeName,
                     avatarUrl: currentAvatar,
                     imageUrl: currentAvatar,
                     isAuthenticated: true,
@@ -505,13 +484,16 @@ if (typeof document !== 'undefined') {
       if (isOAuthRedirect) {
         (async () => {
           try {
-            const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
-            const nonce = typeof window !== 'undefined' ? new URLSearchParams(search).get('rotating_token_nonce') : null;
-            if (nonce && clerk.client && typeof (clerk.client as any).reload === 'function') {
-              await Promise.race([(clerk.client as any).reload({ rotatingTokenNonce: nonce }), timeout(1500)]).catch(() => {});
+            if (typeof clerk.handleRedirectCallback === 'function') {
+              await clerk.handleRedirectCallback().catch((err) => console.warn('[Clerk] handleRedirectCallback:', err));
+            } else {
+              const nonce = typeof window !== 'undefined' ? new URLSearchParams(search).get('rotating_token_nonce') : null;
+              if (nonce && clerk.client && typeof (clerk.client as any).reload === 'function') {
+                await (clerk.client as any).reload({ rotatingTokenNonce: nonce }).catch(() => {});
+              }
             }
-            await Promise.race([ensureActiveSession(), timeout(1000)]).catch(() => {});
-            await Promise.race([syncClerkSession(false), timeout(1500)]).catch(() => {});
+            await ensureActiveSession();
+            await syncClerkSession(true);
           } catch (e) {
             console.warn('[Clerk] background OAuth sync error:', e);
           }

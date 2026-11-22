@@ -155,10 +155,11 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       request.on('data', (chunk) => { bodyStr += chunk; });
       request.on('end', async () => {
         try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
           const clerkSecretKey = process.env.CLERK_SECRET_KEY || 'sk_test_UsM9vlgvALJYmyRnEyXEy3F9kZrydfH1cUcB0rgkqO';
-          const defaultUserId = 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK';
+          const requestedUserId = body.userId || body.user_id;
 
-          if (clerkSecretKey) {
+          if (clerkSecretKey && requestedUserId) {
             try {
               const clerkRes = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
                 method: 'POST',
@@ -166,7 +167,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                   'Authorization': `Bearer ${clerkSecretKey}`,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ user_id: defaultUserId }),
+                body: JSON.stringify({ user_id: requestedUserId }),
               });
               const clerkData = (await clerkRes.json()) as any;
               if (clerkRes.ok && clerkData?.token) {
@@ -176,10 +177,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                     success: true,
                     data: {
                       ticket: clerkData.token,
-                      userId: defaultUserId,
-                      email: 'deepanshukhatri20061972@gmail.com',
-                      fullName: 'Deepanshu Khatri',
-                      imageUrl: null,
+                      userId: requestedUserId,
                     },
                   })
                 );
@@ -190,17 +188,11 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             }
           }
 
-          // Fallback ticket response
-          response.statusCode = 200;
+          response.statusCode = 400;
           response.end(
             JSON.stringify({
-              success: true,
-              data: {
-                fallbackToken: 'test-contact-token',
-                userId: defaultUserId,
-                email: 'deepanshukhatri20061972@gmail.com',
-                fullName: 'Deepanshu Khatri',
-              },
+              success: false,
+              error: { message: 'No specific user ID requested for ticket exchange' },
             })
           );
         } catch {
@@ -236,14 +228,33 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           });
 
           const clerkDomain = process.env.CLERK_FRONTEND_API || 'harmless-snipe-9044.clerk.accounts.dev';
-          const fapiRes = await fetch(`https://${clerkDomain}/v1/client/sign_ins`, {
+          let fapiRes = await fetch(`https://${clerkDomain}/v1/client/sign_ins`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: params.toString(),
           });
 
-          const fapiData = (await fapiRes.json()) as any;
-          const externalUrl = fapiData?.response?.first_factor_verification?.external_verification_redirect_url;
+          let fapiData = (await fapiRes.json()) as any;
+          let externalUrl = fapiData?.response?.first_factor_verification?.external_verification_redirect_url;
+
+          // If sign_in fails to yield redirect URL (e.g. brand new user), try sign_up
+          if (!externalUrl) {
+            try {
+              const signUpRes = await fetch(`https://${clerkDomain}/v1/client/sign_ups`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString(),
+              });
+              const signUpData = (await signUpRes.json()) as any;
+              const signUpUrl = signUpData?.response?.verifications?.external_account?.external_verification_redirect_url;
+              if (signUpUrl) {
+                externalUrl = signUpUrl;
+                fapiData = signUpData;
+              }
+            } catch {
+              // ignore sign up fallback error
+            }
+          }
 
           if (externalUrl) {
             response.statusCode = 200;
@@ -907,6 +918,19 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             }
           } catch {}
 
+          const displayName =
+            (authContext as any).fullName ||
+            (verifiedEmail
+              ? verifiedEmail
+                  .split('@')[0]
+                  .split(/[._-]/)
+                  .filter(Boolean)
+                  .map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+                  .join(' ')
+              : authContext.role === 'USER'
+              ? 'Ward User'
+              : 'Designated Caretaker');
+
           response.statusCode = 200;
           response.end(
             JSON.stringify({
@@ -915,8 +939,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 actorId: authContext.actorId,
                 role: authContext.role,
                 isAuthenticated: true,
-                email: verifiedEmail ?? (config.environment !== 'production' ? 'deepanshukhatri20061972@gmail.com' : null),
-                fullName: 'Deepanshu Khatri',
+                email: verifiedEmail ?? null,
+                fullName: displayName,
                 imageUrl: (authContext as any).picture || null,
                 environment: config.environment,
               },

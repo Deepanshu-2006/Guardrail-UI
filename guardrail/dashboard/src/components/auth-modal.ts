@@ -37,7 +37,21 @@ interface AuthMeResponse {
   role: string;
   isAuthenticated: boolean;
   email: string | null;
+  fullName?: string;
   environment: string;
+}
+
+function formatDisplayName(name?: string | null, email?: string | null): string {
+  if (name && name.trim()) return name.trim();
+  if (email && email.trim()) {
+    const localPart = email.split('@')[0];
+    return localPart
+      .split(/[._-]/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return 'Designated Caretaker';
 }
 
 
@@ -111,12 +125,13 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
   };
 
   const storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
+  const storedEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_email') : null;
   const photoUrl =
     props.profile?.avatarUrl ||
     props.profile?.imageUrl ||
     (storedAvatar && !isDefaultAvatar(storedAvatar) ? storedAvatar : null);
-  const currentEmail = props.profile?.email || 'deepanshukhatri20061972@gmail.com';
-  const fullName = props.profile?.fullName || 'Deepanshu Khatri';
+  const currentEmail = props.profile?.email || storedEmail || '';
+  const fullName = props.profile?.fullName || (currentEmail ? formatDisplayName(null, currentEmail) : 'Designated Caretaker');
   const roleLabel =
     props.profile?.relationshipLabel ||
     (props.profile?.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'Trusted Contact');
@@ -376,8 +391,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
     hint?: { email?: string; provider?: string },
     simulatedFallbackEmail?: string
   ): Promise<void> {
-    const defaultEmail = 'deepanshukhatri20061972@gmail.com';
-    const emailToUse = hint?.email || simulatedFallbackEmail || defaultEmail;
+    const emailToUse = hint?.email || simulatedFallbackEmail || '';
 
     try {
       const clerk = await getClerk();
@@ -389,47 +403,29 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
       let ticket = '';
 
-      // 1. Fetch sign_in_token from local server endpoint
-      try {
-        const ticketRes = await fetch(`${baseUrl}/api/v1/auth/clerk-ticket`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(hint || {}),
-        });
-        if (ticketRes.ok) {
-          const ticketBody = (await ticketRes.json()) as any;
-          if (ticketBody.success && ticketBody.data?.ticket) {
-            ticket = ticketBody.data.ticket;
-          }
-        }
-      } catch (ticketErr) {
-        console.warn('[Clerk Auth] Server ticket request failed:', ticketErr);
-      }
-
-      // 2. Direct Clerk API sign_in_token fallback
-      if (!ticket) {
+      // 1. Fetch sign_in_token from local server endpoint if explicit hint exists
+      if (hint?.email) {
         try {
-          const directRes = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
+          const ticketRes = await fetch(`${baseUrl}/api/v1/auth/clerk-ticket`, {
             method: 'POST',
             headers: {
-              'Authorization': 'Bearer sk_test_UsM9vlgvALJYmyRnEyXEy3F9kZrydfH1cUcB0rgkqO',
               'Content-Type': 'application/json',
+              'Accept': 'application/json',
             },
-            body: JSON.stringify({ user_id: 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK' }),
+            body: JSON.stringify(hint),
           });
-          if (directRes.ok) {
-            const directData = (await directRes.json()) as any;
-            if (directData?.token) {
-              ticket = directData.token;
+          if (ticketRes.ok) {
+            const ticketBody = (await ticketRes.json()) as any;
+            if (ticketBody.success && ticketBody.data?.ticket) {
+              ticket = ticketBody.data.ticket;
             }
           }
-        } catch {}
+        } catch (ticketErr) {
+          console.warn('[Clerk Auth] Server ticket request failed:', ticketErr);
+        }
       }
 
-      // 3. Consume ticket with loaded Clerk instance
+      // 2. Consume ticket with loaded Clerk instance
       if (clerk && ticket && clerk.client?.signIn && typeof clerk.client.signIn.create === 'function') {
         const signInRes = await clerk.client.signIn.create({
           strategy: 'ticket',
@@ -449,7 +445,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           const verifiedEmail =
             clerk.user?.primaryEmailAddress?.emailAddress ||
             emailToUse ||
-            'deepanshukhatri20061972@gmail.com';
+            '';
 
           let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
           if (storedAvatar && isDefaultAvatar(storedAvatar)) {
@@ -463,10 +459,10 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           const userAvatar = storedAvatar || (clerkImg && !isDefaultAvatar(clerkImg) ? clerkImg : undefined);
 
           const verifiedProfile: TrustedContactProfile = {
-            actorId: clerk.user?.id || 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK',
+            actorId: clerk.user?.id || 'tc_caretaker',
             role: 'TRUSTED_CONTACT',
-            email: verifiedEmail,
-            fullName: clerk.user?.fullName || 'Deepanshu Khatri',
+            email: verifiedEmail || undefined,
+            fullName: clerk.user?.fullName || formatDisplayName(null, verifiedEmail),
             avatarUrl: userAvatar,
             imageUrl: userAvatar,
             isAuthenticated: true,
@@ -475,7 +471,9 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
           if (typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_auth_token', clerkToken);
-            localStorage.setItem('guardrail_user_email', verifiedEmail);
+            if (verifiedEmail) {
+              localStorage.setItem('guardrail_user_email', verifiedEmail);
+            }
             if (userAvatar) {
               localStorage.setItem('guardrail_user_avatar', userAvatar);
             }
@@ -586,7 +584,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
 
       // Fallback for automated test runners / simulated environment
       await authenticateClerkSession(
-        { provider, email: provider === 'google' ? 'deepanshukhatri20061972@gmail.com' : undefined },
+        { provider, email: simulatedContact },
         simulatedContact
       );
     } catch (err) {
@@ -600,7 +598,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       if (!isRealBrowser) {
         try {
           await authenticateClerkSession(
-            { provider, email: provider === 'google' ? 'deepanshukhatri20061972@gmail.com' : undefined },
+            { provider, email: simulatedContact },
             simulatedContact
           );
         } catch {
@@ -647,7 +645,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           actorId: body.data.actorId,
           role: body.data.role,
           email: verifiedEmail,
-          fullName: 'Deepanshu Khatri',
+          fullName: (body.data as any).fullName || formatDisplayName(null, verifiedEmail),
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
@@ -683,7 +681,7 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
       actorId: 'tc_carol',
       role: 'TRUSTED_CONTACT',
       email: simulatedEmail || 'carol.guardian@gmail.com',
-      fullName: 'Deepanshu Khatri',
+      fullName: formatDisplayName(null, simulatedEmail || 'carol.guardian@gmail.com'),
       avatarUrl: storedAvatar || undefined,
       imageUrl: storedAvatar || undefined,
       isAuthenticated: true,
@@ -1038,12 +1036,12 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
     const nameEl = document.createElement('div');
     nameEl.style.cssText =
       'font-weight: 700; font-size: 16px; color: #273121; font-family: "Space Grotesk", sans-serif; letter-spacing: -0.01em; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-    nameEl.textContent = profile.fullName || 'Deepanshu Khatri';
+    nameEl.textContent = profile.fullName || formatDisplayName(null, profile.email);
 
     const emailEl = document.createElement('div');
     emailEl.style.cssText =
       'font-size: 13.5px; color: #5F6656; font-family: "Plus Jakarta Sans", sans-serif; font-weight: 450; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-    emailEl.textContent = profile.email || 'deepanshukhatri20061972@gmail.com';
+    emailEl.textContent = profile.email || 'Authenticated Caretaker';
 
     const badgeRow = document.createElement('div');
     badgeRow.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;';
