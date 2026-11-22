@@ -592,56 +592,78 @@ export class DashboardShell {
     const contentBody = document.createElement('div');
     contentBody.className = 'gd-content-body';
 
-    // If caretaker is not authenticated, render a prominent sign-in notice bar
-    if (!this.state.contactProfile?.isAuthenticated) {
-      const authBanner = document.createElement('div');
-      authBanner.className = 'gd-unauth-header-banner';
-      authBanner.setAttribute('role', 'alert');
-
-      const bannerLeft = document.createElement('div');
-      bannerLeft.className = 'gd-unauth-banner-left';
-
-      const lockIcon = document.createElement('span');
-      lockIcon.className = 'gd-unauth-banner-icon';
-      lockIcon.setAttribute('aria-hidden', 'true');
-      lockIcon.appendChild(createIcon('lock'));
-
-      const textWrap = document.createElement('div');
-      textWrap.className = 'gd-unauth-banner-text';
-
-      const bannerTitle = document.createElement('strong');
-      bannerTitle.className = 'gd-unauth-banner-title';
-      bannerTitle.textContent = 'Sign In Required:';
-
-      const bannerDesc = document.createElement('span');
-      bannerDesc.className = 'gd-unauth-banner-desc';
-      bannerDesc.textContent =
-        ' Authenticate your trusted contact account to connect with wards, review held actions, and receive real-time alerts.';
-
-      textWrap.appendChild(bannerTitle);
-      textWrap.appendChild(bannerDesc);
-      bannerLeft.appendChild(lockIcon);
-      bannerLeft.appendChild(textWrap);
-
-      const signInBtn = document.createElement('button');
-      signInBtn.type = 'button';
-      signInBtn.className = 'gd-unauth-banner-btn';
-      signInBtn.textContent = 'Sign In to Guardrail';
-      signInBtn.addEventListener('click', () => {
-        this.openAuthModal();
-      });
-
-      authBanner.appendChild(bannerLeft);
-      authBanner.appendChild(signInBtn);
-      contentBody.appendChild(authBanner);
-    }
-
     this.mainContentEl = document.createElement('main');
     this.mainContentEl.id = 'main-content';
     this.mainContentEl.setAttribute('id', 'main-content');
     this.mainContentEl.tabIndex = -1;
     this.mainContentEl.setAttribute('tabindex', '-1');
     this.mainContentEl.className = 'gd-content-container';
+
+    // If caretaker is not authenticated, render a sleek, minimal, creative sign-in capsule pill
+    if (!this.state.contactProfile?.isAuthenticated) {
+      const authBanner = document.createElement('div');
+      authBanner.className = 'gd-unauth-header-banner';
+      authBanner.setAttribute('role', 'status');
+      authBanner.setAttribute('aria-label', 'Guest session notice');
+
+      const bannerLeft = document.createElement('div');
+      bannerLeft.className = 'gd-unauth-banner-left';
+
+      const badge = document.createElement('span');
+      badge.className = 'gd-unauth-pill-badge';
+
+      const pulseDot = document.createElement('span');
+      pulseDot.className = 'gd-unauth-pulse-dot';
+      pulseDot.setAttribute('aria-hidden', 'true');
+
+      const lockIcon = document.createElement('span');
+      lockIcon.className = 'gd-unauth-badge-icon';
+      lockIcon.setAttribute('aria-hidden', 'true');
+      lockIcon.appendChild(createIcon('lock'));
+
+      const badgeText = document.createElement('span');
+      badgeText.textContent = 'Guest Mode';
+
+      badge.appendChild(pulseDot);
+      badge.appendChild(lockIcon);
+      badge.appendChild(badgeText);
+
+      const divider = document.createElement('span');
+      divider.className = 'gd-unauth-pill-divider';
+      divider.setAttribute('aria-hidden', 'true');
+      divider.textContent = '·';
+
+      const message = document.createElement('span');
+      message.className = 'gd-unauth-pill-text';
+      message.textContent = 'Sign in to connect with wards and review live approval requests';
+
+      bannerLeft.appendChild(badge);
+      bannerLeft.appendChild(divider);
+      bannerLeft.appendChild(message);
+
+      const signInBtn = document.createElement('button');
+      signInBtn.type = 'button';
+      signInBtn.className = 'gd-unauth-banner-btn';
+
+      const btnLabel = document.createElement('span');
+      btnLabel.textContent = 'Sign In';
+
+      const btnArrow = document.createElement('span');
+      btnArrow.className = 'gd-unauth-btn-arrow';
+      btnArrow.setAttribute('aria-hidden', 'true');
+      btnArrow.innerHTML = '&rarr;';
+
+      signInBtn.appendChild(btnLabel);
+      signInBtn.appendChild(btnArrow);
+
+      signInBtn.addEventListener('click', () => {
+        this.openAuthModal();
+      });
+
+      authBanner.appendChild(bannerLeft);
+      authBanner.appendChild(signInBtn);
+      this.mainContentEl.appendChild(authBanner);
+    }
 
     // Play entrance animations once when each view is first opened/reloaded, never repeating on background polling
     const currentView = this.state.activeView;
