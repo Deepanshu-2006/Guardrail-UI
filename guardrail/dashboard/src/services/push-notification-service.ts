@@ -191,11 +191,10 @@ export class DashboardPushService {
         try {
           const reg = await this.registerServiceWorker();
           if (reg) {
-            await reg.showNotification('Guardrail · Security Alerts Active', {
-              body: '✓ Device verified for Caretaker Carol\nOut-of-band lock screen alerts are active & ready.',
+            await reg.showNotification('Guardrail', {
+              body: 'Lock-screen alerts active for Ward Alice.',
               icon: '/icons/icon-192.png',
               badge: '/icons/icon-48.png',
-              image: '/icons/alert-preview.png',
               tag: `test-alert-${Date.now()}`,
               data: { url: '/#overview' },
             });

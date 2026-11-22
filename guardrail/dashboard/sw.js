@@ -19,11 +19,10 @@ self.addEventListener('push', (event) => {
   }
 
   let payload = {
-    title: 'Guardrail · Action Approval Required',
-    body: 'A protected action requires your review on Guardrail.',
+    title: 'Guardrail',
+    body: 'Action held for review.',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-48.png',
-    image: '/icons/alert-preview.png',
     data: {
       url: '/#overview',
     },
@@ -39,7 +38,6 @@ self.addEventListener('push', (event) => {
     body: payload.body,
     icon: payload.icon || '/icons/icon-192.png',
     badge: payload.badge || '/icons/icon-48.png',
-    image: payload.image || '/icons/alert-preview.png',
     tag: payload.tag || 'guardrail-alert',
     data: payload.data || { url: '/#overview' },
     requireInteraction: true,

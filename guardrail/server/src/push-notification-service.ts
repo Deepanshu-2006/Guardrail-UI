@@ -314,20 +314,16 @@ export class PushNotificationService {
 
     const wardName = requesterId === 'usr_alice' ? 'Alice' : requesterId;
     const payload: PushNotificationPayload = {
-      title: 'Guardrail · Action Approval Required',
-      body: `⚠️ ${wardName} held on ${domain}\n↳ High-risk action held in Staging Mode.\nTap to review risk context and decide.`,
+      title: 'Guardrail · Action Required',
+      body: `${wardName} paused on ${domain}`,
       icon: `${this.dashboardUrl}/icons/icon-192.png`,
       badge: `${this.dashboardUrl}/icons/icon-48.png`,
-      image: `${this.dashboardUrl}/icons/alert-preview.png`,
       tag: `guardrail-req-${event.requestId}`,
       data: {
         requestId: event.requestId,
         url: `${this.dashboardUrl}/#detail/${event.requestId}`,
         timestamp: event.timestamp,
       },
-      actions: [
-        { action: 'review', title: 'Review & Decide' },
-      ],
     };
 
     let successful = 0;
@@ -361,21 +357,16 @@ export class PushNotificationService {
       return { attempted: 0, successful: 0, failed: 0, pruned: 0 };
     }
 
-    const caretakerName = actorId === 'tc_carol' ? 'Carol' : actorId;
     const payload: PushNotificationPayload = {
-      title: 'Guardrail · Security Alerts Active',
-      body: `✓ Device verified for Caretaker ${caretakerName}\nOut-of-band lock screen alerts are active & ready.`,
+      title: 'Guardrail',
+      body: 'Lock-screen alerts active for Ward Alice.',
       icon: `${this.dashboardUrl}/icons/icon-192.png`,
       badge: `${this.dashboardUrl}/icons/icon-48.png`,
-      image: `${this.dashboardUrl}/icons/alert-preview.png`,
       tag: `test-alert-${Date.now()}`,
       data: {
         url: `${this.dashboardUrl}/#overview`,
         timestamp: new Date().toISOString(),
       },
-      actions: [
-        { action: 'review', title: 'Open Dashboard' },
-      ],
     };
 
     let successful = 0;
