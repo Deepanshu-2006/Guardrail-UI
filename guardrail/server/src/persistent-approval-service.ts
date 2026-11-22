@@ -11,6 +11,7 @@ import { SqliteApprovalRequestRepository } from './sqlite-approval-request-repos
 import { SqliteTrustedContactRegistry } from './sqlite-trusted-contact-registry.js';
 import { SqlitePolicyRepository } from './sqlite-policy-repository.js';
 import { defaultApprovalEventHub } from './event-hub.js';
+import { PushNotificationService } from './push-notification-service.js';
 
 export interface PersistentApprovalServiceOptions
   extends Omit<ApprovalServiceDependencies, 'repository' | 'enforceActiveContact'> {
@@ -31,6 +32,10 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
     contactRegistry,
     timeProvider: options.timeProvider ? () => new Date(options.timeProvider!()) : undefined,
   });
+  const pushService = new PushNotificationService({
+    db: sharedDb,
+    contactRegistry: contactRegistry instanceof SqliteTrustedContactRegistry ? contactRegistry : undefined,
+  });
   const service = new ApprovalService({
     repository,
     contactRegistry,
@@ -46,6 +51,7 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
     contactRegistry,
     policyRepository,
     policyService,
+    pushService,
     healthCheck: () => {
       try {
         if (!repository.healthCheck()) return false;
@@ -55,7 +61,7 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
         return false;
       }
     },
-    service: wrapServiceWithEventHub(service),
+    service: wrapServiceWithEventHub(service, pushService),
     close: () => {
       repository.close();
       policyRepository.close();
@@ -65,9 +71,10 @@ export function createPersistentApprovalService(options: PersistentApprovalServi
 }
 
 /**
- * Proxies ApprovalService mutating methods to broadcast real-time events to the Event Hub.
+ * Proxies ApprovalService mutating methods to broadcast real-time events to the Event Hub
+ * and dispatch out-of-band push notifications.
  */
-function wrapServiceWithEventHub(service: ApprovalService): ApprovalService {
+function wrapServiceWithEventHub(service: ApprovalService, pushService?: PushNotificationService): ApprovalService {
   const origCreate = service.createRequest.bind(service);
   const origApprove = service.approveRequest.bind(service);
   const origReject = service.rejectRequest.bind(service);
@@ -77,15 +84,21 @@ function wrapServiceWithEventHub(service: ApprovalService): ApprovalService {
   service.createRequest = (payload, authContext, options) => {
     const created = origCreate(payload, authContext, options);
     try {
-      defaultApprovalEventHub.emit({
-        type: 'created',
+      const eventPayload = {
+        type: 'created' as const,
         requestId: created.id,
         requesterId: created.requesterId,
         actionId: created.actionId,
         status: created.status,
         timestamp: created.createdAt,
         request: created,
-      });
+      };
+      defaultApprovalEventHub.emit(eventPayload);
+      if (pushService) {
+        void pushService.dispatchApprovalNotification(eventPayload).catch((err) => {
+          console.warn('[PersistentApprovalService] Push dispatch failed:', err);
+        });
+      }
     } catch (e) {
       console.warn('[EventEmittingApprovalService] Failed to emit created event:', e);
     }

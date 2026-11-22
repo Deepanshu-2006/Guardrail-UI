@@ -719,6 +719,141 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       return;
     }
 
+    // 3e. Web Push VAPID Public Key Discovery (/api/v1/push/vapid-public-key)
+    if (request.method === 'GET' && requestPath === '/api/v1/push/vapid-public-key') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+      response.statusCode = 200;
+      response.end(
+        JSON.stringify({
+          success: true,
+          data: {
+            publicKey: runtime.pushService.getVapidPublicKey(),
+          },
+        })
+      );
+      return;
+    }
+
+    // 3f. Client Push Notification Subscription Registration (/api/v1/push/subscribe)
+    if (request.method === 'POST' && requestPath === '/api/v1/push/subscribe') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          if (!body?.subscription?.endpoint || !body?.subscription?.keys?.p256dh || !body?.subscription?.keys?.auth) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ success: false, error: { message: 'Invalid subscription object: endpoint and keys are required' } }));
+            return;
+          }
+
+          // Resolve caller identity
+          let actorId = typeof body.actorId === 'string' && body.actorId.trim() ? body.actorId.trim() : 'tc_carol';
+          const authHeader = request.headers.authorization;
+          const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+          if (token && options.tokenVerifier) {
+            try {
+              const auth = await options.tokenVerifier.verifyToken(token);
+              if (auth?.isAuthenticated && auth.actorId) {
+                actorId = auth.actorId;
+              }
+            } catch {}
+          }
+
+          const record = runtime.pushService.saveSubscription(actorId, body.subscription, request.headers['user-agent']);
+          response.statusCode = 200;
+          response.end(
+            JSON.stringify({
+              success: true,
+              data: {
+                subscriptionId: record.id,
+                actorId: record.actorId,
+                endpoint: record.endpoint,
+                createdAt: record.createdAt,
+              },
+            })
+          );
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({ success: false, error: { message: err?.message || 'Subscription failed' } }));
+        }
+      });
+      return;
+    }
+
+    // 3g. Client Push Notification Unsubscribe (/api/v1/push/unsubscribe)
+    if (request.method === 'POST' && requestPath === '/api/v1/push/unsubscribe') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          const endpoint = typeof body?.endpoint === 'string' ? body.endpoint.trim() : '';
+          if (!endpoint) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({ success: false, error: { message: 'Subscription endpoint is required' } }));
+            return;
+          }
+
+          const removed = runtime.pushService.removeSubscription(endpoint);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ success: true, data: { unsubscribed: removed } }));
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({ success: false, error: { message: err?.message || 'Unsubscribe failed' } }));
+        }
+      });
+      return;
+    }
+
+    // 3h. Test Out-of-Band Notification Dispatch (/api/v1/push/test)
+    if (request.method === 'POST' && requestPath === '/api/v1/push/test') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          let actorId = typeof body.actorId === 'string' && body.actorId.trim() ? body.actorId.trim() : 'tc_carol';
+          const authHeader = request.headers.authorization;
+          const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+          if (token && options.tokenVerifier) {
+            try {
+              const auth = await options.tokenVerifier.verifyToken(token);
+              if (auth?.isAuthenticated && auth.actorId) {
+                actorId = auth.actorId;
+              }
+            } catch {}
+          }
+
+          const result = await runtime.pushService.sendTestNotification(actorId);
+          response.statusCode = 200;
+          response.end(JSON.stringify({ success: true, data: result }));
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({ success: false, error: { message: err?.message || 'Test dispatch failed' } }));
+        }
+      });
+      return;
+    }
+
     // 4. Authenticated Actor Identity Verification (/api/v1/auth/me)
     if (request.method === 'GET' && requestPath === '/api/v1/auth/me') {
       applyCorsHeaders(response, request.headers.origin);

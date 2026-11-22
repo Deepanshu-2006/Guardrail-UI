@@ -86,7 +86,7 @@ Code Accepted ──► SQLite Relationship Established ──► Real-Time Sync
 * **Separation of Duties Verification:** Automated contracts verifying caretakers cannot initiate actions on behalf of wards ([test-trusted-contact-invitations.ts](file:///Users/deepanshukhatri/Library/CloudStorage/GoogleDrive-deepanshukhatri20061972@gmail.com/My%20Drive/Cloud%20Desktop/Guardrail%20UI/guardrail/extension/src/approval/test-trusted-contact-invitations.ts)).
 
 #### What Is Left
-* [ ] **Task 3.1 — Out-of-Band Push Notification Dispatcher:** Web Push (VAPID) / Twilio SMS notification service triggered whenever a held action is routed for review, ensuring Caretaker B receives an immediate mobile alert even when the dashboard tab is closed.
+* [x] **Task 3.1 — Out-of-Band Push Notification Dispatcher (Web Push / VAPID):** Real-time Web Push notification dispatching service using RFC 8292 / VAPID cryptography. Dispatches instant lock-screen mobile & desktop alerts to Caretaker B whenever a protected Ward A encounters a held high-risk action in Chrome, even when the Caretaker Dashboard tab is closed. (Implemented: SQLite `guardrail_push_subscriptions` schema, auto-generated/loaded VAPID keypairs via `web-push`, `/api/v1/push/vapid-public-key`, `/api/v1/push/subscribe`, `/api/v1/push/unsubscribe`, and `/api/v1/push/test` endpoints, automatic 410/404 stale subscription pruning, Service Worker `sw.js` with notificationclick deep-linking, `DashboardPushService` singleton, and Settings Card with 1-click subscription and test alert triggering. 20/20 backend test assertions and 9/9 dashboard test assertions passing).
 
 ---
 

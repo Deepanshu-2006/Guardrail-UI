@@ -14,7 +14,8 @@
     "test:verify-complete-sync": "../extension/node_modules/.bin/esbuild src/tests/verify-complete-sync-flow.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/verify-complete-sync-flow.js && node dist/verify-complete-sync-flow.js",
     "test:dev": "node src/tests/test-dev-server.mjs",
     "test:social-auth": "../extension/node_modules/.bin/esbuild src/tests/test-social-auth.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-social-auth.js && node dist/test-social-auth.js",
-    "test": "npm run test:shell && npm run test:verify-day12 && npm run test:sync && npm run test:verify-complete-sync && npm run test:dev && npm run test:social-auth"
+    "test:push": "../extension/node_modules/.bin/esbuild src/tests/test-push-notifications.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-push-notifications.js && node dist/test-push-notifications.js",
+    "test": "npm run test:shell && npm run test:verify-day12 && npm run test:sync && npm run test:verify-complete-sync && npm run test:dev && npm run test:social-auth && npm run test:push"
   },
   "dependencies": {
     "@clerk/clerk-js": "^6.44.0"

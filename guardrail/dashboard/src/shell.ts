@@ -33,6 +33,7 @@ import { renderDecisionHistory, renderHistoryRecordDetail } from './components/h
 import { filterRequests } from './components/filters.js';
 import { renderSettings } from './components/settings.js';
 import { isInvitationExpired } from './components/relationships.js';
+import { defaultDashboardPushService } from './services/push-notification-service.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -183,6 +184,13 @@ export class DashboardShell {
       wardPolicyAuditError: null,
       hasPendingSync: false,
       pendingSyncChanges: [],
+      pushStatus: {
+        supported: defaultDashboardPushService.isSupported(),
+        permission: defaultDashboardPushService.getPermission(),
+        isSubscribed: false,
+      },
+      isSubscribingPush: false,
+      pushActionMessage: null,
     };
 
     // Pre-seed in-memory detail cache with authoritative initial records
@@ -221,6 +229,7 @@ export class DashboardShell {
       void this.fetchHistoryRequests();
       void this.fetchWardPolicy();
     }
+    void this.checkPushNotificationStatus();
     if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
       this.startPolling();
     }
@@ -615,7 +624,7 @@ export class DashboardShell {
         this.selectRequest(id);
       },
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
-      onConnectInvitation: (this.apiClient || this.isMockService) ? (code: string) => this.connectInvitation(code) : undefined,
+      onConnectInvitation: (this.apiClient || this.isMockService()) ? (code: string) => this.connectInvitation(code) : undefined,
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
@@ -744,10 +753,16 @@ export class DashboardShell {
       pendingSyncChanges: this.state.pendingSyncChanges,
       isSubmittingRelationshipAction: this.state.isSubmittingRelationshipAction,
       relationshipActionMessage: this.state.relationshipActionMessage,
+      pushStatus: this.state.pushStatus,
+      isSubscribingPush: this.state.isSubscribingPush,
+      pushActionMessage: this.state.pushActionMessage,
+      onSubscribePush: () => this.handleSubscribePush(),
+      onUnsubscribePush: () => this.handleUnsubscribePush(),
+      onSendTestPush: () => this.handleSendTestPush(),
       onCreateInvitation: this.apiClient ? (payload) => this.createInvitation(payload) : undefined,
       onRevokeInvitation: this.apiClient ? (id) => this.revokeInvitation(id) : undefined,
       onRevokeTrustedContact: this.apiClient ? (id) => this.revokeTrustedContact(id) : undefined,
-      onConnectInvitation: (this.apiClient || this.isMockService) ? (code) => this.connectInvitation(code) : undefined,
+      onConnectInvitation: (this.apiClient || this.isMockService()) ? (code) => this.connectInvitation(code) : undefined,
       onDisconnectWard: () => this.disconnectWard(),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onClearSession: () => {
@@ -2547,6 +2562,117 @@ export class DashboardShell {
       };
       this.render();
     }
+  }
+
+  /**
+   * Refreshes the local Web Push subscription state from the browser and service worker.
+   */
+  public async checkPushNotificationStatus(): Promise<void> {
+    try {
+      const status = await defaultDashboardPushService.getStatus();
+      this.state = {
+        ...this.state,
+        pushStatus: status,
+      };
+      if (this.state.activeView === 'settings') {
+        this.render();
+      }
+    } catch {}
+  }
+
+  /**
+   * Requests browser notification permission, obtains VAPID subscription, and registers with backend.
+   */
+  public async handleSubscribePush(): Promise<void> {
+    if (this.state.isSubscribingPush) return;
+    this.state = {
+      ...this.state,
+      isSubscribingPush: true,
+      pushActionMessage: null,
+    };
+    this.render();
+
+    const apiBase =
+      (typeof this.apiClient?.getBaseUrl === 'function' ? this.apiClient.getBaseUrl() : '') ||
+      (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'http://localhost:3000');
+    const actorId = this.state.contactProfile?.actorId || 'tc_carol';
+    const token = (this.apiClient as any)?.tokenProvider
+      ? await (this.apiClient as any).tokenProvider()
+      : undefined;
+
+    const result = await defaultDashboardPushService.subscribe(apiBase, actorId, token);
+    const status = await defaultDashboardPushService.getStatus();
+
+    this.state = {
+      ...this.state,
+      isSubscribingPush: false,
+      pushStatus: status,
+      pushActionMessage: result.success
+        ? { type: 'success', text: 'Device successfully subscribed! You will now receive lock-screen alerts.' }
+        : { type: 'error', text: result.error || 'Failed to enable push notifications.' },
+    };
+    this.render();
+  }
+
+  /**
+   * Unsubscribes from browser PushManager and deregisters the device token from the backend.
+   */
+  public async handleUnsubscribePush(): Promise<void> {
+    if (this.state.isSubscribingPush) return;
+    this.state = {
+      ...this.state,
+      isSubscribingPush: true,
+      pushActionMessage: null,
+    };
+    this.render();
+
+    const apiBase =
+      (typeof this.apiClient?.getBaseUrl === 'function' ? this.apiClient.getBaseUrl() : '') ||
+      (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'http://localhost:3000');
+    const result = await defaultDashboardPushService.unsubscribe(apiBase);
+    const status = await defaultDashboardPushService.getStatus();
+
+    this.state = {
+      ...this.state,
+      isSubscribingPush: false,
+      pushStatus: status,
+      pushActionMessage: result.success
+        ? { type: 'info', text: 'Push notifications disabled on this device.' }
+        : { type: 'error', text: result.error || 'Failed to disable push notifications.' },
+    };
+    this.render();
+  }
+
+  /**
+   * Dispatches a test out-of-band lock-screen notification to verify end-to-end receipt.
+   */
+  public async handleSendTestPush(): Promise<void> {
+    if (this.state.isSubscribingPush) return;
+    this.state = {
+      ...this.state,
+      isSubscribingPush: true,
+      pushActionMessage: null,
+    };
+    this.render();
+
+    const apiBase =
+      (typeof this.apiClient?.getBaseUrl === 'function' ? this.apiClient.getBaseUrl() : '') ||
+      (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'http://localhost:3000');
+    const actorId = this.state.contactProfile?.actorId || 'tc_carol';
+    const token = (this.apiClient as any)?.tokenProvider
+      ? await (this.apiClient as any).tokenProvider()
+      : undefined;
+
+    const result = await defaultDashboardPushService.sendTestAlert(apiBase, actorId, token);
+
+    this.state = {
+      ...this.state,
+      isSubscribingPush: false,
+      pushActionMessage: result.success
+        ? { type: 'success', text: 'Test lock-screen alert sent! Check your notification tray or lock screen.' }
+        : { type: 'error', text: result.error || 'Failed to send test alert.' },
+    };
+    this.render();
   }
 
   /**

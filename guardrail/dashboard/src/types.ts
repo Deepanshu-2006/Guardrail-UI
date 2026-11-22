@@ -213,6 +213,17 @@ export interface DashboardShellState {
   hasPendingSync?: boolean;
   /** Staged changes pending synchronization with backend */
   pendingSyncChanges?: readonly string[];
+  /** Device push notification status and lock-screen alert subscription state */
+  pushStatus?: {
+    readonly supported: boolean;
+    readonly permission: NotificationPermission | 'unsupported';
+    readonly isSubscribed: boolean;
+    readonly endpoint?: string;
+  };
+  /** Whether a push subscription or test alert is actively executing */
+  isSubscribingPush?: boolean;
+  /** Feedback notification resulting from push notification operations */
+  pushActionMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
 }
 
 /**

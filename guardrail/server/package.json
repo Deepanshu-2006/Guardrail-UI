@@ -18,11 +18,14 @@
     "test:delivery": "../extension/node_modules/.bin/esbuild src/test-invitation-delivery.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-invitation-delivery.mjs && node dist/test-invitation-delivery.mjs",
     "test:reliability": "../extension/node_modules/.bin/esbuild src/test-failure-recovery-reliability.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-failure-recovery-reliability.mjs && node dist/test-failure-recovery-reliability.mjs",
     "test:privacy": "../extension/node_modules/.bin/esbuild src/test-privacy-data-protection.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-privacy-data-protection.mjs && node dist/test-privacy-data-protection.mjs",
-    "test": "npm run test:config && npm run test:sqlite && npm run test:policy-repo && npm run test:api && npm run test:oidc && npm run test:delivery && npm run test:reliability && npm run test:privacy"
+    "test:push": "../extension/node_modules/.bin/esbuild src/test-push-notification-service.ts --bundle --platform=node --format=esm --target=node20 --external:better-sqlite3 --outfile=dist/test-push-notification-service.mjs && node dist/test-push-notification-service.mjs",
+    "test": "npm run test:config && npm run test:sqlite && npm run test:policy-repo && npm run test:api && npm run test:oidc && npm run test:delivery && npm run test:reliability && npm run test:privacy && npm run test:push"
   },
   "dependencies": {
+    "@types/web-push": "^3.6.4",
     "better-sqlite3": "^13.0.3",
-    "jose": "^6.2.15"
+    "jose": "^6.2.15",
+    "web-push": "^4.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
