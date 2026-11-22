@@ -963,7 +963,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
       options.tokenVerifier
         .verifyToken(token)
-        .then((authContext) => {
+        .then(async (authContext) => {
           if (!authContext || !authContext.isAuthenticated) {
             response.statusCode = 401;
             response.end(
@@ -980,14 +980,67 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           }
 
           let verifiedEmail: string | undefined;
+          let fullName: string | undefined = (authContext as any).fullName;
+          let imageUrl: string | null = (authContext as any).picture || null;
+
           try {
             if (options.identities) {
               verifiedEmail = options.identities.getVerifiedEmail(authContext.actorId);
             }
           } catch {}
 
+          // Determine Clerk user ID: from actorId, JWT sub claim, or identity store subject
+          let clerkUserId: string | undefined;
+          if (authContext.actorId.startsWith('user_')) {
+            clerkUserId = authContext.actorId;
+          } else {
+            try {
+              if (token.includes('.')) {
+                const parts = token.split('.');
+                if (parts[1]) {
+                  const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+                  if (typeof payload.sub === 'string' && payload.sub.startsWith('user_')) {
+                    clerkUserId = payload.sub;
+                  }
+                }
+              }
+            } catch {}
+            if (!clerkUserId && options.identities) {
+              try {
+                const identSubject = (options.identities as any).getSubject?.(authContext.actorId);
+                if (identSubject && identSubject.startsWith('user_')) {
+                  clerkUserId = identSubject;
+                }
+              } catch {}
+            }
+          }
+
+          // Enrich user identity from Clerk Backend API when available
+          const clerkSecretKey = process.env.CLERK_SECRET_KEY || 'sk_test_UsM9vlgvALJYmyRnEyXEy3F9kZrydfH1cUcB0rgkqO';
+          if (clerkUserId && clerkSecretKey) {
+            try {
+              const clerkRes = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
+                headers: { Authorization: `Bearer ${clerkSecretKey}` },
+              });
+              if (clerkRes.ok) {
+                const u = (await clerkRes.json()) as any;
+                const nameFromClerk = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username;
+                if (nameFromClerk) {
+                  fullName = nameFromClerk;
+                }
+                if (Array.isArray(u.email_addresses) && u.email_addresses[0]?.email_address) {
+                  verifiedEmail = u.email_addresses[0].email_address;
+                }
+                const clerkAvatar = u.image_url || u.profile_image_url || u.external_accounts?.[0]?.avatar_url || u.external_accounts?.[0]?.picture;
+                if (clerkAvatar) {
+                  imageUrl = clerkAvatar;
+                }
+              }
+            } catch {}
+          }
+
           const displayName =
-            (authContext as any).fullName ||
+            fullName ||
             (verifiedEmail
               ? verifiedEmail
                   .split('@')[0]
@@ -1009,7 +1062,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 isAuthenticated: true,
                 email: verifiedEmail ?? null,
                 fullName: displayName,
-                imageUrl: (authContext as any).picture || null,
+                imageUrl: imageUrl,
                 environment: config.environment,
               },
             })

@@ -70,6 +70,16 @@ export function formatDisplayName(name?: string | null, email?: string | null): 
   return 'Designated Caretaker';
 }
 
+export function isDefaultAvatar(url?: string | null): boolean {
+  if (!url) return true;
+  return (
+    url.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') ||
+    url.includes('images.clerk.dev') ||
+    url.includes('gravatar.com/avatar?d=mp') ||
+    url.includes('d=mp')
+  );
+}
+
 function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedContactProfile | null {
   try {
     const parts = token.split('.');
@@ -94,16 +104,6 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
       payload.name ||
       fallbackEmail ||
       undefined;
-    
-    const isDefaultAvatar = (url?: string | null): boolean => {
-      if (!url) return true;
-      return (
-        url.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') ||
-        url.includes('images.clerk.dev') ||
-        url.includes('gravatar.com/avatar?d=mp') ||
-        url.includes('d=mp')
-      );
-    };
 
     let storedAvatar = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_avatar') : null;
     if (storedAvatar && isDefaultAvatar(storedAvatar)) {
@@ -119,8 +119,9 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
       storedAvatar ||
       undefined;
 
+    const storedName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_name') : null;
     const avatarUrl = rawAvatar && !isDefaultAvatar(rawAvatar) ? rawAvatar : undefined;
-    const fullName = payload.name || payload.full_name || formatDisplayName(null, email);
+    const fullName = payload.name || payload.full_name || storedName || formatDisplayName(null, email);
     return {
       actorId,
       role,
@@ -208,6 +209,9 @@ if (typeof document !== 'undefined') {
     const storedEmail = typeof localStorage !== 'undefined'
       ? localStorage.getItem('guardrail_user_email')
       : null;
+    const storedName = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('guardrail_user_name')
+      : null;
     const storedAvatar = typeof localStorage !== 'undefined'
       ? localStorage.getItem('guardrail_user_avatar')
       : null;
@@ -221,7 +225,21 @@ if (typeof document !== 'undefined') {
     }
 
     const effectiveToken = storageToken || null;
-    const tokenProvider: TokenProvider | undefined = globalProvider ?? (effectiveToken ? () => effectiveToken : undefined);
+    const tokenProvider: TokenProvider | undefined = globalProvider ?? (effectiveToken ? async () => {
+      if (typeof window !== 'undefined' && (window as any).Clerk?.session?.getToken) {
+        try {
+          const liveToken = await (window as any).Clerk.session.getToken();
+          if (liveToken) {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('guardrail_auth_token', liveToken);
+            }
+            return liveToken;
+          }
+        } catch {}
+      }
+      return (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) || effectiveToken || '';
+    } : undefined);
+
     const initialProfile: TrustedContactProfile | null = isOAuthRedirect
       ? null
       : effectiveToken
@@ -229,7 +247,7 @@ if (typeof document !== 'undefined') {
           actorId: effectiveToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
           role: effectiveToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
           email: storedEmail || (effectiveToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'carol.guardian@gmail.com'),
-          fullName: effectiveToken === 'test-ward-token' ? 'Alice Ward' : 'Carol Guardian',
+          fullName: effectiveToken === 'test-ward-token' ? 'Alice Ward' : (storedName || 'Carol Guardian'),
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
@@ -239,7 +257,7 @@ if (typeof document !== 'undefined') {
           actorId: 'tc_reviewer',
           role: 'TRUSTED_CONTACT',
           email: storedEmail || undefined,
-          fullName: storedEmail ? formatDisplayName(null, storedEmail) : 'Designated Caretaker',
+          fullName: storedName || (storedEmail ? formatDisplayName(null, storedEmail) : 'Designated Caretaker'),
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
@@ -274,16 +292,29 @@ if (typeof document !== 'undefined') {
         headers: { Authorization: `Bearer ${storageToken}` },
       })
         .then((res) => res.json())
-        .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null; fullName?: string } }) => {
+        .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null; fullName?: string; imageUrl?: string | null } }) => {
           if (payload.success && payload.data) {
-            const currentName = payload.data.fullName || formatDisplayName(null, payload.data.email);
+            const currentEmail = payload.data.email || storedEmail || undefined;
+            const authoritativeName = payload.data.fullName || storedName;
+            const currentName =
+              (authoritativeName && !authoritativeName.toLowerCase().includes('designated caretaker') && !authoritativeName.toLowerCase().includes('authorized contact'))
+                ? authoritativeName
+                : (currentEmail ? formatDisplayName(null, currentEmail) : 'Designated Caretaker');
+            const currentAvatar = payload.data.imageUrl || storedAvatar || undefined;
+            if (typeof localStorage !== 'undefined') {
+              if (currentEmail) localStorage.setItem('guardrail_user_email', currentEmail);
+              if (currentName && !currentName.toLowerCase().includes('designated caretaker') && !currentName.toLowerCase().includes('authorized contact')) {
+                localStorage.setItem('guardrail_user_name', currentName);
+              }
+              if (currentAvatar) localStorage.setItem('guardrail_user_avatar', currentAvatar);
+            }
             shell.setProfile({
               actorId: payload.data.actorId,
               role: payload.data.role,
-              email: payload.data.email ?? undefined,
+              email: currentEmail,
               fullName: currentName,
-              avatarUrl: storedAvatar || undefined,
-              imageUrl: storedAvatar || undefined,
+              avatarUrl: currentAvatar,
+              imageUrl: currentAvatar,
               isAuthenticated: true,
               relationshipLabel: payload.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
             });
@@ -387,10 +418,16 @@ if (typeof document !== 'undefined') {
           if (userAvatar && typeof localStorage !== 'undefined') {
             localStorage.setItem('guardrail_user_avatar', userAvatar);
           }
+          const storedName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_name') : null;
           const fullName =
             activeUser?.fullName ||
             (activeUser?.firstName ? `${activeUser.firstName} ${activeUser.lastName || ''}`.trim() : null) ||
+            storedName ||
             formatDisplayName(null, userEmail);
+
+          if (fullName && !fullName.toLowerCase().includes('designated caretaker') && !fullName.toLowerCase().includes('authorized contact') && typeof localStorage !== 'undefined') {
+            localStorage.setItem('guardrail_user_name', fullName);
+          }
 
           wasAuthenticated = true;
 
@@ -459,11 +496,24 @@ if (typeof document !== 'undefined') {
               .then((payload: { success: boolean; data?: { actorId: string; role: string; email: string | null; fullName?: string } }) => {
                 if (payload.success && payload.data) {
                   const currentAvatar = (payload.data as any).imageUrl || userAvatar;
-                  const authoritativeName = payload.data.fullName || fullName;
+                  const currentEmail = payload.data.email || userEmail;
+                  const authoritativeName =
+                    (fullName && !fullName.toLowerCase().includes('designated caretaker') && !fullName.toLowerCase().includes('authorized contact'))
+                      ? fullName
+                      : (payload.data.fullName || fullName);
+                  if (authoritativeName && typeof localStorage !== 'undefined') {
+                    localStorage.setItem('guardrail_user_name', authoritativeName);
+                  }
+                  if (currentAvatar && typeof localStorage !== 'undefined') {
+                    localStorage.setItem('guardrail_user_avatar', currentAvatar);
+                  }
+                  if (currentEmail && typeof localStorage !== 'undefined') {
+                    localStorage.setItem('guardrail_user_email', currentEmail);
+                  }
                   shell.setProfile({
                     actorId: payload.data.actorId,
                     role: payload.data.role,
-                    email: payload.data.email ?? userEmail,
+                    email: currentEmail,
                     fullName: authoritativeName,
                     avatarUrl: currentAvatar,
                     imageUrl: currentAvatar,

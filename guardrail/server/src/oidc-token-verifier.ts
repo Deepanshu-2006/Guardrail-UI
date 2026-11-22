@@ -124,7 +124,7 @@ export class OidcTokenVerifier implements TokenVerifier {
         algorithms: ['RS256', 'ES256'],
         issuer: this.config.issuer,
         requiredClaims: ['sub', 'exp'],
-        clockTolerance: 0,
+        clockTolerance: 300,
       };
       if (this.config.audience) {
         verifyOptions.audience = this.config.audience;

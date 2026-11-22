@@ -128,6 +128,13 @@ export class SqliteIdentityStore {
     return row?.verified_email ?? undefined;
   }
 
+  /** Look up original provider subject claim by internal actorId. */
+  public getSubject(actorId: string): string | undefined {
+    const row = this.database.prepare("SELECT subject FROM guardrail_users WHERE id=? AND status='ACTIVE'")
+      .get(actorId) as { subject?: string } | undefined;
+    return row?.subject;
+  }
+
   public isTokenRevoked(jti: string, now = new Date().toISOString()): boolean {
     this.database.prepare('DELETE FROM guardrail_revoked_tokens WHERE expires_at <= ?').run(now);
     return Boolean(this.database.prepare(

@@ -1166,9 +1166,11 @@ export class DashboardShell {
         switch (err.code) {
           case ApiClientErrorCodes.UNAUTHENTICATED:
             userMessage = 'Authentication required: Please sign in with an authorized trusted contact session.';
-            // Invalidate profile since session is unauthenticated
-            if (this.state.contactProfile) {
-              this.state.contactProfile = null;
+            // Invalidate profile on foreground auth failure
+            if (!isBackground) {
+              if (this.state.contactProfile) {
+                this.state.contactProfile = null;
+              }
             }
             this.stopPolling();
             this.isPollingHaltedDueToAuth = true;
@@ -1729,11 +1731,10 @@ export class DashboardShell {
    */
   public openAuthModal(): void {
     if (typeof document === 'undefined') return;
-    if (this.state.contactProfile?.isAuthenticated) {
-      this.closeAuthModal();
-      return;
-    }
-    if (document.getElementById('gd-auth-modal-root')) return;
+    // Clean up any stale modal backdrops to guarantee fresh opening on every click
+    document.querySelectorAll('#gd-auth-modal-root, .gd-auth-modal-backdrop, .gd-modal-backdrop').forEach((el) => {
+      el.remove();
+    });
 
     const modal = renderAuthModal({
       profile: this.state.contactProfile,
@@ -1767,6 +1768,9 @@ export class DashboardShell {
       localStorage.setItem('guardrail_auth_token', token);
       if (profile.email) {
         localStorage.setItem('guardrail_user_email', profile.email);
+      }
+      if (profile.fullName && !profile.fullName.toLowerCase().includes('designated caretaker') && !profile.fullName.toLowerCase().includes('authorized contact')) {
+        localStorage.setItem('guardrail_user_name', profile.fullName);
       }
       const avatarToSave = profile.avatarUrl || profile.imageUrl;
       if (
