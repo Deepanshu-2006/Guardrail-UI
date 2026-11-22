@@ -464,7 +464,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   const pushTitle = document.createElement('h2');
   pushTitle.className = 'gd-section-title';
-  pushTitle.textContent = 'Device Push Notifications & Lock-Screen Alerts';
+  setAnimatedHeading(pushTitle, 'Device Push Notifications & Lock-Screen Alerts');
 
   const pushBadge = document.createElement('span');
   if (!props.pushStatus?.supported) {
@@ -510,15 +510,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   addPushItem(
     'Delivery Protocol',
-    props.pushStatus?.supported ? 'W3C Web Push (VAPID)' : 'Unsupported Browser'
-  );
-  addPushItem(
-    'Alert Route',
-    props.pushStatus?.isSubscribed
-      ? 'Active · Lock Screen'
-      : props.pushStatus?.permission === 'denied'
-      ? 'Blocked in Browser'
-      : 'Standby / Unsubscribed'
+    props.pushStatus?.supported ? 'W3C Web Push (RFC 8292 · VAPID)' : 'Unsupported Browser'
   );
   addPushItem(
     'Privacy Boundary',
@@ -591,7 +583,14 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     unsubBtn.type = 'button';
     unsubBtn.className = 'gd-btn-unsubscribe-push gd-btn-revoke';
     unsubBtn.id = 'gd-btn-unsubscribe-push';
-    unsubBtn.textContent = 'Disable Notifications';
+    unsubBtn.innerHTML = `
+      <svg class="gd-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        <line x1="2" y1="2" x2="22" y2="22"></line>
+      </svg>
+      <span>Disable Notifications</span>
+    `;
     unsubBtn.disabled = Boolean(props.isSubscribingPush);
     unsubBtn.addEventListener('click', () => {
       props.onUnsubscribePush?.();

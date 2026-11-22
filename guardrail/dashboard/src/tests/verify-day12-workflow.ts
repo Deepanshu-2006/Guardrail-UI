@@ -1166,6 +1166,7 @@ export async function runDay12Verification(): Promise<void> {
   if (passedAssertions !== totalAssertions) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 // Run verification when invoked directly
