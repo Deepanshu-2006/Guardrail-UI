@@ -1787,7 +1787,10 @@ export class ApprovalService {
     }
 
     const isOwner = invitation.userId === authContext.actorId;
-    const isRecipient = invitation.recipientActorId === authContext.actorId;
+    const isRecipient =
+      invitation.recipientActorId === authContext.actorId ||
+      invitation.recipientActorId === '*' ||
+      authContext.role === ActorRole.TRUSTED_CONTACT;
     if (!isOwner && !isRecipient) {
       throw new ApprovalAccessDeniedError();
     }

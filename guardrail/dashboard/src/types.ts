@@ -101,6 +101,10 @@ export interface TrustedContactProfile {
   readonly role: ActorRole | string;
   /** Primary assigned ward identifier, if established */
   readonly assignedWardId?: string;
+  /** Human-readable display name of the assigned ward, if available */
+  readonly assignedWardName?: string;
+  /** Verified email of the assigned ward, if available */
+  readonly assignedWardEmail?: string;
   /** Human-readable relationship label, if configured */
   readonly relationshipLabel?: string;
   /** Verified email from identity provider if available */

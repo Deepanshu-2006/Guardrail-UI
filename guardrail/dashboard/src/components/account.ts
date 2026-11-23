@@ -114,8 +114,9 @@ export function renderAccountArea(props: AccountProps): HTMLElement {
 
   const role = document.createElement('span');
   role.className = 'gd-account-role';
-  role.textContent = props.profile.assignedWardId
-    ? `Contact for ${props.profile.assignedWardId}`
+  const wardDisplay = props.profile.assignedWardName || props.profile.assignedWardId;
+  role.textContent = wardDisplay
+    ? `Contact for ${wardDisplay}`
     : (props.profile.relationshipLabel || 'Trusted Contact');
 
   details.appendChild(name);

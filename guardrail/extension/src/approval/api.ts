@@ -1144,8 +1144,8 @@ export class ApprovalApiRouter {
       relationshipLabel = labelVal.normalized;
     }
 
-    if (typeof body.recipientActorId !== 'string' || !/^usr_[A-Za-z0-9_-]{1,128}$/.test(body.recipientActorId)) {
-      throw new ApprovalValidationError(['Field "recipientActorId" must identify a registered Guardrail user.']);
+    if (typeof body.recipientActorId !== 'string' || !/^(\*|usr_[A-Za-z0-9_-]{1,128}|tc_[A-Za-z0-9_-]{1,128})$/.test(body.recipientActorId)) {
+      throw new ApprovalValidationError(['Field "recipientActorId" must identify a registered Guardrail user or open wildcard (*).']);
     }
     recipientActorId = body.recipientActorId;
 
@@ -1164,10 +1164,21 @@ export class ApprovalApiRouter {
       ttlMs = body.ttlMs;
     }
 
+    const wardName =
+      (typeof body.wardName === 'string' && body.wardName.trim()) ||
+      (authContext as any).fullName ||
+      authContext.actorId;
+    const wardEmail =
+      (typeof body.wardEmail === 'string' && body.wardEmail.trim()) ||
+      (authContext as any).email ||
+      undefined;
+
     const invitation = this.service.createInvitation(authContext, {
       relationshipLabel,
       recipientActorId,
       ttlMs,
+      wardName,
+      wardEmail,
     });
 
     let delivery: InvitationDeliveryOutcome = { deliveryStatus: invitation.deliveryStatus ?? 'NOT_CONFIGURED' };
@@ -1366,7 +1377,7 @@ export class ApprovalApiRouter {
     }
 
     const token = parts[1];
-    if (!token || token.length > 16384 || !/^[A-Za-z0-9_.\-+=/]+$/.test(token)) {
+    if (!token || token.length > 16384 || !/^[A-Za-z0-9_.\-+=/@]+$/.test(token)) {
       throw new UnauthenticatedError('Invalid or expired authentication token.');
     }
 

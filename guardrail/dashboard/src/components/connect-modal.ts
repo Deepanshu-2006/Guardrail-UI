@@ -16,7 +16,13 @@ import { createIcon } from './icons.js';
 
 export interface ConnectWardModalOptions {
   readonly code: string;
-  readonly onConnect: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
+  readonly onConnect: (code: string) => Promise<{
+    success: boolean;
+    wardId?: string;
+    wardName?: string;
+    wardEmail?: string;
+    error?: string;
+  }>;
   readonly onSuccess?: (wardId: string) => void;
   readonly onClose?: () => void;
 }
@@ -155,12 +161,16 @@ export function showConnectWardModal(options: ConnectWardModalOptions): () => vo
 
       if (result.success) {
         const wardId = result.wardId || 'assigned';
+        const wardName =
+          result.wardName ||
+          (wardId.startsWith('usr_') ? wardId.slice(4) : wardId);
+        const wardEmail = result.wardEmail || '';
 
         // --- SUCCESS TRANSITION: Animate loader ring into tick with exact same theme motion ---
         animBox.classList.add('gd-success');
 
         title.textContent = 'Connected!';
-        subtitle.textContent = `You are now authorized as a designated caretaker for ward ${wardId}.`;
+        subtitle.textContent = `You are now authorized as a designated caretaker for ${wardName}.`;
 
         actionArea.innerHTML = '';
 
@@ -169,9 +179,14 @@ export function showConnectWardModal(options: ConnectWardModalOptions): () => vo
         summaryBox.className = 'gd-connect-meta-list';
         summaryBox.innerHTML = `
           <div class="gd-connect-meta-row">
-            <span class="gd-connect-meta-label">Designated Ward</span>
-            <span class="gd-connect-meta-value gd-mono">${wardId}</span>
+            <span class="gd-connect-meta-label">Protected Ward</span>
+            <span class="gd-connect-meta-value gd-mono">${wardName}</span>
           </div>
+          ${wardEmail ? `
+          <div class="gd-connect-meta-row">
+            <span class="gd-connect-meta-label">Ward Email</span>
+            <span class="gd-connect-meta-value">${wardEmail}</span>
+          </div>` : ''}
           <div class="gd-connect-meta-row">
             <span class="gd-connect-meta-label">Authority</span>
             <span class="gd-connect-meta-value">Enforced</span>
@@ -205,9 +220,19 @@ export function showConnectWardModal(options: ConnectWardModalOptions): () => vo
         animBox.classList.add('gd-error');
 
         title.textContent = 'Connection Failed';
-        subtitle.textContent =
-          result.error ||
-          'Failed to connect. The invitation code may be invalid, expired, or already accepted.';
+        const rawErr = result.error || '';
+        const isNotFound = rawErr.includes('404') || rawErr.toLowerCase().includes('not found');
+        const friendlyMessage = isNotFound
+          ? `Invitation code <strong style="font-family: monospace; color: #141C10;">${options.code}</strong> was not found.`
+          : (rawErr || 'Failed to connect.');
+        const hintText = isNotFound
+          ? 'Please open the Guardrail extension popup, ensure the Ward is signed in, and click <strong>Setup →</strong> to generate an active pairing code.'
+          : 'Please check the code and ensure both the backend server and extension are active.';
+
+        subtitle.innerHTML = `
+          <div style="font-size: 14px; color: #273121; margin-bottom: 6px;">${friendlyMessage}</div>
+          <div style="font-size: 12.5px; color: #6E7964; line-height: 1.45;">${hintText}</div>
+        `;
 
         actionArea.innerHTML = '';
 

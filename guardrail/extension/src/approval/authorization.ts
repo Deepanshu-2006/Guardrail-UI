@@ -124,6 +124,12 @@ export interface TrustedContact {
   /** Canonical alias for userId representing the ward */
   readonly wardId?: string;
 
+  /** Ward display name */
+  readonly wardName?: string;
+
+  /** Ward verified email address */
+  readonly wardEmail?: string;
+
   /** Optional human-readable relationship label (e.g., 'Guardian', 'Supervisor') */
   readonly relationshipLabel?: string;
 
@@ -156,6 +162,12 @@ export interface TrustedContactInvitation {
 
   /** Canonical alias for userId representing the ward */
   readonly wardId?: string;
+
+  /** Ward display name */
+  readonly wardName?: string;
+
+  /** Ward verified email address */
+  readonly wardEmail?: string;
 
   /** Optional human-readable relationship label suggested by the ward */
   readonly relationshipLabel?: string;
@@ -205,6 +217,12 @@ export interface CreateInvitationOptions {
 
   /** Optional custom invitation identifier ('inv_...') */
   readonly id?: string;
+
+  /** Ward display name */
+  readonly wardName?: string;
+
+  /** Ward verified email address */
+  readonly wardEmail?: string;
 }
 
 /**
@@ -475,6 +493,8 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       userId: trimmedUserId,
       recipientActorId,
       wardId: trimmedUserId,
+      wardName: options?.wardName,
+      wardEmail: options?.wardEmail,
       relationshipLabel: labelValidation.normalized,
       status: InvitationStatus.PENDING,
       createdAt,
@@ -614,6 +634,8 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       contactId: trimmedContactId,
       userId: invitation.userId,
       wardId: invitation.userId,
+      wardName: invitation.wardName,
+      wardEmail: invitation.wardEmail,
       relationshipLabel: invitation.relationshipLabel,
       status: TrustedContactStatus.ACTIVE,
       createdAt: acceptedAt,

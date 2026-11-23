@@ -247,8 +247,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const wardDesc = document.createElement('span');
   wardDesc.className = 'gd-metric-desc';
-  wardDesc.textContent = props.profile?.assignedWardId
-    ? `Designated reviewer for ${props.profile.assignedWardId}`
+  const wardDisplay = props.profile?.assignedWardName || props.profile?.assignedWardId;
+  wardDesc.textContent = wardDisplay
+    ? `Designated reviewer for ${wardDisplay}`
     : 'Awaiting ward invitation';
 
   wardCard.appendChild(wardHeader);
@@ -763,9 +764,25 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     label1.textContent = 'Designated Ward';
     const val1 = document.createElement('span');
     val1.className = 'gd-ward-meta-value gd-mono';
-    val1.textContent = props.profile.assignedWardId;
+    val1.textContent = props.profile.assignedWardName
+      ? `${props.profile.assignedWardName} (${props.profile.assignedWardId})`
+      : props.profile.assignedWardId;
     item1.appendChild(label1);
     item1.appendChild(val1);
+
+    if (props.profile.assignedWardEmail) {
+      const emailItem = document.createElement('div');
+      emailItem.className = 'gd-ward-meta-item';
+      const emailLabel = document.createElement('span');
+      emailLabel.className = 'gd-ward-meta-label';
+      emailLabel.textContent = 'Ward Email';
+      const emailVal = document.createElement('span');
+      emailVal.className = 'gd-ward-meta-value';
+      emailVal.textContent = props.profile.assignedWardEmail;
+      emailItem.appendChild(emailLabel);
+      emailItem.appendChild(emailVal);
+      wardGrid.appendChild(emailItem);
+    }
 
     const item2 = document.createElement('div');
     item2.className = 'gd-ward-meta-item';

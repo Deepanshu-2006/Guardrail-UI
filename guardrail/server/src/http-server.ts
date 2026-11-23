@@ -1026,13 +1026,14 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             return;
           }
 
-          let verifiedEmail: string | undefined;
+          let verifiedEmail: string | undefined = (authContext as any).email;
           let fullName: string | undefined = (authContext as any).fullName;
           let imageUrl: string | null = (authContext as any).picture || null;
 
           try {
             if (options.identities) {
-              verifiedEmail = options.identities.getVerifiedEmail(authContext.actorId);
+              const fromStore = options.identities.getVerifiedEmail(authContext.actorId);
+              if (fromStore) verifiedEmail = fromStore;
             }
           } catch {}
 

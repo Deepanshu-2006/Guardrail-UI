@@ -2428,7 +2428,13 @@ export class DashboardShell {
   /**
    * Accepts an invitation code on the backend to pair with a ward.
    */
-  public async connectInvitation(code: string): Promise<{ success: boolean; wardId?: string; error?: string }> {
+  public async connectInvitation(code: string): Promise<{
+    success: boolean;
+    wardId?: string;
+    wardName?: string;
+    wardEmail?: string;
+    error?: string;
+  }> {
     if (!code || typeof code !== 'string' || !code.trim()) {
       return { success: false, error: 'Please enter an invitation code.' };
     }
@@ -2464,25 +2470,34 @@ export class DashboardShell {
       if (res.success) {
         const wardId = res.data.invitation.wardId || res.data.contact.wardId;
         const relLabel = res.data.invitation.relationshipLabel || res.data.contact.relationshipLabel;
+        const wardName =
+          (res.data.invitation as any).wardName ||
+          (res.data.contact as any).wardName ||
+          (wardId.startsWith('usr_') ? wardId.slice(4) : wardId);
+        const wardEmail = (res.data.invitation as any).wardEmail || (res.data.contact as any).wardEmail;
 
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('guardrail_assigned_ward_id', wardId);
+          if (wardName) localStorage.setItem('guardrail_assigned_ward_name', wardName);
+          if (wardEmail) localStorage.setItem('guardrail_assigned_ward_email', wardEmail);
         }
 
         if (this.state.contactProfile?.isAuthenticated) {
           this.state.contactProfile = {
             ...this.state.contactProfile,
             assignedWardId: wardId,
+            assignedWardName: wardName,
+            assignedWardEmail: wardEmail,
             relationshipLabel: relLabel ?? this.state.contactProfile.relationshipLabel,
           };
         }
         this.state.relationshipActionMessage = {
           type: 'success',
-          text: `Successfully connected to ward ${wardId}! Pending approval requests will now appear in your review queue.`,
+          text: `Successfully connected to ward ${wardName} (${wardId})! Pending approval requests will now appear in your review queue.`,
         };
         await this.refresh();
         this.render();
-        return { success: true, wardId };
+        return { success: true, wardId, wardName, wardEmail };
       } else if (
         res.error.code === 'DUPLICATE_CONTACT_RELATIONSHIP' ||
         (res.error.message && res.error.message.includes('already an active trusted contact'))

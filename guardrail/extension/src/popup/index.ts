@@ -866,7 +866,7 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          recipientActorId: 'usr_carol',
+          recipientActorId: '*',
           relationshipLabel: targetRole,
         }),
       });

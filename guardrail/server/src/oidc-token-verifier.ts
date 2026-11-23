@@ -195,15 +195,21 @@ export class HybridTokenVerifier implements TokenVerifier {
         return this.devTokens.get(cleanToken);
       }
       if (cleanToken.startsWith('ward_')) {
-        const rawName = cleanToken.slice(5).replace(/_/g, ' ');
         const emailGuess = cleanToken.slice(5).includes('@')
           ? cleanToken.slice(5)
           : `${cleanToken.slice(5)}@gmail.com`;
+        const username = emailGuess.split('@')[0];
+        const formattedName = username
+          .split(/[._-]/)
+          .filter(Boolean)
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
         return {
-          actorId: `usr_${cleanToken.slice(5).split('@')[0].split('_')[0]}`,
+          actorId: `usr_${username}`,
           role: ActorRole.USER,
           isAuthenticated: true,
-          fullName: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+          fullName: formattedName,
+          email: emailGuess,
           picture: null,
         } as AuthContext;
       }
