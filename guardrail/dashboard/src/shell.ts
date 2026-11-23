@@ -111,6 +111,7 @@ export class DashboardShell {
   // Track initial mount so entrance animations (like sidebar slide) only run once
   private isEntryAnimationActive: boolean = true;
   private entryTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastRenderedView: DashboardView | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -222,12 +223,26 @@ export class DashboardShell {
    * Initializes the dashboard shell in the DOM.
    */
   private init(): void {
+    if (this.autoFetch && this.apiClient) {
+      if (this.state.pendingRequests.length === 0) {
+        this.state.pendingStatus = 'loading';
+      }
+      if (this.state.connectedUsers.length === 0) {
+        this.state.connectedUsersStatus = 'loading';
+      }
+      if (this.state.invitations.length === 0) {
+        this.state.invitationsStatus = 'loading';
+      }
+      if (this.state.historyRequests.length === 0) {
+        this.state.historyStatus = 'loading';
+      }
+    }
     this.render();
     this.setupListeners();
     if (this.autoFetch && this.apiClient) {
-      void this.fetchPendingRequests();
-      void this.fetchRelationships();
-      void this.fetchHistoryRequests();
+      void this.fetchPendingRequests({ isBackground: true });
+      void this.fetchRelationships({ isBackground: true });
+      void this.fetchHistoryRequests({ isBackground: true });
       void this.fetchWardPolicy();
     }
     void this.checkPushNotificationStatus();
@@ -418,14 +433,17 @@ export class DashboardShell {
     let cursorStart: number | null = null;
     let cursorEnd: number | null = null;
 
-    // Preserve scroll position of both content body and window across render
+    // Preserve scroll position of both content body and window across render (within the same view)
+    const isViewChange = this.lastRenderedView !== null && this.lastRenderedView !== this.state.activeView;
     const currentContentBody = typeof this.rootContainer?.querySelector === 'function'
       ? (this.rootContainer.querySelector('.gd-content-body') as HTMLElement | null)
       : null;
-    const savedContentScrollTop = currentContentBody ? currentContentBody.scrollTop : 0;
-    const savedWindowScrollY = typeof window !== 'undefined'
+    const savedContentScrollTop = (!isViewChange && currentContentBody) ? currentContentBody.scrollTop : 0;
+    const savedWindowScrollY = (!isViewChange && typeof window !== 'undefined')
       ? (window.scrollY || window.pageYOffset || document.documentElement?.scrollTop || 0)
       : 0;
+
+    this.lastRenderedView = this.state.activeView;
 
     const isInput =
       activeEl &&
@@ -484,6 +502,7 @@ export class DashboardShell {
     this.sidebarEl.id = 'gd-primary-sidebar';
     if (this.isEntryAnimationActive) {
       this.sidebarEl.classList.add('gd-sidebar-entry');
+      this.isEntryAnimationActive = false;
     }
 
     const accountArea = renderAccountArea({
@@ -674,6 +693,9 @@ export class DashboardShell {
     // Play entrance animations once when each view is first opened/reloaded, never repeating on background polling
     const currentView = this.state.activeView;
     const isViewEntering = this.activeEnteringView === currentView;
+    if (isViewEntering) {
+      this.activeEnteringView = null;
+    }
 
     // View 1: Overview
     const overviewSection = renderOverview({
@@ -859,7 +881,7 @@ export class DashboardShell {
 
     this.rootContainer.appendChild(this.appWrapper);
 
-    // Restore scroll position so re-rendering never jumps viewport to top
+    // Restore scroll position so re-rendering within the same view never jumps viewport to top
     if (savedContentScrollTop > 0) {
       const newContentBody = typeof this.rootContainer?.querySelector === 'function'
         ? (this.rootContainer.querySelector('.gd-content-body') as HTMLElement | null)
@@ -867,8 +889,18 @@ export class DashboardShell {
       if (newContentBody) {
         newContentBody.scrollTop = savedContentScrollTop;
       }
+    } else if (isViewChange) {
+      const newContentBody = typeof this.rootContainer?.querySelector === 'function'
+        ? (this.rootContainer.querySelector('.gd-content-body') as HTMLElement | null)
+        : null;
+      if (newContentBody) {
+        newContentBody.scrollTop = 0;
+      }
+      if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo({ top: 0, behavior: 'instant' as any });
+      }
     }
-    if (typeof window !== 'undefined' && savedWindowScrollY > 0) {
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function' && savedWindowScrollY > 0) {
       window.scrollTo({ top: savedWindowScrollY, behavior: 'instant' as any });
     }
     if (typeof window !== 'undefined' && (savedContentScrollTop > 0 || savedWindowScrollY > 0)) {
@@ -882,7 +914,7 @@ export class DashboardShell {
               newContentBody.scrollTop = savedContentScrollTop;
             }
           }
-          if (savedWindowScrollY > 0 && Math.abs((window.scrollY || 0) - savedWindowScrollY) > 2) {
+          if (savedWindowScrollY > 0 && typeof window.scrollTo === 'function' && Math.abs((window.scrollY || 0) - savedWindowScrollY) > 2) {
             window.scrollTo({ top: savedWindowScrollY, behavior: 'instant' as any });
           }
         });
@@ -1680,6 +1712,36 @@ export class DashboardShell {
    * Updates contact profile.
    */
   public setProfile(profile: TrustedContactProfile | null): void {
+    const prev = this.state.contactProfile;
+    if (profile && prev) {
+      const storedWardId = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined;
+      const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
+      const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
+
+      const effectiveWardId = profile.assignedWardId ?? prev.assignedWardId ?? storedWardId;
+      const effectiveWardName = profile.assignedWardName ?? prev.assignedWardName ?? storedWardName;
+      const effectiveWardEmail = profile.assignedWardEmail ?? prev.assignedWardEmail ?? storedWardEmail;
+
+      const isSame =
+        profile.actorId === prev.actorId &&
+        profile.role === prev.role &&
+        profile.email === prev.email &&
+        profile.fullName === prev.fullName &&
+        profile.avatarUrl === prev.avatarUrl &&
+        profile.imageUrl === prev.imageUrl &&
+        profile.isAuthenticated === prev.isAuthenticated &&
+        effectiveWardId === prev.assignedWardId &&
+        effectiveWardName === prev.assignedWardName &&
+        effectiveWardEmail === prev.assignedWardEmail &&
+        profile.relationshipLabel === prev.relationshipLabel;
+
+      if (isSame && !this.isPollingHaltedDueToAuth) {
+        return;
+      }
+    } else if (!profile && !prev) {
+      return;
+    }
+
     if (profile) {
       const storedWardId = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined;
       const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
@@ -1887,6 +1949,7 @@ export class DashboardShell {
       this.render();
     }
 
+    let isHistoryIdentical = false;
     try {
       if (typeof (this.apiClient as any).listApprovalHistory !== 'function') {
         if (this.state.historyRequests.length === 0) {
@@ -1944,8 +2007,15 @@ export class DashboardShell {
           return timeB - timeA;
         });
 
+        const prevHistory = this.state.historyRequests;
+        const newStatus = mergedList.length === 0 ? 'empty' : 'idle';
+        isHistoryIdentical =
+          this.state.historyStatus === newStatus &&
+          prevHistory.length === mergedList.length &&
+          prevHistory.every((h, i) => h.id === mergedList[i].id && h.status === mergedList[i].status && h.resolvedAt === mergedList[i].resolvedAt);
+
         this.state.historyRequests = mergedList;
-        this.state.historyStatus = mergedList.length === 0 ? 'empty' : 'idle';
+        this.state.historyStatus = newStatus;
         this.state.historyError = null;
         this.state.historyPage = page;
         this.state.hasMoreHistory = fetchedRecords.length >= limit;
@@ -1975,7 +2045,9 @@ export class DashboardShell {
       }
     } finally {
       if (!this.isDestroyed) {
-        this.render();
+        if (!options?.isBackground || !isHistoryIdentical) {
+          this.render();
+        }
       }
     }
   }
@@ -2244,6 +2316,7 @@ export class DashboardShell {
       this.render();
     }
 
+    let hasRelationshipsChanged = false;
     try {
       const [contactsRes, invitesRes] = await Promise.all([
         this.apiClient.listTrustedContacts(),
@@ -2253,8 +2326,19 @@ export class DashboardShell {
       if (this.isDestroyed) return;
 
       if (contactsRes.success) {
-        this.state.connectedUsers = contactsRes.data;
-        this.state.connectedUsersStatus = contactsRes.data.length === 0 ? 'empty' : 'idle';
+        const prevUsers = this.state.connectedUsers;
+        const newUsers = contactsRes.data;
+        const newStatus = newUsers.length === 0 ? 'empty' : 'idle';
+        if (
+          this.state.connectedUsersStatus !== newStatus ||
+          prevUsers.length !== newUsers.length ||
+          !prevUsers.every((u, i) => u.userId === newUsers[i].userId && u.status === newUsers[i].status && u.relationshipLabel === newUsers[i].relationshipLabel)
+        ) {
+          hasRelationshipsChanged = true;
+        }
+
+        this.state.connectedUsers = newUsers;
+        this.state.connectedUsersStatus = newStatus;
         this.state.connectedUsersError = null;
 
         if (this.state.connectedUsers.length > 0 && this.state.contactProfile) {
@@ -2264,6 +2348,7 @@ export class DashboardShell {
           const wEmail = (firstWard as any).wardEmail;
 
           if (wId && (!this.state.contactProfile.assignedWardId || this.state.contactProfile.assignedWardId !== wId)) {
+            hasRelationshipsChanged = true;
             this.state.contactProfile = {
               ...this.state.contactProfile,
               assignedWardId: wId,
@@ -2284,17 +2369,30 @@ export class DashboardShell {
           contactsRes.statusCode === 403 ||
           contactsRes.statusCode === 404
         ) {
+          if (this.state.connectedUsersStatus !== 'idle') hasRelationshipsChanged = true;
           this.state.connectedUsersStatus = 'idle';
           this.state.connectedUsersError = null;
         } else {
+          hasRelationshipsChanged = true;
           this.state.connectedUsersStatus = 'error';
           this.state.connectedUsersError = contactsRes.error.message;
         }
       }
 
       if (invitesRes.success) {
-        this.state.invitations = invitesRes.data;
-        this.state.invitationsStatus = invitesRes.data.length === 0 ? 'empty' : 'idle';
+        const prevInvites = this.state.invitations;
+        const newInvites = invitesRes.data;
+        const newInviteStatus = newInvites.length === 0 ? 'empty' : 'idle';
+        if (
+          this.state.invitationsStatus !== newInviteStatus ||
+          prevInvites.length !== newInvites.length ||
+          !prevInvites.every((inv, i) => inv.id === newInvites[i].id && inv.status === newInvites[i].status)
+        ) {
+          hasRelationshipsChanged = true;
+        }
+
+        this.state.invitations = newInvites;
+        this.state.invitationsStatus = newInviteStatus;
         this.state.invitationsError = null;
       } else {
         if (
@@ -2302,15 +2400,18 @@ export class DashboardShell {
           invitesRes.statusCode === 403 ||
           invitesRes.statusCode === 404
         ) {
+          if (this.state.invitationsStatus !== 'idle') hasRelationshipsChanged = true;
           this.state.invitationsStatus = 'idle';
           this.state.invitationsError = null;
         } else {
+          hasRelationshipsChanged = true;
           this.state.invitationsStatus = 'error';
           this.state.invitationsError = invitesRes.error.message;
         }
       }
     } catch (unhandled: unknown) {
       if (this.isDestroyed) return;
+      hasRelationshipsChanged = true;
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
       this.state.connectedUsersStatus = 'error';
       this.state.connectedUsersError = msg;
@@ -2318,7 +2419,9 @@ export class DashboardShell {
       this.state.invitationsError = msg;
     } finally {
       if (!this.isDestroyed) {
-        this.render();
+        if (!options?.isBackground || hasRelationshipsChanged) {
+          this.render();
+        }
       }
     }
   }
@@ -2622,22 +2725,29 @@ export class DashboardShell {
     this.state.wardPolicyStatus = 'loading';
     this.state.wardPolicyError = null;
 
+    let hasPolicyChanged = false;
     try {
       const res = await this.apiClient.getUserPolicy(wardId);
       if (res.success && res.data) {
         if (res.data.viewType === 'TRUSTED_CONTACT_SUMMARY') {
+          const prevSummary = this.state.wardPolicySummary;
+          const newSummary = res.data.summary;
+          if (!prevSummary || JSON.stringify(prevSummary) !== JSON.stringify(newSummary)) {
+            hasPolicyChanged = true;
+          }
           this.state.wardPolicySummary = res.data.summary;
           this.state.wardPolicyStatus = 'idle';
           this.state.wardPolicyError = null;
         } else if (res.data.viewType === 'WARD_FULL_POLICY') {
           const full = res.data.config;
-          this.state.wardPolicySummary = {
+          const prevSummary = this.state.wardPolicySummary;
+          const newSummary = {
             wardId,
             policyVersion: full.policyVersion,
             schemaVersion: full.schemaVersion,
             updatedAt: full.updatedAt,
-            overallStatus: 'ACTIVE',
-            sensitivityPreset: 'balanced',
+            overallStatus: 'ACTIVE' as const,
+            sensitivityPreset: 'balanced' as const,
             stagingModeEnabled: true,
             categoryProtections: {
               destructiveActions: (full.policies.find((p) => p.id === 'POLICY_CONTROLLED_DESTRUCTIVE')?.decision as any) ?? 'PROTECT',
@@ -2649,9 +2759,13 @@ export class DashboardShell {
             relationship: {
               contactId: this.state.contactProfile?.actorId ?? 'contact',
               relationshipLabel: this.state.contactProfile?.relationshipLabel,
-              status: 'ACTIVE',
+              status: 'ACTIVE' as const,
             },
           };
+          if (!prevSummary || JSON.stringify(prevSummary) !== JSON.stringify(newSummary)) {
+            hasPolicyChanged = true;
+          }
+          this.state.wardPolicySummary = newSummary;
           this.state.wardPolicyStatus = 'idle';
           this.state.wardPolicyError = null;
         }
@@ -2661,6 +2775,10 @@ export class DashboardShell {
           try {
             const auditRes = await this.apiClient.getPolicyAuditHistory(wardId);
             if (auditRes.success) {
+              const prevAudit = this.state.wardPolicyAuditHistory;
+              if (!prevAudit || prevAudit.length !== auditRes.data.length) {
+                hasPolicyChanged = true;
+              }
               this.state.wardPolicyAuditHistory = auditRes.data;
               this.state.wardPolicyAuditStatus = auditRes.data.length === 0 ? 'empty' : 'idle';
               this.state.wardPolicyAuditError = null;
@@ -2671,26 +2789,32 @@ export class DashboardShell {
                 this.state.wardPolicyAuditStatus = 'idle';
                 this.state.wardPolicyAuditError = null;
               } else {
+                hasPolicyChanged = true;
                 this.state.wardPolicyAuditStatus = 'error';
                 this.state.wardPolicyAuditError = auditRes.error?.message ?? 'Failed to retrieve policy audit history.';
               }
             }
           } catch (auditErr: unknown) {
+            hasPolicyChanged = true;
             this.state.wardPolicyAuditStatus = 'error';
             this.state.wardPolicyAuditError = auditErr instanceof Error ? auditErr.message : String(auditErr);
           }
         }
       } else {
+        hasPolicyChanged = true;
         this.state.wardPolicyStatus = 'error';
         const errorMsg = !res.success ? res.error?.message : undefined;
         this.state.wardPolicyError = errorMsg || 'Failed to retrieve ward policy.';
       }
     } catch (err) {
+      hasPolicyChanged = true;
       this.state.wardPolicyStatus = 'error';
       this.state.wardPolicyError = err instanceof Error ? err.message : String(err);
     } finally {
       if (!this.isDestroyed) {
-        this.render();
+        if (hasPolicyChanged || this.state.wardPolicyError) {
+          this.render();
+        }
       }
     }
   }
@@ -2755,11 +2879,19 @@ export class DashboardShell {
   public async checkPushNotificationStatus(): Promise<void> {
     try {
       const status = await defaultDashboardPushService.getStatus();
+      const prev = this.state.pushStatus;
+      const isIdentical =
+        prev &&
+        prev.supported === status.supported &&
+        prev.permission === status.permission &&
+        prev.isSubscribed === status.isSubscribed &&
+        prev.endpoint === status.endpoint;
+
       this.state = {
         ...this.state,
         pushStatus: status,
       };
-      if (this.state.activeView === 'settings') {
+      if (!isIdentical && this.state.activeView === 'settings') {
         this.render();
       }
     } catch {}

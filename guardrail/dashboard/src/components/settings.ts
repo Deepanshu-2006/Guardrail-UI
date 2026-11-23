@@ -865,8 +865,9 @@ function setupSettingsScrollReveal(container: HTMLElement): void {
 
     revealCards.forEach((el) => {
       const rect = el.getBoundingClientRect();
-      const viewportHeight = window.innerHeight || (document.documentElement ? document.documentElement.clientHeight : 800);
-      if (rect.top < viewportHeight) {
+      const scrollRootBottom = scrollRoot ? scrollRoot.getBoundingClientRect().bottom : (window.innerHeight || 800);
+      const scrollRootTop = scrollRoot ? scrollRoot.getBoundingClientRect().top : 0;
+      if (rect.top < scrollRootBottom && rect.bottom > scrollRootTop) {
         el.classList.add('is-revealed');
       } else {
         observer.observe(el);
