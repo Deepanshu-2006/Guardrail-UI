@@ -3343,31 +3343,145 @@ textarea:focus-visible,
   color: var(--gd-text-secondary);
 }
 
-/* Active Ward Card (When Ward Linked: Pure Typography Layout) */
-#view-overview .gd-active-ward-card {
+/* Active Ward Oversight (Pure Typography Layout - Zero Boxes, Zero Borders) */
+#view-overview .gd-active-ward-card,
+#gd-active-ward-card {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  margin-bottom: 48px !important;
+  margin: 32px 0 44px 0 !important;
   box-shadow: none !important;
 }
 
-#view-overview .gd-active-ward-card .gd-section-title {
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--gd-text-primary, #273121);
-  margin: 0 0 20px 0;
-  line-height: 1.22;
+.gd-ward-oversight-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 760px;
 }
 
+.gd-ward-kicker {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gd-deep-olive, #54683E);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.gd-ward-hero-name {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--gd-text-primary, #273121);
+  margin: 0 0 8px 0;
+  line-height: 1.15;
+}
+
+.gd-ward-meta-line {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gd-text-secondary, #5F6656);
+  line-height: 1.5;
+  margin: 0 0 14px 0;
+  letter-spacing: -0.005em;
+}
+
+.gd-ward-guarantee-note {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 13px;
+  font-weight: 400;
+  color: #7A8570;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+  max-width: 660px;
+}
+
+.gd-ward-action-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.gd-ward-text-link {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  transition: opacity 0.15s ease, text-decoration-color 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.gd-ward-text-link:hover {
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+}
+
+.gd-link-manage {
+  font-weight: 600 !important;
+  color: var(--gd-text-primary, #273121) !important;
+}
+
+.gd-link-manage:hover {
+  color: #161D13 !important;
+}
+
+.gd-ward-link-sep {
+  font-size: 13px;
+  color: #9AA092;
+  user-select: none;
+}
+
+.gd-link-disconnect {
+  font-weight: 500 !important;
+  color: #9B3828 !important;
+}
+
+.gd-link-disconnect:hover {
+  color: #7A2416 !important;
+}
+
+.gd-ward-confirm-inline {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 12.5px;
+  color: var(--gd-text-secondary, #5F6656);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gd-link-confirm {
+  font-weight: 700 !important;
+  color: #B93838 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+
+.gd-link-cancel {
+  font-weight: 500 !important;
+  color: var(--gd-text-secondary, #6E7564) !important;
+}
+
+/* Backward compatibility for legacy helper selectors */
 .gd-ward-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  gap: 20px 36px;
-  margin: 20px 0 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 16px 0;
   padding: 0;
   background-color: transparent;
   border: none;
@@ -3375,8 +3489,8 @@ textarea:focus-visible,
 
 .gd-ward-meta-item {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
@@ -3394,93 +3508,52 @@ textarea:focus-visible,
 
 .gd-ward-meta-value {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
-  font-size: 16.5px;
-  font-weight: 700;
-  color: var(--gd-text-primary, #273121);
-  line-height: 1.3;
-}
-
-.gd-ward-meta-value.gd-mono {
-  font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace);
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--gd-text-primary, #273121);
-  letter-spacing: -0.01em;
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
 }
 
 .gd-ward-meta-badge {
   display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
   font-family: var(--gd-font-display, 'Space Grotesk', sans-serif);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
   color: var(--gd-deep-olive, #273121) !important;
+  background: transparent !important;
   border: none !important;
+  padding: 0 !important;
 }
 
 .gd-ward-duty-notice {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--gd-text-secondary, #5F6656);
-  line-height: 1.55;
+  line-height: 1.6;
   background: transparent !important;
   border: none !important;
   padding: 0;
-  margin: 20px 0 22px 0;
-  max-width: 620px;
+  margin: 12px 0 16px 0;
+  max-width: 660px;
 }
 
 .gd-ward-actions-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-  margin-top: 20px;
-  padding-top: 0;
-  border-top: none;
-}
-
-#gd-btn-disconnect-ward.gd-btn-revoke {
-  background: transparent !important;
-  color: var(--gd-critical-primary, #B93838) !important;
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
-  font-size: 11.5px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-  cursor: pointer !important;
-  text-decoration: underline !important;
-  text-underline-offset: 3px !important;
-  text-decoration-thickness: 1.5px !important;
-  text-decoration-color: rgba(185, 56, 56, 0.45) !important;
-  display: inline-block !important;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease !important;
-}
-
-#gd-btn-disconnect-ward.gd-btn-revoke:hover {
-  color: #8C2222 !important;
-  text-decoration-color: #8C2222 !important;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 0;
+  border: none;
 }
 
 .gd-btn-manage-relationships {
-  background: var(--gd-deep-olive, #273121) !important;
-  color: var(--gd-sidebar-primary, #EDE6D6) !important;
-  border: 1px solid var(--gd-deep-olive, #273121) !important;
-  border-radius: 6px !important;
-  padding: 9px 18px !important;
+  background: transparent !important;
+  color: var(--gd-text-primary, #273121) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
   font-size: 13px !important;
   font-weight: 600 !important;
@@ -3488,18 +3561,15 @@ textarea:focus-visible,
   display: inline-flex !important;
   align-items: center !important;
   gap: 6px !important;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.1) !important;
-  transition: background-color 0.15s ease, transform 0.15s ease !important;
+  box-shadow: none !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
 }
 
 .gd-btn-manage-relationships:hover {
-  background: var(--gd-deep-olive-hover, #1A2215) !important;
-  border-color: #1A2215 !important;
-  transform: translateY(-1px) !important;
-}
-
-.gd-btn-manage-relationships:active {
-  transform: translateY(0) !important;
+  color: #161D13 !important;
+  text-decoration-color: #161D13 !important;
+  transform: none !important;
 }
 
 .gd-relationship-confirm-box {

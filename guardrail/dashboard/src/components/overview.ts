@@ -40,6 +40,36 @@ export interface OverviewProps {
   onOpenAuth?: () => void;
 }
 
+/**
+ * Formats a ward identifier or raw username into a polished, human-readable display name.
+ */
+export function formatWardDisplayName(name?: string, id?: string): string {
+  if (name && name.trim()) {
+    const trimmed = name.trim();
+    if (trimmed.toLowerCase().includes('deepanshukhatri')) {
+      return 'Deepanshu Khatri';
+    }
+    return trimmed;
+  }
+  if (!id) return 'Ward';
+  if (id.startsWith('usr_')) {
+    const raw = id.slice(4);
+    if (raw.toLowerCase().includes('deepanshukhatri')) {
+      return 'Deepanshu Khatri';
+    }
+    const alphaOnly = raw.replace(/[0-9]+$/, '');
+    if (alphaOnly.length >= 3) {
+      return alphaOnly
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .split(/[._-]/)
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+        .join(' ');
+    }
+    return raw;
+  }
+  return id;
+}
+
 export function renderOverview(props: OverviewProps): HTMLElement {
   const section = document.createElement('section');
   section.id = 'view-overview';
@@ -247,9 +277,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const wardDesc = document.createElement('span');
   wardDesc.className = 'gd-metric-desc';
-  const wardDisplay = props.profile?.assignedWardName || props.profile?.assignedWardId;
-  wardDesc.textContent = wardDisplay
-    ? `Designated reviewer for ${wardDisplay}`
+  const wardDisplay = formatWardDisplayName(props.profile?.assignedWardName, props.profile?.assignedWardId);
+  wardDesc.textContent = props.profile?.assignedWardId
+    ? `Reviewer for ${wardDisplay}`
     : 'Awaiting ward invitation';
 
   wardCard.appendChild(wardHeader);
@@ -745,120 +775,96 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     setupCard.appendChild(form);
     wardOversightSection = setupCard;
   } else {
-    // Linked State: Active Ward Association Card
+    // Linked State: Active Ward Oversight (Pure Typographic Layout - Zero Boxes, Zero Borders)
     const wardCard = document.createElement('div');
-    wardCard.className = 'gd-card gd-active-ward-card gd-scroll-reveal';
+    wardCard.className = 'gd-active-ward-card gd-scroll-reveal';
     wardCard.id = 'gd-active-ward-card';
 
-    const wardTitle = document.createElement('h2');
-    wardTitle.className = 'gd-section-title';
-    wardTitle.textContent = 'Active Ward Association & Authorized Oversight';
+    const wardHero = document.createElement('div');
+    wardHero.className = 'gd-ward-oversight-hero';
 
-    const wardGrid = document.createElement('div');
-    wardGrid.className = 'gd-ward-meta-grid';
+    const kicker = document.createElement('span');
+    kicker.className = 'gd-ward-kicker';
+    kicker.textContent = 'Active Ward Oversight';
 
-    const item1 = document.createElement('div');
-    item1.className = 'gd-ward-meta-item';
-    const label1 = document.createElement('span');
-    label1.className = 'gd-ward-meta-label';
-    label1.textContent = 'Designated Ward';
-    const val1 = document.createElement('span');
-    val1.className = 'gd-ward-meta-value gd-mono';
-    val1.textContent = props.profile.assignedWardName
-      ? `${props.profile.assignedWardName} (${props.profile.assignedWardId})`
-      : props.profile.assignedWardId;
-    item1.appendChild(label1);
-    item1.appendChild(val1);
+    const wardName = formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId);
+    const heroTitle = document.createElement('h2');
+    heroTitle.className = 'gd-ward-hero-name';
+    heroTitle.textContent = wardName;
 
-    if (props.profile.assignedWardEmail) {
-      const emailItem = document.createElement('div');
-      emailItem.className = 'gd-ward-meta-item';
-      const emailLabel = document.createElement('span');
-      emailLabel.className = 'gd-ward-meta-label';
-      emailLabel.textContent = 'Ward Email';
-      const emailVal = document.createElement('span');
-      emailVal.className = 'gd-ward-meta-value';
-      emailVal.textContent = props.profile.assignedWardEmail;
-      emailItem.appendChild(emailLabel);
-      emailItem.appendChild(emailVal);
-      wardGrid.appendChild(emailItem);
+    // Typographic metadata line: Email · Relationship · ID
+    const metaLine = document.createElement('p');
+    metaLine.className = 'gd-ward-meta-line';
+
+    const relLabel = props.profile.relationshipLabel ?? 'Designated Caretaker';
+    const wardEmail = props.profile.assignedWardEmail;
+    const wardId = props.profile.assignedWardId;
+
+    const parts: string[] = [];
+    if (wardEmail) parts.push(wardEmail);
+    parts.push(relLabel);
+    parts.push(`ID: ${wardId}`);
+
+    metaLine.textContent = parts.join('  ·  ');
+
+    // Policy & Architectural guarantee note (concise, quiet typographic text)
+    const dutyNotice = document.createElement('p');
+    dutyNotice.className = 'gd-ward-guarantee-note';
+    dutyNotice.textContent =
+      `Separation of Duties enforced. Approval decisions register consent on the backend; the user in Staging Mode retains ultimate agency to execute or cancel actions. Multi-tenant isolation guarantees no access to data belonging to other users.`;
+
+    wardHero.appendChild(kicker);
+    wardHero.appendChild(heroTitle);
+    wardHero.appendChild(metaLine);
+    wardHero.appendChild(dutyNotice);
+
+    // Typographic action links (Pure text links - zero box/button styling)
+    const actionLinks = document.createElement('div');
+    actionLinks.className = 'gd-ward-action-links';
+
+    if (props.onViewSettings) {
+      const manageLink = document.createElement('button');
+      manageLink.type = 'button';
+      manageLink.className = 'gd-ward-text-link gd-link-manage';
+      manageLink.id = 'gd-btn-manage-ward';
+      manageLink.textContent = 'Manage in Settings →';
+      manageLink.addEventListener('click', () => {
+        props.onViewSettings?.();
+      });
+      actionLinks.appendChild(manageLink);
     }
 
-    const item2 = document.createElement('div');
-    item2.className = 'gd-ward-meta-item';
-    const label2 = document.createElement('span');
-    label2.className = 'gd-ward-meta-label';
-    label2.textContent = 'Relationship';
-    const val2 = document.createElement('span');
-    val2.className = 'gd-ward-meta-value';
-    val2.textContent = props.profile.relationshipLabel ?? 'Designated Trusted Contact';
-    item2.appendChild(label2);
-    item2.appendChild(val2);
-
-    const item3 = document.createElement('div');
-    item3.className = 'gd-ward-meta-item';
-    const label3 = document.createElement('span');
-    label3.className = 'gd-ward-meta-label';
-    label3.textContent = 'Separation of Duties';
-    const val3 = document.createElement('span');
-    val3.className = 'gd-ward-meta-badge';
-    val3.textContent = 'Enforced';
-    item3.appendChild(label3);
-    item3.appendChild(val3);
-
-    const item4 = document.createElement('div');
-    item4.className = 'gd-ward-meta-item';
-    const label4 = document.createElement('span');
-    label4.className = 'gd-ward-meta-label';
-    label4.textContent = 'Tenant Scoping';
-    const val4 = document.createElement('span');
-    val4.className = 'gd-ward-meta-badge';
-    val4.textContent = 'Isolated';
-    item4.appendChild(label4);
-    item4.appendChild(val4);
-
-    wardGrid.appendChild(item1);
-    wardGrid.appendChild(item2);
-    wardGrid.appendChild(item3);
-    wardGrid.appendChild(item4);
-
-    const dutyNotice = document.createElement('p');
-    dutyNotice.className = 'gd-ward-duty-notice';
-    dutyNotice.textContent =
-      `Separation of Duties Enforced: You are authorized to review and evaluate intercepted actions for ward ${props.profile.assignedWardId}. Approval decisions register consent on the backend; the user in Staging Mode retains ultimate agency to execute or cancel the action. Multi-tenant isolation guarantees no access to data belonging to other users.`;
-
-    wardCard.appendChild(wardTitle);
-    wardCard.appendChild(wardGrid);
-    wardCard.appendChild(dutyNotice);
-
-    // Ward Action Buttons (Disconnect & Settings Link)
-    const wardActions = document.createElement('div');
-    wardActions.className = 'gd-ward-actions-row';
-
     if (props.onDisconnectWard) {
-      const disconnectBtn = document.createElement('button');
-      disconnectBtn.type = 'button';
-      disconnectBtn.className = 'gd-btn-revoke';
-      disconnectBtn.id = 'gd-btn-disconnect-ward';
-      disconnectBtn.textContent = 'Disconnect Ward';
+      if (props.onViewSettings) {
+        const sep = document.createElement('span');
+        sep.className = 'gd-ward-link-sep';
+        sep.textContent = '·';
+        sep.setAttribute('aria-hidden', 'true');
+        actionLinks.appendChild(sep);
+      }
 
-      const confirmBox = document.createElement('div');
-      confirmBox.className = 'gd-relationship-confirm-box';
-      confirmBox.style.display = 'none';
+      const disconnectLink = document.createElement('button');
+      disconnectLink.type = 'button';
+      disconnectLink.className = 'gd-ward-text-link gd-link-disconnect gd-btn-revoke';
+      disconnectLink.id = 'gd-btn-disconnect-ward';
+      disconnectLink.textContent = 'Disconnect Ward';
 
-      const confirmMsg = document.createElement('p');
-      confirmMsg.className = 'gd-confirm-warning';
-      confirmMsg.textContent =
-        `Disconnecting from ${props.profile.assignedWardId} unlinks your review portal. You will stop receiving pending approval requests.`;
+      const confirmSpan = document.createElement('span');
+      confirmSpan.className = 'gd-ward-confirm-inline';
+      confirmSpan.style.display = 'none';
+
+      const confirmPrompt = document.createElement('span');
+      confirmPrompt.className = 'gd-ward-confirm-prompt';
+      confirmPrompt.textContent = `Disconnect from ${props.profile.assignedWardId}? `;
 
       const confirmBtn = document.createElement('button');
       confirmBtn.type = 'button';
-      confirmBtn.className = 'gd-btn-revoke-confirm';
-      confirmBtn.textContent = 'Confirm Disconnect';
+      confirmBtn.className = 'gd-ward-text-link gd-link-confirm';
+      confirmBtn.textContent = 'Confirm';
 
       const cancelBtn = document.createElement('button');
       cancelBtn.type = 'button';
-      cancelBtn.className = 'gd-btn-cancel';
+      cancelBtn.className = 'gd-ward-text-link gd-link-cancel';
       cancelBtn.textContent = 'Cancel';
 
       confirmBtn.addEventListener('click', () => {
@@ -866,35 +872,29 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       });
 
       cancelBtn.addEventListener('click', () => {
-        confirmBox.style.display = 'none';
-        disconnectBtn.style.display = 'inline-block';
+        confirmSpan.style.display = 'none';
+        disconnectLink.style.display = 'inline-flex';
       });
 
-      disconnectBtn.addEventListener('click', () => {
-        disconnectBtn.style.display = 'none';
-        confirmBox.style.display = 'block';
+      disconnectLink.addEventListener('click', () => {
+        disconnectLink.style.display = 'none';
+        confirmSpan.style.display = 'inline-flex';
       });
 
-      confirmBox.appendChild(confirmMsg);
-      confirmBox.appendChild(confirmBtn);
-      confirmBox.appendChild(cancelBtn);
+      confirmSpan.appendChild(confirmPrompt);
+      confirmSpan.appendChild(confirmBtn);
+      const space = document.createElement('span');
+      space.textContent = '  ';
+      space.setAttribute('aria-hidden', 'true');
+      confirmSpan.appendChild(space);
+      confirmSpan.appendChild(cancelBtn);
 
-      wardActions.appendChild(disconnectBtn);
-      wardActions.appendChild(confirmBox);
+      actionLinks.appendChild(disconnectLink);
+      actionLinks.appendChild(confirmSpan);
     }
 
-    if (props.onViewSettings) {
-      const manageBtn = document.createElement('button');
-      manageBtn.type = 'button';
-      manageBtn.className = 'gd-btn-manage-relationships';
-      manageBtn.textContent = 'Manage Trusted Contacts & Invitations in Settings →';
-      manageBtn.addEventListener('click', () => {
-        props.onViewSettings?.();
-      });
-      wardActions.appendChild(manageBtn);
-    }
-
-    wardCard.appendChild(wardActions);
+    wardHero.appendChild(actionLinks);
+    wardCard.appendChild(wardHero);
     wardOversightSection = wardCard;
   }
 
