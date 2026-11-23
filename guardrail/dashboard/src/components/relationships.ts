@@ -308,9 +308,13 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
           confirmBox.style.display = 'block';
         });
 
+        const confirmActions = document.createElement('div');
+        confirmActions.className = 'gd-confirm-actions';
+        confirmActions.appendChild(confirmBtn);
+        confirmActions.appendChild(cancelBtn);
+
         confirmBox.appendChild(confirmMsg);
-        confirmBox.appendChild(confirmBtn);
-        confirmBox.appendChild(cancelBtn);
+        confirmBox.appendChild(confirmActions);
 
         itemActions.appendChild(disconnectBtn);
         itemActions.appendChild(confirmBox);
@@ -439,9 +443,13 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
           confirmBox.style.display = 'block';
         });
 
+        const confirmActions = document.createElement('div');
+        confirmActions.className = 'gd-confirm-actions';
+        confirmActions.appendChild(confirmBtn);
+        confirmActions.appendChild(cancelBtn);
+
         confirmBox.appendChild(confirmMsg);
-        confirmBox.appendChild(confirmBtn);
-        confirmBox.appendChild(cancelBtn);
+        confirmBox.appendChild(confirmActions);
 
         itemActions.appendChild(revokeBtn);
         itemActions.appendChild(confirmBox);
@@ -721,9 +729,13 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
           confirmBox.style.display = 'block';
         });
 
+        const confirmActions = document.createElement('div');
+        confirmActions.className = 'gd-confirm-actions';
+        confirmActions.appendChild(confirmBtn);
+        confirmActions.appendChild(cancelBtn);
+
         confirmBox.appendChild(confirmMsg);
-        confirmBox.appendChild(confirmBtn);
-        confirmBox.appendChild(cancelBtn);
+        confirmBox.appendChild(confirmActions);
 
         itemActions.appendChild(revokeBtn);
         itemActions.appendChild(confirmBox);

@@ -3685,60 +3685,81 @@ textarea:focus-visible,
   transform: none !important;
 }
 
+.gd-relationship-confirm-box[style*="display: none"],
+.gd-relationship-confirm-box[style*="display:none"],
+.gd-relationship-confirm-box.is-hidden {
+  display: none !important;
+}
+
 .gd-relationship-confirm-box {
-  background: #FAF3F3 !important;
-  border: 1px solid #F3C7C7 !important;
-  border-radius: 6px !important;
-  padding: 12px 16px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
   margin-top: 6px !important;
-  max-width: 500px !important;
+  max-width: 480px !important;
   box-sizing: border-box !important;
 }
 
 .gd-confirm-warning {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
-  font-size: 12.5px !important;
-  color: #962828 !important;
+  font-size: 13px !important;
+  color: #8F2B2B !important;
   font-weight: 500 !important;
   line-height: 1.45 !important;
-  margin: 0 0 12px 0 !important;
+  margin: 0 0 10px 0 !important;
+}
+
+.gd-confirm-actions {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 16px !important;
+  margin-top: 6px !important;
 }
 
 .gd-btn-revoke-confirm {
-  background: #B93838 !important;
-  color: #FFFFFF !important;
+  background: transparent !important;
+  color: #8F2B2B !important;
   border: none !important;
-  border-radius: 6px !important;
-  padding: 8px 16px !important;
-  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
+  border-bottom: 1.5px solid #8F2B2B !important;
+  border-radius: 0 !important;
+  padding: 0 0 2px 0 !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
   font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
   cursor: pointer !important;
-  transition: background 0.15s ease !important;
+  transition: all 0.15s ease !important;
+  display: inline-block !important;
 }
 
 .gd-btn-revoke-confirm:hover {
-  background: #A02B2B !important;
+  color: #B93838 !important;
+  border-bottom-color: #B93838 !important;
+  background: transparent !important;
 }
 
 .gd-btn-cancel {
-  background: #EDE6D6 !important;
-  color: #273121 !important;
-  border: 1px solid #DDD5C2 !important;
-  border-radius: 6px !important;
-  padding: 8px 14px !important;
+  background: transparent !important;
+  color: var(--gd-text-secondary, #5F6656) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
   font-size: 12px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   cursor: pointer !important;
-  margin-left: 8px !important;
-  transition: all 0.15s ease !important;
+  text-decoration: underline !important;
+  margin-left: 16px !important;
+  display: inline-block !important;
+  transition: color 0.15s ease !important;
 }
 
 .gd-btn-cancel:hover {
-  background: #E2DAC8 !important;
-  border-color: #BFB6A1 !important;
+  color: #273121 !important;
+  background: transparent !important;
 }
 
 /* -----------------------------------------------------------------------------
@@ -9147,12 +9168,13 @@ article.gd-card-collapsed,
   color: var(--gd-warning-primary, #8C6D1F) !important;
 }
 
-#view-settings .gd-settings-grid {
+#view-settings .gd-settings-grid,
+#gd-card-identity .gd-settings-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
-  gap: 32px 56px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 24px 44px !important;
   margin-bottom: 28px !important;
-  max-width: 960px !important;
+  max-width: 100% !important;
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
@@ -9364,54 +9386,84 @@ article.gd-card-collapsed,
   opacity: 1 !important;
 }
 
+.gd-relationship-confirm-box[style*="display: none"],
+.gd-relationship-confirm-box[style*="display:none"],
+.gd-relationship-confirm-box.is-hidden {
+  display: none !important;
+}
+
 .gd-relationship-confirm-box {
   padding: 0 !important;
+  background: transparent !important;
   background-color: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: baseline !important;
-  gap: 10px 16px !important;
-  max-width: 100% !important;
+  box-shadow: none !important;
+  max-width: 480px !important;
+  box-sizing: border-box !important;
 }
 
 .gd-confirm-warning {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
   font-size: 13px !important;
   color: #8F2B2B !important;
-  margin: 0 !important;
-  line-height: 1.4 !important;
+  font-weight: 500 !important;
+  line-height: 1.45 !important;
+  margin: 0 0 10px 0 !important;
+}
+
+.gd-confirm-actions {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 16px !important;
+  margin-top: 6px !important;
 }
 
 .gd-btn-revoke-confirm {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
-  font-size: 12.5px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
   text-transform: uppercase !important;
-  color: #FFFFFF !important;
-  background-color: #8F2B2B !important;
+  color: #8F2B2B !important;
+  background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
-  border-radius: 4px !important;
-  padding: 4px 10px !important;
+  border-bottom: 1.5px solid #8F2B2B !important;
+  border-radius: 0 !important;
+  padding: 0 0 2px 0 !important;
+  margin: 0 !important;
   cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  display: inline-block !important;
 }
 
 .gd-btn-revoke-confirm:hover {
-  background-color: #B93838 !important;
+  color: #B93838 !important;
+  border-bottom-color: #B93838 !important;
+  background: transparent !important;
 }
 
 .gd-btn-cancel {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   color: var(--gd-text-secondary, #5F6656) !important;
+  background: transparent !important;
   background-color: transparent !important;
   border: none !important;
+  border-radius: 0 !important;
   cursor: pointer !important;
   text-decoration: underline !important;
   padding: 0 !important;
+  margin-left: 16px !important;
+  display: inline-block !important;
+  transition: color 0.15s ease !important;
+}
+
+.gd-btn-cancel:hover {
+  color: #273121 !important;
+  background: transparent !important;
 }
 
 /* Push Notifications Card Refined Spacing & Button Aesthetics */
@@ -9789,46 +9841,58 @@ article.gd-card-collapsed,
   opacity: 0.8;
 }
 
+.gd-relationship-confirm-box[style*="display: none"],
+.gd-relationship-confirm-box[style*="display:none"],
+.gd-relationship-confirm-box.is-hidden {
+  display: none !important;
+}
+
 .gd-relationship-confirm-box {
-  padding: 12px 16px;
-  background-color: transparent;
-  border: 1px solid var(--gd-border-hairline);
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 320px;
+  padding: 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  max-width: 480px !important;
 }
 
 .gd-confirm-warning {
-  font-size: 12px;
-  color: var(--gd-critical-primary);
-  margin: 0;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13px !important;
+  color: #8F2B2B !important;
+  margin: 0 0 10px 0 !important;
+  line-height: 1.45 !important;
 }
 
 .gd-btn-revoke-confirm {
-  padding: 6px 14px;
-  font-family: var(--gd-font-display);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #FFFFFF;
-  background-color: var(--gd-critical-primary);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: #8F2B2B !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1.5px solid #8F2B2B !important;
+  border-radius: 0 !important;
+  padding: 0 0 2px 0 !important;
+  cursor: pointer !important;
+  display: inline-block !important;
 }
 
 .gd-btn-cancel {
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gd-text-secondary);
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--gd-text-secondary, #5F6656) !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+  text-decoration: underline !important;
+  margin-left: 16px !important;
+  padding: 0 !important;
+  display: inline-block !important;
 }
 
 /* Form Controls & Invitation Creation */
