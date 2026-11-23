@@ -1615,12 +1615,15 @@ textarea:focus-visible,
    ----------------------------------------------------------------------------- */
 
 /* Settings Main Page Heading: Sequential Character Reveal & Subtitle Slide-in */
-#view-settings.gd-view-initial-enter > .gd-section-header {
+#view-settings.gd-view-initial-enter > .gd-section-header,
+#view-settings.gd-view-initial-enter > header.gd-section-header {
   opacity: 1 !important;
   transform: none !important;
 }
 
-#view-settings.gd-view-initial-enter #settings-title .gd-char {
+#view-settings.gd-view-initial-enter #settings-title .gd-char,
+#view-settings.gd-view-initial-enter .gd-section-header .gd-section-title .gd-char,
+#view-settings.gd-view-initial-enter .gd-section-header .gd-view-title .gd-char {
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
@@ -1629,8 +1632,9 @@ textarea:focus-visible,
   white-space: pre;
 }
 
-#view-settings.gd-view-initial-enter > .gd-section-header .gd-section-subtitle {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both !important;
+#view-settings.gd-view-initial-enter > .gd-section-header .gd-section-subtitle,
+#view-settings.gd-view-initial-enter > header.gd-section-header .gd-section-subtitle {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
 
 /* 1. Reviewer Identity Card: Sequential Character & Side-Sliding Entrance */
@@ -1640,70 +1644,70 @@ textarea:focus-visible,
   opacity: 0;
   transform: translateY(12px) scale(0.94);
   animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(0.16s + var(--char-idx, 0) * 0.016s) !important;
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-card-header .gd-settings-badge,
 #gd-card-identity.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
 
-/* Reviewer Identity Content: Staggered side-sliding items, labels & values */
+/* Reviewer Identity Content: Staggered slow side-sliding items, labels & values */
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(1),
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(2),
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(3),
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-subbadge,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-subbadge {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(4),
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both !important;
 }
 
 /* 2. Connected Users & Trusted Contacts: Sequential Character & Side-Sliding Entrance */
@@ -1713,296 +1717,191 @@ textarea:focus-visible,
   opacity: 0;
   transform: translateY(12px) scale(0.94);
   animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(0.64s + var(--char-idx, 0) * 0.016s) !important;
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-settings-card-header .gd-settings-badge,
 #gd-connected-users-card.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.78s both !important;
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
 
-/* Connected Users Content: Avatar, Name, Badges, Metadata, Action Button */
+/* Connected Users Content: Slow, deliberate sequential items */
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-list,
 #gd-connected-users-card.is-revealed .gd-relationships-list,
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationship-item,
 #gd-connected-users-card.is-revealed .gd-relationship-item {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-avatar,
 #gd-connected-users-card.is-revealed .gd-rel-avatar {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both !important;
+  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-name,
 #gd-connected-users-card.is-revealed .gd-rel-name {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-role-badge,
 #gd-connected-users-card.is-revealed .gd-rel-role-badge,
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-status-badge,
 #gd-connected-users-card.is-revealed .gd-status-badge {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both !important;
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-meta-row,
 #gd-connected-users-card.is-revealed .gd-rel-meta-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-actions,
 #gd-connected-users-card.is-revealed .gd-rel-actions,
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-btn-revoke,
-#gd-connected-users-card.is-revealed .gd-btn-revoke {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both !important;
+#gd-connected-users-card.is-revealed .gd-btn-revoke,
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-ward-action-links,
+#gd-connected-users-card.is-revealed .gd-ward-action-links {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty .gd-placeholder-icon,
 #gd-connected-users-card.is-revealed .gd-relationships-empty .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both !important;
+  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty .gd-placeholder-title,
 #gd-connected-users-card.is-revealed .gd-relationships-empty .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty .gd-placeholder-text,
 #gd-connected-users-card.is-revealed .gd-relationships-empty .gd-placeholder-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.96s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
 
 /* 3. Trusted Contact Invitations Header & Content: Sequential Character & Side-Sliding */
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header .gd-section-title .gd-char {
-  display: inline-block !important;
-  opacity: 0;
-  transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(1.08s + var(--char-idx, 0) * 0.016s) !important;
-  white-space: pre;
-}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header .gd-section-title .gd-char,
 #gd-invitations-card.is-revealed .gd-settings-card-header .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both !important;
-}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header .gd-settings-badge,
 #gd-invitations-card.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
 
 /* Invitations Content: Empty state or populated list */
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both !important;
-}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-icon,
 #gd-invitations-card.is-revealed .gd-relationships-empty .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
+  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
-
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.32s both !important;
-}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-title,
 #gd-invitations-card.is-revealed .gd-relationships-empty .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
 }
-
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.38s both !important;
-}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-text,
 #gd-invitations-card.is-revealed .gd-relationships-empty .gd-placeholder-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-list,
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both !important;
-}
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item,
 #gd-invitations-card.is-revealed .gd-relationships-list,
 #gd-invitations-card.is-revealed .gd-relationship-item {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
 
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-rel-avatar {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.30s both !important;
-}
-#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-rel-avatar {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-rel-name {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both !important;
-}
-#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-rel-name {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-status-badge,
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-delivery-badge {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.38s both !important;
-}
-#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-status-badge,
-#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-delivery-badge {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-rel-meta-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.42s both !important;
-}
-#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-rel-meta-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
-}
-
-/* Issue New Invitation Subheading & Form Fields */
+/* 3b. Issue New Trusted Contact Invitation Subheading & Form Fields: Calm, Sequential Slide-in */
+#gd-create-invite-section.is-revealed .gd-subsection-title .gd-char,
+.gd-create-invite-section.is-revealed .gd-subsection-title .gd-char,
+#gd-invitations-card.is-revealed .gd-create-invite-section .gd-subsection-title .gd-char,
 #view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title .gd-char {
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(1.48s + var(--char-idx, 0) * 0.014s) !important;
-  white-space: pre;
-}
-#gd-invitations-card.is-revealed .gd-create-invite-section .gd-subsection-title .gd-char {
-  display: inline-block !important;
-  opacity: 0;
-  transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.30s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(0.44s + var(--char-idx, 0) * 0.014s) !important;
-  white-space: pre;
-}
-
-#view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.48s both !important;
-}
-#gd-invitations-card.is-revealed .gd-create-invite-section .gd-subsection-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both !important;
-}
-
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1),
-#view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.54s both !important;
-}
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1),
-#gd-invitations-card.is-revealed .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
-}
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) label,
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.56s both !important;
-}
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) input,
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) input {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.60s both !important;
-}
-
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2),
-#view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.62s both !important;
-}
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2),
-#gd-invitations-card.is-revealed .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
-}
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) label,
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.64s both !important;
-}
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) input,
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) input {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.68s both !important;
-}
-
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3),
-#view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(3) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.70s both !important;
-}
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3),
-#gd-invitations-card.is-revealed .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(3) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
-}
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) label,
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.72s both !important;
-}
-#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) select,
-#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) select {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both !important;
-}
-
-#view-settings.gd-view-initial-enter .gd-invite-submit-row,
-#view-settings.gd-view-initial-enter .gd-btn-submit-invite {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.80s both !important;
-}
-#gd-invitations-card.is-revealed .gd-invite-submit-row,
-#gd-invitations-card.is-revealed .gd-btn-submit-invite {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
-}
-
-/* 4b. Push Notifications & Lock-Screen Alerts Card (Initial View Entrance Cascade) */
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-section-title .gd-char {
-  display: inline-block !important;
-  opacity: 0;
-  transform: translateY(12px) scale(0.94);
   animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(2.15s + var(--char-idx, 0) * 0.016s) !important;
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 2.32s both !important;
+#gd-create-invite-section.is-revealed .gd-subsection-title,
+.gd-create-invite-section.is-revealed .gd-subsection-title,
+#gd-invitations-card.is-revealed .gd-create-invite-section .gd-subsection-title,
+#view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both !important;
 }
 
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-desc {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.40s both !important;
+/* Field 1: Recipient Actor ID * */
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1),
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1),
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1),
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
+}
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) label,
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) label,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) label,
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
+}
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) input,
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) input,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) input,
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) input {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
 
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 2.48s both !important;
+/* Field 2: Relationship Label */
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2),
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2),
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2),
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
+}
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) label,
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) label,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) label,
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
+}
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) input,
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) input,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) input,
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) input {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
 }
 
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 2.54s both !important;
+/* Field 3: Expiration Window */
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3),
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3),
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3),
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
+}
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) label,
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) label,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) label,
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
+}
+#gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) select,
+.gd-create-invite-section.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) select,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) select,
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) select {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
 
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 2.60s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 2.66s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-action-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.72s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-test-push,
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-subscribe-push {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.74s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-unsubscribe-push {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 2.82s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-test-push svg,
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-subscribe-push svg {
-  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 2.88s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-test-push svg path,
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-subscribe-push svg path {
-  animation: gd-icon-svg-gleam 0.62s cubic-bezier(0.16, 1, 0.3, 1) 2.94s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-unsubscribe-push svg {
-  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 2.96s both !important;
-}
-
-#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-notice {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 3.02s both !important;
+/* Submit Row / Generate Invitation Code Button */
+#gd-create-invite-section.is-revealed .gd-invite-submit-row,
+.gd-create-invite-section.is-revealed .gd-invite-submit-row,
+#gd-invitations-card.is-revealed .gd-invite-submit-row,
+#view-settings.gd-view-initial-enter .gd-invite-submit-row,
+#gd-create-invite-section.is-revealed .gd-btn-submit-invite,
+.gd-create-invite-section.is-revealed .gd-btn-submit-invite,
+#gd-invitations-card.is-revealed .gd-btn-submit-invite,
+#view-settings.gd-view-initial-enter .gd-btn-submit-invite {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 
 /* -----------------------------------------------------------------------------
-   Settings View: Scroll-Triggered Reveal for Bottom Sections
+   Settings View: Scroll-Triggered Reveal for Below-The-Fold Sections
    ----------------------------------------------------------------------------- */
 
 /* Hidden until scrolled into view */
@@ -2018,158 +1917,219 @@ textarea:focus-visible,
   transition: opacity 0.52s cubic-bezier(0.16, 1, 0.3, 1), transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 5. Ward Protection Policy & Invariants Card (Rendered On Scroll) */
-#gd-card-ward-policy.is-revealed .gd-settings-card-header .gd-section-title .gd-char {
+/* 4. Ward Protection Policy & Invariants Card (Rendered On Scroll) */
+#gd-card-ward-policy.is-revealed .gd-settings-card-header .gd-section-title .gd-char,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-card-header .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-card-header .gd-settings-badge,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-card-header .gd-settings-badge {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-subtitle {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(1) {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(4) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(2) {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(3) {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(4) {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(5),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(5) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(5) {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(5) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(5) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both !important;
 }
-#gd-card-ward-policy.is-revealed .gd-settings-notice {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both !important;
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(5) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(5) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(6),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(6) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(6) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(6) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-grid .gd-settings-item:nth-child(6) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-grid .gd-settings-item:nth-child(6) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-subtitle,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-subtitle {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 1.16s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(1),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(1) {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.30s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(2),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(2) {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.44s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(3),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(3) {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.58s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(4),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(4) {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.72s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(5),
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-invariants-list .gd-settings-invariant-item:nth-child(5) {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.86s both !important;
+}
+#gd-card-ward-policy.is-revealed .gd-settings-notice,
+#view-settings.gd-view-initial-enter #gd-card-ward-policy .gd-settings-notice {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 2.02s both !important;
 }
 
-/* 6. Protection Policy History & Transparency Card (Rendered On Scroll) */
-#gd-card-policy-history.is-revealed .gd-settings-card-header .gd-section-title .gd-char {
+/* 5. Protection Policy History & Transparency Card (Rendered On Scroll) */
+#gd-card-policy-history.is-revealed .gd-settings-card-header .gd-section-title .gd-char,
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-settings-card-header .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
-#gd-card-policy-history.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
+#gd-card-policy-history.is-revealed .gd-settings-card-header .gd-settings-badge,
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-settings-card-header .gd-settings-badge {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
-#gd-card-policy-history.is-revealed .gd-section-subtitle {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
+#gd-card-policy-history.is-revealed .gd-section-subtitle,
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-section-subtitle {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
 }
-#gd-card-policy-history.is-revealed .gd-settings-empty {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
+#gd-card-policy-history.is-revealed .gd-settings-empty,
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-settings-empty {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
-#gd-card-policy-history.is-revealed .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
+#gd-card-policy-history.is-revealed .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(1),
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(1) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
-#gd-card-policy-history.is-revealed .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
+#gd-card-policy-history.is-revealed .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(2),
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(2) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
 }
-#gd-card-policy-history.is-revealed .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(3) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
+#gd-card-policy-history.is-revealed .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(3),
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-policy-audit-timeline .gd-policy-audit-item:nth-child(3) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
 }
-#gd-card-policy-history.is-revealed .gd-settings-notice {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
+#gd-card-policy-history.is-revealed .gd-settings-notice:not(.gd-settings-empty),
+#view-settings.gd-view-initial-enter #gd-card-policy-history .gd-settings-notice:not(.gd-settings-empty) {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both !important;
 }
 
-/* 6b. Push Notifications & Lock-Screen Alerts Card (Sequential Character & Side-Sliding Reveal on Scroll) */
-#gd-card-push-notifications.is-revealed .gd-section-title .gd-char {
+/* 6. Push Notifications & Lock-Screen Alerts Card (Sequential Character & Side-Sliding Reveal on Scroll) */
+#gd-card-push-notifications.is-revealed .gd-section-title .gd-char,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-card-header .gd-settings-badge,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-card-header .gd-settings-badge {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-desc {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-desc,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-desc {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1),
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2),
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-settings-action-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
 }
-
+#gd-card-push-notifications.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
+}
+#gd-card-push-notifications.is-revealed .gd-settings-action-row,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-action-row {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
+}
 #gd-card-push-notifications.is-revealed .gd-btn-test-push,
-#gd-card-push-notifications.is-revealed .gd-btn-subscribe-push {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
+#gd-card-push-notifications.is-revealed .gd-btn-subscribe-push,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-test-push,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-subscribe-push {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-btn-unsubscribe-push {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both !important;
+#gd-card-push-notifications.is-revealed .gd-btn-unsubscribe-push,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-btn-unsubscribe-push {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.78s both !important;
 }
-
-#gd-card-push-notifications.is-revealed .gd-btn-test-push svg,
-#gd-card-push-notifications.is-revealed .gd-btn-subscribe-push svg {
-  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
-}
-
-#gd-card-push-notifications.is-revealed .gd-btn-test-push svg path,
-#gd-card-push-notifications.is-revealed .gd-btn-subscribe-push svg path {
-  animation: gd-icon-svg-gleam 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both !important;
-}
-
-#gd-card-push-notifications.is-revealed .gd-btn-unsubscribe-push svg {
-  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both !important;
-}
-
-#gd-card-push-notifications.is-revealed .gd-settings-notice {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both !important;
+#gd-card-push-notifications.is-revealed .gd-settings-notice,
+#view-settings.gd-view-initial-enter #gd-card-push-notifications .gd-settings-notice {
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both !important;
 }
 
 /* 7. Backend Connection & Synchronization Card (when scrolled to or initial view enter) */
@@ -2178,53 +2138,55 @@ textarea:focus-visible,
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-card-header .gd-settings-badge,
 #gd-card-backend.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1),
+#gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both !important;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2),
+#gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
+}
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3),
+#gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
+  animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-action-row,
-#gd-card-backend.is-revealed .gd-settings-action-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
-}
+#gd-card-backend.is-revealed .gd-settings-action-row,
 #view-settings.gd-view-initial-enter #gd-card-backend .gd-btn-refresh,
 #gd-card-backend.is-revealed .gd-btn-refresh {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-btn-refresh svg,
-#gd-card-backend.is-revealed .gd-btn-refresh svg {
-  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-backend .gd-btn-refresh svg path,
-#gd-card-backend.is-revealed .gd-btn-refresh svg path {
-  animation: gd-icon-svg-gleam 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
 }
 
 /* 8. Safety Invariants & Zero-Trust Guarantees Card (when scrolled to or initial view enter) */
@@ -2233,77 +2195,25 @@ textarea:focus-visible,
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
-
 #view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon svg,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon svg {
-  animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-label,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
-}
-
 #view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon svg,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon svg {
-  animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-label,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
-}
-
 #view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon svg,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon svg {
-  animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-label,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
-}
-
 #view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon svg,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon svg {
-  animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
-}
-#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-label,
-#gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 
 /* 9. Session Management Card (when scrolled to or initial view enter) */
@@ -2312,17 +2222,15 @@ textarea:focus-visible,
   display: inline-block !important;
   opacity: 0;
   transform: translateY(12px) scale(0.94);
-  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 #view-settings.gd-view-initial-enter #gd-card-session .gd-settings-action-row,
-#gd-card-session.is-revealed .gd-settings-action-row {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
-}
+#gd-card-session.is-revealed .gd-settings-action-row,
 #view-settings.gd-view-initial-enter #gd-card-session .gd-btn-clear-session,
 #gd-card-session.is-revealed .gd-btn-clear-session {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
+  animation: gd-render-in-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
 
 /* -----------------------------------------------------------------------------

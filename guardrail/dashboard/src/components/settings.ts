@@ -92,7 +92,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   // Card 1: Reviewer Identity & Authorization Hierarchy
   const identityCard = document.createElement('div');
-  identityCard.className = 'gd-card gd-settings-card';
+  identityCard.className = 'gd-card gd-settings-card gd-scroll-reveal';
   identityCard.id = 'gd-card-identity';
 
   const idHeader = document.createElement('div');
@@ -858,11 +858,20 @@ function setupSettingsScrollReveal(container: HTMLElement): void {
       },
       {
         root: scrollRoot,
-        threshold: 0.08,
-        rootMargin: '0px 0px -20px 0px',
+        threshold: 0.04,
+        rootMargin: '0px 0px 40px 0px',
       }
     );
-    revealCards.forEach((el) => observer.observe(el));
+
+    revealCards.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || (document.documentElement ? document.documentElement.clientHeight : 800);
+      if (rect.top < viewportHeight) {
+        el.classList.add('is-revealed');
+      } else {
+        observer.observe(el);
+      }
+    });
   };
 
   if (typeof requestAnimationFrame === 'function') {

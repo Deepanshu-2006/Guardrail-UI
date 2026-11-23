@@ -112,7 +112,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
   // 1. Connected Users & Trusted Contacts Card
   const usersCard = document.createElement('div');
-  usersCard.className = 'gd-card gd-relationships-card';
+  usersCard.className = 'gd-card gd-relationships-card gd-scroll-reveal';
   usersCard.id = 'gd-connected-users-card';
 
   const usersHeader = document.createElement('div');
@@ -468,7 +468,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
   // 2. Invitations & Pairing Codes Card
   const invitesCard = document.createElement('div');
-  invitesCard.className = 'gd-card gd-relationships-card';
+  invitesCard.className = 'gd-card gd-relationships-card gd-scroll-reveal';
   invitesCard.id = 'gd-invitations-card';
 
   const invitesHeader = document.createElement('div');
@@ -752,7 +752,8 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   // 3. Create Invitation Form (if supported)
   if (props.onCreateInvitation) {
     const createSection = document.createElement('div');
-    createSection.className = 'gd-create-invite-section';
+    createSection.className = 'gd-create-invite-section gd-scroll-reveal';
+    createSection.id = 'gd-create-invite-section';
 
     const createTitle = document.createElement('h3');
     createTitle.className = 'gd-subsection-title';
