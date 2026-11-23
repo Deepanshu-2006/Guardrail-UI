@@ -115,7 +115,13 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   const idGrid = document.createElement('div');
   idGrid.className = 'gd-settings-grid';
 
-  const addItem = (label: string, value: string, isMono: boolean = false, badgeText?: string) => {
+  const addItem = (
+    label: string,
+    value: string,
+    isMono: boolean = false,
+    badgeText?: string,
+    monoDetail?: string
+  ) => {
     const item = document.createElement('div');
     item.className = 'gd-settings-item';
 
@@ -130,33 +136,63 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     item.appendChild(lbl);
     item.appendChild(val);
 
-    if (badgeText) {
+    if (badgeText || monoDetail) {
       const b = document.createElement('span');
       b.className = 'gd-settings-subbadge';
-      b.textContent = badgeText;
+      if (monoDetail && badgeText) {
+        b.innerHTML = `<span class="gd-mono">${monoDetail}</span> · ${badgeText}`;
+      } else if (monoDetail) {
+        b.innerHTML = `<span class="gd-mono">${monoDetail}</span>`;
+      } else if (badgeText) {
+        b.textContent = badgeText;
+      }
       item.appendChild(b);
     }
 
     idGrid.appendChild(item);
   };
 
-  addItem('Canonical Actor ID', props.profile?.actorId ?? 'Not Authenticated', true);
-  addItem('Authorization Role', String(props.profile?.role ?? 'Standalone Reviewer'), false);
+  addItem(
+    'Canonical Actor ID',
+    props.profile?.actorId ?? 'Not Authenticated',
+    true,
+    props.profile?.actorId ? 'Authenticated Session' : 'Unauthenticated'
+  );
+
+  const rawRole = String(props.profile?.role ?? 'Standalone Reviewer');
+  const roleDisplay = rawRole === 'TRUSTED_CONTACT' ? 'Trusted Contact' : rawRole.replace(/_/g, ' ');
+  addItem(
+    'Authorization Role',
+    roleDisplay,
+    false,
+    rawRole === 'TRUSTED_CONTACT' ? 'Role: TRUSTED_CONTACT' : undefined
+  );
+
   const rawWardName = props.profile?.assignedWardName;
   const rawWardId = props.profile?.assignedWardId;
   const formattedName = formatWardDisplayName(rawWardName, rawWardId);
-  const wardDisplay = formattedName && rawWardId && formattedName !== rawWardId
-    ? `${formattedName} (${rawWardId})`
-    : (formattedName || rawWardId);
-  addItem(
-    'Assigned Ward ID',
-    wardDisplay ?? 'No ward assigned',
-    Boolean(props.profile?.assignedWardId),
-    props.profile?.assignedWardId ? 'Authorized Scope' : 'Unlinked'
-  );
+  if (formattedName && rawWardId && formattedName !== rawWardId) {
+    addItem(
+      'Assigned Ward ID',
+      formattedName,
+      false,
+      'Authorized Scope',
+      rawWardId
+    );
+  } else {
+    addItem(
+      'Assigned Ward ID',
+      rawWardId ?? 'No ward assigned',
+      Boolean(rawWardId),
+      rawWardId ? 'Authorized Scope' : 'Unlinked'
+    );
+  }
+
   addItem(
     'Relationship Label',
-    props.profile?.relationshipLabel ?? 'Designated Trusted Contact'
+    props.profile?.relationshipLabel ?? 'Designated Trusted Contact',
+    false,
+    props.profile?.assignedWardId ? 'Designated Scope' : undefined
   );
 
   identityCard.appendChild(idGrid);
@@ -230,7 +266,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     const pGrid = document.createElement('div');
     pGrid.className = 'gd-settings-grid';
 
-    const addPolicyItem = (label: string, value: string, isMono = false, sub = '') => {
+    const addPolicyItem = (label: string, value: string, isMono = false, sub = '', monoDetail = '') => {
       const item = document.createElement('div');
       item.className = 'gd-settings-item';
       const lbl = document.createElement('span');
@@ -241,10 +277,16 @@ export function renderSettings(props: SettingsProps): HTMLElement {
       val.textContent = value;
       item.appendChild(lbl);
       item.appendChild(val);
-      if (sub) {
+      if (sub || monoDetail) {
         const s = document.createElement('span');
         s.className = 'gd-settings-subbadge';
-        s.textContent = sub;
+        if (monoDetail && sub) {
+          s.innerHTML = `<span class="gd-mono">${monoDetail}</span> · ${sub}`;
+        } else if (monoDetail) {
+          s.innerHTML = `<span class="gd-mono">${monoDetail}</span>`;
+        } else if (sub) {
+          s.textContent = sub;
+        }
         item.appendChild(s);
       }
       pGrid.appendChild(item);
@@ -252,10 +294,11 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     const summary = props.wardPolicySummary;
     const governedWardName = formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId);
-    const governedWardVal = governedWardName && governedWardName !== props.profile.assignedWardId
-      ? `${governedWardName} (${props.profile.assignedWardId})`
-      : props.profile.assignedWardId;
-    addPolicyItem('Governed Ward', governedWardVal, true, 'Sovereign Owner');
+    if (governedWardName && props.profile.assignedWardId && governedWardName !== props.profile.assignedWardId) {
+      addPolicyItem('Governed Ward', governedWardName, false, 'Sovereign Owner', props.profile.assignedWardId);
+    } else {
+      addPolicyItem('Governed Ward', props.profile.assignedWardId, true, 'Sovereign Owner');
+    }
     addPolicyItem(
       'Sensitivity Preset',
       summary ? summary.sensitivityPreset.toUpperCase() : 'BALANCED',

@@ -9169,28 +9169,32 @@ article.gd-card-collapsed,
 }
 
 #view-settings .gd-settings-grid,
-#gd-card-identity .gd-settings-grid {
+#gd-card-identity .gd-settings-grid,
+#gd-card-ward-policy .gd-settings-grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 24px 44px !important;
+  grid-template-columns: 1.15fr 0.9fr 1.35fr 0.95fr !important;
+  gap: 20px 36px !important;
   margin-bottom: 28px !important;
   max-width: 100% !important;
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
+  box-shadow: none !important;
+  align-items: start !important;
 }
 
 #view-settings .gd-settings-item {
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
-  gap: 7px !important;
+  gap: 5px !important;
+  min-width: 0 !important;
 }
 
 #view-settings .gd-settings-label {
   font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
-  font-size: 11px !important;
+  font-size: 10.5px !important;
   font-weight: 700 !important;
   letter-spacing: 0.12em !important;
   text-transform: uppercase !important;
@@ -9203,15 +9207,17 @@ article.gd-card-collapsed,
   font-size: 15px !important;
   font-weight: 600 !important;
   color: var(--gd-text-primary, #273121) !important;
-  line-height: 1.4 !important;
+  line-height: 1.35 !important;
   word-break: break-word !important;
 }
 
 #view-settings .gd-settings-value.gd-mono {
   font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace) !important;
-  font-size: 13.5px !important;
+  font-size: 12.5px !important;
   font-weight: 500 !important;
   letter-spacing: -0.01em !important;
+  color: var(--gd-text-primary, #273121) !important;
+  word-break: break-all !important;
 }
 
 #view-settings .gd-settings-subbadge {
@@ -9219,8 +9225,17 @@ article.gd-card-collapsed,
   font-size: 12px !important;
   font-weight: 500 !important;
   color: #7A8570 !important;
-  margin-top: 2px !important;
+  margin-top: 3px !important;
   line-height: 1.35 !important;
+  display: block !important;
+}
+
+#view-settings .gd-settings-subbadge .gd-mono {
+  font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  color: #5F6656 !important;
+  letter-spacing: -0.01em !important;
 }
 
 #view-settings .gd-settings-subtitle {
