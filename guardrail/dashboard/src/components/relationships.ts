@@ -20,6 +20,7 @@ import {
   ViewStatus,
 } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
+import { setAnimatedHeading } from './icons.js';
 
 export interface RelationshipsProps {
   profile: TrustedContactProfile | null;
@@ -119,7 +120,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
   const usersTitle = document.createElement('h2');
   usersTitle.className = 'gd-section-title';
-  usersTitle.textContent = 'Connected Users & Trusted Contacts';
+  setAnimatedHeading(usersTitle, 'Connected Users & Trusted Contacts');
 
   // Calculate connected count: explicit contacts list + assigned ward if present
   const hasAssignedWard = Boolean(props.profile?.assignedWardId);
@@ -475,7 +476,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
   const invitesTitle = document.createElement('h2');
   invitesTitle.className = 'gd-section-title';
-  invitesTitle.textContent = 'Trusted Contact Invitations';
+  setAnimatedHeading(invitesTitle, 'Trusted Contact Invitations');
 
   const pendingInvitesCount = props.invitations.filter(
     (i) => i.status === InvitationStatus.PENDING && !isInvitationExpired(i)

@@ -100,7 +100,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   const idTitle = document.createElement('h2');
   idTitle.className = 'gd-section-title';
-  idTitle.textContent = 'Reviewer Identity & Authorization';
+  setAnimatedHeading(idTitle, 'Reviewer Identity & Authorization');
 
   const idBadge = document.createElement('span');
   idBadge.className = props.profile?.isAuthenticated
@@ -230,7 +230,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     const pTitle = document.createElement('h2');
     pTitle.className = 'gd-section-title';
-    pTitle.textContent = 'Ward Protection Policy & Invariants';
+    setAnimatedHeading(pTitle, 'Ward Protection Policy & Invariants');
 
     const pBadge = document.createElement('span');
     if (props.isBackendUnavailable) {
@@ -397,7 +397,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
     const hTitle = document.createElement('h2');
     hTitle.className = 'gd-section-title';
-    hTitle.textContent = 'Protection Policy History & Transparency';
+    setAnimatedHeading(hTitle, 'Protection Policy History & Transparency');
 
     const hBadge = document.createElement('span');
     hBadge.className = 'gd-settings-badge gd-badge-neutral';
@@ -689,7 +689,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   const backendTitle = document.createElement('h2');
   backendTitle.className = 'gd-section-title';
-  backendTitle.textContent = 'Backend Connection & Synchronization';
+  setAnimatedHeading(backendTitle, 'Backend Connection & Synchronization');
 
   const connBadge = document.createElement('span');
   if (props.isBackendUnavailable) {
@@ -772,7 +772,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   const invTitle = document.createElement('h2');
   invTitle.className = 'gd-section-title';
-  invTitle.textContent = 'Safety Invariants & Zero-Trust Guarantees';
+  setAnimatedHeading(invTitle, 'Safety Invariants & Zero-Trust Guarantees');
   invariantsCard.appendChild(invTitle);
 
   const invList = document.createElement('div');
@@ -807,7 +807,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   const sessTitle = document.createElement('h2');
   sessTitle.className = 'gd-section-title';
-  sessTitle.textContent = 'Session Management';
+  setAnimatedHeading(sessTitle, 'Session Management');
 
   const sessActions = document.createElement('div');
   sessActions.className = 'gd-settings-action-row';
@@ -845,22 +845,23 @@ function setupSettingsScrollReveal(container: HTMLElement): void {
     return;
   }
 
-  const observer = new IntersectionObserver(
-    (entries, obs) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-revealed');
-          obs.unobserve(entry.target);
-        }
-      });
-    },
-    {
-      threshold: 0.08,
-      rootMargin: '0px 0px -20px 0px',
-    }
-  );
-
   const register = () => {
+    const scrollRoot = container.closest('.gd-content-body') || null;
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-revealed');
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        root: scrollRoot,
+        threshold: 0.08,
+        rootMargin: '0px 0px -20px 0px',
+      }
+    );
     revealCards.forEach((el) => observer.observe(el));
   };
 
