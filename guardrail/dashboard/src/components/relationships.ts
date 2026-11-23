@@ -756,7 +756,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
     const createTitle = document.createElement('h3');
     createTitle.className = 'gd-subsection-title';
-    createTitle.textContent = 'Issue New Trusted Contact Invitation';
+    setAnimatedHeading(createTitle, 'Issue New Trusted Contact Invitation');
 
     createSection.appendChild(createTitle);
 

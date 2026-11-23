@@ -1611,30 +1611,26 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Settings View: Sequential Staggered Entrance & Staggered Side-Sliding Animations
+   Settings View: Sequential Staggered Entrance & Unified Sliding Animations
    ----------------------------------------------------------------------------- */
 
-/* Settings Main Page Heading: Left static per user instruction (no entry animation) */
-#view-settings.gd-view-initial-enter > .gd-section-header,
-#view-settings > .gd-section-header {
-  animation: none !important;
+/* Settings Main Page Heading: Sequential Character Reveal & Subtitle Slide-in */
+#view-settings.gd-view-initial-enter > .gd-section-header {
   opacity: 1 !important;
   transform: none !important;
 }
 
-#view-settings.gd-view-initial-enter #settings-title,
-#view-settings #settings-title,
-#view-settings.gd-view-initial-enter #settings-title .gd-char,
-#view-settings #settings-title .gd-char {
-  animation: none !important;
-  display: block !important;
-  opacity: 1 !important;
-  transform: none !important;
+#view-settings.gd-view-initial-enter #settings-title .gd-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(12px) scale(0.94);
+  animation: gd-char-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.022s) !important;
+  white-space: pre;
 }
 
-/* Subtitle: side sliding entrance */
-#view-settings.gd-view-initial-enter .gd-section-subtitle {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both !important;
+#view-settings.gd-view-initial-enter > .gd-section-header .gd-section-subtitle {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both !important;
 }
 
 /* 1. Reviewer Identity Card: Sequential Character & Side-Sliding Entrance */
@@ -1644,7 +1640,7 @@ textarea:focus-visible,
   opacity: 0;
   transform: translateY(12px) scale(0.94);
   animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(0.14s + var(--char-idx, 0) * 0.016s) !important;
+  animation-delay: calc(0.16s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 
@@ -1653,6 +1649,11 @@ textarea:focus-visible,
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
 }
 
+/* Reviewer Identity Content: Staggered side-sliding items, labels & values */
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(1),
+#gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
+}
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
@@ -1662,6 +1663,10 @@ textarea:focus-visible,
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(2),
+#gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
+}
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
@@ -1671,6 +1676,10 @@ textarea:focus-visible,
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(3),
+#gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
+}
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label {
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
@@ -1684,13 +1693,17 @@ textarea:focus-visible,
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(4),
+#gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
+}
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-label {
-  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-card-identity .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value,
 #gd-card-identity.is-revealed .gd-settings-grid .gd-settings-item:nth-child(4) .gd-settings-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
 }
 
 /* 2. Connected Users & Trusted Contacts: Sequential Character & Side-Sliding Entrance */
@@ -1700,42 +1713,56 @@ textarea:focus-visible,
   opacity: 0;
   transform: translateY(12px) scale(0.94);
   animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(0.72s + var(--char-idx, 0) * 0.016s) !important;
+  animation-delay: calc(0.64s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-settings-card-header .gd-settings-badge,
 #gd-connected-users-card.is-revealed .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both !important;
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.78s both !important;
 }
+
+/* Connected Users Content: Avatar, Name, Badges, Metadata, Action Button */
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-list,
 #gd-connected-users-card.is-revealed .gd-relationships-list,
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationship-item,
 #gd-connected-users-card.is-revealed .gd-relationship-item {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both !important;
 }
-#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationship-item .gd-relationship-avatar,
-#gd-connected-users-card.is-revealed .gd-relationship-item .gd-relationship-avatar {
-  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both !important;
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-avatar,
+#gd-connected-users-card.is-revealed .gd-rel-avatar {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both !important;
 }
-#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationship-item .gd-relationship-info,
-#gd-connected-users-card.is-revealed .gd-relationship-item .gd-relationship-info {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.02s both !important;
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-name,
+#gd-connected-users-card.is-revealed .gd-rel-name {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both !important;
 }
-#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationship-item .gd-relationship-actions,
-#gd-connected-users-card.is-revealed .gd-relationship-item .gd-relationship-actions {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.08s both !important;
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-role-badge,
+#gd-connected-users-card.is-revealed .gd-rel-role-badge,
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-status-badge,
+#gd-connected-users-card.is-revealed .gd-status-badge {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both !important;
+}
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-meta-row,
+#gd-connected-users-card.is-revealed .gd-rel-meta-row {
+  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both !important;
+}
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-rel-actions,
+#gd-connected-users-card.is-revealed .gd-rel-actions,
+#view-settings.gd-view-initial-enter #gd-connected-users-card .gd-btn-revoke,
+#gd-connected-users-card.is-revealed .gd-btn-revoke {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty .gd-placeholder-icon,
 #gd-connected-users-card.is-revealed .gd-relationships-empty .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both !important;
+  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty .gd-placeholder-title,
 #gd-connected-users-card.is-revealed .gd-relationships-empty .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both !important;
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both !important;
 }
 #view-settings.gd-view-initial-enter #gd-connected-users-card .gd-relationships-empty .gd-placeholder-text,
 #gd-connected-users-card.is-revealed .gd-relationships-empty .gd-placeholder-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.96s both !important;
 }
 
 /* 3. Trusted Contact Invitations Header & Content: Sequential Character & Side-Sliding */
@@ -1744,7 +1771,7 @@ textarea:focus-visible,
   opacity: 0;
   transform: translateY(12px) scale(0.94);
   animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  animation-delay: calc(1.12s + var(--char-idx, 0) * 0.016s) !important;
+  animation-delay: calc(1.08s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
 #gd-invitations-card.is-revealed .gd-settings-card-header .gd-section-title .gd-char {
@@ -1757,77 +1784,156 @@ textarea:focus-visible,
 }
 
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-settings-card-header .gd-settings-badge {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.28s both !important;
+  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both !important;
 }
 #gd-invitations-card.is-revealed .gd-settings-card-header .gd-settings-badge {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
 }
 
+/* Invitations Content: Empty state or populated list */
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both !important;
+  animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both !important;
 }
 #gd-invitations-card.is-revealed .gd-relationships-empty .gd-placeholder-icon {
   animation: gd-icon-enter-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both !important;
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.32s both !important;
 }
 #gd-invitations-card.is-revealed .gd-relationships-empty .gd-placeholder-title {
   animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-empty .gd-placeholder-text {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.38s both !important;
 }
 #gd-invitations-card.is-revealed .gd-relationships-empty .gd-placeholder-text {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 
 #view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationships-list,
-#view-settings.gd-view-initial-enter #gd-invitations-card .gd-invitation-item {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both !important;
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both !important;
 }
 #gd-invitations-card.is-revealed .gd-relationships-list,
-#gd-invitations-card.is-revealed .gd-invitation-item {
+#gd-invitations-card.is-revealed .gd-relationship-item {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-rel-avatar {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.30s both !important;
+}
+#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-rel-avatar {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-rel-name {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both !important;
+}
+#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-rel-name {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-status-badge,
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-delivery-badge {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.38s both !important;
+}
+#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-status-badge,
+#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-delivery-badge {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-invitations-card .gd-relationship-item .gd-rel-meta-row {
+  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.42s both !important;
+}
+#gd-invitations-card.is-revealed #gd-invitations-card .gd-relationship-item .gd-rel-meta-row {
+  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
+}
+
+/* Issue New Invitation Subheading & Form Fields */
+#view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title .gd-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(12px) scale(0.94);
+  animation: gd-char-reveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation-delay: calc(1.48s + var(--char-idx, 0) * 0.014s) !important;
+  white-space: pre;
+}
+#gd-invitations-card.is-revealed .gd-create-invite-section .gd-subsection-title .gd-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(12px) scale(0.94);
+  animation: gd-char-reveal 0.30s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation-delay: calc(0.44s + var(--char-idx, 0) * 0.014s) !important;
+  white-space: pre;
+}
+
 #view-settings.gd-view-initial-enter .gd-create-invite-section .gd-subsection-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.52s both !important;
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.48s both !important;
 }
 #gd-invitations-card.is-revealed .gd-create-invite-section .gd-subsection-title {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both !important;
 }
 
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1),
 #view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.58s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.54s both !important;
 }
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1),
 #gd-invitations-card.is-revealed .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(1) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
+}
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) label,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) label {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.56s both !important;
+}
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(1) input,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(1) input {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.60s both !important;
 }
 
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2),
 #view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.64s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.62s both !important;
 }
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2),
 #gd-invitations-card.is-revealed .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(2) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
+}
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) label,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) label {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.64s both !important;
+}
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(2) input,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(2) input {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.68s both !important;
 }
 
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3),
 #view-settings.gd-view-initial-enter .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(3) {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.70s both !important;
 }
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3),
 #gd-invitations-card.is-revealed .gd-create-invite-form .gd-form-row .gd-form-group:nth-child(3) {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
+}
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) label,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) label {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.72s both !important;
+}
+#view-settings.gd-view-initial-enter .gd-invite-fields-row .gd-form-group:nth-child(3) select,
+#gd-invitations-card.is-revealed .gd-invite-fields-row .gd-form-group:nth-child(3) select {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both !important;
 }
 
 #view-settings.gd-view-initial-enter .gd-invite-submit-row,
 #view-settings.gd-view-initial-enter .gd-btn-submit-invite {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.76s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.80s both !important;
 }
 #gd-invitations-card.is-revealed .gd-invite-submit-row,
 #gd-invitations-card.is-revealed .gd-btn-submit-invite {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both !important;
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 
 /* 4b. Push Notifications & Lock-Screen Alerts Card (Initial View Entrance Cascade) */
@@ -2066,7 +2172,8 @@ textarea:focus-visible,
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both !important;
 }
 
-/* 7. Backend Connection & Synchronization Card (when scrolled to) */
+/* 7. Backend Connection & Synchronization Card (when scrolled to or initial view enter) */
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-card-header .gd-section-title .gd-char,
 #gd-card-backend.is-revealed .gd-settings-card-header .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
@@ -2075,41 +2182,53 @@ textarea:focus-visible,
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-card-header .gd-settings-badge,
 #gd-card-backend.is-revealed .gd-settings-card-header .gd-settings-badge {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-label {
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(1) .gd-settings-value {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-label {
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(2) .gd-settings-value {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-label {
   animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value,
 #gd-card-backend.is-revealed .gd-settings-grid .gd-settings-item:nth-child(3) .gd-settings-value {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-settings-action-row,
 #gd-card-backend.is-revealed .gd-settings-action-row {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-btn-refresh,
 #gd-card-backend.is-revealed .gd-btn-refresh {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-btn-refresh svg,
 #gd-card-backend.is-revealed .gd-btn-refresh svg {
   animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-backend .gd-btn-refresh svg path,
 #gd-card-backend.is-revealed .gd-btn-refresh svg path {
   animation: gd-icon-svg-gleam 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.68s both !important;
 }
 
-/* 8. Safety Invariants & Zero-Trust Guarantees Card (when scrolled to) */
+/* 8. Safety Invariants & Zero-Trust Guarantees Card (when scrolled to or initial view enter) */
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-section-title .gd-char,
 #gd-card-invariants.is-revealed .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
@@ -2119,59 +2238,76 @@ textarea:focus-visible,
   white-space: pre;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon {
   animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon svg,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-icon svg {
   animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-label,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(1) .gd-invariant-pill-label {
   animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon {
   animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon svg,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-icon svg {
   animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-label,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(2) .gd-invariant-pill-label {
   animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon {
   animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon svg,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-icon svg {
   animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-label,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(3) .gd-invariant-pill-label {
   animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
 }
 
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4),
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon {
   animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon svg,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-icon svg {
   animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-invariants .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-label,
 #gd-card-invariants.is-revealed .gd-settings-invariants-chips .gd-settings-invariant-chip:nth-child(4) .gd-invariant-pill-label {
   animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both !important;
 }
 
-/* 9. Session Management Card (when scrolled to) */
+/* 9. Session Management Card (when scrolled to or initial view enter) */
+#view-settings.gd-view-initial-enter #gd-card-session .gd-section-title .gd-char,
 #gd-card-session.is-revealed .gd-section-title .gd-char {
   display: inline-block !important;
   opacity: 0;
@@ -2180,9 +2316,11 @@ textarea:focus-visible,
   animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
   white-space: pre;
 }
+#view-settings.gd-view-initial-enter #gd-card-session .gd-settings-action-row,
 #gd-card-session.is-revealed .gd-settings-action-row {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
+#view-settings.gd-view-initial-enter #gd-card-session .gd-btn-clear-session,
 #gd-card-session.is-revealed .gd-btn-clear-session {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
 }
@@ -3770,6 +3908,7 @@ textarea:focus-visible,
 .gd-ward-text-link {
   background: transparent !important;
   border: none !important;
+  border-bottom: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -3778,7 +3917,9 @@ textarea:focus-visible,
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
   font-size: 13px !important;
   line-height: 1.4 !important;
-  transition: opacity 0.15s ease, text-decoration-color 0.15s ease !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  transition: opacity 0.15s ease, text-decoration-color 0.15s ease, color 0.15s ease !important;
   display: inline-flex !important;
   align-items: center !important;
 }
@@ -3806,10 +3947,15 @@ textarea:focus-visible,
 .gd-link-disconnect {
   font-weight: 500 !important;
   color: #9B3828 !important;
+  text-transform: none !important;
+  border-bottom: none !important;
+  letter-spacing: normal !important;
 }
 
 .gd-link-disconnect:hover {
   color: #7A2416 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
 }
 
 .gd-ward-confirm-inline {
@@ -9413,7 +9559,6 @@ article.gd-card-collapsed,
 }
 
 #view-settings .gd-settings-grid,
-#gd-card-identity .gd-settings-grid,
 #gd-card-ward-policy .gd-settings-grid {
   display: grid !important;
   grid-template-columns: 1.15fr 0.9fr 1.35fr 0.95fr !important;
@@ -9426,6 +9571,23 @@ article.gd-card-collapsed,
   border-radius: 0 !important;
   box-shadow: none !important;
   align-items: start !important;
+}
+
+#view-settings #gd-card-identity .gd-settings-grid,
+#gd-card-identity .gd-settings-grid {
+  display: grid !important;
+  grid-template-columns: minmax(180px, 1.25fr) minmax(130px, 0.85fr) minmax(200px, 1.35fr) minmax(150px, 1fr) !important;
+  grid-auto-flow: column !important;
+  gap: 16px 28px !important;
+  margin-bottom: 28px !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  align-items: start !important;
+  width: 100% !important;
 }
 
 #view-settings .gd-settings-item {
@@ -9444,6 +9606,8 @@ article.gd-card-collapsed,
   text-transform: uppercase !important;
   color: var(--gd-deep-olive, #54683E) !important;
   line-height: 1.2 !important;
+  white-space: nowrap !important;
+  margin-bottom: 6px !important;
 }
 
 #view-settings .gd-settings-value {
@@ -9461,7 +9625,9 @@ article.gd-card-collapsed,
   font-weight: 500 !important;
   letter-spacing: -0.01em !important;
   color: var(--gd-text-primary, #273121) !important;
-  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  line-height: 1.4 !important;
 }
 
 #view-settings .gd-settings-subbadge {
@@ -9624,24 +9790,28 @@ article.gd-card-collapsed,
 
 .gd-btn-revoke {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
-  font-size: 12.5px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
-  text-transform: uppercase !important;
-  color: #8F2B2B !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: #9B3828 !important;
   background: transparent !important;
   border: none !important;
-  border-bottom: 1px solid rgba(143, 43, 43, 0.4) !important;
-  padding: 0 0 2px 0 !important;
+  border-bottom: none !important;
+  padding: 0 !important;
   text-decoration: none !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
   white-space: nowrap !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .gd-btn-revoke:hover {
-  color: #B93838 !important;
-  border-bottom-color: #B93838 !important;
+  color: #7A2416 !important;
+  border-bottom: none !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
   opacity: 1 !important;
 }
 
@@ -10083,21 +10253,25 @@ article.gd-card-collapsed,
 }
 
 .gd-btn-revoke {
-  padding: 4px 0;
-  font-family: var(--gd-font-display);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--gd-critical-primary);
+  padding: 0;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: #9B3828;
   background: transparent !important;
   border: none !important;
+  border-bottom: none !important;
   cursor: pointer;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .gd-btn-revoke:hover {
-  opacity: 0.8;
+  color: #7A2416;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 1;
 }
 
 .gd-relationship-confirm-box[style*="display: none"],
@@ -10434,93 +10608,99 @@ article.gd-card-collapsed,
 }
 
 .gd-btn-clear-session {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 38px;
-  padding: 0 20px;
-  font-family: var(--gd-font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #B33939;
-  background: rgba(179, 57, 57, 0.05) !important;
-  border: 1px solid rgba(179, 57, 57, 0.25) !important;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  color: #9B3828 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  text-decoration: none !important;
 }
 
 .gd-btn-clear-session:hover {
-  background-color: rgba(179, 57, 57, 0.12) !important;
-  border-color: #B33939 !important;
+  background: transparent !important;
+  border: none !important;
+  color: #7A2416 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
 }
 
 /* -----------------------------------------------------------------------------
-   Safety Invariants & Architecture Guarantees (Refined Verified Pills)
+   Safety Invariants & Architecture Guarantees (Pure Typography & Visual Hierarchy)
    ----------------------------------------------------------------------------- */
 
 .gd-settings-invariants-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 12px 28px !important;
+  margin-top: 14px !important;
 }
 
 .gd-settings-invariant-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px 6px 8px;
-  background-color: rgba(39, 49, 33, 0.04);
-  border: 1px solid rgba(39, 49, 33, 0.12);
-  border-radius: 9999px;
-  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.03);
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: default;
-  user-select: none;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: default !important;
+  user-select: none !important;
 }
 
 .gd-settings-invariant-chip:hover {
-  background-color: rgba(39, 49, 33, 0.075);
-  border-color: rgba(39, 49, 33, 0.22);
-  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.06);
-  transform: translateY(-1px);
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .gd-invariant-pill-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: rgba(84, 104, 62, 0.12);
-  color: var(--gd-accent-olive, #54683E);
-  flex-shrink: 0;
-  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  color: var(--gd-accent-olive, #54683E) !important;
+  flex-shrink: 0 !important;
 }
 
 .gd-invariant-pill-icon svg {
-  width: 11px;
-  height: 11px;
-  stroke: currentColor;
+  width: 13px !important;
+  height: 13px !important;
+  stroke: var(--gd-accent-olive, #54683E) !important;
+  stroke-width: 2.5 !important;
 }
 
 .gd-settings-invariant-chip:hover .gd-invariant-pill-icon {
-  background-color: rgba(84, 104, 62, 0.22);
-  color: var(--gd-deep-olive, #273121);
-  transform: scale(1.05);
+  background-color: transparent !important;
+  color: var(--gd-deep-olive, #273121) !important;
+  transform: none !important;
 }
 
 .gd-invariant-pill-label {
-  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: var(--gd-deep-olive, #273121);
-  line-height: 1.25;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--gd-deep-olive, #273121) !important;
+  line-height: 1.25 !important;
 }
 
 @media (max-width: 640px) {
