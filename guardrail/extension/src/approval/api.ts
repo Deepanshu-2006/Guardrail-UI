@@ -1313,7 +1313,11 @@ export class ApprovalApiRouter {
     headers: Record<string, string>
   ): Promise<ApiResponse<readonly TrustedContact[]>> {
     const authContext = await this.authenticate(request.headers);
-    if (authContext.role !== ActorRole.USER && authContext.role !== ActorRole.ADMIN) {
+    if (
+      authContext.role !== ActorRole.USER &&
+      authContext.role !== ActorRole.ADMIN &&
+      authContext.role !== ActorRole.TRUSTED_CONTACT
+    ) {
       throw new ApprovalAccessDeniedError();
     }
     const contacts = this.service.getTrustedContactsForUser(authContext);

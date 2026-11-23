@@ -378,6 +378,11 @@ export interface TrustedContactRegistry {
    * Enables indexed query filtering without full-table scans.
    */
   getWardIdsForContact?(contactId: string): readonly string[];
+
+  /**
+   * Retrieves all active contact relationships where this actor is designated as trusted contact.
+   */
+  getContactsForTrustedContact?(contactId: string): readonly TrustedContact[];
 }
 
 /**
@@ -455,6 +460,16 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       }
     }
     return Object.freeze(Array.from(wardIds));
+  }
+
+  public getContactsForTrustedContact(contactId: string): readonly TrustedContact[] {
+    const result: TrustedContact[] = [];
+    for (const contact of this.contacts.values()) {
+      if ((contact.id === contactId || contact.contactId === contactId) && contact.status === TrustedContactStatus.ACTIVE) {
+        result.push(contact);
+      }
+    }
+    return Object.freeze(result);
   }
 
   public createInvitation(

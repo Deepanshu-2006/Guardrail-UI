@@ -1850,10 +1850,32 @@ export class ApprovalService {
     authContext: AuthContext
   ): readonly TrustedContact[] {
     this.assertAuthenticated(authContext);
-    if (authContext.role !== ActorRole.USER) {
-      throw new ApprovalAccessDeniedError();
+    if (authContext.role === ActorRole.USER) {
+      return this.contactRegistry.getTrustedContactsForUser(authContext.actorId);
     }
-    return this.contactRegistry.getTrustedContactsForUser(authContext.actorId);
+    if (authContext.role === ActorRole.TRUSTED_CONTACT) {
+      if (typeof (this.contactRegistry as any).getContactsForTrustedContact === 'function') {
+        return (this.contactRegistry as any).getContactsForTrustedContact(authContext.actorId);
+      }
+      if (typeof (this.contactRegistry as any).getWardIdsForContact === 'function') {
+        const wardIds: readonly string[] = (this.contactRegistry as any).getWardIdsForContact(authContext.actorId);
+        const contacts: TrustedContact[] = [];
+        for (const w of wardIds) {
+          const userContacts = this.contactRegistry.getTrustedContactsForUser(w);
+          for (const c of userContacts) {
+            if (c.id === authContext.actorId || c.contactId === authContext.actorId) {
+              contacts.push(c);
+            }
+          }
+        }
+        return Object.freeze(contacts);
+      }
+      return Object.freeze([]);
+    }
+    if (authContext.role === ActorRole.ADMIN) {
+      return Object.freeze([]);
+    }
+    throw new ApprovalAccessDeniedError();
   }
 
   /**

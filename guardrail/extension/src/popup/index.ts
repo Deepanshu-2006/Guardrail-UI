@@ -299,19 +299,25 @@ function updatePopupToPairedState(
   const onboardingDesc = document.getElementById('onboarding-status-desc');
   const btnOpenOnboarding = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
 
-  if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
-  if (onboardingTitle) onboardingTitle.textContent = 'Guardian Linked';
+  const isPaired = contacts.length > 0;
+  if (onboardingBanner) onboardingBanner.className = isPaired ? 'onboarding-banner completed' : 'onboarding-banner';
+  if (onboardingTitle) onboardingTitle.textContent = isPaired ? 'Guardian Linked' : 'Caretaker Pairing';
   const resolvedName = contacts[0]?.contactName || contacts[0]?.name || caretakerName;
   const newDesc =
     contacts.length > 1
       ? `Protected by ${contacts.length} Guardians ✓`
       : `Protected by ${resolvedName} ✓`;
   savedDescBeforeOpen = newDesc;
-  if (onboardingDesc && !document.body.classList.contains('pairing-open')) {
+  if (onboardingDesc) {
     onboardingDesc.textContent = newDesc;
+    onboardingDesc.classList.remove('is-pairing');
   }
-  if (btnOpenOnboarding && !document.body.classList.contains('pairing-open')) {
-    btnOpenOnboarding.textContent = 'Pairing Info →';
+  if (btnOpenOnboarding) {
+    if (document.body.classList.contains('pairing-open')) {
+      btnOpenOnboarding.textContent = 'Close ✕';
+    } else {
+      btnOpenOnboarding.textContent = 'Pairing Info →';
+    }
   }
 
   renderActiveGuardians(contacts);
@@ -592,7 +598,12 @@ export function openPairingPanel(): void {
     savedDescBeforeOpen = desc.textContent || '';
   }
 
-  morphBanner('Close ✕', 'Pairing in progress...');
+  const isPairedBanner = document.getElementById('onboarding-banner')?.classList.contains('completed');
+  if (isPairedBanner) {
+    morphBanner('Close ✕', savedDescBeforeOpen || 'Guardian Active ✓');
+  } else {
+    morphBanner('Close ✕', 'Pairing in progress...');
+  }
 
   // Start choreographed slow animations
   const codeToDisplay = activePairingCode || 'GR-INV-8K2M-9Q7X';

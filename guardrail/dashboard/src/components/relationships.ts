@@ -218,7 +218,9 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
       const avatar = document.createElement('div');
       avatar.className = 'gd-rel-avatar ward-avatar';
-      avatar.textContent = 'WD';
+      avatar.textContent = props.profile.assignedWardName
+        ? props.profile.assignedWardName.charAt(0).toUpperCase()
+        : 'WD';
       avatar.setAttribute('aria-hidden', 'true');
 
       const info = document.createElement('div');
@@ -228,8 +230,8 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       nameRow.className = 'gd-rel-name-row';
 
       const nameSpan = document.createElement('strong');
-      nameSpan.className = 'gd-rel-name gd-mono';
-      nameSpan.textContent = props.profile.assignedWardId;
+      nameSpan.className = 'gd-rel-name';
+      nameSpan.textContent = props.profile.assignedWardName || props.profile.assignedWardId;
 
       const roleBadge = document.createElement('span');
       roleBadge.className = 'gd-rel-role-badge';
@@ -245,7 +247,8 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
       const metaRow = document.createElement('div');
       metaRow.className = 'gd-rel-meta-row';
-      metaRow.textContent = `Relationship: ${props.profile.relationshipLabel ?? 'Designated Trusted Contact'} • Separation of Duties Enforced`;
+      const emailPart = (props.profile as any).assignedWardEmail ? `${(props.profile as any).assignedWardEmail} • ` : '';
+      metaRow.textContent = `${emailPart}Relationship: ${props.profile.relationshipLabel ?? 'Designated Trusted Contact'} • ID: ${props.profile.assignedWardId}`;
 
       info.appendChild(nameRow);
       info.appendChild(metaRow);

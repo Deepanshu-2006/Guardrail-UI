@@ -141,9 +141,12 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   addItem('Canonical Actor ID', props.profile?.actorId ?? 'Not Authenticated', true);
   addItem('Authorization Role', String(props.profile?.role ?? 'Standalone Reviewer'), false);
+  const wardDisplay = props.profile?.assignedWardName
+    ? `${props.profile.assignedWardName} (${props.profile.assignedWardId})`
+    : props.profile?.assignedWardId;
   addItem(
     'Assigned Ward ID',
-    props.profile?.assignedWardId ?? 'No ward assigned',
+    wardDisplay ?? 'No ward assigned',
     Boolean(props.profile?.assignedWardId),
     props.profile?.assignedWardId ? 'Authorized Scope' : 'Unlinked'
   );

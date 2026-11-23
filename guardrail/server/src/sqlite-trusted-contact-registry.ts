@@ -260,6 +260,13 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     return Object.freeze(rows.map((r) => r.user_id));
   }
 
+  public getContactsForTrustedContact(contactId: string): readonly TrustedContact[] {
+    const rows = this.database.prepare(
+      "SELECT payload_json FROM trusted_contacts WHERE id = ? AND status = 'ACTIVE' ORDER BY rowid"
+    ).all(contactId) as JsonRow[];
+    return Object.freeze(rows.map((row) => parseContact(row.payload_json)));
+  }
+
   public createInvitation(userId: string, options?: CreateInvitationOptions): TrustedContactInvitation {
     if (!userId?.trim()) throw new Error('userId is required to create a trusted contact invitation.');
     const recipientActorId = options?.recipientActorId?.trim();

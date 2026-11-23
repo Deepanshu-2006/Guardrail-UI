@@ -319,6 +319,9 @@ if (typeof document !== 'undefined') {
               imageUrl: currentAvatar,
               isAuthenticated: true,
               relationshipLabel: payload.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
+              assignedWardId: (payload.data as any)?.assignedWardId || undefined,
+              assignedWardName: (payload.data as any)?.assignedWardName || undefined,
+              assignedWardEmail: (payload.data as any)?.assignedWardEmail || undefined,
             });
           }
         })
@@ -546,6 +549,9 @@ if (typeof document !== 'undefined') {
                     imageUrl: currentAvatar,
                     isAuthenticated: true,
                     relationshipLabel: 'Designated Caretaker',
+                    assignedWardId: (payload.data as any)?.assignedWardId || undefined,
+                    assignedWardName: (payload.data as any)?.assignedWardName || undefined,
+                    assignedWardEmail: (payload.data as any)?.assignedWardEmail || undefined,
                   });
                 }
               })

@@ -1100,6 +1100,31 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               ? 'Ward User'
               : 'Designated Caretaker');
 
+          let assignedWardId: string | undefined;
+          let assignedWardName: string | undefined;
+          let assignedWardEmail: string | undefined;
+
+          if (authContext.role === 'TRUSTED_CONTACT') {
+            try {
+              const reg = runtime.contactRegistry;
+              let contacts: readonly any[] = [];
+              if (typeof (reg as any).getContactsForTrustedContact === 'function') {
+                contacts = (reg as any).getContactsForTrustedContact(authContext.actorId);
+              }
+              if ((!contacts || contacts.length === 0) && typeof (reg as any).getWardIdsForContact === 'function') {
+                const wIds = (reg as any).getWardIdsForContact(authContext.actorId);
+                if (wIds && wIds.length > 0) {
+                  assignedWardId = wIds[0];
+                }
+              }
+              if (contacts && contacts.length > 0) {
+                assignedWardId = contacts[0].userId || contacts[0].wardId;
+                assignedWardName = contacts[0].wardName || (assignedWardId && assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId);
+                assignedWardEmail = contacts[0].wardEmail;
+              }
+            } catch {}
+          }
+
           response.statusCode = 200;
           response.end(
             JSON.stringify({
@@ -1112,6 +1137,9 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 fullName: displayName,
                 imageUrl: imageUrl,
                 environment: config.environment,
+                assignedWardId: assignedWardId ?? null,
+                assignedWardName: assignedWardName ?? null,
+                assignedWardEmail: assignedWardEmail ?? null,
               },
             })
           );

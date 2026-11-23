@@ -1680,7 +1680,33 @@ export class DashboardShell {
    * Updates contact profile.
    */
   public setProfile(profile: TrustedContactProfile | null): void {
-    this.state.contactProfile = profile;
+    if (profile) {
+      const storedWardId = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined;
+      const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
+      const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
+
+      const effectiveWardId = profile.assignedWardId ?? this.state.contactProfile?.assignedWardId ?? storedWardId;
+      const effectiveWardName = profile.assignedWardName ?? this.state.contactProfile?.assignedWardName ?? storedWardName;
+      const effectiveWardEmail = profile.assignedWardEmail ?? this.state.contactProfile?.assignedWardEmail ?? storedWardEmail;
+
+      if (effectiveWardId && typeof localStorage !== 'undefined') {
+        localStorage.setItem('guardrail_assigned_ward_id', effectiveWardId);
+        if (effectiveWardName) localStorage.setItem('guardrail_assigned_ward_name', effectiveWardName);
+        if (effectiveWardEmail) localStorage.setItem('guardrail_assigned_ward_email', effectiveWardEmail);
+      }
+
+      this.state.contactProfile = {
+        ...profile,
+        assignedWardId: effectiveWardId,
+        assignedWardName: effectiveWardName,
+        assignedWardEmail: effectiveWardEmail,
+      };
+      if (effectiveWardId && !this.state.wardPolicySummary) {
+        void this.fetchWardPolicy();
+      }
+    } else {
+      this.state.contactProfile = null;
+    }
     if (profile?.isAuthenticated) {
       if (this.apiClient && typeof this.apiClient.isMockService === 'function') {
         this.state.isMockService = this.apiClient.isMockService();
@@ -2230,6 +2256,27 @@ export class DashboardShell {
         this.state.connectedUsers = contactsRes.data;
         this.state.connectedUsersStatus = contactsRes.data.length === 0 ? 'empty' : 'idle';
         this.state.connectedUsersError = null;
+
+        if (this.state.connectedUsers.length > 0 && this.state.contactProfile) {
+          const firstWard = this.state.connectedUsers[0];
+          const wId = firstWard.userId || (firstWard as any).wardId;
+          const wName = (firstWard as any).wardName || (wId && wId.startsWith('usr_') ? wId.slice(4) : wId);
+          const wEmail = (firstWard as any).wardEmail;
+
+          if (wId && (!this.state.contactProfile.assignedWardId || this.state.contactProfile.assignedWardId !== wId)) {
+            this.state.contactProfile = {
+              ...this.state.contactProfile,
+              assignedWardId: wId,
+              assignedWardName: wName || this.state.contactProfile.assignedWardName,
+              assignedWardEmail: wEmail || this.state.contactProfile.assignedWardEmail,
+            };
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('guardrail_assigned_ward_id', wId);
+              if (wName) localStorage.setItem('guardrail_assigned_ward_name', wName);
+              if (wEmail) localStorage.setItem('guardrail_assigned_ward_email', wEmail);
+            }
+          }
+        }
       } else {
         // If 403 / NOT_FOUND_OR_DENIED, the caller may be a TRUSTED_CONTACT whose scope is bounded to assignedWardId
         if (
@@ -2486,15 +2533,17 @@ export class DashboardShell {
           if (wardEmail) localStorage.setItem('guardrail_assigned_ward_email', wardEmail);
         }
 
-        if (this.state.contactProfile?.isAuthenticated) {
-          this.state.contactProfile = {
-            ...this.state.contactProfile,
-            assignedWardId: wardId,
-            assignedWardName: wardName,
-            assignedWardEmail: wardEmail,
-            relationshipLabel: relLabel ?? this.state.contactProfile.relationshipLabel,
-          };
-        }
+        this.state.contactProfile = {
+          ...(this.state.contactProfile || {
+            actorId: 'tc_caretaker',
+            role: 'TRUSTED_CONTACT',
+            isAuthenticated: true,
+          }),
+          assignedWardId: wardId,
+          assignedWardName: wardName,
+          assignedWardEmail: wardEmail,
+          relationshipLabel: relLabel ?? this.state.contactProfile?.relationshipLabel ?? 'Designated Caretaker',
+        };
         this.state.relationshipActionMessage = {
           type: 'success',
           text: `Successfully connected to ward ${wardName} (${wardId})! Pending approval requests will now appear in your review queue.`,
@@ -2513,13 +2562,21 @@ export class DashboardShell {
           localStorage.setItem('guardrail_assigned_ward_id', wardId);
         }
 
-        if (this.state.contactProfile?.isAuthenticated) {
-          this.state.contactProfile = {
-            ...this.state.contactProfile,
-            assignedWardId: wardId,
-            relationshipLabel: this.state.contactProfile.relationshipLabel || 'Designated Caretaker',
-          };
-        }
+        const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
+        const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
+        const wardName = storedWardName || (wardId.startsWith('usr_') ? wardId.slice(4) : wardId);
+
+        this.state.contactProfile = {
+          ...(this.state.contactProfile || {
+            actorId: 'tc_caretaker',
+            role: 'TRUSTED_CONTACT',
+            isAuthenticated: true,
+          }),
+          assignedWardId: wardId,
+          assignedWardName: wardName,
+          assignedWardEmail: storedWardEmail,
+          relationshipLabel: this.state.contactProfile?.relationshipLabel || 'Designated Caretaker',
+        };
         this.state.relationshipActionMessage = {
           type: 'success',
           text: `Successfully connected to ward ${wardId}! Pending approval requests will now appear in your review queue.`,
