@@ -3354,6 +3354,62 @@ textarea:focus-visible,
   box-shadow: none !important;
 }
 
+@keyframes gd-section-slide-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(1.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gd-ward-slide-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gd-name-char-scroll-up {
+  0% {
+    opacity: 0;
+    transform: translateY(115%);
+    clip-path: inset(0 0 100% 0);
+    filter: blur(1.5px);
+  }
+  35% {
+    opacity: 0.9;
+    clip-path: inset(0 0 0 0);
+  }
+  70% {
+    transform: translateY(-8%);
+    filter: blur(0);
+  }
+  85% {
+    transform: translateY(2%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+    filter: blur(0);
+  }
+}
+
 .gd-ward-oversight-hero {
   display: flex;
   flex-direction: column;
@@ -3382,6 +3438,14 @@ textarea:focus-visible,
   line-height: 1.15;
 }
 
+/* Base static state: crisp, inline-block characters */
+.gd-ward-hero-name .gd-char {
+  display: inline-block;
+  opacity: 1;
+  transform: none;
+  white-space: pre;
+}
+
 .gd-ward-meta-line {
   font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif);
   font-size: 14px;
@@ -3408,6 +3472,55 @@ textarea:focus-visible,
   align-items: center;
   gap: 12px;
   margin-top: 2px;
+}
+
+/* -----------------------------------------------------------------------------
+   Active Ward Oversight: Side-Sliding Entrance & Character Scroll-Up Animation
+   ----------------------------------------------------------------------------- */
+#view-overview.gd-view-initial-enter #gd-active-ward-card,
+#gd-active-ward-card.is-revealed {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  animation: gd-section-slide-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both !important;
+}
+
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-kicker,
+#gd-active-ward-card.is-revealed .gd-ward-kicker {
+  animation: gd-render-in-left 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-hero-name,
+#gd-active-ward-card.is-revealed .gd-ward-hero-name {
+  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+/* Kinetic character-by-character bottom-to-up scrolling animation */
+#view-overview.gd-view-initial-enter .gd-ward-hero-name .gd-char,
+#gd-active-ward-card.is-revealed .gd-ward-hero-name .gd-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(115%);
+  animation: gd-name-char-scroll-up 0.48s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(0.16s + var(--char-idx, 0) * 0.034s);
+  white-space: pre;
+}
+
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-meta-line,
+#gd-active-ward-card.is-revealed .gd-ward-meta-line,
+#gd-active-ward-card.gd-card-animating-in .gd-ward-meta-line {
+  animation: gd-ward-slide-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-guarantee-note,
+#gd-active-ward-card.is-revealed .gd-ward-guarantee-note,
+#gd-active-ward-card.gd-card-animating-in .gd-ward-guarantee-note {
+  animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-action-links,
+#gd-active-ward-card.is-revealed .gd-ward-action-links,
+#gd-active-ward-card.gd-card-animating-in .gd-ward-action-links {
+  animation: gd-ward-slide-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
 }
 
 .gd-ward-text-link {

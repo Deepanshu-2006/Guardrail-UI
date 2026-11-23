@@ -790,7 +790,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const wardName = formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId);
     const heroTitle = document.createElement('h2');
     heroTitle.className = 'gd-ward-hero-name';
-    heroTitle.textContent = wardName;
+    setAnimatedHeading(heroTitle, wardName);
 
     // Typographic metadata line: Email · Relationship · ID
     const metaLine = document.createElement('p');
