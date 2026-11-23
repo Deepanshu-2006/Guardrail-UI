@@ -130,6 +130,15 @@ export interface TrustedContact {
   /** Ward verified email address */
   readonly wardEmail?: string;
 
+  /** Contact / Caretaker display name */
+  readonly contactName?: string;
+
+  /** Contact / Caretaker verified email address */
+  readonly contactEmail?: string;
+
+  /** Contact / Caretaker profile avatar URL */
+  readonly contactAvatarUrl?: string;
+
   /** Optional human-readable relationship label (e.g., 'Guardian', 'Supervisor') */
   readonly relationshipLabel?: string;
 
@@ -346,7 +355,12 @@ export interface TrustedContactRegistry {
    */
   acceptInvitation(
     code: string,
-    contactId: string
+    contactId: string,
+    contactInfo?: {
+      contactName?: string;
+      contactEmail?: string;
+      contactAvatarUrl?: string;
+    }
   ): { invitation: TrustedContactInvitation; contact: TrustedContact };
 
   /**
@@ -568,7 +582,12 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
 
   public acceptInvitation(
     code: string,
-    contactId: string
+    contactId: string,
+    contactInfo?: {
+      contactName?: string;
+      contactEmail?: string;
+      contactAvatarUrl?: string;
+    }
   ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
     if (!contactId || typeof contactId !== 'string' || !contactId.trim()) {
       throw new Error('contactId is required to accept an invitation.');
@@ -629,6 +648,10 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
     });
     this.invitations.set(invitation.id, updatedInvitation);
 
+    const contactName =
+      contactInfo?.contactName ||
+      (trimmedContactId.startsWith('usr_') || trimmedContactId.startsWith('tc_') ? undefined : trimmedContactId);
+
     const contact: TrustedContact = Object.freeze({
       id: trimmedContactId,
       contactId: trimmedContactId,
@@ -636,6 +659,9 @@ export class InMemoryTrustedContactRegistry implements TrustedContactRegistry {
       wardId: invitation.userId,
       wardName: invitation.wardName,
       wardEmail: invitation.wardEmail,
+      contactName: contactName || 'Designated Caretaker',
+      contactEmail: contactInfo?.contactEmail,
+      contactAvatarUrl: contactInfo?.contactAvatarUrl,
       relationshipLabel: invitation.relationshipLabel,
       status: TrustedContactStatus.ACTIVE,
       createdAt: acceptedAt,
@@ -1292,11 +1318,16 @@ export class ApprovalAuthorizationService {
    */
   public acceptInvitation(
     code: string,
-    authContext: AuthContext
+    authContext: AuthContext,
+    contactInfo?: {
+      contactName?: string;
+      contactEmail?: string;
+      contactAvatarUrl?: string;
+    }
   ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
     this.assertAuthenticated(authContext);
     this.assertRole(authContext, ActorRole.TRUSTED_CONTACT);
-    return this.contactRegistry.acceptInvitation(code, authContext.actorId);
+    return this.contactRegistry.acceptInvitation(code, authContext.actorId, contactInfo);
   }
 
   /**

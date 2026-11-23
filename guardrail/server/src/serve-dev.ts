@@ -63,26 +63,8 @@ async function main(): Promise<void> {
     },
   });
 
-  // Contact registry with designated development caretaker relationship
+  // Contact registry starts completely clean in development - no mock carol or hardcoded contacts
   const contactRegistry = new InMemoryTrustedContactRegistry();
-  contactRegistry.addContact({
-    id: 'tc_carol',
-    userId: 'usr_alice',
-    relationshipLabel: 'Designated Caretaker',
-    status: TrustedContactStatus.ACTIVE,
-    createdAt: new Date().toISOString(),
-  });
-
-  // Pre-seed the pairing invitation code from the extension popup as open wildcard
-  try {
-    contactRegistry.createInvitation('usr_alice', {
-      customCode: 'GR-INV-U6GA-4WZY',
-      recipientActorId: '*',
-      relationshipLabel: 'Family Guardian',
-    });
-  } catch {
-    // Ignore if already present
-  }
 
   const runtime = await startGuardrailHttpServer({
     tokenVerifier,

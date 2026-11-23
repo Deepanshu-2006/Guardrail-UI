@@ -2466,7 +2466,11 @@ export class DashboardShell {
     }
 
     try {
-      const res = await this.apiClient.acceptInvitation(code);
+      const res = await this.apiClient.acceptInvitation(code, {
+        contactName: this.state.contactProfile?.fullName || (this.state.contactProfile?.email ? this.state.contactProfile.email.split('@')[0] : undefined),
+        contactEmail: this.state.contactProfile?.email || undefined,
+        contactAvatarUrl: this.state.contactProfile?.avatarUrl || this.state.contactProfile?.imageUrl || undefined,
+      });
       if (res.success) {
         const wardId = res.data.invitation.wardId || res.data.contact.wardId;
         const relLabel = res.data.invitation.relationshipLabel || res.data.contact.relationshipLabel;

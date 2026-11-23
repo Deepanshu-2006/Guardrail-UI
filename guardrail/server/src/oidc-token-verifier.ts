@@ -213,6 +213,24 @@ export class HybridTokenVerifier implements TokenVerifier {
           picture: null,
         } as AuthContext;
       }
+      if (cleanToken.startsWith('caretaker_') || cleanToken.startsWith('tc_')) {
+        const emailGuess = cleanToken.replace(/^(caretaker_|tc_)/, '');
+        const email = emailGuess.includes('@') ? emailGuess : `${emailGuess}@gmail.com`;
+        const username = email.split('@')[0];
+        const formattedName = username
+          .split(/[._-]/)
+          .filter(Boolean)
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+        return {
+          actorId: cleanToken.startsWith('tc_') ? cleanToken : `tc_${username}`,
+          role: ActorRole.TRUSTED_CONTACT,
+          isAuthenticated: true,
+          fullName: formattedName,
+          email: email,
+          picture: null,
+        } as AuthContext;
+      }
     }
 
     if (this.oidcVerifier) {

@@ -105,7 +105,8 @@ export async function initializePopup(): Promise<void> {
   // Check guardian coverage (truthful caretaker link status)
   const coverage = await checkActiveGuardianCoverage();
   if (coverage.isLinked) {
-    const primaryName = coverage.contacts[0]?.id || 'Caretaker';
+    const primaryContact = coverage.contacts[0];
+    const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
     updatePopupToPairedState(primaryName, coverage.contacts);
   }
 
@@ -118,6 +119,11 @@ export async function initializePopup(): Promise<void> {
 
 export interface ActiveGuardianContact {
   id: string;
+  name?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactAvatarUrl?: string;
+  avatarUrl?: string;
   relationshipLabel?: string;
 }
 
@@ -141,8 +147,17 @@ async function checkActiveGuardianCoverage(): Promise<{
       },
     });
     if (!res.ok) return { isLinked: false, contacts: [] };
-    const body = (await res.json()) as { success: boolean; data?: ActiveGuardianContact[] };
-    const contacts = Array.isArray(body.data) ? body.data : [];
+    const body = (await res.json()) as { success: boolean; data?: any[] };
+    const rawList = Array.isArray(body.data) ? body.data : [];
+    const contacts: ActiveGuardianContact[] = rawList.map((c) => ({
+      id: String(c.id || c.contactId || ''),
+      name: c.contactName || c.name,
+      contactName: c.contactName,
+      contactEmail: c.contactEmail,
+      contactAvatarUrl: c.contactAvatarUrl || c.avatarUrl,
+      avatarUrl: c.contactAvatarUrl || c.avatarUrl,
+      relationshipLabel: c.relationshipLabel,
+    }));
     return {
       isLinked: contacts.length > 0,
       contacts,
@@ -286,10 +301,11 @@ function updatePopupToPairedState(
 
   if (onboardingBanner) onboardingBanner.className = 'onboarding-banner completed';
   if (onboardingTitle) onboardingTitle.textContent = 'Guardian Linked';
+  const resolvedName = contacts[0]?.contactName || contacts[0]?.name || caretakerName;
   const newDesc =
     contacts.length > 1
       ? `Protected by ${contacts.length} Guardians ✓`
-      : `Protected by ${caretakerName} ✓`;
+      : `Protected by ${resolvedName} ✓`;
   savedDescBeforeOpen = newDesc;
   if (onboardingDesc && !document.body.classList.contains('pairing-open')) {
     onboardingDesc.textContent = newDesc;
@@ -348,17 +364,33 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
     if (subtitleEl) subtitleEl.textContent = 'Active guardians & device pairing';
 
     list.innerHTML = contacts
-      .map(
-        (c, idx) => `
+      .map((c, idx) => {
+        const rawName = c.contactName || c.name;
+        const displayName = rawName && !rawName.startsWith('usr_') && !rawName.startsWith('tc_')
+          ? rawName
+          : (c.id.startsWith('usr_') || c.id.startsWith('tc_') ? 'Designated Caretaker' : c.id);
+        const initial = displayName && displayName !== 'Designated Caretaker'
+          ? displayName.charAt(0).toUpperCase()
+          : '';
+        const avatarContent = (c.contactAvatarUrl || c.avatarUrl)
+          ? `<img src="${escapeHtml(c.contactAvatarUrl || c.avatarUrl || '')}" alt="${escapeHtml(displayName)}" class="active-guardian-avatar-img" />`
+          : (initial
+            ? `<span class="active-guardian-initial">${initial}</span>`
+            : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>`);
+
+        return `
         <div class="active-guardian-item">
           <div class="active-guardian-info">
             <div class="active-guardian-avatar" aria-hidden="true">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
+              ${avatarContent}
             </div>
-            <span class="active-guardian-id">${c.id}</span>
+            <div class="active-guardian-details">
+              <span class="active-guardian-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
+              ${c.contactEmail ? `<span class="active-guardian-email" title="${escapeHtml(c.contactEmail)}">${escapeHtml(c.contactEmail)}</span>` : ''}
+            </div>
           </div>
           ${
             idx === contacts.length - 1
@@ -374,8 +406,8 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
               : ''
           }
         </div>
-      `
-      )
+      `;
+      })
       .join('');
   } else {
     section.style.display = 'none';
@@ -917,7 +949,8 @@ function startConnectionPolling(): void {
   connectionPollingTimer = setInterval(() => {
     void checkActiveGuardianCoverage().then(({ isLinked, contacts }) => {
       if (isLinked) {
-        const primaryName = contacts[0]?.id || 'Caretaker';
+        const primaryContact = contacts[0];
+        const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
         updatePopupToPairedState(primaryName, contacts);
         stopConnectionPolling();
       }

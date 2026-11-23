@@ -388,8 +388,8 @@ body.pairing-open .pairing-footer {
 }
 
 .active-guardian-avatar {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background-color: rgba(39, 49, 33, 0.08);
   border: 1px solid rgba(39, 49, 33, 0.16);
@@ -398,6 +398,53 @@ body.pairing-open .pairing-footer {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.active-guardian-initial {
+  font-family: var(--gd-font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gd-deep-olive);
+  line-height: 1;
+}
+
+.active-guardian-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.active-guardian-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.active-guardian-name {
+  font-family: var(--gd-font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--gd-text-primary, #273121);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.active-guardian-email {
+  font-family: var(--gd-font-sans);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--gd-text-muted, #6B7B61);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
 }
 
 .active-guardian-id {

@@ -342,7 +342,15 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     return Object.freeze(rows.map(({ id }) => this.getInvitationById(id)).filter((v): v is TrustedContactInvitation => Boolean(v)));
   }
 
-  public acceptInvitation(code: string, contactId: string): { invitation: TrustedContactInvitation; contact: TrustedContact } {
+  public acceptInvitation(
+    code: string,
+    contactId: string,
+    contactInfo?: {
+      contactName?: string;
+      contactEmail?: string;
+      contactAvatarUrl?: string;
+    }
+  ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
     const tx = this.database.transaction(() => {
       const invitation = this.getInvitationByCode(code);
       if (!invitation) throw new InvitationNotFoundError(code);
@@ -368,6 +376,10 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
         const existingRow = this.database.prepare('SELECT payload_json FROM trusted_contacts WHERE user_id=? AND id=?').get(invitation.userId, contactId) as { payload_json: string } | undefined;
         const contact: TrustedContact = existingRow ? JSON.parse(existingRow.payload_json) : Object.freeze({
           id: contactId, contactId, userId: invitation.userId, wardId: invitation.userId,
+          wardName: invitation.wardName, wardEmail: invitation.wardEmail,
+          contactName: contactInfo?.contactName || 'Designated Caretaker',
+          contactEmail: contactInfo?.contactEmail,
+          contactAvatarUrl: contactInfo?.contactAvatarUrl,
           relationshipLabel: invitation.relationshipLabel, status: TrustedContactStatus.ACTIVE, createdAt: acceptedAt,
         });
         this.database.prepare("UPDATE trusted_contact_invitations SET code=?,status='ACCEPTED',accepted_at=?,payload_json=? WHERE id=? AND status='PENDING'")
@@ -376,8 +388,14 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
       }
       const acceptedAt = generateTimestamp();
       const updated: TrustedContactInvitation = Object.freeze({ ...invitation, status: InvitationStatus.ACCEPTED, acceptedByContactId: contactId, acceptedAt });
-      const contact: TrustedContact = Object.freeze({ id: contactId, contactId, userId: invitation.userId, wardId: invitation.userId,
-        relationshipLabel: invitation.relationshipLabel, status: TrustedContactStatus.ACTIVE, createdAt: acceptedAt });
+      const contact: TrustedContact = Object.freeze({
+        id: contactId, contactId, userId: invitation.userId, wardId: invitation.userId,
+        wardName: invitation.wardName, wardEmail: invitation.wardEmail,
+        contactName: contactInfo?.contactName || 'Designated Caretaker',
+        contactEmail: contactInfo?.contactEmail,
+        contactAvatarUrl: contactInfo?.contactAvatarUrl,
+        relationshipLabel: invitation.relationshipLabel, status: TrustedContactStatus.ACTIVE, createdAt: acceptedAt
+      });
       const result = this.database.prepare("UPDATE trusted_contact_invitations SET code=?,status='ACCEPTED',accepted_at=?,payload_json=? WHERE id=? AND status='PENDING' AND recipient_actor_id=?")
         .run(retiredInvitationTokenHash(), acceptedAt, JSON.stringify(updated), invitation.id, contactId);
       if (Number(result.changes) !== 1) throw new InvitationAlreadyAcceptedError(invitation.id);

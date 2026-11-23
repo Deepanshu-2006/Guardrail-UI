@@ -1261,7 +1261,12 @@ export class ApprovalApiRouter {
     const validation = validateInvitationCode(candidate);
     if (!validation.valid || !validation.normalized) throw new ApprovalValidationError(validation.errors);
     const code = validation.normalized;
-    const result = this.service.acceptInvitation(code, authContext);
+    const contactInfo = {
+      contactName: typeof body.contactName === 'string' && body.contactName.trim() ? body.contactName.trim() : undefined,
+      contactEmail: typeof body.contactEmail === 'string' && body.contactEmail.trim() ? body.contactEmail.trim() : undefined,
+      contactAvatarUrl: typeof body.contactAvatarUrl === 'string' && body.contactAvatarUrl.trim() ? body.contactAvatarUrl.trim() : undefined,
+    };
+    const result = this.service.acceptInvitation(code, authContext, contactInfo);
 
     return {
       statusCode: 200,

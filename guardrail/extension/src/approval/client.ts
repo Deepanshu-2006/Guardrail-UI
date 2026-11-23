@@ -1344,6 +1344,11 @@ export class ApprovalApiClient {
    */
   public async acceptInvitation(
     code: string,
+    metadataOrOptions?: {
+      contactName?: string;
+      contactEmail?: string;
+      contactAvatarUrl?: string;
+    } | RequestOptions,
     options?: RequestOptions
   ): Promise<ApiClientResult<{ invitation: TrustedContactInvitation; contact: TrustedContact }>> {
     if (!code || typeof code !== 'string' || !code.trim()) {
@@ -1365,11 +1370,21 @@ export class ApprovalApiClient {
         statusCode: 400,
       };
     }
+
+    const isMetadata = metadataOrOptions && ('contactName' in metadataOrOptions || 'contactEmail' in metadataOrOptions || 'contactAvatarUrl' in metadataOrOptions);
+    const metadata = isMetadata ? (metadataOrOptions as { contactName?: string; contactEmail?: string; contactAvatarUrl?: string }) : undefined;
+    const effectiveOptions = isMetadata ? options : (metadataOrOptions as RequestOptions | undefined);
+
     return this.dispatchRequest<{ invitation: TrustedContactInvitation; contact: TrustedContact }>(
       'POST',
       '/api/v1/invitations/accept',
-      { code: validation.normalized },
-      options
+      {
+        code: validation.normalized,
+        ...(metadata?.contactName ? { contactName: metadata.contactName } : {}),
+        ...(metadata?.contactEmail ? { contactEmail: metadata.contactEmail } : {}),
+        ...(metadata?.contactAvatarUrl ? { contactAvatarUrl: metadata.contactAvatarUrl } : {}),
+      },
+      effectiveOptions
     );
   }
 

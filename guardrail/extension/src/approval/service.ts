@@ -1803,13 +1803,18 @@ export class ApprovalService {
    */
   public acceptInvitation(
     code: string,
-    authContext: AuthContext
+    authContext: AuthContext,
+    contactInfo?: {
+      contactName?: string;
+      contactEmail?: string;
+      contactAvatarUrl?: string;
+    }
   ): { invitation: TrustedContactInvitation; contact: TrustedContact } {
     this.assertAuthenticated(authContext);
     if (authContext.role !== ActorRole.TRUSTED_CONTACT) {
       throw new ApprovalAccessDeniedError();
     }
-    const result = this.contactRegistry.acceptInvitation(code, authContext.actorId);
+    const result = this.contactRegistry.acceptInvitation(code, authContext.actorId, contactInfo);
     this.logger.info('Accepted trusted contact invitation', {
       invitationId: result.invitation.id,
       wardId: result.invitation.userId,
