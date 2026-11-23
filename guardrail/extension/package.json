@@ -8,6 +8,7 @@
     "build:pilot": "node build.mjs --pilot",
     "package:pilot": "node build.mjs --pilot --package",
     "build:prod": "node build.mjs --prod",
+    "package:extension": "node scripts/package-extension.mjs",
     "watch": "node build.mjs --watch",
     "audit": "npm audit --audit-level=high",
     "type-check": "tsc --noEmit",

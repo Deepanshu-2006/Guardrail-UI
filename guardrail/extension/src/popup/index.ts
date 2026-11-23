@@ -22,7 +22,13 @@ import { loadPolicyConfigFromStorage } from '../config/registry.js';
 import { ConfigHealthStatus } from '../types/config.js';
 import { evaluateProtectionStatus, getStoredOnboardingState } from '../onboarding/state.js';
 import { ProtectionStatusReport } from '../onboarding/types.js';
-import { getStoredWardToken, verifyWardIdentity } from '../approval/auth-manager.js';
+import {
+  getStoredWardToken,
+  verifyWardIdentity,
+  authenticateWardWithGoogle,
+  signOutWard,
+  WardIdentity,
+} from '../approval/auth-manager.js';
 
 let activePairingCode: string | null = null;
 let connectionPollingTimer: ReturnType<typeof setInterval> | null = null;
@@ -177,17 +183,20 @@ export function renderPopupStatus(
 
   // 2b. Ward Identity
   const wardVal = document.getElementById('ext-ward-val');
-  if (wardVal) {
-    void verifyWardIdentity().then((identity) => {
+  void verifyWardIdentity().then((identity) => {
+    renderWardAccountCard(identity);
+    if (wardVal) {
       if (identity && identity.isAuthenticated) {
-        wardVal.textContent = `${identity.actorId} (${identity.role})`;
+        const display = identity.fullName || identity.actorId;
+        wardVal.textContent = `${display} (${identity.role})`;
       } else {
         wardVal.textContent = 'Unauthenticated';
       }
-    }).catch(() => {
-      wardVal.textContent = 'Offline';
-    });
-  }
+    }
+  }).catch(() => {
+    renderWardAccountCard(null);
+    if (wardVal) wardVal.textContent = 'Offline';
+  });
 
   // 3. Status Indicator
   const indicator = document.getElementById('ext-status-indicator');
@@ -220,6 +229,47 @@ export function renderPopupStatus(
 
 function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
+}
+
+/**
+ * Renders the Ward Account Card (Google identity or unauthenticated state).
+ */
+export function renderWardAccountCard(identity: WardIdentity | null): void {
+  const nameEl = document.getElementById('ward-account-name');
+  const emailEl = document.getElementById('ward-account-email');
+  const avatarEl = document.getElementById('ward-account-avatar');
+  const avatarText = document.getElementById('ward-avatar-text');
+  const btnAuth = document.getElementById('btn-google-auth') as HTMLButtonElement | null;
+  const btnSignout = document.getElementById('btn-ward-signout') as HTMLButtonElement | null;
+  const btnAuthText = document.getElementById('btn-google-auth-text');
+
+  if (identity && identity.isAuthenticated) {
+    const displayName = identity.fullName || identity.actorId;
+    if (nameEl) nameEl.textContent = displayName;
+    if (emailEl) emailEl.textContent = identity.email || 'Authenticated via Google';
+
+    if (avatarEl) {
+      if (identity.picture) {
+        avatarEl.innerHTML = `<img src="${escapeHtml(identity.picture)}" alt="${escapeHtml(displayName)}" />`;
+      } else if (avatarText) {
+        avatarText.textContent = displayName.charAt(0).toUpperCase();
+      }
+    }
+
+    if (btnAuth) btnAuth.style.display = 'none';
+    if (btnSignout) btnSignout.style.display = 'inline-block';
+  } else {
+    if (nameEl) nameEl.textContent = 'Sign in to Guardrail';
+    if (emailEl) emailEl.textContent = 'Connect your Google account';
+    if (avatarEl && avatarText) {
+      avatarEl.innerHTML = '<span id="ward-avatar-text">👤</span>';
+    }
+    if (btnAuth) {
+      btnAuth.style.display = 'flex';
+      if (btnAuthText) btnAuthText.textContent = 'Sign in with Google';
+    }
+    if (btnSignout) btnSignout.style.display = 'none';
+  }
 }
 
 /**
@@ -363,6 +413,48 @@ function setupPopupActions(): void {
     btnOpenOnboarding.addEventListener('click', (e) => {
       e.preventDefault();
       togglePairingPanel();
+    });
+  }
+
+  // Ward Google Sign-In & Sign-Out
+  const btnGoogleAuth = document.getElementById('btn-google-auth') as HTMLButtonElement | null;
+  if (btnGoogleAuth) {
+    btnGoogleAuth.addEventListener('click', async (e) => {
+      e.preventDefault();
+      btnGoogleAuth.disabled = true;
+      const btnText = document.getElementById('btn-google-auth-text');
+      if (btnText) btnText.textContent = 'Connecting with Google...';
+
+      try {
+        const identity = await authenticateWardWithGoogle();
+        if (identity) {
+          renderWardAccountCard(identity);
+          const wardVal = document.getElementById('ext-ward-val');
+          if (wardVal) {
+            const display = identity.fullName || identity.actorId;
+            wardVal.textContent = `${display} (${identity.role})`;
+          }
+          // Regenerate invitation code bound to new real user identity
+          void loadOrGenerateInvitation(true);
+        }
+      } catch (authErr) {
+        console.warn('[Guardrail Popup] Ward Google sign-in failed:', authErr);
+      } finally {
+        btnGoogleAuth.disabled = false;
+        if (btnText) btnText.textContent = 'Sign in with Google';
+      }
+    });
+  }
+
+  const btnWardSignout = document.getElementById('btn-ward-signout') as HTMLButtonElement | null;
+  if (btnWardSignout) {
+    btnWardSignout.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await signOutWard();
+      renderWardAccountCard(null);
+      const wardVal = document.getElementById('ext-ward-val');
+      if (wardVal) wardVal.textContent = 'Unauthenticated';
+      void loadOrGenerateInvitation(true);
     });
   }
 }

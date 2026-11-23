@@ -190,8 +190,23 @@ export class HybridTokenVerifier implements TokenVerifier {
     if (typeof token !== 'string' || !token.trim()) return undefined;
     const cleanToken = token.trim();
 
-    if (this.devTokensEnabled && this.devTokens.has(cleanToken)) {
-      return this.devTokens.get(cleanToken);
+    if (this.devTokensEnabled) {
+      if (this.devTokens.has(cleanToken)) {
+        return this.devTokens.get(cleanToken);
+      }
+      if (cleanToken.startsWith('ward_')) {
+        const rawName = cleanToken.slice(5).replace(/_/g, ' ');
+        const emailGuess = cleanToken.slice(5).includes('@')
+          ? cleanToken.slice(5)
+          : `${cleanToken.slice(5)}@gmail.com`;
+        return {
+          actorId: `usr_${cleanToken.slice(5).split('@')[0].split('_')[0]}`,
+          role: ActorRole.USER,
+          isAuthenticated: true,
+          fullName: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+          picture: null,
+        } as AuthContext;
+      }
     }
 
     if (this.oidcVerifier) {
