@@ -16,6 +16,7 @@ import {
 } from '../types.js';
 import { renderRelationshipManagementSection } from './relationships.js';
 import { setAnimatedHeading } from './icons.js';
+import { formatWardDisplayName } from './overview.js';
 
 export interface SettingsProps {
   profile: TrustedContactProfile | null;
@@ -143,10 +144,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   addItem('Authorization Role', String(props.profile?.role ?? 'Standalone Reviewer'), false);
   const rawWardName = props.profile?.assignedWardName;
   const rawWardId = props.profile?.assignedWardId;
-  const formattedName = rawWardName || (rawWardId && rawWardId.startsWith('usr_') && rawWardId.toLowerCase().includes('deepanshukhatri') ? 'Deepanshu Khatri' : rawWardName);
-  const wardDisplay = formattedName
+  const formattedName = formatWardDisplayName(rawWardName, rawWardId);
+  const wardDisplay = formattedName && rawWardId && formattedName !== rawWardId
     ? `${formattedName} (${rawWardId})`
-    : rawWardId;
+    : (formattedName || rawWardId);
   addItem(
     'Assigned Ward ID',
     wardDisplay ?? 'No ward assigned',
@@ -250,7 +251,11 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     };
 
     const summary = props.wardPolicySummary;
-    addPolicyItem('Governed Ward', props.profile.assignedWardId, true, 'Sovereign Owner');
+    const governedWardName = formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId);
+    const governedWardVal = governedWardName && governedWardName !== props.profile.assignedWardId
+      ? `${governedWardName} (${props.profile.assignedWardId})`
+      : props.profile.assignedWardId;
+    addPolicyItem('Governed Ward', governedWardVal, true, 'Sovereign Owner');
     addPolicyItem(
       'Sensitivity Preset',
       summary ? summary.sensitivityPreset.toUpperCase() : 'BALANCED',

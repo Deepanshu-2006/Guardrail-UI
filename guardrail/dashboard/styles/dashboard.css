@@ -9084,13 +9084,334 @@ article.gd-card-collapsed,
 }
 
 /* -----------------------------------------------------------------------------
-   Settings & Relationship Management (Minimal Editorial Style)
+   Settings & Relationship Management (Minimal Editorial Style - Zero Boxes)
    ----------------------------------------------------------------------------- */
 
-.gd-settings-card {
-  padding-bottom: 36px;
-  margin-bottom: 36px;
-  border-bottom: 1px solid var(--gd-border-subtle, rgba(39, 49, 33, 0.08));
+#view-settings .gd-card,
+.gd-settings-card,
+.gd-relationships-card {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 0 48px 0 !important;
+  margin-bottom: 48px !important;
+  border-bottom: 1px solid var(--gd-border-subtle, rgba(39, 49, 33, 0.08)) !important;
+}
+
+#view-settings .gd-settings-card:last-child,
+#view-settings .gd-session-card {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 24px !important;
+}
+
+#view-settings .gd-settings-card-header {
+  display: flex !important;
+  align-items: baseline !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  margin-bottom: 24px !important;
+}
+
+#view-settings .gd-settings-card-header .gd-section-title {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+  color: var(--gd-text-primary, #273121) !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+#view-settings .gd-settings-badge {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  color: var(--gd-deep-olive, #54683E) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+#view-settings .gd-settings-badge.gd-badge-active {
+  color: #385E30 !important;
+}
+
+#view-settings .gd-settings-badge.gd-badge-danger {
+  color: var(--gd-critical-primary, #B93838) !important;
+}
+
+#view-settings .gd-settings-badge.gd-badge-warning {
+  color: var(--gd-warning-primary, #8C6D1F) !important;
+}
+
+#view-settings .gd-settings-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  gap: 32px 56px !important;
+  margin-bottom: 28px !important;
+  max-width: 960px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+#view-settings .gd-settings-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 7px !important;
+}
+
+#view-settings .gd-settings-label {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--gd-deep-olive, #54683E) !important;
+  line-height: 1.2 !important;
+}
+
+#view-settings .gd-settings-value {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--gd-text-primary, #273121) !important;
+  line-height: 1.4 !important;
+  word-break: break-word !important;
+}
+
+#view-settings .gd-settings-value.gd-mono {
+  font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+}
+
+#view-settings .gd-settings-subbadge {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #7A8570 !important;
+  margin-top: 2px !important;
+  line-height: 1.35 !important;
+}
+
+#view-settings .gd-settings-subtitle {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.14em !important;
+  color: var(--gd-deep-olive, #54683E) !important;
+  margin: 36px 0 16px 0 !important;
+  line-height: 1.3 !important;
+}
+
+#view-settings .gd-settings-invariants-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 0 28px 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+#view-settings .gd-settings-invariant-item {
+  display: flex !important;
+  align-items: baseline !important;
+  flex-wrap: wrap !important;
+  gap: 10px 16px !important;
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 14px !important;
+  padding: 4px 0 !important;
+  margin: 0 !important;
+}
+
+#view-settings .gd-settings-invariant-item strong {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--gd-text-primary, #273121) !important;
+  min-width: 200px !important;
+}
+
+#view-settings .gd-settings-invariant-item span {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13.5px !important;
+  color: var(--gd-text-secondary, #5F6656) !important;
+}
+
+#view-settings .gd-settings-notice {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #7A8570 !important;
+  line-height: 1.65 !important;
+  margin-top: 24px !important;
+  margin-bottom: 0 !important;
+  max-width: 720px !important;
+}
+
+/* Connected Users & Trusted Contacts */
+.gd-relationship-item {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  padding: 22px 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.08) !important;
+  border-radius: 0 !important;
+  gap: 24px !important;
+  margin-bottom: 0 !important;
+}
+
+.gd-relationship-item:last-child {
+  border-bottom: none !important;
+}
+
+.gd-rel-item-left {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+}
+
+.gd-rel-avatar {
+  display: none !important;
+}
+
+.gd-rel-name-row {
+  display: flex !important;
+  align-items: baseline !important;
+  flex-wrap: wrap !important;
+  gap: 12px 16px !important;
+  margin-bottom: 4px !important;
+}
+
+.gd-rel-name {
+  font-family: var(--gd-font-display, 'Space Grotesk', sans-serif) !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: var(--gd-text-primary, #273121) !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.2 !important;
+}
+
+.gd-rel-role-badge {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: var(--gd-deep-olive, #54683E) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.gd-relationship-item .gd-status-badge {
+  font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  color: #385E30 !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.gd-relationship-item .gd-status-badge::before {
+  content: '·' !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+.gd-rel-meta-row {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  color: var(--gd-text-secondary, #5F6656) !important;
+  line-height: 1.5 !important;
+}
+
+.gd-btn-revoke {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: #8F2B2B !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(143, 43, 43, 0.4) !important;
+  padding: 0 0 2px 0 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+}
+
+.gd-btn-revoke:hover {
+  color: #B93838 !important;
+  border-bottom-color: #B93838 !important;
+  opacity: 1 !important;
+}
+
+.gd-relationship-confirm-box {
+  padding: 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: baseline !important;
+  gap: 10px 16px !important;
+  max-width: 100% !important;
+}
+
+.gd-confirm-warning {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 13px !important;
+  color: #8F2B2B !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.gd-btn-revoke-confirm {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: #FFFFFF !important;
+  background-color: #8F2B2B !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 4px 10px !important;
+  cursor: pointer !important;
+}
+
+.gd-btn-revoke-confirm:hover {
+  background-color: #B93838 !important;
+}
+
+.gd-btn-cancel {
+  font-family: var(--gd-font-sans, 'Plus Jakarta Sans', sans-serif) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: var(--gd-text-secondary, #5F6656) !important;
+  background-color: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  text-decoration: underline !important;
+  padding: 0 !important;
 }
 
 /* Push Notifications Card Refined Spacing & Button Aesthetics */

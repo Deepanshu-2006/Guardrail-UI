@@ -19,6 +19,7 @@ import {
   TrustedContactStatus,
   ViewStatus,
 } from '../types.js';
+import { formatWardDisplayName } from './overview.js';
 
 export interface RelationshipsProps {
   profile: TrustedContactProfile | null;
@@ -133,79 +134,82 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   usersCard.appendChild(usersHeader);
 
   // Status handling for connected users
-  if (props.connectedUsersStatus === 'loading') {
+  if (props.connectedUsersStatus === 'loading' && totalConnectedCount === 0) {
     const loadingEl = document.createElement('div');
     loadingEl.className = 'gd-relationships-loading';
     loadingEl.setAttribute('role', 'status');
     loadingEl.setAttribute('aria-busy', 'true');
     loadingEl.innerHTML = '<span class="gd-spinner"></span> Loading connected contacts from backend...';
     usersCard.appendChild(loadingEl);
-  } else if (props.connectedUsersStatus === 'error' && props.connectedUsersError) {
-    const errorEl = document.createElement('div');
-    errorEl.className = 'gd-error-banner gd-relationships-error-banner';
-    errorEl.setAttribute('role', 'alert');
-
-    const errContent = document.createElement('div');
-    errContent.className = 'gd-error-content';
-
-    const errIcon = document.createElement('span');
-    errIcon.className = 'gd-error-banner-icon';
-    errIcon.setAttribute('aria-hidden', 'true');
-    errIcon.innerHTML = `
-      <svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-      </svg>
-    `;
-
-    const errText = document.createElement('span');
-    errText.className = 'gd-error-banner-text';
-    errText.textContent = `Backend error: ${props.connectedUsersError}`;
-
-    errContent.appendChild(errIcon);
-    errContent.appendChild(errText);
-    errorEl.appendChild(errContent);
-
-    if (props.onRefresh) {
-      const retryBtn = document.createElement('button');
-      retryBtn.type = 'button';
-      retryBtn.className = 'gd-btn-retry';
-      retryBtn.textContent = 'Retry';
-      retryBtn.addEventListener('click', () => props.onRefresh?.());
-      errorEl.appendChild(retryBtn);
-    }
-    usersCard.appendChild(errorEl);
-  } else if (totalConnectedCount === 0) {
-    // Empty state
-    const emptyEl = document.createElement('div');
-    emptyEl.className = 'gd-relationships-empty';
-    emptyEl.id = 'gd-connected-users-empty';
-
-    const empIcon = document.createElement('div');
-    empIcon.className = 'gd-placeholder-icon';
-    empIcon.setAttribute('aria-hidden', 'true');
-    empIcon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-        <circle cx="9" cy="7" r="4"></circle>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-      </svg>
-    `;
-
-    const empTitle = document.createElement('h3');
-    empTitle.className = 'gd-placeholder-title';
-    empTitle.textContent = 'No Connected Users or Contacts';
-
-    emptyEl.appendChild(empIcon);
-    emptyEl.appendChild(empTitle);
-    usersCard.appendChild(emptyEl);
   } else {
-    // List container
-    const list = document.createElement('div');
-    list.className = 'gd-relationships-list';
-    list.id = 'gd-connected-users-list';
+    if (props.connectedUsersStatus === 'error' && props.connectedUsersError && totalConnectedCount === 0) {
+      const errorEl = document.createElement('div');
+      errorEl.className = 'gd-error-banner gd-relationships-error-banner';
+      errorEl.setAttribute('role', 'alert');
+
+      const errContent = document.createElement('div');
+      errContent.className = 'gd-error-content';
+
+      const errIcon = document.createElement('span');
+      errIcon.className = 'gd-error-banner-icon';
+      errIcon.setAttribute('aria-hidden', 'true');
+      errIcon.innerHTML = `
+        <svg class="gd-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      `;
+
+      const errText = document.createElement('span');
+      errText.className = 'gd-error-banner-text';
+      errText.textContent = `Backend error: ${props.connectedUsersError}`;
+
+      errContent.appendChild(errIcon);
+      errContent.appendChild(errText);
+      errorEl.appendChild(errContent);
+
+      if (props.onRefresh) {
+        const retryBtn = document.createElement('button');
+        retryBtn.type = 'button';
+        retryBtn.className = 'gd-btn-retry';
+        retryBtn.textContent = 'Retry';
+        retryBtn.addEventListener('click', () => props.onRefresh?.());
+        errorEl.appendChild(retryBtn);
+      }
+      usersCard.appendChild(errorEl);
+    } else if (totalConnectedCount === 0) {
+      // Empty state
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'gd-relationships-empty';
+      emptyEl.id = 'gd-connected-users-empty';
+
+      const empIcon = document.createElement('div');
+      empIcon.className = 'gd-placeholder-icon';
+      empIcon.setAttribute('aria-hidden', 'true');
+      empIcon.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      `;
+
+      const empTitle = document.createElement('h3');
+      empTitle.className = 'gd-placeholder-title';
+      empTitle.textContent = 'No Connected Users or Contacts';
+
+      emptyEl.appendChild(empIcon);
+      emptyEl.appendChild(empTitle);
+      usersCard.appendChild(emptyEl);
+    }
+
+    if (totalConnectedCount > 0) {
+      // List container
+      const list = document.createElement('div');
+      list.className = 'gd-relationships-list';
+      list.id = 'gd-connected-users-list';
 
     // 1A. If current profile has an assigned ward (e.g. reviewer viewing their assigned ward)
     if (hasAssignedWard && props.profile?.assignedWardId) {
@@ -229,9 +233,10 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       const nameRow = document.createElement('div');
       nameRow.className = 'gd-rel-name-row';
 
+      const wardDisplayName = formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId);
       const nameSpan = document.createElement('strong');
       nameSpan.className = 'gd-rel-name';
-      nameSpan.textContent = props.profile.assignedWardName || props.profile.assignedWardId;
+      nameSpan.textContent = wardDisplayName;
 
       const roleBadge = document.createElement('span');
       roleBadge.className = 'gd-rel-role-badge';
@@ -247,8 +252,8 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
       const metaRow = document.createElement('div');
       metaRow.className = 'gd-rel-meta-row';
-      const emailPart = (props.profile as any).assignedWardEmail ? `${(props.profile as any).assignedWardEmail} • ` : '';
-      metaRow.textContent = `${emailPart}Relationship: ${props.profile.relationshipLabel ?? 'Designated Trusted Contact'} • ID: ${props.profile.assignedWardId}`;
+      const emailPart = (props.profile as any).assignedWardEmail ? `${(props.profile as any).assignedWardEmail} · ` : '';
+      metaRow.textContent = `${emailPart}Relationship: ${props.profile.relationshipLabel ?? 'Designated Trusted Contact'} · ID: ${props.profile.assignedWardId}`;
 
       info.appendChild(nameRow);
       info.appendChild(metaRow);
@@ -447,6 +452,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     }
 
     usersCard.appendChild(list);
+    }
   }
 
   container.appendChild(usersCard);
