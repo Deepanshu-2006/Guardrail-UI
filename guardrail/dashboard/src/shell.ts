@@ -1244,7 +1244,7 @@ export class DashboardShell {
    */
   public async refresh(): Promise<void> {
     await Promise.all([
-      this.fetchPendingRequests(),
+      this.fetchPendingRequests({ isBackground: true }),
       this.fetchRelationships({ isBackground: true }),
       this.fetchHistoryRequests({ isBackground: true }),
       this.fetchWardPolicy(),
@@ -1682,6 +1682,9 @@ export class DashboardShell {
   public setProfile(profile: TrustedContactProfile | null): void {
     this.state.contactProfile = profile;
     if (profile?.isAuthenticated) {
+      if (this.apiClient && typeof this.apiClient.isMockService === 'function') {
+        this.state.isMockService = this.apiClient.isMockService();
+      }
       this.closeAuthModal();
       this.isPollingHaltedDueToAuth = false;
       if (this.pollIntervalMs && this.pollIntervalMs > 0 && !this.pollTimer) {
@@ -1695,11 +1698,22 @@ export class DashboardShell {
   }
 
   /**
+   * Returns current contact profile.
+   */
+  public getProfile(): TrustedContactProfile | null {
+    return this.state.contactProfile;
+  }
+
+  /**
    * Closes the Caretaker Authentication & Identity dialog if open.
    */
   public closeAuthModal(): void {
     if (typeof document === 'undefined') return;
     document.querySelectorAll('#gd-auth-modal-root, .gd-auth-modal-backdrop, .gd-modal-backdrop').forEach((el) => {
+      // Do not prematurely remove the connected/signing-in confirmation modal if it is active
+      if (el.querySelector('.gd-connected-card')) {
+        return;
+      }
       el.remove();
     });
   }
@@ -1717,6 +1731,8 @@ export class DashboardShell {
   public setApiClient(client: ApprovalApiClient): void {
     this.apiClient = client;
     this.autoFetch = true;
+    const isMock = typeof client.isMockService === 'function' ? client.isMockService() : false;
+    this.state.isMockService = isMock;
     if (this.state.contactProfile?.isAuthenticated) {
       if (!this.pollTimer && this.pollIntervalMs && this.pollIntervalMs > 0) {
         this.startPolling();

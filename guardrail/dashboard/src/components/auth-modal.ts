@@ -567,9 +567,11 @@ export function renderAuthModal(props: AuthModalProps): HTMLElement {
           }
         }
 
-        cleanup();
         props.onAuthSuccess(clerkToken || 'test-contact-token', verifiedProfile);
-        props.onClose();
+        showConnectedModal(verifiedProfile, () => {
+          cleanup();
+          props.onClose();
+        });
         return;
       }
     } catch (err) {
@@ -1159,36 +1161,48 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
     continueBtn.id = 'gd-continue-dashboard-btn';
     continueBtn.textContent = 'Continue to Dashboard';
 
+    let autoDismissTimer: any = setTimeout(() => {
+      safeDismiss();
+    }, 3200);
+
     const dismissModal = () => {
       if (backdrop) {
         backdrop.style.opacity = '0';
-        backdrop.style.transition = 'opacity 0.2s ease';
+        backdrop.style.transition = 'opacity 0.25s ease';
         if (card) {
           card.style.transform = 'scale(0.96) translateY(8px)';
-          card.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+          card.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
         }
         setTimeout(() => {
           backdrop?.remove();
           onDismiss?.();
-        }, 200);
+        }, 250);
       }
+    };
+
+    const safeDismiss = () => {
+      if (autoDismissTimer) {
+        clearTimeout(autoDismissTimer);
+        autoDismissTimer = null;
+      }
+      dismissModal();
     };
 
     continueBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      dismissModal();
+      safeDismiss();
     });
 
     backdrop.addEventListener('click', (e) => {
       if (e.target === backdrop) {
-        dismissModal();
+        safeDismiss();
       }
     });
 
     const keydownHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         window.removeEventListener('keydown', keydownHandler);
-        dismissModal();
+        safeDismiss();
       }
     };
     window.addEventListener('keydown', keydownHandler);

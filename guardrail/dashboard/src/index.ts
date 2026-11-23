@@ -219,9 +219,11 @@ if (typeof document !== 'undefined') {
       ? localStorage.getItem('guardrail_assigned_ward_id') || undefined
       : undefined;
 
+    let connectingMountedAt = 0;
     if (isOAuthRedirect) {
       // Present the animated connecting modal while OAuth callback resolves
       showConnectingModal();
+      connectingMountedAt = Date.now();
     }
 
     const effectiveToken = storageToken || null;
@@ -240,7 +242,7 @@ if (typeof document !== 'undefined') {
       return (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) || effectiveToken || '';
     } : undefined);
 
-    const initialProfile: TrustedContactProfile | null = isOAuthRedirect
+    const initialProfile: TrustedContactProfile | null = (isOAuthRedirect && !storedName && !storageToken)
       ? null
       : effectiveToken
       ? (parseJwtProfile(effectiveToken, storedEmail) || (effectiveToken.startsWith('test-') ? {
@@ -344,17 +346,26 @@ if (typeof document !== 'undefined') {
 
       let wasAuthenticated = false;
 
-      // Ensure an active session is selected if signedInSessions exists but clerk.session is not set
+      // Ensure an active session is selected if signedInSessions or sessions exists but clerk.session is not set
       const ensureActiveSession = async () => {
-        if (!clerk.session && clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) {
-          const targetSession = clerk.client.lastActiveSessionId
-            ? clerk.client.signedInSessions.find((s: any) => s.id === clerk.client?.lastActiveSessionId) || clerk.client.signedInSessions[0]
-            : clerk.client.signedInSessions[0];
-          if (targetSession && typeof clerk.setActive === 'function') {
-            try {
-              await clerk.setActive({ session: targetSession.id });
-            } catch (actErr) {
-              console.warn('[Clerk] setActive error:', actErr);
+        if (!clerk.session) {
+          const sessions =
+            (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0
+              ? clerk.client.signedInSessions
+              : null) ||
+            (clerk.client?.sessions && clerk.client.sessions.length > 0
+              ? clerk.client.sessions
+              : null);
+          if (sessions && sessions.length > 0) {
+            const targetSession = clerk.client?.lastActiveSessionId
+              ? sessions.find((s: any) => s.id === clerk.client?.lastActiveSessionId) || sessions[0]
+              : sessions[0];
+            if (targetSession && typeof clerk.setActive === 'function') {
+              try {
+                await clerk.setActive({ session: targetSession.id });
+              } catch (actErr) {
+                console.warn('[Clerk] setActive error:', actErr);
+              }
             }
           }
         }
@@ -431,7 +442,7 @@ if (typeof document !== 'undefined') {
 
           wasAuthenticated = true;
 
-          const activeWardId = shell.getProfile()?.assignedWardId ||
+          const activeWardId = (typeof shell.getProfile === 'function' ? shell.getProfile() : shell.getState().contactProfile)?.assignedWardId ||
             (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined);
 
           const verifiedProfile: TrustedContactProfile = {
@@ -452,7 +463,20 @@ if (typeof document !== 'undefined') {
               baseUrl: envConfig.apiBaseUrl,
               environment: envConfig.environment,
               serviceType: 'live',
-              tokenProvider: () => clerkToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') || '' : ''),
+              tokenProvider: async () => {
+                if (typeof window !== 'undefined' && (window as any).Clerk?.session?.getToken) {
+                  try {
+                    const freshToken = await (window as any).Clerk.session.getToken();
+                    if (freshToken) {
+                      if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem('guardrail_auth_token', freshToken);
+                      }
+                      return freshToken;
+                    }
+                  } catch {}
+                }
+                return clerkToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') || '' : '');
+              },
               timeoutMs: envConfig.timeoutMs,
               logger: {
                 info: (msg: string, ctx?: Record<string, unknown>) => console.info('[Guardrail API]', msg, ctx ?? ''),
@@ -463,19 +487,22 @@ if (typeof document !== 'undefined') {
             shell.setApiClient(newApiClient);
           }
 
-          // Immediately render authoritative Caretaker profile card in the sidebar
-          shell.setProfile(verifiedProfile);
-          shell.closeAuthModal();
-
-          if (typeof document !== 'undefined') {
-            document.querySelectorAll('#gd-auth-modal-root, .gd-auth-modal-backdrop, .gd-modal-backdrop').forEach((el) => {
-              el.remove();
-            });
+          // Ensure the connecting spinner has had a comfortable duration (1.5s) to be clearly seen
+          if (connectingMountedAt > 0) {
+            const elapsed = Date.now() - connectingMountedAt;
+            if (elapsed < 1500) {
+              await new Promise((r) => setTimeout(r, 1500 - elapsed));
+            }
           }
 
-          // Show connected modal only when explicitly requested
-          if (typeof document !== 'undefined' && showPopup) {
+          // Immediately render authoritative Caretaker profile card in the sidebar
+          shell.setProfile(verifiedProfile);
+
+          const hasConnectingModal = typeof document !== 'undefined' && Boolean(document.getElementById('gd-auth-modal-root'));
+          if (isOAuthRedirect || showPopup || hasConnectingModal) {
             showConnectedModal(verifiedProfile);
+          } else {
+            shell.closeAuthModal();
           }
 
           // Clean up address bar query params after successful redirect handling
@@ -529,7 +556,33 @@ if (typeof document !== 'undefined') {
         }
       };
 
-      // 1. Process OAuth redirect callback if returning from Google / Apple
+      // 1. Real-time session listener (registered early to capture session emissions from redirect handling)
+      if (typeof clerk.addListener === 'function') {
+        clerk.addListener(async (emission: any) => {
+          const hasSession = Boolean(
+            emission?.session ||
+            clerk.session ||
+            (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
+            (clerk.client?.sessions && clerk.client.sessions.length > 0)
+          );
+          if (hasSession) {
+            await syncClerkSession(false);
+          } else if (!hasSession && wasAuthenticated) {
+            wasAuthenticated = false;
+            const current = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
+            if (current && (current.startsWith('ey') || current.includes('.'))) {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('guardrail_auth_token');
+                localStorage.removeItem('guardrail_user_email');
+                localStorage.removeItem('guardrail_user_avatar');
+              }
+              shell.setProfile(null);
+            }
+          }
+        });
+      }
+
+      // 2. Process OAuth redirect callback if returning from Google / Apple
       if (isOAuthRedirect) {
         try {
           if (typeof clerk.handleRedirectCallback === 'function') {
@@ -555,46 +608,49 @@ if (typeof document !== 'undefined') {
         } catch (e) {
           console.warn('[Clerk] OAuth redirect handling error:', e);
         }
-      }
 
-      // 2. Real-time session listener
-      if (typeof clerk.addListener === 'function') {
-        clerk.addListener(async (emission: any) => {
-          const hasSession = Boolean(
-            emission?.session ||
+        // Retry settling loop to ensure session is hydrated immediately after OAuth redirect without requiring page reload
+        for (let attempt = 0; attempt < 8; attempt++) {
+          await ensureActiveSession();
+          const hasAnySession = Boolean(
             clerk.session ||
-            (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0)
+            (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
+            (clerk.client?.sessions && clerk.client.sessions.length > 0)
           );
-          if (hasSession) {
+          if (hasAnySession) {
             await syncClerkSession(false);
-          } else if (!hasSession && wasAuthenticated) {
-            wasAuthenticated = false;
-            const current = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
-            if (current && (current.startsWith('ey') || current.includes('.'))) {
-              if (typeof localStorage !== 'undefined') {
-                localStorage.removeItem('guardrail_auth_token');
-                localStorage.removeItem('guardrail_user_email');
-                localStorage.removeItem('guardrail_user_avatar');
-              }
-              shell.setProfile(null);
+            if (shell.getState().contactProfile?.isAuthenticated) {
+              break;
             }
           }
-        });
+          await new Promise((r) => setTimeout(r, 150));
+        }
       }
 
       // 3. Initial session sync
       await ensureActiveSession();
       await syncClerkSession(false);
 
-      // 4. Only prompt for sign in if user is confirmed unauthenticated and not mid-redirect
+      // 4. Clean up any open modals and address bar query params
       const isAuthNow = Boolean(
         shell.getState().contactProfile?.isAuthenticated ||
         clerk.session ||
-        (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0)
+        (clerk.client?.signedInSessions && clerk.client.signedInSessions.length > 0) ||
+        (clerk.client?.sessions && clerk.client.sessions.length > 0)
       );
 
       if (isAuthNow) {
-        shell.closeAuthModal();
+        const hasConnectingModal = typeof document !== 'undefined' && Boolean(document.getElementById('gd-auth-modal-root'));
+        if (!isOAuthRedirect && !hasConnectingModal) {
+          shell.closeAuthModal();
+        }
+        if (typeof window !== 'undefined' && (
+          window.location.search.includes('rotating_token_nonce') ||
+          window.location.search.includes('__clerk') ||
+          window.location.search.includes('status=')
+        )) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       } else if (!isOAuthRedirect) {
         const localTok = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null;
         if (!localTok) {
