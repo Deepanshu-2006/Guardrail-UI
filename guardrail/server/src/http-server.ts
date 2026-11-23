@@ -1,4 +1,5 @@
 import { createServer, Server } from 'node:http';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
@@ -424,14 +425,16 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             `If you did not expect this invitation, you can safely ignore this message.`,
           ].join('\n');
 
-          // Generate animated pairing code GIF, animated QR GIF, and load brand logo for CID embedding (supported by Gmail)
+          // Generate animated pairing code GIF, high-res QR code PNG, and load brand logo for CID embedding (supported by Gmail)
           let logoB64 = '';
           let gifB64 = '';
-          let qrGifB64 = '';
+          let qrCodeB64 = '';
+          let qrMimeType = 'image/png';
           let gifCssWidth = 260;
           let gifCssHeight = 38;
           const codeString = code || 'GR-INV-XXXX-XXXX';
 
+          // 1. Logo for CID embedding
           try {
             const logoPath = path.resolve(process.cwd(), '../extension/public/icons/icon-48.png');
             const altLogoPath = path.resolve(process.cwd(), 'guardrail/extension/public/icons/icon-48.png');
@@ -439,14 +442,72 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             if (targetLogoPath) {
               logoB64 = fs.readFileSync(targetLogoPath).toString('base64');
             }
+          } catch (logoErr) {
+            console.warn('[Invitation] Could not read logo icon:', logoErr);
+          }
 
+          // 2. Animated optical scanner QR code GIF (exact animation matching extension popup)
+          const tmpQrGifPath = path.resolve('/tmp', `qr_${codeString.replace(/[^a-zA-Z0-9_-]/g, '_')}.gif`);
+          const qrScriptPath = path.resolve(process.cwd(), 'src/generate-qr-gif.py');
+          const altQrScriptPath = path.resolve(process.cwd(), 'guardrail/server/src/generate-qr-gif.py');
+          const targetQrScript = fs.existsSync(qrScriptPath) ? qrScriptPath : (fs.existsSync(altQrScriptPath) ? altQrScriptPath : '');
+
+          if (targetQrScript) {
+            try {
+              execSync(`python3 "${targetQrScript}" "${pairingUrl}" "${tmpQrGifPath}"`, { timeout: 15000 });
+              if (fs.existsSync(tmpQrGifPath)) {
+                qrCodeB64 = fs.readFileSync(tmpQrGifPath).toString('base64');
+                qrMimeType = 'image/gif';
+              }
+            } catch (qrAnimErr) {
+              console.warn('[Invitation] Could not generate animated QR GIF, checking fallback:', qrAnimErr);
+            }
+          }
+
+          // Fallback: If animated GIF wasn't created, generate instant static PNG QR code
+          if (!qrCodeB64) {
+            try {
+              const nodeReq = createRequire(import.meta.url);
+              let QRCode: any;
+              const qrcodePaths = [
+                path.resolve(process.cwd(), '../extension/node_modules/qrcode'),
+                path.resolve(process.cwd(), 'guardrail/extension/node_modules/qrcode'),
+                'qrcode',
+              ];
+              for (const qp of qrcodePaths) {
+                try {
+                  QRCode = nodeReq(qp);
+                  if (QRCode) break;
+                } catch {}
+              }
+              if (QRCode && typeof QRCode.toBuffer === 'function') {
+                const qrBuf: Buffer = await QRCode.toBuffer(pairingUrl, {
+                  width: 280,
+                  margin: 2,
+                  color: {
+                    dark: '#273121',
+                    light: '#FAF6ED',
+                  },
+                });
+                if (qrBuf && qrBuf.length > 0) {
+                  qrCodeB64 = qrBuf.toString('base64');
+                  qrMimeType = 'image/png';
+                }
+              }
+            } catch (fallbackErr) {
+              console.warn('[Invitation] Static QR fallback failed:', fallbackErr);
+            }
+          }
+
+          // 3. Optional Animated Pairing Code GIF
+          try {
             const tmpGifPath = path.resolve('/tmp', `code_${codeString.replace(/[^a-zA-Z0-9_-]/g, '_')}.gif`);
             const scriptPath = path.resolve(process.cwd(), 'src/generate-code-gif.py');
             const altScriptPath = path.resolve(process.cwd(), 'guardrail/server/src/generate-code-gif.py');
             const targetScript = fs.existsSync(scriptPath) ? scriptPath : altScriptPath;
 
             if (fs.existsSync(targetScript)) {
-              const genOut = execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 12000 }).toString();
+              const genOut = execSync(`python3 "${targetScript}" "${codeString}" "${tmpGifPath}"`, { timeout: 6000 }).toString();
               try {
                 const parsed = JSON.parse(genOut.trim());
                 if (parsed.cssWidth && parsed.cssHeight) {
@@ -458,22 +519,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 gifB64 = fs.readFileSync(tmpGifPath).toString('base64');
               }
             }
-
-            // Generate animated QR code matching extension popup animation
-            const tmpQrGifPath = path.resolve('/tmp', `qr_${codeString.replace(/[^a-zA-Z0-9_-]/g, '_')}.gif`);
-            const qrScriptPath = path.resolve(process.cwd(), 'src/generate-qr-gif.py');
-            const altQrScriptPath = path.resolve(process.cwd(), 'guardrail/server/src/generate-qr-gif.py');
-            const targetQrScript = fs.existsSync(qrScriptPath) ? qrScriptPath : altQrScriptPath;
-
-            if (fs.existsSync(targetQrScript)) {
-              execSync(`python3 "${targetQrScript}" "${pairingUrl}" "${tmpQrGifPath}"`, { timeout: 12000 });
-              if (fs.existsSync(tmpQrGifPath)) {
-                qrGifB64 = fs.readFileSync(tmpQrGifPath).toString('base64');
-              }
-            }
-
-          } catch (genErr) {
-            console.warn('[Invitation] Could not generate animated GIF, falling back to static text:', genErr);
+          } catch (codeErr) {
+            console.warn('[Invitation] Could not generate code GIF, using HTML text:', codeErr);
           }
 
           const emailHtml = `
@@ -617,8 +664,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
                       <tr>
                         <td align="center" valign="middle" style="line-height: 0; text-align: center;">
-                          ${qrGifB64
-                            ? `<img class="qr-img" src="cid:pairing-qr" width="136" height="136" style="display: block; margin: 0 auto; width: 136px; height: 136px; border-radius: 9px; border: 0; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code" />`
+                          ${qrCodeB64
+                            ? `<img class="qr-img" src="cid:pairing-qr" width="136" height="136" style="display: block; margin: 0 auto; width: 136px; height: 136px; border-radius: 9px; border: 1px solid #D4CCA8; box-shadow: 0 2px 8px rgba(39, 49, 33, 0.08);" alt="Scan QR Code" />`
                             : `<div style="font-size: 12px; color: #7E8774;">Scan in Guardrail App</div>`
                           }
                         </td>
@@ -705,10 +752,10 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                   contentId: 'guardrail-logo',
                 });
               }
-              if (qrGifB64) {
+              if (qrCodeB64) {
                 attachments.push({
-                  filename: 'pairing-qr.gif',
-                  content: qrGifB64,
+                  filename: qrMimeType === 'image/gif' ? 'pairing-qr.gif' : 'pairing-qr.png',
+                  content: qrCodeB64,
                   content_id: 'pairing-qr',
                   contentId: 'pairing-qr',
                 });

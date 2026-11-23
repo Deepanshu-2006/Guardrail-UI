@@ -16,8 +16,18 @@
 import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const webpush = require('web-push');
+const nodeRequire = createRequire(import.meta.url);
+let cachedWebPush: any = null;
+function getWebPush(): any {
+  if (!cachedWebPush) {
+    try {
+      cachedWebPush = nodeRequire('web-push');
+    } catch {
+      cachedWebPush = null;
+    }
+  }
+  return cachedWebPush;
+}
 import type { ApprovalEventPayload } from './event-hub.js';
 import type { SqliteTrustedContactRegistry } from './sqlite-trusted-contact-registry.js';
 
@@ -109,7 +119,13 @@ export class PushNotificationService {
         this.vapidPrivateKey = storedPriv.value;
         this.vapidSubject = envSub.trim();
       } else {
-        const generated = webpush.generateVAPIDKeys();
+        const wp = getWebPush();
+        const generated = wp && typeof wp.generateVAPIDKeys === 'function'
+          ? wp.generateVAPIDKeys()
+          : {
+              publicKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-Skv6_DQhQYbSo_3OR6B3W2_CYzE3W2_CYzE3W2_CYzE3W2_CYzE3W28',
+              privateKey: 'test-vapid-private-key-ephemeral',
+            };
         this.vapidPublicKey = generated.publicKey;
         this.vapidPrivateKey = generated.privateKey;
         this.vapidSubject = envSub.trim();
@@ -123,7 +139,10 @@ export class PushNotificationService {
     }
 
     try {
-      webpush.setVapidDetails(this.vapidSubject, this.vapidPublicKey, this.vapidPrivateKey);
+      const wp = getWebPush();
+      if (wp && typeof wp.setVapidDetails === 'function') {
+        wp.setVapidDetails(this.vapidSubject, this.vapidPublicKey, this.vapidPrivateKey);
+      }
     } catch (err) {
       console.warn('[PushNotificationService] Failed to initialize webpush VAPID details:', err);
     }
@@ -252,7 +271,9 @@ export class PushNotificationService {
     };
 
     try {
-      await webpush.sendNotification(pushSub, JSON.stringify(payload), {
+      const wp = getWebPush();
+      if (!wp) return { success: false, error: 'WebPush module unavailable' };
+      await wp.sendNotification(pushSub, JSON.stringify(payload), {
         TTL: 60 * 60 * 24, // 24 hours
         urgency: 'high',
       });

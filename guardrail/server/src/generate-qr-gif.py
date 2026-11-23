@@ -38,13 +38,16 @@ def gd_eye_snap(tau):
 def generate_qr_gif(url: str, output_path: str):
     url = url.strip() or 'https://guardrail.app'
 
-    # Resolve qrcode library path
+    # Resolve qrcode library path (prefer lightweight core to avoid loading heavy pngjs)
     ext_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../extension/node_modules/qrcode'))
     if not os.path.exists(ext_dir):
         ext_dir = os.path.abspath(os.path.join(os.getcwd(), 'guardrail/extension/node_modules/qrcode'))
 
+    core_js = os.path.join(ext_dir, 'lib/core/qrcode.js')
+    target_require = core_js if os.path.exists(core_js) else ext_dir
+
     cmd = ['node', '-e', f"""
-const QRCode = require('{ext_dir}');
+const QRCode = require('{target_require}');
 const qr = QRCode.create('{url}', {{ errorCorrectionLevel: 'M' }});
 const matrix = [];
 for (let r = 0; r < qr.modules.size; r++) {{
