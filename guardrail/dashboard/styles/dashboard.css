@@ -13275,3 +13275,624 @@ article.gd-card-collapsed,
   }
 }
 
+
+
+/* ====================================================================
+   OVERVIEW METRIC CARD: INTERACTIVE WARDS CONTROL TRIGGER
+   ==================================================================== */
+.gd-metric-card-interactive {
+  cursor: pointer !important;
+  position: relative !important;
+  outline: none !important;
+  border-radius: 14px !important;
+  padding: 10px 14px !important;
+  margin: -10px -14px 0 -14px !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.gd-metric-card-interactive:hover {
+  background: rgba(39, 49, 33, 0.05) !important;
+  transform: translateY(-2px) !important;
+}
+
+.gd-metric-card-interactive:focus-visible {
+  box-shadow: 0 0 0 2px #273121, 0 0 0 4px rgba(39, 49, 33, 0.2) !important;
+}
+
+.gd-metric-manage-tag {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #273121;
+  background: rgba(39, 49, 33, 0.08);
+  padding: 2px 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  opacity: 0.85;
+  transition: all 0.16s ease;
+}
+
+.gd-metric-card-interactive:hover .gd-metric-manage-tag {
+  opacity: 1;
+  background: #273121;
+  color: #FAF6ED;
+}
+
+/* ====================================================================
+   WARDS CONTROL CENTER POPUP MODAL (QUIET ASSURANCE THEME)
+   ==================================================================== */
+.gd-wards-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(27, 33, 23, 0.62);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1000;
+  padding: 20px;
+  overflow-y: auto;
+  animation: gd-modal-fade-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gd-wards-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 660px;
+  max-height: 90vh;
+  background: #FAF7F0;
+  border: 1px solid #CCD6C0;
+  border-radius: 20px;
+  box-shadow: 0 28px 68px -12px rgba(27, 33, 23, 0.35),
+              0 2px 8px rgba(27, 33, 23, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: gd-modal-scale-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes gd-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gd-modal-scale-up {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Header */
+.gd-wards-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 28px 18px 28px;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.1);
+  background: #FAF6ED;
+}
+
+.gd-wards-modal-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-wards-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gd-wards-modal-title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #273121;
+}
+
+.gd-wards-modal-title {
+  margin: 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #273121;
+  letter-spacing: -0.01em;
+}
+
+.gd-wards-modal-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #273121;
+  background: rgba(39, 49, 33, 0.08);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.gd-wards-modal-subtitle {
+  margin: 0;
+  font-size: 13.5px;
+  color: #5F6656;
+  line-height: 1.45;
+  max-width: 500px;
+}
+
+.gd-wards-modal-close-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #5F6656;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  flex-shrink: 0;
+}
+
+.gd-wards-modal-close-btn:hover {
+  background: rgba(39, 49, 33, 0.06);
+  color: #273121;
+  border-color: rgba(39, 49, 33, 0.1);
+}
+
+/* Summary Strip */
+.gd-wards-modal-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 14px 28px;
+  background: rgba(39, 49, 33, 0.03);
+  border-bottom: 1px solid rgba(39, 49, 33, 0.08);
+}
+
+.gd-wards-summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gd-wards-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6C7564;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.gd-wards-stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #273121;
+}
+
+.gd-wards-stat-val.gd-stat-warning {
+  color: #B45309;
+}
+
+.gd-wards-stat-val.gd-stat-active {
+  color: #16A34A;
+}
+
+/* Modal Body */
+.gd-wards-modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Wards List */
+.gd-wards-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gd-ward-control-card {
+  background: #FFFFFF;
+  border: 1px solid #D8DFD0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.03);
+}
+
+.gd-ward-control-card:hover {
+  border-color: #B8C4AF;
+  box-shadow: 0 4px 12px rgba(39, 49, 33, 0.06);
+}
+
+.gd-ward-control-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.gd-ward-control-avatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #273121;
+  color: #FAF6ED;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gd-ward-status-dot.online {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #16A34A;
+  border: 2px solid #FFFFFF;
+}
+
+.gd-ward-control-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gd-ward-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gd-ward-control-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #273121;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.gd-ward-rel-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #2E7D32;
+  background: rgba(46, 125, 50, 0.1);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.gd-ward-control-email {
+  font-size: 12.5px;
+  color: #5F6656;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gd-ward-control-id-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: #8C9482;
+}
+
+.gd-ward-queue-status {
+  flex-shrink: 0;
+}
+
+.gd-ward-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.gd-ward-pending-badge.warning {
+  background: rgba(217, 119, 6, 0.12);
+  color: #B45309;
+}
+
+.gd-ward-pending-badge.clear {
+  background: rgba(22, 163, 74, 0.1);
+  color: #16A34A;
+}
+
+.gd-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #B45309;
+  animation: gd-pulse 1.6s infinite ease-in-out;
+}
+
+/* Control Actions */
+.gd-ward-control-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(39, 49, 33, 0.06);
+}
+
+.gd-ward-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #273121;
+  color: #FAF6ED;
+  border: none;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.gd-ward-btn-primary:hover {
+  background: #1B2418;
+  transform: translateY(-1px);
+}
+
+.gd-ward-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(39, 49, 33, 0.06);
+  color: #273121;
+  border: 1px solid rgba(39, 49, 33, 0.12);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.gd-ward-btn-secondary:hover {
+  background: rgba(39, 49, 33, 0.1);
+  border-color: #273121;
+}
+
+.gd-ward-btn-disconnect {
+  background: transparent;
+  color: #A33B31;
+  border: 1px solid rgba(163, 59, 49, 0.25);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.gd-ward-btn-disconnect:hover {
+  background: rgba(163, 59, 49, 0.06);
+  border-color: #A33B31;
+}
+
+/* Inline Disconnect Confirmation */
+.gd-ward-disconnect-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(163, 59, 49, 0.05);
+  border: 1px solid rgba(163, 59, 49, 0.2);
+  border-radius: 10px;
+}
+
+.gd-ward-confirm-prompt {
+  margin: 0;
+  font-size: 12.5px;
+  color: #A33B31;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.gd-ward-confirm-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gd-ward-btn-confirm-yes {
+  background: #A33B31;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.gd-ward-btn-confirm-yes:hover:not(:disabled) {
+  background: #872820;
+}
+
+.gd-ward-btn-confirm-no {
+  background: transparent;
+  color: #5F6656;
+  border: 1px solid rgba(39, 49, 33, 0.15);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.gd-ward-btn-confirm-no:hover:not(:disabled) {
+  background: rgba(39, 49, 33, 0.05);
+  color: #273121;
+}
+
+/* Empty State */
+.gd-wards-modal-empty {
+  text-align: center;
+  padding: 28px 16px;
+  background: #FFFFFF;
+  border: 1px dashed #CCD6C0;
+  border-radius: 14px;
+}
+
+.gd-wards-empty-icon {
+  color: #8C9482;
+  margin-bottom: 10px;
+}
+
+.gd-wards-empty-title {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #273121;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.gd-wards-empty-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #5F6656;
+  line-height: 1.5;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Pairing Section */
+.gd-wards-pair-section {
+  background: #FFFFFF;
+  border: 1px solid #D8DFD0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gd-wards-pair-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #273121;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gd-wards-pair-desc {
+  margin: 2px 0 0 0;
+  font-size: 12.5px;
+  color: #5F6656;
+  line-height: 1.4;
+}
+
+.gd-wards-pair-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-wards-pair-input-wrap {
+  display: flex;
+  gap: 8px;
+}
+
+.gd-wards-pair-input {
+  flex: 1;
+  height: 40px;
+  border-radius: 9px;
+  border: 1px solid #CCD6C0;
+  padding: 0 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #273121;
+  background: #FAF7F0;
+  outline: none;
+  letter-spacing: 0.05em;
+  transition: all 0.16s ease;
+}
+
+.gd-wards-pair-input:focus {
+  border-color: #273121;
+  box-shadow: 0 0 0 2px rgba(39, 49, 33, 0.12);
+  background: #FFFFFF;
+}
+
+.gd-wards-pair-submit-btn {
+  height: 40px;
+  border-radius: 9px;
+  background: #273121;
+  color: #FAF6ED;
+  border: none;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.gd-wards-pair-submit-btn:hover:not(:disabled) {
+  background: #1B2418;
+}
+
+.gd-wards-pair-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gd-wards-pair-feedback {
+  font-size: 12.5px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.gd-wards-pair-feedback.error {
+  background: rgba(163, 59, 49, 0.08);
+  color: #A33B31;
+  border: 1px solid rgba(163, 59, 49, 0.2);
+}
+
+.gd-wards-pair-feedback.success {
+  background: rgba(22, 163, 74, 0.08);
+  color: #16A34A;
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}

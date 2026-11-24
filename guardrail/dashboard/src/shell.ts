@@ -37,6 +37,7 @@ import { defaultDashboardPushService } from './services/push-notification-servic
 import { createIcon, setAnimatedHeading } from './components/icons.js';
 import { PwaInstallManager } from './components/pwa-install-banner.js';
 import { renderMobileActionSheet } from './components/mobile-action-sheet.js';
+import { renderWardsControlModal } from './components/wards-control-modal.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -838,6 +839,11 @@ export class DashboardShell {
         this.setPendingFilters({ ...this.state.pendingFilters, wardId });
         this.setActiveView('pending');
       },
+      onFilterWardHistory: (wardId: string) => {
+        this.setHistoryFilters({ ...this.state.historyFilters, wardId });
+        this.setActiveView('history');
+      },
+      onOpenWardsControl: () => this.openWardsControlModal(),
       onOpenAuth: () => this.openAuthModal(),
       onSelectPending: (id) => {
         this.setActiveView('pending');
@@ -2213,6 +2219,62 @@ export class DashboardShell {
     });
     modal.id = 'gd-auth-modal-root';
     document.body.appendChild(modal);
+  }
+
+  /**
+   * Opens the Wards Control Center dialog for inspecting, filtering, and managing connected wards.
+   */
+  public openWardsControlModal(): void {
+    if (typeof document === 'undefined') return;
+    this.closeWardsControlModal();
+
+    const modal = renderWardsControlModal({
+      connectedWards: this.getConnectedWards(),
+      pendingRequests: this.state.pendingRequests,
+      onClose: () => {
+        this.closeWardsControlModal();
+      },
+      onDisconnectWard: async (wardId: string) => {
+        await this.disconnectWard(wardId);
+        // Re-open/update modal with the updated remaining wards list
+        if (typeof document !== 'undefined') {
+          this.openWardsControlModal();
+        }
+      },
+      onFilterWardPending: (wardId: string) => {
+        this.closeWardsControlModal();
+        this.setPendingFilters({ ...this.state.pendingFilters, wardId });
+        this.setActiveView('pending');
+      },
+      onFilterWardHistory: (wardId: string) => {
+        this.closeWardsControlModal();
+        this.setHistoryFilters({ ...this.state.historyFilters, wardId });
+        this.setActiveView('history');
+      },
+      onConnectInvitation: async (code: string) => {
+        const res = await this.connectInvitation(code);
+        if (res.success) {
+          setTimeout(() => {
+            if (typeof document !== 'undefined') {
+              this.openWardsControlModal();
+            }
+          }, 150);
+        }
+        return res;
+      },
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  /**
+   * Closes the Wards Control Center dialog.
+   */
+  public closeWardsControlModal(): void {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('#gd-wards-control-modal-root, .gd-wards-modal-backdrop').forEach((el) => {
+      el.remove();
+    });
   }
 
   /**

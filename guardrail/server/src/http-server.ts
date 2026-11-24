@@ -1481,25 +1481,12 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 assignedWardName = contacts[0].wardName || (assignedWardId && assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId);
                 assignedWardEmail = contacts[0].wardEmail;
               }
-              if (!assignedWardId) {
-                const db = (reg as any)?.database;
-                if (db) {
-                  const anyActive = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' LIMIT 1").get() as { payload_json: string } | undefined;
-                  if (anyActive) {
-                    try {
-                      const p = JSON.parse(anyActive.payload_json);
-                      assignedWardId = p.userId || p.wardId;
-                      assignedWardName = p.wardName || (assignedWardId && assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId);
-                      assignedWardEmail = p.wardEmail;
-                    } catch {}
-                  }
-                }
-              }
+
               const assignedWards: Array<{ id: string; name: string; email?: string; relationshipLabel?: string }> = [];
               if (contacts && contacts.length > 0) {
                 for (const c of contacts) {
                   const id = c.userId || c.wardId;
-                  if (id) {
+                  if (id && !assignedWards.some((w) => w.id === id)) {
                     assignedWards.push({
                       id,
                       name: c.wardName || (id.startsWith('usr_') ? id.slice(4) : id),
@@ -1508,14 +1495,34 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                     });
                   }
                 }
-              } else if (assignedWardId) {
-                assignedWards.push({
-                  id: assignedWardId,
-                  name: assignedWardName || (assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId),
-                  email: assignedWardEmail,
-                  relationshipLabel: 'Designated Caretaker',
-                });
+              } else {
+                const db = (reg as any)?.database;
+                if (db) {
+                  const allActive = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' ORDER BY rowid").all() as Array<{ payload_json: string }>;
+                  for (const row of allActive) {
+                    try {
+                      const p = JSON.parse(row.payload_json);
+                      const id = p.userId || p.wardId;
+                      if (id && !assignedWards.some((w) => w.id === id)) {
+                        assignedWards.push({
+                          id,
+                          name: p.wardName || (id.startsWith('usr_') ? id.slice(4) : id),
+                          email: p.wardEmail,
+                          relationshipLabel: p.relationshipLabel || 'Designated Caretaker',
+                        });
+                      }
+                    } catch {}
+                  }
+                }
               }
+
+              if (assignedWards.length > 0 && !assignedWardId) {
+                assignedWardId = assignedWards[0].id;
+                assignedWardName = assignedWards[0].name;
+                assignedWardEmail = assignedWards[0].email;
+              }
+
+              console.log('[DEBUG /api/v1/auth/me] assignedWards:', assignedWards, 'for actorId:', authContext.actorId);
 
               response.statusCode = 200;
               response.end(
@@ -1536,7 +1543,10 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                   },
                 })
               );
-            } catch {}
+              return;
+            } catch (err) {
+              console.error('[GET /api/v1/auth/me error]', err);
+            }
           } else {
             response.statusCode = 200;
             response.end(

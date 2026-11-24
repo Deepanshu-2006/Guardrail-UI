@@ -17,6 +17,7 @@
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
 import { showConnectWardModal } from './connect-modal.js';
+import { renderWardsControlModal } from './wards-control-modal.js';
 
 export interface OverviewProps {
   profile: TrustedContactProfile | null;
@@ -37,6 +38,8 @@ export interface OverviewProps {
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
   onDisconnectWard?: (wardId?: string) => void;
   onFilterWardPending?: (wardId: string) => void;
+  onFilterWardHistory?: (wardId: string) => void;
+  onOpenWardsControl?: () => void;
   onRefresh?: () => void;
   onOpenAuth?: () => void;
   connectedWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[];
@@ -254,7 +257,11 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const wardCount = wardsList.length;
 
   const wardCard = document.createElement('div');
-  wardCard.className = 'gd-metric-card';
+  wardCard.className = 'gd-metric-card gd-metric-card-interactive gd-metric-card-ward';
+  wardCard.setAttribute('role', 'button');
+  wardCard.setAttribute('tabindex', '0');
+  wardCard.setAttribute('aria-haspopup', 'dialog');
+  wardCard.setAttribute('aria-label', `Manage ${wardCount} connected wards in popup`);
 
   const wardHeader = document.createElement('div');
   wardHeader.className = 'gd-metric-header';
@@ -271,9 +278,14 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   wardBadge.className = 'gd-metric-badge';
   wardBadge.textContent = wardCount === 0 ? 'Unlinked' : (wardCount > 1 ? `${wardCount} Linked` : 'Linked');
 
+  const wardManageTag = document.createElement('span');
+  wardManageTag.className = 'gd-metric-manage-tag';
+  wardManageTag.innerHTML = `Manage <span class="gd-arrow" aria-hidden="true">&rarr;</span>`;
+
   wardHeader.appendChild(wardIndex);
   wardHeader.appendChild(wardLabel);
   wardHeader.appendChild(wardBadge);
+  wardHeader.appendChild(wardManageTag);
 
   const wardValueRow = document.createElement('div');
   wardValueRow.className = 'gd-metric-value-row';
@@ -298,6 +310,35 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   } else {
     wardDesc.textContent = `Reviewer for ${wardsList.map(w => w.name).join(', ')}`;
   }
+
+  const triggerWardsModal = () => {
+    if (props.onOpenWardsControl) {
+      props.onOpenWardsControl();
+    } else {
+      // Fallback self-contained handler for isolated overview renders
+      document.querySelectorAll('#gd-wards-control-modal-root').forEach((el) => el.remove());
+      const modal = renderWardsControlModal({
+        connectedWards: props.connectedWards ?? wardsList,
+        pendingRequests: props.pendingRequests,
+        onClose: () => {
+          document.getElementById('gd-wards-control-modal-root')?.remove();
+        },
+        onDisconnectWard: props.onDisconnectWard,
+        onFilterWardPending: props.onFilterWardPending,
+        onFilterWardHistory: props.onFilterWardHistory,
+        onConnectInvitation: props.onConnectInvitation,
+      });
+      document.body.appendChild(modal);
+    }
+  };
+
+  wardCard.addEventListener('click', triggerWardsModal);
+  wardCard.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      triggerWardsModal();
+    }
+  });
 
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValueRow);
