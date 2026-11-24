@@ -3403,6 +3403,39 @@ export class DashboardShell {
         });
       }
     }
+    if (map.size === 0 && typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('guardrail_assigned_wards');
+      if (stored) {
+        try {
+          const list = JSON.parse(stored);
+          if (Array.isArray(list)) {
+            for (const w of list) {
+              if (w?.id && !map.has(w.id.toLowerCase())) {
+                map.set(w.id.toLowerCase(), {
+                  id: w.id,
+                  name: w.name || formatWardDisplayName(undefined, w.id),
+                  email: w.email,
+                  relationshipLabel: w.relationshipLabel || 'Protected Ward',
+                });
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+    if (map.size === 0 && this.state.pendingRequests && this.state.pendingRequests.length > 0) {
+      for (const r of this.state.pendingRequests) {
+        const id = r.requesterId || (r as any).wardId;
+        if (id && !map.has(id.toLowerCase())) {
+          map.set(id.toLowerCase(), {
+            id,
+            name: (r as any).requesterName || formatWardDisplayName(undefined, id),
+            email: undefined,
+            relationshipLabel: 'Protected Ward',
+          });
+        }
+      }
+    }
     return Array.from(map.values());
   }
 

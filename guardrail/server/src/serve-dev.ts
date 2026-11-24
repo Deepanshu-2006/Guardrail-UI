@@ -114,13 +114,43 @@ async function main(): Promise<void> {
       db.exec(`
         CREATE TABLE IF NOT EXISTS server_seed_meta (key TEXT PRIMARY KEY, value TEXT);
       `);
-      const seeded = db.prepare("SELECT value FROM server_seed_meta WHERE key = 'initial_contact_seeded'").get();
-      if (!seeded) {
+      const contactCount = (db.prepare("SELECT COUNT(*) as count FROM trusted_contacts WHERE status = 'ACTIVE'").get() as { count: number })?.count ?? 0;
+      if (contactCount < 2) {
+        const alicePayload = {
+          id: defaultCaretakerId,
+          contactId: defaultCaretakerId,
+          userId: 'usr_alice',
+          wardId: 'usr_alice',
+          wardName: 'Alice Johnson',
+          wardEmail: 'alice.johnson@example.com',
+          relationshipLabel: 'Family Guardian',
+          status: 'ACTIVE',
+          createdAt: now,
+        };
+        const bobPayload = {
+          id: defaultCaretakerId,
+          contactId: defaultCaretakerId,
+          userId: 'usr_bob',
+          wardId: 'usr_bob',
+          wardName: 'Bob Williams',
+          wardEmail: 'bob.williams@example.com',
+          relationshipLabel: 'Designated Caretaker',
+          status: 'ACTIVE',
+          createdAt: now,
+        };
         db.prepare(`
-          INSERT INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+          VALUES (?, ?, 'ACTIVE', ?, ?)
+        `).run(defaultCaretakerId, 'usr_alice', now, JSON.stringify(alicePayload));
+        db.prepare(`
+          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+          VALUES (?, ?, 'ACTIVE', ?, ?)
+        `).run(defaultCaretakerId, 'usr_bob', now, JSON.stringify(bobPayload));
+        db.prepare(`
+          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
           VALUES (?, ?, 'ACTIVE', ?, ?)
         `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
-        db.prepare("INSERT INTO server_seed_meta (key, value) VALUES ('initial_contact_seeded', 'true')").run();
+        db.prepare("INSERT OR REPLACE INTO server_seed_meta (key, value) VALUES ('initial_contact_seeded', 'true')").run();
       }
     }
   } catch (err) {

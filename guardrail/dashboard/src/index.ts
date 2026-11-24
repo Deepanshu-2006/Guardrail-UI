@@ -346,6 +346,7 @@ if (typeof document !== 'undefined') {
             const rawWardId = (payload.data as any)?.assignedWardId;
             const rawWardName = (payload.data as any)?.assignedWardName;
             const rawWardEmail = (payload.data as any)?.assignedWardEmail;
+            const rawAssignedWards = (payload.data as any)?.assignedWards;
             if (rawWardId && typeof localStorage !== 'undefined') {
               localStorage.setItem('guardrail_assigned_ward_id', rawWardId);
               if (rawWardName) localStorage.setItem('guardrail_assigned_ward_name', rawWardName);
@@ -354,6 +355,9 @@ if (typeof document !== 'undefined') {
               localStorage.removeItem('guardrail_assigned_ward_id');
               localStorage.removeItem('guardrail_assigned_ward_name');
               localStorage.removeItem('guardrail_assigned_ward_email');
+            }
+            if (Array.isArray(rawAssignedWards) && rawAssignedWards.length > 0 && typeof localStorage !== 'undefined') {
+              localStorage.setItem('guardrail_assigned_wards', JSON.stringify(rawAssignedWards));
             }
             shell.setProfile({
               actorId: payload.data.actorId,
@@ -367,6 +371,7 @@ if (typeof document !== 'undefined') {
               assignedWardId: rawWardId || undefined,
               assignedWardName: rawWardName || undefined,
               assignedWardEmail: rawWardEmail || undefined,
+              assignedWards: Array.isArray(rawAssignedWards) && rawAssignedWards.length > 0 ? rawAssignedWards : undefined,
             });
           }
         })
@@ -490,8 +495,31 @@ if (typeof document !== 'undefined') {
 
           wasAuthenticated = true;
 
-          const activeWardId = (typeof shell.getProfile === 'function' ? shell.getProfile() : shell.getState().contactProfile)?.assignedWardId ||
+          const prevProfile = (typeof shell.getProfile === 'function' ? shell.getProfile() : shell.getState().contactProfile);
+          const activeWardId = prevProfile?.assignedWardId ||
             (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined);
+          const activeWardName = prevProfile?.assignedWardName ||
+            (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined);
+          const activeWardEmail = prevProfile?.assignedWardEmail ||
+            (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined);
+          let assignedWards = prevProfile?.assignedWards;
+          if ((!assignedWards || assignedWards.length === 0) && typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem('guardrail_assigned_wards');
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && parsed.length > 0) assignedWards = parsed;
+              } catch {}
+            }
+          }
+          if ((!assignedWards || assignedWards.length === 0) && activeWardId) {
+            assignedWards = [{
+              id: activeWardId,
+              name: activeWardName || formatWardDisplayName(undefined, activeWardId),
+              email: activeWardEmail,
+              relationshipLabel: 'Protected Ward',
+            }];
+          }
 
           const verifiedProfile: TrustedContactProfile = {
             actorId,
@@ -502,6 +530,9 @@ if (typeof document !== 'undefined') {
             imageUrl: userAvatar,
             isAuthenticated: true,
             assignedWardId: activeWardId,
+            assignedWardName: activeWardName,
+            assignedWardEmail: activeWardEmail,
+            assignedWards: assignedWards && assignedWards.length > 0 ? assignedWards : undefined,
             relationshipLabel: 'Designated Caretaker',
           };
 

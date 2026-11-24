@@ -111,39 +111,48 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   card.appendChild(header);
 
   // =========================================================================
-  // 2. SLEEK MINIMAL SUMMARY STRIP (No boxes, pure editorial typography)
+  // 2. WARM OLIVE EDITORIAL SUMMARY STRIP
   // =========================================================================
   const allPending = props.pendingRequests ?? [];
   const summaryStrip = document.createElement('div');
   summaryStrip.className = 'gd-wards-modal-summary-strip';
 
-  const stat1 = document.createElement('span');
-  stat1.className = 'gd-wards-summary-stat';
-  stat1.textContent = `${wardCount} Connected`;
+  if (wardCount > 0) {
+    const chip1 = document.createElement('div');
+    chip1.className = 'gd-wards-summary-chip online';
+    chip1.innerHTML = `
+      <span class="gd-chip-dot online" aria-hidden="true"></span>
+      <span class="gd-chip-text">${wardCount} Protected</span>
+    `;
 
-  const statDivider1 = document.createElement('span');
-  statDivider1.className = 'gd-wards-stat-bullet';
-  statDivider1.textContent = '•';
+    const chip2 = document.createElement('div');
+    chip2.className = `gd-wards-summary-chip ${allPending.length > 0 ? 'warning' : 'clear'}`;
+    chip2.innerHTML = `
+      <span class="gd-chip-dot ${allPending.length > 0 ? 'pulse' : 'check'}" aria-hidden="true"></span>
+      <span class="gd-chip-text">${allPending.length > 0 ? `${allPending.length} Needs Review` : 'All Clear'}</span>
+    `;
 
-  const stat2 = document.createElement('span');
-  stat2.className = `gd-wards-summary-stat ${allPending.length > 0 ? 'gd-stat-warning' : ''}`;
-  stat2.textContent = allPending.length > 0
-    ? `${allPending.length} Needs Review`
-    : 'All Clear';
+    const chip3 = document.createElement('div');
+    chip3.className = 'gd-wards-summary-chip shield';
+    chip3.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      <span class="gd-chip-text">Live Protection</span>
+    `;
 
-  const statDivider2 = document.createElement('span');
-  statDivider2.className = 'gd-wards-stat-bullet';
-  statDivider2.textContent = '•';
-
-  const stat3 = document.createElement('span');
-  stat3.className = 'gd-wards-summary-stat gd-stat-active';
-  stat3.textContent = 'Live Protection';
-
-  summaryStrip.appendChild(stat1);
-  summaryStrip.appendChild(statDivider1);
-  summaryStrip.appendChild(stat2);
-  summaryStrip.appendChild(statDivider2);
-  summaryStrip.appendChild(stat3);
+    summaryStrip.appendChild(chip1);
+    summaryStrip.appendChild(chip2);
+    summaryStrip.appendChild(chip3);
+  } else {
+    const chipAwaiting = document.createElement('div');
+    chipAwaiting.className = 'gd-wards-summary-chip awaiting';
+    chipAwaiting.innerHTML = `
+      <span class="gd-chip-dot awaiting" aria-hidden="true"></span>
+      <span class="gd-chip-text">Awaiting First Ward Connection</span>
+    `;
+    summaryStrip.appendChild(chipAwaiting);
+  }
   card.appendChild(summaryStrip);
 
   // =========================================================================

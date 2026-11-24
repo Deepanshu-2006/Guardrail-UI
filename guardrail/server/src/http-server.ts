@@ -1546,6 +1546,26 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               return;
             } catch (err) {
               console.error('[GET /api/v1/auth/me error]', err);
+              response.statusCode = 200;
+              response.end(
+                JSON.stringify({
+                  success: true,
+                  data: {
+                    actorId: authContext.actorId,
+                    role: authContext.role,
+                    isAuthenticated: true,
+                    email: verifiedEmail ?? null,
+                    fullName: displayName,
+                    imageUrl: imageUrl,
+                    environment: config.environment,
+                    assignedWardId: null,
+                    assignedWardName: null,
+                    assignedWardEmail: null,
+                    assignedWards: [],
+                  },
+                })
+              );
+              return;
             }
           } else {
             response.statusCode = 200;
