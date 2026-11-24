@@ -76,9 +76,14 @@ async function main(): Promise<void> {
     const db = (contactRegistry as any).database;
     if (db) {
       db.prepare(`
-        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
-        VALUES (?, 'https://harmless-snipe-9044.clerk.accounts.dev', 'user_3MTvOw2echwPHpvKnstk2aCqa8Y', 'TRUSTED_CONTACT', 'ACTIVE', 'balleballepurrr@gmail.com', ?, ?)
+        INSERT OR REPLACE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES (?, 'https://harmless-snipe-9044.clerk.accounts.dev', 'user_3MTvOw2echwPHpvKnstk2aCqa8Y', 'TRUSTED_CONTACT', 'ACTIVE', 'deepanshukhatri20061972@gmail.com', ?, ?)
       `).run(defaultCaretakerId, now, now);
+
+      db.prepare(`
+        INSERT OR REPLACE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES ('usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76', 'https://harmless-snipe-9044.clerk.accounts.dev', 'user_3MGvG7TeQ9MFvJfMQwrlxmuvqCK', 'TRUSTED_CONTACT', 'ACTIVE', 'deepanshukhatri20061972@gmail.com', ?, ?)
+      `).run(now, now);
 
       db.prepare(`
         INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
@@ -95,27 +100,37 @@ async function main(): Promise<void> {
         VALUES ('usr_alice', 'https://guardrail.local/dev', 'usr_alice', 'USER', 'ACTIVE', 'alice@guardrail.local', ?, ?)
       `).run(now, now);
 
-      const existing = db.prepare("SELECT 1 FROM trusted_contacts WHERE id = ? AND user_id = ? AND status = 'ACTIVE'").get(defaultCaretakerId, defaultWardId);
-      if (!existing) {
-        const contactPayload = {
-          id: defaultCaretakerId,
-          contactId: defaultCaretakerId,
-          userId: defaultWardId,
-          wardId: defaultWardId,
-          wardName: 'Deepanshu Khatri',
-          wardEmail: 'deepanshukhatri20061972@gmail.com',
-          contactName: 'Balleballepurrr Caretaker',
-          contactEmail: 'balleballepurrr@gmail.com',
-          contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMb29rcFFWU21QZG1PbExSZXN1N3VNd1dRMHJXMC13OUZfaFNvQXNDWVZVT1I2WHc9czEwMDAtYyIsInMiOiIrYUdGc0RVYUExQjErdkRxZXRKTkVxMnNZSFlZeEsvSkpSdTJVMy9GR0ZFIn0',
-          relationshipLabel: 'Designated Caretaker',
-          status: 'ACTIVE',
-          createdAt: now,
-        };
-        db.prepare(`
-          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-          VALUES (?, ?, 'ACTIVE', ?, ?)
-        `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
-      }
+      const contactPayload = {
+        id: defaultCaretakerId,
+        contactId: defaultCaretakerId,
+        userId: defaultWardId,
+        wardId: defaultWardId,
+        wardName: 'Deepanshu Khatri',
+        wardEmail: 'deepanshukhatri20061972@gmail.com',
+        contactName: 'Deepanshu Khatri',
+        contactEmail: 'deepanshukhatri20061972@gmail.com',
+        contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMb29rcFFWU21QZG1PbExSZXN1N3VNd1dRMHJXMC13OUZfaFNvQXNDWVZVT1I2WHc9czEwMDAtYyIsInMiOiIrYUdGc0RVYUExQjErdkRxZXRKTkVxMnNZSFlZeEsvSkpSdTJVMy9GR0ZFIn0',
+        relationshipLabel: 'Designated Caretaker',
+        status: 'ACTIVE',
+        createdAt: now,
+      };
+
+      db.prepare(`
+        INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+        VALUES (?, ?, 'ACTIVE', ?, ?)
+      `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
+
+      const alicePayload = {
+        ...contactPayload,
+        userId: 'usr_alice',
+        wardId: 'usr_alice',
+        wardName: 'Alice Ward',
+        wardEmail: 'alice@guardrail.local',
+      };
+      db.prepare(`
+        INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+        VALUES (?, 'usr_alice', 'ACTIVE', ?, ?)
+      `).run(defaultCaretakerId, now, JSON.stringify(alicePayload));
     }
   } catch (err) {
     console.warn('[serve-dev] Contact seed error:', err);
