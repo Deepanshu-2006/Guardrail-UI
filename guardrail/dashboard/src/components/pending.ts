@@ -272,6 +272,8 @@ function renderRiskCircularChart(request: ApprovalRequest): HTMLElement {
 /**
  * Renders the redesigned Pending Approvals view.
  */
+let lastPendingListAnimationKey: string | null = null;
+
 export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElement {
   const section = document.createElement('section');
   section.id = 'view-pending';
@@ -681,6 +683,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           ? { ...selectedBaseReq, ...props.selectedRequestDetail }
           : selectedBaseReq;
 
+        const pendingListAnimKey = `${activeFilters.wardId || 'ALL'}|${activeFilters.riskLevel}|${activeFilters.dateRange}|${activeFilters.searchQuery}|${filteredRequests.map((r) => r.id).join(',')}`;
+        const shouldAnimateList = pendingListAnimKey !== lastPendingListAnimationKey;
+        lastPendingListAnimationKey = pendingListAnimKey;
+        if (shouldAnimateList) {
+          listPane.classList.add('gd-list-animating-in');
+        }
+
         // Render Left Column: Clean List Header & Minimal Numbered Rows
         const listHeader = document.createElement('div');
         listHeader.className = 'gd-list-header';
@@ -707,7 +716,12 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const isResolvedTransition = req.status && req.status !== ApprovalStatus.PENDING;
           const card = document.createElement('article');
-          card.className = `gd-request-card ${isSelected ? 'selected' : ''} ${isExpired ? 'is-expired' : ''} ${isResolvedTransition ? 'is-resolving-transition' : ''}`;
+          card.className = `gd-request-card ${shouldAnimateList ? 'gd-card-animating-in' : ''} ${isSelected ? 'selected' : ''} ${isExpired ? 'is-expired' : ''} ${isResolvedTransition ? 'is-resolving-transition' : ''}`.trim();
+          if (typeof card.style?.setProperty === 'function') {
+            card.style.setProperty('--card-idx', String(index));
+          } else if (card.style) {
+            (card.style as any)['--card-idx'] = String(index);
+          }
           card.setAttribute('role', 'button');
           card.setAttribute('tabindex', '0');
           card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
@@ -841,7 +855,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const riskLevel = selectedReq.riskLevel || RiskLevel.LOW;
 
           const detailPane = document.createElement('div');
-          detailPane.className = 'gd-detail-pane gd-decision-dossier-box';
+          detailPane.className = 'gd-detail-pane gd-decision-dossier-box gd-detail-animating-in';
           detailPane.setAttribute('role', 'region');
           detailPane.setAttribute('aria-label', `Review and decide on ${selectedReq.actionDescription}`);
 
