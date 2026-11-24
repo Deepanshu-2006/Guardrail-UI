@@ -778,23 +778,17 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           titleRow.appendChild(badgesWrap);
           contentWrapper.appendChild(titleRow);
 
-          // Subheading: Clean, minimal single-line context (Ward · Domain · Expiration)
-          const subheading = document.createElement('p');
-          subheading.className = 'gd-request-subheading';
-
-          const cardWardBadge = document.createElement('span');
-          cardWardBadge.className = 'gd-card-ward-badge';
+          const cardWardLine = document.createElement('div');
+          cardWardLine.className = 'gd-card-ward-badge gd-card-ward-line';
           const badgeName = document.createElement('span');
           badgeName.className = 'gd-ward-badge-name gd-requester-name';
           badgeName.textContent = wardName;
-          cardWardBadge.appendChild(badgeName);
-          subheading.appendChild(cardWardBadge);
+          cardWardLine.appendChild(badgeName);
+          contentWrapper.appendChild(cardWardLine);
 
-          const sep1 = document.createElement('span');
-          sep1.className = 'gd-subheading-sep';
-          sep1.setAttribute('aria-hidden', 'true');
-          sep1.textContent = '·';
-          subheading.appendChild(sep1);
+          // Subheading: Clean, minimal single-line context (Domain · Expiration)
+          const subheading = document.createElement('p');
+          subheading.className = 'gd-request-subheading';
 
           const hostSpan = document.createElement('span');
           hostSpan.className = 'gd-context-hostname';

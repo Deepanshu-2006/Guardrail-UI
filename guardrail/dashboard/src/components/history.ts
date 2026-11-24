@@ -1009,25 +1009,19 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       titleRow.appendChild(badgesWrap);
       contentWrapper.appendChild(titleRow);
 
-      // Subheading: Ward Pill · Hostname · Timestamp · Reviewer
-      const subheading = document.createElement('p');
-      subheading.className = 'gd-request-subheading';
-
       if (wardName) {
-        const cardWardBadge = document.createElement('span');
-        cardWardBadge.className = 'gd-card-ward-badge';
+        const cardWardLine = document.createElement('div');
+        cardWardLine.className = 'gd-card-ward-badge gd-card-ward-line';
         const badgeName = document.createElement('span');
         badgeName.className = 'gd-ward-badge-name gd-requester-name';
         badgeName.textContent = wardName;
-        cardWardBadge.appendChild(badgeName);
-        subheading.appendChild(cardWardBadge);
-
-        const sepWard = document.createElement('span');
-        sepWard.className = 'gd-subheading-sep';
-        sepWard.setAttribute('aria-hidden', 'true');
-        sepWard.textContent = '·';
-        subheading.appendChild(sepWard);
+        cardWardLine.appendChild(badgeName);
+        contentWrapper.appendChild(cardWardLine);
       }
+
+      // Subheading: Hostname · Timestamp · Reviewer
+      const subheading = document.createElement('p');
+      subheading.className = 'gd-request-subheading';
 
       const originSpan = document.createElement('span');
       originSpan.className = 'gd-context-hostname gd-meta-hostname';

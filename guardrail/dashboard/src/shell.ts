@@ -709,8 +709,15 @@ export class DashboardShell {
     const existingActiveSection = this.mainContentEl ? (this.mainContentEl.querySelector(`#view-${currentView}`) as HTMLElement | null) : null;
     const existingSectionHeader = isViewEntering ? existingActiveSection?.querySelector('.gd-section-header') : null;
 
-    // During active entrance window on the same view, preserve mounted DOM so CSS animations run uninterrupted
-    if (!isInitialMount && !isViewChange && isViewEntering && existingActiveSection && !this.state.errorMessage) {
+    // During active entrance window on the same view, preserve mounted DOM for views with in-place updaters
+    // unless Overview transitioned from empty/single-ward to populated/multi-ward data.
+    const overviewNeedsStructuralRerender = currentView === 'overview' && existingActiveSection && (
+      (Boolean(existingActiveSection.querySelector('.gd-empty-state, .gd-placeholder')) && this.state.historyRequests.length > 0) ||
+      (!existingActiveSection.querySelector('.gd-action-required-banner, .gd-btn-review-pending') && this.state.pendingRequests.length > 0) ||
+      (!existingActiveSection.querySelector('.gd-multi-ward-badge') && this.getConnectedWards().length > 1)
+    );
+    const canPreserveInPlace = (currentView === 'overview' && !overviewNeedsStructuralRerender) || currentView === 'settings';
+    if (!isInitialMount && !isViewChange && isViewEntering && existingActiveSection && !this.state.errorMessage && canPreserveInPlace) {
       this.hasPendingDataUpdateDuringEntrance = true;
 
       // Update dynamic content in-place without tearing down animation state

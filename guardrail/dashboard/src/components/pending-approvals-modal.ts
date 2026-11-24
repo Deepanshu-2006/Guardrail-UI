@@ -53,36 +53,34 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
   };
 
   // =========================================================================
-  // 1. HEADER SECTION (Matches Managed Wards modal typography & layout)
+  // 1. QUIET ASSURANCE EDITORIAL HEADER (Typography-driven, no boxy pills)
   // =========================================================================
   const header = document.createElement('header');
-  header.className = 'gd-wards-modal-header';
+  header.className = 'gd-wards-modal-header gd-pending-modal-header';
 
   const headerLeft = document.createElement('div');
-  headerLeft.className = 'gd-wards-modal-header-left';
+  headerLeft.className = 'gd-wards-modal-header-left gd-pending-modal-header-left';
 
-  const titleRow = document.createElement('div');
-  titleRow.className = 'gd-wards-modal-title-row';
-
-  const titleIcon = document.createElement('span');
-  titleIcon.className = 'gd-wards-modal-title-icon';
-  titleIcon.setAttribute('aria-hidden', 'true');
-  titleIcon.appendChild(createIcon('clock'));
+  const kicker = document.createElement('span');
+  kicker.className = 'gd-pending-modal-kicker';
+  kicker.textContent = '02 / APPROVALS · CONSENT-ONLY EXECUTION';
 
   const title = document.createElement('h2');
   title.id = 'gd-pending-modal-title';
   title.className = 'gd-wards-modal-title';
   title.textContent = 'Pending Approvals';
 
-  const countBadge = document.createElement('span');
-  countBadge.className = `gd-wards-modal-badge ${pendingList.length > 0 ? 'has-pending' : ''}`;
-  countBadge.textContent =
-    pendingList.length === 0 ? 'All Clear' : `${pendingList.length} Needs Review`;
+  const subtitle = document.createElement('p');
+  subtitle.className = 'gd-pending-modal-subtitle';
+  const wardTotal = wards.length || new Set(pendingList.map((r) => r.requesterId).filter(Boolean)).size;
+  subtitle.textContent =
+    pendingList.length === 0
+      ? 'All actions have been evaluated. You are caught up.'
+      : `${pendingList.length} ${pendingList.length === 1 ? 'request' : 'requests'} awaiting review across ${wardTotal} ${wardTotal === 1 ? 'ward' : 'wards'}.`;
 
-  titleRow.appendChild(titleIcon);
-  titleRow.appendChild(title);
-  titleRow.appendChild(countBadge);
-  headerLeft.appendChild(titleRow);
+  headerLeft.appendChild(kicker);
+  headerLeft.appendChild(title);
+  headerLeft.appendChild(subtitle);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -99,43 +97,6 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
   header.appendChild(headerLeft);
   header.appendChild(closeBtn);
   card.appendChild(header);
-
-  // =========================================================================
-  // 2. QUIET ASSURANCE EDITORIAL METADATA STRIP
-  // =========================================================================
-  const summaryStrip = document.createElement('div');
-  summaryStrip.className = 'gd-wards-modal-summary-strip';
-
-  const metaCount = document.createElement('span');
-  metaCount.className = `gd-summary-meta-item ${pendingList.length > 0 ? 'attention' : ''}`;
-  metaCount.textContent =
-    pendingList.length > 0
-      ? `${pendingList.length} Waiting Review`
-      : 'Queue Clear';
-
-  const div1 = document.createElement('span');
-  div1.className = 'gd-summary-meta-divider';
-  div1.textContent = '·';
-
-  const metaWards = document.createElement('span');
-  metaWards.className = 'gd-summary-meta-item';
-  const wardTotal = wards.length || new Set(pendingList.map((r) => r.requesterId).filter(Boolean)).size;
-  metaWards.textContent = `${wardTotal} Protected ${wardTotal === 1 ? 'Ward' : 'Wards'}`;
-
-  const div2 = document.createElement('span');
-  div2.className = 'gd-summary-meta-divider';
-  div2.textContent = '·';
-
-  const metaPolicy = document.createElement('span');
-  metaPolicy.className = 'gd-summary-meta-item live';
-  metaPolicy.textContent = 'Consent-Only Execution';
-
-  summaryStrip.appendChild(metaCount);
-  summaryStrip.appendChild(div1);
-  summaryStrip.appendChild(metaWards);
-  summaryStrip.appendChild(div2);
-  summaryStrip.appendChild(metaPolicy);
-  card.appendChild(summaryStrip);
 
   // =========================================================================
   // 3. MODAL BODY (No white boxes, hairline dividers, per-ward filtering)
@@ -265,19 +226,7 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
         ? formatWardDisplayName(matchedWard?.name, req.requesterId)
         : 'Protected Ward';
 
-      // Left cluster: Ward avatar + Request info
-      const leftCluster = document.createElement('div');
-      leftCluster.className = 'gd-ward-meta-cluster';
-
-      const avatar = document.createElement('div');
-      avatar.className = 'gd-ward-control-avatar';
-      populateWardAvatar(avatar, {
-        imageUrl: matchedWard?.imageUrl || matchedWard?.avatarUrl,
-        name: wardName,
-        imgClass: 'gd-ward-control-avatar-img',
-        iconClass: 'gd-ward-avatar-icon',
-      });
-
+      // Left cluster: Editorial 3-tier request info (Title + Risk / Ward / Context)
       const infoCol = document.createElement('div');
       infoCol.className = 'gd-ward-control-identity gd-pending-modal-info';
 
@@ -296,6 +245,10 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
       topLine.appendChild(desc);
       topLine.appendChild(riskBadge);
 
+      const wardLine = document.createElement('div');
+      wardLine.className = 'gd-pending-modal-ward-line';
+      wardLine.textContent = wardName;
+
       const metaLine = document.createElement('div');
       metaLine.className = 'gd-ward-control-email gd-pending-modal-meta';
       const host = req.hostname || 'Browser Action';
@@ -303,25 +256,23 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
       const timeStr = reqTime
         ? new Date(reqTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : 'Just now';
-      metaLine.textContent = `${wardName} · ${host} · Requested ${timeStr}`;
+      metaLine.textContent = `${host} · Requested ${timeStr}`;
 
       infoCol.appendChild(topLine);
+      infoCol.appendChild(wardLine);
       infoCol.appendChild(metaLine);
 
-      leftCluster.appendChild(avatar);
-      leftCluster.appendChild(infoCol);
-
-      // Right action: Review & Decide
+      // Right action: Subtle editorial Review link
       const actionsCluster = document.createElement('div');
-      actionsCluster.className = 'gd-ward-control-actions';
+      actionsCluster.className = 'gd-ward-control-actions gd-pending-modal-actions';
 
       const reviewBtn = document.createElement('button');
       reviewBtn.type = 'button';
-      reviewBtn.className = 'gd-ward-btn-primary gd-btn-overview-review';
+      reviewBtn.className = 'gd-pending-modal-review-link gd-btn-overview-review';
       reviewBtn.setAttribute('aria-label', `Review and evaluate ${req.actionDescription}`);
 
       const btnLabel = document.createElement('span');
-      btnLabel.textContent = 'Review & Decide';
+      btnLabel.textContent = 'Review';
       const btnArrow = document.createElement('span');
       btnArrow.className = 'gd-arrow';
       btnArrow.setAttribute('aria-hidden', 'true');
@@ -329,18 +280,24 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
       reviewBtn.appendChild(btnLabel);
       reviewBtn.appendChild(btnArrow);
 
-      reviewBtn.addEventListener('click', () => {
+      const openRequest = () => {
         closeWithCleanup();
         if (props.onSelectPending) {
           props.onSelectPending(req.id);
         } else {
           props.onViewPending?.();
         }
+      };
+
+      reviewBtn.addEventListener('click', (e) => {
+        e?.stopPropagation?.();
+        openRequest();
       });
+      row.addEventListener('click', openRequest);
 
       actionsCluster.appendChild(reviewBtn);
 
-      rowInner.appendChild(leftCluster);
+      rowInner.appendChild(infoCol);
       rowInner.appendChild(actionsCluster);
       row.appendChild(rowInner);
       itemsList.appendChild(row);
