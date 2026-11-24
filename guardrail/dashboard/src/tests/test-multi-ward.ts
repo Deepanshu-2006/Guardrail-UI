@@ -437,12 +437,16 @@ async function runMultiWardTests() {
       'Metric 1 description lists both ward names'
     );
 
-    // Check Multi-Ward Oversight Grid
-    const oversightGrid = overviewEl.querySelector('.gd-multi-ward-grid');
-    assert(oversightGrid !== null, 'Multi-ward oversight grid rendered on Overview');
+    // Check Multi-Ward Oversight Summary (centralized in Wards Control Center Modal; duplicate grid removed)
+    const duplicateGrid = overviewEl.querySelector('.gd-multi-ward-grid');
+    assert(duplicateGrid === null, 'Duplicate multi-ward card grid is removed from Overview');
 
-    const wardCards = oversightGrid?.querySelectorAll('.gd-multi-ward-card');
-    assert(wardCards?.length === 2, 'Overview renders oversight card for both connected wards');
+    const oversightCard = overviewEl.querySelector('#gd-active-ward-card');
+    assert(oversightCard !== null, 'Multi-ward oversight architectural summary rendered on Overview');
+
+    const modalBtn = oversightCard?.querySelector('.gd-btn-open-control-modal');
+    assert(modalBtn !== null, 'Overview renders button to open Wards Control Center');
+    assert(modalBtn?.textContent?.includes('Open Wards Control Center (2) →') ?? false, 'Modal button reflects 2 connected wards');
   }
 
   console.log('\n======================================================');

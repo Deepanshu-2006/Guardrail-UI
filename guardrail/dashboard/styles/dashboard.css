@@ -12713,17 +12713,17 @@ article.gd-card-collapsed,
 .gd-multi-ward-card {
   display: flex;
   flex-direction: column;
-  padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.6);
+  padding: 16px 18px;
+  background: transparent;
   border: 1px solid rgba(39, 49, 33, 0.12);
-  border-radius: 12px;
+  border-radius: 8px;
   transition: all 0.18s ease;
 }
 
 .gd-multi-ward-card:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(39, 49, 33, 0.03);
   border-color: rgba(39, 49, 33, 0.22);
-  box-shadow: 0 4px 12px rgba(39, 49, 33, 0.05);
+  box-shadow: none;
 }
 
 .gd-multi-ward-avatar {
@@ -12771,19 +12771,86 @@ article.gd-card-collapsed,
 
 .gd-multi-ward-footer {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 22px;
+  width: 100%;
+}
+
+.gd-multi-ward-footer-secondary {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 8px;
+  width: 100%;
 }
 
-.gd-link-add-ward {
-  font-weight: 600;
-  color: #3B5A33;
+.gd-ward-action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 38px !important;
+  padding: 0 14px !important;
+  border-radius: 6px !important;
+  font-family: 'Space Grotesk', system-ui, sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
 }
 
-.gd-link-add-ward:hover {
-  color: #273121;
-  text-decoration: underline;
+/* Primary Button: Dark Olive Architectural Hero Action (Full-Width) */
+.gd-ward-action-btn.gd-ward-btn-primary {
+  width: 100% !important;
+  background: #273121 !important;
+  color: #FAF6ED !important;
+  border: 1px solid #273121 !important;
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.14) !important;
+}
+
+.gd-ward-action-btn.gd-ward-btn-primary:hover {
+  background: #171E13 !important;
+  border-color: #171E13 !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.22) !important;
+}
+
+/* Secondary Button: Clean Hairline Bordered */
+.gd-multi-ward-footer-secondary .gd-ward-action-btn.gd-ward-btn-secondary {
+  flex: 1.35 !important;
+  background: transparent !important;
+  color: #273121 !important;
+  border: 1px solid rgba(39, 49, 33, 0.24) !important;
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04) !important;
+}
+
+.gd-multi-ward-footer-secondary .gd-ward-action-btn.gd-ward-btn-secondary:hover {
+  background: rgba(39, 49, 33, 0.06) !important;
+  border-color: #273121 !important;
+  color: #171E13 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.1) !important;
+}
+
+/* Ghost Button: Settings link */
+.gd-multi-ward-footer-secondary .gd-ward-action-btn.gd-ward-btn-ghost {
+  flex: 1 !important;
+  background: transparent !important;
+  color: #5F6656 !important;
+  border: 1px solid rgba(39, 49, 33, 0.16) !important;
+}
+
+.gd-multi-ward-footer-secondary .gd-ward-action-btn.gd-ward-btn-ghost:hover {
+  background: rgba(39, 49, 33, 0.05) !important;
+  border-color: rgba(39, 49, 33, 0.32) !important;
+  color: #273121 !important;
+  transform: translateY(-1px) !important;
 }
 
 /* Settings Add Ward Bar */
@@ -13332,7 +13399,7 @@ article.gd-card-collapsed,
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(27, 33, 23, 0.68);
+  background-color: rgba(23, 29, 20, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   z-index: 1000;
@@ -13358,18 +13425,18 @@ article.gd-card-collapsed,
 .gd-wards-modal-card {
   position: relative;
   width: 100%;
-  max-width: 600px;
+  max-width: 630px;
   max-height: 88vh;
   background: #EDE6D6;
-  border: 1px solid #DDD5C2;
-  border-radius: 12px;
-  box-shadow: 0 24px 64px -16px rgba(27, 33, 23, 0.45),
-              0 2px 8px rgba(27, 33, 23, 0.06);
+  border: 1px solid #D5CCB8;
+  border-radius: 14px;
+  box-shadow: 0 32px 80px -16px rgba(27, 33, 23, 0.5),
+              0 0 0 1px rgba(39, 49, 33, 0.08);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   transform-origin: center bottom;
-  animation: gd-modal-creative-bloom 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: gd-modal-creative-bloom 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes gd-modal-creative-bloom {
@@ -13404,6 +13471,10 @@ article.gd-card-collapsed,
 }
 
 .gd-wards-modal-title-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(39, 49, 33, 0.07);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13421,24 +13492,24 @@ article.gd-card-collapsed,
 
 .gd-wards-modal-badge {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #5F6656;
-  background: rgba(39, 49, 33, 0.07);
-  border: 1px solid rgba(39, 49, 33, 0.14);
+  color: #273121;
+  background: #E6DFC5;
+  border: 1px solid #D5CCB8;
   padding: 2px 8px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .gd-wards-modal-close-btn {
-  background: transparent;
+  background: rgba(39, 49, 33, 0.05);
   border: none;
   color: #5F6656;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13448,7 +13519,7 @@ article.gd-card-collapsed,
 }
 
 .gd-wards-modal-close-btn:hover {
-  background: rgba(39, 49, 33, 0.08);
+  background: rgba(39, 49, 33, 0.12);
   color: #1B2117;
 }
 
@@ -13499,7 +13570,7 @@ article.gd-card-collapsed,
 
 /* Modal Body */
 .gd-wards-modal-body {
-  padding: 10px 26px 20px 26px;
+  padding: 8px 26px 20px 26px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -13516,14 +13587,15 @@ article.gd-card-collapsed,
 .gd-ward-control-card {
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(39, 49, 33, 0.09);
+  border-bottom: 1px solid rgba(39, 49, 33, 0.1);
   border-radius: 0;
-  padding: 14px 2px;
+  padding: 14px 4px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   transition: all 0.16s ease;
   animation: gd-ward-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: none;
 }
 
 .gd-ward-control-card:last-child {
@@ -13531,7 +13603,9 @@ article.gd-card-collapsed,
 }
 
 .gd-ward-control-card:hover {
-  background: rgba(39, 49, 33, 0.025);
+  background: rgba(39, 49, 33, 0.03);
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 @keyframes gd-ward-slide-up {
@@ -13549,8 +13623,8 @@ article.gd-card-collapsed,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
   width: 100%;
+  gap: 14px;
 }
 
 .gd-ward-meta-cluster {
@@ -13563,9 +13637,9 @@ article.gd-card-collapsed,
 
 .gd-ward-control-avatar {
   position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
   background: #273121;
   color: #EDE6D6;
   font-family: 'Space Grotesk', system-ui, sans-serif;
@@ -13597,9 +13671,9 @@ article.gd-card-collapsed,
 
 .gd-ward-name-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .gd-ward-control-name {
@@ -13614,10 +13688,14 @@ article.gd-card-collapsed,
 
 .gd-ward-control-id-tag {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   color: #7A846E;
-  background: transparent;
-  padding: 0;
+  background: rgba(39, 49, 33, 0.05);
+  padding: 1px 6px;
+  border-radius: 3px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -13625,9 +13703,10 @@ article.gd-card-collapsed,
   font-size: 12px;
   color: #5F6656;
   font-family: 'DM Sans', sans-serif;
-  white-space: nowrap;
+  max-width: 230px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gd-ward-controls-cluster {
@@ -13635,6 +13714,7 @@ article.gd-card-collapsed,
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .gd-ward-queue-status {
@@ -13642,24 +13722,24 @@ article.gd-card-collapsed,
 }
 
 .gd-ward-pending-badge {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  font-family: 'DM Sans', sans-serif !important;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
 }
 
-.gd-ward-pending-badge.warning {
-  color: #8C4300 !important;
+.gd-ward-pending-badge.clear {
+  color: #4A5340 !important;
+  font-weight: 500 !important;
 }
 
-.gd-ward-pending-badge.clear {
-  color: #5F6656 !important;
-  font-weight: 500 !important;
+.gd-ward-pending-badge.warning {
+  color: #8C4300 !important;
+  font-weight: 600 !important;
+  background: rgba(140, 67, 0, 0.07);
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
 .gd-pulse-dot {
@@ -13686,31 +13766,31 @@ article.gd-card-collapsed,
   color: #FAF6ED;
   border: 1px solid #273121;
   border-radius: 4px;
-  padding: 6px 14px;
+  padding: 5px 14px;
   font-size: 11.5px;
   font-weight: 700;
   font-family: 'Space Grotesk', system-ui, sans-serif;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.12);
+  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.15);
 }
 
 .gd-ward-btn-primary:hover {
-  background: #1B2418;
-  border-color: #1B2418;
+  background: #141B11;
+  border-color: #141B11;
   color: #FFFFFF;
   transform: translateY(-0.5px);
-  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.2);
+  box-shadow: 0 3px 8px rgba(39, 49, 33, 0.25);
 }
 
 .gd-ward-btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: #F7F3EA;
+  background: transparent;
   color: #273121;
-  border: 1px solid #DDD5C2;
+  border: 1px solid rgba(39, 49, 33, 0.22);
   border-radius: 4px;
   padding: 5px 12px;
   font-size: 11.5px;
@@ -13719,7 +13799,7 @@ article.gd-card-collapsed,
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
+  box-shadow: none;
 }
 
 .gd-ward-btn-secondary:hover {
@@ -13727,10 +13807,11 @@ article.gd-card-collapsed,
   border-color: #273121;
   color: #EDE6D6;
   transform: translateY(-0.5px);
-  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.14);
+  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.15);
 }
 
 .gd-ward-btn-secondary .gd-arrow {
+  display: inline-block;
   font-size: 11px;
   transition: transform 0.15s ease;
 }
@@ -13746,15 +13827,15 @@ article.gd-card-collapsed,
   font-size: 11.5px;
   font-weight: 500;
   font-family: 'DM Sans', sans-serif;
-  padding: 5px 6px;
+  padding: 4px 6px;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 0.15s ease;
+  border-radius: 4px;
+  transition: all 0.15s ease;
 }
 
 .gd-ward-btn-disconnect:hover {
   color: #A33B31;
+  background: rgba(163, 59, 49, 0.06);
 }
 
 /* Inline Disconnect Confirmation */
@@ -13859,19 +13940,21 @@ article.gd-card-collapsed,
 
 /* Pairing Section */
 .gd-wards-pair-section {
-  border-top: 1px solid #DDD5C2;
   background: transparent;
+  border: none;
+  border-top: 1px solid rgba(39, 49, 33, 0.12);
   border-radius: 0;
-  padding: 16px 26px 20px 26px;
+  padding: 18px 4px 6px 4px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .gd-wards-pair-title {
   margin: 0;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #7A846E;
@@ -13891,15 +13974,15 @@ article.gd-card-collapsed,
 
 .gd-wards-pair-input {
   flex: 1;
-  height: 36px;
+  height: 38px;
   border-radius: 4px;
-  border: 1px solid #DDD5C2;
+  border: 1px solid rgba(39, 49, 33, 0.18);
   padding: 0 12px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   font-weight: 600;
   color: #1B2117;
-  background: #F7F3EA;
+  background: rgba(39, 49, 33, 0.04);
   outline: none;
   letter-spacing: 0.04em;
   transition: all 0.16s ease;
@@ -13908,11 +13991,11 @@ article.gd-card-collapsed,
 .gd-wards-pair-input:focus {
   border-color: #273121;
   box-shadow: 0 0 0 2px rgba(39, 49, 33, 0.1);
-  background: #F7F3EA;
+  background: rgba(39, 49, 33, 0.06);
 }
 
 .gd-wards-pair-submit-btn {
-  height: 36px;
+  height: 38px;
   border-radius: 4px;
   background: #273121;
   color: #FAF6ED;
@@ -13928,8 +14011,8 @@ article.gd-card-collapsed,
 }
 
 .gd-wards-pair-submit-btn:hover:not(:disabled) {
-  background: #1B2418;
-  border-color: #1B2418;
+  background: #141B11;
+  border-color: #141B11;
   color: #FFFFFF;
 }
 

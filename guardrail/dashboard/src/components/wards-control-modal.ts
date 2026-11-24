@@ -227,6 +227,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       const idTag = document.createElement('span');
       idTag.className = 'gd-ward-control-id-tag';
       idTag.textContent = ward.id;
+      idTag.title = ward.id;
 
       nameRow.appendChild(nameEl);
       nameRow.appendChild(idTag);
@@ -234,6 +235,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       const emailEl = document.createElement('div');
       emailEl.className = 'gd-ward-control-email';
       emailEl.textContent = ward.email || 'Email not registered';
+      emailEl.title = ward.email || '';
 
       identityCol.appendChild(nameRow);
       identityCol.appendChild(emailEl);

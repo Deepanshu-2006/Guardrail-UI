@@ -988,7 +988,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     wardCard.appendChild(wardHero);
     wardOversightSection = wardCard;
   } else {
-    // Multi-Ward Oversight Grid
+    // Multi-Ward Oversight Summary (Unboxed, single architectural summary — zero duplicate cards)
     const multiWardCard = document.createElement('div');
     multiWardCard.className = 'gd-active-ward-card gd-multi-ward-container gd-scroll-reveal';
     multiWardCard.id = 'gd-active-ward-card';
@@ -1019,148 +1019,27 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       `Separation of Duties enforced across all connected wards. Approval decisions register consent on the backend; each ward in Staging Mode retains ultimate agency to execute or cancel actions. Multi-tenant isolation guarantees no access to data belonging to other users.`;
     multiWardCard.appendChild(dutyNotice);
 
-    // List of active ward cards
-    const wardsGrid = document.createElement('div');
-    wardsGrid.className = 'gd-multi-ward-grid';
-
-    for (const w of activeWards) {
-      const singleCard = document.createElement('div');
-      singleCard.className = 'gd-multi-ward-card';
-      singleCard.setAttribute('data-ward-id', w.id);
-
-      const avatar = document.createElement('div');
-      avatar.className = 'gd-multi-ward-avatar';
-      avatar.textContent = (w.name || 'W').charAt(0).toUpperCase();
-
-      const details = document.createElement('div');
-      details.className = 'gd-multi-ward-details';
-
-      const nameRow = document.createElement('div');
-      nameRow.className = 'gd-multi-ward-name-row';
-
-      const nameEl = document.createElement('strong');
-      nameEl.className = 'gd-multi-ward-name';
-      nameEl.textContent = w.name;
-
-      const activeBadge = document.createElement('span');
-      activeBadge.className = 'gd-status-badge approved';
-      activeBadge.textContent = 'ACTIVE';
-
-      nameRow.appendChild(nameEl);
-      nameRow.appendChild(activeBadge);
-
-      const meta = document.createElement('p');
-      meta.className = 'gd-multi-ward-meta';
-      const emailStr = w.email ? `${w.email} · ` : '';
-      meta.textContent = `${emailStr}${w.relationshipLabel || 'Designated Caretaker'} · ID: ${w.id}`;
-
-      details.appendChild(nameRow);
-      details.appendChild(meta);
-
-      const cardActions = document.createElement('div');
-      cardActions.className = 'gd-multi-ward-card-actions';
-
-      const filterBtn = document.createElement('button');
-      filterBtn.type = 'button';
-      filterBtn.className = 'gd-ward-text-link gd-link-filter-ward';
-      filterBtn.textContent = 'Review Pending →';
-      filterBtn.addEventListener('click', () => {
-        if (props.onFilterWardPending) {
-          props.onFilterWardPending(w.id);
-        } else if (props.onViewPending) {
-          props.onViewPending();
-        }
-      });
-      cardActions.appendChild(filterBtn);
-
-      if (props.onDisconnectWard) {
-        const sep = document.createElement('span');
-        sep.className = 'gd-ward-link-sep';
-        sep.textContent = '·';
-        sep.setAttribute('aria-hidden', 'true');
-        cardActions.appendChild(sep);
-
-        const disconnectBtn = document.createElement('button');
-        disconnectBtn.type = 'button';
-        disconnectBtn.className = 'gd-ward-text-link gd-link-disconnect gd-btn-revoke';
-        disconnectBtn.textContent = 'Disconnect';
-
-        const confirmSpan = document.createElement('span');
-        confirmSpan.className = 'gd-ward-confirm-inline';
-        confirmSpan.style.display = 'none';
-
-        const promptText = document.createElement('span');
-        promptText.textContent = `Disconnect ${w.name}? `;
-
-        const confirmBtn = document.createElement('button');
-        confirmBtn.type = 'button';
-        confirmBtn.className = 'gd-ward-text-link gd-link-confirm';
-        confirmBtn.textContent = 'Yes';
-        confirmBtn.addEventListener('click', () => {
-          props.onDisconnectWard?.(w.id);
-        });
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'gd-ward-text-link gd-link-cancel';
-        cancelBtn.textContent = 'No';
-        cancelBtn.addEventListener('click', () => {
-          confirmSpan.style.display = 'none';
-          disconnectBtn.style.display = 'inline-flex';
-        });
-
-        confirmSpan.appendChild(promptText);
-        confirmSpan.appendChild(confirmBtn);
-        const sp = document.createElement('span');
-        sp.textContent = ' ';
-        confirmSpan.appendChild(sp);
-        confirmSpan.appendChild(cancelBtn);
-
-        disconnectBtn.addEventListener('click', () => {
-          disconnectBtn.style.display = 'none';
-          confirmSpan.style.display = 'inline-flex';
-        });
-
-        cardActions.appendChild(disconnectBtn);
-        cardActions.appendChild(confirmSpan);
-      }
-
-      singleCard.appendChild(avatar);
-      singleCard.appendChild(details);
-      singleCard.appendChild(cardActions);
-      wardsGrid.appendChild(singleCard);
-    }
-
-    multiWardCard.appendChild(wardsGrid);
-
-    // Multi-ward footer action bar
+    // Multi-ward footer action bar: Manage in Control Center & Quick Actions
     const footerBar = document.createElement('div');
     footerBar.className = 'gd-multi-ward-footer';
 
-    if (props.onViewSettings) {
-      const manageAllLink = document.createElement('button');
-      manageAllLink.type = 'button';
-      manageAllLink.className = 'gd-ward-text-link gd-link-manage';
-      manageAllLink.id = 'gd-btn-manage-ward';
-      manageAllLink.textContent = 'Manage in Settings →';
-      manageAllLink.addEventListener('click', () => {
-        props.onViewSettings?.();
-      });
-      footerBar.appendChild(manageAllLink);
-    }
+    const openModalBtn = document.createElement('button');
+    openModalBtn.type = 'button';
+    openModalBtn.className = 'gd-ward-action-btn gd-ward-btn-primary gd-btn-open-control-modal';
+    openModalBtn.id = 'gd-btn-manage-ward';
+    openModalBtn.textContent = `Open Wards Control Center (${activeWards.length}) →`;
+    openModalBtn.addEventListener('click', () => {
+      triggerWardsModal();
+    });
+    footerBar.appendChild(openModalBtn);
+
+    const secondaryRow = document.createElement('div');
+    secondaryRow.className = 'gd-multi-ward-footer-secondary';
 
     if (props.onConnectInvitation) {
-      if (props.onViewSettings) {
-        const sep = document.createElement('span');
-        sep.className = 'gd-ward-link-sep';
-        sep.textContent = '·';
-        sep.setAttribute('aria-hidden', 'true');
-        footerBar.appendChild(sep);
-      }
-
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
-      addBtn.className = 'gd-ward-text-link gd-link-add-ward';
+      addBtn.className = 'gd-ward-action-btn gd-ward-btn-secondary gd-link-add-ward';
       addBtn.textContent = '+ Connect Another Ward';
       addBtn.addEventListener('click', () => {
         showConnectWardModal({
@@ -1169,7 +1048,22 @@ export function renderOverview(props: OverviewProps): HTMLElement {
           },
         });
       });
-      footerBar.appendChild(addBtn);
+      secondaryRow.appendChild(addBtn);
+    }
+
+    if (props.onViewSettings) {
+      const manageAllLink = document.createElement('button');
+      manageAllLink.type = 'button';
+      manageAllLink.className = 'gd-ward-action-btn gd-ward-btn-ghost gd-link-manage';
+      manageAllLink.textContent = 'Settings →';
+      manageAllLink.addEventListener('click', () => {
+        props.onViewSettings?.();
+      });
+      secondaryRow.appendChild(manageAllLink);
+    }
+
+    if (secondaryRow.children.length > 0) {
+      footerBar.appendChild(secondaryRow);
     }
 
     multiWardCard.appendChild(footerBar);

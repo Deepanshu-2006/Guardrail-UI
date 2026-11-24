@@ -714,17 +714,42 @@ export class DashboardShell {
 
       // Update dynamic content in-place without tearing down animation state
       if (currentView === 'overview') {
+        const connectedWards = this.getConnectedWards();
+        const wardCount = connectedWards.length;
         const metricValues = existingActiveSection.querySelectorAll('.gd-overview-grid .gd-metric-value');
         if (metricValues.length >= 3) {
-          metricValues[0].textContent = this.state.contactProfile?.assignedWardId ? '1' : '0';
+          metricValues[0].textContent = String(wardCount);
           metricValues[1].textContent = String(this.state.pendingRequests.length);
           metricValues[2].textContent = this.state.contactProfile?.isAuthenticated ? 'Active' : 'Standby';
         }
 
-        const wardName = this.state.contactProfile?.assignedWardName || this.state.contactProfile?.assignedWardId;
+        const wardCard = existingActiveSection.querySelector('.gd-metric-card-ward');
+        if (wardCard) {
+          wardCard.setAttribute('aria-label', `Manage ${wardCount} connected wards in popup`);
+          const wardBadge = wardCard.querySelector('.gd-metric-badge');
+          if (wardBadge) {
+            wardBadge.textContent = wardCount === 0 ? 'Unlinked' : (wardCount > 1 ? `${wardCount} Linked` : 'Linked');
+          }
+          const wardDesc = wardCard.querySelector('.gd-metric-desc');
+          if (wardDesc) {
+            if (wardCount === 0) {
+              wardDesc.textContent = 'Awaiting ward invitation';
+            } else if (wardCount === 1) {
+              wardDesc.textContent = `Reviewer for ${connectedWards[0].name}`;
+            } else {
+              wardDesc.textContent = `Reviewer for ${connectedWards.map(w => w.name).join(', ')}`;
+            }
+          }
+        }
+
         const wardHeroName = existingActiveSection.querySelector('.gd-ward-hero-name');
-        if (wardHeroName && wardName && !wardHeroName.textContent?.includes(wardName)) {
-          setAnimatedHeading(wardHeroName as HTMLElement, wardName);
+        if (wardHeroName) {
+          const expectedHeading = wardCount > 1
+            ? `${wardCount} Protected Wards`
+            : (wardCount === 1 ? (connectedWards[0]?.name || 'Protected Ward') : 'Awaiting Connection');
+          if (!wardHeroName.textContent?.includes(expectedHeading)) {
+            setAnimatedHeading(wardHeroName as HTMLElement, expectedHeading);
+          }
         }
       } else if (currentView === 'settings') {
         const actorIdVal = existingActiveSection.querySelector('#gd-card-identity .gd-settings-item:nth-child(1) .gd-settings-value');
