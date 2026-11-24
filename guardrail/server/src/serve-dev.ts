@@ -50,15 +50,18 @@ async function main(): Promise<void> {
   const oidcConfig = tryLoadOidcTokenVerifierConfig(process.env);
   const oidcVerifier = oidcConfig ? new OidcTokenVerifier(oidcConfig, identities) : undefined;
 
+  const defaultCaretakerId = 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b';
+  const defaultWardId = 'usr_deepanshukhatri20061972';
+
   // Hybrid Token Verifier supporting real verified JWTs and development test tokens
   const tokenVerifier = new HybridTokenVerifier(oidcVerifier, true, {
     'test-ward-token': {
-      actorId: 'usr_alice',
+      actorId: defaultWardId,
       role: ActorRole.USER,
       isAuthenticated: true,
     },
     'test-contact-token': {
-      actorId: 'tc_carol',
+      actorId: defaultCaretakerId,
       role: ActorRole.TRUSTED_CONTACT,
       isAuthenticated: true,
     },
@@ -69,8 +72,6 @@ async function main(): Promise<void> {
 
   // Ensure default identities and active pairing in SQLite
   const now = new Date().toISOString();
-  const defaultCaretakerId = 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b';
-  const defaultWardId = 'usr_deepanshukhatri20061972';
 
   try {
     const db = (contactRegistry as any).database;
@@ -95,11 +96,6 @@ async function main(): Promise<void> {
         VALUES ('tc_carol', 'https://guardrail.local/dev', 'tc_carol', 'TRUSTED_CONTACT', 'ACTIVE', 'carol@guardrail.local', ?, ?)
       `).run(now, now);
 
-      db.prepare(`
-        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
-        VALUES ('usr_alice', 'https://guardrail.local/dev', 'usr_alice', 'USER', 'ACTIVE', 'alice@guardrail.local', ?, ?)
-      `).run(now, now);
-
       const contactPayload = {
         id: defaultCaretakerId,
         contactId: defaultCaretakerId,
@@ -119,18 +115,6 @@ async function main(): Promise<void> {
         INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
         VALUES (?, ?, 'ACTIVE', ?, ?)
       `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
-
-      const alicePayload = {
-        ...contactPayload,
-        userId: 'usr_alice',
-        wardId: 'usr_alice',
-        wardName: 'Alice Ward',
-        wardEmail: 'alice@guardrail.local',
-      };
-      db.prepare(`
-        INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-        VALUES (?, 'usr_alice', 'ACTIVE', ?, ?)
-      `).run(defaultCaretakerId, now, JSON.stringify(alicePayload));
     }
   } catch (err) {
     console.warn('[serve-dev] Contact seed error:', err);
@@ -156,7 +140,7 @@ async function main(): Promise<void> {
   process.stdout.write(`  Database:         ${serverConfig.databasePath}\n`);
   process.stdout.write(`  OIDC Issuer:      ${oidcConfig ? oidcConfig.issuer : 'None (Dev tokens active)'}\n`);
   process.stdout.write(`  Caretaker Token:  test-contact-token (Actor: tc_carol)\n`);
-  process.stdout.write(`  Ward Token:       test-ward-token (Actor: usr_alice)\n\n`);
+  process.stdout.write(`  Ward Token:       test-ward-token (Actor: ${defaultWardId})\n\n`);
 
   const shutdown = () => {
     void runtime.close().then(() => {

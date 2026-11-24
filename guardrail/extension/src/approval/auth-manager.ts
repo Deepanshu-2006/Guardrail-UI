@@ -33,10 +33,6 @@ export async function getStoredWardToken(): Promise<string | undefined> {
     }
   }
 
-  const env = resolveEnvironmentConfig();
-  if (env.environment === 'development') {
-    return 'test-ward-token';
-  }
   return undefined;
 }
 
@@ -210,22 +206,23 @@ export async function verifyWardIdentity(apiBaseUrl?: string): Promise<WardIdent
     return null;
   } catch {
     // If backend unreachable and in dev mode with default dev token
-    if (token === 'test-ward-token') {
+    if (token === 'test-ward-token' || token.includes('deepanshu')) {
       return {
-        actorId: 'usr_alice',
+        actorId: 'usr_deepanshukhatri20061972',
         role: 'USER',
-        fullName: 'Alice',
-        email: 'alice@guardrail.local',
+        fullName: 'Deepanshu Khatri',
+        email: 'deepanshukhatri20061972@gmail.com',
         picture: null,
         isAuthenticated: true,
       };
     }
     if (token.startsWith('ward_')) {
       const email = token.slice(5);
+      const isDeepanshu = email.toLowerCase().includes('deepanshu');
       return {
         actorId: `usr_${email.split('@')[0]}`,
         role: 'USER',
-        fullName: email.split('@')[0],
+        fullName: isDeepanshu ? 'Deepanshu Khatri' : email.split('@')[0],
         email: email,
         picture: null,
         isAuthenticated: true,

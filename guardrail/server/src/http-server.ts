@@ -371,7 +371,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
             ? authHeader.slice(7).trim()
             : '';
-          let actorId = 'usr_alice';
+          let actorId = 'usr_deepanshukhatri20061972';
           if (token && options.tokenVerifier) {
             try {
               const auth = await options.tokenVerifier.verifyToken(token);
@@ -407,7 +407,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
           const inviterName = typeof body.inviterName === 'string' && body.inviterName.trim()
             ? body.inviterName.trim()
-            : (actorId === 'usr_alice' ? 'Alice' : 'Your family member');
+            : (actorId.includes('deepanshu') ? 'Deepanshu Khatri' : 'Your family member');
 
           const emailSubject = `🛡️ You're invited to be a Guardrail Trusted Contact (${role})`;
           const emailText = [

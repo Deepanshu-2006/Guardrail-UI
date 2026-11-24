@@ -657,20 +657,6 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
     }
   }
 
-  // Ensure ward dev token is seeded in local development
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    try {
-      chrome.storage.local.get(['guardrailAuthToken'], (items: Record<string, unknown>) => {
-        if (!items?.guardrailAuthToken) {
-          const env = resolveEnvironmentConfig();
-          if (env.environment === 'development') {
-            chrome.storage.local.set({ guardrailAuthToken: 'test-ward-token' });
-          }
-        }
-      });
-    } catch {}
-  }
-
   // Extension Message Listener: Receives messages from content scripts and returns an acknowledgement
   if (chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener(

@@ -2767,7 +2767,7 @@ export class DashboardShell {
     }
     if (!this.apiClient) {
       if (this.isMockService) {
-        const wardId = 'usr_alice';
+        const wardId = 'usr_deepanshukhatri20061972';
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('guardrail_assigned_ward_id', wardId);
         }
@@ -2833,7 +2833,7 @@ export class DashboardShell {
         (res.error.message && res.error.message.includes('already an active trusted contact'))
       ) {
         const match = res.error.message.match(/user "([^"]+)"/);
-        const wardId = match ? match[1] : 'usr_alice';
+        const wardId = match ? match[1] : 'usr_deepanshukhatri20061972';
 
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('guardrail_assigned_ward_id', wardId);

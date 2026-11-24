@@ -275,10 +275,10 @@ if (typeof document !== 'undefined') {
         }
       : effectiveToken
       ? (effectiveToken.startsWith('test-') ? {
-          actorId: effectiveToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
+          actorId: effectiveToken === 'test-ward-token' ? 'usr_deepanshukhatri20061972' : 'tc_carol',
           role: effectiveToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
-          email: storedEmail || (effectiveToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'carol.guardian@gmail.com'),
-          fullName: effectiveToken === 'test-ward-token' ? 'Alice Ward' : (storedName || 'Carol Guardian'),
+          email: storedEmail || (effectiveToken === 'test-ward-token' ? 'deepanshukhatri20061972@gmail.com' : 'carol.guardian@gmail.com'),
+          fullName: effectiveToken === 'test-ward-token' ? 'Deepanshu Khatri' : (storedName || 'Carol Guardian'),
           avatarUrl: storedAvatar || undefined,
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,

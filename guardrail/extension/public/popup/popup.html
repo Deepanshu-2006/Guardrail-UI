@@ -40,20 +40,27 @@
           <!-- Signed-in state -->
           <div class="ward-card-inner" id="ward-user-badge">
             <div class="ward-card-header">
-              <span class="ward-card-kicker">Ward Identity</span>
-              <button type="button" class="btn-ward-signout" id="btn-ward-signout" title="Sign out / switch account">Sign Out</button>
+              <div class="ward-card-kicker-group">
+                <span class="ward-card-kicker">Ward Identity</span>
+                <span class="ward-card-tag" id="ward-status-tag">Protected</span>
+              </div>
             </div>
             <div class="ward-profile-row">
               <div class="ward-account-avatar" id="ward-account-avatar" aria-hidden="true">
                 <span id="ward-avatar-text">D</span>
               </div>
               <div class="ward-account-details">
-                <div class="ward-name-line">
-                  <span class="ward-account-name" id="ward-account-name" title="Deepanshu Khatri">Deepanshu Khatri</span>
-                  <span class="ward-role-badge">Protected Ward</span>
-                </div>
+                <span class="ward-account-name" id="ward-account-name" title="Deepanshu Khatri">Deepanshu Khatri</span>
                 <span class="ward-account-email" id="ward-account-email">deepanshukhatri20061972@gmail.com</span>
               </div>
+              <button type="button" class="btn-ward-signout" id="btn-ward-signout" title="Sign out / switch account">
+                <svg class="signout-icon-svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Sign Out</span>
+              </button>
             </div>
           </div>
 
@@ -110,7 +117,7 @@
             <span class="label">Extension Version</span>
             <span class="value" id="ext-version">0.1.0</span>
           </div>
-          <span class="value" id="ext-ward-val" style="display: none;">usr_alice (Ward)</span>
+          <span class="value" id="ext-ward-val" style="display: none;">Deepanshu Khatri (USER)</span>
         </section>
 
         <!-- Scope Boundary Disclosure Card -->

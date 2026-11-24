@@ -2990,46 +2990,45 @@ body.pairing-closing #btn-open-onboarding {
   line-height: 1;
 }
 
+.ward-card-kicker-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .ward-card-kicker {
   font-family: var(--gd-font-display);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gd-accent-olive);
 }
 
-.btn-ward-signout {
-  background: transparent;
-  border: 1px solid rgba(39, 49, 33, 0.16);
+.ward-card-tag {
   font-family: var(--gd-font-sans);
-  font-size: 9.5px;
+  font-size: 8px;
   font-weight: 600;
-  color: #7E8774;
-  cursor: pointer;
-  padding: 1.5px 7px;
-  border-radius: 4px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-.btn-ward-signout:hover {
-  color: #8A3B2A;
-  background: rgba(138, 59, 42, 0.06);
-  border-color: rgba(138, 59, 42, 0.28);
+  color: var(--gd-accent-olive);
+  background: rgba(84, 104, 62, 0.12);
+  padding: 1px 5px;
+  border-radius: 9999px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.3;
 }
 
 .ward-profile-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   width: 100%;
 }
 
 .ward-account-avatar {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #DFE7D4;
   border: 1.5px solid rgba(39, 49, 33, 0.16);
@@ -3041,7 +3040,7 @@ body.pairing-closing #btn-open-onboarding {
   font-weight: 700;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.06);
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.06);
 }
 
 .ward-account-avatar img {
@@ -3060,13 +3059,6 @@ body.pairing-closing #btn-open-onboarding {
   gap: 1.5px;
 }
 
-.ward-name-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
 .ward-account-name {
   font-size: 12.5px;
   font-weight: 600;
@@ -3077,26 +3069,48 @@ body.pairing-closing #btn-open-onboarding {
   line-height: 1.2;
 }
 
-.ward-role-badge {
-  font-family: var(--gd-font-sans);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--gd-accent-olive);
-  background: rgba(84, 104, 62, 0.11);
-  padding: 1px 6px;
-  border-radius: 9999px;
-  line-height: 1.3;
-  flex-shrink: 0;
-}
-
 .ward-account-email {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--gd-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.25;
+}
+
+.btn-ward-signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  font-family: var(--gd-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: #8A3B2A;
+  padding: 4px 6px;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  line-height: 1.2;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.btn-ward-signout:hover {
+  background: rgba(138, 59, 42, 0.08);
+  color: #6C2B1C;
+}
+
+.btn-ward-signout .signout-icon-svg {
+  opacity: 0.85;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.btn-ward-signout:hover .signout-icon-svg {
+  opacity: 1;
+  transform: translateX(1px);
 }
 
 /* Signed Out Button / Banner */

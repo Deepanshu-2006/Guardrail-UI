@@ -407,7 +407,7 @@ export function renderWardAccountCard(identity: WardIdentity | null): void {
 
     if (userBadge) userBadge.style.display = 'flex';
     if (btnAuth) btnAuth.style.display = 'none';
-    if (btnSignout) btnSignout.style.display = 'inline-block';
+    if (btnSignout) btnSignout.style.display = 'inline-flex';
   } else {
     if (userBadge) userBadge.style.display = 'none';
     if (btnAuth) {
