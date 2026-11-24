@@ -109,7 +109,7 @@ async function main(): Promise<void> {
         wardEmail: 'deepanshukhatri20061972@gmail.com',
         contactName: 'Deepanshu Khatri',
         contactEmail: 'deepanshukhatri20061972@gmail.com',
-        contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMb29rcFFWU21QZG1PbExSZXN1N3VNd1dRMHJXMC13OUZfaFNvQXNDWVZVT1I2WHc9czEwMDAtYyIsInMiOiIrYUdGc0RVYUExQjErdkRxZXRKTkVxMnNZSFlZeEsvSkpSdTJVMy9GR0ZFIn0',
+        contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLZDNQRGk4NWtqbU42TERzYWhtZVljckxaQkUtdGFFUFNnXzdYd0FYSU1mRUd6clVFcz1zMTAwMC1jIiwicyI6InViRllhQ2hLbGtQS2FXR0hCTVRBODNqVmozVW5RV00zQ0FScVVnSTlxSWcifQ',
         relationshipLabel: 'Designated Caretaker',
         status: 'ACTIVE',
         createdAt: now,

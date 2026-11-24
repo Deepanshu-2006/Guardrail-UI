@@ -2342,8 +2342,8 @@ body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-v
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 18px 18px 16px;
-  gap: 12px;
+  padding: 16px 16px 14px;
+  gap: 10px;
   background-color: var(--gd-bg-canvas);
   box-sizing: border-box;
   position: relative;
@@ -2352,6 +2352,7 @@ body.pairing-open .pairing-live-status.connected:not(.is-animating) .connected-v
   min-height: 100%;
   height: 100%;
   transition: border-color 0.46s ease, box-shadow 0.46s ease;
+  overflow: hidden;
 }
 
 body.pairing-open .popup-container,
@@ -2956,121 +2957,108 @@ body.pairing-closing #btn-open-onboarding {
 }
 
 /* =============================================================================
-   Ward Account & Google Sign-In Card
+   Ward Identity & Google Sign-In (Compact Row)
    ============================================================================= */
 
-.ward-account-card {
-  background: var(--gd-card-bg);
-  border: 1px solid var(--gd-card-border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.card-row-ward {
+  min-height: 28px;
 }
 
-.ward-account-row {
+.ward-identity-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 210px;
 }
 
-.ward-account-avatar {
-  width: 32px;
-  height: 32px;
+.ward-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.ward-mini-avatar {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #DFE7D4;
-  border: 1px solid rgba(39, 49, 33, 0.16);
+  border: 1px solid rgba(39, 49, 33, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 10px;
   color: #273121;
   font-weight: 700;
   overflow: hidden;
   flex-shrink: 0;
 }
 
-.ward-account-avatar img {
+.ward-mini-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
 }
 
-.ward-account-details {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex: 1;
-}
-
-.ward-account-name {
-  font-size: 12.5px;
+.ward-mini-name {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
   font-weight: 600;
   color: var(--gd-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  max-width: 120px;
 }
 
-.ward-account-email {
-  font-size: 11px;
-  color: var(--gd-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
-}
-
-.btn-ward-signout {
+.btn-ward-signout-mini {
   background: transparent;
   border: none;
-  font-size: 11px;
+  font-family: var(--gd-font-sans);
+  font-size: 10px;
   font-weight: 500;
   color: #7E8774;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: 1px 4px;
+  border-radius: 3px;
   transition: all 0.15s ease;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
-.btn-ward-signout:hover {
+.btn-ward-signout-mini:hover {
   color: #8A3B2A;
   background: rgba(138, 59, 42, 0.08);
 }
 
-.btn-google-auth {
-  display: flex;
+.btn-google-auth-mini {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 34px;
+  gap: 6px;
+  padding: 3px 8px;
   background: #FAF6ED;
-  border: 1px solid rgba(39, 49, 33, 0.16);
-  border-radius: 8px;
+  border: 1px solid rgba(39, 49, 33, 0.18);
+  border-radius: 6px;
   color: #273121;
   font-family: var(--gd-font-sans);
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 3px rgba(39, 49, 33, 0.04);
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(39, 49, 33, 0.04);
+  white-space: nowrap;
 }
 
-.btn-google-auth:hover {
+.btn-google-auth-mini:hover {
   background: #F4EFE3;
-  border-color: rgba(39, 49, 33, 0.28);
-  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.08);
-  transform: translateY(-0.5px);
+  border-color: rgba(39, 49, 33, 0.3);
+  box-shadow: 0 1px 4px rgba(39, 49, 33, 0.08);
 }
 
-.btn-google-auth:active {
-  transform: translateY(0);
+.btn-google-auth-mini:active {
+  transform: translateY(0.5px);
 }
 
 .google-logo-svg {

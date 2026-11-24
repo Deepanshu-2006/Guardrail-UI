@@ -126,19 +126,25 @@ export async function initializePopup(): Promise<void> {
     }
   } catch {}
 
+const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLZDNQRGk4NWtqbU42TERzYWhtZVljckxaQkUtdGFFUFNnXzdYd0FYSU1mRUd6clVFcz1zMTAwMC1jIiwicyI6InViRllhQ2hLbGtQS2FXR0hCTVRBODNqVmozVW5RV00zQ0FScVVnSTlxSWcifQ';
+
   // If in development and no contacts cached yet, provide default paired guardian Deepanshu Khatri
   if (cachedContacts) {
     cachedContacts = cachedContacts.map((c) => {
       if (
         c.contactEmail?.includes('balleballepurrr') ||
         c.contactName?.includes('Balleballepurrr') ||
-        c.name?.includes('Balleballepurrr')
+        c.name?.includes('Balleballepurrr') ||
+        c.contactAvatarUrl?.includes('LookpQ') ||
+        c.avatarUrl?.includes('LookpQ')
       ) {
         return {
           ...c,
           name: 'Deepanshu Khatri',
           contactName: 'Deepanshu Khatri',
           contactEmail: 'deepanshukhatri20061972@gmail.com',
+          contactAvatarUrl: DEEPANSHU_CLERK_AVATAR,
+          avatarUrl: DEEPANSHU_CLERK_AVATAR,
           relationshipLabel: 'Designated Caretaker',
         };
       }
@@ -156,8 +162,8 @@ export async function initializePopup(): Promise<void> {
         name: 'Deepanshu Khatri',
         contactName: 'Deepanshu Khatri',
         contactEmail: 'deepanshukhatri20061972@gmail.com',
-        contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMb29rcFFWU21QZG1PbExSZXN1N3VNd1dRMHJXMC13OUZfaFNvQXNDWVZVT1I2WHc9czEwMDAtYyIsInMiOiIrYUdGc0RVYUExQjErdkRxZXRKTkVxMnNZSFlZeEsvSkpSdTJVMy9GR0ZFIn0',
-        avatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMb29rcFFWU21QZG1PbExSZXN1N3VNd1dRMHJXMC13OUZfaFNvQXNDWVZVT1I2WHc9czEwMDAtYyIsInMiOiIrYUdGc0RVYUExQjErdkRxZXRKTkVxMnNZSFlZeEsvSkpSdTJVMy9GR0ZFIn0',
+        contactAvatarUrl: DEEPANSHU_CLERK_AVATAR,
+        avatarUrl: DEEPANSHU_CLERK_AVATAR,
         relationshipLabel: 'Designated Caretaker',
       },
     ];
@@ -228,14 +234,19 @@ async function checkActiveGuardianCoverage(): Promise<{
       const isBalle =
         (c.contactEmail || '').includes('balleballepurrr') ||
         (c.contactName || '').includes('Balleballepurrr') ||
-        (c.name || '').includes('Balleballepurrr');
+        (c.name || '').includes('Balleballepurrr') ||
+        (c.contactAvatarUrl || '').includes('LookpQ') ||
+        (c.avatarUrl || '').includes('LookpQ');
+      const avatar = isBalle
+        ? DEEPANSHU_CLERK_AVATAR
+        : (c.contactAvatarUrl || c.avatarUrl || DEEPANSHU_CLERK_AVATAR);
       return {
         id: String(c.id || c.contactId || ''),
         name: isBalle ? 'Deepanshu Khatri' : (c.contactName || c.name || 'Deepanshu Khatri'),
         contactName: isBalle ? 'Deepanshu Khatri' : (c.contactName || 'Deepanshu Khatri'),
         contactEmail: isBalle ? 'deepanshukhatri20061972@gmail.com' : (c.contactEmail || 'deepanshukhatri20061972@gmail.com'),
-        contactAvatarUrl: c.contactAvatarUrl || c.avatarUrl,
-        avatarUrl: c.contactAvatarUrl || c.avatarUrl,
+        contactAvatarUrl: avatar,
+        avatarUrl: avatar,
         relationshipLabel: c.relationshipLabel || 'Designated Caretaker',
       };
     });
@@ -350,6 +361,7 @@ function escapeHtml(str: string): string {
  * Renders the Ward Account Card (Google identity or unauthenticated state).
  */
 export function renderWardAccountCard(identity: WardIdentity | null): void {
+  const userBadge = document.getElementById('ward-user-badge');
   const nameEl = document.getElementById('ward-account-name');
   const emailEl = document.getElementById('ward-account-email');
   const avatarEl = document.getElementById('ward-account-avatar');
@@ -360,7 +372,10 @@ export function renderWardAccountCard(identity: WardIdentity | null): void {
 
   if (identity && identity.isAuthenticated) {
     const displayName = identity.fullName || identity.actorId;
-    if (nameEl) nameEl.textContent = displayName;
+    if (nameEl) {
+      nameEl.textContent = displayName;
+      nameEl.title = displayName;
+    }
     if (emailEl) emailEl.textContent = identity.email || 'Authenticated via Google';
 
     if (avatarEl) {
@@ -371,16 +386,13 @@ export function renderWardAccountCard(identity: WardIdentity | null): void {
       }
     }
 
+    if (userBadge) userBadge.style.display = 'inline-flex';
     if (btnAuth) btnAuth.style.display = 'none';
     if (btnSignout) btnSignout.style.display = 'inline-block';
   } else {
-    if (nameEl) nameEl.textContent = 'Sign in to Guardrail';
-    if (emailEl) emailEl.textContent = 'Connect your Google account';
-    if (avatarEl && avatarText) {
-      avatarEl.innerHTML = '<span id="ward-avatar-text">👤</span>';
-    }
+    if (userBadge) userBadge.style.display = 'none';
     if (btnAuth) {
-      btnAuth.style.display = 'flex';
+      btnAuth.style.display = 'inline-flex';
       if (btnAuthText) btnAuthText.textContent = 'Sign in with Google';
     }
     if (btnSignout) btnSignout.style.display = 'none';
@@ -481,8 +493,12 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
         const initial = displayName && displayName !== 'Designated Caretaker'
           ? displayName.charAt(0).toUpperCase()
           : 'D';
-        const avatarContent = (c.contactAvatarUrl || c.avatarUrl)
-          ? `<img src="${escapeHtml(c.contactAvatarUrl || c.avatarUrl || '')}" alt="${escapeHtml(displayName)}" class="active-guardian-avatar-img" />`
+        let avatarUrl = c.contactAvatarUrl || c.avatarUrl;
+        if (!avatarUrl || avatarUrl.includes('LookpQ') || avatarUrl.includes('balleballepurrr')) {
+          avatarUrl = DEEPANSHU_CLERK_AVATAR;
+        }
+        const avatarContent = avatarUrl
+          ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}" class="active-guardian-avatar-img" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/a/ACg8ocKd3PDi85kjmN6LDsahmeYcrLZBE-taEPSg_7XwAXIMfEGzrUEs=s1000-c';" />`
           : (initial
             ? `<span class="active-guardian-initial">${initial}</span>`
             : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -656,7 +672,7 @@ export function openPairingPanel(): void {
     panel.style.opacity = '';
   }
 
-  const initialH = container?.offsetHeight || 546;
+  const initialH = container?.offsetHeight || 470;
   savedClosedHeight = initialH;
   const targetOpenH = 580;
 
@@ -757,7 +773,7 @@ export function closePairingPanel(): void {
 
   const stage = document.getElementById('popup-stage');
   const panel = document.getElementById('pairing-panel');
-  const targetClosedH = savedClosedHeight || 546;
+  const targetClosedH = savedClosedHeight || 470;
 
   // Smoothly collapse width AND height together
   const transitionRule = `width ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}, height ${SLIDE_DURATION_MS}ms ${SLIDE_EASING}`;
