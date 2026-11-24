@@ -12811,3 +12811,467 @@ article.gd-card-collapsed,
 .gd-relationships-connect-form {
   max-width: 440px;
 }
+
+/* -----------------------------------------------------------------------------
+   Phase 7: Mobile PWA Companion & Add-to-Home-Screen (A2HS) Styling
+   ----------------------------------------------------------------------------- */
+
+.gd-a2hs-banner {
+  background: #1B2418;
+  color: #F5F3EC;
+  border-bottom: 1px solid rgba(245, 243, 236, 0.12);
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 18px rgba(27, 36, 24, 0.25);
+  animation: gd-slide-down 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@keyframes gd-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.gd-a2hs-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gd-a2hs-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.gd-a2hs-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(245, 243, 236, 0.12);
+  flex-shrink: 0;
+  border: 1px solid rgba(245, 243, 236, 0.2);
+}
+
+.gd-a2hs-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gd-a2hs-title {
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FAF6ED;
+  letter-spacing: -0.01em;
+}
+
+.gd-a2hs-desc {
+  font-size: 13px;
+  color: #C8C5BB;
+  line-height: 1.4;
+}
+
+.gd-a2hs-symbol {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(245, 243, 236, 0.16);
+  font-weight: 700;
+  font-size: 13px;
+  color: #FFFFFF;
+}
+
+.gd-a2hs-highlight {
+  color: #FAF6ED;
+  font-weight: 700;
+}
+
+.gd-a2hs-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.gd-a2hs-btn-install {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: #FAF6ED;
+  color: #1B2418;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.gd-a2hs-btn-install:hover {
+  background: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gd-a2hs-btn-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  color: #A3A096;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gd-a2hs-btn-dismiss:hover {
+  background: rgba(245, 243, 236, 0.12);
+  color: #FAF6ED;
+}
+
+/* Settings PWA Status Card */
+.gd-settings-pwa-card {
+  margin-top: 24px;
+}
+
+.gd-pwa-status-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: #F4F1E8;
+  border: 1px solid rgba(39, 49, 33, 0.12);
+  border-radius: 12px;
+}
+
+.gd-pwa-status-box.installed {
+  background: rgba(39, 49, 33, 0.05);
+  border-color: rgba(39, 49, 33, 0.2);
+}
+
+.gd-pwa-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #EAE6DB;
+  flex-shrink: 0;
+}
+
+.gd-pwa-status-info {
+  flex: 1;
+}
+
+.gd-pwa-status-headline {
+  font-size: 15px;
+  font-weight: 700;
+  color: #273121;
+  margin-bottom: 2px;
+}
+
+.gd-pwa-status-subline {
+  font-size: 13px;
+  color: #6C7265;
+  line-height: 1.4;
+}
+
+.gd-btn-install-pwa {
+  flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Phase 7: Mobile Viewport Optimization & Touch Action Sheet Drawer
+   ----------------------------------------------------------------------------- */
+
+.gd-sheet-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.gd-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 22, 16, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: gd-fade-in 0.22s ease-out;
+}
+
+@keyframes gd-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gd-mobile-action-sheet {
+  position: relative;
+  z-index: 1001;
+  background: #FAF6ED;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -12px 48px rgba(27, 36, 24, 0.35);
+  border-top: 1px solid rgba(39, 49, 33, 0.16);
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px)) 20px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  animation: gd-sheet-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes gd-sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.gd-sheet-drag-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(39, 49, 33, 0.2);
+  margin: 0 auto 12px auto;
+  flex-shrink: 0;
+}
+
+.gd-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.gd-sheet-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gd-sheet-btn-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(39, 49, 33, 0.06);
+  color: #273121;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.gd-sheet-btn-close:hover {
+  background: rgba(39, 49, 33, 0.14);
+}
+
+.gd-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.gd-sheet-action-title {
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #273121;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.gd-sheet-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gd-sheet-domain-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(39, 49, 33, 0.06);
+  color: #273121;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gd-sheet-category-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(39, 49, 33, 0.04);
+  color: #6C7265;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gd-sheet-risk-box {
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(39, 49, 33, 0.1);
+  border-radius: 12px;
+}
+
+.gd-sheet-risk-headline {
+  font-size: 13px;
+  font-weight: 700;
+  color: #273121;
+  margin-bottom: 8px;
+}
+
+.gd-sheet-reasons-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #4A5043;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.gd-sheet-reasons-list li {
+  margin-bottom: 4px;
+}
+
+.gd-sheet-reasons-list li:last-child {
+  margin-bottom: 0;
+}
+
+.gd-sheet-decoupling-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(43, 84, 126, 0.08);
+  border-left: 3px solid #2B547E;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #2B547E;
+  line-height: 1.45;
+}
+
+.gd-sheet-decoupling-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.gd-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+/* Touch-Friendly Action Buttons (Minimum 48px height for WCAG 2.5.5 touch target size) */
+.gd-btn-approve-touch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  border-radius: 12px;
+  background: #273121;
+  color: #FAF6ED;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: 0 4px 14px rgba(39, 49, 33, 0.25);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gd-btn-approve-touch:hover:not(:disabled) {
+  background: #1B2418;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(39, 49, 33, 0.35);
+}
+
+.gd-btn-approve-touch:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.gd-btn-reject-touch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 50px;
+  border-radius: 12px;
+  background: transparent;
+  color: #A33B31;
+  border: 1.5px solid rgba(163, 59, 49, 0.35);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gd-btn-reject-touch:hover:not(:disabled) {
+  background: rgba(163, 59, 49, 0.06);
+  border-color: #A33B31;
+}
+
+.gd-btn-reject-touch:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.gd-btn-approve-touch:disabled,
+.gd-btn-reject-touch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (min-width: 769px) {
+  .gd-mobile-action-sheet {
+    max-width: 540px;
+    margin: 0 auto;
+    border-radius: 20px;
+    margin-bottom: 30px;
+  }
+}
+
