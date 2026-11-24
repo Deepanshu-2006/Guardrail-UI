@@ -17,6 +17,7 @@ import {
 import { renderRelationshipManagementSection } from './relationships.js';
 import { setAnimatedHeading } from './icons.js';
 import { formatWardDisplayName } from './overview.js';
+import { PwaInstallManager } from './pwa-install-banner.js';
 
 export interface SettingsProps {
   profile: TrustedContactProfile | null;
@@ -678,6 +679,14 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   pushCard.appendChild(pushNotice);
 
   section.appendChild(pushCard);
+
+  // Phase 7: Mobile PWA Companion App Card
+  try {
+    const pwaCard = PwaInstallManager.getInstance().renderSettingsCard();
+    if (pwaCard) {
+      section.appendChild(pwaCard);
+    }
+  } catch {}
 
   // Card 3: Backend Connection & Runtime Environment
   const backendCard = document.createElement('div');

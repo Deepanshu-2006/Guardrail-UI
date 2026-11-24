@@ -35,6 +35,8 @@ import { renderSettings } from './components/settings.js';
 import { isInvitationExpired } from './components/relationships.js';
 import { defaultDashboardPushService } from './services/push-notification-service.js';
 import { createIcon, setAnimatedHeading } from './components/icons.js';
+import { PwaInstallManager } from './components/pwa-install-banner.js';
+import { renderMobileActionSheet } from './components/mobile-action-sheet.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -57,6 +59,9 @@ export class DashboardShell {
   private hashChangeHandler: (() => void) | null = null;
   private visibilityChangeHandler: (() => void) | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private pwaBannerEl: HTMLElement | null = null;
+  private pwaUnsubscribe: (() => void) | null = null;
+  private mobileActionSheetEl: HTMLElement | null = null;
   private apiClient?: ApprovalApiClient;
   private autoFetch: boolean;
   private pollIntervalMs?: number;
@@ -309,6 +314,22 @@ export class DashboardShell {
       };
       document.addEventListener('visibilitychange', this.visibilityChangeHandler);
     }
+
+    // Register Service Worker for standalone PWA capabilities
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      try {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+          console.warn('[Guardrail Shell] SW registration non-fatal:', err);
+        });
+      } catch {}
+    }
+
+    // Subscribe to PWA installation availability changes
+    try {
+      this.pwaUnsubscribe = PwaInstallManager.getInstance().onAvailabilityChange(() => {
+        this.updatePwaBanner();
+      });
+    } catch {}
   }
 
   /**
@@ -636,8 +657,10 @@ export class DashboardShell {
       this.workspaceEl.appendChild(this.contentBodyEl);
       this.appWrapper.appendChild(this.workspaceEl);
       this.rootContainer.appendChild(this.appWrapper);
+      this.updatePwaBanner();
     } else {
       // In-place update: top header and layout scaffolding remain mounted without tearing down
+      this.updatePwaBanner();
       if (this.headerTitleEl) {
         this.headerTitleEl.textContent = this.formatViewTitle(this.state.activeView);
       }
@@ -1614,6 +1637,9 @@ export class DashboardShell {
       void this.loadRequestDetails(requestId, true);
     } else {
       this.render();
+    }
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      this.openMobileActionSheet(requestId);
     }
   }
 
@@ -2605,6 +2631,82 @@ export class DashboardShell {
   }
 
   /**
+   * Updates or mounts the PWA Add to Home Screen install banner.
+   */
+  public updatePwaBanner(): void {
+    if (this.isDestroyed || !this.workspaceEl || typeof document === 'undefined') return;
+
+    if (this.pwaBannerEl) {
+      this.pwaBannerEl.remove();
+      this.pwaBannerEl = null;
+    }
+
+    try {
+      const banner = PwaInstallManager.getInstance().renderBanner({
+        onInstalled: () => {
+          this.updatePwaBanner();
+        },
+        onDismissed: () => {
+          this.updatePwaBanner();
+        },
+      });
+
+      if (banner && this.workspaceEl) {
+        this.pwaBannerEl = banner;
+        this.workspaceEl.insertBefore(banner, this.workspaceEl.firstChild);
+      }
+    } catch {}
+  }
+
+  /**
+   * Opens the touch-friendly mobile action sheet for a pending approval request.
+   */
+  public openMobileActionSheet(requestId: string): void {
+    const req = this.state.pendingRequests.find((r) => r.id === requestId);
+    if (!req || typeof document === 'undefined') return;
+
+    this.closeMobileActionSheet();
+
+    const wards = this.getConnectedWards();
+    const ward = wards.find((w) => w.id === req.requesterId || (req as any).wardId === w.id);
+    const wardName = ward?.name || formatWardDisplayName(req.requesterId);
+
+    try {
+      const sheet = renderMobileActionSheet({
+        request: req,
+        wardName,
+        isSubmitting: this.isSubmittingDecision,
+        onApprove: async (id) => {
+          await this.submitDecision(id, 'APPROVED');
+          this.closeMobileActionSheet();
+        },
+        onReject: async (id) => {
+          await this.submitDecision(id, 'REJECTED');
+          this.closeMobileActionSheet();
+        },
+        onClose: () => {
+          this.closeMobileActionSheet();
+        },
+      });
+
+      this.mobileActionSheetEl = sheet;
+      document.body.appendChild(sheet);
+    } catch (err) {
+      console.warn('[Guardrail Shell] Could not render mobile action sheet:', err);
+    }
+  }
+
+  /**
+   * Closes and removes the mobile action sheet if open.
+   */
+  public closeMobileActionSheet(): void {
+    if (this.mobileActionSheetEl) {
+      this.mobileActionSheetEl.remove();
+      this.mobileActionSheetEl = null;
+    }
+  }
+
+  /**
    * Returns true if the dashboard is connected to a mock or in-memory service.
    */
   public isMockService(): boolean {
@@ -3468,6 +3570,12 @@ export class DashboardShell {
       document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
       this.visibilityChangeHandler = null;
     }
+
+    if (this.pwaUnsubscribe) {
+      this.pwaUnsubscribe();
+      this.pwaUnsubscribe = null;
+    }
+    this.closeMobileActionSheet();
 
     this.activeFetchPromise = null;
     this.activeDetailFetchPromises.clear();

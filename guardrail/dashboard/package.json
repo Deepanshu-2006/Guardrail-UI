@@ -16,7 +16,8 @@
     "test:social-auth": "../extension/node_modules/.bin/esbuild src/tests/test-social-auth.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-social-auth.js && node dist/test-social-auth.js",
     "test:push": "../extension/node_modules/.bin/esbuild src/tests/test-push-notifications.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-push-notifications.js && node dist/test-push-notifications.js",
     "test:multi-ward": "../extension/node_modules/.bin/esbuild src/tests/test-multi-ward.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-multi-ward.js && node dist/test-multi-ward.js",
-    "test": "npm run test:shell && npm run test:verify-day12 && npm run test:sync && npm run test:verify-complete-sync && npm run test:dev && npm run test:social-auth && npm run test:push && npm run test:multi-ward"
+    "test:pwa": "../extension/node_modules/.bin/esbuild src/tests/test-pwa-companion.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/test-pwa-companion.js && node dist/test-pwa-companion.js",
+    "test": "npm run test:shell && npm run test:verify-day12 && npm run test:sync && npm run test:verify-complete-sync && npm run test:dev && npm run test:social-auth && npm run test:push && npm run test:multi-ward && npm run test:pwa"
   },
   "dependencies": {
     "@clerk/clerk-js": "^6.44.0"

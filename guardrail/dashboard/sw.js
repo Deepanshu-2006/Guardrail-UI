@@ -1,17 +1,132 @@
 /**
- * Guardrail Trusted Contact Portal - Push Notification Service Worker
+ * Guardrail Trusted Contact Portal - Push Notification & Offline PWA Service Worker
  *
- * Handles background Web Push events and native notification interactions
- * so Caretakers receive immediate lock-screen alerts for intercepted actions.
+ * Implements:
+ * 1. Standalone offline capability for the Caretaker companion app.
+ * 2. Pre-caching of application shell assets (HTML, CSS, JS bundles, manifest, brand icons).
+ * 3. Network-first strategy for dynamic views, with safe fallback to cached shell.
+ * 4. Network-only bypass for `/api/` endpoints (security invariants: decisions are never served stale).
+ * 5. Web Push notification handling and rich native lock-screen alert interactions.
  */
 
+const CACHE_NAME = 'guardrail-caretaker-pwa-v1';
+
+const STATIC_SHELL_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/styles/dashboard.css',
+  '/dist/dashboard.js',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-128.png',
+  '/icons/icon-48.png',
+  '/icons/icon-16.png',
+  '/icons/apple-touch-icon.png',
+  '/icons/maskable-icon-512.png',
+];
+
+// Install: Cache critical static application shell and activate immediately
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(STATIC_SHELL_ASSETS).catch((err) => {
+          console.warn('[Guardrail SW] Cache addAll non-fatal error:', err);
+        });
+      })
+      .then(() => self.skipWaiting())
+  );
 });
 
+// Activate: Claim client tabs and purge stale previous cache versions
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name.startsWith('guardrail-') && name !== CACHE_NAME)
+            .map((name) => caches.delete(name))
+        );
+      })
+      .then(() => self.clients.claim())
+  );
 });
+
+// Fetch: Smart routing & caching
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // Invariant 1: Security & API requests are strictly Network-Only (never serve stale security decisions)
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.includes('/sse') ||
+    url.hostname.includes('clerk') ||
+    request.method !== 'GET'
+  ) {
+    return; // Pass through directly to standard network fetch
+  }
+
+  // Invariant 2: Navigation requests (page loads) -> Network first, fallback to cached index.html
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cachedResponse = await caches.match('/index.html');
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return caches.match('/');
+        })
+    );
+    return;
+  }
+
+  // Invariant 3: Static assets -> Stale-while-revalidate / Cache first with network fallback
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Fetch updated asset in the background to update cache for next load
+        fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseClone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+            }
+          })
+          .catch(() => {
+            // Ignore background network error if offline
+          });
+        return cachedResponse;
+      }
+
+      // Not in cache: fetch from network and cache
+      return fetch(request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        return networkResponse;
+      });
+    })
+  );
+});
+
+// =============================================================================
+// Web Push Notifications & Lock-Screen Alerts
+// =============================================================================
 
 self.addEventListener('push', (event) => {
   if (!event.data) {
@@ -24,7 +139,7 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-48.png',
     data: {
-      url: '/#overview',
+      url: '/#pending',
     },
   };
 
@@ -39,7 +154,7 @@ self.addEventListener('push', (event) => {
     icon: payload.icon || '/icons/icon-192.png',
     badge: payload.badge || '/icons/icon-48.png',
     tag: payload.tag || 'guardrail-alert',
-    data: payload.data || { url: '/#overview' },
+    data: payload.data || { url: '/#pending' },
     requireInteraction: true,
   };
 
@@ -61,7 +176,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const targetUrl = event.notification.data?.url || '/#overview';
+  const targetUrl = event.notification.data?.url || '/#pending';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
@@ -74,7 +189,7 @@ self.addEventListener('notificationclick', (event) => {
           }
         }
       }
-      // Otherwise open new window
+      // Otherwise open new standalone window
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl);
       }
