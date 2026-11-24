@@ -37,6 +37,7 @@ import { defaultDashboardPushService } from './services/push-notification-servic
 import { createIcon, setAnimatedHeading } from './components/icons.js';
 import { PwaInstallManager } from './components/pwa-install-banner.js';
 import { renderMobileActionSheet } from './components/mobile-action-sheet.js';
+import { MobileTab, renderMobileCompanion } from './components/mobile-companion.js';
 import { renderPendingApprovalsModal } from './components/pending-approvals-modal.js';
 import { renderWardsControlModal } from './components/wards-control-modal.js';
 
@@ -130,6 +131,10 @@ export class DashboardShell {
   private lastRenderedView: DashboardView | null = null;
   private hasPendingDataUpdateDuringEntrance: boolean = false;
   private mobileBottomNavEl: HTMLElement | null = null;
+  private mobileTab: MobileTab = 'queue';
+  private mobileWardFilter: string = 'ALL';
+  private isMobileViewportMode: boolean = false;
+  private resizeHandler: (() => void) | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -309,6 +314,18 @@ export class DashboardShell {
         }
       };
       window.addEventListener('keydown', this.keyHandler);
+
+      let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+      this.resizeHandler = () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          const nowMobile = typeof window !== 'undefined' && (window.innerWidth <= 768 || (window.location?.search || '').includes('source=pwa'));
+          if (nowMobile !== this.isMobileViewportMode) {
+            this.render();
+          }
+        }, 120);
+      };
+      window.addEventListener('resize', this.resizeHandler);
     }
 
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
@@ -537,6 +554,50 @@ export class DashboardShell {
           // ignore
         }
       }
+    }
+
+    if (typeof window !== 'undefined' && (window.innerWidth <= 768 || (window.location?.search || '').includes('source=pwa'))) {
+      this.isMobileViewportMode = true;
+      this.appWrapper = null;
+      this.sidebarEl = null;
+      this.workspaceEl = null;
+      while (this.rootContainer.firstChild) {
+        this.rootContainer.removeChild(this.rootContainer.firstChild);
+      }
+      const mobileView = renderMobileCompanion({
+        activeTab: this.mobileTab,
+        profile: this.state.contactProfile,
+        pendingRequests: this.state.pendingRequests,
+        historyRequests: this.state.historyRequests,
+        connectedWards: this.getConnectedWards(),
+        activeWardFilter: this.mobileWardFilter,
+        isRefreshing: this.isRefreshing,
+        isBackendUnavailable: this.isBackendUnavailable,
+        onSelectTab: (tab) => {
+          this.mobileTab = tab;
+          this.render();
+        },
+        onSelectWardFilter: (wardId) => {
+          this.mobileWardFilter = wardId;
+          this.render();
+        },
+        onOpenRequestSheet: (reqId) => {
+          this.openMobileActionSheet(reqId);
+        },
+        onRefresh: () => {
+          void this.refresh();
+        },
+        onConnectWard: (this.apiClient || this.isMockService()) ? (code) => this.connectInvitation(code) : undefined,
+        onOpenAuth: () => this.openAuthModal(),
+        onSignOut: () => this.handleSignOut(),
+      });
+      this.rootContainer.appendChild(mobileView);
+      return;
+    }
+
+    if (this.isMobileViewportMode) {
+      this.isMobileViewportMode = false;
+      this.appWrapper = null;
     }
 
     const isInitialMount = !(
