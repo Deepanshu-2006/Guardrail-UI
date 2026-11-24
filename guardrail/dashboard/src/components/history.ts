@@ -864,6 +864,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       wards: props.connectedWards,
       activeWardId: activeFilters.wardId || 'ALL',
       requests: allRequests,
+      contextKey: 'history',
       onSelectWard: (selectedWardId) => {
         props.onFiltersChange?.({
           ...activeFilters,

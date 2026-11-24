@@ -558,17 +558,24 @@ export interface WardSwitcherOptions {
   wards: readonly { id: string; name: string; email?: string; imageUrl?: string; avatarUrl?: string }[];
   activeWardId?: string;
   requests?: readonly ApprovalRequest[];
+  contextKey?: string;
+  showAvatars?: boolean;
   onSelectWard: (wardId: string) => void;
 }
 
+const wardSwitcherGliderCache = new Map<string, { left: number; width: number }>();
+
 /**
- * Renders an accessible, responsive horizontal pill bar for switching between wards.
+ * Renders an accessible, unified segmented pill bar with a sliding olive indicator for switching between wards.
  */
 export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
   const switcher = document.createElement('div');
   switcher.className = 'gd-ward-switcher';
   switcher.setAttribute('role', 'tablist');
   switcher.setAttribute('aria-label', 'Filter by protected ward');
+
+  const cacheKey = options.contextKey || 'default';
+  const showAvatars = options.showAvatars !== false;
 
   const counts: Record<string, number> = {};
   let totalCount = 0;
@@ -582,27 +589,95 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
     }
   }
 
-  const activeId = (options.activeWardId || 'ALL').trim().toLowerCase();
+  let currentActiveId = (options.activeWardId || 'ALL').trim().toLowerCase();
+
+  // Sliding active olive indicator behind the selected tab
+  const glider = document.createElement('span');
+  glider.className = 'gd-ward-switcher-glider';
+  glider.setAttribute('aria-hidden', 'true');
+  switcher.appendChild(glider);
+
+  const pillButtons: { id: string; el: HTMLButtonElement }[] = [];
+
+  const syncGlider = (animate: boolean) => {
+    const activeEntry = pillButtons.find((p) => p.id === currentActiveId) || pillButtons[0];
+    if (!activeEntry) return;
+    const btn = activeEntry.el;
+    const targetLeft = (btn as any).offsetLeft as number | undefined;
+    const targetWidth = (btn as any).offsetWidth as number | undefined;
+    if (typeof targetLeft !== 'number' || typeof targetWidth !== 'number' || targetWidth <= 0) {
+      return;
+    }
+
+    switcher.classList.add('has-glider');
+    const prev = wardSwitcherGliderCache.get(cacheKey);
+
+    if (animate && prev && (Math.abs(prev.left - targetLeft) > 0.5 || Math.abs(prev.width - targetWidth) > 0.5)) {
+      if (glider.style) {
+        glider.style.transition = 'none';
+        glider.style.width = `${prev.width}px`;
+        glider.style.transform = `translate3d(${prev.left}px, 0, 0)`;
+      }
+      // Force layout commit before transitioning to target
+      void (glider as any).offsetWidth;
+      const runTransition = () => {
+        if (glider.style) {
+          glider.style.transition = '';
+          glider.style.width = `${targetWidth}px`;
+          glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
+        }
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(runTransition);
+      } else {
+        runTransition();
+      }
+    } else if (glider.style) {
+      glider.style.transition = 'none';
+      glider.style.width = `${targetWidth}px`;
+      glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
+      void (glider as any).offsetWidth;
+      glider.style.transition = '';
+    }
+
+    wardSwitcherGliderCache.set(cacheKey, { left: targetLeft, width: targetWidth });
+  };
+
+  const activatePill = (nextIdRaw: string) => {
+    const nextLower = nextIdRaw.trim().toLowerCase();
+    currentActiveId = nextLower;
+    for (const item of pillButtons) {
+      const isMatch = item.id === nextLower;
+      if (isMatch) {
+        item.el.classList.add('active');
+        item.el.setAttribute('aria-selected', 'true');
+      } else {
+        item.el.classList.remove('active');
+        item.el.setAttribute('aria-selected', 'false');
+      }
+    }
+    syncGlider(true);
+    options.onSelectWard(nextIdRaw);
+  };
 
   // All Wards Pill
   const allBtn = document.createElement('button');
   allBtn.type = 'button';
-  allBtn.className = `gd-ward-pill ${activeId === 'all' ? 'active' : ''}`;
+  allBtn.className = `gd-ward-pill ${currentActiveId === 'all' ? 'active' : ''}`;
   allBtn.setAttribute('role', 'tab');
-  allBtn.setAttribute('aria-selected', activeId === 'all' ? 'true' : 'false');
+  allBtn.setAttribute('aria-selected', currentActiveId === 'all' ? 'true' : 'false');
   allBtn.innerHTML = `
     <span class="gd-ward-pill-name">All Wards</span>
     <span class="gd-ward-pill-count">${totalCount}</span>
   `;
-  allBtn.addEventListener('click', () => {
-    options.onSelectWard('ALL');
-  });
+  allBtn.addEventListener('click', () => activatePill('ALL'));
+  pillButtons.push({ id: 'all', el: allBtn });
   switcher.appendChild(allBtn);
 
   // Per Ward Pills
   for (const ward of options.wards) {
     const wardLower = ward.id.trim().toLowerCase();
-    const isSelected = activeId === wardLower;
+    const isSelected = currentActiveId === wardLower;
     const wardCount = counts[wardLower] || 0;
 
     const pill = document.createElement('button');
@@ -611,15 +686,18 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
     pill.setAttribute('role', 'tab');
     pill.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 
-    const avatarSpan = document.createElement('span');
-    avatarSpan.className = 'gd-ward-pill-avatar';
-    avatarSpan.setAttribute('aria-hidden', 'true');
-    populateWardAvatar(avatarSpan, {
-      imageUrl: ward.imageUrl || ward.avatarUrl,
-      name: ward.name,
-      imgClass: 'gd-ward-pill-avatar-img',
-      iconClass: 'gd-ward-pill-avatar-icon',
-    });
+    if (showAvatars) {
+      const avatarSpan = document.createElement('span');
+      avatarSpan.className = 'gd-ward-pill-avatar';
+      avatarSpan.setAttribute('aria-hidden', 'true');
+      populateWardAvatar(avatarSpan, {
+        imageUrl: ward.imageUrl || ward.avatarUrl,
+        name: ward.name,
+        imgClass: 'gd-ward-pill-avatar-img',
+        iconClass: 'gd-ward-pill-avatar-icon',
+      });
+      pill.appendChild(avatarSpan);
+    }
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'gd-ward-pill-name';
@@ -629,13 +707,18 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
     countSpan.className = 'gd-ward-pill-count';
     countSpan.textContent = String(wardCount);
 
-    pill.appendChild(avatarSpan);
     pill.appendChild(nameSpan);
     pill.appendChild(countSpan);
-    pill.addEventListener('click', () => {
-      options.onSelectWard(ward.id);
-    });
+    pill.addEventListener('click', () => activatePill(ward.id));
+    pillButtons.push({ id: wardLower, el: pill });
     switcher.appendChild(pill);
+  }
+
+  // Measure and animate glider once attached to browser DOM
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      syncGlider(true);
+    });
   }
 
   return switcher;

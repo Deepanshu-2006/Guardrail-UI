@@ -12594,12 +12594,19 @@ article.gd-card-collapsed,
    ========================================================================= */
 
 .gd-ward-switcher {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  max-width: 100%;
   overflow-x: auto;
-  padding: 4px 2px 14px 2px;
-  margin-bottom: 8px;
+  overflow-y: hidden;
+  padding: 4px;
+  margin-bottom: 14px;
+  background: rgba(39, 49, 33, 0.065);
+  border: 1px solid rgba(39, 49, 33, 0.13);
+  border-radius: 9999px;
+  box-shadow: inset 0 1px 2px rgba(27, 33, 23, 0.06);
   scrollbar-width: none;
 }
 
@@ -12607,28 +12614,49 @@ article.gd-card-collapsed,
   display: none;
 }
 
+.gd-ward-switcher-glider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: 9999px;
+  background: #273121;
+  box-shadow: 0 2px 8px rgba(27, 33, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.44s cubic-bezier(0.22, 1, 0.36, 1), width 0.44s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-ward-switcher.has-glider .gd-ward-switcher-glider {
+  opacity: 1;
+}
+
 .gd-ward-pill {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 14px;
-  background: rgba(39, 49, 33, 0.05);
-  border: 1px solid rgba(39, 49, 33, 0.12);
+  padding: 6px 13px;
+  background: transparent;
+  border: none;
   border-radius: 9999px;
-  color: #555A50;
+  color: #4A5340;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  transition: color 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   user-select: none;
 }
 
 .gd-ward-pill:hover {
-  background: rgba(39, 49, 33, 0.09);
-  color: #273121;
-  border-color: rgba(39, 49, 33, 0.22);
+  color: #1B2117;
 }
 
 .gd-ward-pill:focus-visible {
@@ -12639,9 +12667,16 @@ article.gd-card-collapsed,
 .gd-ward-pill.active {
   background: #273121;
   color: #FAF6ED;
-  border-color: #273121;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(39, 49, 33, 0.2);
+}
+
+.gd-ward-switcher.has-glider .gd-ward-pill.active {
+  background: transparent;
+  color: #FAF6ED;
+}
+
+.gd-ward-switcher.has-glider .gd-ward-pill.active:hover {
+  color: #FFFFFF;
 }
 
 .gd-ward-pill-avatar {
@@ -14154,7 +14189,7 @@ article.gd-card-collapsed,
    PENDING APPROVALS POPUP MODAL (MATCHES WARDS MODAL QUIET ASSURANCE)
    ==================================================================== */
 .gd-pending-modal-card {
-  max-width: 680px;
+  max-width: 720px;
 }
 
 .gd-wards-modal-badge.has-pending {
@@ -14166,16 +14201,13 @@ article.gd-card-collapsed,
 .gd-pending-modal-filters {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 2px 2px 14px 2px;
+  padding: 2px 0 12px 0;
   border-bottom: 1px solid rgba(39, 49, 33, 0.08);
   margin-bottom: 4px;
 }
 
-.gd-pending-modal-pill {
-  padding: 4px 11px;
-  font-size: 12px;
+.gd-pending-modal-filters .gd-ward-switcher {
+  margin-bottom: 0;
 }
 
 .gd-pending-modal-info {
@@ -14201,7 +14233,9 @@ article.gd-card-collapsed,
 
 .gd-pending-modal-meta {
   max-width: none;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   color: #5F6656;

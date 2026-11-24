@@ -906,24 +906,25 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               // CRITICAL: If no active pairing exists, DO NOT auto-insert trusted_contacts!
               // Pairing MUST only occur when the caretaker enters the pairing code in the dashboard.
             } else {
-              // Ward signed out: clear active contact pairings so dashboard shows unlinked
-              db.prepare("DELETE FROM trusted_contacts").run();
+              // Preserve existing multi-ward trusted_contacts rows when an extension session is unauthenticated.
               isLinked = false;
             }
           }
 
-          // 3. Emit real-time notification to all connected dashboard SSE streams
-          defaultApprovalEventHub.emit({
-            type: 'ward_synced' as any,
-            ward: {
-              actorId: isAuthenticated ? actorId : null,
-              fullName: isAuthenticated ? fullName : null,
-              email: isAuthenticated ? email : null,
-              picture: isAuthenticated ? picture : null,
-              isAuthenticated,
-              isLinked,
-            },
-          } as any);
+          // 3. Emit real-time notification only when an authenticated ward synced
+          if (isAuthenticated && actorId) {
+            defaultApprovalEventHub.emit({
+              type: 'ward_synced' as any,
+              ward: {
+                actorId,
+                fullName,
+                email,
+                picture,
+                isAuthenticated: true,
+                isLinked,
+              },
+            } as any);
+          }
 
           response.statusCode = 200;
           response.end(JSON.stringify({

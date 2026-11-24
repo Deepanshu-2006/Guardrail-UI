@@ -617,6 +617,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           wards: props.connectedWards,
           activeWardId: activeFilters.wardId || 'ALL',
           requests: displayRequests,
+          contextKey: 'pending',
           onSelectWard: (selectedWardId) => {
             props.onFiltersChange?.({
               ...activeFilters,

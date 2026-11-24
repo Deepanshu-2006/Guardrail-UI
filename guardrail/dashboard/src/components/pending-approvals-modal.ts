@@ -8,6 +8,7 @@
  */
 
 import { ApprovalRequest, RiskLevel, ViewStatus } from '../types.js';
+import { renderWardSwitcher } from './filters.js';
 import { createIcon, populateWardAvatar } from './icons.js';
 import { formatWardDisplayName } from './overview.js';
 import { WardSummary } from './wards-control-modal.js';
@@ -145,7 +146,7 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
   const listWrap = document.createElement('div');
   listWrap.className = 'gd-pending-modal-list-wrap';
 
-  const renderBodyContent = () => {
+  const renderListItems = () => {
     while (listWrap.firstChild) {
       listWrap.removeChild(listWrap.firstChild);
     }
@@ -219,48 +220,6 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
       emptyState.appendChild(emptyDesc);
       listWrap.appendChild(emptyState);
       return;
-    }
-
-    // Optional ward filter tabs when multiple wards are connected
-    if (wards.length > 1) {
-      const filterStrip = document.createElement('div');
-      filterStrip.className = 'gd-pending-modal-filters';
-      filterStrip.setAttribute('role', 'tablist');
-      filterStrip.setAttribute('aria-label', 'Filter pending requests by ward');
-
-      const buildFilterBtn = (id: string, label: string, count: number) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        const isActive = activeWardFilter.toLowerCase() === id.toLowerCase();
-        btn.className = `gd-ward-pill gd-pending-modal-pill ${isActive ? 'active' : ''}`;
-        btn.setAttribute('role', 'tab');
-        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-
-        const textSpan = document.createElement('span');
-        textSpan.className = 'gd-ward-pill-name';
-        textSpan.textContent = label;
-
-        const numSpan = document.createElement('span');
-        numSpan.className = 'gd-ward-pill-count';
-        numSpan.textContent = String(count);
-
-        btn.appendChild(textSpan);
-        btn.appendChild(numSpan);
-        btn.addEventListener('click', () => {
-          activeWardFilter = id;
-          renderBodyContent();
-        });
-        return btn;
-      };
-
-      filterStrip.appendChild(buildFilterBtn('ALL', 'All Wards', pendingList.length));
-      for (const w of wards) {
-        const wCount = pendingList.filter(
-          (r) => (r.requesterId || '').toLowerCase() === w.id.toLowerCase()
-        ).length;
-        filterStrip.appendChild(buildFilterBtn(w.id, w.name, wCount));
-      }
-      listWrap.appendChild(filterStrip);
     }
 
     const filtered =
@@ -390,7 +349,26 @@ export function renderPendingApprovalsModal(props: PendingApprovalsModalProps): 
     listWrap.appendChild(itemsList);
   };
 
-  renderBodyContent();
+  // Persistent segmented ward switcher so the olive glider animates smoothly in-place
+  if (wards.length > 1 && pendingList.length > 0) {
+    const switcherWrap = document.createElement('div');
+    switcherWrap.className = 'gd-pending-modal-filters';
+    const switcher = renderWardSwitcher({
+      wards,
+      activeWardId: activeWardFilter,
+      requests: pendingList,
+      contextKey: 'pending-modal',
+      showAvatars: false,
+      onSelectWard: (selectedWardId) => {
+        activeWardFilter = selectedWardId;
+        renderListItems();
+      },
+    });
+    switcherWrap.appendChild(switcher);
+    body.appendChild(switcherWrap);
+  }
+
+  renderListItems();
   body.appendChild(listWrap);
 
   // Subtle footer linking to the full Pending Approvals view

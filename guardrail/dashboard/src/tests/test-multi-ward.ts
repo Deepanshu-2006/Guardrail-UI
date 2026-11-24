@@ -323,6 +323,8 @@ async function runMultiWardTests() {
 
     assert(switcher.className.includes('gd-ward-switcher'), 'Switcher has .gd-ward-switcher class');
     assert(switcher.getAttribute('role') === 'tablist', 'Switcher has role="tablist"');
+    const gliderEl = switcher.querySelector('.gd-ward-switcher-glider');
+    assert(gliderEl !== null, 'Switcher renders sliding olive glider indicator');
 
     const pills = switcher.querySelectorAll<HTMLButtonElement>('.gd-ward-pill');
     assert(pills.length === 3, 'Renders 3 pills (All Wards + 2 connected wards)');
