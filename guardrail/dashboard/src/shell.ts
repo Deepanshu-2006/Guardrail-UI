@@ -37,6 +37,7 @@ import { defaultDashboardPushService } from './services/push-notification-servic
 import { createIcon, setAnimatedHeading } from './components/icons.js';
 import { PwaInstallManager } from './components/pwa-install-banner.js';
 import { renderMobileActionSheet } from './components/mobile-action-sheet.js';
+import { renderPendingApprovalsModal } from './components/pending-approvals-modal.js';
 import { renderWardsControlModal } from './components/wards-control-modal.js';
 
 export class DashboardShell {
@@ -742,6 +743,30 @@ export class DashboardShell {
           }
         }
 
+        const approvalsCard = existingActiveSection.querySelector('.gd-metric-card-approvals');
+        if (approvalsCard) {
+          const pCount = this.state.pendingRequests.length;
+          approvalsCard.setAttribute(
+            'aria-label',
+            pCount > 0
+              ? `Review ${pCount} pending approvals in popup`
+              : 'View pending approvals queue in popup'
+          );
+          const approvalsBadge = approvalsCard.querySelector('.gd-metric-badge');
+          if (approvalsBadge) {
+            approvalsBadge.textContent = pCount > 0 ? 'Action Required' : 'All Clear';
+          }
+          const approvalsTag = approvalsCard.querySelector('.gd-metric-manage-tag');
+          if (approvalsTag) {
+            approvalsTag.innerHTML = `${pCount > 0 ? 'Review' : 'View'} <span class="gd-arrow" aria-hidden="true">&rarr;</span>`;
+          }
+          const approvalsDesc = approvalsCard.querySelector('.gd-metric-desc');
+          if (approvalsDesc) {
+            approvalsDesc.textContent =
+              pCount > 0 ? 'Requests waiting for your review' : 'Queue is all clear';
+          }
+        }
+
         const wardHeroName = existingActiveSection.querySelector('.gd-ward-hero-name');
         if (wardHeroName) {
           const expectedHeading = wardCount > 1
@@ -869,6 +894,7 @@ export class DashboardShell {
         this.setActiveView('history');
       },
       onOpenWardsControl: (fallbackWards) => this.openWardsControlModal(fallbackWards),
+      onOpenPendingModal: () => this.openPendingApprovalsModal(),
       onOpenAuth: () => this.openAuthModal(),
       onSelectPending: (id) => {
         this.setActiveView('pending');
@@ -2320,8 +2346,61 @@ export class DashboardShell {
    */
   public closeWardsControlModal(): void {
     if (typeof document === 'undefined') return;
-    document.querySelectorAll('#gd-wards-control-modal-root, .gd-wards-modal-backdrop').forEach((el) => {
-      el.remove();
+    document.querySelectorAll('#gd-wards-control-modal-root').forEach((el) => {
+      if (typeof (el as any).remove === 'function') {
+        el.remove();
+      } else if (el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    });
+  }
+
+  /**
+   * Opens the Pending Approvals popup dialog from the Overview metric card.
+   */
+  public openPendingApprovalsModal(): void {
+    if (typeof document === 'undefined') return;
+    this.closeWardsControlModal();
+    this.closePendingApprovalsModal();
+
+    const mountTarget = document.body || this.rootContainer;
+    if (!mountTarget) return;
+
+    const modal = renderPendingApprovalsModal({
+      pendingRequests: this.state.pendingRequests,
+      connectedWards: this.getConnectedWards(),
+      pendingStatus: this.state.pendingStatus,
+      errorMessage: this.state.errorMessage,
+      isBackendUnavailable: this.state.isBackendUnavailable,
+      onClose: () => {
+        this.closePendingApprovalsModal();
+      },
+      onSelectPending: (id: string) => {
+        this.closePendingApprovalsModal();
+        this.setActiveView('pending');
+        this.selectRequest(id);
+      },
+      onViewPending: () => {
+        this.closePendingApprovalsModal();
+        this.setActiveView('pending');
+      },
+      onRefresh: this.apiClient ? () => void this.refresh() : undefined,
+    });
+
+    mountTarget.appendChild(modal);
+  }
+
+  /**
+   * Closes the Pending Approvals popup dialog.
+   */
+  public closePendingApprovalsModal(): void {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('#gd-pending-approvals-modal-root').forEach((el) => {
+      if (typeof (el as any).remove === 'function') {
+        el.remove();
+      } else if (el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
     });
   }
 

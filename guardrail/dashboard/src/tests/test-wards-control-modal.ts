@@ -385,7 +385,8 @@ async function runTests(): Promise<void> {
   assertEquals(aliceEmail?.textContent, 'alice.johnson@example.com', 'Alice email renders correctly');
 
   const aliceBadge = aliceCard.querySelector('.gd-ward-pending-badge');
-  assertTrue(aliceBadge?.textContent.includes('1 Pending Approval'), 'Alice shows "1 Pending Approval"');
+  assertEquals(aliceBadge?.textContent.trim(), '1', 'Alice shows compact pending count "1"');
+  assertTrue(aliceBadge?.getAttribute('aria-label')?.includes('1 Pending Approval') ?? false, 'Alice pending badge retains accessible label');
 
   // Test Review button on Alice's card
   const aliceReviewBtn = aliceCard.querySelector('.gd-ward-btn-primary');

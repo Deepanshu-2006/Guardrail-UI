@@ -250,13 +250,17 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       pendingBadge.className = `gd-ward-pending-badge ${pendingCount > 0 ? 'warning' : 'clear'}`;
 
       if (pendingCount > 0) {
+        const pendingLabel = `${pendingCount} Pending ${pendingCount === 1 ? 'Approval' : 'Approvals'}`;
+        pendingBadge.setAttribute('aria-label', pendingLabel);
+        pendingBadge.title = pendingLabel;
+
         const pulseDot = document.createElement('span');
         pulseDot.className = 'gd-pulse-dot';
         pendingBadge.appendChild(pulseDot);
 
         const badgeText = document.createElement('span');
         badgeText.className = 'gd-badge-text';
-        badgeText.textContent = `${pendingCount} Pending ${pendingCount === 1 ? 'Approval' : 'Approvals'}`;
+        badgeText.textContent = String(pendingCount);
         pendingBadge.appendChild(badgeText);
       } else {
         const badgeText = document.createElement('span');
@@ -278,7 +282,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       const reviewBtnText = document.createElement('span');
       reviewBtnText.textContent = pendingCount > 0
-        ? `Review Approvals (${pendingCount})`
+        ? 'Review Approvals'
         : 'View History';
 
       const reviewArrow = document.createElement('span');

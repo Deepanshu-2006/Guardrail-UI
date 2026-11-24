@@ -17,6 +17,7 @@
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
 import { showConnectWardModal } from './connect-modal.js';
+import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
 
 export interface OverviewProps {
@@ -40,9 +41,10 @@ export interface OverviewProps {
   onFilterWardPending?: (wardId: string) => void;
   onFilterWardHistory?: (wardId: string) => void;
   onOpenWardsControl?: (fallbackWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[]) => void;
+  onOpenPendingModal?: () => void;
   onRefresh?: () => void;
   onOpenAuth?: () => void;
-  connectedWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[];
+  connectedWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string; imageUrl?: string; avatarUrl?: string }[];
 }
 
 /**
@@ -345,9 +347,18 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   wardCard.appendChild(wardDesc);
   grid.appendChild(wardCard);
 
-  // Metric 2: Pending Actions
+  // Metric 2: Pending Actions (Interactive — opens Pending Approvals popup)
   const pendingCard = document.createElement('div');
-  pendingCard.className = 'gd-metric-card';
+  pendingCard.className = 'gd-metric-card gd-metric-card-interactive gd-metric-card-approvals';
+  pendingCard.setAttribute('role', 'button');
+  pendingCard.setAttribute('tabindex', '0');
+  pendingCard.setAttribute('aria-haspopup', 'dialog');
+  pendingCard.setAttribute(
+    'aria-label',
+    props.pendingCount > 0
+      ? `Review ${props.pendingCount} pending approvals in popup`
+      : 'View pending approvals queue in popup'
+  );
 
   const pendingHeader = document.createElement('div');
   pendingHeader.className = 'gd-metric-header';
@@ -364,9 +375,14 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   pendingBadge.className = 'gd-metric-badge';
   pendingBadge.textContent = props.pendingCount > 0 ? 'Action Required' : 'All Clear';
 
+  const pendingReviewTag = document.createElement('span');
+  pendingReviewTag.className = 'gd-metric-manage-tag';
+  pendingReviewTag.innerHTML = `${props.pendingCount > 0 ? 'Review' : 'View'} <span class="gd-arrow" aria-hidden="true">&rarr;</span>`;
+
   pendingHeader.appendChild(pendingIndex);
   pendingHeader.appendChild(pendingLabel);
   pendingHeader.appendChild(pendingBadge);
+  pendingHeader.appendChild(pendingReviewTag);
 
   const pendingValueRow = document.createElement('div');
   pendingValueRow.className = 'gd-metric-value-row';
@@ -377,7 +393,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const pendingUnit = document.createElement('span');
   pendingUnit.className = 'gd-metric-unit';
-  pendingUnit.textContent = props.pendingCount === 1 ? 'Needs Review' : props.pendingCount > 0 ? 'Needs Review' : 'Needs Review';
+  pendingUnit.textContent = 'Needs Review';
 
   pendingValueRow.appendChild(pendingValue);
   pendingValueRow.appendChild(pendingUnit);
@@ -388,6 +404,44 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     props.pendingCount > 0
       ? 'Requests waiting for your review'
       : 'Queue is all clear';
+
+  const triggerPendingModal = () => {
+    if (props.onOpenPendingModal) {
+      props.onOpenPendingModal();
+    } else {
+      const removeEl = (el: Element | null) => {
+        if (!el) return;
+        if (typeof (el as any).remove === 'function') {
+          (el as any).remove();
+        } else if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      };
+      document.querySelectorAll('#gd-pending-approvals-modal-root').forEach(removeEl);
+      const modal = renderPendingApprovalsModal({
+        pendingRequests: props.pendingRequests ?? [],
+        connectedWards: props.connectedWards ?? wardsList,
+        pendingStatus: props.pendingStatus,
+        errorMessage: props.errorMessage,
+        isBackendUnavailable: props.isBackendUnavailable,
+        onClose: () => {
+          removeEl(document.getElementById('gd-pending-approvals-modal-root'));
+        },
+        onSelectPending: props.onSelectPending,
+        onViewPending: props.onViewPending,
+        onRefresh: props.onRefresh,
+      });
+      document.body?.appendChild(modal);
+    }
+  };
+
+  pendingCard.addEventListener('click', triggerPendingModal);
+  pendingCard.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      triggerPendingModal();
+    }
+  });
 
   pendingCard.appendChild(pendingHeader);
   pendingCard.appendChild(pendingValueRow);
@@ -502,188 +556,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     section.appendChild(notifItem);
   }
 
-  // =========================================================================
-  // SECTION D: PENDING APPROVAL REQUESTS
-  // =========================================================================
-  const pendingSection = document.createElement('div');
-  pendingSection.className = 'gd-card gd-overview-pending-section gd-scroll-reveal';
-  pendingSection.id = 'gd-overview-pending-section';
-
-  const pendingSecHeader = document.createElement('div');
-  pendingSecHeader.className = 'gd-overview-pending-header';
-
-  const pendingSecTitle = document.createElement('h2');
-  pendingSecTitle.className = 'gd-section-title';
-  pendingSecTitle.textContent = 'Pending approval requests';
-
-  const pendingSecSub = document.createElement('p');
-  pendingSecSub.className = 'gd-section-subtitle';
-  pendingSecSub.textContent = 'Requests waiting for your review and approval.';
-
-  pendingSecHeader.appendChild(pendingSecTitle);
-  pendingSecHeader.appendChild(pendingSecSub);
-  pendingSection.appendChild(pendingSecHeader);
-
-  const pendingList = props.pendingRequests ?? [];
-
-  if (props.pendingStatus === 'loading') {
-    // Skeleton loader
-    const skeletonWrap = document.createElement('div');
-    skeletonWrap.className = 'gd-overview-pending-skeleton';
-    skeletonWrap.setAttribute('aria-busy', 'true');
-    for (let i = 0; i < 2; i++) {
-      const line1 = document.createElement('div');
-      line1.className = 'gd-skeleton gd-skeleton-line';
-      const line2 = document.createElement('div');
-      line2.className = 'gd-skeleton gd-skeleton-line short';
-      skeletonWrap.appendChild(line1);
-      skeletonWrap.appendChild(line2);
-    }
-    pendingSection.appendChild(skeletonWrap);
-  } else if ((props.pendingStatus === 'error' || props.isBackendUnavailable) && pendingList.length === 0) {
-    // Offline / error state
-    const errBox = document.createElement('div');
-    errBox.className = 'gd-error-banner';
-    errBox.setAttribute('role', 'alert');
-
-    const errIcon = document.createElement('span');
-    errIcon.className = 'gd-error-banner-icon';
-    errIcon.setAttribute('aria-hidden', 'true');
-    errIcon.appendChild(createIcon('alert-circle'));
-
-    const errText = document.createElement('span');
-    errText.className = 'gd-error-banner-text';
-    errText.textContent = props.errorMessage || 'Unable to retrieve approval requests. Check your connection and retry.';
-
-    const errContent = document.createElement('div');
-    errContent.className = 'gd-error-content';
-    errContent.appendChild(errIcon);
-    errContent.appendChild(errText);
-    errBox.appendChild(errContent);
-
-    if (props.onRefresh) {
-      const retryBtn = document.createElement('button');
-      retryBtn.type = 'button';
-      retryBtn.className = 'gd-btn-retry';
-      retryBtn.textContent = 'Retry';
-      retryBtn.addEventListener('click', () => props.onRefresh?.());
-      errBox.appendChild(retryBtn);
-    }
-    pendingSection.appendChild(errBox);
-  } else if (pendingList.length > 0) {
-    // Actionable Pending Items List (Top 3 on Overview)
-    const itemsContainer = document.createElement('div');
-    itemsContainer.className = 'gd-overview-pending-list';
-
-    for (const req of pendingList.slice(0, 3)) {
-      const item = document.createElement('div');
-      item.className = 'gd-overview-pending-item';
-
-      const left = document.createElement('div');
-      left.className = 'gd-overview-pending-left';
-
-      const topRow = document.createElement('div');
-      topRow.className = 'gd-overview-pending-top-row';
-
-      const desc = document.createElement('span');
-      desc.className = 'gd-overview-pending-desc';
-      desc.textContent = req.actionDescription;
-
-      const riskBadge = document.createElement('span');
-      const riskClass = (req.riskLevel || RiskLevel.HIGH).toLowerCase();
-      riskBadge.className = `gd-risk-badge gd-risk-${riskClass} ${riskClass}`;
-      riskBadge.textContent = req.riskLevel || 'HIGH';
-
-      topRow.appendChild(desc);
-      topRow.appendChild(riskBadge);
-
-      const metaRow = document.createElement('div');
-      metaRow.className = 'gd-overview-pending-meta';
-      const host = req.hostname || 'Browser Action';
-      const matchedPendingWard = (props.connectedWards || []).find(
-        (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
-      );
-      const pendingWardLabel = req.requesterId
-        ? formatWardDisplayName(matchedPendingWard?.name, req.requesterId)
-        : '';
-      const reqTime = req.createdAt || (req as any).timestamp;
-      const timeStr = reqTime
-        ? new Date(reqTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'Just now';
-      metaRow.textContent = pendingWardLabel
-        ? `${pendingWardLabel} · ${host} · Requested ${timeStr}`
-        : `${host} · Requested ${timeStr}`;
-
-      left.appendChild(topRow);
-      left.appendChild(metaRow);
-
-      const actionBtn = document.createElement('button');
-      actionBtn.type = 'button';
-      actionBtn.className = 'gd-btn-overview-review';
-      actionBtn.setAttribute('aria-label', `Review and evaluate ${req.actionDescription}`);
-      actionBtn.textContent = 'Review & Decide →';
-      actionBtn.addEventListener('click', () => {
-        if (props.onSelectPending) {
-          props.onSelectPending(req.id);
-        } else if (props.onViewPending) {
-          props.onViewPending();
-        }
-      });
-
-      item.appendChild(left);
-      item.appendChild(actionBtn);
-      itemsContainer.appendChild(item);
-    }
-
-    pendingSection.appendChild(itemsContainer);
-
-    if (pendingList.length > 3 && props.onViewPending) {
-      const viewAllBtn = document.createElement('button');
-      viewAllBtn.type = 'button';
-      viewAllBtn.className = 'gd-btn-view-all-history';
-
-      const textSpan = document.createElement('span');
-      textSpan.textContent = `View All ${pendingList.length} Pending Approvals`;
-
-      const arrowSpan = document.createElement('span');
-      arrowSpan.className = 'gd-arrow';
-      arrowSpan.setAttribute('aria-hidden', 'true');
-      arrowSpan.textContent = '→';
-
-      viewAllBtn.appendChild(textSpan);
-      viewAllBtn.appendChild(arrowSpan);
-
-      viewAllBtn.addEventListener('click', () => {
-        props.onViewPending?.();
-      });
-      pendingSection.appendChild(viewAllBtn);
-    }
-  } else {
-    // Clean Empty State for Pending Requests
-    const emptyBox = document.createElement('div');
-    emptyBox.className = 'gd-overview-empty-pending';
-
-    const empIcon = document.createElement('div');
-    empIcon.className = 'gd-placeholder-icon';
-    empIcon.setAttribute('aria-hidden', 'true');
-    empIcon.appendChild(createIcon('shield-check', 'gd-icon-empty-shield'));
-
-    const empTitle = document.createElement('h3');
-    empTitle.className = 'gd-placeholder-title';
-    empTitle.textContent = 'Review Queue All Clear';
-
-    const empText = document.createElement('p');
-    empText.className = 'gd-placeholder-text';
-    empText.textContent =
-      'No actions are currently waiting for your review. When a request needs approval, it will appear here.';
-
-    emptyBox.appendChild(empIcon);
-    emptyBox.appendChild(empTitle);
-    emptyBox.appendChild(empText);
-    pendingSection.appendChild(emptyBox);
-  }
-
-  // Operational section: Pending Approvals (will be mounted in primary column)
+  // Operational section: Protected Ward Oversight (mounted in secondary column)
   let wardOversightSection: HTMLElement;
 
   // =========================================================================
@@ -1339,10 +1212,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const mainGrid = document.createElement('div');
   mainGrid.className = 'gd-overview-main-grid';
 
-  // Primary operational column (7/12): Pending Approvals + Recent Activity
+  // Primary operational column (7/12): Recent Activity (Pending Approvals moved to popup from 02 / Approvals card)
   const colPrimary = document.createElement('div');
   colPrimary.className = 'gd-overview-col-primary';
-  colPrimary.appendChild(pendingSection);
   colPrimary.appendChild(activitySection);
 
   // Secondary supporting column (5/12): Connect a Ward + Decoupled Architecture

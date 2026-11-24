@@ -3051,7 +3051,7 @@ async function runDashboardTests() {
     assert(notifSuccess?.textContent.includes('All Systems Normal') ?? false, 'Communicates all systems normal');
     normalShell.destroy();
 
-    // 3. Actionable Pending Approvals Quick-Review on Overview
+    // 3. Actionable Pending Approvals Popup Modal from 02 / Approvals Metric Card
     const quickShell = new DashboardShell({
       container: testContainer,
       initialView: 'overview',
@@ -3071,19 +3071,31 @@ async function runDashboardTests() {
       ],
       autoFetch: false,
     });
-    const quickSection = rootElement.querySelector('#gd-overview-pending-section');
-    assert(quickSection !== null, 'Pending approval section rendered on Overview');
-    const quickItem = quickSection?.querySelector('.gd-overview-pending-item');
-    assert(quickItem !== null, 'Pending request item rendered on Overview');
-    assert(quickItem?.textContent.includes('Wire Transfer to Unknown Payee') ?? false, 'Displays action description');
-    assert(quickItem?.textContent.includes('CRITICAL') ?? false, 'Displays critical risk level badge');
+    const inlinePendingSection = rootElement.querySelector('#gd-overview-pending-section');
+    assert(inlinePendingSection === null, 'Inline pending section is removed from Overview page');
 
-    // Clicking "Review & Decide →" button navigates to pending view with request selected
-    const reviewBtn = quickItem?.querySelector('.gd-btn-overview-review') as MockDOMElement | null;
-    assert(reviewBtn !== null, 'Review & Decide button present on overview item');
+    const approvalsMetricCard = rootElement.querySelector('.gd-metric-card-approvals') as MockDOMElement | null;
+    assert(approvalsMetricCard !== null, '02 / Approvals metric card has .gd-metric-card-approvals class');
+    assertEquals(approvalsMetricCard?.getAttribute('role'), 'button', '02 / Approvals metric card is interactive button');
+    assertEquals(approvalsMetricCard?.getAttribute('aria-haspopup'), 'dialog', '02 / Approvals metric card has aria-haspopup="dialog"');
+
+    // Click 02 / Approvals metric card to open Pending Approvals popup modal
+    approvalsMetricCard?.listeners.click[0]({ preventDefault() {} });
+    const pendingModal = rootElement.querySelector('#gd-pending-approvals-modal-root');
+    assert(pendingModal !== null, 'Clicking 02 / Approvals opens Pending Approvals popup modal');
+
+    const modalItem = pendingModal?.querySelector('.gd-pending-modal-item');
+    assert(modalItem !== null, 'Pending request item rendered inside popup modal');
+    assert(modalItem?.textContent.includes('Wire Transfer to Unknown Payee') ?? false, 'Popup displays action description');
+    assert(modalItem?.textContent.includes('CRITICAL') ?? false, 'Popup displays critical risk level badge');
+
+    // Clicking "Review & Decide →" button inside popup closes popup and navigates to pending view with request selected
+    const reviewBtn = modalItem?.querySelector('.gd-btn-overview-review') as MockDOMElement | null;
+    assert(reviewBtn !== null, 'Review & Decide button present on popup item');
     reviewBtn?.listeners.click[0]({ preventDefault() {} });
     assertEquals(quickShell.getState().activeView, 'pending', 'Active view transitioned to pending');
-    assertEquals(quickShell.getState().selectedRequestId, 'apr_quick_01', 'Selected request ID matches clicked overview item');
+    assertEquals(quickShell.getState().selectedRequestId, 'apr_quick_01', 'Selected request ID matches clicked popup item');
+    assert(rootElement.querySelector('#gd-pending-approvals-modal-root') === null, 'Popup modal closes after selecting request');
     quickShell.destroy();
 
     // 4. Authorized Ward Oversight & Tenant Isolation Guarantee
