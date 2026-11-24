@@ -111,47 +111,45 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   card.appendChild(header);
 
   // =========================================================================
-  // 2. WARM OLIVE EDITORIAL SUMMARY STRIP
+  // 2. QUIET ASSURANCE EDITORIAL METADATA STRIP (Zero pills, pure typography)
   // =========================================================================
   const allPending = props.pendingRequests ?? [];
   const summaryStrip = document.createElement('div');
   summaryStrip.className = 'gd-wards-modal-summary-strip';
 
   if (wardCount > 0) {
-    const chip1 = document.createElement('div');
-    chip1.className = 'gd-wards-summary-chip online';
-    chip1.innerHTML = `
-      <span class="gd-chip-dot online" aria-hidden="true"></span>
-      <span class="gd-chip-text">${wardCount} Protected</span>
-    `;
+    const metaProtected = document.createElement('span');
+    metaProtected.className = 'gd-summary-meta-item';
+    metaProtected.textContent = `${wardCount} Protected`;
 
-    const chip2 = document.createElement('div');
-    chip2.className = `gd-wards-summary-chip ${allPending.length > 0 ? 'warning' : 'clear'}`;
-    chip2.innerHTML = `
-      <span class="gd-chip-dot ${allPending.length > 0 ? 'pulse' : 'check'}" aria-hidden="true"></span>
-      <span class="gd-chip-text">${allPending.length > 0 ? `${allPending.length} Needs Review` : 'All Clear'}</span>
-    `;
+    const divider1 = document.createElement('span');
+    divider1.className = 'gd-summary-meta-divider';
+    divider1.textContent = '·';
 
-    const chip3 = document.createElement('div');
-    chip3.className = 'gd-wards-summary-chip shield';
-    chip3.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-      </svg>
-      <span class="gd-chip-text">Live Protection</span>
-    `;
+    const metaReview = document.createElement('span');
+    metaReview.className = `gd-summary-meta-item ${allPending.length > 0 ? 'attention' : ''}`;
+    metaReview.textContent = allPending.length > 0
+      ? `${allPending.length} Needs Review`
+      : 'All Clear';
 
-    summaryStrip.appendChild(chip1);
-    summaryStrip.appendChild(chip2);
-    summaryStrip.appendChild(chip3);
+    const divider2 = document.createElement('span');
+    divider2.className = 'gd-summary-meta-divider';
+    divider2.textContent = '·';
+
+    const metaLive = document.createElement('span');
+    metaLive.className = 'gd-summary-meta-item live';
+    metaLive.textContent = 'Live Protection';
+
+    summaryStrip.appendChild(metaProtected);
+    summaryStrip.appendChild(divider1);
+    summaryStrip.appendChild(metaReview);
+    summaryStrip.appendChild(divider2);
+    summaryStrip.appendChild(metaLive);
   } else {
-    const chipAwaiting = document.createElement('div');
-    chipAwaiting.className = 'gd-wards-summary-chip awaiting';
-    chipAwaiting.innerHTML = `
-      <span class="gd-chip-dot awaiting" aria-hidden="true"></span>
-      <span class="gd-chip-text">Awaiting First Ward Connection</span>
-    `;
-    summaryStrip.appendChild(chipAwaiting);
+    const metaEmpty = document.createElement('span');
+    metaEmpty.className = 'gd-summary-meta-item';
+    metaEmpty.textContent = 'Awaiting your first ward invitation';
+    summaryStrip.appendChild(metaEmpty);
   }
   card.appendChild(summaryStrip);
 
@@ -260,12 +258,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       queueStatus.appendChild(pendingBadge);
 
-      topRow.appendChild(avatar);
-      topRow.appendChild(identityCol);
-      topRow.appendChild(queueStatus);
-      wardCard.appendChild(topRow);
-
-      // Bottom Row: Action Controls
+      // Action Controls
       const actionsRow = document.createElement('div');
       actionsRow.className = 'gd-ward-control-actions';
 
@@ -330,6 +323,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       confirmContainer.appendChild(confirmButtonsRow);
 
       disconnectBtn.addEventListener('click', () => {
+        topRow.style.display = 'none';
         actionsRow.style.display = 'none';
         confirmContainer.style.display = 'flex';
       });
@@ -337,6 +331,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       confirmNoBtn.addEventListener('click', () => {
         confirmContainer.style.display = 'none';
         actionsRow.style.display = 'flex';
+        topRow.style.display = 'flex';
       });
 
       confirmYesBtn.addEventListener('click', async () => {
@@ -354,7 +349,12 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       actionsRow.appendChild(reviewBtn);
       actionsRow.appendChild(disconnectBtn);
 
-      wardCard.appendChild(actionsRow);
+      topRow.appendChild(avatar);
+      topRow.appendChild(identityCol);
+      topRow.appendChild(queueStatus);
+      topRow.appendChild(actionsRow);
+
+      wardCard.appendChild(topRow);
       wardCard.appendChild(confirmContainer);
       listContainer.appendChild(wardCard);
     });
