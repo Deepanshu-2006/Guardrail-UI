@@ -14210,6 +14210,127 @@ article.gd-card-collapsed,
 }
 
 /* ====================================================================
+   MANAGED WARDS POPUP MODAL (EDITORIAL QUIET ASSURANCE POLISH)
+   ==================================================================== */
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-wards-modal-header {
+  align-items: flex-start;
+  padding: 22px 26px 12px 26px;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-wards-modal-header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-wards-modal-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-wards-modal-badge {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7A8472;
+  align-self: baseline;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-wards-modal-summary-strip {
+  padding: 0 26px 14px 26px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.09);
+  font-size: 12.5px;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-control-card {
+  padding: 13px 10px !important;
+  margin: 0 -10px !important;
+  border-radius: 10px !important;
+  transition: background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-control-card:hover {
+  background: rgba(39, 49, 33, 0.032) !important;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-control-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50% !important;
+  background: #E2DAC6;
+  border: 1px solid rgba(39, 49, 33, 0.14);
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-control-id-tag {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #889080;
+  max-width: 150px;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-pending-badge {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-pending-badge.warning {
+  color: #A33B31;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-pending-badge.warning .gd-badge-text::after {
+  content: ' pending';
+  font-weight: 500;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-pending-badge.clear {
+  color: #6E7866;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-btn-primary,
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-btn-secondary {
+  background: transparent !important;
+  border: none !important;
+  padding: 4px 2px !important;
+  color: #22301E !important;
+  font-family: var(--gd-font-sans) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-btn-primary:hover,
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-btn-secondary:hover {
+  background: transparent !important;
+  color: #141B11 !important;
+}
+
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-btn-primary:hover .gd-arrow,
+.gd-wards-modal-card:not(.gd-pending-modal-card) .gd-ward-btn-secondary:hover .gd-arrow {
+  transform: translateX(3px);
+}
+
+/* ====================================================================
    PENDING APPROVALS POPUP MODAL (EDITORIAL QUIET ASSURANCE)
    ==================================================================== */
 .gd-pending-modal-card {
@@ -14217,7 +14338,8 @@ article.gd-card-collapsed,
 }
 
 .gd-pending-modal-header {
-  padding-bottom: 16px;
+  align-items: flex-start;
+  padding: 22px 26px 16px 26px;
   border-bottom: 1px solid rgba(39, 49, 33, 0.09);
   margin-bottom: 14px;
 }
@@ -14225,6 +14347,7 @@ article.gd-card-collapsed,
 .gd-pending-modal-header-left {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
 }
 
