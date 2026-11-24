@@ -810,7 +810,11 @@ export class DashboardShell {
       onViewHistory: () => this.setActiveView('history'),
       onViewPending: () => this.setActiveView('pending'),
       onViewSettings: () => this.setActiveView('settings'),
-      onDisconnectWard: () => this.disconnectWard(),
+      onDisconnectWard: (wardId?: string) => this.disconnectWard(wardId),
+      onFilterWardPending: (wardId: string) => {
+        this.setPendingFilters({ ...this.state.pendingFilters, wardId });
+        this.setActiveView('pending');
+      },
       onOpenAuth: () => this.openAuthModal(),
       onSelectPending: (id) => {
         this.setActiveView('pending');
@@ -818,6 +822,7 @@ export class DashboardShell {
       },
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onConnectInvitation: (this.apiClient || this.isMockService()) ? (code: string) => this.connectInvitation(code) : undefined,
+      connectedWards: this.getConnectedWards(),
     });
     if (this.state.activeView === 'overview') {
       overviewSection.classList.add('active');
@@ -872,6 +877,7 @@ export class DashboardShell {
           await this.submitDecision(idToDecide, decision, reason);
         }
       },
+      connectedWards: this.getConnectedWards(),
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');
@@ -916,6 +922,7 @@ export class DashboardShell {
       onRefreshDetail: this.apiClient && this.state.selectedHistoryRequestId
         ? () => void this.loadRequestDetails(this.state.selectedHistoryRequestId!, true)
         : undefined,
+      connectedWards: this.getConnectedWards(),
     });
     if (this.state.activeView === 'history') {
       historySection.classList.add('active');
@@ -965,7 +972,7 @@ export class DashboardShell {
       onRevokeInvitation: this.apiClient ? (id) => this.revokeInvitation(id) : undefined,
       onRevokeTrustedContact: this.apiClient ? (id) => this.revokeTrustedContact(id) : undefined,
       onConnectInvitation: (this.apiClient || this.isMockService()) ? (code) => this.connectInvitation(code) : undefined,
-      onDisconnectWard: () => this.disconnectWard(),
+      onDisconnectWard: (wardId?: string) => this.disconnectWard(wardId),
       onRefresh: this.apiClient ? () => void this.refresh() : undefined,
       onClearSession: () => {
         this.setProfile(null);
@@ -3178,33 +3185,110 @@ export class DashboardShell {
   }
 
   /**
-   * Unlinks the active ward relationship from the trusted contact portal and backend.
+   * Resolves list of all active connected wards for multi-ward switching, filtering, and oversight.
    */
-  public async disconnectWard(): Promise<void> {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('guardrail_assigned_ward_id');
-      localStorage.removeItem('guardrail_assigned_ward_name');
-      localStorage.removeItem('guardrail_assigned_ward_email');
+  public getConnectedWards(): Array<{ id: string; name: string; email?: string; relationshipLabel?: string }> {
+    const map = new Map<string, { id: string; name: string; email?: string; relationshipLabel?: string }>();
+    if (this.state.contactProfile?.assignedWardId) {
+      const id = this.state.contactProfile.assignedWardId;
+      map.set(id.toLowerCase(), {
+        id,
+        name: this.state.contactProfile.assignedWardName || formatWardDisplayName(undefined, id),
+        email: this.state.contactProfile.assignedWardEmail,
+        relationshipLabel: this.state.contactProfile.relationshipLabel,
+      });
     }
-    const currentWardId = this.state.contactProfile?.assignedWardId;
-    if (this.state.contactProfile) {
-      this.state.contactProfile = {
-        ...this.state.contactProfile,
-        assignedWardId: undefined,
-        assignedWardName: undefined,
-        assignedWardEmail: undefined,
-        relationshipLabel: undefined,
+    if (this.state.contactProfile?.assignedWards) {
+      for (const w of this.state.contactProfile.assignedWards) {
+        if (!map.has(w.id.toLowerCase())) {
+          map.set(w.id.toLowerCase(), w);
+        }
+      }
+    }
+    for (const c of this.state.connectedUsers) {
+      const wardId = c.wardId || c.userId;
+      if (wardId && !map.has(wardId.toLowerCase())) {
+        map.set(wardId.toLowerCase(), {
+          id: wardId,
+          name: c.wardName || formatWardDisplayName(undefined, wardId),
+          email: c.wardEmail,
+          relationshipLabel: c.relationshipLabel,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }
+
+  /**
+   * Unlinks the active ward relationship (or a specific ward) from the trusted contact portal and backend.
+   */
+  public async disconnectWard(targetWardId?: string): Promise<void> {
+    const currentWardId = targetWardId || this.state.contactProfile?.assignedWardId;
+
+    if (targetWardId) {
+      // Selective disconnection: keep other wards active
+      this.state.connectedUsers = this.state.connectedUsers.filter(
+        (c) => (c.wardId || c.userId)?.toLowerCase() !== targetWardId.toLowerCase()
+      );
+      const remainingWards = this.getConnectedWards().filter(
+        (w) => w.id.toLowerCase() !== targetWardId.toLowerCase()
+      );
+
+      const nextPrimary = remainingWards[0];
+      if (this.state.contactProfile) {
+        this.state.contactProfile = {
+          ...this.state.contactProfile,
+          assignedWards: remainingWards,
+          assignedWardId: nextPrimary?.id,
+          assignedWardName: nextPrimary?.name,
+          assignedWardEmail: nextPrimary?.email,
+          relationshipLabel: nextPrimary?.relationshipLabel,
+        };
+      }
+
+      if (typeof localStorage !== 'undefined') {
+        if (nextPrimary) {
+          localStorage.setItem('guardrail_assigned_ward_id', nextPrimary.id);
+          if (nextPrimary.name) localStorage.setItem('guardrail_assigned_ward_name', nextPrimary.name);
+          if (nextPrimary.email) localStorage.setItem('guardrail_assigned_ward_email', nextPrimary.email);
+        } else {
+          localStorage.removeItem('guardrail_assigned_ward_id');
+          localStorage.removeItem('guardrail_assigned_ward_name');
+          localStorage.removeItem('guardrail_assigned_ward_email');
+        }
+      }
+
+      this.state.relationshipActionMessage = {
+        type: 'info',
+        text: `Ward ${targetWardId} disconnected.`,
+      };
+    } else {
+      // Global disconnect
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('guardrail_assigned_ward_id');
+        localStorage.removeItem('guardrail_assigned_ward_name');
+        localStorage.removeItem('guardrail_assigned_ward_email');
+      }
+      if (this.state.contactProfile) {
+        this.state.contactProfile = {
+          ...this.state.contactProfile,
+          assignedWardId: undefined,
+          assignedWardName: undefined,
+          assignedWardEmail: undefined,
+          relationshipLabel: undefined,
+          assignedWards: [],
+        };
+      }
+      this.state.connectedUsers = [];
+      this.state.connectedUsersStatus = 'empty';
+      this.state.wardPolicySummary = null;
+      this.state.wardPolicyStatus = 'empty';
+      this.state.wardPolicyError = null;
+      this.state.relationshipActionMessage = {
+        type: 'info',
+        text: 'Ward relationship disconnected. Your review queue is now unlinked.',
       };
     }
-    this.state.connectedUsers = [];
-    this.state.connectedUsersStatus = 'empty';
-    this.state.wardPolicySummary = null;
-    this.state.wardPolicyStatus = 'empty';
-    this.state.wardPolicyError = null;
-    this.state.relationshipActionMessage = {
-      type: 'info',
-      text: 'Ward relationship disconnected. Your review queue is now unlinked.',
-    };
     this.render();
 
     try {
@@ -3227,6 +3311,7 @@ export class DashboardShell {
       console.warn('[Dashboard] Disconnect ward request error:', err);
     }
     await this.fetchRelationships({ isBackground: true });
+    await this.fetchPendingRequests(true);
     this.render();
   }
 

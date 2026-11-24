@@ -15,7 +15,7 @@
 import { ApprovalRequest, ApprovalStatus, RequestFilters, RiskLevel, ViewStatus } from '../types.js';
 import { renderDecisionConfirmation } from './decision-confirmation.js';
 import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isRequestExpired } from './detail.js';
-import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
+import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
 
 export interface PendingApprovalsProps {
@@ -49,6 +49,8 @@ export interface PendingApprovalsProps {
   lastSynchronizedAt?: Date | null;
   /** Whether refresh is currently in progress */
   isRefreshing?: boolean;
+  /** List of connected wards for multi-ward switching and attribution */
+  connectedWards?: readonly { id: string; name: string; email?: string }[];
 }
 
 /**
@@ -593,8 +595,24 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       // State D: Filterable Approval Items List
       const filteredRequests = filterRequests(displayRequests, activeFilters);
 
+      // Multi-Ward Switcher Pill Strip (rendered if multiple wards connected)
+      if (props.connectedWards && props.connectedWards.length > 1) {
+        const wardSwitcher = renderWardSwitcher({
+          wards: props.connectedWards,
+          activeWardId: activeFilters.wardId || 'ALL',
+          requests: displayRequests,
+          onSelectWard: (selectedWardId) => {
+            props.onFiltersChange?.({
+              ...activeFilters,
+              wardId: selectedWardId,
+            });
+          },
+        });
+        listPane.appendChild(wardSwitcher);
+      }
+
       // Filter Bar (rendered if multiple requests or active filter)
-      if (displayRequests.length > 2 || activeFilters.searchQuery || activeFilters.riskLevel !== 'ALL') {
+      if (displayRequests.length > 2 || activeFilters.searchQuery || activeFilters.riskLevel !== 'ALL' || (activeFilters.wardId && activeFilters.wardId !== 'ALL')) {
         const filterBar = renderFilterBar({
           filters: activeFilters,
           totalCount: displayRequests.length,
@@ -602,6 +620,8 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           showStatusFilter: false,
           showRiskFilter: true,
           showDateFilter: true,
+          showWardFilter: Boolean(props.connectedWards && props.connectedWards.length > 1),
+          connectedWards: props.connectedWards,
           searchPlaceholder: 'Search pending requests...',
           onFiltersChange: (newFilters) => {
             props.onFiltersChange?.(newFilters);
@@ -690,6 +710,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const badgesWrap = document.createElement('div');
           badgesWrap.className = 'gd-pending-card-badges';
+
+          // Ward identity attribution badge
+          const cardWardBadge = document.createElement('span');
+          cardWardBadge.className = 'gd-card-ward-badge';
+          const wardInitial = (wardName || 'W').charAt(0).toUpperCase();
+          cardWardBadge.innerHTML = `<span class="gd-ward-badge-avatar" aria-hidden="true">${wardInitial}</span><span class="gd-ward-badge-name">${wardName}</span>`;
+          badgesWrap.appendChild(cardWardBadge);
 
           if (isExpired) {
             const expBadge = document.createElement('span');

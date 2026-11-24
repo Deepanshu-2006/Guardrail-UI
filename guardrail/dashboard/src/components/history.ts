@@ -28,7 +28,7 @@
 
 import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../types.js';
 import { formatTimestamp, getRiskLevelExplanation } from './detail.js';
-import { filterRequests, renderFilterBar, renderFilterEmptyState } from './filters.js';
+import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { setAnimatedHeading } from './icons.js';
 
 export interface DecisionHistoryProps {
@@ -72,6 +72,8 @@ export interface DecisionHistoryProps {
   onRefresh?: () => void;
   /** Optional callback to refresh detail */
   onRefreshDetail?: () => void;
+  /** List of connected wards for multi-ward switching and attribution */
+  connectedWards?: readonly { id: string; name: string; email?: string }[];
 
   // Backward compatibility alias:
   historyRequests?: readonly ApprovalRequest[];
@@ -839,6 +841,22 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   listPane.setAttribute('role', 'region');
   listPane.setAttribute('aria-label', 'Decision History List');
 
+  // Multi-Ward Switcher Pill Strip (rendered if multiple wards connected)
+  if (props.connectedWards && props.connectedWards.length > 1) {
+    const wardSwitcher = renderWardSwitcher({
+      wards: props.connectedWards,
+      activeWardId: activeFilters.wardId || 'ALL',
+      requests: allRequests,
+      onSelectWard: (selectedWardId) => {
+        props.onFiltersChange?.({
+          ...activeFilters,
+          wardId: selectedWardId,
+        });
+      },
+    });
+    listPane.appendChild(wardSwitcher);
+  }
+
   // Render Filter Bar
   const filterBar = renderFilterBar({
     filters: activeFilters,
@@ -847,6 +865,8 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     showStatusFilter: true,
     showRiskFilter: true,
     showDateFilter: true,
+    showWardFilter: Boolean(props.connectedWards && props.connectedWards.length > 1),
+    connectedWards: props.connectedWards,
     searchPlaceholder: 'Search history by description, website, or ID...',
     onFiltersChange: (newFilters) => {
       props.onFiltersChange?.(newFilters);
@@ -939,6 +959,15 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
       const badgesWrap = document.createElement('div');
       badgesWrap.className = 'gd-history-header-badges';
+
+      // Ward identity attribution badge
+      if (wardName) {
+        const cardWardBadge = document.createElement('span');
+        cardWardBadge.className = 'gd-card-ward-badge';
+        const wardInitial = wardName.charAt(0).toUpperCase();
+        cardWardBadge.innerHTML = `<span class="gd-ward-badge-avatar" aria-hidden="true">${wardInitial}</span><span class="gd-ward-badge-name">${wardName}</span>`;
+        badgesWrap.appendChild(cardWardBadge);
+      }
 
       // Prominent resolved status pill
       const statusPill = document.createElement('span');

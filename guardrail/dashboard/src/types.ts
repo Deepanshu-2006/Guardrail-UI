@@ -91,6 +91,13 @@ export type DashboardView = 'overview' | 'pending' | 'history' | 'settings';
  */
 export type ViewStatus = 'idle' | 'loading' | 'empty' | 'error';
 
+export interface AssignedWardSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string;
+  readonly relationshipLabel?: string;
+}
+
 /**
  * Profile representation of the authenticated trusted contact.
  */
@@ -107,6 +114,8 @@ export interface TrustedContactProfile {
   readonly assignedWardEmail?: string;
   /** Human-readable relationship label, if configured */
   readonly relationshipLabel?: string;
+  /** All active wards assigned to this caretaker */
+  readonly assignedWards?: readonly AssignedWardSummary[];
   /** Verified email from identity provider if available */
   readonly email?: string;
   /** Verified full display name if available */
@@ -131,6 +140,8 @@ export interface RequestFilters {
   dateRange?: 'ALL' | 'TODAY' | '7_DAYS' | '30_DAYS';
   /** Safe text search query matching non-sensitive fields */
   searchQuery?: string;
+  /** Multi-ward filter: 'ALL' or specific ward ID (e.g., 'usr_alice') */
+  wardId?: 'ALL' | string;
 }
 
 /**

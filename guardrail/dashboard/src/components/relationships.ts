@@ -41,7 +41,7 @@ export interface RelationshipsProps {
   onRevokeInvitation?: (invitationId: string) => Promise<{ success: boolean; error?: string }>;
   onRevokeTrustedContact?: (contactId: string) => Promise<{ success: boolean; error?: string }>;
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
-  onDisconnectWard?: () => void;
+  onDisconnectWard?: (wardId?: string) => void;
   onRefresh?: () => void;
 }
 
@@ -212,6 +212,9 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       list.className = 'gd-relationships-list';
       list.id = 'gd-connected-users-list';
 
+    const isReviewerRole = props.profile?.role === 'TRUSTED_CONTACT';
+    const primaryAssignedWardId = props.profile?.assignedWardId?.toLowerCase();
+
     // 1A. If current profile has an assigned ward (e.g. reviewer viewing their assigned ward)
     if (hasAssignedWard && props.profile?.assignedWardId) {
       const wardItem = document.createElement('div');
@@ -296,7 +299,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
         cancelBtn.textContent = 'Cancel';
 
         confirmBtn.addEventListener('click', () => {
-          props.onDisconnectWard?.();
+          props.onDisconnectWard?.(props.profile?.assignedWardId);
         });
 
         cancelBtn.addEventListener('click', () => {
@@ -327,17 +330,26 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
     // 1B. Render each authoritative TrustedContact from backend registry
     for (const contact of props.connectedUsers) {
+      const wardId = contact.wardId || contact.userId;
+      const isWard = isReviewerRole && Boolean(contact.wardName || (wardId && wardId !== props.profile?.actorId));
+
+      if (isWard && primaryAssignedWardId && wardId && wardId.toLowerCase() === primaryAssignedWardId) {
+        continue;
+      }
       const contactItem = document.createElement('div');
       const isRevoked = contact.status === TrustedContactStatus.REVOKED;
-      contactItem.className = `gd-relationship-item contact-item ${isRevoked ? 'is-revoked' : ''}`;
+      contactItem.className = `gd-relationship-item ${isWard ? 'ward-item' : 'contact-item'} ${isRevoked ? 'is-revoked' : ''}`;
+      if (wardId) contactItem.setAttribute('data-user-id', wardId);
       contactItem.setAttribute('data-contact-id', contact.id);
 
       const itemLeft = document.createElement('div');
       itemLeft.className = 'gd-rel-item-left';
 
       const avatar = document.createElement('div');
-      avatar.className = 'gd-rel-avatar contact-avatar';
-      avatar.textContent = 'TC';
+      avatar.className = `gd-rel-avatar ${isWard ? 'ward-avatar' : 'contact-avatar'}`;
+      avatar.textContent = isWard
+        ? (contact.wardName || wardId || 'W').charAt(0).toUpperCase()
+        : 'TC';
       avatar.setAttribute('aria-hidden', 'true');
 
       const info = document.createElement('div');
@@ -347,12 +359,14 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       nameRow.className = 'gd-rel-name-row';
 
       const nameSpan = document.createElement('strong');
-      nameSpan.className = 'gd-rel-name gd-mono';
-      nameSpan.textContent = contact.contactId || contact.id;
+      nameSpan.className = isWard ? 'gd-rel-name' : 'gd-rel-name gd-mono';
+      nameSpan.textContent = isWard
+        ? (contact.wardName || formatWardDisplayName(undefined, wardId))
+        : (contact.contactId || contact.id);
 
       const roleBadge = document.createElement('span');
       roleBadge.className = 'gd-rel-role-badge';
-      roleBadge.textContent = 'Trusted Contact';
+      roleBadge.textContent = isWard ? 'Ward (Protected User)' : 'Trusted Contact';
 
       const statusBadge = document.createElement('span');
       statusBadge.className = `gd-status-badge ${isRevoked ? 'cancelled' : 'approved'}`;
@@ -364,14 +378,19 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
       const metaRow = document.createElement('div');
       metaRow.className = 'gd-rel-meta-row';
-      const createdStr = contact.createdAt
-        ? `Linked: ${new Date(contact.createdAt).toLocaleDateString()}`
-        : 'Linked recently';
-      const revokedStr = contact.revokedAt
-        ? ` • Revoked: ${new Date(contact.revokedAt).toLocaleDateString()}`
-        : '';
-      const labelStr = contact.relationshipLabel ? ` • Label: ${contact.relationshipLabel}` : '';
-      metaRow.textContent = `${createdStr}${revokedStr}${labelStr}`;
+      if (isWard) {
+        const emailPart = contact.wardEmail ? `${contact.wardEmail} · ` : '';
+        metaRow.textContent = `${emailPart}Relationship: ${contact.relationshipLabel ?? 'Designated Trusted Contact'} · ID: ${wardId}`;
+      } else {
+        const createdStr = contact.createdAt
+          ? `Linked: ${new Date(contact.createdAt).toLocaleDateString()}`
+          : 'Linked recently';
+        const revokedStr = contact.revokedAt
+          ? ` • Revoked: ${new Date(contact.revokedAt).toLocaleDateString()}`
+          : '';
+        const labelStr = contact.relationshipLabel ? ` • Label: ${contact.relationshipLabel}` : '';
+        metaRow.textContent = `${createdStr}${revokedStr}${labelStr}`;
+      }
 
       info.appendChild(nameRow);
       info.appendChild(metaRow);
@@ -379,44 +398,35 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       itemLeft.appendChild(info);
       contactItem.appendChild(itemLeft);
 
-      // Actions: Revoke Contact (consequential confirmation)
-      if (!isRevoked && props.onRevokeTrustedContact) {
+      // Actions: Disconnect Ward or Revoke Contact
+      if (!isRevoked && (isWard ? props.onDisconnectWard : props.onRevokeTrustedContact)) {
         const itemActions = document.createElement('div');
         itemActions.className = 'gd-rel-actions';
 
-        const revokeBtn = document.createElement('button');
-        revokeBtn.type = 'button';
-        revokeBtn.className = 'gd-btn-revoke';
-        revokeBtn.disabled = Boolean(props.isSubmitting);
-        revokeBtn.textContent = 'Revoke Relationship';
-        revokeBtn.setAttribute('aria-label', `Revoke trusted contact authority for ${contact.id}`);
+        const actionBtn = document.createElement('button');
+        actionBtn.type = 'button';
+        actionBtn.className = 'gd-btn-revoke';
+        actionBtn.disabled = Boolean(props.isSubmitting);
+        actionBtn.textContent = isWard ? 'Disconnect Ward' : 'Revoke Relationship';
+        actionBtn.setAttribute('aria-label', `${isWard ? 'Disconnect' : 'Revoke'} authority for ${wardId || contact.id}`);
 
         // Two-step confirmation box
         const confirmBox = document.createElement('div');
         confirmBox.className = 'gd-relationship-confirm-box';
         confirmBox.style.display = 'none';
         confirmBox.setAttribute('role', 'alertdialog');
-        confirmBox.setAttribute('aria-label', `Confirm revocation of ${contact.id}`);
-
-        confirmBox.addEventListener('keydown', (e: KeyboardEvent) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            confirmBox.style.display = 'none';
-            revokeBtn.style.display = 'inline-block';
-            revokeBtn.focus();
-          }
-        });
 
         const confirmMsg = document.createElement('p');
         confirmMsg.className = 'gd-confirm-warning';
-        confirmMsg.textContent =
-          'Consequential Decision: Revoking this trusted-contact relationship authoritatively commits to the backend audit log. Their authority to evaluate browser actions will terminate immediately.';
+        confirmMsg.textContent = isWard
+          ? `Disconnecting from this ward unlinks your portal. You will no longer receive approval requests from ${contact.wardName || wardId}.`
+          : 'Consequential Decision: Revoking this trusted-contact relationship authoritatively commits to the backend audit log. Their authority to evaluate browser actions will terminate immediately.';
 
         const confirmBtn = document.createElement('button');
         confirmBtn.type = 'button';
         confirmBtn.className = 'gd-btn-revoke-confirm';
         confirmBtn.disabled = Boolean(props.isSubmitting);
-        confirmBtn.textContent = props.isSubmitting ? 'Revoking...' : 'Confirm Revoke';
+        confirmBtn.textContent = props.isSubmitting ? 'Processing...' : (isWard ? 'Confirm Disconnect' : 'Confirm Revoke');
 
         const cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
@@ -430,17 +440,21 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
           alreadySubmitted = true;
           confirmBtn.disabled = true;
           cancelBtn.disabled = true;
-          confirmBtn.textContent = 'Revoking...';
-          await props.onRevokeTrustedContact?.(contact.id);
+          confirmBtn.textContent = 'Processing...';
+          if (isWard) {
+            props.onDisconnectWard?.(wardId);
+          } else {
+            await props.onRevokeTrustedContact?.(contact.id);
+          }
         });
 
         cancelBtn.addEventListener('click', () => {
           confirmBox.style.display = 'none';
-          revokeBtn.style.display = 'inline-block';
+          actionBtn.style.display = 'inline-block';
         });
 
-        revokeBtn.addEventListener('click', () => {
-          revokeBtn.style.display = 'none';
+        actionBtn.addEventListener('click', () => {
+          actionBtn.style.display = 'none';
           confirmBox.style.display = 'block';
         });
 
@@ -452,7 +466,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
         confirmBox.appendChild(confirmMsg);
         confirmBox.appendChild(confirmActions);
 
-        itemActions.appendChild(revokeBtn);
+        itemActions.appendChild(actionBtn);
         itemActions.appendChild(confirmBox);
         contactItem.appendChild(itemActions);
       }
@@ -461,6 +475,80 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
     }
 
     usersCard.appendChild(list);
+
+    // "+ Connect Another Ward" in Settings
+    if (props.onConnectInvitation) {
+      const addSection = document.createElement('div');
+      addSection.className = 'gd-relationships-add-ward-bar';
+
+      const addTitle = document.createElement('h3');
+      addTitle.className = 'gd-add-ward-title';
+      addTitle.textContent = 'Connect Another Ward';
+
+      const addDesc = document.createElement('p');
+      addDesc.className = 'gd-add-ward-desc';
+      addDesc.textContent = 'Enter a pairing invitation code (e.g. GR-INV-A1B2-C3D4) to add another protected ward to your portal.';
+
+      const form = document.createElement('form');
+      form.className = 'gd-setup-form gd-relationships-connect-form';
+      form.noValidate = true;
+
+      const inputWrap = document.createElement('div');
+      inputWrap.className = 'gd-setup-input-wrap';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'gd-setup-input gd-mono';
+      input.placeholder = 'GR-INV-XXXX-YYYY';
+      input.maxLength = 32;
+
+      const btn = document.createElement('button');
+      btn.type = 'submit';
+      btn.className = 'gd-btn-connect';
+      btn.textContent = 'Connect Ward';
+
+      inputWrap.appendChild(input);
+      inputWrap.appendChild(btn);
+      form.appendChild(inputWrap);
+
+      const feedback = document.createElement('div');
+      feedback.className = 'gd-setup-feedback';
+      form.appendChild(feedback);
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = input.value.trim().toUpperCase();
+        if (!code) {
+          feedback.className = 'gd-setup-feedback error';
+          feedback.textContent = 'Please enter an invitation code.';
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Connecting...';
+        try {
+          const res = await props.onConnectInvitation!(code);
+          if (res.success) {
+            feedback.className = 'gd-setup-feedback success';
+            feedback.textContent = `Successfully connected to ward ${res.wardId || code}!`;
+            input.value = '';
+          } else {
+            feedback.className = 'gd-setup-feedback error';
+            feedback.textContent = res.error || 'Failed to connect ward.';
+          }
+        } catch (err: any) {
+          feedback.className = 'gd-setup-feedback error';
+          feedback.textContent = err?.message || 'Connection error.';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Connect Ward';
+        }
+      });
+
+      addSection.appendChild(addTitle);
+      addSection.appendChild(addDesc);
+      addSection.appendChild(form);
+      usersCard.appendChild(addSection);
+    }
     }
   }
 

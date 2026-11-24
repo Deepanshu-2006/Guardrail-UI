@@ -1024,13 +1024,39 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
           const db = (runtime.contactRegistry as any)?.database;
           if (db) {
-            db.prepare("DELETE FROM trusted_contacts").run();
+            if (wardId) {
+              db.prepare("DELETE FROM trusted_contacts WHERE user_id = ? OR id = ?").run(wardId, wardId);
+            } else {
+              db.prepare("DELETE FROM trusted_contacts").run();
+            }
+          }
+
+          let remainingCount = 0;
+          let remainingWard: any = null;
+          if (db) {
+            const countRow = db.prepare("SELECT count(*) as count FROM trusted_contacts WHERE status = 'ACTIVE'").get() as { count: number } | undefined;
+            remainingCount = countRow?.count || 0;
+            if (remainingCount > 0) {
+              const activeRow = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' LIMIT 1").get() as { payload_json: string } | undefined;
+              if (activeRow) {
+                try {
+                  const p = JSON.parse(activeRow.payload_json);
+                  remainingWard = {
+                    actorId: p.userId || p.wardId,
+                    fullName: p.wardName,
+                    email: p.wardEmail,
+                    isAuthenticated: true,
+                    isLinked: true,
+                  };
+                } catch {}
+              }
+            }
           }
 
           // Emit real-time notification to all connected dashboard SSE streams
           defaultApprovalEventHub.emit({
             type: 'ward_synced' as any,
-            ward: {
+            ward: remainingWard || {
               actorId: null,
               fullName: null,
               email: null,
@@ -1045,6 +1071,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             success: true,
             data: {
               disconnected: true,
+              wardId: wardId ?? null,
+              remainingCount,
               timestamp: new Date().toISOString(),
             },
           }));
@@ -1467,27 +1495,69 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                   }
                 }
               }
-            } catch {}
-          }
+              const assignedWards: Array<{ id: string; name: string; email?: string; relationshipLabel?: string }> = [];
+              if (contacts && contacts.length > 0) {
+                for (const c of contacts) {
+                  const id = c.userId || c.wardId;
+                  if (id) {
+                    assignedWards.push({
+                      id,
+                      name: c.wardName || (id.startsWith('usr_') ? id.slice(4) : id),
+                      email: c.wardEmail,
+                      relationshipLabel: c.relationshipLabel || 'Designated Caretaker',
+                    });
+                  }
+                }
+              } else if (assignedWardId) {
+                assignedWards.push({
+                  id: assignedWardId,
+                  name: assignedWardName || (assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId),
+                  email: assignedWardEmail,
+                  relationshipLabel: 'Designated Caretaker',
+                });
+              }
 
-          response.statusCode = 200;
-          response.end(
-            JSON.stringify({
-              success: true,
-              data: {
-                actorId: authContext.actorId,
-                role: authContext.role,
-                isAuthenticated: true,
-                email: verifiedEmail ?? null,
-                fullName: displayName,
-                imageUrl: imageUrl,
-                environment: config.environment,
-                assignedWardId: assignedWardId ?? null,
-                assignedWardName: assignedWardName ?? null,
-                assignedWardEmail: assignedWardEmail ?? null,
-              },
-            })
-          );
+              response.statusCode = 200;
+              response.end(
+                JSON.stringify({
+                  success: true,
+                  data: {
+                    actorId: authContext.actorId,
+                    role: authContext.role,
+                    isAuthenticated: true,
+                    email: verifiedEmail ?? null,
+                    fullName: displayName,
+                    imageUrl: imageUrl,
+                    environment: config.environment,
+                    assignedWardId: assignedWardId ?? null,
+                    assignedWardName: assignedWardName ?? null,
+                    assignedWardEmail: assignedWardEmail ?? null,
+                    assignedWards,
+                  },
+                })
+              );
+            } catch {}
+          } else {
+            response.statusCode = 200;
+            response.end(
+              JSON.stringify({
+                success: true,
+                data: {
+                  actorId: authContext.actorId,
+                  role: authContext.role,
+                  isAuthenticated: true,
+                  email: verifiedEmail ?? null,
+                  fullName: displayName,
+                  imageUrl: imageUrl,
+                  environment: config.environment,
+                  assignedWardId: null,
+                  assignedWardName: null,
+                  assignedWardEmail: null,
+                  assignedWards: [],
+                },
+              })
+            );
+          }
         })
         .catch(() => {
           response.statusCode = 401;

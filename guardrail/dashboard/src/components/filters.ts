@@ -19,6 +19,8 @@ export interface FilterBarOptions {
   showStatusFilter?: boolean;
   showRiskFilter?: boolean;
   showDateFilter?: boolean;
+  showWardFilter?: boolean;
+  connectedWards?: readonly { id: string; name: string }[];
   searchPlaceholder?: string;
   onFiltersChange: (newFilters: RequestFilters) => void;
 }
@@ -100,6 +102,15 @@ export function filterRequests(
       if (!matches) return false;
     }
 
+    // 5. Multi-Ward Filter
+    if (filters.wardId && filters.wardId !== 'ALL') {
+      const targetWard = filters.wardId.trim().toLowerCase();
+      const reqWard = (req.requesterId || (req as any).wardId || '').trim().toLowerCase();
+      if (reqWard !== targetWard) {
+        return false;
+      }
+    }
+
     return true;
   });
 }
@@ -111,6 +122,7 @@ export function hasActiveFilters(filters: RequestFilters): boolean {
   if (filters.status && filters.status !== 'ALL') return true;
   if (filters.riskLevel && filters.riskLevel !== 'ALL') return true;
   if (filters.dateRange && filters.dateRange !== 'ALL') return true;
+  if (filters.wardId && filters.wardId !== 'ALL') return true;
   if (filters.searchQuery && filters.searchQuery.trim().length > 0) return true;
   return false;
 }
@@ -430,6 +442,38 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
     controlsRow.appendChild(dateWrap);
   }
 
+  // Ward Filter Select (if multiple wards connected and enabled)
+  if (options.showWardFilter !== false && options.connectedWards && options.connectedWards.length > 1) {
+    const wardSelect = document.createElement('select');
+    wardSelect.className = 'gd-filter-select gd-ward-filter';
+    wardSelect.setAttribute('aria-label', 'Filter by protected ward');
+
+    const wardItems = [
+      { value: 'ALL', label: 'All Wards' },
+      ...options.connectedWards.map((w) => ({ value: w.id, label: w.name })),
+    ];
+
+    for (const w of wardItems) {
+      const opt = document.createElement('option');
+      opt.value = w.value;
+      opt.textContent = w.label;
+      if ((options.filters.wardId || 'ALL').toLowerCase() === w.value.toLowerCase()) {
+        opt.selected = true;
+      }
+      wardSelect.appendChild(opt);
+    }
+
+    const currentWard = options.filters.wardId || 'ALL';
+    const wardWrap = createCustomSelect(wardSelect, wardItems, currentWard, (newVal) => {
+      options.onFiltersChange({
+        ...options.filters,
+        wardId: newVal,
+      });
+    });
+
+    controlsRow.appendChild(wardWrap);
+  }
+
   // Clear Filters Button & Live Count Indicator
   const isFiltered = hasActiveFilters(options.filters) || options.filteredCount !== options.totalCount;
 
@@ -507,4 +551,75 @@ export function renderFilterEmptyState(options: FilterEmptyStateOptions): HTMLEl
   placeholder.appendChild(resetBtn);
 
   return placeholder;
+}
+
+export interface WardSwitcherOptions {
+  wards: readonly { id: string; name: string; email?: string }[];
+  activeWardId?: string;
+  requests?: readonly ApprovalRequest[];
+  onSelectWard: (wardId: string) => void;
+}
+
+/**
+ * Renders an accessible, responsive horizontal pill bar for switching between wards.
+ */
+export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
+  const switcher = document.createElement('div');
+  switcher.className = 'gd-ward-switcher';
+  switcher.setAttribute('role', 'tablist');
+  switcher.setAttribute('aria-label', 'Filter by protected ward');
+
+  const counts: Record<string, number> = {};
+  let totalCount = 0;
+  if (options.requests) {
+    totalCount = options.requests.length;
+    for (const req of options.requests) {
+      const wId = (req.requesterId || (req as any).wardId || '').trim().toLowerCase();
+      if (wId) {
+        counts[wId] = (counts[wId] || 0) + 1;
+      }
+    }
+  }
+
+  const activeId = (options.activeWardId || 'ALL').trim().toLowerCase();
+
+  // All Wards Pill
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = `gd-ward-pill ${activeId === 'all' ? 'active' : ''}`;
+  allBtn.setAttribute('role', 'tab');
+  allBtn.setAttribute('aria-selected', activeId === 'all' ? 'true' : 'false');
+  allBtn.innerHTML = `
+    <span class="gd-ward-pill-name">All Wards</span>
+    <span class="gd-ward-pill-count">${totalCount}</span>
+  `;
+  allBtn.addEventListener('click', () => {
+    options.onSelectWard('ALL');
+  });
+  switcher.appendChild(allBtn);
+
+  // Per Ward Pills
+  for (const ward of options.wards) {
+    const wardLower = ward.id.trim().toLowerCase();
+    const isSelected = activeId === wardLower;
+    const wardCount = counts[wardLower] || 0;
+    const initial = (ward.name || 'W').charAt(0).toUpperCase();
+
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = `gd-ward-pill ${isSelected ? 'active' : ''}`;
+    pill.setAttribute('role', 'tab');
+    pill.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    pill.innerHTML = `
+      <span class="gd-ward-pill-avatar" aria-hidden="true">${initial}</span>
+      <span class="gd-ward-pill-name">${ward.name}</span>
+      <span class="gd-ward-pill-count">${wardCount}</span>
+    `;
+    pill.addEventListener('click', () => {
+      options.onSelectWard(ward.id);
+    });
+    switcher.appendChild(pill);
+  }
+
+  return switcher;
 }
