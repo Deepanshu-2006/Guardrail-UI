@@ -44,10 +44,13 @@ export async function setStoredWardToken(token: string): Promise<void> {
   const clean = token.trim();
   if (typeof chrome !== 'undefined' && chrome.storage?.local) {
     await new Promise<void>((resolve) => {
-      chrome.storage.local.set({ guardrailAuthToken: clean }, () => resolve());
+      chrome.storage.local.remove(['guardrailWardLoggedOut'], () => {
+        chrome.storage.local.set({ guardrailAuthToken: clean }, () => resolve());
+      });
     });
   }
   if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('guardrailWardLoggedOut');
     localStorage.setItem('guardrailAuthToken', clean);
   }
 }
@@ -72,6 +75,7 @@ export async function signOutWard(): Promise<void> {
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.removeItem('guardrailActiveContacts');
+      localStorage.setItem('guardrailWardLoggedOut', 'true');
     } catch {}
   }
   if (typeof chrome !== 'undefined' && chrome.storage?.local) {
@@ -181,6 +185,16 @@ export async function authenticateWardWithGoogle(options?: {
   return null;
 }
 
+export function getCandidateBaseUrls(primaryUrl: string): string[] {
+  const urls = [primaryUrl];
+  if (primaryUrl.includes('localhost')) {
+    urls.push(primaryUrl.replace('localhost', '127.0.0.1'));
+  } else if (primaryUrl.includes('127.0.0.1')) {
+    urls.push(primaryUrl.replace('127.0.0.1', 'localhost'));
+  }
+  return urls;
+}
+
 export async function verifyWardIdentity(apiBaseUrl?: string): Promise<WardIdentity | null> {
   const token = await getStoredWardToken();
   if (!token) {
@@ -188,72 +202,76 @@ export async function verifyWardIdentity(apiBaseUrl?: string): Promise<WardIdent
   }
 
   const env = resolveEnvironmentConfig();
-  const baseUrl = apiBaseUrl ?? env.apiBaseUrl;
+  const primaryUrl = apiBaseUrl ?? env.apiBaseUrl;
+  const candidateUrls = getCandidateBaseUrls(primaryUrl);
 
-  try {
-    const res = await fetch(`${baseUrl}/api/v1/auth/me`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
+  for (const baseUrl of candidateUrls) {
+    try {
+      const res = await fetch(`${baseUrl}/api/v1/auth/me`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
 
-    if (!res.ok) return null;
-    const body = (await res.json()) as {
-      success: boolean;
-      data?: {
-        actorId: string;
-        role: string;
-        email?: string | null;
-        fullName?: string | null;
-        imageUrl?: string | null;
+      if (!res.ok) continue;
+      const body = (await res.json()) as {
+        success: boolean;
+        data?: {
+          actorId: string;
+          role: string;
+          email?: string | null;
+          fullName?: string | null;
+          imageUrl?: string | null;
+        };
       };
-    };
 
-    if (body.success && body.data) {
-      return {
-        actorId: body.data.actorId,
-        role: body.data.role,
-        email: body.data.email ?? undefined,
-        fullName: body.data.fullName ?? undefined,
-        picture: body.data.imageUrl ?? null,
-        isAuthenticated: true,
-      };
+      if (body.success && body.data) {
+        return {
+          actorId: body.data.actorId,
+          role: body.data.role,
+          email: body.data.email ?? undefined,
+          fullName: body.data.fullName ?? undefined,
+          picture: body.data.imageUrl ?? null,
+          isAuthenticated: true,
+        };
+      }
+    } catch {
+      // try next candidate baseUrl
     }
-    return null;
-  } catch {
-    // If backend unreachable and in dev mode with default dev token
-    if (token === 'test-ward-token' || token.includes('deepanshu')) {
-      return {
-        actorId: 'usr_deepanshukhatri20061972',
-        role: 'USER',
-        fullName: 'Deepanshu Khatri',
-        email: 'deepanshukhatri20061972@gmail.com',
-        picture: null,
-        isAuthenticated: true,
-      };
-    }
-    if (token.startsWith('ward_')) {
-      const email = token.slice(5);
-      const isDeepanshu = email.toLowerCase().includes('deepanshu');
-      const username = email.split('@')[0];
-      const formatted = username
-        .split(/[._-]/)
-        .filter(Boolean)
-        .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
-        .join(' ');
-      return {
-        actorId: `usr_${username}`,
-        role: 'USER',
-        fullName: isDeepanshu ? 'Deepanshu Khatri' : (formatted || username),
-        email: email,
-        picture: null,
-        isAuthenticated: true,
-      };
-    }
-    return null;
   }
+
+  // If backend unreachable and in dev mode with default dev token
+  if (token === 'test-ward-token' || token.includes('deepanshu')) {
+    return {
+      actorId: 'usr_deepanshukhatri20061972',
+      role: 'USER',
+      fullName: 'Deepanshu Khatri',
+      email: 'deepanshukhatri20061972@gmail.com',
+      picture: null,
+      isAuthenticated: true,
+    };
+  }
+  if (token.startsWith('ward_')) {
+    const email = token.slice(5);
+    const isDeepanshu = email.toLowerCase().includes('deepanshu');
+    const username = email.split('@')[0];
+    const formatted = username
+      .split(/[._-]/)
+      .filter(Boolean)
+      .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+      .join(' ');
+    return {
+      actorId: `usr_${username}`,
+      role: 'USER',
+      fullName: isDeepanshu ? 'Deepanshu Khatri' : (formatted || username),
+      email: email,
+      picture: null,
+      isAuthenticated: true,
+    };
+  }
+  return null;
 }
 
 /**
@@ -265,29 +283,33 @@ export async function syncWardIdentityToBackend(
   apiBaseUrl?: string
 ): Promise<boolean> {
   const env = resolveEnvironmentConfig();
-  const baseUrl = apiBaseUrl ?? env.apiBaseUrl;
+  const primaryUrl = apiBaseUrl ?? env.apiBaseUrl;
+  const candidateUrls = getCandidateBaseUrls(primaryUrl);
 
-  try {
-    const payload = {
-      actorId: identity?.actorId || null,
-      fullName: identity?.fullName || null,
-      email: identity?.email || null,
-      picture: identity?.picture || null,
-      isAuthenticated: Boolean(identity && identity.isAuthenticated),
-    };
+  const payload = {
+    actorId: identity?.actorId || null,
+    fullName: identity?.fullName || null,
+    email: identity?.email || null,
+    picture: identity?.picture || null,
+    isAuthenticated: Boolean(identity && identity.isAuthenticated),
+  };
 
-    const res = await fetch(`${baseUrl}/api/v1/ward/sync-identity`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+  for (const baseUrl of candidateUrls) {
+    try {
+      const res = await fetch(`${baseUrl}/api/v1/ward/sync-identity`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-    return res.ok;
-  } catch (err) {
-    console.warn('[Guardrail Auth] Failed to sync ward identity to backend:', err);
-    return false;
+      if (res.ok) return true;
+    } catch {
+      // try next candidate baseUrl
+    }
   }
+
+  return false;
 }

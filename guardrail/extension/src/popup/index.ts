@@ -28,11 +28,13 @@ import {
   authenticateWardWithGoogle,
   signOutWard,
   syncWardIdentityToBackend,
+  getCandidateBaseUrls,
   WardIdentity,
 } from '../approval/auth-manager.js';
 
 let activePairingCode: string | null = null;
 let connectionPollingTimer: ReturnType<typeof setInterval> | null = null;
+let sseConnection: EventSource | null = null;
 
 export async function initializePopup(): Promise<void> {
   const manifest =
@@ -160,8 +162,15 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
     cachedContacts = null;
   }
 
-  // Render status into popup DOM - starts compact (360px) looking exactly like before
-  renderPopupStatus(report, onboardingState, isBackendLive);
+  // 1. Resolve and render ward identity FIRST, and sync to backend
+  const identity = await verifyWardIdentity();
+  renderWardAccountCard(identity);
+  if (identity && identity.isAuthenticated) {
+    await syncWardIdentityToBackend(identity);
+  }
+
+  // 2. Render status into popup DOM - starts compact (360px) looking exactly like before
+  renderPopupStatus(report, onboardingState, isBackendLive, identity);
 
   if (cachedContacts && cachedContacts.length > 0) {
     const primaryContact = cachedContacts[0];
@@ -231,68 +240,68 @@ async function checkActiveGuardianCoverage(): Promise<{
     }
   }
 
-  try {
-    const res = await fetch(`${env.apiBaseUrl}/api/v1/trusted-contacts`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
-    if (!res.ok) {
+  const candidateUrls = getCandidateBaseUrls(env.apiBaseUrl);
+
+  for (const baseUrl of candidateUrls) {
+    try {
+      const res = await fetch(`${baseUrl}/api/v1/trusted-contacts`, {
+        method: 'GET',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Accept: 'application/json',
+        },
+      });
+      if (!res.ok) {
+        continue;
+      }
+      const body = (await res.json()) as { success: boolean; data?: any[] };
+      const rawList = Array.isArray(body.data) ? body.data : [];
+      const contacts: ActiveGuardianContact[] = rawList.map((c) => {
+        const isBalle =
+          (c.contactEmail || '').includes('balleballepurrr') ||
+          (c.contactName || '').includes('Balleballepurrr') ||
+          (c.name || '').includes('Balleballepurrr') ||
+          (c.contactAvatarUrl || '').includes('LookpQ') ||
+          (c.avatarUrl || '').includes('LookpQ');
+        const avatar = isBalle
+          ? DEEPANSHU_CLERK_AVATAR
+          : (c.contactAvatarUrl || c.avatarUrl || DEEPANSHU_CLERK_AVATAR);
+        return {
+          id: String(c.id || c.contactId || ''),
+          name: isBalle ? 'Deepanshu Khatri' : (c.contactName || c.name || 'Deepanshu Khatri'),
+          contactName: isBalle ? 'Deepanshu Khatri' : (c.contactName || 'Deepanshu Khatri'),
+          contactEmail: isBalle ? 'deepanshukhatri20061972@gmail.com' : (c.contactEmail || 'deepanshukhatri20061972@gmail.com'),
+          contactAvatarUrl: avatar,
+          avatarUrl: avatar,
+          relationshipLabel: c.relationshipLabel || 'Designated Caretaker',
+        };
+      });
       if (typeof localStorage !== 'undefined') {
-        try { localStorage.removeItem('guardrailActiveContacts'); } catch {}
+        try {
+          if (contacts.length > 0) {
+            localStorage.setItem('guardrailActiveContacts', JSON.stringify(contacts));
+          } else {
+            localStorage.removeItem('guardrailActiveContacts');
+          }
+        } catch {}
       }
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-        chrome.storage.local.remove(['guardrailActiveContacts']);
-      }
-      return { isLinked: false, contacts: [] };
-    }
-    const body = (await res.json()) as { success: boolean; data?: any[] };
-    const rawList = Array.isArray(body.data) ? body.data : [];
-    const contacts: ActiveGuardianContact[] = rawList.map((c) => {
-      const isBalle =
-        (c.contactEmail || '').includes('balleballepurrr') ||
-        (c.contactName || '').includes('Balleballepurrr') ||
-        (c.name || '').includes('Balleballepurrr') ||
-        (c.contactAvatarUrl || '').includes('LookpQ') ||
-        (c.avatarUrl || '').includes('LookpQ');
-      const avatar = isBalle
-        ? DEEPANSHU_CLERK_AVATAR
-        : (c.contactAvatarUrl || c.avatarUrl || DEEPANSHU_CLERK_AVATAR);
-      return {
-        id: String(c.id || c.contactId || ''),
-        name: isBalle ? 'Deepanshu Khatri' : (c.contactName || c.name || 'Deepanshu Khatri'),
-        contactName: isBalle ? 'Deepanshu Khatri' : (c.contactName || 'Deepanshu Khatri'),
-        contactEmail: isBalle ? 'deepanshukhatri20061972@gmail.com' : (c.contactEmail || 'deepanshukhatri20061972@gmail.com'),
-        contactAvatarUrl: avatar,
-        avatarUrl: avatar,
-        relationshipLabel: c.relationshipLabel || 'Designated Caretaker',
-      };
-    });
-    if (typeof localStorage !== 'undefined') {
-      try {
         if (contacts.length > 0) {
-          localStorage.setItem('guardrailActiveContacts', JSON.stringify(contacts));
+          chrome.storage.local.set({ guardrailActiveContacts: JSON.stringify(contacts) });
         } else {
-          localStorage.removeItem('guardrailActiveContacts');
+          chrome.storage.local.remove(['guardrailActiveContacts']);
         }
-      } catch {}
-    }
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      if (contacts.length > 0) {
-        chrome.storage.local.set({ guardrailActiveContacts: JSON.stringify(contacts) });
-      } else {
-        chrome.storage.local.remove(['guardrailActiveContacts']);
       }
+      return {
+        isLinked: contacts.length > 0,
+        contacts,
+      };
+    } catch {
+      // try next candidate baseUrl
     }
-    return {
-      isLinked: contacts.length > 0,
-      contacts,
-    };
-  } catch {
-    return { isLinked: false, contacts: [] };
   }
+
+  return { isLinked: false, contacts: [] };
 }
 
 /**
@@ -301,7 +310,8 @@ async function checkActiveGuardianCoverage(): Promise<{
 export function renderPopupStatus(
   report: ProtectionStatusReport,
   onboardingState?: { isCompleted: boolean; completedSteps: readonly string[] },
-  isBackendLive?: boolean
+  isBackendLive?: boolean,
+  initialIdentity?: WardIdentity | null
 ): void {
   // 1. Environment badge & values
   const envBadge = document.getElementById('ext-env-badge');
@@ -326,22 +336,34 @@ export function renderPopupStatus(
 
   // 2b. Ward Identity
   const wardVal = document.getElementById('ext-ward-val');
-  void verifyWardIdentity().then((identity) => {
-    renderWardAccountCard(identity);
-    void syncWardIdentityToBackend(identity);
+  if (initialIdentity !== undefined) {
+    renderWardAccountCard(initialIdentity);
     if (wardVal) {
-      if (identity && identity.isAuthenticated) {
-        const display = identity.fullName || identity.actorId;
-        wardVal.textContent = `${display} (${identity.role})`;
+      if (initialIdentity && initialIdentity.isAuthenticated) {
+        const display = initialIdentity.fullName || initialIdentity.actorId;
+        wardVal.textContent = `${display} (${initialIdentity.role})`;
       } else {
         wardVal.textContent = 'Unauthenticated';
       }
     }
-  }).catch(() => {
-    renderWardAccountCard(null);
-    void syncWardIdentityToBackend(null);
-    if (wardVal) wardVal.textContent = 'Offline';
-  });
+  } else {
+    void verifyWardIdentity().then((identity) => {
+      renderWardAccountCard(identity);
+      void syncWardIdentityToBackend(identity);
+      if (wardVal) {
+        if (identity && identity.isAuthenticated) {
+          const display = identity.fullName || identity.actorId;
+          wardVal.textContent = `${display} (${identity.role})`;
+        } else {
+          wardVal.textContent = 'Unauthenticated';
+        }
+      }
+    }).catch(() => {
+      renderWardAccountCard(null);
+      void syncWardIdentityToBackend(null);
+      if (wardVal) wardVal.textContent = 'Offline';
+    });
+  }
 
   // 3. Status Indicator
   const indicator = document.getElementById('ext-status-indicator');
@@ -680,6 +702,14 @@ function setupPopupActions(): void {
             const display = identity.fullName || identity.actorId;
             wardVal.textContent = `${display} (${identity.role})`;
           }
+          const coverage = await checkActiveGuardianCoverage();
+          if (coverage.isLinked && coverage.contacts.length > 0) {
+            const primaryContact = coverage.contacts[0];
+            const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
+            updatePopupToPairedState(primaryName, coverage.contacts);
+          } else {
+            updatePopupToUnpairedState();
+          }
           // Regenerate invitation code bound to new real user identity
           void loadOrGenerateInvitation(true);
         }
@@ -700,6 +730,18 @@ function setupPopupActions(): void {
       renderWardAccountCard(null);
       updatePopupToUnpairedState();
       await syncWardIdentityToBackend(null);
+      const env = resolveEnvironmentConfig();
+      const candidateUrls = getCandidateBaseUrls(env.apiBaseUrl);
+      for (const u of candidateUrls) {
+        try {
+          await fetch(`${u}/api/v1/ward/disconnect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isLoggedOut: true }),
+          });
+          break;
+        } catch {}
+      }
       const wardVal = document.getElementById('ext-ward-val');
       if (wardVal) wardVal.textContent = 'Unauthenticated';
       void loadOrGenerateInvitation(true);
@@ -1083,62 +1125,67 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
   }
 
   let inviteCode: string | null = null;
+  const candidateUrls = getCandidateBaseUrls(env.apiBaseUrl);
 
-  try {
-    // 1. Check existing invitations if not forcing new
-    if (!forceNew) {
-      const listRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
+  for (const baseUrl of candidateUrls) {
+    try {
+      // 1. Check existing invitations if not forcing new
+      if (!forceNew) {
+        const listRes = await fetch(`${baseUrl}/api/v1/invitations`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+          },
+        });
 
-      if (listRes.ok) {
-        const listBody = (await listRes.json()) as {
-          success: boolean;
-          data?: Array<{ status: string; code: string; expiresAt: string }>;
-        };
-        if (listBody.success && Array.isArray(listBody.data)) {
-          const now = Date.now();
-          const pending = listBody.data.find(
-            (inv) => inv.status === 'PENDING' && new Date(inv.expiresAt).getTime() > now
-          );
-          if (pending && pending.code) {
-            inviteCode = pending.code;
+        if (listRes.ok) {
+          const listBody = (await listRes.json()) as {
+            success: boolean;
+            data?: Array<{ status: string; code: string; expiresAt: string }>;
+          };
+          if (listBody.success && Array.isArray(listBody.data)) {
+            const now = Date.now();
+            const pending = listBody.data.find(
+              (inv) => inv.status === 'PENDING' && new Date(inv.expiresAt).getTime() > now
+            );
+            if (pending && pending.code) {
+              inviteCode = pending.code;
+            }
           }
         }
       }
-    }
 
-    // 2. Generate a new invitation if none active or forced new
-    if (!inviteCode) {
-      const createRes = await fetch(`${env.apiBaseUrl}/api/v1/invitations`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          recipientActorId: '*',
-          relationshipLabel: targetRole,
-        }),
-      });
+      // 2. Generate a new invitation if none active or forced new
+      if (!inviteCode) {
+        const createRes = await fetch(`${baseUrl}/api/v1/invitations`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            recipientActorId: '*',
+            relationshipLabel: targetRole,
+          }),
+        });
 
-      if (createRes.ok) {
-        const createBody = (await createRes.json()) as {
-          success: boolean;
-          data?: { code: string };
-        };
-        if (createBody.success && createBody.data?.code) {
-          inviteCode = createBody.data.code;
+        if (createRes.ok) {
+          const createBody = (await createRes.json()) as {
+            success: boolean;
+            data?: { code: string };
+          };
+          if (createBody.success && createBody.data?.code) {
+            inviteCode = createBody.data.code;
+          }
         }
       }
+
+      if (inviteCode) break;
+    } catch (err) {
+      // try next candidate
     }
-  } catch (err) {
-    console.warn('[Guardrail Popup] Could not fetch remote pairing invitation, using default code:', err);
   }
 
   if (!inviteCode) {
@@ -1166,10 +1213,36 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
 }
 
 /**
- * Periodically polls the backend to detect caretaker link and unlink status changes.
+ * Periodically polls the backend and listens to real-time events to detect caretaker link and unlink changes.
  */
 function startConnectionPolling(): void {
   stopConnectionPolling();
+
+  // 1. Real-time SSE stream from backend if available
+  try {
+    const env = resolveEnvironmentConfig();
+    const candidateUrls = getCandidateBaseUrls(env.apiBaseUrl);
+    const es = new EventSource(`${candidateUrls[0]}/api/v1/approvals/stream`);
+    sseConnection = es;
+    const onSyncEvent = () => {
+      void checkActiveGuardianCoverage().then(({ isLinked, contacts }) => {
+        if (isLinked && contacts.length > 0) {
+          const primaryContact = contacts[0];
+          const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
+          updatePopupToPairedState(primaryName, contacts);
+        } else {
+          updatePopupToUnpairedState();
+        }
+      });
+    };
+    es.addEventListener('ward_synced', onSyncEvent);
+    es.addEventListener('identity_changed', onSyncEvent);
+    es.onerror = () => {
+      // Fallback timer handles polling
+    };
+  } catch {}
+
+  // 2. High-frequency 1.5s polling
   connectionPollingTimer = setInterval(() => {
     void checkActiveGuardianCoverage().then(({ isLinked, contacts }) => {
       if (isLinked && contacts.length > 0) {
@@ -1180,10 +1253,14 @@ function startConnectionPolling(): void {
         updatePopupToUnpairedState();
       }
     });
-  }, 2500);
+  }, 1500);
 }
 
 function stopConnectionPolling(): void {
+  if (sseConnection !== null) {
+    try { sseConnection.close(); } catch {}
+    sseConnection = null;
+  }
   if (connectionPollingTimer !== null) {
     clearInterval(connectionPollingTimer);
     connectionPollingTimer = null;

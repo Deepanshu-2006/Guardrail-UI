@@ -63,7 +63,11 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
     if (!originHeader) return false;
     return (
       configuredAllowedOrigins.includes(originHeader) ||
-      configuredAllowedOrigins.includes('*')
+      configuredAllowedOrigins.includes('*') ||
+      originHeader.startsWith('chrome-extension://') ||
+      originHeader.startsWith('moz-extension://') ||
+      originHeader.includes('localhost') ||
+      originHeader.includes('127.0.0.1')
     );
   };
 
@@ -1000,7 +1004,35 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       return;
     }
 
-    // 3d. Ward Disconnect Endpoint (/api/v1/ward/disconnect & /api/v1/trusted-contacts/disconnect)
+    // 3d. Direct Ward Trusted Contacts Endpoint (/api/v1/trusted-contacts & /api/v1/ward/contacts)
+    if (request.method === 'GET' && (requestPath === '/api/v1/trusted-contacts' || requestPath === '/api/v1/ward/contacts')) {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      const db = (runtime.contactRegistry as any)?.database;
+      const contacts: any[] = [];
+      if (db) {
+        const rows = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' ORDER BY rowid").all() as { payload_json: string }[];
+        if (rows && rows.length > 0) {
+          for (const r of rows) {
+            try {
+              contacts.push(JSON.parse(r.payload_json));
+            } catch {}
+          }
+        }
+      }
+
+      response.statusCode = 200;
+      response.end(JSON.stringify({
+        success: true,
+        data: contacts,
+      }));
+      return;
+    }
+
+    // 3e. Ward Disconnect Endpoint (/api/v1/ward/disconnect & /api/v1/trusted-contacts/disconnect)
     if (request.method === 'POST' && (requestPath === '/api/v1/ward/disconnect' || requestPath === '/api/v1/trusted-contacts/disconnect')) {
       applyCorsHeaders(response, request.headers.origin);
       response.setHeader('content-type', 'application/json; charset=utf-8');
@@ -1467,7 +1499,11 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
   try {
     await new Promise<void>((resolve, reject) => {
       server.once('error', reject);
-      server.listen(port, host, () => { server.off('error', reject); resolve(); });
+      if (host === '0.0.0.0' || host === '::' || host === 'localhost' || !host) {
+        server.listen(port, () => { server.off('error', reject); resolve(); });
+      } else {
+        server.listen(port, host, () => { server.off('error', reject); resolve(); });
+      }
     });
   } catch (error) {
     runtime.close();

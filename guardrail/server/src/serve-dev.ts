@@ -40,7 +40,7 @@ async function main(): Promise<void> {
 
   const serverConfig = loadGuardrailServerConfig(process.env, {
     port: 3000,
-    host: '127.0.0.1',
+    host: 'localhost',
   });
 
   // Setup SQLite Identity Store
