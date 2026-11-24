@@ -1030,7 +1030,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           if (db) {
             if (wardId) {
               db.prepare("DELETE FROM trusted_contacts WHERE user_id = ?").run(wardId);
-            } else {
+            } else if (body?.clearAll === true) {
               db.prepare("DELETE FROM trusted_contacts").run();
             }
           }

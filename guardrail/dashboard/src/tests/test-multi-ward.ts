@@ -412,6 +412,33 @@ async function runMultiWardTests() {
 
     const wardBadges = historyEl.querySelectorAll('.gd-card-ward-badge');
     assert(wardBadges.length === 2, 'History cards render Ward Attribution Badges');
+    assert(historyEl.querySelector('.gd-fullwidth-controls-bar') === null, '2 or fewer wards keep controls inside list pane');
+
+    const threeWards = [
+      ...connectedWards,
+      { id: 'usr_deepanshukhatri20061972', name: 'Deepanshu Khatri', email: 'deepanshu@example.com' },
+    ];
+    const pendingThreeEl = renderPendingApprovals({
+      requests: mockRequests,
+      selectedRequestId: 'apr_alice_001',
+      status: 'idle',
+      connectedWards: threeWards,
+      filters: { wardId: 'ALL' },
+      onRequestSelect: () => {},
+    });
+    const fullWidthPendingBar = pendingThreeEl.querySelector('.gd-fullwidth-controls-bar');
+    assert(fullWidthPendingBar !== null, 'More than 2 wards renders full-width controls bar above pending layout');
+    assert(fullWidthPendingBar?.querySelector('.gd-ward-switcher') !== null, 'Full-width controls bar contains ward switcher');
+
+    const historyThreeEl = renderDecisionHistory({
+      requests: resolvedRequests,
+      status: 'idle',
+      connectedWards: threeWards,
+      filters: { wardId: 'ALL' },
+      onRequestSelect: () => {},
+    });
+    const fullWidthHistoryBar = historyThreeEl.querySelector('.gd-fullwidth-controls-bar');
+    assert(fullWidthHistoryBar !== null, 'More than 2 wards renders full-width controls bar above history layout');
   }
 
   console.log('\n▶ Test Suite 5: Overview Multi-Ward Metrics & Oversight');

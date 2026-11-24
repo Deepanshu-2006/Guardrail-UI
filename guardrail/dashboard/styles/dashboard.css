@@ -14253,6 +14253,42 @@ article.gd-card-collapsed,
   padding: 6px 14px;
 }
 
+/* Full-width controls bar above two-column queue/history when > 2 wards connected */
+.gd-fullwidth-controls-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin: 0 0 24px 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(39, 49, 33, 0.10);
+}
+
+.gd-fullwidth-controls-bar .gd-ward-switcher {
+  margin-bottom: 16px;
+}
+
+.gd-fullwidth-controls-bar .gd-filter-bar {
+  width: 100%;
+  max-width: 680px;
+  margin-bottom: 0;
+}
+
+.gd-fullwidth-controls-bar .gd-search-input-wrap {
+  max-width: 460px;
+}
+
+.gd-fullwidth-controls-bar .gd-filter-controls-row {
+  width: auto !important;
+  gap: 20px !important;
+}
+
+.gd-fullwidth-controls-bar .gd-select-wrap {
+  flex: 0 0 auto !important;
+  min-width: 135px;
+  max-width: 195px;
+}
+
 @media (max-width: 640px) {
   .gd-pending-modal-row {
     flex-direction: column;

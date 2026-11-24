@@ -3638,27 +3638,29 @@ export class DashboardShell {
     }
     this.render();
 
-    try {
-      const baseUrl = typeof (this.apiClient as any)?.getBaseUrl === 'function'
-        ? (this.apiClient as any).getBaseUrl()
-        : 'http://localhost:3000';
-      const token = typeof (this.apiClient as any)?.getToken === 'function'
-        ? await (this.apiClient as any).getToken()
-        : (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null);
+    if (this.apiClient) {
+      try {
+        const baseUrl = typeof (this.apiClient as any)?.getBaseUrl === 'function'
+          ? (this.apiClient as any).getBaseUrl()
+          : 'http://localhost:3000';
+        const token = typeof (this.apiClient as any)?.getToken === 'function'
+          ? await (this.apiClient as any).getToken()
+          : (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null);
 
-      await fetch(`${baseUrl}/api/v1/ward/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ wardId: currentWardId }),
-      });
-    } catch (err) {
-      console.warn('[Dashboard] Disconnect ward request error:', err);
+        await fetch(`${baseUrl}/api/v1/ward/disconnect`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ wardId: currentWardId }),
+        });
+      } catch (err) {
+        console.warn('[Dashboard] Disconnect ward request error:', err);
+      }
+      await this.fetchRelationships({ isBackground: true });
+      await this.fetchPendingRequests(true);
     }
-    await this.fetchRelationships({ isBackground: true });
-    await this.fetchPendingRequests(true);
     this.render();
   }
 

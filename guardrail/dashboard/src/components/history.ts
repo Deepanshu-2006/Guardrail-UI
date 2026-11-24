@@ -858,6 +858,12 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   listPane.setAttribute('role', 'region');
   listPane.setAttribute('aria-label', 'Decision History List');
 
+  const useFullWidthControls = Boolean(props.connectedWards && props.connectedWards.length > 2);
+  const controlsTarget = useFullWidthControls ? document.createElement('div') : listPane;
+  if (useFullWidthControls) {
+    controlsTarget.className = 'gd-fullwidth-controls-bar';
+  }
+
   // Multi-Ward Switcher Pill Strip (rendered if multiple wards connected)
   if (props.connectedWards && props.connectedWards.length > 1) {
     const wardSwitcher = renderWardSwitcher({
@@ -872,7 +878,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
         });
       },
     });
-    listPane.appendChild(wardSwitcher);
+    controlsTarget.appendChild(wardSwitcher);
   }
 
   // Render Filter Bar
@@ -890,7 +896,11 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       props.onFiltersChange?.(newFilters);
     },
   });
-  listPane.appendChild(filterBar);
+  controlsTarget.appendChild(filterBar);
+
+  if (useFullWidthControls && controlsTarget.children.length > 0) {
+    section.appendChild(controlsTarget);
+  }
 
   if (filteredRequests.length === 0) {
     // Filter Empty State

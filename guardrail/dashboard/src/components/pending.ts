@@ -610,6 +610,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     } else {
       // State D: Filterable Approval Items List
       const filteredRequests = filterRequests(displayRequests, activeFilters);
+      const useFullWidthControls = Boolean(props.connectedWards && props.connectedWards.length > 2);
+      const controlsTarget = useFullWidthControls ? document.createElement('div') : listPane;
+      if (useFullWidthControls) {
+        controlsTarget.className = 'gd-fullwidth-controls-bar';
+      }
 
       // Multi-Ward Switcher Pill Strip (rendered if multiple wards connected)
       if (props.connectedWards && props.connectedWards.length > 1) {
@@ -625,7 +630,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             });
           },
         });
-        listPane.appendChild(wardSwitcher);
+        controlsTarget.appendChild(wardSwitcher);
       }
 
       // Filter Bar (rendered if multiple requests or active filter)
@@ -644,7 +649,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
             props.onFiltersChange?.(newFilters);
           },
         });
-        listPane.appendChild(filterBar);
+        controlsTarget.appendChild(filterBar);
+      }
+
+      if (useFullWidthControls && controlsTarget.children.length > 0) {
+        section.appendChild(controlsTarget);
       }
 
       if (filteredRequests.length === 0) {
