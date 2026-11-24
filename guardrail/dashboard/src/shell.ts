@@ -2878,7 +2878,7 @@ export class DashboardShell {
         const badge = document.createElement('span');
         badge.className = 'gd-mobile-tab-badge';
         badge.style.display = 'none';
-        btn.appendChild(badge);
+        iconWrap.appendChild(badge);
       }
 
       btn.addEventListener('click', () => {

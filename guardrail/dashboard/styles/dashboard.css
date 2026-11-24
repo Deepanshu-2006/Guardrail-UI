@@ -6244,23 +6244,38 @@ textarea:focus-visible,
 }
 
 @media (max-width: 768px) {
+  html,
+  body,
+  .gd-app-wrapper,
+  .gd-main-workspace,
+  .gd-content-body,
+  .gd-content-container,
+  .gd-view-section {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
   .gd-mobile-toggle,
   .gd-sidebar,
-  .gd-sidebar-backdrop {
+  .gd-sidebar-backdrop,
+  .gd-env-badge {
     display: none !important;
   }
 
   .gd-top-header {
     padding: 12px 16px !important;
-    background: rgba(237, 230, 214, 0.92);
+    background: rgba(237, 230, 214, 0.94);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(39, 49, 33, 0.09);
   }
 
   .gd-header-title {
-    font-size: 16px !important;
+    display: block !important;
+    font-size: 15px !important;
     font-weight: 700 !important;
+    color: #1B2418 !important;
     letter-spacing: -0.015em;
   }
 
@@ -6269,12 +6284,13 @@ textarea:focus-visible,
   }
 
   .gd-section-header {
-    margin-bottom: 16px !important;
+    margin-bottom: 14px !important;
   }
 
   .gd-section-header .gd-section-title,
   .gd-view-title {
-    font-size: 28px !important;
+    font-size: 26px !important;
+    line-height: 1.15 !important;
   }
 
   /* Overview: Clean single-column mobile stack */
@@ -6288,19 +6304,52 @@ textarea:focus-visible,
     gap: 24px !important;
   }
 
-  /* Pending Approvals on Phone: Focused Full-Width Triage List (tap opens Bottom Sheet) */
+  /* Controls & Filters: Compact 2-column dropdown row, no redundant Ward dropdown */
+  .gd-fullwidth-controls-bar {
+    margin-bottom: 16px !important;
+    padding-bottom: 14px !important;
+    width: 100% !important;
+  }
+
+  .gd-fullwidth-controls-bar .gd-filter-bar,
+  .gd-fullwidth-controls-bar .gd-search-input-wrap {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .gd-filter-controls-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .gd-filter-controls-row .gd-select-wrap {
+    max-width: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-fullwidth-controls-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(3) {
+    display: none !important;
+  }
+
+  /* Pending Approvals on Phone: Focused Full-Width Triage Cards */
   #view-pending .gd-approvals-layout {
     grid-template-columns: 1fr !important;
     gap: 0 !important;
+    width: 100% !important;
   }
 
-  #view-pending .gd-decision-dossier-box {
+  #view-pending .gd-decision-dossier-box,
+  #view-pending .gd-pending-protocols-horizontal {
     display: none !important;
   }
 
   #view-history .gd-history-layout {
     grid-template-columns: 1fr !important;
     gap: 20px !important;
+    width: 100% !important;
   }
 
   .gd-ward-switcher {
@@ -6314,9 +6363,45 @@ textarea:focus-visible,
     display: none;
   }
 
-  .gd-request-card {
-    padding: 14px 12px !important;
-    min-height: 64px;
+  #view-pending .gd-request-card,
+  #view-pending .gd-request-card.selected,
+  #view-pending .gd-request-card[aria-selected="true"] {
+    background: rgba(250, 246, 237, 0.72) !important;
+    border: 1px solid rgba(39, 49, 33, 0.11) !important;
+    border-left: 1px solid rgba(39, 49, 33, 0.11) !important;
+    border-radius: 14px !important;
+    padding: 14px 15px !important;
+    margin: 0 0 10px 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 1px 3px rgba(27, 36, 24, 0.04) !important;
+  }
+
+  #view-pending .gd-request-card:active {
+    transform: scale(0.99);
+    background: rgba(39, 49, 33, 0.05) !important;
+  }
+
+  #view-pending .gd-request-num {
+    display: none !important;
+  }
+
+  #view-pending .gd-request-title-row {
+    flex-direction: column-reverse !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-request-description {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 3 !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-pending-card-badges {
+    justify-content: flex-start !important;
   }
 
   /* Mobile Bottom Tab Bar */
@@ -6363,11 +6448,12 @@ textarea:focus-visible,
   }
 
   .gd-mobile-tab-icon {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 
   .gd-mobile-tab-icon svg {
@@ -6377,8 +6463,8 @@ textarea:focus-visible,
 
   .gd-mobile-tab-badge {
     position: absolute;
-    top: 3px;
-    right: calc(50% - 20px);
+    top: -4px;
+    right: -9px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
@@ -6386,11 +6472,12 @@ textarea:focus-visible,
     background: #A33B31;
     color: #FAF6ED;
     font-family: var(--gd-font-mono);
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     align-items: center;
     justify-content: center;
     line-height: 1;
+    border: 1.5px solid #EDE6D6;
   }
 
   .gd-sheet-ward-label {
@@ -10947,23 +11034,38 @@ article.gd-card-collapsed,
 }
 
 @media (max-width: 768px) {
+  html,
+  body,
+  .gd-app-wrapper,
+  .gd-main-workspace,
+  .gd-content-body,
+  .gd-content-container,
+  .gd-view-section {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
   .gd-mobile-toggle,
   .gd-sidebar,
-  .gd-sidebar-backdrop {
+  .gd-sidebar-backdrop,
+  .gd-env-badge {
     display: none !important;
   }
 
   .gd-top-header {
     padding: 12px 16px !important;
-    background: rgba(237, 230, 214, 0.92);
+    background: rgba(237, 230, 214, 0.94);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(39, 49, 33, 0.09);
   }
 
   .gd-header-title {
-    font-size: 16px !important;
+    display: block !important;
+    font-size: 15px !important;
     font-weight: 700 !important;
+    color: #1B2418 !important;
     letter-spacing: -0.015em;
   }
 
@@ -10972,12 +11074,13 @@ article.gd-card-collapsed,
   }
 
   .gd-section-header {
-    margin-bottom: 16px !important;
+    margin-bottom: 14px !important;
   }
 
   .gd-section-header .gd-section-title,
   .gd-view-title {
-    font-size: 28px !important;
+    font-size: 26px !important;
+    line-height: 1.15 !important;
   }
 
   /* Overview: Clean single-column mobile stack */
@@ -10991,19 +11094,52 @@ article.gd-card-collapsed,
     gap: 24px !important;
   }
 
-  /* Pending Approvals on Phone: Focused Full-Width Triage List (tap opens Bottom Sheet) */
+  /* Controls & Filters: Compact 2-column dropdown row, no redundant Ward dropdown */
+  .gd-fullwidth-controls-bar {
+    margin-bottom: 16px !important;
+    padding-bottom: 14px !important;
+    width: 100% !important;
+  }
+
+  .gd-fullwidth-controls-bar .gd-filter-bar,
+  .gd-fullwidth-controls-bar .gd-search-input-wrap {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .gd-filter-controls-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .gd-filter-controls-row .gd-select-wrap {
+    max-width: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-fullwidth-controls-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(3) {
+    display: none !important;
+  }
+
+  /* Pending Approvals on Phone: Focused Full-Width Triage Cards */
   #view-pending .gd-approvals-layout {
     grid-template-columns: 1fr !important;
     gap: 0 !important;
+    width: 100% !important;
   }
 
-  #view-pending .gd-decision-dossier-box {
+  #view-pending .gd-decision-dossier-box,
+  #view-pending .gd-pending-protocols-horizontal {
     display: none !important;
   }
 
   #view-history .gd-history-layout {
     grid-template-columns: 1fr !important;
     gap: 20px !important;
+    width: 100% !important;
   }
 
   .gd-ward-switcher {
@@ -11017,9 +11153,45 @@ article.gd-card-collapsed,
     display: none;
   }
 
-  .gd-request-card {
-    padding: 14px 12px !important;
-    min-height: 64px;
+  #view-pending .gd-request-card,
+  #view-pending .gd-request-card.selected,
+  #view-pending .gd-request-card[aria-selected="true"] {
+    background: rgba(250, 246, 237, 0.72) !important;
+    border: 1px solid rgba(39, 49, 33, 0.11) !important;
+    border-left: 1px solid rgba(39, 49, 33, 0.11) !important;
+    border-radius: 14px !important;
+    padding: 14px 15px !important;
+    margin: 0 0 10px 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 1px 3px rgba(27, 36, 24, 0.04) !important;
+  }
+
+  #view-pending .gd-request-card:active {
+    transform: scale(0.99);
+    background: rgba(39, 49, 33, 0.05) !important;
+  }
+
+  #view-pending .gd-request-num {
+    display: none !important;
+  }
+
+  #view-pending .gd-request-title-row {
+    flex-direction: column-reverse !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-request-description {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 3 !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-pending-card-badges {
+    justify-content: flex-start !important;
   }
 
   /* Mobile Bottom Tab Bar */
@@ -11066,11 +11238,12 @@ article.gd-card-collapsed,
   }
 
   .gd-mobile-tab-icon {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 
   .gd-mobile-tab-icon svg {
@@ -11080,8 +11253,8 @@ article.gd-card-collapsed,
 
   .gd-mobile-tab-badge {
     position: absolute;
-    top: 3px;
-    right: calc(50% - 20px);
+    top: -4px;
+    right: -9px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
@@ -11089,11 +11262,12 @@ article.gd-card-collapsed,
     background: #A33B31;
     color: #FAF6ED;
     font-family: var(--gd-font-mono);
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     align-items: center;
     justify-content: center;
     line-height: 1;
+    border: 1.5px solid #EDE6D6;
   }
 
   .gd-sheet-ward-label {
@@ -15149,23 +15323,38 @@ article.gd-card-collapsed,
 }
 
 @media (max-width: 768px) {
+  html,
+  body,
+  .gd-app-wrapper,
+  .gd-main-workspace,
+  .gd-content-body,
+  .gd-content-container,
+  .gd-view-section {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
   .gd-mobile-toggle,
   .gd-sidebar,
-  .gd-sidebar-backdrop {
+  .gd-sidebar-backdrop,
+  .gd-env-badge {
     display: none !important;
   }
 
   .gd-top-header {
     padding: 12px 16px !important;
-    background: rgba(237, 230, 214, 0.92);
+    background: rgba(237, 230, 214, 0.94);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(39, 49, 33, 0.09);
   }
 
   .gd-header-title {
-    font-size: 16px !important;
+    display: block !important;
+    font-size: 15px !important;
     font-weight: 700 !important;
+    color: #1B2418 !important;
     letter-spacing: -0.015em;
   }
 
@@ -15174,12 +15363,13 @@ article.gd-card-collapsed,
   }
 
   .gd-section-header {
-    margin-bottom: 16px !important;
+    margin-bottom: 14px !important;
   }
 
   .gd-section-header .gd-section-title,
   .gd-view-title {
-    font-size: 28px !important;
+    font-size: 26px !important;
+    line-height: 1.15 !important;
   }
 
   /* Overview: Clean single-column mobile stack */
@@ -15193,19 +15383,52 @@ article.gd-card-collapsed,
     gap: 24px !important;
   }
 
-  /* Pending Approvals on Phone: Focused Full-Width Triage List (tap opens Bottom Sheet) */
+  /* Controls & Filters: Compact 2-column dropdown row, no redundant Ward dropdown */
+  .gd-fullwidth-controls-bar {
+    margin-bottom: 16px !important;
+    padding-bottom: 14px !important;
+    width: 100% !important;
+  }
+
+  .gd-fullwidth-controls-bar .gd-filter-bar,
+  .gd-fullwidth-controls-bar .gd-search-input-wrap {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .gd-filter-controls-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .gd-filter-controls-row .gd-select-wrap {
+    max-width: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-fullwidth-controls-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(3) {
+    display: none !important;
+  }
+
+  /* Pending Approvals on Phone: Focused Full-Width Triage Cards */
   #view-pending .gd-approvals-layout {
     grid-template-columns: 1fr !important;
     gap: 0 !important;
+    width: 100% !important;
   }
 
-  #view-pending .gd-decision-dossier-box {
+  #view-pending .gd-decision-dossier-box,
+  #view-pending .gd-pending-protocols-horizontal {
     display: none !important;
   }
 
   #view-history .gd-history-layout {
     grid-template-columns: 1fr !important;
     gap: 20px !important;
+    width: 100% !important;
   }
 
   .gd-ward-switcher {
@@ -15219,9 +15442,45 @@ article.gd-card-collapsed,
     display: none;
   }
 
-  .gd-request-card {
-    padding: 14px 12px !important;
-    min-height: 64px;
+  #view-pending .gd-request-card,
+  #view-pending .gd-request-card.selected,
+  #view-pending .gd-request-card[aria-selected="true"] {
+    background: rgba(250, 246, 237, 0.72) !important;
+    border: 1px solid rgba(39, 49, 33, 0.11) !important;
+    border-left: 1px solid rgba(39, 49, 33, 0.11) !important;
+    border-radius: 14px !important;
+    padding: 14px 15px !important;
+    margin: 0 0 10px 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 1px 3px rgba(27, 36, 24, 0.04) !important;
+  }
+
+  #view-pending .gd-request-card:active {
+    transform: scale(0.99);
+    background: rgba(39, 49, 33, 0.05) !important;
+  }
+
+  #view-pending .gd-request-num {
+    display: none !important;
+  }
+
+  #view-pending .gd-request-title-row {
+    flex-direction: column-reverse !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-request-description {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 3 !important;
+    width: 100% !important;
+  }
+
+  #view-pending .gd-pending-card-badges {
+    justify-content: flex-start !important;
   }
 
   /* Mobile Bottom Tab Bar */
@@ -15268,11 +15527,12 @@ article.gd-card-collapsed,
   }
 
   .gd-mobile-tab-icon {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 
   .gd-mobile-tab-icon svg {
@@ -15282,8 +15542,8 @@ article.gd-card-collapsed,
 
   .gd-mobile-tab-badge {
     position: absolute;
-    top: 3px;
-    right: calc(50% - 20px);
+    top: -4px;
+    right: -9px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
@@ -15291,11 +15551,12 @@ article.gd-card-collapsed,
     background: #A33B31;
     color: #FAF6ED;
     font-family: var(--gd-font-mono);
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     align-items: center;
     justify-content: center;
     line-height: 1;
+    border: 1.5px solid #EDE6D6;
   }
 
   .gd-sheet-ward-label {
