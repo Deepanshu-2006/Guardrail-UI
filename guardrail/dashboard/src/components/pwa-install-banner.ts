@@ -9,6 +9,8 @@
  * 5. Reusable Settings PWA status card so caretakers can inspect installation anytime.
  */
 
+import { setAnimatedHeading } from './icons.js';
+
 export interface PwaInstallOptions {
   force?: boolean;
   onInstalled?: () => void;
@@ -294,56 +296,55 @@ export class PwaInstallManager {
    */
   public renderSettingsCard(): HTMLElement {
     const card = document.createElement('div');
-    card.className = 'gd-card gd-settings-pwa-card';
+    card.className = 'gd-card gd-settings-card gd-settings-pwa-card gd-scroll-reveal';
+    card.id = 'gd-card-pwa';
 
     const isInstalled = this.isStandalone();
     const isIos = this.isIosSafari();
 
     card.innerHTML = `
-      <div class="gd-card-header">
-        <div class="gd-card-title-group">
-          <div class="gd-card-badge-row">
-            <span class="gd-micro-badge">MOBILE COMPANION</span>
-            <span class="gd-status-badge ${isInstalled ? 'active' : 'idle'}">
-              ${isInstalled ? 'ACTIVE STANDALONE' : 'READY TO INSTALL'}
-            </span>
-          </div>
-          <h2 class="gd-card-title">Mobile PWA Companion App</h2>
-          <p class="gd-card-subtitle">
-            Caretakers evaluate and approve requests on their mobile phones when out-of-band alerts arrive.
-          </p>
-        </div>
+      <div class="gd-settings-card-header">
+        <h2 class="gd-section-title">Mobile PWA Companion App</h2>
+        <span class="gd-settings-badge ${isInstalled ? 'gd-badge-ok' : 'gd-badge-muted'}">
+          ${isInstalled ? 'Active Standalone' : 'Ready to Install'}
+        </span>
       </div>
-      <div class="gd-card-content">
-        <div class="gd-pwa-status-box ${isInstalled ? 'installed' : ''}">
-          <div class="gd-pwa-status-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${isInstalled ? '#273121' : '#6B685B'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-              <line x1="12" y1="18" x2="12.01" y2="18"></line>
-            </svg>
-          </div>
-          <div class="gd-pwa-status-info">
-            <div class="gd-pwa-status-headline">
-              ${isInstalled ? 'Installed as Standalone App' : 'Web Application Mode'}
-            </div>
-            <div class="gd-pwa-status-subline">
-              ${
-                isInstalled
-                  ? 'Guardrail is running in native standalone mode with high-priority lock-screen alerts.'
-                  : isIos
-                  ? 'To install on iOS: Tap Share ⎋ in Safari, then select "Add to Home Screen ⊞".'
-                  : 'Install Guardrail to your home screen for full-screen review and lock-screen notification badges.'
-              }
-            </div>
-          </div>
-          ${
-            !isInstalled && !isIos
-              ? `<button type="button" class="gd-btn gd-btn-primary gd-btn-install-pwa">Install App</button>`
-              : ''
-          }
+      <p class="gd-settings-sub">
+        Caretakers evaluate and approve requests on their mobile phones when out-of-band alerts arrive.
+      </p>
+      <div class="gd-pwa-status-box ${isInstalled ? 'installed' : ''}">
+        <div class="gd-pwa-status-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isInstalled ? '#273121' : '#5F6656'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
         </div>
+        <div class="gd-pwa-status-info">
+          <div class="gd-pwa-status-headline">
+            ${isInstalled ? 'Installed as Standalone App' : 'Web Application Mode'}
+          </div>
+          <div class="gd-pwa-status-subline">
+            ${
+              isInstalled
+                ? 'Guardrail is running in native standalone mode with high-priority lock-screen alerts.'
+                : isIos
+                ? 'To install on iOS: Tap Share ⎋ in Safari, then select "Add to Home Screen ⊞".'
+                : 'Install Guardrail to your home screen for full-screen review and lock-screen notification badges.'
+            }
+          </div>
+        </div>
+        ${
+          !isInstalled && !isIos
+            ? `<button type="button" class="gd-btn-install-pwa">Install App</button>`
+            : ''
+        }
       </div>
     `;
+
+    const titleEl = card.querySelector<HTMLElement>('.gd-section-title');
+    if (titleEl) {
+      setAnimatedHeading(titleEl, 'Mobile PWA Companion App');
+    }
 
     const installBtn = card.querySelector<HTMLButtonElement>('.gd-btn-install-pwa');
     if (installBtn) {

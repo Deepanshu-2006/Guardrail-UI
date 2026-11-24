@@ -13144,56 +13144,133 @@ article.gd-card-collapsed,
   color: #FAF6ED;
 }
 
-/* Settings PWA Status Card */
+/* Settings PWA Status Section (Editorial Quiet Assurance — no white box) */
 .gd-settings-pwa-card {
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .gd-pwa-status-box {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 20px;
-  background: #F4F1E8;
-  border: 1px solid rgba(39, 49, 33, 0.12);
-  border-radius: 12px;
+  gap: 14px;
+  padding: 14px 0 4px 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .gd-pwa-status-box.installed {
-  background: rgba(39, 49, 33, 0.05);
-  border-color: rgba(39, 49, 33, 0.2);
+  background: transparent;
+  border: none;
 }
 
 .gd-pwa-status-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: #EAE6DB;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(39, 49, 33, 0.06);
+  border: 1px solid rgba(39, 49, 33, 0.12);
   flex-shrink: 0;
 }
 
 .gd-pwa-status-info {
   flex: 1;
+  min-width: 0;
 }
 
 .gd-pwa-status-headline {
-  font-size: 15px;
-  font-weight: 700;
-  color: #273121;
+  font-family: var(--gd-font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: #1B2117;
   margin-bottom: 2px;
 }
 
 .gd-pwa-status-subline {
-  font-size: 13px;
-  color: #6C7265;
-  line-height: 1.4;
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
+  color: #636E5B;
+  line-height: 1.45;
 }
 
 .gd-btn-install-pwa {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #273121;
+  border: 1px solid #273121;
+  color: #FAF6ED;
+  font-family: var(--gd-font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.gd-btn-install-pwa:hover:not(:disabled) {
+  background: #141B11;
+  border-color: #141B11;
+  transform: translateY(-1px);
+}
+
+.gd-btn-install-pwa:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Settings PWA Companion Section: Sequential Character & Side-Sliding Entrance */
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-settings-card-header .gd-section-title .gd-char,
+#gd-card-pwa.is-revealed .gd-settings-card-header .gd-section-title .gd-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(12px) scale(0.94);
+  animation: gd-char-reveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.016s) !important;
+  white-space: pre;
+}
+
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-settings-card-header .gd-settings-badge,
+#gd-card-pwa.is-revealed .gd-settings-card-header .gd-settings-badge {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-settings-sub,
+#gd-card-pwa.is-revealed .gd-settings-sub {
+  animation: gd-render-in-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-pwa-status-icon,
+#gd-card-pwa.is-revealed .gd-pwa-status-icon {
+  animation: gd-icon-enter-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-pwa-status-headline,
+#gd-card-pwa.is-revealed .gd-pwa-status-headline {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-pwa-status-subline,
+#gd-card-pwa.is-revealed .gd-pwa-status-subline {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
+}
+
+#view-settings.gd-view-initial-enter #gd-card-pwa .gd-btn-install-pwa,
+#gd-card-pwa.is-revealed .gd-btn-install-pwa {
+  animation: gd-render-in-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-settings.gd-view-initial-enter #gd-card-pwa *,
+  #gd-card-pwa.is-revealed * {
+    animation: none !important;
+  }
 }
 
 /* -----------------------------------------------------------------------------
