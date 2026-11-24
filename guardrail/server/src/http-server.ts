@@ -845,7 +845,162 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       return;
     }
 
-    // 3e. Web Push VAPID Public Key Discovery (/api/v1/push/vapid-public-key)
+    // 3e. Ward Identity Synchronization (/api/v1/ward/sync-identity & /api/v1/ward/identity)
+    if (request.method === 'POST' && requestPath === '/api/v1/ward/sync-identity') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          const isAuthenticated = Boolean(body.isAuthenticated);
+          const actorId = typeof body.actorId === 'string' && body.actorId.trim() ? body.actorId.trim() : null;
+          const email = typeof body.email === 'string' && body.email.trim() ? body.email.trim() : null;
+          const fullName = typeof body.fullName === 'string' && body.fullName.trim()
+            ? body.fullName.trim()
+            : (email
+                ? email.split('@')[0].split(/[._-]/).filter(Boolean).map((s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join(' ')
+                : (actorId ? (actorId.startsWith('usr_') ? actorId.slice(4) : actorId) : null));
+          const picture = typeof body.picture === 'string' && body.picture.trim() ? body.picture.trim() : null;
+
+          const now = new Date().toISOString();
+          const db = (runtime.contactRegistry as any)?.database;
+
+          if (db) {
+            if (isAuthenticated && actorId) {
+              // 1. Ensure user is in guardrail_users
+              db.prepare(`
+                INSERT OR REPLACE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+                VALUES (?, 'https://guardrail.local/internal', ?, 'USER', 'ACTIVE', ?, ?, ?)
+              `).run(actorId, actorId, email || `${actorId}@guardrail.local`, now, now);
+
+              // 2. Fetch existing caretaker contacts or defaults
+              const caretakerRows = db.prepare(
+                "SELECT DISTINCT id, payload_json FROM trusted_contacts"
+              ).all() as { id: string; payload_json: string }[];
+
+              const caretakerIds = new Set<string>();
+              if (caretakerRows && caretakerRows.length > 0) {
+                for (const row of caretakerRows) {
+                  if (row.id) caretakerIds.add(row.id);
+                }
+              }
+              // Also ensure default caretakers are included
+              caretakerIds.add('usr_dee1b4c0-542f-4b0f-ae3c-126115be972b');
+              caretakerIds.add('usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76');
+
+              // Also check any other TRUSTED_CONTACT in guardrail_users
+              const userCaretakers = db.prepare(
+                "SELECT id FROM guardrail_users WHERE role = 'TRUSTED_CONTACT'"
+              ).all() as { id: string }[];
+              if (userCaretakers) {
+                for (const u of userCaretakers) {
+                  if (u.id) caretakerIds.add(u.id);
+                }
+              }
+
+              // Clean previous relationships so active ward is consistently the current one
+              db.prepare("DELETE FROM trusted_contacts").run();
+
+              for (const cId of caretakerIds) {
+                const contactPayload = {
+                  id: cId,
+                  contactId: cId,
+                  userId: actorId,
+                  wardId: actorId,
+                  wardName: fullName,
+                  wardEmail: email,
+                  contactName: 'Deepanshu Khatri',
+                  contactEmail: 'deepanshukhatri20061972@gmail.com',
+                  relationshipLabel: 'Designated Caretaker',
+                  status: 'ACTIVE',
+                  createdAt: now,
+                };
+                db.prepare(`
+                  INSERT INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+                  VALUES (?, ?, 'ACTIVE', ?, ?)
+                `).run(cId, actorId, now, JSON.stringify(contactPayload));
+              }
+            } else {
+              // Ward signed out: clear active contact pairings so dashboard shows unlinked
+              db.prepare("DELETE FROM trusted_contacts").run();
+            }
+          }
+
+          // 3. Emit real-time notification to all connected dashboard SSE streams
+          defaultApprovalEventHub.emit({
+            type: 'ward_synced' as any,
+            ward: {
+              actorId: isAuthenticated ? actorId : null,
+              fullName: isAuthenticated ? fullName : null,
+              email: isAuthenticated ? email : null,
+              picture: isAuthenticated ? picture : null,
+              isAuthenticated,
+            },
+          } as any);
+
+          response.statusCode = 200;
+          response.end(JSON.stringify({
+            success: true,
+            data: {
+              actorId: isAuthenticated ? actorId : null,
+              fullName: isAuthenticated ? fullName : null,
+              email: isAuthenticated ? email : null,
+              picture: isAuthenticated ? picture : null,
+              isAuthenticated,
+            },
+          }));
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({
+            success: false,
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: err?.message || 'Failed to sync ward identity',
+              statusCode: 500,
+            },
+          }));
+        }
+      });
+      return;
+    }
+
+    if (request.method === 'GET' && requestPath === '/api/v1/ward/identity') {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      const db = (runtime.contactRegistry as any)?.database;
+      let activeWard: any = null;
+      if (db) {
+        const contactRow = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' LIMIT 1").get() as { payload_json: string } | undefined;
+        if (contactRow) {
+          try {
+            const p = JSON.parse(contactRow.payload_json);
+            activeWard = {
+              actorId: p.userId || p.wardId,
+              fullName: p.wardName,
+              email: p.wardEmail,
+              isAuthenticated: true,
+            };
+          } catch {}
+        }
+      }
+
+      response.statusCode = 200;
+      response.end(JSON.stringify({
+        success: true,
+        data: activeWard,
+      }));
+      return;
+    }
+
+    // 3f. Web Push VAPID Public Key Discovery (/api/v1/push/vapid-public-key)
     if (request.method === 'GET' && requestPath === '/api/v1/push/vapid-public-key') {
       applyCorsHeaders(response, request.headers.origin);
       response.setHeader('content-type', 'application/json; charset=utf-8');
@@ -1121,6 +1276,20 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 assignedWardId = contacts[0].userId || contacts[0].wardId;
                 assignedWardName = contacts[0].wardName || (assignedWardId && assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId);
                 assignedWardEmail = contacts[0].wardEmail;
+              }
+              if (!assignedWardId) {
+                const db = (reg as any)?.database;
+                if (db) {
+                  const anyActive = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' LIMIT 1").get() as { payload_json: string } | undefined;
+                  if (anyActive) {
+                    try {
+                      const p = JSON.parse(anyActive.payload_json);
+                      assignedWardId = p.userId || p.wardId;
+                      assignedWardName = p.wardName || (assignedWardId && assignedWardId.startsWith('usr_') ? assignedWardId.slice(4) : assignedWardId);
+                      assignedWardEmail = p.wardEmail;
+                    } catch {}
+                  }
+                }
               }
             } catch {}
           }
