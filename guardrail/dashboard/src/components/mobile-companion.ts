@@ -9,7 +9,7 @@
 import { ApprovalRequest, ApprovalStatus, ConnectedWard, ContactProfile, RiskLevel } from '../types.js';
 import { createIcon } from './icons.js';
 import { formatTimestamp, isRequestExpired } from './detail.js';
-import { getRealTimeScenery } from './pixel-scenery.js';
+import { getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
 
 function formatWardDisplayName(name?: string | null, requesterId?: string | null): string {
   if (name && name.trim()) return name.trim();
@@ -67,11 +67,53 @@ function getRiskPriority(level?: RiskLevel): number {
   }
 }
 
+function createAmbientBackdrop(phase: SceneryPhase): HTMLElement {
+  const layer = document.createElement('div');
+  layer.className = `gd-m-ambient phase-${phase}`;
+  layer.setAttribute('aria-hidden', 'true');
+
+  // Crisp pixel motes (sunbeams / breeze / dusk fireflies / night stars)
+  const motes = [
+    { x: 10, y: 18, s: 4, dur: 11, del: -2, dx: 14, dy: -28 },
+    { x: 24, y: 42, s: 3, dur: 14, del: -5, dx: -10, dy: -34 },
+    { x: 42, y: 28, s: 4, dur: 12, del: -1, dx: 18, dy: -24 },
+    { x: 64, y: 22, s: 3, dur: 15, del: -7, dx: -14, dy: -30 },
+    { x: 82, y: 34, s: 4, dur: 10, del: -3, dx: 12, dy: -26 },
+    { x: 91, y: 58, s: 3, dur: 13, del: -6, dx: -16, dy: -32 },
+    { x: 15, y: 68, s: 4, dur: 16, del: -4, dx: 12, dy: -36 },
+    { x: 36, y: 78, s: 3, dur: 11, del: -8, dx: -8, dy: -26 },
+    { x: 58, y: 64, s: 4, dur: 14, del: -2, dx: 16, dy: -30 },
+    { x: 76, y: 74, s: 3, dur: 12, del: -9, dx: -12, dy: -28 },
+    { x: 88, y: 86, s: 4, dur: 15, del: -3, dx: 10, dy: -34 },
+    { x: 28, y: 90, s: 3, dur: 13, del: -5, dx: 14, dy: -26 },
+    { x: 50, y: 48, s: 3, dur: 17, del: -6, dx: -10, dy: -22 },
+    { x: 69, y: 52, s: 4, dur: 12, del: -1, dx: 12, dy: -30 },
+  ];
+
+  motes.forEach((m, idx) => {
+    const el = document.createElement('span');
+    el.className = `gd-m-mote ${idx % 3 === 0 ? 'alt' : ''}`;
+    el.style.cssText = `left:${m.x}%;top:${m.y}%;width:${m.s}px;height:${m.s}px;--dur:${m.dur}s;--del:${m.del}s;--dx:${m.dx}px;--dy:${m.dy}px;`;
+    layer.appendChild(el);
+  });
+
+  // Drifting stepped pixel cloud / aurora ribbon silhouettes
+  const drift1 = document.createElement('span');
+  drift1.className = 'gd-m-drift-band band-1';
+  const drift2 = document.createElement('span');
+  drift2.className = 'gd-m-drift-band band-2';
+  layer.appendChild(drift1);
+  layer.appendChild(drift2);
+
+  return layer;
+}
+
 export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement {
   const now = new Date();
   const scenery = getRealTimeScenery(now);
   const shell = document.createElement('div');
   shell.className = `gd-m-shell phase-${scenery.phase}`;
+  shell.appendChild(createAmbientBackdrop(scenery.phase));
 
   const {
     activeTab,

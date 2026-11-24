@@ -6506,16 +6506,125 @@ textarea:focus-visible,
   box-sizing: border-box;
 }
 
-.gd-m-shell::before {
-  content: '';
+.gd-m-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(31, 41, 26, 0.085) 1px, transparent 1px);
-  background-size: 14px 14px;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+  overflow: hidden;
+}
+
+.gd-m-mote {
+  position: absolute;
+  border-radius: 0;
+  opacity: 0;
+  animation: gd-mote-float var(--dur, 12s) ease-in-out var(--del, 0s) infinite;
+}
+
+.gd-m-ambient.phase-morning .gd-m-mote {
+  background: #D99B38;
+}
+.gd-m-ambient.phase-morning .gd-m-mote.alt {
+  background: #6D825D;
+}
+
+.gd-m-ambient.phase-afternoon .gd-m-mote {
+  background: #5B7856;
+}
+.gd-m-ambient.phase-afternoon .gd-m-mote.alt {
+  background: #D4A94A;
+}
+
+.gd-m-ambient.phase-evening .gd-m-mote {
+  background: #D67A3E;
+}
+.gd-m-ambient.phase-evening .gd-m-mote.alt {
+  background: #E8B058;
+}
+
+.gd-m-ambient.phase-night .gd-m-mote {
+  background: #4E6352;
+  animation-name: gd-mote-twinkle;
+}
+.gd-m-ambient.phase-night .gd-m-mote.alt {
+  background: #B88A3E;
+}
+
+.gd-m-drift-band {
+  position: absolute;
+  left: -30%;
+  height: 6px;
+  border-radius: 0;
+  opacity: 0.14;
+  animation: gd-band-drift 28s linear infinite;
+}
+
+.gd-m-drift-band.band-1 {
+  top: 24%;
+  width: 110px;
+  box-shadow: 18px -6px 0 0 currentColor, -14px 6px 0 0 currentColor;
+}
+
+.gd-m-drift-band.band-2 {
+  top: 72%;
+  width: 84px;
+  opacity: 0.10;
+  animation-duration: 36s;
+  animation-delay: -14s;
+  box-shadow: 14px -6px 0 0 currentColor;
+}
+
+.gd-m-ambient.phase-morning .gd-m-drift-band { color: #C9A66B; }
+.gd-m-ambient.phase-afternoon .gd-m-drift-band { color: #7C9482; }
+.gd-m-ambient.phase-evening .gd-m-drift-band { color: #B86B4B; }
+.gd-m-ambient.phase-night .gd-m-drift-band { color: #3D4E42; }
+
+@keyframes gd-mote-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.08;
+  }
+  30% {
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate3d(var(--dx, 12px), var(--dy, -28px), 0);
+    opacity: 0.32;
+  }
+  80% {
+    opacity: 0.14;
+  }
+}
+
+@keyframes gd-mote-twinkle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(0.8);
+    opacity: 0.12;
+  }
+  45% {
+    transform: translate3d(var(--dx, 6px), calc(var(--dy, -16px) * 0.4), 0) scale(1.25);
+    opacity: 0.52;
+  }
+  70% {
+    opacity: 0.20;
+  }
+}
+
+@keyframes gd-band-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(175vw, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-mote,
+  .gd-m-drift-band {
+    animation: none !important;
+    opacity: 0.18;
+  }
 }
 
 .gd-m-shell.phase-morning {
@@ -12062,16 +12171,125 @@ article.gd-card-collapsed,
   box-sizing: border-box;
 }
 
-.gd-m-shell::before {
-  content: '';
+.gd-m-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(31, 41, 26, 0.085) 1px, transparent 1px);
-  background-size: 14px 14px;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+  overflow: hidden;
+}
+
+.gd-m-mote {
+  position: absolute;
+  border-radius: 0;
+  opacity: 0;
+  animation: gd-mote-float var(--dur, 12s) ease-in-out var(--del, 0s) infinite;
+}
+
+.gd-m-ambient.phase-morning .gd-m-mote {
+  background: #D99B38;
+}
+.gd-m-ambient.phase-morning .gd-m-mote.alt {
+  background: #6D825D;
+}
+
+.gd-m-ambient.phase-afternoon .gd-m-mote {
+  background: #5B7856;
+}
+.gd-m-ambient.phase-afternoon .gd-m-mote.alt {
+  background: #D4A94A;
+}
+
+.gd-m-ambient.phase-evening .gd-m-mote {
+  background: #D67A3E;
+}
+.gd-m-ambient.phase-evening .gd-m-mote.alt {
+  background: #E8B058;
+}
+
+.gd-m-ambient.phase-night .gd-m-mote {
+  background: #4E6352;
+  animation-name: gd-mote-twinkle;
+}
+.gd-m-ambient.phase-night .gd-m-mote.alt {
+  background: #B88A3E;
+}
+
+.gd-m-drift-band {
+  position: absolute;
+  left: -30%;
+  height: 6px;
+  border-radius: 0;
+  opacity: 0.14;
+  animation: gd-band-drift 28s linear infinite;
+}
+
+.gd-m-drift-band.band-1 {
+  top: 24%;
+  width: 110px;
+  box-shadow: 18px -6px 0 0 currentColor, -14px 6px 0 0 currentColor;
+}
+
+.gd-m-drift-band.band-2 {
+  top: 72%;
+  width: 84px;
+  opacity: 0.10;
+  animation-duration: 36s;
+  animation-delay: -14s;
+  box-shadow: 14px -6px 0 0 currentColor;
+}
+
+.gd-m-ambient.phase-morning .gd-m-drift-band { color: #C9A66B; }
+.gd-m-ambient.phase-afternoon .gd-m-drift-band { color: #7C9482; }
+.gd-m-ambient.phase-evening .gd-m-drift-band { color: #B86B4B; }
+.gd-m-ambient.phase-night .gd-m-drift-band { color: #3D4E42; }
+
+@keyframes gd-mote-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.08;
+  }
+  30% {
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate3d(var(--dx, 12px), var(--dy, -28px), 0);
+    opacity: 0.32;
+  }
+  80% {
+    opacity: 0.14;
+  }
+}
+
+@keyframes gd-mote-twinkle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(0.8);
+    opacity: 0.12;
+  }
+  45% {
+    transform: translate3d(var(--dx, 6px), calc(var(--dy, -16px) * 0.4), 0) scale(1.25);
+    opacity: 0.52;
+  }
+  70% {
+    opacity: 0.20;
+  }
+}
+
+@keyframes gd-band-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(175vw, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-mote,
+  .gd-m-drift-band {
+    animation: none !important;
+    opacity: 0.18;
+  }
 }
 
 .gd-m-shell.phase-morning {
@@ -17117,16 +17335,125 @@ article.gd-card-collapsed,
   box-sizing: border-box;
 }
 
-.gd-m-shell::before {
-  content: '';
+.gd-m-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(31, 41, 26, 0.085) 1px, transparent 1px);
-  background-size: 14px 14px;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+  overflow: hidden;
+}
+
+.gd-m-mote {
+  position: absolute;
+  border-radius: 0;
+  opacity: 0;
+  animation: gd-mote-float var(--dur, 12s) ease-in-out var(--del, 0s) infinite;
+}
+
+.gd-m-ambient.phase-morning .gd-m-mote {
+  background: #D99B38;
+}
+.gd-m-ambient.phase-morning .gd-m-mote.alt {
+  background: #6D825D;
+}
+
+.gd-m-ambient.phase-afternoon .gd-m-mote {
+  background: #5B7856;
+}
+.gd-m-ambient.phase-afternoon .gd-m-mote.alt {
+  background: #D4A94A;
+}
+
+.gd-m-ambient.phase-evening .gd-m-mote {
+  background: #D67A3E;
+}
+.gd-m-ambient.phase-evening .gd-m-mote.alt {
+  background: #E8B058;
+}
+
+.gd-m-ambient.phase-night .gd-m-mote {
+  background: #4E6352;
+  animation-name: gd-mote-twinkle;
+}
+.gd-m-ambient.phase-night .gd-m-mote.alt {
+  background: #B88A3E;
+}
+
+.gd-m-drift-band {
+  position: absolute;
+  left: -30%;
+  height: 6px;
+  border-radius: 0;
+  opacity: 0.14;
+  animation: gd-band-drift 28s linear infinite;
+}
+
+.gd-m-drift-band.band-1 {
+  top: 24%;
+  width: 110px;
+  box-shadow: 18px -6px 0 0 currentColor, -14px 6px 0 0 currentColor;
+}
+
+.gd-m-drift-band.band-2 {
+  top: 72%;
+  width: 84px;
+  opacity: 0.10;
+  animation-duration: 36s;
+  animation-delay: -14s;
+  box-shadow: 14px -6px 0 0 currentColor;
+}
+
+.gd-m-ambient.phase-morning .gd-m-drift-band { color: #C9A66B; }
+.gd-m-ambient.phase-afternoon .gd-m-drift-band { color: #7C9482; }
+.gd-m-ambient.phase-evening .gd-m-drift-band { color: #B86B4B; }
+.gd-m-ambient.phase-night .gd-m-drift-band { color: #3D4E42; }
+
+@keyframes gd-mote-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.08;
+  }
+  30% {
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate3d(var(--dx, 12px), var(--dy, -28px), 0);
+    opacity: 0.32;
+  }
+  80% {
+    opacity: 0.14;
+  }
+}
+
+@keyframes gd-mote-twinkle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(0.8);
+    opacity: 0.12;
+  }
+  45% {
+    transform: translate3d(var(--dx, 6px), calc(var(--dy, -16px) * 0.4), 0) scale(1.25);
+    opacity: 0.52;
+  }
+  70% {
+    opacity: 0.20;
+  }
+}
+
+@keyframes gd-band-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(175vw, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-mote,
+  .gd-m-drift-band {
+    animation: none !important;
+    opacity: 0.18;
+  }
 }
 
 .gd-m-shell.phase-morning {
