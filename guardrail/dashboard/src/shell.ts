@@ -41,7 +41,16 @@ export class DashboardShell {
   private state: DashboardShellState;
   private appWrapper: HTMLElement | null = null;
   private sidebarEl: HTMLElement | null = null;
+  private workspaceEl: HTMLElement | null = null;
+  private contentBodyEl: HTMLElement | null = null;
+  private topHeaderEl: HTMLElement | null = null;
   private headerTitleEl: HTMLElement | null = null;
+  private headerActionsEl: HTMLElement | null = null;
+  private statusPillEl: HTMLElement | null = null;
+  private statusDotEl: HTMLElement | null = null;
+  private statusTextEl: HTMLElement | null = null;
+  private mockBadgeEl: HTMLElement | null = null;
+  private envBadgeEl: HTMLElement | null = null;
   private mainContentEl: HTMLElement | null = null;
   private liveAnnouncerEl: HTMLElement | null = null;
   private isMobileSidebarOpen: boolean = false;
@@ -226,14 +235,30 @@ export class DashboardShell {
     this.render();
     this.setupListeners();
     if (this.autoFetch && this.apiClient) {
-      void this.fetchPendingRequests({ isBackground: true });
-      void this.fetchRelationships({ isBackground: true });
-      void this.fetchHistoryRequests({ isBackground: true });
-      void this.fetchWardPolicy();
+      void this.fetchInitialData();
     }
     void this.checkPushNotificationStatus();
     if (this.pollIntervalMs && this.pollIntervalMs > 0 && this.apiClient) {
       this.startPolling();
+    }
+  }
+
+  /**
+   * Concurrently fetches all initial dashboard data in the background,
+   * batching updates so the page never tears down or blinks during initial load.
+   */
+  private async fetchInitialData(): Promise<void> {
+    try {
+      await Promise.allSettled([
+        this.fetchPendingRequests({ isBackground: true, skipRender: true }),
+        this.fetchRelationships({ isBackground: true, skipRender: true }),
+        this.fetchHistoryRequests({ isBackground: true, skipRender: true }),
+        this.fetchWardPolicy({ skipRender: true }),
+      ]);
+    } finally {
+      if (!this.isDestroyed) {
+        this.render();
+      }
     }
   }
 
@@ -451,161 +476,168 @@ export class DashboardShell {
       }
     }
 
-    // Clear root container
-    while (this.rootContainer.firstChild) {
-      this.rootContainer.removeChild(this.rootContainer.firstChild);
-    }
-
-    // Accessible Skip-to-Content Link
-    const skipLink = document.createElement('a');
-    skipLink.href = '#main-content';
-    skipLink.setAttribute('href', '#main-content');
-    skipLink.className = 'gd-skip-link';
-    skipLink.textContent = 'Skip to main content';
-    this.rootContainer.appendChild(skipLink);
-
-    // Accessible live region for screen-reader announcements
-    this.liveAnnouncerEl = document.createElement('div');
-    this.liveAnnouncerEl.id = 'gd-live-announcer';
-    this.liveAnnouncerEl.className = 'gd-sr-only';
-    this.liveAnnouncerEl.setAttribute('role', 'status');
-    this.liveAnnouncerEl.setAttribute('aria-live', 'polite');
-    this.liveAnnouncerEl.setAttribute('aria-atomic', 'true');
-    this.rootContainer.appendChild(this.liveAnnouncerEl);
-
-    // App Wrapper
-    this.appWrapper = document.createElement('div');
-    this.appWrapper.className = this.isEntryAnimationActive
-      ? 'gd-dashboard-app gd-initial-load'
-      : 'gd-dashboard-app';
-
-    // 1. Sidebar (Navigation + Account Profile)
-    this.sidebarEl = renderNavigation({
-      activeView: this.state.activeView,
-      pendingCount: this.state.pendingRequests.length,
-      onViewChange: (view) => this.setActiveView(view),
-    });
-    this.sidebarEl.id = 'gd-primary-sidebar';
-    if (this.isEntryAnimationActive) {
-      this.sidebarEl.classList.add('gd-sidebar-entry');
-      this.isEntryAnimationActive = false;
-    }
-
-    const accountArea = renderAccountArea({
-      profile: this.state.contactProfile,
-      onOpenSettings: () => this.setActiveView('settings'),
-      onOpenAuth: () => this.openAuthModal(),
-      onSignOut: () => this.handleSignOut(),
-    });
-    this.sidebarEl.appendChild(accountArea);
-    this.appWrapper.appendChild(this.sidebarEl);
-
-    // 2. Main Workspace
-    const workspace = document.createElement('div');
-    workspace.className = 'gd-main-workspace';
-
-    // Top Header
-    const topHeader = document.createElement('header');
-    topHeader.className = 'gd-top-header';
-
-    const headerLeft = document.createElement('div');
-    headerLeft.className = 'gd-top-header-left';
-
-    const mobileToggle = document.createElement('button');
-    mobileToggle.type = 'button';
-    mobileToggle.className = 'gd-mobile-toggle';
-    mobileToggle.setAttribute('aria-label', 'Open navigation menu');
-    mobileToggle.setAttribute('aria-controls', 'gd-primary-sidebar');
-    mobileToggle.setAttribute('aria-expanded', 'false');
-    mobileToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>';
-    mobileToggle.addEventListener('click', () => this.toggleMobileSidebar());
-
-    this.headerTitleEl = document.createElement('h1');
-    this.headerTitleEl.className = 'gd-header-title';
-    this.headerTitleEl.textContent = this.formatViewTitle(this.state.activeView);
-
-    headerLeft.appendChild(mobileToggle);
-    headerLeft.appendChild(this.headerTitleEl);
-
-    const headerActions = document.createElement('div');
-    headerActions.className = 'gd-header-actions';
-
-    const statusPill = document.createElement('div');
-    const pillModifier = this.isBackendUnavailable
-      ? 'unavailable'
-      : this.isRefreshing
-      ? 'syncing'
-      : this.state.contactProfile?.isAuthenticated
-      ? 'authenticated'
-      : 'portal';
-    statusPill.className = `gd-status-pill ${pillModifier}`;
-    statusPill.setAttribute('role', 'status');
-
-    const dot = document.createElement('span');
-    dot.className = 'gd-status-dot';
-    dot.setAttribute('aria-hidden', 'true');
-
-    const statusText = document.createElement('span');
-    if (this.isBackendUnavailable) {
-      statusText.textContent = this.state.contactProfile?.isAuthenticated
-        ? 'Verified Reviewer (Offline)'
-        : 'Backend Unavailable';
-    } else if (this.isRefreshing) {
-      statusText.textContent = this.state.contactProfile?.isAuthenticated
-        ? 'Verified Reviewer (Syncing...)'
-        : 'Synchronizing...';
-    } else {
-      statusText.textContent = this.state.contactProfile?.isAuthenticated
-        ? 'Verified Reviewer'
-        : 'Reviewer Portal';
-    }
-
-    statusPill.appendChild(dot);
-    statusPill.appendChild(statusText);
-    headerActions.appendChild(statusPill);
-
-    const isMock = Boolean(
-      this.state.isMockService ||
-        (typeof this.apiClient?.isMockService === 'function' && this.apiClient.isMockService())
+    const isInitialMount = !(
+      this.appWrapper &&
+      this.appWrapper.parentElement === this.rootContainer &&
+      this.workspaceEl &&
+      this.contentBodyEl &&
+      this.mainContentEl &&
+      this.topHeaderEl &&
+      this.sidebarEl
     );
-    if (isMock) {
-      const mockBadge = document.createElement('span');
-      mockBadge.className = 'gd-mock-service-badge';
-      mockBadge.setAttribute('role', 'status');
-      mockBadge.textContent = 'MOCK BACKEND';
-      mockBadge.title = 'Connected to simulated or in-memory mock service. Not connected to a live pilot backend.';
-      headerActions.appendChild(mockBadge);
+
+    if (isInitialMount) {
+      // Clear root container on initial mount
+      while (this.rootContainer.firstChild) {
+        this.rootContainer.removeChild(this.rootContainer.firstChild);
+      }
+
+      // Accessible Skip-to-Content Link
+      const skipLink = document.createElement('a');
+      skipLink.href = '#main-content';
+      skipLink.setAttribute('href', '#main-content');
+      skipLink.className = 'gd-skip-link';
+      skipLink.textContent = 'Skip to main content';
+      this.rootContainer.appendChild(skipLink);
+
+      // Accessible live region for screen-reader announcements
+      this.liveAnnouncerEl = document.createElement('div');
+      this.liveAnnouncerEl.id = 'gd-live-announcer';
+      this.liveAnnouncerEl.className = 'gd-sr-only';
+      this.liveAnnouncerEl.setAttribute('role', 'status');
+      this.liveAnnouncerEl.setAttribute('aria-live', 'polite');
+      this.liveAnnouncerEl.setAttribute('aria-atomic', 'true');
+      this.rootContainer.appendChild(this.liveAnnouncerEl);
+
+      // App Wrapper
+      this.appWrapper = document.createElement('div');
+      this.appWrapper.className = this.isEntryAnimationActive
+        ? 'gd-dashboard-app gd-initial-load'
+        : 'gd-dashboard-app';
+
+      // 1. Sidebar (Navigation + Account Profile)
+      this.sidebarEl = renderNavigation({
+        activeView: this.state.activeView,
+        pendingCount: this.state.pendingRequests.length,
+        onViewChange: (view) => this.setActiveView(view),
+      });
+      this.sidebarEl.id = 'gd-primary-sidebar';
+      if (this.isEntryAnimationActive) {
+        this.sidebarEl.classList.add('gd-sidebar-entry');
+        this.isEntryAnimationActive = false;
+      }
+
+      const accountArea = renderAccountArea({
+        profile: this.state.contactProfile,
+        onOpenSettings: () => this.setActiveView('settings'),
+        onOpenAuth: () => this.openAuthModal(),
+        onSignOut: () => this.handleSignOut(),
+      });
+      this.sidebarEl.appendChild(accountArea);
+      this.appWrapper.appendChild(this.sidebarEl);
+
+      // 2. Main Workspace
+      this.workspaceEl = document.createElement('div');
+      this.workspaceEl.className = 'gd-main-workspace';
+
+      // Top Header
+      this.topHeaderEl = document.createElement('header');
+      this.topHeaderEl.className = 'gd-top-header';
+
+      const headerLeft = document.createElement('div');
+      headerLeft.className = 'gd-top-header-left';
+
+      const mobileToggle = document.createElement('button');
+      mobileToggle.type = 'button';
+      mobileToggle.className = 'gd-mobile-toggle';
+      mobileToggle.setAttribute('aria-label', 'Open navigation menu');
+      mobileToggle.setAttribute('aria-controls', 'gd-primary-sidebar');
+      mobileToggle.setAttribute('aria-expanded', 'false');
+      mobileToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>';
+      mobileToggle.addEventListener('click', () => this.toggleMobileSidebar());
+
+      this.headerTitleEl = document.createElement('h1');
+      this.headerTitleEl.className = 'gd-header-title';
+      this.headerTitleEl.textContent = this.formatViewTitle(this.state.activeView);
+
+      headerLeft.appendChild(mobileToggle);
+      headerLeft.appendChild(this.headerTitleEl);
+
+      this.headerActionsEl = document.createElement('div');
+      this.headerActionsEl.className = 'gd-header-actions';
+
+      this.statusPillEl = document.createElement('div');
+      this.statusDotEl = document.createElement('span');
+      this.statusDotEl.className = 'gd-status-dot';
+      this.statusDotEl.setAttribute('aria-hidden', 'true');
+
+      this.statusTextEl = document.createElement('span');
+      this.statusPillEl.appendChild(this.statusDotEl);
+      this.statusPillEl.appendChild(this.statusTextEl);
+      this.headerActionsEl.appendChild(this.statusPillEl);
+
+      this.updateHeaderStatusPill();
+
+      this.topHeaderEl.appendChild(headerLeft);
+      this.topHeaderEl.appendChild(this.headerActionsEl);
+      this.workspaceEl.appendChild(this.topHeaderEl);
+
+      // Content Body with Landmark <main>
+      this.contentBodyEl = document.createElement('div');
+      this.contentBodyEl.className = 'gd-content-body';
+
+      this.mainContentEl = document.createElement('main');
+      this.mainContentEl.id = 'main-content';
+      this.mainContentEl.setAttribute('id', 'main-content');
+      this.mainContentEl.tabIndex = -1;
+      this.mainContentEl.setAttribute('tabindex', '-1');
+      this.mainContentEl.className = 'gd-content-container';
+
+      this.contentBodyEl.appendChild(this.mainContentEl);
+      this.workspaceEl.appendChild(this.contentBodyEl);
+      this.appWrapper.appendChild(this.workspaceEl);
+      this.rootContainer.appendChild(this.appWrapper);
+    } else {
+      // In-place update: top header and layout scaffolding remain mounted without tearing down
+      if (this.headerTitleEl) {
+        this.headerTitleEl.textContent = this.formatViewTitle(this.state.activeView);
+      }
+      this.updateHeaderStatusPill();
+
+      // Update sidebar
+      const newSidebar = renderNavigation({
+        activeView: this.state.activeView,
+        pendingCount: this.state.pendingRequests.length,
+        onViewChange: (view) => this.setActiveView(view),
+      });
+      newSidebar.id = 'gd-primary-sidebar';
+      const accountArea = renderAccountArea({
+        profile: this.state.contactProfile,
+        onOpenSettings: () => this.setActiveView('settings'),
+        onOpenAuth: () => this.openAuthModal(),
+        onSignOut: () => this.handleSignOut(),
+      });
+      newSidebar.appendChild(accountArea);
+      if (this.sidebarEl && this.appWrapper) {
+        this.appWrapper.replaceChild(newSidebar, this.sidebarEl);
+      }
+      this.sidebarEl = newSidebar;
     }
 
-    const env =
-      this.state.environment ||
-      (typeof this.apiClient?.getEnvironment === 'function'
-        ? this.apiClient.getEnvironment()
-        : undefined);
-    if (env && env !== 'production') {
-      const envBadge = document.createElement('span');
-      envBadge.className = `gd-env-badge gd-env-${env}`;
-      envBadge.textContent = env.toUpperCase();
-      headerActions.appendChild(envBadge);
+    // Preserve heading during active entrance window to prevent title blinking
+    const currentView = this.state.activeView;
+    const isViewEntering = this.activeEnteringView === currentView;
+    const existingActiveSection = this.mainContentEl ? this.mainContentEl.querySelector(`#view-${currentView}`) : null;
+    const existingSectionHeader = isViewEntering ? existingActiveSection?.querySelector('.gd-section-header') : null;
+
+    if (this.mainContentEl) {
+      while (this.mainContentEl.firstChild) {
+        this.mainContentEl.removeChild(this.mainContentEl.firstChild);
+      }
     }
-
-    topHeader.appendChild(headerLeft);
-    topHeader.appendChild(headerActions);
-    workspace.appendChild(topHeader);
-
-    // Content Body with Landmark <main>
-    const contentBody = document.createElement('div');
-    contentBody.className = 'gd-content-body';
-
-    this.mainContentEl = document.createElement('main');
-    this.mainContentEl.id = 'main-content';
-    this.mainContentEl.setAttribute('id', 'main-content');
-    this.mainContentEl.tabIndex = -1;
-    this.mainContentEl.setAttribute('tabindex', '-1');
-    this.mainContentEl.className = 'gd-content-container';
 
     // If caretaker is not authenticated, render a sleek, minimal, creative sign-in banner
-    if (!this.state.contactProfile?.isAuthenticated) {
+    if (!this.state.contactProfile?.isAuthenticated && this.mainContentEl) {
       const authBanner = document.createElement('div');
       authBanner.className = 'gd-unauth-header-banner';
       authBanner.setAttribute('role', 'status');
@@ -676,10 +708,6 @@ export class DashboardShell {
       this.mainContentEl.appendChild(authBanner);
     }
 
-    // Play entrance animations when view is opened/entered, never repeating on background polling
-    const currentView = this.state.activeView;
-    const isViewEntering = this.activeEnteringView === currentView;
-
     // View 1: Overview
     const overviewSection = renderOverview({
       profile: this.state.contactProfile,
@@ -709,11 +737,14 @@ export class DashboardShell {
       overviewSection.classList.add('active');
       if (isViewEntering) {
         overviewSection.classList.add('gd-view-initial-enter');
+        if (existingSectionHeader) {
+          overviewSection.querySelector('.gd-section-header')?.replaceWith(existingSectionHeader);
+        }
       }
     } else {
       overviewSection.classList.remove('active');
     }
-    this.mainContentEl.appendChild(overviewSection);
+    this.mainContentEl?.appendChild(overviewSection);
 
     // View 2: Pending Approvals
     const selectedDetail = this.state.selectedRequestId
@@ -760,11 +791,14 @@ export class DashboardShell {
       pendingSection.classList.add('active');
       if (isViewEntering) {
         pendingSection.classList.add('gd-view-initial-enter');
+        if (existingSectionHeader) {
+          pendingSection.querySelector('.gd-section-header')?.replaceWith(existingSectionHeader);
+        }
       }
     } else {
       pendingSection.classList.remove('active');
     }
-    this.mainContentEl.appendChild(pendingSection);
+    this.mainContentEl?.appendChild(pendingSection);
 
     // View 3: Decision History
     const selectedHistoryDetail = this.state.selectedHistoryRequestId
@@ -801,11 +835,14 @@ export class DashboardShell {
       historySection.classList.add('active');
       if (isViewEntering) {
         historySection.classList.add('gd-view-initial-enter');
+        if (existingSectionHeader) {
+          historySection.querySelector('.gd-section-header')?.replaceWith(existingSectionHeader);
+        }
       }
     } else {
       historySection.classList.remove('active');
     }
-    this.mainContentEl.appendChild(historySection);
+    this.mainContentEl?.appendChild(historySection);
 
     // View 4: Account & Settings
     const settingsSection = renderSettings({
@@ -852,17 +889,14 @@ export class DashboardShell {
       settingsSection.classList.add('active');
       if (isViewEntering) {
         settingsSection.classList.add('gd-view-initial-enter');
+        if (existingSectionHeader) {
+          settingsSection.querySelector('.gd-section-header')?.replaceWith(existingSectionHeader);
+        }
       }
     } else {
       settingsSection.classList.remove('active');
     }
-    this.mainContentEl.appendChild(settingsSection);
-
-    contentBody.appendChild(this.mainContentEl);
-    workspace.appendChild(contentBody);
-    this.appWrapper.appendChild(workspace);
-
-    this.rootContainer.appendChild(this.appWrapper);
+    this.mainContentEl?.appendChild(settingsSection);
 
     // Restore scroll position so re-rendering within the same view never jumps viewport to top
     if (savedContentScrollTop > 0) {
@@ -917,6 +951,76 @@ export class DashboardShell {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Updates the top header status indicator pill, dot, and environment/mock badges in-place
+   * without recreating or re-animating the header element.
+   */
+  private updateHeaderStatusPill(): void {
+    if (!this.statusPillEl || !this.statusTextEl || !this.headerActionsEl) return;
+
+    const pillModifier = this.isBackendUnavailable
+      ? 'unavailable'
+      : this.isRefreshing
+      ? 'syncing'
+      : this.state.contactProfile?.isAuthenticated
+      ? 'authenticated'
+      : 'portal';
+    this.statusPillEl.className = `gd-status-pill ${pillModifier}`;
+    this.statusPillEl.setAttribute('role', 'status');
+
+    if (this.isBackendUnavailable) {
+      this.statusTextEl.textContent = this.state.contactProfile?.isAuthenticated
+        ? 'Verified Reviewer (Offline)'
+        : 'Backend Unavailable';
+    } else if (this.isRefreshing) {
+      this.statusTextEl.textContent = this.state.contactProfile?.isAuthenticated
+        ? 'Verified Reviewer (Syncing...)'
+        : 'Synchronizing...';
+    } else {
+      this.statusTextEl.textContent = this.state.contactProfile?.isAuthenticated
+        ? 'Verified Reviewer'
+        : 'Reviewer Portal';
+    }
+
+    const isMock = Boolean(
+      this.state.isMockService ||
+        (typeof this.apiClient?.isMockService === 'function' && this.apiClient.isMockService())
+    );
+    if (isMock) {
+      if (!this.mockBadgeEl) {
+        this.mockBadgeEl = document.createElement('span');
+        this.mockBadgeEl.className = 'gd-mock-service-badge';
+        this.mockBadgeEl.setAttribute('role', 'status');
+        this.mockBadgeEl.textContent = 'MOCK BACKEND';
+        this.mockBadgeEl.title = 'Connected to simulated or in-memory mock service. Not connected to a live pilot backend.';
+        this.headerActionsEl.appendChild(this.mockBadgeEl);
+      }
+    } else if (this.mockBadgeEl) {
+      this.mockBadgeEl.remove();
+      this.mockBadgeEl = null;
+    }
+
+    const env =
+      this.state.environment ||
+      (typeof this.apiClient?.getEnvironment === 'function'
+        ? this.apiClient.getEnvironment()
+        : undefined);
+    if (env && env !== 'production') {
+      if (!this.envBadgeEl) {
+        this.envBadgeEl = document.createElement('span');
+        this.envBadgeEl.className = `gd-env-badge gd-env-${env}`;
+        this.envBadgeEl.textContent = env.toUpperCase();
+        this.headerActionsEl.appendChild(this.envBadgeEl);
+      } else {
+        this.envBadgeEl.className = `gd-env-badge gd-env-${env}`;
+        this.envBadgeEl.textContent = env.toUpperCase();
+      }
+    } else if (this.envBadgeEl) {
+      this.envBadgeEl.remove();
+      this.envBadgeEl = null;
     }
   }
 
@@ -1044,7 +1148,7 @@ export class DashboardShell {
    * 5. Protects against stale out-of-order responses via monotonic sequence numbers.
    * 6. Automatically refreshes visible request details if selected request state changes.
    */
-  public async fetchPendingRequests(options?: { isBackground?: boolean }): Promise<void> {
+  public async fetchPendingRequests(options?: { isBackground?: boolean; skipRender?: boolean }): Promise<void> {
     if (this.isDestroyed) return;
 
     if (this.activeFetchPromise) {
@@ -1053,7 +1157,7 @@ export class DashboardShell {
 
     this.activeFetchPromise = (async () => {
       try {
-        await this.doFetchPendingRequests(options?.isBackground ?? false);
+        await this.doFetchPendingRequests(options);
       } finally {
         this.activeFetchPromise = null;
       }
@@ -1062,7 +1166,7 @@ export class DashboardShell {
     return this.activeFetchPromise;
   }
 
-  private async doFetchPendingRequests(isBackground: boolean = false): Promise<void> {
+  private async doFetchPendingRequests(options?: { isBackground?: boolean; skipRender?: boolean }): Promise<void> {
     if (this.isDestroyed) return;
 
     if (!this.apiClient) {
@@ -1070,11 +1174,14 @@ export class DashboardShell {
       return;
     }
 
+    const isBackground = options?.isBackground ?? false;
+    const skipRender = options?.skipRender ?? false;
+
     this.isRefreshing = true;
     const seq = ++this.nextPendingFetchSeq;
 
-    // Only transition to full loading state if not a silent background sync
-    if (!isBackground) {
+    // Only transition to full loading state if not a silent background sync and not skipRender
+    if (!isBackground && !skipRender) {
       this.setLoading(true);
     }
 
@@ -1143,7 +1250,13 @@ export class DashboardShell {
         this.isBackendUnavailable = false;
         this.state.errorMessage = null;
 
-        if (isBackground && isDataIdentical) {
+        if (skipRender) {
+          this.state.pendingRequests = reconciledPending;
+          this.state.pendingStatus = reconciledPending.length === 0 ? 'empty' : 'idle';
+          if (!this.state.selectedRequestId) {
+            this.state.selectedRequestId = reconciledPending[0]?.id ?? null;
+          }
+        } else if (isBackground && isDataIdentical) {
           // Silent background poll with no changes: do NOT wipe/re-render DOM!
           this.state.pendingRequests = reconciledPending;
           this.updateSyncIndicatorsInPlace();
@@ -1217,7 +1330,12 @@ export class DashboardShell {
         }
 
         console.warn('[Dashboard Shell] Pending approvals fetch failed:', err);
-        this.setError(userMessage);
+        if (skipRender) {
+          this.state.errorMessage = userMessage;
+          this.state.pendingStatus = 'error';
+        } else {
+          this.setError(userMessage);
+        }
       }
     } catch (unhandled) {
       if (this.isDestroyed) return;
@@ -1226,10 +1344,15 @@ export class DashboardShell {
       this.isBackendUnavailable = true;
       const msg = unhandled instanceof Error ? unhandled.message : String(unhandled);
       console.error('[Dashboard Shell] Pending approvals unhandled exception:', unhandled);
-      this.setError(`Client error while retrieving pending approvals: ${msg}`);
+      if (skipRender) {
+        this.state.errorMessage = `Client error while retrieving pending approvals: ${msg}`;
+        this.state.pendingStatus = 'error';
+      } else {
+        this.setError(`Client error while retrieving pending approvals: ${msg}`);
+      }
     } finally {
       this.isRefreshing = false;
-      if (!this.isDestroyed && !isBackground) {
+      if (!this.isDestroyed && !isBackground && !skipRender) {
         this.render();
       }
     }
@@ -1895,7 +2018,7 @@ export class DashboardShell {
   /**
    * Fetches historical approval requests from the authoritative backend endpoint (GET /api/v1/approvals/history).
    */
-  public async fetchHistoryRequests(options?: { isBackground?: boolean; page?: number }): Promise<void> {
+  public async fetchHistoryRequests(options?: { isBackground?: boolean; page?: number; skipRender?: boolean }): Promise<void> {
     if (this.isDestroyed || !this.apiClient) return;
 
     if (this.activeHistoryFetchPromise) {
@@ -1913,15 +2036,16 @@ export class DashboardShell {
     return this.activeHistoryFetchPromise;
   }
 
-  private async doFetchHistoryRequests(options?: { isBackground?: boolean; page?: number }): Promise<void> {
+  private async doFetchHistoryRequests(options?: { isBackground?: boolean; page?: number; skipRender?: boolean }): Promise<void> {
     if (this.isDestroyed || !this.apiClient) return;
 
+    const skipRender = options?.skipRender ?? false;
     const page = options?.page ?? this.state.historyPage ?? 0;
     const limit = this.state.historyLimit ?? 50;
     const offset = page * limit;
 
     const seq = ++this.nextHistoryFetchSeq;
-    if (!options?.isBackground && this.state.historyRequests.length === 0) {
+    if (!options?.isBackground && !skipRender && this.state.historyRequests.length === 0) {
       this.state.historyStatus = 'loading';
       this.state.historyError = null;
       this.render();
@@ -2023,7 +2147,7 @@ export class DashboardShell {
       }
     } finally {
       if (!this.isDestroyed) {
-        if (!options?.isBackground || !isHistoryIdentical) {
+        if (!skipRender && (!options?.isBackground || !isHistoryIdentical)) {
           this.render();
         }
       }
@@ -2279,12 +2403,14 @@ export class DashboardShell {
    * Authoritatively retrieves connected users/contacts and invitations from the backend.
    * Respects multi-tenant scoping and authorization boundaries without fabricating data.
    */
-  public async fetchRelationships(options?: { isBackground?: boolean }): Promise<void> {
+  public async fetchRelationships(options?: { isBackground?: boolean; skipRender?: boolean }): Promise<void> {
     if (!this.apiClient || this.isDestroyed) {
       return;
     }
 
-    if (!options?.isBackground) {
+    const skipRender = options?.skipRender ?? false;
+
+    if (!options?.isBackground && !skipRender) {
       if (this.state.connectedUsers.length === 0) {
         this.state.connectedUsersStatus = 'loading';
       }
@@ -2397,7 +2523,7 @@ export class DashboardShell {
       this.state.invitationsError = msg;
     } finally {
       if (!this.isDestroyed) {
-        if (!options?.isBackground || hasRelationshipsChanged) {
+        if (!skipRender && (!options?.isBackground || hasRelationshipsChanged)) {
           this.render();
         }
       }
@@ -2691,7 +2817,7 @@ export class DashboardShell {
   /**
    * Fetches the sanitized policy summary for the assigned ward from the backend.
    */
-  public async fetchWardPolicy(): Promise<void> {
+  public async fetchWardPolicy(options?: { skipRender?: boolean }): Promise<void> {
     const wardId = this.state.contactProfile?.assignedWardId;
     if (!this.apiClient || !wardId) {
       this.state.wardPolicySummary = null;
@@ -2790,7 +2916,7 @@ export class DashboardShell {
       this.state.wardPolicyError = err instanceof Error ? err.message : String(err);
     } finally {
       if (!this.isDestroyed) {
-        if (hasPolicyChanged || this.state.wardPolicyError) {
+        if (!options?.skipRender && (hasPolicyChanged || this.state.wardPolicyError)) {
           this.render();
         }
       }
@@ -3007,6 +3133,20 @@ export class DashboardShell {
     this.activeFetchPromise = null;
     this.activeDetailFetchPromises.clear();
     this.viewEntranceCounts.clear();
+
+    this.workspaceEl = null;
+    this.contentBodyEl = null;
+    this.topHeaderEl = null;
+    this.headerTitleEl = null;
+    this.headerActionsEl = null;
+    this.statusPillEl = null;
+    this.statusDotEl = null;
+    this.statusTextEl = null;
+    this.mockBadgeEl = null;
+    this.envBadgeEl = null;
+    this.sidebarEl = null;
+    this.mainContentEl = null;
+    this.appWrapper = null;
 
     while (this.rootContainer.firstChild) {
       this.rootContainer.removeChild(this.rootContainer.firstChild);
