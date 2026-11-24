@@ -106,10 +106,10 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   avatarBtn.type = 'button';
   avatarBtn.className = 'gd-m-avatar-btn';
   avatarBtn.setAttribute('aria-label', 'Open account and settings');
-  if (profile?.isAuthenticated && profile.actorId && !/^usr_/i.test(profile.actorId)) {
+  if (profile?.isAuthenticated && profile.actorId && !/^(usr_|user_)/i.test(profile.actorId)) {
     avatarBtn.textContent = getInitials(profile.actorId);
   } else {
-    avatarBtn.appendChild(createIcon('user'));
+    avatarBtn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
   }
   avatarBtn.addEventListener('click', () => props.onSelectTab('settings'));
   topBar.appendChild(avatarBtn);
@@ -539,10 +539,22 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   pillDock.className = 'gd-m-pill-dock';
   pillDock.setAttribute('aria-label', 'Mobile companion navigation');
 
-  const dockTabs: Array<{ id: MobileTab; label: string; icon: 'clock' | 'history' | 'users' }> = [
-    { id: 'queue', label: 'Queue', icon: 'clock' },
-    { id: 'history', label: 'History', icon: 'history' },
-    { id: 'wards', label: 'Wards', icon: 'users' },
+  const dockTabs: Array<{ id: MobileTab; label: string; svg: string }> = [
+    {
+      id: 'history',
+      label: 'History',
+      svg: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
+    },
+    {
+      id: 'wards',
+      label: 'Wards',
+      svg: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      svg: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    },
   ];
 
   dockTabs.forEach((t) => {
@@ -554,14 +566,8 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
 
     const iconSpan = document.createElement('span');
     iconSpan.className = 'gd-m-dock-icon';
-    iconSpan.appendChild(createIcon(t.icon));
-
-    if (t.id === 'queue' && pendingRequests.length > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'gd-m-dock-badge';
-      badge.textContent = pendingRequests.length > 99 ? '99+' : String(pendingRequests.length);
-      iconSpan.appendChild(badge);
-    }
+    iconSpan.setAttribute('aria-hidden', 'true');
+    iconSpan.innerHTML = t.svg;
 
     const labelSpan = document.createElement('span');
     labelSpan.className = 'gd-m-dock-label';
@@ -573,17 +579,26 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     pillDock.appendChild(btn);
   });
 
-  const actionCircle = document.createElement('button');
-  actionCircle.type = 'button';
-  actionCircle.className = `gd-m-dock-circle ${activeTab === 'settings' ? 'active' : ''}`;
-  actionCircle.setAttribute('aria-label', 'Settings and pair ward');
-  actionCircle.appendChild(createIcon('settings'));
-  actionCircle.addEventListener('click', () => {
-    props.onSelectTab(activeTab === 'settings' ? 'queue' : 'settings');
+  const queueCircle = document.createElement('button');
+  queueCircle.type = 'button';
+  queueCircle.className = `gd-m-dock-circle ${activeTab === 'queue' ? 'active' : ''}`;
+  queueCircle.setAttribute('aria-label', `Pending queue (${pendingRequests.length})`);
+  queueCircle.setAttribute('aria-current', activeTab === 'queue' ? 'page' : 'false');
+  queueCircle.innerHTML = `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`;
+
+  if (pendingRequests.length > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'gd-m-dock-circle-badge';
+    badge.textContent = pendingRequests.length > 99 ? '99+' : String(pendingRequests.length);
+    queueCircle.appendChild(badge);
+  }
+
+  queueCircle.addEventListener('click', () => {
+    props.onSelectTab('queue');
   });
 
   dockWrap.appendChild(pillDock);
-  dockWrap.appendChild(actionCircle);
+  dockWrap.appendChild(queueCircle);
   shell.appendChild(dockWrap);
 
   return shell;

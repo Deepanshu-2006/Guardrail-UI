@@ -7076,11 +7076,12 @@ textarea:focus-visible,
 }
 
 .gd-m-dock-circle {
+  position: relative;
   pointer-events: auto;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 1px solid rgba(39, 49, 33, 0.12);
+  border: 1px solid rgba(39, 49, 33, 0.14);
   background: #FAF6ED;
   color: #1F291A;
   display: inline-flex;
@@ -7089,12 +7090,33 @@ textarea:focus-visible,
   flex-shrink: 0;
   cursor: pointer;
   box-shadow: 0 10px 28px rgba(20, 27, 17, 0.24);
-  transition: transform 0.16s ease, background-color 0.16s ease;
+  transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
 .gd-m-dock-circle.active {
-  background: #22301E;
+  background: #1F291A;
+  border-color: rgba(250, 246, 237, 0.14);
+  color: #EDE6D6;
+}
+
+.gd-m-dock-circle-badge {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #B83B30;
   color: #FAF6ED;
+  border: 2px solid #EDE6D6;
+  font-family: var(--gd-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .gd-m-dock-circle svg {
@@ -12480,11 +12502,12 @@ article.gd-card-collapsed,
 }
 
 .gd-m-dock-circle {
+  position: relative;
   pointer-events: auto;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 1px solid rgba(39, 49, 33, 0.12);
+  border: 1px solid rgba(39, 49, 33, 0.14);
   background: #FAF6ED;
   color: #1F291A;
   display: inline-flex;
@@ -12493,12 +12516,33 @@ article.gd-card-collapsed,
   flex-shrink: 0;
   cursor: pointer;
   box-shadow: 0 10px 28px rgba(20, 27, 17, 0.24);
-  transition: transform 0.16s ease, background-color 0.16s ease;
+  transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
 .gd-m-dock-circle.active {
-  background: #22301E;
+  background: #1F291A;
+  border-color: rgba(250, 246, 237, 0.14);
+  color: #EDE6D6;
+}
+
+.gd-m-dock-circle-badge {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #B83B30;
   color: #FAF6ED;
+  border: 2px solid #EDE6D6;
+  font-family: var(--gd-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .gd-m-dock-circle svg {
@@ -17383,11 +17427,12 @@ article.gd-card-collapsed,
 }
 
 .gd-m-dock-circle {
+  position: relative;
   pointer-events: auto;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 1px solid rgba(39, 49, 33, 0.12);
+  border: 1px solid rgba(39, 49, 33, 0.14);
   background: #FAF6ED;
   color: #1F291A;
   display: inline-flex;
@@ -17396,12 +17441,33 @@ article.gd-card-collapsed,
   flex-shrink: 0;
   cursor: pointer;
   box-shadow: 0 10px 28px rgba(20, 27, 17, 0.24);
-  transition: transform 0.16s ease, background-color 0.16s ease;
+  transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
 .gd-m-dock-circle.active {
-  background: #22301E;
+  background: #1F291A;
+  border-color: rgba(250, 246, 237, 0.14);
+  color: #EDE6D6;
+}
+
+.gd-m-dock-circle-badge {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #B83B30;
   color: #FAF6ED;
+  border: 2px solid #EDE6D6;
+  font-family: var(--gd-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .gd-m-dock-circle svg {
