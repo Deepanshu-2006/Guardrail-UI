@@ -5,7 +5,7 @@ import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ApprovalApiRouter, ApprovalApiRouterConfig, DEFAULT_ALLOWED_ORIGINS, InMemoryRateLimiter, InvitationDeliveryHandler, TokenVerifier } from '../../extension/src/approval/api.js';
-import { ActionOwnershipRegistry, TrustedContactRegistry, ActorRole } from '../../extension/src/approval/authorization.js';
+import { ActionOwnershipRegistry, TrustedContactRegistry, ActorRole, validateInvitationCode } from '../../extension/src/approval/authorization.js';
 import { createPersistentApprovalService } from './persistent-approval-service.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
 import { defaultApprovalEventHub } from './event-hub.js';
@@ -873,65 +873,39 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
           const now = new Date().toISOString();
           const db = (runtime.contactRegistry as any)?.database;
+          let isLinked = false;
 
           if (db) {
             if (isAuthenticated && actorId) {
-              // 1. Ensure user is in guardrail_users
+              // 1. Ensure user is registered in guardrail_users
               db.prepare(`
                 INSERT OR REPLACE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
                 VALUES (?, 'https://guardrail.local/internal', ?, 'USER', 'ACTIVE', ?, ?, ?)
               `).run(actorId, actorId, email || `${actorId}@guardrail.local`, now, now);
 
-              // 2. Fetch existing caretaker contacts or defaults
-              const caretakerRows = db.prepare(
-                "SELECT DISTINCT id, payload_json FROM trusted_contacts"
-              ).all() as { id: string; payload_json: string }[];
+              // 2. Check if this ward ALREADY has an active relationship in trusted_contacts
+              const existingRows = db.prepare(
+                "SELECT id, payload_json FROM trusted_contacts WHERE user_id = ? AND status = 'ACTIVE'"
+              ).all(actorId) as { id: string; payload_json: string }[];
 
-              const caretakerIds = new Set<string>();
-              if (caretakerRows && caretakerRows.length > 0) {
-                for (const row of caretakerRows) {
-                  if (row.id) caretakerIds.add(row.id);
+              if (existingRows && existingRows.length > 0) {
+                isLinked = true;
+                // Update wardName and wardEmail in existing active contacts so changes reflect
+                for (const row of existingRows) {
+                  try {
+                    const p = JSON.parse(row.payload_json);
+                    p.wardName = fullName || p.wardName;
+                    p.wardEmail = email || p.wardEmail;
+                    db.prepare("UPDATE trusted_contacts SET payload_json = ? WHERE id = ?").run(JSON.stringify(p), row.id);
+                  } catch {}
                 }
               }
-              // Also ensure default caretakers are included
-              caretakerIds.add('usr_dee1b4c0-542f-4b0f-ae3c-126115be972b');
-              caretakerIds.add('usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76');
-
-              // Also check any other TRUSTED_CONTACT in guardrail_users
-              const userCaretakers = db.prepare(
-                "SELECT id FROM guardrail_users WHERE role = 'TRUSTED_CONTACT'"
-              ).all() as { id: string }[];
-              if (userCaretakers) {
-                for (const u of userCaretakers) {
-                  if (u.id) caretakerIds.add(u.id);
-                }
-              }
-
-              // Clean previous relationships so active ward is consistently the current one
-              db.prepare("DELETE FROM trusted_contacts").run();
-
-              for (const cId of caretakerIds) {
-                const contactPayload = {
-                  id: cId,
-                  contactId: cId,
-                  userId: actorId,
-                  wardId: actorId,
-                  wardName: fullName,
-                  wardEmail: email,
-                  contactName: 'Deepanshu Khatri',
-                  contactEmail: 'deepanshukhatri20061972@gmail.com',
-                  relationshipLabel: 'Designated Caretaker',
-                  status: 'ACTIVE',
-                  createdAt: now,
-                };
-                db.prepare(`
-                  INSERT INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-                  VALUES (?, ?, 'ACTIVE', ?, ?)
-                `).run(cId, actorId, now, JSON.stringify(contactPayload));
-              }
+              // CRITICAL: If no active pairing exists, DO NOT auto-insert trusted_contacts!
+              // Pairing MUST only occur when the caretaker enters the pairing code in the dashboard.
             } else {
               // Ward signed out: clear active contact pairings so dashboard shows unlinked
               db.prepare("DELETE FROM trusted_contacts").run();
+              isLinked = false;
             }
           }
 
@@ -944,6 +918,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               email: isAuthenticated ? email : null,
               picture: isAuthenticated ? picture : null,
               isAuthenticated,
+              isLinked,
             },
           } as any);
 
@@ -956,6 +931,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               email: isAuthenticated ? email : null,
               picture: isAuthenticated ? picture : null,
               isAuthenticated,
+              isLinked,
             },
           }));
         } catch (err: any) {
@@ -1080,6 +1056,119 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               code: 'INTERNAL_ERROR',
               message: err?.message || 'Failed to disconnect ward',
               statusCode: 500,
+            },
+          }));
+        }
+      });
+      return;
+    }
+
+    // 3f. Direct Invitation Accept Handler (/api/v1/invitations/accept & /api/v1/invitations/:code/accept)
+    if (request.method === 'POST' && (requestPath === '/api/v1/invitations/accept' || /^\/api\/v1\/invitations\/[^/]+\/accept$/.test(requestPath))) {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          const pathMatch = requestPath.match(/^\/api\/v1\/invitations\/([^/]+)\/accept$/);
+          const rawCode = (pathMatch ? decodeURIComponent(pathMatch[1]) : body.code) || '';
+          const codeVal = validateInvitationCode(rawCode);
+          if (!codeVal.valid || !codeVal.normalized) {
+            response.statusCode = 400;
+            response.end(JSON.stringify({
+              success: false,
+              error: { code: 'INVALID_CODE', message: codeVal.errors[0] || 'Invalid pairing code' },
+            }));
+            return;
+          }
+          const code = codeVal.normalized;
+
+          // Resolve caretaker identity
+          const authHeader = request.headers.authorization;
+          const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.slice(7).trim()
+            : '';
+          let contactId = 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b';
+          if (token && options.tokenVerifier) {
+            try {
+              const auth = await options.tokenVerifier.verifyToken(token);
+              if (auth?.isAuthenticated && auth.actorId) {
+                contactId = auth.actorId;
+              }
+            } catch {}
+          }
+
+          const db = (runtime.contactRegistry as any)?.database;
+          const now = new Date().toISOString();
+          if (db) {
+            db.prepare(`
+              INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+              VALUES (?, 'https://guardrail.local/internal', ?, 'TRUSTED_CONTACT', 'ACTIVE', ?, ?, ?)
+            `).run(contactId, contactId, body.contactEmail || 'deepanshukhatri20061972@gmail.com', now, now);
+          }
+
+          // Check if invitation exists in database
+          let invitation = runtime.contactRegistry.getInvitationByCode(code);
+          if (!invitation && db) {
+            // Find active or registered ward in guardrail_users
+            const latestWard = db.prepare(
+              "SELECT id, verified_email FROM guardrail_users WHERE role = 'USER' ORDER BY rowid DESC LIMIT 1"
+            ).get() as { id: string; verified_email?: string } | undefined;
+            const wardId = latestWard?.id || 'usr_balleballepurrr';
+            const wardEmail = latestWard?.verified_email;
+            const wardName = wardEmail
+              ? wardEmail.split('@')[0].split(/[._-]/).filter(Boolean).map((s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join(' ')
+              : (wardId.startsWith('usr_') ? wardId.slice(4) : wardId);
+
+            invitation = runtime.contactRegistry.createInvitation(wardId, {
+              customCode: code,
+              recipientActorId: '*',
+              relationshipLabel: 'Designated Caretaker',
+              wardName,
+              wardEmail,
+            } as any);
+          }
+
+          const contactInfo = {
+            contactName: typeof body.contactName === 'string' && body.contactName.trim() ? body.contactName.trim() : 'Deepanshu Khatri',
+            contactEmail: typeof body.contactEmail === 'string' && body.contactEmail.trim() ? body.contactEmail.trim() : 'deepanshukhatri20061972@gmail.com',
+            contactAvatarUrl: typeof body.contactAvatarUrl === 'string' && body.contactAvatarUrl.trim() ? body.contactAvatarUrl.trim() : undefined,
+          };
+
+          const result = runtime.contactRegistry.acceptInvitation(code, contactId, contactInfo);
+
+          // Emit real-time notification to all connected dashboard and extension SSE streams
+          defaultApprovalEventHub.emit({
+            type: 'ward_synced' as any,
+            ward: {
+              actorId: result.contact.wardId || result.contact.userId,
+              fullName: result.contact.wardName || ((result.contact.wardId || '').startsWith('usr_') ? (result.contact.wardId || '').slice(4) : result.contact.wardId),
+              email: result.contact.wardEmail || null,
+              picture: null,
+              isAuthenticated: true,
+              isLinked: true,
+              contactName: result.contact.contactName,
+              contactEmail: result.contact.contactEmail,
+            },
+          } as any);
+
+          response.statusCode = 200;
+          response.end(JSON.stringify({
+            success: true,
+            data: result,
+          }));
+        } catch (err: any) {
+          response.statusCode = 400;
+          response.end(JSON.stringify({
+            success: false,
+            error: {
+              code: 'ACCEPT_INVITATION_FAILED',
+              message: err?.message || 'Failed to accept invitation',
             },
           }));
         }
