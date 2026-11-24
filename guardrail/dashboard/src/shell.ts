@@ -129,6 +129,7 @@ export class DashboardShell {
   private entryTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRenderedView: DashboardView | null = null;
   private hasPendingDataUpdateDuringEntrance: boolean = false;
+  private mobileBottomNavEl: HTMLElement | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -657,12 +658,15 @@ export class DashboardShell {
 
       this.contentBodyEl.appendChild(this.mainContentEl);
       this.workspaceEl.appendChild(this.contentBodyEl);
+      this.mobileBottomNavEl = this.buildMobileBottomNav();
+      this.workspaceEl.appendChild(this.mobileBottomNavEl);
       this.appWrapper.appendChild(this.workspaceEl);
       this.rootContainer.appendChild(this.appWrapper);
       this.updatePwaBanner();
     } else {
       // In-place update: top header and layout scaffolding remain mounted without tearing down
       this.updatePwaBanner();
+      this.updateMobileBottomNav();
       if (this.headerTitleEl) {
         this.headerTitleEl.textContent = this.formatViewTitle(this.state.activeView);
       }
@@ -2831,28 +2835,94 @@ export class DashboardShell {
    * Updates or mounts the PWA Add to Home Screen install banner.
    */
   public updatePwaBanner(): void {
-    if (this.isDestroyed || !this.workspaceEl || typeof document === 'undefined') return;
-
     if (this.pwaBannerEl) {
       this.pwaBannerEl.remove();
       this.pwaBannerEl = null;
     }
+  }
 
-    try {
-      const banner = PwaInstallManager.getInstance().renderBanner({
-        onInstalled: () => {
-          this.updatePwaBanner();
-        },
-        onDismissed: () => {
-          this.updatePwaBanner();
-        },
+  /**
+   * Builds the phone-first bottom tab bar for the Mobile PWA Companion experience.
+   */
+  private buildMobileBottomNav(): HTMLElement {
+    const nav = document.createElement('nav');
+    nav.className = 'gd-mobile-bottom-nav';
+    nav.setAttribute('aria-label', 'Mobile navigation');
+
+    const tabs: Array<{ view: DashboardView; label: string; icon: 'overview' | 'pending' | 'history' | 'settings' }> = [
+      { view: 'overview', label: 'Overview', icon: 'overview' },
+      { view: 'pending', label: 'Pending', icon: 'pending' },
+      { view: 'history', label: 'History', icon: 'history' },
+      { view: 'settings', label: 'Settings', icon: 'settings' },
+    ];
+
+    tabs.forEach((tab) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'gd-mobile-tab-btn';
+      btn.setAttribute('data-mobile-view', tab.view);
+
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'gd-mobile-tab-icon';
+      iconWrap.setAttribute('aria-hidden', 'true');
+      iconWrap.appendChild(createIcon(tab.icon));
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'gd-mobile-tab-label';
+      labelSpan.textContent = tab.label;
+
+      btn.appendChild(iconWrap);
+      btn.appendChild(labelSpan);
+
+      if (tab.view === 'pending') {
+        const badge = document.createElement('span');
+        badge.className = 'gd-mobile-tab-badge';
+        badge.style.display = 'none';
+        btn.appendChild(badge);
+      }
+
+      btn.addEventListener('click', () => {
+        this.setActiveView(tab.view);
       });
 
-      if (banner && this.workspaceEl) {
-        this.pwaBannerEl = banner;
-        this.workspaceEl.insertBefore(banner, this.workspaceEl.firstChild);
+      nav.appendChild(btn);
+    });
+
+    this.mobileBottomNavEl = nav;
+    this.updateMobileBottomNav();
+    return nav;
+  }
+
+  /**
+   * Updates active tab state and live pending count badge on the mobile bottom nav.
+   */
+  private updateMobileBottomNav(): void {
+    if (!this.mobileBottomNavEl) return;
+    const pendingCount = this.state.pendingRequests.length;
+    const buttons = this.mobileBottomNavEl.querySelectorAll('.gd-mobile-tab-btn');
+    buttons.forEach((btn) => {
+      const view = btn.getAttribute('data-mobile-view') as DashboardView | null;
+      const isActive = view === this.state.activeView;
+      if (isActive) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-current', 'page');
+      } else {
+        btn.classList.remove('active');
+        btn.removeAttribute('aria-current');
       }
-    } catch {}
+      if (view === 'pending') {
+        const badge = btn.querySelector('.gd-mobile-tab-badge') as HTMLElement | null;
+        if (badge) {
+          if (pendingCount > 0) {
+            badge.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
+            badge.style.display = 'inline-flex';
+          } else {
+            badge.textContent = '';
+            badge.style.display = 'none';
+          }
+        }
+      }
+    });
   }
 
   /**

@@ -59,18 +59,13 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
   const badgeRow = document.createElement('div');
   badgeRow.className = 'gd-sheet-badge-row';
 
-  // Ward Attribution Badge
-  const initials = wardName
-    .split(/\s+/)
-    .map((s) => s.charAt(0).toUpperCase())
-    .slice(0, 2)
-    .join('');
+  // Ward Attribution (Clean typography-only Quiet Assurance style)
   const wardBadge = document.createElement('div');
-  wardBadge.className = 'gd-card-ward-badge';
-  wardBadge.innerHTML = `
-    <span class="gd-card-ward-avatar" aria-hidden="true">${initials || 'W'}</span>
-    <span class="gd-card-ward-name">${wardName}</span>
-  `;
+  wardBadge.className = 'gd-card-ward-badge gd-sheet-ward-label';
+  const wardSpan = document.createElement('span');
+  wardSpan.className = 'gd-card-ward-name';
+  wardSpan.textContent = wardName;
+  wardBadge.appendChild(wardSpan);
 
   // Risk Badge
   const riskLevel = request.riskLevel || RiskLevel.LOW;

@@ -6236,6 +6236,171 @@ textarea:focus-visible,
   color: #8C806D;
 }
 
+/* ====================================================================
+   MOBILE PWA COMPANION (PHONE-FIRST APP SHELL & TRIAGE UX)
+   ==================================================================== */
+.gd-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .gd-mobile-toggle,
+  .gd-sidebar,
+  .gd-sidebar-backdrop {
+    display: none !important;
+  }
+
+  .gd-top-header {
+    padding: 12px 16px !important;
+    background: rgba(237, 230, 214, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(39, 49, 33, 0.09);
+  }
+
+  .gd-header-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em;
+  }
+
+  .gd-content-body {
+    padding: 16px 16px calc(92px + env(safe-area-inset-bottom, 0px)) 16px !important;
+  }
+
+  .gd-section-header {
+    margin-bottom: 16px !important;
+  }
+
+  .gd-section-header .gd-section-title,
+  .gd-view-title {
+    font-size: 28px !important;
+  }
+
+  /* Overview: Clean single-column mobile stack */
+  .gd-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .gd-overview-split {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Pending Approvals on Phone: Focused Full-Width Triage List (tap opens Bottom Sheet) */
+  #view-pending .gd-approvals-layout {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  #view-pending .gd-decision-dossier-box {
+    display: none !important;
+  }
+
+  #view-history .gd-history-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .gd-ward-switcher {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .gd-ward-switcher::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gd-request-card {
+    padding: 14px 12px !important;
+    min-height: 64px;
+  }
+
+  /* Mobile Bottom Tab Bar */
+  .gd-mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+    background: rgba(237, 230, 214, 0.94);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid rgba(39, 49, 33, 0.12);
+    box-shadow: 0 -6px 24px rgba(27, 36, 24, 0.08);
+  }
+
+  .gd-mobile-tab-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #636E5B;
+    font-family: var(--gd-font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+  }
+
+  .gd-mobile-tab-btn.active {
+    background: rgba(39, 49, 33, 0.09);
+    color: #1B2418;
+    font-weight: 700;
+  }
+
+  .gd-mobile-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  .gd-mobile-tab-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .gd-mobile-tab-badge {
+    position: absolute;
+    top: 3px;
+    right: calc(50% - 20px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #A33B31;
+    color: #FAF6ED;
+    font-family: var(--gd-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .gd-sheet-ward-label {
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    color: #22301E !important;
+    margin: 0 !important;
+  }
+}
+
 @media (max-width: 640px) {
   .gd-history-props-grid,
   .gd-history-timeline-columns {
@@ -10774,6 +10939,171 @@ article.gd-card-collapsed,
   line-height: 1.25 !important;
 }
 
+/* ====================================================================
+   MOBILE PWA COMPANION (PHONE-FIRST APP SHELL & TRIAGE UX)
+   ==================================================================== */
+.gd-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .gd-mobile-toggle,
+  .gd-sidebar,
+  .gd-sidebar-backdrop {
+    display: none !important;
+  }
+
+  .gd-top-header {
+    padding: 12px 16px !important;
+    background: rgba(237, 230, 214, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(39, 49, 33, 0.09);
+  }
+
+  .gd-header-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em;
+  }
+
+  .gd-content-body {
+    padding: 16px 16px calc(92px + env(safe-area-inset-bottom, 0px)) 16px !important;
+  }
+
+  .gd-section-header {
+    margin-bottom: 16px !important;
+  }
+
+  .gd-section-header .gd-section-title,
+  .gd-view-title {
+    font-size: 28px !important;
+  }
+
+  /* Overview: Clean single-column mobile stack */
+  .gd-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .gd-overview-split {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Pending Approvals on Phone: Focused Full-Width Triage List (tap opens Bottom Sheet) */
+  #view-pending .gd-approvals-layout {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  #view-pending .gd-decision-dossier-box {
+    display: none !important;
+  }
+
+  #view-history .gd-history-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .gd-ward-switcher {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .gd-ward-switcher::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gd-request-card {
+    padding: 14px 12px !important;
+    min-height: 64px;
+  }
+
+  /* Mobile Bottom Tab Bar */
+  .gd-mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+    background: rgba(237, 230, 214, 0.94);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid rgba(39, 49, 33, 0.12);
+    box-shadow: 0 -6px 24px rgba(27, 36, 24, 0.08);
+  }
+
+  .gd-mobile-tab-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #636E5B;
+    font-family: var(--gd-font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+  }
+
+  .gd-mobile-tab-btn.active {
+    background: rgba(39, 49, 33, 0.09);
+    color: #1B2418;
+    font-weight: 700;
+  }
+
+  .gd-mobile-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  .gd-mobile-tab-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .gd-mobile-tab-badge {
+    position: absolute;
+    top: 3px;
+    right: calc(50% - 20px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #A33B31;
+    color: #FAF6ED;
+    font-family: var(--gd-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .gd-sheet-ward-label {
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    color: #22301E !important;
+    margin: 0 !important;
+  }
+}
+
 @media (max-width: 640px) {
   .gd-settings-invariants-chips {
     gap: 8px;
@@ -14809,6 +15139,171 @@ article.gd-card-collapsed,
 .gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-request-subheading {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   animation-delay: calc(0.84s + var(--card-idx, 0) * 0.28s) !important;
+}
+
+/* ====================================================================
+   MOBILE PWA COMPANION (PHONE-FIRST APP SHELL & TRIAGE UX)
+   ==================================================================== */
+.gd-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .gd-mobile-toggle,
+  .gd-sidebar,
+  .gd-sidebar-backdrop {
+    display: none !important;
+  }
+
+  .gd-top-header {
+    padding: 12px 16px !important;
+    background: rgba(237, 230, 214, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(39, 49, 33, 0.09);
+  }
+
+  .gd-header-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em;
+  }
+
+  .gd-content-body {
+    padding: 16px 16px calc(92px + env(safe-area-inset-bottom, 0px)) 16px !important;
+  }
+
+  .gd-section-header {
+    margin-bottom: 16px !important;
+  }
+
+  .gd-section-header .gd-section-title,
+  .gd-view-title {
+    font-size: 28px !important;
+  }
+
+  /* Overview: Clean single-column mobile stack */
+  .gd-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .gd-overview-split {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Pending Approvals on Phone: Focused Full-Width Triage List (tap opens Bottom Sheet) */
+  #view-pending .gd-approvals-layout {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  #view-pending .gd-decision-dossier-box {
+    display: none !important;
+  }
+
+  #view-history .gd-history-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .gd-ward-switcher {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .gd-ward-switcher::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gd-request-card {
+    padding: 14px 12px !important;
+    min-height: 64px;
+  }
+
+  /* Mobile Bottom Tab Bar */
+  .gd-mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+    background: rgba(237, 230, 214, 0.94);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid rgba(39, 49, 33, 0.12);
+    box-shadow: 0 -6px 24px rgba(27, 36, 24, 0.08);
+  }
+
+  .gd-mobile-tab-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #636E5B;
+    font-family: var(--gd-font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+  }
+
+  .gd-mobile-tab-btn.active {
+    background: rgba(39, 49, 33, 0.09);
+    color: #1B2418;
+    font-weight: 700;
+  }
+
+  .gd-mobile-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  .gd-mobile-tab-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .gd-mobile-tab-badge {
+    position: absolute;
+    top: 3px;
+    right: calc(50% - 20px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #A33B31;
+    color: #FAF6ED;
+    font-family: var(--gd-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .gd-sheet-ward-label {
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    color: #22301E !important;
+    margin: 0 !important;
+  }
 }
 
 @media (max-width: 640px) {
