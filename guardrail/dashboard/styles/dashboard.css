@@ -12739,19 +12739,26 @@ article.gd-card-collapsed,
   color: #FAF6ED;
 }
 
-/* Card Ward Attribution Badge */
+/* Card Ward Attribution (Typography-Only Editorial Style) */
 .gd-card-ward-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(85, 107, 79, 0.09);
-  border: 1px solid rgba(85, 107, 79, 0.18);
-  font-size: 11px;
+  display: inline;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
   font-weight: 600;
-  color: #2E3B27;
-  letter-spacing: 0.01em;
+  color: var(--gd-deep-olive, #22301E);
+  letter-spacing: -0.005em;
+  line-height: 1.35;
+}
+
+.gd-request-card.selected .gd-card-ward-badge {
+  background: none;
+  border: none;
+  color: #141D10;
+  font-weight: 700;
 }
 
 .gd-ward-badge-avatar {
@@ -12761,9 +12768,9 @@ article.gd-card-collapsed,
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #E2DAC6;
-  border: 1px solid rgba(39, 49, 33, 0.16);
-  color: #36412E;
+  background: #DED6C1;
+  border: 1px solid rgba(39, 49, 33, 0.14);
+  color: #2E3B27;
   font-size: 9px;
   font-weight: 700;
   line-height: 1;
@@ -14290,47 +14297,57 @@ article.gd-card-collapsed,
 }
 
 /* Pending Approvals Right Detail Pane Choreography (Matches Decision History) */
+.gd-decision-dossier-box.gd-detail-animating-in {
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both !important;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-decision-dossier-box.gd-detail-animating-in {
+  animation: gd-history-card-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both !important;
+}
+
 .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-dossier-header {
-  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both;
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-title {
-  animation: gd-title-focus-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+  animation: gd-title-focus-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-header-meta {
-  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.10s both;
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-status-pill {
-  animation: gd-badge-stamp 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
+  animation: gd-badge-stamp 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) 0.16s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in > :nth-child(2) {
-  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-decision-controls-container {
-  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+  animation: gd-section-unfold 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-btn-approve {
-  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-btn-reject {
-  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+  animation: gd-micro-stagger 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-footer-bar {
-  animation: gd-section-unfold 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+  animation: gd-section-unfold 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 
 .gd-decision-dossier-box.gd-detail-animating-in > details {
-  animation: gd-section-unfold 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+  animation: gd-section-unfold 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .gd-decision-dossier-box.gd-detail-animating-in,
+  .gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-decision-dossier-box.gd-detail-animating-in,
   .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-dossier-header,
   .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-title,
   .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-header-meta,
@@ -14341,69 +14358,140 @@ article.gd-card-collapsed,
   .gd-decision-dossier-box.gd-detail-animating-in .gd-btn-reject,
   .gd-decision-dossier-box.gd-detail-animating-in .gd-detail-footer-bar,
   .gd-decision-dossier-box.gd-detail-animating-in > details,
-  .gd-pending-layout .gd-list-pane.gd-list-animating-in .gd-list-header,
-  .gd-pending-layout .gd-list-pane.gd-list-animating-in .gd-list-kicker,
-  .gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-list-header,
-  .gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-list-kicker,
-  .gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in,
-  .gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in *,
-  .gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card,
-  .gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card * {
+  .gd-approvals-layout .gd-list-pane.gd-list-animating-in .gd-list-header,
+  .gd-approvals-layout .gd-list-pane.gd-list-animating-in .gd-list-kicker,
+  .gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-list-header,
+  .gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-list-kicker,
+  .gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in,
+  .gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in *,
+  .gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card,
+  .gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card *,
+  .gd-view-section.gd-view-initial-enter .gd-ward-switcher,
+  .gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill,
+  .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-search-input-wrap,
+  .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap,
+  .gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-results-bar {
     animation: none !important;
   }
 }
 
+/* Shared Top Controls Left-Entry Cascade (Pending Approvals & Decision History) */
+@keyframes gd-cinematic-glide-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px) scale(0.985);
+    filter: blur(2px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes gd-cinematic-pill-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-18px) scale(0.96);
+    filter: blur(1.5px);
+  }
+  65% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher {
+  animation: gd-cinematic-glide-left 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.10s both !important;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill {
+  animation: gd-cinematic-pill-left 0.52s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill:nth-of-type(1) { animation-delay: 0.16s !important; }
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill:nth-of-type(2) { animation-delay: 0.22s !important; }
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill:nth-of-type(3) { animation-delay: 0.28s !important; }
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill:nth-of-type(4) { animation-delay: 0.34s !important; }
+.gd-view-section.gd-view-initial-enter .gd-ward-switcher .gd-ward-pill:nth-of-type(5) { animation-delay: 0.40s !important; }
+
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-search-input-wrap {
+  animation: gd-cinematic-glide-left 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.26s both !important;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap {
+  animation: gd-cinematic-pill-left 0.52s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(1) { animation-delay: 0.34s !important; }
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(2) { animation-delay: 0.41s !important; }
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(3) { animation-delay: 0.48s !important; }
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-controls-row .gd-select-wrap:nth-of-type(4) { animation-delay: 0.55s !important; }
+
+.gd-view-section.gd-view-initial-enter .gd-filter-bar .gd-filter-results-bar {
+  animation: gd-cinematic-glide-left 0.50s cubic-bezier(0.22, 1, 0.36, 1) 0.60s both !important;
+}
+
 /* Pending Approvals Left Pane Choreography (Matches Decision History) */
-.gd-pending-layout .gd-list-pane.gd-list-animating-in .gd-list-header,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-list-header {
-  animation: gd-render-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both !important;
+.gd-approvals-layout .gd-list-pane.gd-list-animating-in .gd-list-header,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-list-header {
+  animation: gd-render-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.10s both !important;
 }
 
-.gd-pending-layout .gd-list-pane.gd-list-animating-in .gd-list-kicker,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-list-kicker {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both !important;
+.gd-approvals-layout .gd-list-pane.gd-list-animating-in .gd-list-kicker,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-list-kicker {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card {
   animation: gd-history-card-enter 0.44s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.12s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.28s + var(--card-idx, 0) * 0.28s) !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-request-num,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card .gd-request-num {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-request-num,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-request-num {
   animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.16s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.32s + var(--card-idx, 0) * 0.28s) !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-request-description,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card .gd-request-description {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-request-description,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-request-description {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.22s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.38s + var(--card-idx, 0) * 0.28s) !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-card-ward-badge,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card .gd-card-ward-badge {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-card-ward-badge,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-card-ward-badge {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.30s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.48s + var(--card-idx, 0) * 0.28s) !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-status-badge,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card .gd-status-badge {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-status-badge,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-status-badge {
   animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.35s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.58s + var(--card-idx, 0) * 0.28s) !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-risk-badge,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card .gd-risk-badge {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-risk-badge,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-risk-badge {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.38s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.68s + var(--card-idx, 0) * 0.28s) !important;
 }
 
-.gd-pending-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-request-subheading,
-.gd-view-section.gd-view-initial-enter .gd-pending-layout .gd-list-pane .gd-request-card .gd-request-subheading {
+.gd-approvals-layout .gd-list-pane .gd-request-card.gd-card-animating-in .gd-request-subheading,
+.gd-view-section.gd-view-initial-enter .gd-approvals-layout .gd-list-pane .gd-request-card .gd-request-subheading {
   animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-  animation-delay: calc(0.44s + var(--card-idx, 0) * 0.16s) !important;
+  animation-delay: calc(0.84s + var(--card-idx, 0) * 0.28s) !important;
 }
 
 @media (max-width: 640px) {

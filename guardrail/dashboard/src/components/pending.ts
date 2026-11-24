@@ -43,6 +43,8 @@ export interface PendingApprovalsProps {
   onFiltersChange?: (filters: RequestFilters) => void;
   /** Whether displayed requests are cached/stale due to recent sync failure */
   isStale?: boolean;
+  /** Whether the Pending Approvals view is currently the active visible view */
+  isActive?: boolean;
   /** Whether backend service is confirmed unreachable or in error */
   isBackendUnavailable?: boolean;
   /** Timestamp of last successful synchronization */
@@ -684,8 +686,13 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           : selectedBaseReq;
 
         const pendingListAnimKey = `${activeFilters.wardId || 'ALL'}|${activeFilters.riskLevel}|${activeFilters.dateRange}|${activeFilters.searchQuery}|${filteredRequests.map((r) => r.id).join(',')}`;
-        const shouldAnimateList = pendingListAnimKey !== lastPendingListAnimationKey;
-        lastPendingListAnimationKey = pendingListAnimKey;
+        let shouldAnimateList = false;
+        if (props.isActive === false) {
+          lastPendingListAnimationKey = null;
+        } else {
+          shouldAnimateList = pendingListAnimKey !== lastPendingListAnimationKey;
+          lastPendingListAnimationKey = pendingListAnimKey;
+        }
         if (shouldAnimateList) {
           listPane.classList.add('gd-list-animating-in');
         }
@@ -751,28 +758,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           const badgesWrap = document.createElement('div');
           badgesWrap.className = 'gd-pending-card-badges';
 
-          // Ward identity attribution badge
-          const cardWardBadge = document.createElement('span');
-          cardWardBadge.className = 'gd-card-ward-badge';
-          const matchedWard = props.connectedWards?.find(
-            (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
-          );
-          const badgeAvatar = document.createElement('span');
-          badgeAvatar.className = 'gd-ward-badge-avatar';
-          badgeAvatar.setAttribute('aria-hidden', 'true');
-          populateWardAvatar(badgeAvatar, {
-            imageUrl: matchedWard?.imageUrl || matchedWard?.avatarUrl,
-            name: wardName,
-            imgClass: 'gd-ward-badge-avatar-img',
-            iconClass: 'gd-ward-badge-avatar-icon',
-          });
-          const badgeName = document.createElement('span');
-          badgeName.className = 'gd-ward-badge-name';
-          badgeName.textContent = wardName;
-          cardWardBadge.appendChild(badgeAvatar);
-          cardWardBadge.appendChild(badgeName);
-          badgesWrap.appendChild(cardWardBadge);
-
           if (isExpired) {
             const expBadge = document.createElement('span');
             expBadge.className = 'gd-status-badge expired';
@@ -793,14 +778,17 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           titleRow.appendChild(badgesWrap);
           contentWrapper.appendChild(titleRow);
 
-          // Subheading: Clean, minimal single-line context (Domain · Contact · Expiration)
+          // Subheading: Clean, minimal single-line context (Ward · Domain · Expiration)
           const subheading = document.createElement('p');
           subheading.className = 'gd-request-subheading';
 
-          const hostSpan = document.createElement('span');
-          hostSpan.className = 'gd-context-hostname';
-          hostSpan.textContent = hostname;
-          subheading.appendChild(hostSpan);
+          const cardWardBadge = document.createElement('span');
+          cardWardBadge.className = 'gd-card-ward-badge';
+          const badgeName = document.createElement('span');
+          badgeName.className = 'gd-ward-badge-name gd-requester-name';
+          badgeName.textContent = wardName;
+          cardWardBadge.appendChild(badgeName);
+          subheading.appendChild(cardWardBadge);
 
           const sep1 = document.createElement('span');
           sep1.className = 'gd-subheading-sep';
@@ -808,10 +796,10 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           sep1.textContent = '·';
           subheading.appendChild(sep1);
 
-          const wardSpan = document.createElement('span');
-          wardSpan.className = 'gd-requester-name';
-          wardSpan.textContent = wardName;
-          subheading.appendChild(wardSpan);
+          const hostSpan = document.createElement('span');
+          hostSpan.className = 'gd-context-hostname';
+          hostSpan.textContent = hostname;
+          subheading.appendChild(hostSpan);
 
           if (req.expiresAt) {
             const expInfo = formatExpirationInfo(req.expiresAt);

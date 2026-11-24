@@ -958,6 +958,7 @@ export class DashboardShell {
         }
       },
       connectedWards: this.getConnectedWards(),
+      isActive: this.state.activeView === 'pending',
     });
     if (this.state.activeView === 'pending') {
       pendingSection.classList.add('active');

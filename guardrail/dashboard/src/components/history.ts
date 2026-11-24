@@ -988,30 +988,6 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       const badgesWrap = document.createElement('div');
       badgesWrap.className = 'gd-history-header-badges';
 
-      // Ward identity attribution badge
-      if (wardName) {
-        const cardWardBadge = document.createElement('span');
-        cardWardBadge.className = 'gd-card-ward-badge';
-        const matchedWard = props.connectedWards?.find(
-          (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
-        );
-        const badgeAvatar = document.createElement('span');
-        badgeAvatar.className = 'gd-ward-badge-avatar';
-        badgeAvatar.setAttribute('aria-hidden', 'true');
-        populateWardAvatar(badgeAvatar, {
-          imageUrl: matchedWard?.imageUrl || matchedWard?.avatarUrl,
-          name: wardName,
-          imgClass: 'gd-ward-badge-avatar-img',
-          iconClass: 'gd-ward-badge-avatar-icon',
-        });
-        const badgeName = document.createElement('span');
-        badgeName.className = 'gd-ward-badge-name';
-        badgeName.textContent = wardName;
-        cardWardBadge.appendChild(badgeAvatar);
-        cardWardBadge.appendChild(badgeName);
-        badgesWrap.appendChild(cardWardBadge);
-      }
-
       // Prominent resolved status pill
       const statusPill = document.createElement('span');
       statusPill.className = `gd-detail-status-pill ${statusClass}`;
@@ -1033,27 +1009,30 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       titleRow.appendChild(badgesWrap);
       contentWrapper.appendChild(titleRow);
 
-      // Subheading: Hostname · Requester · Timestamp · Reviewer
+      // Subheading: Ward Pill · Hostname · Timestamp · Reviewer
       const subheading = document.createElement('p');
       subheading.className = 'gd-request-subheading';
 
-      const originSpan = document.createElement('span');
-      originSpan.className = 'gd-context-hostname gd-meta-hostname';
-      originSpan.textContent = hostname;
-      subheading.appendChild(originSpan);
-
       if (wardName) {
+        const cardWardBadge = document.createElement('span');
+        cardWardBadge.className = 'gd-card-ward-badge';
+        const badgeName = document.createElement('span');
+        badgeName.className = 'gd-ward-badge-name gd-requester-name';
+        badgeName.textContent = wardName;
+        cardWardBadge.appendChild(badgeName);
+        subheading.appendChild(cardWardBadge);
+
         const sepWard = document.createElement('span');
         sepWard.className = 'gd-subheading-sep';
         sepWard.setAttribute('aria-hidden', 'true');
         sepWard.textContent = '·';
         subheading.appendChild(sepWard);
-
-        const wardSpan = document.createElement('span');
-        wardSpan.className = 'gd-requester-name';
-        wardSpan.textContent = wardName;
-        subheading.appendChild(wardSpan);
       }
+
+      const originSpan = document.createElement('span');
+      originSpan.className = 'gd-context-hostname gd-meta-hostname';
+      originSpan.textContent = hostname;
+      subheading.appendChild(originSpan);
 
       const sepTime = document.createElement('span');
       sepTime.className = 'gd-subheading-sep';
