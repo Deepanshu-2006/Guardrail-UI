@@ -482,12 +482,17 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     }
   } else if (activeTab === 'wards') {
     const headerBlock = document.createElement('section');
-    headerBlock.className = 'gd-m-greeting';
+    headerBlock.className = 'gd-m-greeting gd-m-page-header';
     headerBlock.innerHTML = `
-      <h1 class="gd-m-greet-title">Protected Wards</h1>
-      <p class="gd-m-greet-sub">${connectedWards.length} connected ${connectedWards.length === 1 ? 'person' : 'people'} under your oversight</p>
+      <h1 class="gd-m-page-title">Protected Wards</h1>
+      <p class="gd-m-page-sub">${connectedWards.length} connected ${connectedWards.length === 1 ? 'person' : 'people'} under your oversight</p>
     `;
     main.appendChild(headerBlock);
+
+    const wardsKicker = document.createElement('div');
+    wardsKicker.className = 'gd-m-section-kicker';
+    wardsKicker.textContent = `Connected wards (${connectedWards.length})`;
+    main.appendChild(wardsKicker);
 
     const list = document.createElement('div');
     list.className = 'gd-m-list';
