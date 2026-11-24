@@ -6492,16 +6492,46 @@ textarea:focus-visible,
    PURPOSE-BUILT MOBILE PWA COMPANION (.gd-m-*)
    ==================================================================== */
 .gd-m-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100dvh;
   width: 100%;
   background-color: #EDE6D6;
-  background-image: radial-gradient(ellipse 110% 260px at 15% 0%, rgba(39, 49, 33, 0.13), transparent 72%);
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(39, 49, 33, 0.11), transparent 80%);
   color: #171F13;
   font-family: var(--gd-font-sans);
   display: flex;
   flex-direction: column;
   padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
+}
+
+.gd-m-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(31, 41, 26, 0.085) 1px, transparent 1px);
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+.gd-m-shell.phase-morning {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(242, 213, 159, 0.45) 0%, rgba(220, 224, 200, 0.28) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-afternoon {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(175, 196, 181, 0.42) 0%, rgba(203, 219, 200, 0.22) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-evening {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(214, 137, 79, 0.28) 0%, rgba(166, 91, 70, 0.14) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-night {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(37, 53, 44, 0.20) 0%, rgba(24, 34, 29, 0.10) 48%, transparent 82%);
 }
 
 .gd-m-topbar {
@@ -6513,7 +6543,7 @@ textarea:focus-visible,
   justify-content: space-between;
   gap: 10px;
   padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px 18px;
-  background: rgba(237, 230, 214, 0.88);
+  background: rgba(237, 230, 214, 0.72);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -6612,6 +6642,8 @@ textarea:focus-visible,
 }
 
 .gd-m-main {
+  position: relative;
+  z-index: 1;
   padding: 16px 20px 28px 20px;
   display: flex;
   flex-direction: column;
@@ -12016,16 +12048,46 @@ article.gd-card-collapsed,
    PURPOSE-BUILT MOBILE PWA COMPANION (.gd-m-*)
    ==================================================================== */
 .gd-m-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100dvh;
   width: 100%;
   background-color: #EDE6D6;
-  background-image: radial-gradient(ellipse 110% 260px at 15% 0%, rgba(39, 49, 33, 0.13), transparent 72%);
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(39, 49, 33, 0.11), transparent 80%);
   color: #171F13;
   font-family: var(--gd-font-sans);
   display: flex;
   flex-direction: column;
   padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
+}
+
+.gd-m-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(31, 41, 26, 0.085) 1px, transparent 1px);
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+.gd-m-shell.phase-morning {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(242, 213, 159, 0.45) 0%, rgba(220, 224, 200, 0.28) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-afternoon {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(175, 196, 181, 0.42) 0%, rgba(203, 219, 200, 0.22) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-evening {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(214, 137, 79, 0.28) 0%, rgba(166, 91, 70, 0.14) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-night {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(37, 53, 44, 0.20) 0%, rgba(24, 34, 29, 0.10) 48%, transparent 82%);
 }
 
 .gd-m-topbar {
@@ -12037,7 +12099,7 @@ article.gd-card-collapsed,
   justify-content: space-between;
   gap: 10px;
   padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px 18px;
-  background: rgba(237, 230, 214, 0.88);
+  background: rgba(237, 230, 214, 0.72);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -12136,6 +12198,8 @@ article.gd-card-collapsed,
 }
 
 .gd-m-main {
+  position: relative;
+  z-index: 1;
   padding: 16px 20px 28px 20px;
   display: flex;
   flex-direction: column;
@@ -17039,16 +17103,46 @@ article.gd-card-collapsed,
    PURPOSE-BUILT MOBILE PWA COMPANION (.gd-m-*)
    ==================================================================== */
 .gd-m-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100dvh;
   width: 100%;
   background-color: #EDE6D6;
-  background-image: radial-gradient(ellipse 110% 260px at 15% 0%, rgba(39, 49, 33, 0.13), transparent 72%);
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(39, 49, 33, 0.11), transparent 80%);
   color: #171F13;
   font-family: var(--gd-font-sans);
   display: flex;
   flex-direction: column;
   padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
+}
+
+.gd-m-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(31, 41, 26, 0.085) 1px, transparent 1px);
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+.gd-m-shell.phase-morning {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(242, 213, 159, 0.45) 0%, rgba(220, 224, 200, 0.28) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-afternoon {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(175, 196, 181, 0.42) 0%, rgba(203, 219, 200, 0.22) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-evening {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(214, 137, 79, 0.28) 0%, rgba(166, 91, 70, 0.14) 48%, transparent 82%);
+}
+
+.gd-m-shell.phase-night {
+  background-image: radial-gradient(ellipse 120% 340px at 78% 0%, rgba(37, 53, 44, 0.20) 0%, rgba(24, 34, 29, 0.10) 48%, transparent 82%);
 }
 
 .gd-m-topbar {
@@ -17060,7 +17154,7 @@ article.gd-card-collapsed,
   justify-content: space-between;
   gap: 10px;
   padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px 18px;
-  background: rgba(237, 230, 214, 0.88);
+  background: rgba(237, 230, 214, 0.72);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -17159,6 +17253,8 @@ article.gd-card-collapsed,
 }
 
 .gd-m-main {
+  position: relative;
+  z-index: 1;
   padding: 16px 20px 28px 20px;
   display: flex;
   flex-direction: column;

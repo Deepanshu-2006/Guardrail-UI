@@ -68,8 +68,10 @@ function getRiskPriority(level?: RiskLevel): number {
 }
 
 export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement {
+  const now = new Date();
+  const scenery = getRealTimeScenery(now);
   const shell = document.createElement('div');
-  shell.className = 'gd-m-shell';
+  shell.className = `gd-m-shell phase-${scenery.phase}`;
 
   const {
     activeTab,
@@ -171,8 +173,6 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
 
   if (activeTab === 'queue') {
     // Pixelated Real-Time Scenery Greeting
-    const now = new Date();
-    const scenery = getRealTimeScenery(now);
     const greetingBlock = document.createElement('section');
     greetingBlock.className = `gd-m-greeting gd-m-scenery phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
 
