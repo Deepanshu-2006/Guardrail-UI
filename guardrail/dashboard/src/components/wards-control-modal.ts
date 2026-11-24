@@ -201,6 +201,10 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       const topRow = document.createElement('div');
       topRow.className = 'gd-ward-control-top';
 
+      // Left Cluster: Avatar + Identity
+      const metaCluster = document.createElement('div');
+      metaCluster.className = 'gd-ward-meta-cluster';
+
       const avatar = document.createElement('div');
       avatar.className = 'gd-ward-control-avatar';
       avatar.textContent = getWardInitials(ward.name);
@@ -233,6 +237,13 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       identityCol.appendChild(nameRow);
       identityCol.appendChild(emailEl);
+
+      metaCluster.appendChild(avatar);
+      metaCluster.appendChild(identityCol);
+
+      // Right Cluster: Status + Action Controls
+      const controlsCluster = document.createElement('div');
+      controlsCluster.className = 'gd-ward-controls-cluster';
 
       const queueStatus = document.createElement('div');
       queueStatus.className = 'gd-ward-queue-status';
@@ -324,13 +335,11 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       disconnectBtn.addEventListener('click', () => {
         topRow.style.display = 'none';
-        actionsRow.style.display = 'none';
         confirmContainer.style.display = 'flex';
       });
 
       confirmNoBtn.addEventListener('click', () => {
         confirmContainer.style.display = 'none';
-        actionsRow.style.display = 'flex';
         topRow.style.display = 'flex';
       });
 
@@ -349,10 +358,11 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       actionsRow.appendChild(reviewBtn);
       actionsRow.appendChild(disconnectBtn);
 
-      topRow.appendChild(avatar);
-      topRow.appendChild(identityCol);
-      topRow.appendChild(queueStatus);
-      topRow.appendChild(actionsRow);
+      controlsCluster.appendChild(queueStatus);
+      controlsCluster.appendChild(actionsRow);
+
+      topRow.appendChild(metaCluster);
+      topRow.appendChild(controlsCluster);
 
       wardCard.appendChild(topRow);
       wardCard.appendChild(confirmContainer);
