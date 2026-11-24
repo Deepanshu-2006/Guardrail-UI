@@ -35,9 +35,11 @@ export interface OverviewProps {
   onViewSettings?: () => void;
   onSelectPending?: (requestId: string) => void;
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
-  onDisconnectWard?: () => void;
+  onDisconnectWard?: (wardId?: string) => void;
+  onFilterWardPending?: (wardId: string) => void;
   onRefresh?: () => void;
   onOpenAuth?: () => void;
+  connectedWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[];
 }
 
 /**
@@ -239,6 +241,18 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   grid.className = 'gd-overview-grid';
 
   // Metric 1: Assigned Wards
+  const wardsList = (props.connectedWards && props.connectedWards.length > 0)
+    ? props.connectedWards
+    : (props.profile?.assignedWardId
+        ? [{
+            id: props.profile.assignedWardId,
+            name: formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId),
+            email: props.profile.assignedWardEmail,
+            relationshipLabel: props.profile.relationshipLabel,
+          }]
+        : []);
+  const wardCount = wardsList.length;
+
   const wardCard = document.createElement('div');
   wardCard.className = 'gd-metric-card';
 
@@ -255,7 +269,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const wardBadge = document.createElement('span');
   wardBadge.className = 'gd-metric-badge';
-  wardBadge.textContent = props.profile?.assignedWardId ? 'Linked' : 'Unlinked';
+  wardBadge.textContent = wardCount === 0 ? 'Unlinked' : (wardCount > 1 ? `${wardCount} Linked` : 'Linked');
 
   wardHeader.appendChild(wardIndex);
   wardHeader.appendChild(wardLabel);
@@ -266,7 +280,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const wardValue = document.createElement('span');
   wardValue.className = 'gd-metric-value';
-  wardValue.textContent = props.profile?.assignedWardId ? '1' : '0';
+  wardValue.textContent = String(wardCount);
 
   const wardUnit = document.createElement('span');
   wardUnit.className = 'gd-metric-unit';
@@ -277,10 +291,13 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const wardDesc = document.createElement('span');
   wardDesc.className = 'gd-metric-desc';
-  const wardDisplay = formatWardDisplayName(props.profile?.assignedWardName, props.profile?.assignedWardId);
-  wardDesc.textContent = props.profile?.assignedWardId
-    ? `Reviewer for ${wardDisplay}`
-    : 'Awaiting ward invitation';
+  if (wardCount === 0) {
+    wardDesc.textContent = 'Awaiting ward invitation';
+  } else if (wardCount === 1) {
+    wardDesc.textContent = `Reviewer for ${wardsList[0].name}`;
+  } else {
+    wardDesc.textContent = `Reviewer for ${wardsList.map(w => w.name).join(', ')}`;
+  }
 
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValueRow);
@@ -623,7 +640,18 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   // =========================================================================
   // SECTION E: TRUSTED CONTACT / WARD CONNECTION
   // =========================================================================
-  if (!props.profile?.assignedWardId) {
+  const activeWards = (props.connectedWards && props.connectedWards.length > 0)
+    ? props.connectedWards
+    : (props.profile?.assignedWardId
+        ? [{
+            id: props.profile.assignedWardId,
+            name: formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId),
+            email: props.profile.assignedWardEmail,
+            relationshipLabel: props.profile.relationshipLabel,
+          }]
+        : []);
+
+  if (activeWards.length === 0) {
     const setupCard = document.createElement('div');
     setupCard.className = 'gd-card gd-setup-card gd-scroll-reveal';
     setupCard.id = 'gd-setup-card';
@@ -774,8 +802,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
     setupCard.appendChild(form);
     wardOversightSection = setupCard;
-  } else {
-    // Linked State: Active Ward Oversight (Pure Typographic Layout - Zero Boxes, Zero Borders)
+  } else if (activeWards.length === 1) {
+    const singleWard = activeWards[0];
+    // Linked State: Active Ward Oversight (Single Ward)
     const wardCard = document.createElement('div');
     wardCard.className = 'gd-active-ward-card gd-scroll-reveal';
     wardCard.id = 'gd-active-ward-card';
@@ -787,7 +816,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     kicker.className = 'gd-ward-kicker';
     kicker.textContent = 'Active Ward Oversight';
 
-    const wardName = formatWardDisplayName(props.profile.assignedWardName, props.profile.assignedWardId);
+    const wardName = singleWard.name;
     const heroTitle = document.createElement('h2');
     heroTitle.className = 'gd-ward-hero-name';
     setAnimatedHeading(heroTitle, wardName);
@@ -796,9 +825,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const metaLine = document.createElement('p');
     metaLine.className = 'gd-ward-meta-line';
 
-    const relLabel = props.profile.relationshipLabel ?? 'Designated Caretaker';
-    const wardEmail = props.profile.assignedWardEmail;
-    const wardId = props.profile.assignedWardId;
+    const relLabel = singleWard.relationshipLabel ?? props.profile?.relationshipLabel ?? 'Designated Caretaker';
+    const wardEmail = singleWard.email || props.profile?.assignedWardEmail;
+    const wardId = singleWard.id;
 
     const parts: string[] = [];
     if (wardEmail) parts.push(wardEmail);
@@ -807,7 +836,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
     metaLine.textContent = parts.join('  ·  ');
 
-    // Policy & Architectural guarantee note (concise, quiet typographic text)
+    // Policy & Architectural guarantee note
     const dutyNotice = document.createElement('p');
     dutyNotice.className = 'gd-ward-guarantee-note';
     dutyNotice.textContent =
@@ -818,7 +847,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     wardHero.appendChild(metaLine);
     wardHero.appendChild(dutyNotice);
 
-    // Typographic action links (Pure text links - zero box/button styling)
+    // Typographic action links
     const actionLinks = document.createElement('div');
     actionLinks.className = 'gd-ward-action-links';
 
@@ -834,14 +863,35 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       actionLinks.appendChild(manageLink);
     }
 
-    if (props.onDisconnectWard) {
+    if (props.onConnectInvitation) {
       if (props.onViewSettings) {
-        const sep = document.createElement('span');
-        sep.className = 'gd-ward-link-sep';
-        sep.textContent = '·';
-        sep.setAttribute('aria-hidden', 'true');
-        actionLinks.appendChild(sep);
+        const sepConnect = document.createElement('span');
+        sepConnect.className = 'gd-ward-link-sep';
+        sepConnect.textContent = '·';
+        sepConnect.setAttribute('aria-hidden', 'true');
+        actionLinks.appendChild(sepConnect);
       }
+
+      const addWardLink = document.createElement('button');
+      addWardLink.type = 'button';
+      addWardLink.className = 'gd-ward-text-link gd-link-add-ward';
+      addWardLink.textContent = '+ Connect Another Ward';
+      addWardLink.addEventListener('click', () => {
+        showConnectWardModal({
+          onConnect: async (code) => {
+            return await props.onConnectInvitation!(code);
+          },
+        });
+      });
+      actionLinks.appendChild(addWardLink);
+    }
+
+    if (props.onDisconnectWard) {
+      const sep = document.createElement('span');
+      sep.className = 'gd-ward-link-sep';
+      sep.textContent = '·';
+      sep.setAttribute('aria-hidden', 'true');
+      actionLinks.appendChild(sep);
 
       const disconnectLink = document.createElement('button');
       disconnectLink.type = 'button';
@@ -855,7 +905,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
       const confirmPrompt = document.createElement('span');
       confirmPrompt.className = 'gd-ward-confirm-prompt';
-      confirmPrompt.textContent = `Disconnect from ${props.profile.assignedWardId}? `;
+      confirmPrompt.textContent = `Disconnect from ${wardId}? `;
 
       const confirmBtn = document.createElement('button');
       confirmBtn.type = 'button';
@@ -868,7 +918,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       cancelBtn.textContent = 'Cancel';
 
       confirmBtn.addEventListener('click', () => {
-        props.onDisconnectWard?.();
+        props.onDisconnectWard?.(wardId);
       });
 
       cancelBtn.addEventListener('click', () => {
@@ -896,6 +946,193 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     wardHero.appendChild(actionLinks);
     wardCard.appendChild(wardHero);
     wardOversightSection = wardCard;
+  } else {
+    // Multi-Ward Oversight Grid
+    const multiWardCard = document.createElement('div');
+    multiWardCard.className = 'gd-active-ward-card gd-multi-ward-container gd-scroll-reveal';
+    multiWardCard.id = 'gd-active-ward-card';
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'gd-multi-ward-header';
+
+    const kicker = document.createElement('span');
+    kicker.className = 'gd-ward-kicker';
+    kicker.textContent = 'Active Ward Oversight';
+
+    const titleEl = document.createElement('h2');
+    titleEl.className = 'gd-ward-hero-name';
+    setAnimatedHeading(titleEl, `${activeWards.length} Protected Wards`);
+
+    const countBadge = document.createElement('span');
+    countBadge.className = 'gd-multi-ward-badge';
+    countBadge.textContent = `${activeWards.length} Active Wards Linked`;
+
+    headerRow.appendChild(kicker);
+    headerRow.appendChild(titleEl);
+    headerRow.appendChild(countBadge);
+    multiWardCard.appendChild(headerRow);
+
+    const dutyNotice = document.createElement('p');
+    dutyNotice.className = 'gd-ward-guarantee-note';
+    dutyNotice.textContent =
+      `Separation of Duties enforced across all connected wards. Approval decisions register consent on the backend; each ward in Staging Mode retains ultimate agency to execute or cancel actions. Multi-tenant isolation guarantees no access to data belonging to other users.`;
+    multiWardCard.appendChild(dutyNotice);
+
+    // List of active ward cards
+    const wardsGrid = document.createElement('div');
+    wardsGrid.className = 'gd-multi-ward-grid';
+
+    for (const w of activeWards) {
+      const singleCard = document.createElement('div');
+      singleCard.className = 'gd-multi-ward-card';
+      singleCard.setAttribute('data-ward-id', w.id);
+
+      const avatar = document.createElement('div');
+      avatar.className = 'gd-multi-ward-avatar';
+      avatar.textContent = (w.name || 'W').charAt(0).toUpperCase();
+
+      const details = document.createElement('div');
+      details.className = 'gd-multi-ward-details';
+
+      const nameRow = document.createElement('div');
+      nameRow.className = 'gd-multi-ward-name-row';
+
+      const nameEl = document.createElement('strong');
+      nameEl.className = 'gd-multi-ward-name';
+      nameEl.textContent = w.name;
+
+      const activeBadge = document.createElement('span');
+      activeBadge.className = 'gd-status-badge approved';
+      activeBadge.textContent = 'ACTIVE';
+
+      nameRow.appendChild(nameEl);
+      nameRow.appendChild(activeBadge);
+
+      const meta = document.createElement('p');
+      meta.className = 'gd-multi-ward-meta';
+      const emailStr = w.email ? `${w.email} · ` : '';
+      meta.textContent = `${emailStr}${w.relationshipLabel || 'Designated Caretaker'} · ID: ${w.id}`;
+
+      details.appendChild(nameRow);
+      details.appendChild(meta);
+
+      const cardActions = document.createElement('div');
+      cardActions.className = 'gd-multi-ward-card-actions';
+
+      const filterBtn = document.createElement('button');
+      filterBtn.type = 'button';
+      filterBtn.className = 'gd-ward-text-link gd-link-filter-ward';
+      filterBtn.textContent = 'Review Pending →';
+      filterBtn.addEventListener('click', () => {
+        if (props.onFilterWardPending) {
+          props.onFilterWardPending(w.id);
+        } else if (props.onViewPending) {
+          props.onViewPending();
+        }
+      });
+      cardActions.appendChild(filterBtn);
+
+      if (props.onDisconnectWard) {
+        const sep = document.createElement('span');
+        sep.className = 'gd-ward-link-sep';
+        sep.textContent = '·';
+        sep.setAttribute('aria-hidden', 'true');
+        cardActions.appendChild(sep);
+
+        const disconnectBtn = document.createElement('button');
+        disconnectBtn.type = 'button';
+        disconnectBtn.className = 'gd-ward-text-link gd-link-disconnect gd-btn-revoke';
+        disconnectBtn.textContent = 'Disconnect';
+
+        const confirmSpan = document.createElement('span');
+        confirmSpan.className = 'gd-ward-confirm-inline';
+        confirmSpan.style.display = 'none';
+
+        const promptText = document.createElement('span');
+        promptText.textContent = `Disconnect ${w.name}? `;
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'gd-ward-text-link gd-link-confirm';
+        confirmBtn.textContent = 'Yes';
+        confirmBtn.addEventListener('click', () => {
+          props.onDisconnectWard?.(w.id);
+        });
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'gd-ward-text-link gd-link-cancel';
+        cancelBtn.textContent = 'No';
+        cancelBtn.addEventListener('click', () => {
+          confirmSpan.style.display = 'none';
+          disconnectBtn.style.display = 'inline-flex';
+        });
+
+        confirmSpan.appendChild(promptText);
+        confirmSpan.appendChild(confirmBtn);
+        const sp = document.createElement('span');
+        sp.textContent = ' ';
+        confirmSpan.appendChild(sp);
+        confirmSpan.appendChild(cancelBtn);
+
+        disconnectBtn.addEventListener('click', () => {
+          disconnectBtn.style.display = 'none';
+          confirmSpan.style.display = 'inline-flex';
+        });
+
+        cardActions.appendChild(disconnectBtn);
+        cardActions.appendChild(confirmSpan);
+      }
+
+      singleCard.appendChild(avatar);
+      singleCard.appendChild(details);
+      singleCard.appendChild(cardActions);
+      wardsGrid.appendChild(singleCard);
+    }
+
+    multiWardCard.appendChild(wardsGrid);
+
+    // Multi-ward footer action bar
+    const footerBar = document.createElement('div');
+    footerBar.className = 'gd-multi-ward-footer';
+
+    if (props.onViewSettings) {
+      const manageAllLink = document.createElement('button');
+      manageAllLink.type = 'button';
+      manageAllLink.className = 'gd-ward-text-link gd-link-manage';
+      manageAllLink.id = 'gd-btn-manage-ward';
+      manageAllLink.textContent = 'Manage in Settings →';
+      manageAllLink.addEventListener('click', () => {
+        props.onViewSettings?.();
+      });
+      footerBar.appendChild(manageAllLink);
+    }
+
+    if (props.onConnectInvitation) {
+      if (props.onViewSettings) {
+        const sep = document.createElement('span');
+        sep.className = 'gd-ward-link-sep';
+        sep.textContent = '·';
+        sep.setAttribute('aria-hidden', 'true');
+        footerBar.appendChild(sep);
+      }
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'gd-ward-text-link gd-link-add-ward';
+      addBtn.textContent = '+ Connect Another Ward';
+      addBtn.addEventListener('click', () => {
+        showConnectWardModal({
+          onConnect: async (code) => {
+            return await props.onConnectInvitation!(code);
+          },
+        });
+      });
+      footerBar.appendChild(addBtn);
+    }
+
+    multiWardCard.appendChild(footerBar);
+    wardOversightSection = multiWardCard;
   }
 
   // =========================================================================
