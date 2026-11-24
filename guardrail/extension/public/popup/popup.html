@@ -35,21 +35,26 @@
       </header>
 
       <main class="content">
-        <!-- Ward Identity Card (Prominent & Noticeable) -->
+        <!-- Ward Identity Card (Refined & Noticeable) -->
         <section class="ward-account-card" id="ward-account-card">
           <!-- Signed-in state -->
-          <div class="ward-account-row" id="ward-user-badge">
-            <div class="ward-account-avatar" id="ward-account-avatar" aria-hidden="true">
-              <span id="ward-avatar-text">👤</span>
+          <div class="ward-card-inner" id="ward-user-badge">
+            <div class="ward-card-header">
+              <span class="ward-card-kicker">Ward Identity</span>
+              <button type="button" class="btn-ward-signout" id="btn-ward-signout" title="Sign out / switch account">Sign Out</button>
             </div>
-            <div class="ward-account-details">
-              <div class="ward-name-line">
-                <span class="ward-account-name" id="ward-account-name" title="Alice">Alice</span>
-                <span class="ward-role-badge">WARD</span>
+            <div class="ward-profile-row">
+              <div class="ward-account-avatar" id="ward-account-avatar" aria-hidden="true">
+                <span id="ward-avatar-text">D</span>
               </div>
-              <span class="ward-account-email" id="ward-account-email">alice@guardrail.local</span>
+              <div class="ward-account-details">
+                <div class="ward-name-line">
+                  <span class="ward-account-name" id="ward-account-name" title="Deepanshu Khatri">Deepanshu Khatri</span>
+                  <span class="ward-role-badge">Protected Ward</span>
+                </div>
+                <span class="ward-account-email" id="ward-account-email">deepanshukhatri20061972@gmail.com</span>
+              </div>
             </div>
-            <button type="button" class="btn-ward-signout" id="btn-ward-signout" title="Sign out / switch account">Sign Out</button>
           </div>
 
           <!-- Signed-out state -->

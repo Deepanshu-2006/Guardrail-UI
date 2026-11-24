@@ -371,16 +371,35 @@ export function renderWardAccountCard(identity: WardIdentity | null): void {
   const btnAuthText = document.getElementById('btn-google-auth-text');
 
   if (identity && identity.isAuthenticated) {
-    const displayName = identity.fullName || identity.actorId;
+    let displayName = identity.fullName || identity.actorId;
+    const email = identity.email || 'deepanshukhatri20061972@gmail.com';
+
+    // Format human-friendly name (e.g. Deepanshu Khatri instead of deepanshukhatri20061972)
+    if (
+      displayName.toLowerCase().includes('deepanshu') ||
+      email.toLowerCase().includes('deepanshu')
+    ) {
+      displayName = 'Deepanshu Khatri';
+    } else if (displayName.includes('usr_')) {
+      displayName = displayName.replace('usr_', '');
+    }
+
     if (nameEl) {
       nameEl.textContent = displayName;
       nameEl.title = displayName;
     }
-    if (emailEl) emailEl.textContent = identity.email || 'Authenticated via Google';
+    if (emailEl) {
+      emailEl.textContent = email;
+      emailEl.title = email;
+    }
 
     if (avatarEl) {
-      if (identity.picture) {
-        avatarEl.innerHTML = `<img src="${escapeHtml(identity.picture)}" alt="${escapeHtml(displayName)}" />`;
+      let picture = identity.picture;
+      if (!picture && displayName === 'Deepanshu Khatri') {
+        picture = DEEPANSHU_CLERK_AVATAR;
+      }
+      if (picture) {
+        avatarEl.innerHTML = `<img src="${escapeHtml(picture)}" alt="${escapeHtml(displayName)}" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/a/ACg8ocKd3PDi85kjmN6LDsahmeYcrLZBE-taEPSg_7XwAXIMfEGzrUEs=s1000-c';" />`;
       } else if (avatarText) {
         avatarText.textContent = displayName.charAt(0).toUpperCase();
       }
@@ -764,9 +783,12 @@ export function closePairingPanel(): void {
   document.body.classList.add('pairing-closing');
   stopConnectionPolling();
 
+  const isPaired = document.getElementById('onboarding-banner')?.classList.contains('completed');
   const targetBtn = getPairingButtonDefaultText();
-  const targetDesc = savedDescBeforeOpen || 'Not Connected';
-  savedDescBeforeOpen = '';
+  const targetDesc = savedDescBeforeOpen || (isPaired ? 'Protected by Deepanshu Khatri ✓' : 'Not Connected');
+  if (!isPaired) {
+    savedDescBeforeOpen = '';
+  }
 
   const desc = document.getElementById('onboarding-status-desc');
   if (desc) desc.classList.remove('is-pairing');
