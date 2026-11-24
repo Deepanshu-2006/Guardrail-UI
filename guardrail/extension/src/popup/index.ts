@@ -99,8 +99,30 @@ export async function initializePopup(): Promise<void> {
     // safe fallback
   }
 
+  // Check cached guardian contacts from local storage to display paired state on frame 0
+  let cachedContacts: ActiveGuardianContact[] | null = null;
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const items = await new Promise<Record<string, unknown>>((resolve) => {
+        chrome.storage.local.get(['guardrailActiveContacts'], resolve);
+      });
+      if (typeof items.guardrailActiveContacts === 'string') {
+        const parsed = JSON.parse(items.guardrailActiveContacts);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          cachedContacts = parsed;
+        }
+      }
+    }
+  } catch {}
+
   // Render status into popup DOM - starts compact (360px) looking exactly like before
   renderPopupStatus(report, onboardingState, isBackendLive);
+
+  if (cachedContacts && cachedContacts.length > 0) {
+    const primaryContact = cachedContacts[0];
+    const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
+    updatePopupToPairedState(primaryName, cachedContacts);
+  }
 
   // Check guardian coverage (truthful caretaker link status)
   const coverage = await checkActiveGuardianCoverage();
@@ -108,6 +130,8 @@ export async function initializePopup(): Promise<void> {
     const primaryContact = coverage.contacts[0];
     const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
     updatePopupToPairedState(primaryName, coverage.contacts);
+  } else if (cachedContacts && !coverage.isLinked) {
+    renderPopupStatus(report, onboardingState, isBackendLive);
   }
 
   setupPopupActions();
@@ -158,6 +182,13 @@ async function checkActiveGuardianCoverage(): Promise<{
       avatarUrl: c.contactAvatarUrl || c.avatarUrl,
       relationshipLabel: c.relationshipLabel,
     }));
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      if (contacts.length > 0) {
+        chrome.storage.local.set({ guardrailActiveContacts: JSON.stringify(contacts) });
+      } else {
+        chrome.storage.local.remove(['guardrailActiveContacts']);
+      }
+    }
     return {
       isLinked: contacts.length > 0,
       contacts,

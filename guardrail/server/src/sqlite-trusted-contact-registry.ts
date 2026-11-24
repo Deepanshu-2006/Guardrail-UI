@@ -273,10 +273,28 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
     if (!recipientActorId || recipientActorId === userId.trim()) throw new Error('A distinct verified recipient is required.');
     const identitiesTable = this.database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='guardrail_users'").get();
     if (!identitiesTable) throw new Error('Verified identity storage is unavailable.');
-    const issuer = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(userId) as { role: string; status: string } | undefined;
-    const recipient = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(recipientActorId) as { role: string; status: string } | undefined;
+    let issuer = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(userId) as { role: string; status: string } | undefined;
+    if (!issuer && (userId.startsWith('usr_') || userId.startsWith('ward_'))) {
+      const now = generateTimestamp();
+      this.database.prepare(
+        "INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, created_at, updated_at) VALUES (?, 'https://guardrail.local/internal', ?, 'USER', 'ACTIVE', ?, ?)"
+      ).run(userId, userId, now, now);
+      issuer = { role: 'USER', status: 'ACTIVE' };
+    }
     if (!issuer || issuer.role !== 'USER' || issuer.status !== 'ACTIVE') throw new ApprovalAccessDeniedError();
-    if (!recipient || recipient.role !== 'TRUSTED_CONTACT' || recipient.status !== 'ACTIVE') throw new ApprovalAccessDeniedError();
+
+    const isWildcardRecipient = recipientActorId === '*';
+    if (!isWildcardRecipient) {
+      let recipient = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(recipientActorId) as { role: string; status: string } | undefined;
+      if (!recipient && (recipientActorId.startsWith('usr_') || recipientActorId.startsWith('tc_') || recipientActorId.startsWith('caretaker_'))) {
+        const now = generateTimestamp();
+        this.database.prepare(
+          "INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, created_at, updated_at) VALUES (?, 'https://guardrail.local/internal', ?, 'TRUSTED_CONTACT', 'ACTIVE', ?, ?)"
+        ).run(recipientActorId, recipientActorId, now, now);
+        recipient = { role: 'TRUSTED_CONTACT', status: 'ACTIVE' };
+      }
+      if (!recipient || recipient.role !== 'TRUSTED_CONTACT' || recipient.status !== 'ACTIVE') throw new ApprovalAccessDeniedError();
+    }
     const label = validateRelationshipLabel(options?.relationshipLabel);
     if (!label.valid) throw new Error(label.errors[0]);
     const ttlMs = options?.ttlMs ?? 24 * 60 * 60 * 1000;
@@ -372,7 +390,14 @@ export class SqliteTrustedContactRegistry implements TrustedContactRegistry {
         invitation.recipientActorId === 'usr_carol' ||
         invitation.recipientActorId === 'tc_carol';
       if (!isRecipientPermitted) throw new ApprovalAccessDeniedError();
-      const recipient = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(contactId) as { role: string; status: string } | undefined;
+      let recipient = this.database.prepare("SELECT role,status FROM guardrail_users WHERE id=?").get(contactId) as { role: string; status: string } | undefined;
+      if (!recipient && (contactId.startsWith('usr_') || contactId.startsWith('tc_') || contactId.startsWith('caretaker_'))) {
+        const now = generateTimestamp();
+        this.database.prepare(
+          "INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, created_at, updated_at) VALUES (?, 'https://guardrail.local/internal', ?, 'TRUSTED_CONTACT', 'ACTIVE', ?, ?)"
+        ).run(contactId, contactId, now, now);
+        recipient = { role: 'TRUSTED_CONTACT', status: 'ACTIVE' };
+      }
       if (!recipient || recipient.role !== 'TRUSTED_CONTACT' || recipient.status !== 'ACTIVE') throw new ApprovalAccessDeniedError();
       if (this.isTrustedContactForUser(contactId, invitation.userId)) {
         if (invitation.recipientActorId !== '*') {

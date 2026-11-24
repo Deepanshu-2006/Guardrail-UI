@@ -1,6 +1,7 @@
 import { startGuardrailHttpServer } from './http-server.js';
 import { loadGuardrailServerConfig } from './runtime-config.js';
 import { InMemoryTrustedContactRegistry, TrustedContactStatus, ActorRole } from '../../extension/src/approval/authorization.js';
+import { SqliteTrustedContactRegistry } from './sqlite-trusted-contact-registry.js';
 import { SqliteIdentityStore } from './identity-store.js';
 import { tryLoadOidcTokenVerifierConfig, OidcTokenVerifier, HybridTokenVerifier } from './oidc-token-verifier.js';
 import fs from 'node:fs';
@@ -63,8 +64,62 @@ async function main(): Promise<void> {
     },
   });
 
-  // Contact registry starts completely clean in development - no mock carol or hardcoded contacts
-  const contactRegistry = new InMemoryTrustedContactRegistry();
+  // Shared SQLite contact registry persisting pairings and invitations
+  const contactRegistry = SqliteTrustedContactRegistry.open(serverConfig.databasePath);
+
+  // Ensure default identities and active pairing in SQLite
+  const now = new Date().toISOString();
+  const defaultCaretakerId = 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b';
+  const defaultWardId = 'usr_deepanshukhatri20061972';
+
+  try {
+    const db = (contactRegistry as any).database;
+    if (db) {
+      db.prepare(`
+        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES (?, 'https://harmless-snipe-9044.clerk.accounts.dev', 'user_3MTvOw2echwPHpvKnstk2aCqa8Y', 'TRUSTED_CONTACT', 'ACTIVE', 'balleballepurrr@gmail.com', ?, ?)
+      `).run(defaultCaretakerId, now, now);
+
+      db.prepare(`
+        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES (?, 'https://guardrail.local/dev', 'deepanshukhatri20061972@gmail.com', 'USER', 'ACTIVE', 'deepanshukhatri20061972@gmail.com', ?, ?)
+      `).run(defaultWardId, now, now);
+
+      db.prepare(`
+        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES ('tc_carol', 'https://guardrail.local/dev', 'tc_carol', 'TRUSTED_CONTACT', 'ACTIVE', 'carol@guardrail.local', ?, ?)
+      `).run(now, now);
+
+      db.prepare(`
+        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES ('usr_alice', 'https://guardrail.local/dev', 'usr_alice', 'USER', 'ACTIVE', 'alice@guardrail.local', ?, ?)
+      `).run(now, now);
+
+      const existing = db.prepare("SELECT 1 FROM trusted_contacts WHERE id = ? AND user_id = ? AND status = 'ACTIVE'").get(defaultCaretakerId, defaultWardId);
+      if (!existing) {
+        const contactPayload = {
+          id: defaultCaretakerId,
+          contactId: defaultCaretakerId,
+          userId: defaultWardId,
+          wardId: defaultWardId,
+          wardName: 'Deepanshu Khatri',
+          wardEmail: 'deepanshukhatri20061972@gmail.com',
+          contactName: 'Balleballepurrr Caretaker',
+          contactEmail: 'balleballepurrr@gmail.com',
+          contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMb29rcFFWU21QZG1PbExSZXN1N3VNd1dRMHJXMC13OUZfaFNvQXNDWVZVT1I2WHc9czEwMDAtYyIsInMiOiIrYUdGc0RVYUExQjErdkRxZXRKTkVxMnNZSFlZeEsvSkpSdTJVMy9GR0ZFIn0',
+          relationshipLabel: 'Designated Caretaker',
+          status: 'ACTIVE',
+          createdAt: now,
+        };
+        db.prepare(`
+          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+          VALUES (?, ?, 'ACTIVE', ?, ?)
+        `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
+      }
+    }
+  } catch (err) {
+    console.warn('[serve-dev] Contact seed error:', err);
+  }
 
   const runtime = await startGuardrailHttpServer({
     tokenVerifier,

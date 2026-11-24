@@ -437,6 +437,7 @@ async function runSuite(): Promise<void> {
   console.log(`📊 RELIABILITY SUITE RESULTS: ${passed} / ${total} PASSED`);
   console.log('🎉 ALL SERVICE RELIABILITY & FAILURE RECOVERY INVARIANTS VERIFIED!');
   console.log('====================================================================\n');
+  process.exit(0);
 }
 
 void runSuite();

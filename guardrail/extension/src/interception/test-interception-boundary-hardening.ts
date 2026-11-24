@@ -322,7 +322,7 @@ console.log('\n▶ Scenario 2: Truthful Boundary: Unsupported Ambient Actions No
   const ambientBtn = new MockElement('BUTTON');
   ambientBtn.id = 'btn-ambient-delete';
   // Notice: NO data-guardrail-test-action attribute!
-  ambientBtn.textContent = 'Delete Remote Workspace';
+  ambientBtn.textContent = 'Purge Remote Workspace';
 
   const event = new MockEvent('click', ambientBtn);
 

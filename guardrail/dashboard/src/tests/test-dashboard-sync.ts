@@ -960,6 +960,7 @@ async function runDashboardSyncTests(): Promise<void> {
   if (passedTests !== totalTests) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 runDashboardSyncTests().catch((err) => {

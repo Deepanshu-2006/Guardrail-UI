@@ -1421,6 +1421,7 @@ async function runCompleteSynchronizationTests(): Promise<void> {
   if (process.exitCode && process.exitCode !== 0) {
     process.exit(process.exitCode);
   }
+  process.exit(0);
 }
 
 void runCompleteSynchronizationTests();
