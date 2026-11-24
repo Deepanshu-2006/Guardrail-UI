@@ -386,14 +386,14 @@ export function renderWardAccountCard(identity: WardIdentity | null): void {
       }
     }
 
-    if (userBadge) userBadge.style.display = 'inline-flex';
+    if (userBadge) userBadge.style.display = 'flex';
     if (btnAuth) btnAuth.style.display = 'none';
     if (btnSignout) btnSignout.style.display = 'inline-block';
   } else {
     if (userBadge) userBadge.style.display = 'none';
     if (btnAuth) {
-      btnAuth.style.display = 'inline-flex';
-      if (btnAuthText) btnAuthText.textContent = 'Sign in with Google';
+      btnAuth.style.display = 'flex';
+      if (btnAuthText) btnAuthText.textContent = 'Sign In →';
     }
     if (btnSignout) btnSignout.style.display = 'none';
   }
@@ -598,7 +598,7 @@ function setupPopupActions(): void {
         console.warn('[Guardrail Popup] Ward Google sign-in failed:', authErr);
       } finally {
         btnGoogleAuth.disabled = false;
-        if (btnText) btnText.textContent = 'Sign in with Google';
+        if (btnText) btnText.textContent = 'Sign In →';
       }
     });
   }
