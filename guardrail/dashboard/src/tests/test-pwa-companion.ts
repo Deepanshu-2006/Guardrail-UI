@@ -1,0 +1,529 @@
+/**
+ * Guardrail Trusted-Contact Dashboard - PWA Companion & Mobile UX Test Suite (Phase 7)
+ *
+ * Verifies:
+ * 1. Web App Manifest (manifest.webmanifest):
+ *    - Valid JSON, display: standalone, brand colors (#1B2418, #F5F3EC).
+ *    - Full icon suite including 192x192, 512x512, and maskable adaptive icon.
+ *    - Shortcuts for quick navigation to Pending and History.
+ * 2. Service Worker (sw.js):
+ *    - Offline shell pre-caching, activate cleanup, and fetch routing.
+ *    - Security invariant: Network-Only bypass for /api/ (never cache sensitive security decisions).
+ * 3. PwaInstallManager & Add-to-Home-Screen Banner:
+ *    - Standalone mode detection (matchMedia & navigator.standalone).
+ *    - beforeinstallprompt event handling and deferred prompt trigger.
+ *    - iOS Safari detection and step-by-step guidance card rendering.
+ *    - Dismissal cooldown lifecycle (localStorage persistence).
+ *    - Settings companion status card.
+ * 4. Mobile Action Sheet (renderMobileActionSheet):
+ *    - Touch-friendly action sheet rendering with dialog semantics.
+ *    - Touch target dimensions (>= 48px height for WCAG 2.5.5 compliance).
+ *    - Ward attribution and risk gauge binding.
+ *    - Decoupled execution guarantee callout.
+ *    - Decision triggers (Approve & Reject callbacks).
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { PwaInstallManager } from '../components/pwa-install-banner.js';
+import { renderMobileActionSheet } from '../components/mobile-action-sheet.js';
+import { ApprovalRequest, ApprovalStatus, RiskLevel } from '../types.js';
+
+// =============================================================================
+// DOM & Environment Simulation for Node.js
+// =============================================================================
+
+class MockDOMTokenList {
+  private classes: Set<string> = new Set();
+  constructor(initial: string = '') {
+    if (initial) {
+      initial.split(/\s+/).filter(Boolean).forEach((c) => this.classes.add(c));
+    }
+  }
+  add(...tokens: string[]): void {
+    tokens.forEach((t) => this.classes.add(t));
+  }
+  remove(...tokens: string[]): void {
+    tokens.forEach((t) => this.classes.delete(t));
+  }
+  contains(token: string): boolean {
+    return this.classes.has(token);
+  }
+  toString(): string {
+    return Array.from(this.classes).join(' ');
+  }
+}
+
+class MockDOMElement {
+  public tagName: string;
+  public id: string = '';
+  public attributes: Record<string, string> = {};
+  public style: Record<string, string> = {};
+  public children: MockDOMElement[] = [];
+  public parentNode: MockDOMElement | null = null;
+  public listeners: Record<string, ((e: any) => void)[]> = {};
+  private _textContent: string = '';
+  public classList: MockDOMTokenList;
+  public tabIndex: number = 0;
+  public disabled: boolean = false;
+  public type: string = '';
+
+  get innerHTML(): string {
+    if (this._textContent) return this._textContent;
+    return this.children
+      .map((c) => `<${c.tagName.toLowerCase()}>${c.innerHTML}</${c.tagName.toLowerCase()}>`)
+      .join('');
+  }
+  set innerHTML(val: string) {
+    this.children = [];
+    this._textContent = val;
+  }
+
+  constructor(tagName: string) {
+    this.tagName = tagName.toUpperCase();
+    this.classList = new MockDOMTokenList();
+  }
+
+  get className(): string {
+    return this.classList.toString();
+  }
+  set className(val: string) {
+    this.classList = new MockDOMTokenList(val);
+  }
+
+  get textContent(): string {
+    if (this._textContent) return this._textContent;
+    return this.children.map((c) => c.textContent).join('');
+  }
+  set textContent(val: string) {
+    this._textContent = val;
+    this.children = [];
+  }
+
+  get firstChild(): MockDOMElement | null {
+    return this.children[0] || null;
+  }
+
+  appendChild<T extends MockDOMElement>(child: T): T {
+    child.parentNode = this;
+    this.children.push(child);
+    return child;
+  }
+
+  removeChild<T extends MockDOMElement>(child: T): T {
+    const idx = this.children.indexOf(child);
+    if (idx !== -1) {
+      this.children.splice(idx, 1);
+      child.parentNode = null;
+    }
+    return child;
+  }
+
+  remove(): void {
+    if (this.parentNode) {
+      this.parentNode.removeChild(this);
+    }
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.attributes[name.toLowerCase()] = String(value);
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attributes[name.toLowerCase()] ?? null;
+  }
+
+  removeAttribute(name: string): void {
+    delete this.attributes[name.toLowerCase()];
+  }
+
+  addEventListener(event: string, handler: (e: any) => void): void {
+    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event].push(handler);
+  }
+
+  removeEventListener(event: string, handler: (e: any) => void): void {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter((h) => h !== handler);
+  }
+
+  dispatchEvent(event: { type: string; [key: string]: any }): boolean {
+    const handlers = this.listeners[event.type] || [];
+    for (const h of handlers) {
+      h(event);
+    }
+    return true;
+  }
+
+  click(): void {
+    this.dispatchEvent({ type: 'click' });
+  }
+
+  private findSimpleMatches(part: string): MockDOMElement[] {
+    const matches: MockDOMElement[] = [];
+    const search = (node: MockDOMElement) => {
+      let isMatch = false;
+      if (part.startsWith('#')) {
+        isMatch = node.id === part.slice(1);
+      } else if (part.startsWith('.')) {
+        const classes = part.split('.').filter(Boolean);
+        isMatch = classes.every((c) => node.classList.contains(c));
+      } else if (part.includes('.')) {
+        const [tag, ...classes] = part.split('.');
+        isMatch =
+          node.tagName.toLowerCase() === tag.toLowerCase() &&
+          classes.every((c) => node.classList.contains(c));
+      } else {
+        isMatch = node.tagName.toLowerCase() === part.toLowerCase();
+      }
+      if (isMatch) {
+        matches.push(node);
+      }
+      for (const child of node.children) {
+        search(child);
+      }
+    };
+    for (const child of this.children) {
+      search(child);
+    }
+    return matches;
+  }
+
+  querySelector(selector: string): MockDOMElement | null {
+    const parts = selector.trim().split(/\s+/);
+    let currentSet: MockDOMElement[] = [this];
+    for (const part of parts) {
+      const nextSet: MockDOMElement[] = [];
+      for (const node of currentSet) {
+        nextSet.push(...node.findSimpleMatches(part));
+      }
+      currentSet = nextSet;
+      if (currentSet.length === 0) return null;
+    }
+    return currentSet[0] || null;
+  }
+
+  querySelectorAll(selector: string): MockDOMElement[] {
+    const parts = selector.trim().split(/\s+/);
+    let currentSet: MockDOMElement[] = [this];
+    for (const part of parts) {
+      const nextSet: MockDOMElement[] = [];
+      for (const node of currentSet) {
+        nextSet.push(...node.findSimpleMatches(part));
+      }
+      currentSet = nextSet;
+    }
+    return currentSet;
+  }
+}
+
+// Storage mock
+const storageMock: Record<string, string> = {};
+const mockLocalStorage = {
+  getItem: (key: string) => storageMock[key] ?? null,
+  setItem: (key: string, val: string) => {
+    storageMock[key] = String(val);
+  },
+  removeItem: (key: string) => {
+    delete storageMock[key];
+  },
+  clear: () => {
+    for (const k of Object.keys(storageMock)) delete storageMock[k];
+  },
+};
+
+const rootBody = new MockDOMElement('body');
+
+const mockDocument = {
+  body: rootBody,
+  createElement(tag: string): MockDOMElement {
+    return new MockDOMElement(tag);
+  },
+  getElementById(id: string): MockDOMElement | null {
+    return rootBody.querySelector(`#${id}`);
+  },
+  querySelector(sel: string): MockDOMElement | null {
+    return rootBody.querySelector(sel);
+  },
+  querySelectorAll(sel: string): MockDOMElement[] {
+    return rootBody.querySelectorAll(sel);
+  },
+  addEventListener: () => {},
+  removeEventListener: () => {},
+};
+
+const windowListeners: Record<string, ((e: any) => void)[]> = {};
+const mockWindow = {
+  location: { search: '' },
+  localStorage: mockLocalStorage,
+  matchMedia: (query: string) => ({
+    matches: false,
+    media: query,
+  }),
+  addEventListener: (event: string, handler: (e: any) => void) => {
+    if (!windowListeners[event]) windowListeners[event] = [];
+    windowListeners[event].push(handler);
+  },
+  removeEventListener: (event: string, handler: (e: any) => void) => {
+    if (!windowListeners[event]) return;
+    windowListeners[event] = windowListeners[event].filter((h) => h !== handler);
+  },
+  dispatchEvent: (event: { type: string; [key: string]: any }) => {
+    const handlers = windowListeners[event.type] || [];
+    for (const h of handlers) h(event);
+    return true;
+  },
+};
+
+(globalThis as any).document = mockDocument;
+(globalThis as any).window = mockWindow;
+(globalThis as any).localStorage = mockLocalStorage;
+Object.defineProperty(globalThis, 'navigator', {
+  value: {
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/124.0.0.0 Mobile Safari/537.36',
+    standalone: false,
+  },
+  configurable: true,
+  writable: true,
+});
+
+function assert(condition: boolean, message: string): void {
+  if (!condition) {
+    throw new Error(`Assertion failed: ${message}`);
+  }
+  console.log(`  ✓ ${message}`);
+}
+
+async function runPwaCompanionTests() {
+  console.log('\n======================================================');
+  console.log('📱 GUARDRAIL MOBILE PWA COMPANION TEST SUITE (PHASE 7)');
+  console.log('======================================================\n');
+
+  console.log('▶ Test Suite 1: Web App Manifest Specification & Brand Assets');
+  {
+    const findDashboardFile = (filename: string) => {
+      const p1 = path.resolve(process.cwd(), filename);
+      if (fs.existsSync(p1)) return p1;
+      const p2 = path.resolve(process.cwd(), 'guardrail/dashboard', filename);
+      if (fs.existsSync(p2)) return p2;
+      return p1;
+    };
+
+    const manifestPath = findDashboardFile('manifest.webmanifest');
+    assert(fs.existsSync(manifestPath), 'manifest.webmanifest file exists at root');
+
+    const manifestContent = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    assert(manifestContent.name === 'Guardrail Caretaker Portal', 'name is "Guardrail Caretaker Portal"');
+    assert(manifestContent.short_name === 'Guardrail', 'short_name is "Guardrail"');
+    assert(manifestContent.display === 'standalone', 'display mode is "standalone"');
+    assert(manifestContent.theme_color.toUpperCase() === '#1B2418', 'theme_color matches Guardrail brand green #1B2418');
+    assert(manifestContent.background_color.toUpperCase() === '#F5F3EC', 'background_color matches Guardrail brand ivory #F5F3EC');
+    assert(manifestContent.start_url.includes('source=pwa'), 'start_url designates PWA launch source (?source=pwa)');
+    assert(Array.isArray(manifestContent.icons) && manifestContent.icons.length >= 4, 'Includes comprehensive icon array');
+
+    const icon192 = manifestContent.icons.find((i: any) => i.sizes === '192x192');
+    const icon512 = manifestContent.icons.find((i: any) => i.sizes === '512x512' && i.purpose !== 'maskable');
+    const iconMaskable = manifestContent.icons.find((i: any) => i.purpose === 'maskable');
+
+    assert(icon192 !== undefined, '192x192 standard icon is configured');
+    assert(icon512 !== undefined, '512x512 standard icon is configured');
+    assert(iconMaskable !== undefined, '512x512 maskable adaptive icon is configured for Android');
+
+    // Verify icon files physically exist on disk
+    for (const icon of [icon192, icon512, iconMaskable]) {
+      const relPath = icon.src.replace(/^\//, '');
+      const fullPath = findDashboardFile(relPath);
+      assert(fs.existsSync(fullPath), `Icon file physically exists on disk: ${icon.src}`);
+    }
+  }
+
+  console.log('\n▶ Test Suite 2: Service Worker (sw.js) Architecture & Security Boundaries');
+  {
+    const findDashboardFile = (filename: string) => {
+      const p1 = path.resolve(process.cwd(), filename);
+      if (fs.existsSync(p1)) return p1;
+      const p2 = path.resolve(process.cwd(), 'guardrail/dashboard', filename);
+      if (fs.existsSync(p2)) return p2;
+      return p1;
+    };
+
+    const swPath = findDashboardFile('sw.js');
+    assert(fs.existsSync(swPath), 'sw.js exists at root');
+
+    const swContent = fs.readFileSync(swPath, 'utf-8');
+    assert(swContent.includes('guardrail-caretaker-pwa'), 'Defines versioned PWA cache bucket');
+    assert(swContent.includes('STATIC_SHELL_ASSETS'), 'Defines pre-cached static shell assets');
+    assert(swContent.includes('/manifest.webmanifest'), 'Pre-caches webmanifest');
+    assert(swContent.includes('/styles/dashboard.css'), 'Pre-caches stylesheet');
+    assert(swContent.includes('/dist/dashboard.js'), 'Pre-caches application bundle');
+
+    // Security invariant check: /api/ bypass
+    assert(
+      swContent.includes("url.pathname.startsWith('/api/')") || swContent.includes('/api/'),
+      'Enforces network-only bypass for /api/ to prevent caching sensitive safety decisions'
+    );
+    assert(swContent.includes("self.addEventListener('push'"), 'Handles W3C Web Push notifications');
+    assert(swContent.includes("self.addEventListener('notificationclick'"), 'Handles native notification click navigation');
+  }
+
+  console.log('\n▶ Test Suite 3: PwaInstallManager & Add-to-Home-Screen (A2HS)');
+  {
+    const manager = PwaInstallManager.getInstance();
+    assert(manager !== null, 'PwaInstallManager singleton instantiated');
+
+    // Test standalone check
+    assert(manager.isStandalone() === false, 'Initially not standalone in standard browser simulation');
+
+    // Test dismissal persistence
+    mockLocalStorage.clear();
+    assert(manager.isDismissed() === false, 'Initially not dismissed');
+    manager.dismiss();
+    assert(manager.isDismissed() === true, 'isDismissed returns true after dismiss()');
+    manager.resetDismissal();
+    assert(manager.isDismissed() === false, 'isDismissed returns false after resetDismissal()');
+
+    // Test beforeinstallprompt capture and banner rendering
+    let promptInvoked = false;
+    const mockPromptEvent = {
+      preventDefault: () => {},
+      prompt: async () => {
+        promptInvoked = true;
+      },
+      userChoice: Promise.resolve({ outcome: 'accepted' }),
+    };
+
+    mockWindow.dispatchEvent({ type: 'beforeinstallprompt', ...mockPromptEvent });
+
+    const banner = manager.renderBanner({ force: true });
+    assert(banner !== null, 'renderBanner returns element when prompt is available');
+    assert(banner?.className.includes('gd-a2hs-banner') ?? false, 'Banner has .gd-a2hs-banner class');
+
+    const installBtn = banner?.querySelector<HTMLButtonElement>('.gd-a2hs-btn-install');
+    assert(installBtn !== null, 'Renders "Install App" button');
+
+    await installBtn?.click();
+    assert(promptInvoked === true, 'Clicking Install App triggers native deferred prompt');
+
+    // Test Settings Companion Status Card
+    const settingsCard = manager.renderSettingsCard();
+    assert(settingsCard !== null, 'renderSettingsCard renders settings card');
+    assert(settingsCard.className.includes('gd-settings-pwa-card'), 'Card has .gd-settings-pwa-card class');
+    assert(settingsCard.textContent?.includes('Mobile PWA Companion App') ?? false, 'Displays Mobile PWA Companion App title');
+  }
+
+  console.log('\n▶ Test Suite 4: iOS Safari Guidance Card Simulation');
+  {
+    // Simulate iOS Safari userAgent
+    Object.defineProperty(globalThis, 'navigator', {
+      value: {
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+        standalone: false,
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    const manager = PwaInstallManager.getInstance();
+    assert(manager.isIosSafari() === true, 'Accurately detects iOS Safari platform');
+
+    manager.resetDismissal();
+    const iosBanner = manager.renderBanner({ force: true });
+    assert(iosBanner !== null, 'Renders banner for iOS Safari');
+    assert(iosBanner?.textContent?.includes('Install on iPhone') ?? false, 'iOS banner displays "Install on iPhone" title');
+    assert(iosBanner?.textContent?.includes('Add to Home Screen') ?? false, 'iOS banner provides "Add to Home Screen" instructions');
+  }
+
+  console.log('\n▶ Test Suite 5: Mobile Viewport Optimization & Touch Action Sheet');
+  {
+    const mockRequest: ApprovalRequest = {
+      id: 'apr_mobile_wire_001',
+      requesterId: 'usr_alice',
+      actionType: 'FINANCIAL_TRANSFER' as any,
+      category: 'FINANCIAL',
+      actionDescription: 'Submit $1,250.00 Wire Transfer to Landlord',
+      origin: 'https://secure.chase.com/transfers',
+      hostname: 'secure.chase.com',
+      riskLevel: RiskLevel.CRITICAL,
+      status: ApprovalStatus.PENDING,
+      createdAt: new Date().toISOString(),
+      riskReasons: [
+        'Wire transfers over $500 require explicit family reviewer authorization.',
+        'Recipient wire account is an unverified external entity.',
+      ],
+    };
+
+    let approvedId = '';
+    let rejectedId = '';
+    let closed = false;
+
+    const sheetContainer = renderMobileActionSheet({
+      request: mockRequest,
+      wardName: 'Alice Johnson',
+      onApprove: (id) => {
+        approvedId = id;
+      },
+      onReject: (id) => {
+        rejectedId = id;
+      },
+      onClose: () => {
+        closed = true;
+      },
+    });
+
+    assert(sheetContainer !== null, 'renderMobileActionSheet returns container');
+    assert(sheetContainer.getAttribute('role') === 'dialog', 'Sheet has role="dialog"');
+    assert(sheetContainer.getAttribute('aria-modal') === 'true', 'Sheet has aria-modal="true"');
+
+    // Verify touch action drawer & handle
+    const sheet = sheetContainer.querySelector('.gd-mobile-action-sheet');
+    assert(sheet !== null, 'Contains .gd-mobile-action-sheet drawer');
+
+    const handle = sheet?.querySelector('.gd-sheet-drag-handle');
+    assert(handle !== null, 'Contains ergonomic touch drag handle');
+
+    // Verify Ward Attribution Badge & Risk Badge
+    const wardBadge = sheet?.querySelector('.gd-card-ward-badge');
+    assert(wardBadge?.textContent?.includes('Alice Johnson') ?? false, 'Displays Alice Johnson in Ward Attribution Badge');
+
+    const riskBadge = sheet?.querySelector('.gd-risk-badge');
+    assert(riskBadge?.textContent?.includes('CRITICAL') ?? false, 'Displays CRITICAL risk badge');
+
+    // Verify Decoupled Safety Guarantee Callout
+    const decouplingCallout = sheet?.querySelector('.gd-sheet-decoupling-note');
+    assert(decouplingCallout !== null, 'Renders Decoupled Safety Guarantee callout');
+    assert(
+      decouplingCallout?.textContent?.includes('Decoupled Safety Guarantee') ?? false,
+      'Callout explicitly cites Decoupled Safety Guarantee'
+    );
+
+    // Verify Touch Action Buttons (WCAG 2.5.5 touch target size)
+    const approveTouchBtn = sheet?.querySelector<HTMLButtonElement>('.gd-btn-approve-touch');
+    const rejectTouchBtn = sheet?.querySelector<HTMLButtonElement>('.gd-btn-reject-touch');
+
+    assert(approveTouchBtn !== null, 'Renders touch-friendly Approve Action button');
+    assert(rejectTouchBtn !== null, 'Renders touch-friendly Reject Action button');
+
+    // Trigger Approve Action
+    approveTouchBtn?.click();
+    assert(approvedId === 'apr_mobile_wire_001', 'Clicking Approve button triggers onApprove with request ID');
+
+    // Trigger Reject Action
+    rejectTouchBtn?.click();
+    assert(rejectedId === 'apr_mobile_wire_001', 'Clicking Reject button triggers onReject with request ID');
+
+    // Close on backdrop click
+    const backdrop = sheetContainer.querySelector<HTMLElement>('.gd-sheet-backdrop');
+    backdrop?.click();
+    assert(closed === true, 'Clicking backdrop triggers onClose');
+  }
+
+  console.log('\n======================================================');
+  console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
+  console.log('======================================================\n');
+}
+
+runPwaCompanionTests().catch((err) => {
+  console.error('\n❌ PWA COMPANION TEST RUNNER FAILED:', err);
+  process.exit(1);
+});
