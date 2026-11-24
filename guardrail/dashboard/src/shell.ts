@@ -27,14 +27,14 @@ import {
 import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
-import { renderOverview } from './components/overview.js';
+import { renderOverview, formatWardDisplayName } from './components/overview.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
 import { filterRequests } from './components/filters.js';
 import { renderSettings } from './components/settings.js';
 import { isInvitationExpired } from './components/relationships.js';
 import { defaultDashboardPushService } from './services/push-notification-service.js';
-import { createIcon } from './components/icons.js';
+import { createIcon, setAnimatedHeading } from './components/icons.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -121,6 +121,7 @@ export class DashboardShell {
   private isEntryAnimationActive: boolean = true;
   private entryTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRenderedView: DashboardView | null = null;
+  private hasPendingDataUpdateDuringEntrance: boolean = false;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -157,9 +158,27 @@ export class DashboardShell {
       searchQuery: '',
     };
 
+    const storedWardId = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined;
+    const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
+    const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
+    const effectiveWardName = storedWardName || (storedWardId ? formatWardDisplayName(undefined, storedWardId) : undefined);
+
+    const initialContactProfile: TrustedContactProfile | null = options.initialProfile ? { ...options.initialProfile } : null;
+    if (initialContactProfile) {
+      if (!initialContactProfile.assignedWardId && storedWardId) {
+        initialContactProfile.assignedWardId = storedWardId;
+      }
+      if (!initialContactProfile.assignedWardName && effectiveWardName) {
+        initialContactProfile.assignedWardName = effectiveWardName;
+      }
+      if (!initialContactProfile.assignedWardEmail && storedWardEmail) {
+        initialContactProfile.assignedWardEmail = storedWardEmail;
+      }
+    }
+
     this.state = {
       activeView: options.initialView ?? this.getViewFromHash() ?? 'overview',
-      contactProfile: options.initialProfile ?? null,
+      contactProfile: initialContactProfile,
       pendingRequests: initialRequests,
       selectedRequestId: initialRequests[0]?.id ?? null,
       pendingStatus: initialRequests.length === 0 ? 'empty' : 'idle',
@@ -604,31 +623,78 @@ export class DashboardShell {
       }
       this.updateHeaderStatusPill();
 
-      // Update sidebar
-      const newSidebar = renderNavigation({
-        activeView: this.state.activeView,
-        pendingCount: this.state.pendingRequests.length,
-        onViewChange: (view) => this.setActiveView(view),
-      });
-      newSidebar.id = 'gd-primary-sidebar';
-      const accountArea = renderAccountArea({
-        profile: this.state.contactProfile,
-        onOpenSettings: () => this.setActiveView('settings'),
-        onOpenAuth: () => this.openAuthModal(),
-        onSignOut: () => this.handleSignOut(),
-      });
-      newSidebar.appendChild(accountArea);
-      if (this.sidebarEl && this.appWrapper) {
-        this.appWrapper.replaceChild(newSidebar, this.sidebarEl);
+      // Update sidebar in-place without replacing container node to avoid layout shift and animation reset
+      if (this.sidebarEl) {
+        const existingAccount = this.sidebarEl.querySelector('.gd-sidebar-footer');
+        const accountArea = renderAccountArea({
+          profile: this.state.contactProfile,
+          onOpenSettings: () => this.setActiveView('settings'),
+          onOpenAuth: () => this.openAuthModal(),
+          onSignOut: () => this.handleSignOut(),
+        });
+        if (existingAccount) {
+          existingAccount.replaceWith(accountArea);
+        } else {
+          this.sidebarEl.appendChild(accountArea);
+        }
+
+        const pendingBadge = this.sidebarEl.querySelector('a[href="#pending"] .gd-nav-badge, .gd-nav-link[href="#pending"] .gd-nav-badge') as HTMLElement | null;
+        if (pendingBadge) {
+          pendingBadge.textContent = String(this.state.pendingRequests.length);
+          pendingBadge.style.display = this.state.pendingRequests.length > 0 ? '' : 'none';
+        }
+
+        const navLinks = this.sidebarEl.querySelectorAll('.gd-nav-link, a.gd-nav-item');
+        navLinks.forEach((link) => {
+          const href = link.getAttribute('href');
+          if (href === `#${this.state.activeView}`) {
+            link.setAttribute('aria-current', 'page');
+            link.classList.add('active');
+          } else {
+            link.removeAttribute('aria-current');
+            link.classList.remove('active');
+          }
+        });
       }
-      this.sidebarEl = newSidebar;
     }
 
-    // Preserve heading during active entrance window to prevent title blinking
+    // Preserve heading and actively animated view during entrance window to prevent animation restarts/blinking
     const currentView = this.state.activeView;
     const isViewEntering = this.activeEnteringView === currentView;
-    const existingActiveSection = this.mainContentEl ? this.mainContentEl.querySelector(`#view-${currentView}`) : null;
+    const existingActiveSection = this.mainContentEl ? (this.mainContentEl.querySelector(`#view-${currentView}`) as HTMLElement | null) : null;
     const existingSectionHeader = isViewEntering ? existingActiveSection?.querySelector('.gd-section-header') : null;
+
+    // During active entrance window on the same view, preserve mounted DOM so CSS animations run uninterrupted
+    if (!isInitialMount && !isViewChange && isViewEntering && existingActiveSection && !this.state.errorMessage) {
+      this.hasPendingDataUpdateDuringEntrance = true;
+
+      // Update dynamic content in-place without tearing down animation state
+      if (currentView === 'overview') {
+        const metricValues = existingActiveSection.querySelectorAll('.gd-overview-grid .gd-metric-value');
+        if (metricValues.length >= 3) {
+          metricValues[0].textContent = this.state.contactProfile?.assignedWardId ? '1' : '0';
+          metricValues[1].textContent = String(this.state.pendingRequests.length);
+          metricValues[2].textContent = this.state.contactProfile?.isAuthenticated ? 'Active' : 'Standby';
+        }
+
+        const wardName = this.state.contactProfile?.assignedWardName || this.state.contactProfile?.assignedWardId;
+        const wardHeroName = existingActiveSection.querySelector('.gd-ward-hero-name');
+        if (wardHeroName && wardName && !wardHeroName.textContent?.includes(wardName)) {
+          setAnimatedHeading(wardHeroName as HTMLElement, wardName);
+        }
+      } else if (currentView === 'settings') {
+        const actorIdVal = existingActiveSection.querySelector('#gd-card-identity .gd-settings-item:nth-child(1) .gd-settings-value');
+        if (actorIdVal && this.state.contactProfile?.actorId) {
+          actorIdVal.textContent = this.state.contactProfile.actorId;
+        }
+        const wardIdVal = existingActiveSection.querySelector('#gd-card-identity .gd-settings-item:nth-child(3) .gd-settings-value');
+        if (wardIdVal && this.state.contactProfile?.assignedWardId) {
+          wardIdVal.textContent = this.state.contactProfile.assignedWardId;
+        }
+      }
+
+      return;
+    }
 
     if (this.mainContentEl) {
       while (this.mainContentEl.firstChild) {
@@ -1046,6 +1112,7 @@ export class DashboardShell {
         const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
         enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
       }
+      this.hasPendingDataUpdateDuringEntrance = false;
     }, 2500);
   }
 
@@ -1078,6 +1145,7 @@ export class DashboardShell {
       this.viewEnterTimer = null;
     }
     this.clearResolutionTimers();
+    this.hasPendingDataUpdateDuringEntrance = false;
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -2168,6 +2236,7 @@ export class DashboardShell {
       this.viewEnterTimer = null;
     }
     this.clearResolutionTimers();
+    this.hasPendingDataUpdateDuringEntrance = false;
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -2220,6 +2289,7 @@ export class DashboardShell {
       this.viewEnterTimer = null;
     }
     this.clearResolutionTimers();
+    this.hasPendingDataUpdateDuringEntrance = false;
     this.activeEnteringView = null;
     if (this.mainContentEl) {
       const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
@@ -3113,6 +3183,7 @@ export class DashboardShell {
       this.viewEnterTimer = null;
     }
     this.clearResolutionTimers();
+    this.hasPendingDataUpdateDuringEntrance = false;
     this.activeEnteringView = null;
 
     if (this.hashChangeHandler && typeof window !== 'undefined') {

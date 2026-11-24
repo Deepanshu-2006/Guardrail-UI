@@ -24,6 +24,7 @@ import { resolveEnvironmentConfig } from '../../extension/src/config/environment
 import { ApprovalApiClient, TokenProvider } from '../../extension/src/approval/client.js';
 import { getClerk } from './services/clerk-service.js';
 import { showConnectedModal, showConnectingModal } from './components/auth-modal.js';
+import { formatWardDisplayName } from './components/overview.js';
 
 /**
  * Convenience bootstrap function to mount the dashboard shell into the page.
@@ -122,6 +123,12 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
     const storedName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_user_name') : null;
     const avatarUrl = rawAvatar && !isDefaultAvatar(rawAvatar) ? rawAvatar : undefined;
     const fullName = payload.name || payload.full_name || storedName || formatDisplayName(null, email);
+
+    const storedWardId = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_id') || undefined : undefined;
+    const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
+    const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
+    const effectiveWardName = storedWardName || (storedWardId ? formatWardDisplayName(undefined, storedWardId) : undefined);
+
     return {
       actorId,
       role,
@@ -131,6 +138,9 @@ function parseJwtProfile(token: string, fallbackEmail?: string | null): TrustedC
       imageUrl: avatarUrl,
       isAuthenticated: true,
       relationshipLabel: role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
+      assignedWardId: storedWardId,
+      assignedWardName: effectiveWardName,
+      assignedWardEmail: storedWardEmail,
     };
   } catch {
     return null;
@@ -218,6 +228,17 @@ if (typeof document !== 'undefined') {
     const storedWardId = typeof localStorage !== 'undefined'
       ? localStorage.getItem('guardrail_assigned_ward_id') || undefined
       : undefined;
+    const storedWardName = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('guardrail_assigned_ward_name') || undefined
+      : undefined;
+    const storedWardEmail = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('guardrail_assigned_ward_email') || undefined
+      : undefined;
+    const effectiveWardName = storedWardName || (storedWardId ? formatWardDisplayName(undefined, storedWardId) : undefined);
+
+    if (storedWardId && effectiveWardName && typeof localStorage !== 'undefined' && !localStorage.getItem('guardrail_assigned_ward_name')) {
+      localStorage.setItem('guardrail_assigned_ward_name', effectiveWardName);
+    }
 
     let connectingMountedAt = 0;
     if (isOAuthRedirect) {
@@ -242,10 +263,18 @@ if (typeof document !== 'undefined') {
       return (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) || effectiveToken || '';
     } : undefined);
 
+    const parsedJwt = effectiveToken ? parseJwtProfile(effectiveToken, storedEmail) : null;
     const initialProfile: TrustedContactProfile | null = (isOAuthRedirect && !storedName && !storageToken)
       ? null
+      : parsedJwt
+      ? {
+          ...parsedJwt,
+          assignedWardId: storedWardId ?? parsedJwt.assignedWardId,
+          assignedWardName: effectiveWardName ?? parsedJwt.assignedWardName,
+          assignedWardEmail: storedWardEmail ?? parsedJwt.assignedWardEmail,
+        }
       : effectiveToken
-      ? (parseJwtProfile(effectiveToken, storedEmail) || (effectiveToken.startsWith('test-') ? {
+      ? (effectiveToken.startsWith('test-') ? {
           actorId: effectiveToken === 'test-ward-token' ? 'usr_alice' : 'tc_carol',
           role: effectiveToken === 'test-ward-token' ? 'USER' : 'TRUSTED_CONTACT',
           email: storedEmail || (effectiveToken === 'test-ward-token' ? 'alice.ward@gmail.com' : 'carol.guardian@gmail.com'),
@@ -254,6 +283,8 @@ if (typeof document !== 'undefined') {
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
           assignedWardId: storedWardId,
+          assignedWardName: effectiveWardName,
+          assignedWardEmail: storedWardEmail,
           relationshipLabel: effectiveToken === 'test-ward-token' ? 'Ward User' : 'Designated Caretaker',
         } : {
           actorId: 'tc_reviewer',
@@ -264,8 +295,10 @@ if (typeof document !== 'undefined') {
           imageUrl: storedAvatar || undefined,
           isAuthenticated: true,
           assignedWardId: storedWardId,
+          assignedWardName: effectiveWardName,
+          assignedWardEmail: storedWardEmail,
           relationshipLabel: 'Authorized Contact',
-        }))
+        })
       : null;
     const apiClient = tokenProvider ? new ApprovalApiClient({
       baseUrl: envConfig.apiBaseUrl,
