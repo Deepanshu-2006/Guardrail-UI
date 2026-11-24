@@ -348,6 +348,7 @@ export class DashboardShell {
         return;
       }
       void this.fetchPendingRequests({ isBackground: true });
+      void this.syncAuthoritativeProfile({ isBackground: true });
     }, this.pollIntervalMs);
   }
 
@@ -370,10 +371,27 @@ export class DashboardShell {
         void this.fetchHistoryRequests();
       };
 
+      const onWardSyncEvent = (event: any) => {
+        if (this.isDestroyed) return;
+        try {
+          if (event?.data) {
+            const parsed = JSON.parse(event.data);
+            if (parsed.ward) {
+              const { actorId, fullName, email, isAuthenticated } = parsed.ward;
+              this.applyAuthoritativeWard(actorId, fullName, email, isAuthenticated);
+              return;
+            }
+          }
+        } catch {}
+        void this.syncAuthoritativeProfile();
+      };
+
       es.addEventListener('created', onStreamEvent);
       es.addEventListener('decided', onStreamEvent);
       es.addEventListener('cancelled', onStreamEvent);
       es.addEventListener('expired', onStreamEvent);
+      es.addEventListener('ward_synced', onWardSyncEvent);
+      es.addEventListener('identity_changed', onWardSyncEvent);
 
       es.onerror = () => {
         if (this.eventSource) {
@@ -1878,6 +1896,104 @@ export class DashboardShell {
   }
 
   /**
+   * Directly applies authoritative ward identity updates (e.g. from SSE stream or background sync).
+   * Updates state, refreshes policy, updates persistent storage, and re-renders UI.
+   */
+  public applyAuthoritativeWard(
+    wardId: string | null | undefined,
+    wardName: string | null | undefined,
+    wardEmail: string | null | undefined,
+    isAuthenticated: boolean = true
+  ): void {
+    const effectiveWardId = isAuthenticated && wardId ? wardId : undefined;
+    const effectiveWardName = isAuthenticated && wardId
+      ? (wardName || (wardId.startsWith('usr_') ? wardId.slice(4) : wardId))
+      : undefined;
+    const effectiveWardEmail = isAuthenticated && wardId ? (wardEmail || undefined) : undefined;
+
+    if (effectiveWardId) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('guardrail_assigned_ward_id', effectiveWardId);
+        if (effectiveWardName) localStorage.setItem('guardrail_assigned_ward_name', effectiveWardName);
+        if (effectiveWardEmail) localStorage.setItem('guardrail_assigned_ward_email', effectiveWardEmail);
+      }
+    } else {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('guardrail_assigned_ward_id');
+        localStorage.removeItem('guardrail_assigned_ward_name');
+        localStorage.removeItem('guardrail_assigned_ward_email');
+      }
+    }
+
+    const prev = this.state.contactProfile;
+    if (prev) {
+      const isSame =
+        prev.assignedWardId === effectiveWardId &&
+        prev.assignedWardName === effectiveWardName &&
+        prev.assignedWardEmail === effectiveWardEmail;
+
+      if (isSame && !this.isPollingHaltedDueToAuth) {
+        return;
+      }
+
+      this.state.contactProfile = {
+        ...prev,
+        assignedWardId: effectiveWardId,
+        assignedWardName: effectiveWardName,
+        assignedWardEmail: effectiveWardEmail,
+      };
+    }
+
+    if (effectiveWardId) {
+      void this.fetchWardPolicy();
+    } else {
+      this.state.wardPolicySummary = null;
+    }
+
+    this.render();
+  }
+
+  /**
+   * Queries /api/v1/auth/me to check for ward identity changes and synchronizes state.
+   */
+  public async syncAuthoritativeProfile(options?: { isBackground?: boolean }): Promise<void> {
+    if (this.isDestroyed) return;
+    try {
+      const baseUrl = typeof (this.apiClient as any)?.getBaseUrl === 'function'
+        ? (this.apiClient as any).getBaseUrl()
+        : 'http://localhost:3000';
+      const token = typeof (this.apiClient as any)?.getToken === 'function'
+        ? await (this.apiClient as any).getToken()
+        : (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null);
+
+      if (!token) return;
+
+      const res = await fetch(`${baseUrl}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const payload = await res.json();
+      if (payload.success && payload.data) {
+        const { assignedWardId, assignedWardName, assignedWardEmail } = payload.data;
+        const currentProfile = this.state.contactProfile;
+        const isChanged =
+          (currentProfile?.assignedWardId || undefined) !== (assignedWardId || undefined) ||
+          (currentProfile?.assignedWardName || undefined) !== (assignedWardName || undefined) ||
+          (currentProfile?.assignedWardEmail || undefined) !== (assignedWardEmail || undefined);
+
+        if (isChanged) {
+          this.applyAuthoritativeWard(
+            assignedWardId,
+            assignedWardName,
+            assignedWardEmail,
+            Boolean(assignedWardId)
+          );
+        }
+      }
+    } catch {}
+  }
+
+  /**
    * Updates contact profile.
    */
   public setProfile(profile: TrustedContactProfile | null): void {
@@ -1887,9 +2003,15 @@ export class DashboardShell {
       const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
       const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
 
-      const effectiveWardId = profile.assignedWardId ?? prev.assignedWardId ?? storedWardId;
-      const effectiveWardName = profile.assignedWardName ?? prev.assignedWardName ?? storedWardName;
-      const effectiveWardEmail = profile.assignedWardEmail ?? prev.assignedWardEmail ?? storedWardEmail;
+      const effectiveWardId = profile.assignedWardId !== undefined
+        ? (profile.assignedWardId || undefined)
+        : (prev.assignedWardId ?? storedWardId);
+      const effectiveWardName = profile.assignedWardName !== undefined
+        ? (profile.assignedWardName || undefined)
+        : (effectiveWardId === prev.assignedWardId ? (prev.assignedWardName ?? storedWardName) : (effectiveWardId ? formatWardDisplayName(undefined, effectiveWardId) : undefined));
+      const effectiveWardEmail = profile.assignedWardEmail !== undefined
+        ? (profile.assignedWardEmail || undefined)
+        : (effectiveWardId === prev.assignedWardId ? (prev.assignedWardEmail ?? storedWardEmail) : undefined);
 
       const isSame =
         profile.actorId === prev.actorId &&
@@ -1916,14 +2038,24 @@ export class DashboardShell {
       const storedWardName = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_name') || undefined : undefined;
       const storedWardEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_assigned_ward_email') || undefined : undefined;
 
-      const effectiveWardId = profile.assignedWardId ?? this.state.contactProfile?.assignedWardId ?? storedWardId;
-      const effectiveWardName = profile.assignedWardName ?? this.state.contactProfile?.assignedWardName ?? storedWardName;
-      const effectiveWardEmail = profile.assignedWardEmail ?? this.state.contactProfile?.assignedWardEmail ?? storedWardEmail;
+      const effectiveWardId = profile.assignedWardId !== undefined
+        ? (profile.assignedWardId || undefined)
+        : (this.state.contactProfile?.assignedWardId ?? storedWardId);
+      const effectiveWardName = profile.assignedWardName !== undefined
+        ? (profile.assignedWardName || undefined)
+        : (effectiveWardId === this.state.contactProfile?.assignedWardId ? (this.state.contactProfile?.assignedWardName ?? storedWardName) : (effectiveWardId ? formatWardDisplayName(undefined, effectiveWardId) : undefined));
+      const effectiveWardEmail = profile.assignedWardEmail !== undefined
+        ? (profile.assignedWardEmail || undefined)
+        : (effectiveWardId === this.state.contactProfile?.assignedWardId ? (this.state.contactProfile?.assignedWardEmail ?? storedWardEmail) : undefined);
 
       if (effectiveWardId && typeof localStorage !== 'undefined') {
         localStorage.setItem('guardrail_assigned_ward_id', effectiveWardId);
         if (effectiveWardName) localStorage.setItem('guardrail_assigned_ward_name', effectiveWardName);
         if (effectiveWardEmail) localStorage.setItem('guardrail_assigned_ward_email', effectiveWardEmail);
+      } else if (!effectiveWardId && typeof localStorage !== 'undefined') {
+        localStorage.removeItem('guardrail_assigned_ward_id');
+        localStorage.removeItem('guardrail_assigned_ward_name');
+        localStorage.removeItem('guardrail_assigned_ward_email');
       }
 
       this.state.contactProfile = {
@@ -1934,9 +2066,16 @@ export class DashboardShell {
       };
       if (effectiveWardId && !this.state.wardPolicySummary) {
         void this.fetchWardPolicy();
+      } else if (!effectiveWardId) {
+        this.state.wardPolicySummary = null;
       }
     } else {
       this.state.contactProfile = null;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('guardrail_assigned_ward_id');
+        localStorage.removeItem('guardrail_assigned_ward_name');
+        localStorage.removeItem('guardrail_assigned_ward_email');
+      }
     }
     if (profile?.isAuthenticated) {
       if (this.apiClient && typeof this.apiClient.isMockService === 'function') {
@@ -2521,7 +2660,12 @@ export class DashboardShell {
           const wName = (firstWard as any).wardName || (wId && wId.startsWith('usr_') ? wId.slice(4) : wId);
           const wEmail = (firstWard as any).wardEmail;
 
-          if (wId && (!this.state.contactProfile.assignedWardId || this.state.contactProfile.assignedWardId !== wId)) {
+          const isDiff =
+            this.state.contactProfile.assignedWardId !== wId ||
+            this.state.contactProfile.assignedWardName !== wName ||
+            this.state.contactProfile.assignedWardEmail !== wEmail;
+
+          if (wId && isDiff) {
             hasRelationshipsChanged = true;
             this.state.contactProfile = {
               ...this.state.contactProfile,

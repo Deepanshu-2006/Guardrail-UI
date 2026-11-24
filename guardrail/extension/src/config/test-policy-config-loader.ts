@@ -140,7 +140,7 @@ async function runAllTests(): Promise<void> {
     const nullRes = mergeConfigWithDefaults(null);
     assertEquals(nullRes.healthStatus, ConfigHealthStatus.HEALTHY, 'Null candidate resolves to HEALTHY');
     assertEquals(nullRes.config.schemaVersion, '1.0.0', 'Schema version defaults to 1.0.0');
-    assertEquals(nullRes.config.policies.length, 6, 'Contains 6 default policies');
+    assertEquals(nullRes.config.policies.length, DEFAULT_GUARDRAIL_POLICY_CONFIG.policies.length, 'Contains default policies');
 
     const undefRes = mergeConfigWithDefaults(undefined);
     assertEquals(undefRes.healthStatus, ConfigHealthStatus.HEALTHY, 'Undefined candidate resolves to HEALTHY');
@@ -435,8 +435,8 @@ async function runAllTests(): Promise<void> {
     assertEquals(hasUnknown, false, 'Unknown policy identifier is strictly excluded');
     assertEquals(
       unknownRes.config.policies.length,
-      6,
-      'Preserves all 6 canonical policies without intrusion'
+      DEFAULT_GUARDRAIL_POLICY_CONFIG.policies.length,
+      'Preserves all canonical policies without intrusion'
     );
 
     // 5.2 Unsupported action types filtered out

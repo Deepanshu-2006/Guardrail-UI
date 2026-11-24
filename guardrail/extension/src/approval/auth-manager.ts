@@ -219,15 +219,57 @@ export async function verifyWardIdentity(apiBaseUrl?: string): Promise<WardIdent
     if (token.startsWith('ward_')) {
       const email = token.slice(5);
       const isDeepanshu = email.toLowerCase().includes('deepanshu');
+      const username = email.split('@')[0];
+      const formatted = username
+        .split(/[._-]/)
+        .filter(Boolean)
+        .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+        .join(' ');
       return {
-        actorId: `usr_${email.split('@')[0]}`,
+        actorId: `usr_${username}`,
         role: 'USER',
-        fullName: isDeepanshu ? 'Deepanshu Khatri' : email.split('@')[0],
+        fullName: isDeepanshu ? 'Deepanshu Khatri' : (formatted || username),
         email: email,
         picture: null,
         isAuthenticated: true,
       };
     }
     return null;
+  }
+}
+
+/**
+ * Synchronizes the extension's active ward identity to the backend server.
+ * Enables the caretaker dashboard to dynamically update in real time.
+ */
+export async function syncWardIdentityToBackend(
+  identity: WardIdentity | null,
+  apiBaseUrl?: string
+): Promise<boolean> {
+  const env = resolveEnvironmentConfig();
+  const baseUrl = apiBaseUrl ?? env.apiBaseUrl;
+
+  try {
+    const payload = {
+      actorId: identity?.actorId || null,
+      fullName: identity?.fullName || null,
+      email: identity?.email || null,
+      picture: identity?.picture || null,
+      isAuthenticated: Boolean(identity && identity.isAuthenticated),
+    };
+
+    const res = await fetch(`${baseUrl}/api/v1/ward/sync-identity`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.warn('[Guardrail Auth] Failed to sync ward identity to backend:', err);
+    return false;
   }
 }

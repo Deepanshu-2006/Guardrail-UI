@@ -27,6 +27,7 @@ import {
   verifyWardIdentity,
   authenticateWardWithGoogle,
   signOutWard,
+  syncWardIdentityToBackend,
   WardIdentity,
 } from '../approval/auth-manager.js';
 
@@ -308,6 +309,7 @@ export function renderPopupStatus(
   const wardVal = document.getElementById('ext-ward-val');
   void verifyWardIdentity().then((identity) => {
     renderWardAccountCard(identity);
+    void syncWardIdentityToBackend(identity);
     if (wardVal) {
       if (identity && identity.isAuthenticated) {
         const display = identity.fullName || identity.actorId;
@@ -318,6 +320,7 @@ export function renderPopupStatus(
     }
   }).catch(() => {
     renderWardAccountCard(null);
+    void syncWardIdentityToBackend(null);
     if (wardVal) wardVal.textContent = 'Offline';
   });
 
@@ -605,6 +608,7 @@ function setupPopupActions(): void {
         const identity = await authenticateWardWithGoogle();
         if (identity) {
           renderWardAccountCard(identity);
+          await syncWardIdentityToBackend(identity);
           const wardVal = document.getElementById('ext-ward-val');
           if (wardVal) {
             const display = identity.fullName || identity.actorId;
@@ -628,6 +632,7 @@ function setupPopupActions(): void {
       e.preventDefault();
       await signOutWard();
       renderWardAccountCard(null);
+      await syncWardIdentityToBackend(null);
       const wardVal = document.getElementById('ext-ward-val');
       if (wardVal) wardVal.textContent = 'Unauthenticated';
       void loadOrGenerateInvitation(true);

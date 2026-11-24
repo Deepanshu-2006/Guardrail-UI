@@ -25,7 +25,7 @@ import {
   SubmitApprovalRequestOptions,
 } from '../approval/submit-operation.js';
 import { checkPayloadForSensitiveFields, ApprovalApiClient } from '../approval/client.js';
-import { getStoredWardToken } from '../approval/auth-manager.js';
+import { getStoredWardToken, verifyWardIdentity, syncWardIdentityToBackend } from '../approval/auth-manager.js';
 import { resolveEnvironmentConfig } from '../config/environment.js';
 import { ApprovalStatusSyncClient } from '../approval/sync-client.js';
 import { validateApprovalRequestId } from '../approval/model.js';
@@ -617,7 +617,7 @@ void initialPolicyConfigLoad.then((result) => {
   console.warn('[Guardrail Background] Initial policy configuration load failed; policy health is FAILED.');
 });
 
-// Register storage listener to reload policy configuration across contexts
+// Register storage listener to reload policy configuration across contexts and sync ward auth
 if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes[GUARDRAIL_POLICY_CONFIG_STORAGE_KEY]) {
@@ -625,8 +625,30 @@ if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
         console.warn('[Guardrail Background] Policy configuration reload failed; check configuration health status.');
       });
     }
+    if (areaName === 'local' && changes['guardrail_ward_auth_token']) {
+      const newToken = changes['guardrail_ward_auth_token'].newValue;
+      if (newToken) {
+        void verifyWardIdentity().then((identity) => {
+          if (identity) void syncWardIdentityToBackend(identity);
+        });
+      } else {
+        void syncWardIdentityToBackend(null);
+      }
+    }
   });
 }
+
+// Initial ward identity sync on background service worker startup
+void getStoredWardToken().then(async (token) => {
+  if (token) {
+    const identity = await verifyWardIdentity();
+    if (identity) {
+      void syncWardIdentityToBackend(identity);
+    }
+  } else {
+    void syncWardIdentityToBackend(null);
+  }
+}).catch(() => {});
 
 // Register runtime listeners when running inside browser extension runtime
 if (typeof chrome !== 'undefined' && chrome.runtime) {
