@@ -1025,7 +1025,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           const db = (runtime.contactRegistry as any)?.database;
           if (db) {
             if (wardId) {
-              db.prepare("DELETE FROM trusted_contacts WHERE user_id = ? OR id = ?").run(wardId, wardId);
+              db.prepare("DELETE FROM trusted_contacts WHERE user_id = ?").run(wardId);
             } else {
               db.prepare("DELETE FROM trusted_contacts").run();
             }

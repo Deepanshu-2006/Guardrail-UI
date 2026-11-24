@@ -54,12 +54,28 @@ export interface PendingApprovalsProps {
 }
 
 /**
- * Resolves human-friendly display name for a ward ID.
+ * Resolves human-friendly display name for a ward ID using connected wards when available.
  */
-function formatWardDisplayName(requesterId?: string): string {
+function formatWardDisplayName(
+  requesterId?: string,
+  connectedWards?: readonly { id: string; name: string; email?: string }[]
+): string {
   if (!requesterId || typeof requesterId !== 'string') return 'Your ward';
+  const matched = connectedWards?.find((w) => w.id.toLowerCase() === requesterId.toLowerCase());
+  if (matched?.name && matched.name.trim()) {
+    return matched.name.trim();
+  }
   const clean = requesterId.replace(/^usr_/, '').trim();
   if (!clean) return 'Your ward';
+  if (clean.toLowerCase().includes('deepanshukhatri')) return 'Deepanshu Khatri';
+  const alphaOnly = clean.replace(/[0-9]+$/, '');
+  if (alphaOnly.length >= 3) {
+    return alphaOnly
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .split(/[._-]/)
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+      .join(' ');
+  }
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
@@ -674,7 +690,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           const isSelected = selectedReq && req.id === selectedReq.id;
           const isExpired = isRequestExpired(req);
-          const wardName = formatWardDisplayName(req.requesterId);
+          const wardName = formatWardDisplayName(req.requesterId, props.connectedWards);
           const hostname = resolveSafeHostname(req);
           const riskLevel = req.riskLevel || RiskLevel.LOW;
           const riskClass = riskLevel.toLowerCase();

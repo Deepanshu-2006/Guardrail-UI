@@ -79,10 +79,26 @@ export interface DecisionHistoryProps {
   historyRequests?: readonly ApprovalRequest[];
 }
 
-function formatWardDisplayName(requesterId?: string): string {
+function formatWardDisplayName(
+  requesterId?: string,
+  connectedWards?: readonly { id: string; name: string; email?: string }[]
+): string {
   if (!requesterId || typeof requesterId !== 'string') return '';
+  const matched = connectedWards?.find((w) => w.id.toLowerCase() === requesterId.toLowerCase());
+  if (matched?.name && matched.name.trim()) {
+    return matched.name.trim();
+  }
   const clean = requesterId.replace(/^usr_/, '').trim();
   if (!clean) return '';
+  if (clean.toLowerCase().includes('deepanshukhatri')) return 'Deepanshu Khatri';
+  const alphaOnly = clean.replace(/[0-9]+$/, '');
+  if (alphaOnly.length >= 3) {
+    return alphaOnly
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .split(/[._-]/)
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+      .join(' ');
+  }
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
@@ -208,6 +224,7 @@ export function renderHistoryRecordDetail(options: {
   onClose?: () => void;
   filteredRequests: readonly ApprovalRequest[];
   allRequests: readonly ApprovalRequest[];
+  connectedWards?: readonly { id: string; name: string; email?: string }[];
 }): HTMLElement {
   const container = document.createElement('div');
   container.className = 'gd-detail-pane gd-history-detail-pane';
@@ -279,7 +296,7 @@ export function renderHistoryRecordDetail(options: {
   const totalCount = options.allRequests.length || options.filteredRequests.length;
 
   const cleanTitle = getCleanActionTitle(req.actionDescription);
-  const wardName = formatWardDisplayName(req.requesterId) || 'User';
+  const wardName = formatWardDisplayName(req.requesterId, options.connectedWards) || 'User';
   const hostname = resolveSafeHostname(req);
 
   // Compute primary event date matching the list card
@@ -915,7 +932,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     for (let index = 0; index < filteredRequests.length; index++) {
       const req = filteredRequests[index];
       const isSelected = req.id === props.selectedRequestId;
-      const wardName = formatWardDisplayName(req.requesterId);
+      const wardName = formatWardDisplayName(req.requesterId, props.connectedWards);
       const hostname = resolveSafeHostname(req);
       const cleanTitle = getCleanActionTitle(req.actionDescription);
 
@@ -1232,6 +1249,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     onClose: props.onCloseDetail,
     filteredRequests,
     allRequests,
+    connectedWards: props.connectedWards,
   });
   if (selectedRequest) {
     detailPane.classList.add('gd-detail-animating-in');

@@ -88,6 +88,16 @@ async function main(): Promise<void> {
 
       db.prepare(`
         INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES ('usr_alice', 'https://guardrail.local/dev', 'alice.johnson@example.com', 'USER', 'ACTIVE', 'alice.johnson@example.com', ?, ?)
+      `).run(now, now);
+
+      db.prepare(`
+        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
+        VALUES ('usr_bob', 'https://guardrail.local/dev', 'bob.williams@example.com', 'USER', 'ACTIVE', 'bob.williams@example.com', ?, ?)
+      `).run(now, now);
+
+      db.prepare(`
+        INSERT OR IGNORE INTO guardrail_users (id, issuer, subject, role, status, verified_email, created_at, updated_at)
         VALUES (?, 'https://guardrail.local/dev', 'deepanshukhatri20061972@gmail.com', 'USER', 'ACTIVE', 'deepanshukhatri20061972@gmail.com', ?, ?)
       `).run(defaultWardId, now, now);
 
@@ -96,62 +106,67 @@ async function main(): Promise<void> {
         VALUES ('tc_carol', 'https://guardrail.local/dev', 'tc_carol', 'TRUSTED_CONTACT', 'ACTIVE', 'carol@guardrail.local', ?, ?)
       `).run(now, now);
 
-      const contactPayload = {
-        id: defaultCaretakerId,
-        contactId: defaultCaretakerId,
-        userId: defaultWardId,
-        wardId: defaultWardId,
-        wardName: 'Deepanshu Khatri',
-        wardEmail: 'deepanshukhatri20061972@gmail.com',
-        contactName: 'Deepanshu Khatri',
-        contactEmail: 'deepanshukhatri20061972@gmail.com',
-        contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLZDNQRGk4NWtqbU42TERzYWhtZVljckxaQkUtdGFFUFNnXzdYd0FYSU1mRUd6clVFcz1zMTAwMC1jIiwicyI6InViRllhQ2hLbGtQS2FXR0hCTVRBODNqVmozVW5RV00zQ0FScVVnSTlxSWcifQ',
-        relationshipLabel: 'Designated Caretaker',
-        status: 'ACTIVE',
-        createdAt: now,
-      };
-
       db.exec(`
         CREATE TABLE IF NOT EXISTS server_seed_meta (key TEXT PRIMARY KEY, value TEXT);
       `);
-      const contactCount = (db.prepare("SELECT COUNT(*) as count FROM trusted_contacts WHERE status = 'ACTIVE'").get() as { count: number })?.count ?? 0;
-      if (contactCount < 2) {
-        const alicePayload = {
-          id: defaultCaretakerId,
-          contactId: defaultCaretakerId,
-          userId: 'usr_alice',
+      const contactCount = (db.prepare("SELECT COUNT(DISTINCT user_id) as count FROM trusted_contacts WHERE status = 'ACTIVE'").get() as { count: number })?.count ?? 0;
+      const caretakerRows = db.prepare("SELECT id FROM guardrail_users WHERE role = 'TRUSTED_CONTACT' AND status = 'ACTIVE'").all() as { id: string }[];
+      const caretakerIds = Array.from(new Set([
+        defaultCaretakerId,
+        'usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76',
+        'tc_carol',
+        ...caretakerRows.map((r) => r.id),
+      ]));
+
+      const devWards = [
+        {
           wardId: 'usr_alice',
           wardName: 'Alice Johnson',
           wardEmail: 'alice.johnson@example.com',
           relationshipLabel: 'Family Guardian',
-          status: 'ACTIVE',
-          createdAt: now,
-        };
-        const bobPayload = {
-          id: defaultCaretakerId,
-          contactId: defaultCaretakerId,
-          userId: 'usr_bob',
+        },
+        {
           wardId: 'usr_bob',
           wardName: 'Bob Williams',
           wardEmail: 'bob.williams@example.com',
           relationshipLabel: 'Designated Caretaker',
-          status: 'ACTIVE',
-          createdAt: now,
-        };
-        db.prepare(`
-          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-          VALUES (?, ?, 'ACTIVE', ?, ?)
-        `).run(defaultCaretakerId, 'usr_alice', now, JSON.stringify(alicePayload));
-        db.prepare(`
-          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-          VALUES (?, ?, 'ACTIVE', ?, ?)
-        `).run(defaultCaretakerId, 'usr_bob', now, JSON.stringify(bobPayload));
-        db.prepare(`
-          INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-          VALUES (?, ?, 'ACTIVE', ?, ?)
-        `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
-        db.prepare("INSERT OR REPLACE INTO server_seed_meta (key, value) VALUES ('initial_contact_seeded', 'true')").run();
+        },
+        {
+          wardId: defaultWardId,
+          wardName: 'Deepanshu Khatri',
+          wardEmail: 'deepanshukhatri20061972@gmail.com',
+          relationshipLabel: 'Designated Caretaker',
+        },
+      ];
+
+      const insertContactStmt = db.prepare(`
+        INSERT OR IGNORE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+        VALUES (?, ?, 'ACTIVE', ?, ?)
+      `);
+
+      for (const caretakerId of caretakerIds) {
+        const existingForCaretaker = (db.prepare("SELECT COUNT(*) as count FROM trusted_contacts WHERE id = ? AND status = 'ACTIVE'").get(caretakerId) as { count: number })?.count ?? 0;
+        if (contactCount < 2 || existingForCaretaker === 0) {
+          for (const w of devWards) {
+            const payload = {
+              id: caretakerId,
+              contactId: caretakerId,
+              userId: w.wardId,
+              wardId: w.wardId,
+              wardName: w.wardName,
+              wardEmail: w.wardEmail,
+              contactName: 'Deepanshu Khatri',
+              contactEmail: 'deepanshukhatri20061972@gmail.com',
+              contactAvatarUrl: 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLZDNQRGk4NWtqbU42TERzYWhtZVljckxaQkUtdGFFUFNnXzdYd0FYSU1mRUd6clVFcz1zMTAwMC1jIiwicyI6InViRllhQ2hLbGtQS2FXR0hCTVRBODNqVmozVW5RV00zQ0FScVVnSTlxSWcifQ',
+              relationshipLabel: w.relationshipLabel,
+              status: 'ACTIVE',
+              createdAt: now,
+            };
+            insertContactStmt.run(caretakerId, w.wardId, now, JSON.stringify(payload));
+          }
+        }
       }
+      db.prepare("INSERT OR REPLACE INTO server_seed_meta (key, value) VALUES ('initial_contact_seeded', 'true')").run();
     }
   } catch (err) {
     console.warn('[serve-dev] Contact seed error:', err);
@@ -169,6 +184,156 @@ async function main(): Promise<void> {
       allowedOrigins: ['*'],
     },
   });
+
+  // Seed multi-ward pending approval requests & decision history after tables are initialized
+  try {
+    const db = (contactRegistry as any).database;
+    if (db) {
+      const reqCount = (db.prepare("SELECT COUNT(*) as count FROM approval_requests").get() as { count: number })?.count ?? 0;
+      const historyCount = (db.prepare("SELECT COUNT(*) as count FROM approval_requests WHERE status != 'PENDING'").get() as { count: number })?.count ?? 0;
+      if (reqCount < 4 || historyCount < 2) {
+        const createdMs = Date.now();
+        const futureIso = new Date(createdMs + 48 * 60 * 60 * 1000).toISOString();
+        const seedRequests = [
+          {
+            id: 'apr_alice_001',
+            actionId: 'act_alice_001',
+            requesterId: 'usr_alice',
+            actionType: 'SUBMIT',
+            category: 'PAYMENT',
+            actionDescription: 'Send Wire Transfer to Landlord ($1,200.00)',
+            origin: 'https://secure.chase.com',
+            hostname: 'secure.chase.com',
+            pageTitle: 'Wire Transfers — Chase Online',
+            riskLevel: 'HIGH',
+            status: 'PENDING',
+            createdAt: new Date(createdMs - 18 * 60 * 1000).toISOString(),
+            expiresAt: futureIso,
+            riskReasons: [
+              'Wire transfer exceeds safety threshold.',
+              'Destination account is an unverified external entity.',
+            ],
+          },
+          {
+            id: 'apr_bob_001',
+            actionId: 'act_bob_001',
+            requesterId: 'usr_bob',
+            actionType: 'SUBMIT',
+            category: 'PAYMENT',
+            actionDescription: 'Purchase Gaming Console Bundle ($499.99)',
+            origin: 'https://www.amazon.com',
+            hostname: 'www.amazon.com',
+            pageTitle: 'Checkout — Amazon.com',
+            riskLevel: 'MEDIUM',
+            status: 'PENDING',
+            createdAt: new Date(createdMs - 12 * 60 * 1000).toISOString(),
+            expiresAt: futureIso,
+            riskReasons: [
+              'High-value e-commerce checkout transaction on amazon.com.',
+            ],
+          },
+          {
+            id: 'apr_deepanshu_001',
+            actionId: 'act_deepanshu_001',
+            requesterId: defaultWardId,
+            actionType: 'CLICK',
+            category: 'AUTHENTICATION',
+            actionDescription: 'Authorize Third-Party OAuth API Token Access',
+            origin: 'https://console.cloud.google.com',
+            hostname: 'console.cloud.google.com',
+            pageTitle: 'OAuth Consent — Google Cloud Console',
+            riskLevel: 'CRITICAL',
+            status: 'PENDING',
+            createdAt: new Date(createdMs - 5 * 60 * 1000).toISOString(),
+            expiresAt: futureIso,
+            riskReasons: [
+              'Grants persistent read/write API access to an external application.',
+            ],
+          },
+          {
+            id: 'apr_alice_002',
+            actionId: 'act_alice_002',
+            requesterId: 'usr_alice',
+            actionType: 'CLICK',
+            category: 'AUTHENTICATION',
+            actionDescription: 'Sign in to Student Loan Account',
+            origin: 'https://studentaid.gov',
+            hostname: 'studentaid.gov',
+            pageTitle: 'Federal Student Aid Sign In',
+            riskLevel: 'LOW',
+            status: 'APPROVED',
+            createdAt: new Date(createdMs - 5 * 60 * 60 * 1000).toISOString(),
+            expiresAt: futureIso,
+            resolvedAt: new Date(createdMs - 4.5 * 60 * 60 * 1000).toISOString(),
+            decision: {
+              decision: 'APPROVED',
+              decidedBy: 'usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76',
+              decidedAt: new Date(createdMs - 4.5 * 60 * 60 * 1000).toISOString(),
+              decisionReason: 'Verified educational service sign-in',
+            },
+            riskReasons: ['Standard educational service authentication.'],
+          },
+          {
+            id: 'apr_bob_002',
+            actionId: 'act_bob_002',
+            requesterId: 'usr_bob',
+            actionType: 'CLICK',
+            category: 'DOWNLOAD',
+            actionDescription: 'Download Unverified System Utility Installer',
+            origin: 'https://soft-mirror-cdn.example.net',
+            hostname: 'soft-mirror-cdn.example.net',
+            pageTitle: 'Download Mirror — System Utility',
+            riskLevel: 'HIGH',
+            status: 'REJECTED',
+            createdAt: new Date(createdMs - 3 * 60 * 60 * 1000).toISOString(),
+            expiresAt: futureIso,
+            resolvedAt: new Date(createdMs - 2.8 * 60 * 60 * 1000).toISOString(),
+            decision: {
+              decision: 'REJECTED',
+              decidedBy: 'usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76',
+              decidedAt: new Date(createdMs - 2.8 * 60 * 60 * 1000).toISOString(),
+              decisionReason: 'Unverified executable mirror flagged by safety review.',
+            },
+            riskReasons: [
+              'Executable installer hosted on an unverified third-party mirror.',
+            ],
+          },
+          {
+            id: 'apr_deepanshu_002',
+            actionId: 'act_deepanshu_002',
+            requesterId: defaultWardId,
+            actionType: 'SUBMIT',
+            category: 'PAYMENT',
+            actionDescription: 'Confirm Cloud Workspace Plan Renewal ($49.00)',
+            origin: 'https://billing.stripe.com',
+            hostname: 'billing.stripe.com',
+            pageTitle: 'Stripe Billing Portal',
+            riskLevel: 'MEDIUM',
+            status: 'APPROVED',
+            createdAt: new Date(createdMs - 90 * 60 * 1000).toISOString(),
+            expiresAt: futureIso,
+            resolvedAt: new Date(createdMs - 85 * 60 * 1000).toISOString(),
+            decision: {
+              decision: 'APPROVED',
+              decidedBy: 'usr_7f7f1ef5-ef7b-4a77-84cc-d36a38b26e76',
+              decidedAt: new Date(createdMs - 85 * 60 * 1000).toISOString(),
+              decisionReason: 'Expected recurring billing renewal.',
+            },
+            riskReasons: ['Recurring subscription charge authorization.'],
+          },
+        ];
+        const insertReqStmt = db.prepare(`
+          INSERT OR IGNORE INTO approval_requests (id, requester_id, action_id, status, created_at, expires_at, payload_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const r of seedRequests) {
+          insertReqStmt.run(r.id, r.requesterId, r.actionId, r.status, r.createdAt, r.expiresAt, JSON.stringify(r));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[serve-dev] Approval request seed error:', err);
+  }
 
   process.stdout.write(`\n======================================================\n`);
   process.stdout.write(`  🛡️  Guardrail Approval Backend Server Running\n`);

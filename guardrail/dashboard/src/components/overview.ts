@@ -600,11 +600,19 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       const metaRow = document.createElement('div');
       metaRow.className = 'gd-overview-pending-meta';
       const host = req.hostname || 'Browser Action';
+      const matchedPendingWard = (props.connectedWards || []).find(
+        (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
+      );
+      const pendingWardLabel = req.requesterId
+        ? formatWardDisplayName(matchedPendingWard?.name, req.requesterId)
+        : '';
       const reqTime = req.createdAt || (req as any).timestamp;
       const timeStr = reqTime
         ? new Date(reqTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : 'Just now';
-      metaRow.textContent = `${host} • Requested ${timeStr}`;
+      metaRow.textContent = pendingWardLabel
+        ? `${pendingWardLabel} · ${host} · Requested ${timeStr}`
+        : `${host} · Requested ${timeStr}`;
 
       left.appendChild(topRow);
       left.appendChild(metaRow);
@@ -1197,10 +1205,10 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       // Ward Display Name
       let wardDisplayName = '';
       if (req.requesterId && typeof req.requesterId === 'string') {
-        const cleanWard = req.requesterId.replace(/^usr_/, '').trim();
-        if (cleanWard) {
-          wardDisplayName = cleanWard.charAt(0).toUpperCase() + cleanWard.slice(1);
-        }
+        const matchedActivityWard = (props.connectedWards || []).find(
+          (w) => w.id.toLowerCase() === req.requesterId.toLowerCase()
+        );
+        wardDisplayName = formatWardDisplayName(matchedActivityWard?.name, req.requesterId);
       }
 
       // 1. Primary Action Title (Display Typography with native tooltip on hover)

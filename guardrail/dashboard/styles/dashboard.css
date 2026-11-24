@@ -1272,8 +1272,23 @@ textarea:focus-visible,
 #view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-meta-line {
   animation: gd-ward-slide-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both !important;
 }
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-multi-ward-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.28s both !important;
+}
 #view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-guarantee-note {
   animation: gd-ward-slide-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-multi-ward-footer .gd-btn-open-control-modal {
+  animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-multi-ward-footer-secondary {
+  animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.52s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-multi-ward-footer-secondary .gd-link-add-ward {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.54s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-multi-ward-footer-secondary .gd-link-manage {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.58s both !important;
 }
 #view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-action-links {
   animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both !important;
@@ -3921,6 +3936,11 @@ textarea:focus-visible,
   white-space: pre;
 }
 
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-multi-ward-badge,
+#gd-active-ward-card.gd-card-animating-in .gd-multi-ward-badge {
+  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+
 #view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-meta-line,
 #gd-active-ward-card.gd-card-animating-in .gd-ward-meta-line {
   animation: gd-ward-slide-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
@@ -3929,6 +3949,26 @@ textarea:focus-visible,
 #view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-guarantee-note,
 #gd-active-ward-card.gd-card-animating-in .gd-ward-guarantee-note {
   animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+}
+
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-multi-ward-footer .gd-btn-open-control-modal,
+#gd-active-ward-card.gd-card-animating-in .gd-multi-ward-footer .gd-btn-open-control-modal {
+  animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+}
+
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-multi-ward-footer-secondary,
+#gd-active-ward-card.gd-card-animating-in .gd-multi-ward-footer-secondary {
+  animation: gd-ward-slide-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.54s both;
+}
+
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-multi-ward-footer-secondary .gd-link-add-ward,
+#gd-active-ward-card.gd-card-animating-in .gd-multi-ward-footer-secondary .gd-link-add-ward {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
+}
+
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-multi-ward-footer-secondary .gd-link-manage,
+#gd-active-ward-card.gd-card-animating-in .gd-multi-ward-footer-secondary .gd-link-manage {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both;
 }
 
 #view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-action-links,
