@@ -11,6 +11,7 @@
  */
 
 import { ApprovalRequest, ApprovalStatus, RequestFilters, RiskLevel } from '../types.js';
+import { populateWardAvatar } from './icons.js';
 
 export interface FilterBarOptions {
   filters: RequestFilters;
@@ -554,7 +555,7 @@ export function renderFilterEmptyState(options: FilterEmptyStateOptions): HTMLEl
 }
 
 export interface WardSwitcherOptions {
-  wards: readonly { id: string; name: string; email?: string }[];
+  wards: readonly { id: string; name: string; email?: string; imageUrl?: string; avatarUrl?: string }[];
   activeWardId?: string;
   requests?: readonly ApprovalRequest[];
   onSelectWard: (wardId: string) => void;
@@ -603,18 +604,34 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
     const wardLower = ward.id.trim().toLowerCase();
     const isSelected = activeId === wardLower;
     const wardCount = counts[wardLower] || 0;
-    const initial = (ward.name || 'W').charAt(0).toUpperCase();
 
     const pill = document.createElement('button');
     pill.type = 'button';
     pill.className = `gd-ward-pill ${isSelected ? 'active' : ''}`;
     pill.setAttribute('role', 'tab');
     pill.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-    pill.innerHTML = `
-      <span class="gd-ward-pill-avatar" aria-hidden="true">${initial}</span>
-      <span class="gd-ward-pill-name">${ward.name}</span>
-      <span class="gd-ward-pill-count">${wardCount}</span>
-    `;
+
+    const avatarSpan = document.createElement('span');
+    avatarSpan.className = 'gd-ward-pill-avatar';
+    avatarSpan.setAttribute('aria-hidden', 'true');
+    populateWardAvatar(avatarSpan, {
+      imageUrl: ward.imageUrl || ward.avatarUrl,
+      name: ward.name,
+      imgClass: 'gd-ward-pill-avatar-img',
+      iconClass: 'gd-ward-pill-avatar-icon',
+    });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'gd-ward-pill-name';
+    nameSpan.textContent = ward.name;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'gd-ward-pill-count';
+    countSpan.textContent = String(wardCount);
+
+    pill.appendChild(avatarSpan);
+    pill.appendChild(nameSpan);
+    pill.appendChild(countSpan);
     pill.addEventListener('click', () => {
       options.onSelectWard(ward.id);
     });

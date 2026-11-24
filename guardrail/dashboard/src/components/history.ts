@@ -29,7 +29,7 @@
 import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../types.js';
 import { formatTimestamp, getRiskLevelExplanation } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
-import { setAnimatedHeading } from './icons.js';
+import { populateWardAvatar, setAnimatedHeading } from './icons.js';
 
 export interface DecisionHistoryProps {
   /** Authoritative historical / resolved requests */
@@ -73,7 +73,7 @@ export interface DecisionHistoryProps {
   /** Optional callback to refresh detail */
   onRefreshDetail?: () => void;
   /** List of connected wards for multi-ward switching and attribution */
-  connectedWards?: readonly { id: string; name: string; email?: string }[];
+  connectedWards?: readonly { id: string; name: string; email?: string; imageUrl?: string; avatarUrl?: string }[];
 
   // Backward compatibility alias:
   historyRequests?: readonly ApprovalRequest[];
@@ -981,8 +981,23 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       if (wardName) {
         const cardWardBadge = document.createElement('span');
         cardWardBadge.className = 'gd-card-ward-badge';
-        const wardInitial = wardName.charAt(0).toUpperCase();
-        cardWardBadge.innerHTML = `<span class="gd-ward-badge-avatar" aria-hidden="true">${wardInitial}</span><span class="gd-ward-badge-name">${wardName}</span>`;
+        const matchedWard = props.connectedWards?.find(
+          (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
+        );
+        const badgeAvatar = document.createElement('span');
+        badgeAvatar.className = 'gd-ward-badge-avatar';
+        badgeAvatar.setAttribute('aria-hidden', 'true');
+        populateWardAvatar(badgeAvatar, {
+          imageUrl: matchedWard?.imageUrl || matchedWard?.avatarUrl,
+          name: wardName,
+          imgClass: 'gd-ward-badge-avatar-img',
+          iconClass: 'gd-ward-badge-avatar-icon',
+        });
+        const badgeName = document.createElement('span');
+        badgeName.className = 'gd-ward-badge-name';
+        badgeName.textContent = wardName;
+        cardWardBadge.appendChild(badgeAvatar);
+        cardWardBadge.appendChild(badgeName);
         badgesWrap.appendChild(cardWardBadge);
       }
 

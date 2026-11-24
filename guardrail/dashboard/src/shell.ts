@@ -3399,8 +3399,8 @@ export class DashboardShell {
   /**
    * Resolves list of all active connected wards for multi-ward switching, filtering, and oversight.
    */
-  public getConnectedWards(): Array<{ id: string; name: string; email?: string; relationshipLabel?: string }> {
-    const map = new Map<string, { id: string; name: string; email?: string; relationshipLabel?: string }>();
+  public getConnectedWards(): Array<{ id: string; name: string; email?: string; relationshipLabel?: string; imageUrl?: string; avatarUrl?: string }> {
+    const map = new Map<string, { id: string; name: string; email?: string; relationshipLabel?: string; imageUrl?: string; avatarUrl?: string }>();
     if (this.state.contactProfile?.assignedWardId) {
       const id = this.state.contactProfile.assignedWardId;
       map.set(id.toLowerCase(), {
@@ -3408,24 +3408,46 @@ export class DashboardShell {
         name: this.state.contactProfile.assignedWardName || formatWardDisplayName(undefined, id),
         email: this.state.contactProfile.assignedWardEmail,
         relationshipLabel: this.state.contactProfile.relationshipLabel,
+        imageUrl: (this.state.contactProfile as any).assignedWardAvatarUrl,
       });
     }
     if (this.state.contactProfile?.assignedWards) {
       for (const w of this.state.contactProfile.assignedWards) {
-        if (!map.has(w.id.toLowerCase())) {
-          map.set(w.id.toLowerCase(), w);
+        const key = w.id.toLowerCase();
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, {
+            ...w,
+            imageUrl: w.imageUrl || w.avatarUrl,
+          });
+        } else if (!existing.imageUrl && (w.imageUrl || w.avatarUrl)) {
+          map.set(key, {
+            ...existing,
+            imageUrl: w.imageUrl || w.avatarUrl,
+          });
         }
       }
     }
     for (const c of this.state.connectedUsers) {
       const wardId = c.wardId || c.userId;
-      if (wardId && !map.has(wardId.toLowerCase())) {
-        map.set(wardId.toLowerCase(), {
-          id: wardId,
-          name: c.wardName || formatWardDisplayName(undefined, wardId),
-          email: c.wardEmail,
-          relationshipLabel: c.relationshipLabel,
-        });
+      if (wardId) {
+        const key = wardId.toLowerCase();
+        const avatar = (c as any).wardAvatarUrl || (c as any).imageUrl || (c as any).avatarUrl;
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, {
+            id: wardId,
+            name: c.wardName || formatWardDisplayName(undefined, wardId),
+            email: c.wardEmail,
+            relationshipLabel: c.relationshipLabel,
+            imageUrl: avatar,
+          });
+        } else if (!existing.imageUrl && avatar) {
+          map.set(key, {
+            ...existing,
+            imageUrl: avatar,
+          });
+        }
       }
     }
     if (map.size === 0 && typeof localStorage !== 'undefined') {
@@ -3441,6 +3463,7 @@ export class DashboardShell {
                   name: w.name || formatWardDisplayName(undefined, w.id),
                   email: w.email,
                   relationshipLabel: w.relationshipLabel || 'Protected Ward',
+                  imageUrl: w.imageUrl || w.avatarUrl,
                 });
               }
             }

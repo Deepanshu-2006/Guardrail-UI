@@ -890,13 +890,16 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
 
               if (existingRows && existingRows.length > 0) {
                 isLinked = true;
-                // Update wardName and wardEmail in existing active contacts so changes reflect
+                // Update wardName, wardEmail, and wardAvatarUrl in existing active contacts so changes reflect
                 for (const row of existingRows) {
                   try {
                     const p = JSON.parse(row.payload_json);
                     p.wardName = fullName || p.wardName;
                     p.wardEmail = email || p.wardEmail;
-                    db.prepare("UPDATE trusted_contacts SET payload_json = ? WHERE id = ?").run(JSON.stringify(p), row.id);
+                    if (picture) {
+                      p.wardAvatarUrl = picture;
+                    }
+                    db.prepare("UPDATE trusted_contacts SET payload_json = ? WHERE id = ? AND user_id = ?").run(JSON.stringify(p), row.id, actorId);
                   } catch {}
                 }
               }
@@ -1482,7 +1485,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                 assignedWardEmail = contacts[0].wardEmail;
               }
 
-              const assignedWards: Array<{ id: string; name: string; email?: string; relationshipLabel?: string }> = [];
+              const assignedWards: Array<{ id: string; name: string; email?: string; relationshipLabel?: string; imageUrl?: string }> = [];
               if (contacts && contacts.length > 0) {
                 for (const c of contacts) {
                   const id = c.userId || c.wardId;
@@ -1492,6 +1495,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                       name: c.wardName || (id.startsWith('usr_') ? id.slice(4) : id),
                       email: c.wardEmail,
                       relationshipLabel: c.relationshipLabel || 'Designated Caretaker',
+                      imageUrl: c.wardAvatarUrl || c.imageUrl || undefined,
                     });
                   }
                 }
@@ -1509,6 +1513,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
                           name: p.wardName || (id.startsWith('usr_') ? id.slice(4) : id),
                           email: p.wardEmail,
                           relationshipLabel: p.relationshipLabel || 'Designated Caretaker',
+                          imageUrl: p.wardAvatarUrl || p.imageUrl || undefined,
                         });
                       }
                     } catch {}

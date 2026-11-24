@@ -375,7 +375,8 @@ async function runTests(): Promise<void> {
   assertEquals(aliceCard.getAttribute('data-ward-id'), 'usr_alice', 'First card has data-ward-id="usr_alice"');
 
   const aliceAvatar = aliceCard.querySelector('.gd-ward-control-avatar');
-  assertTrue(aliceAvatar?.textContent.includes('AJ'), 'Alice avatar renders initials "AJ"');
+  const aliceAvatarIcon = aliceAvatar?.querySelector('.gd-ward-avatar-icon');
+  assertTrue(aliceAvatarIcon !== null, 'Alice avatar renders warm profile icon fallback when no photo URL');
 
   const aliceName = aliceCard.querySelector('.gd-ward-control-name');
   assertEquals(aliceName?.textContent, 'Alice Johnson', 'Alice name renders correctly');
@@ -446,6 +447,26 @@ async function runTests(): Promise<void> {
   assertTrue(closeBtn !== null, 'Close button exists');
   closeBtn?.click();
   assertTrue(emptyClosed, 'Clicking close button triggers onClose');
+
+  // ---------------------------------------------------------------------------
+  // Suite 6: Real Ward Account Image Support
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Test Suite 6: Real Ward Account Image Support');
+  const photoModal = renderWardsControlModal({
+    connectedWards: [
+      {
+        id: 'usr_real',
+        name: 'Real Ward',
+        email: 'real@example.com',
+        imageUrl: 'https://example.com/ward-photo.jpg',
+      },
+    ],
+    pendingRequests: [],
+    onClose: () => {},
+  });
+  const photoImg = photoModal.querySelector('.gd-ward-control-avatar-img') as any;
+  assertTrue(photoImg !== null, 'Renders .gd-ward-control-avatar-img when ward imageUrl is provided');
+  assertEquals(photoImg?.src, 'https://example.com/ward-photo.jpg', 'Ward avatar image src matches real account image');
 
   console.log('\n======================================================');
   console.log('🎉 ALL WARDS CONTROL MODAL TESTS PASSED (100%)!');

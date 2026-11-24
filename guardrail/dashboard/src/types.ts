@@ -96,6 +96,8 @@ export interface AssignedWardSummary {
   readonly name: string;
   readonly email?: string;
   readonly relationshipLabel?: string;
+  readonly imageUrl?: string;
+  readonly avatarUrl?: string;
 }
 
 /**

@@ -99,6 +99,59 @@ export function createIcon(name: IconName, extraClass?: string): HTMLElement {
   return span;
 }
 
+export function isDefaultAvatarUrl(url?: string | null): boolean {
+  if (!url || !url.trim()) return true;
+  const trimmed = url.trim();
+  return (
+    trimmed.includes('img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdC') ||
+    trimmed.includes('images.clerk.dev') ||
+    trimmed.includes('gravatar.com/avatar?d=mp') ||
+    trimmed.includes('d=mp')
+  );
+}
+
+/**
+ * Populates a ward avatar container with the ward's real account photo when available,
+ * falling back cleanly to a warm-themed profile icon SVG.
+ */
+export function populateWardAvatar(
+  container: HTMLElement,
+  options: {
+    imageUrl?: string | null;
+    name?: string;
+    imgClass?: string;
+    iconClass?: string;
+  }
+): void {
+  const photoUrl = options.imageUrl;
+  const imgClass = options.imgClass || 'gd-ward-avatar-img';
+  const iconClass = options.iconClass || 'gd-ward-avatar-icon';
+
+  const appendFallbackIcon = () => {
+    const existingIcon = container.querySelector?.(`.${iconClass}`);
+    if (!existingIcon) {
+      container.appendChild(createIcon('user', iconClass));
+    }
+  };
+
+  if (photoUrl && !isDefaultAvatarUrl(photoUrl)) {
+    const img = document.createElement('img');
+    img.className = imgClass;
+    img.src = photoUrl;
+    img.alt = options.name ? `${options.name} profile photo` : 'Ward profile photo';
+    if (typeof img.setAttribute === 'function') {
+      img.setAttribute('loading', 'eager');
+    }
+    img.onerror = () => {
+      img.remove?.();
+      appendFallbackIcon();
+    };
+    container.appendChild(img);
+  } else {
+    appendFallbackIcon();
+  }
+}
+
 /**
  * Applies character-by-character animation spans to heading elements.
  * Preserves textContent for testing and sets aria-label for screen reader accessibility.

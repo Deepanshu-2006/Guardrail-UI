@@ -8,12 +8,15 @@
 
 import { ApprovalRequest } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
+import { populateWardAvatar } from './icons.js';
 
 export interface WardSummary {
   id: string;
   name: string;
   email?: string;
   relationshipLabel?: string;
+  imageUrl?: string;
+  avatarUrl?: string;
 }
 
 export interface WardsControlModalProps {
@@ -25,18 +28,6 @@ export interface WardsControlModalProps {
   onFilterWardPending?: (wardId: string) => void;
   onFilterWardHistory?: (wardId: string) => void;
   onConnectInvitation?: (code: string) => Promise<{ success: boolean; wardId?: string; error?: string }>;
-}
-
-/**
- * Extracts initials from a ward's display name for avatar rendering.
- */
-function getWardInitials(name: string): string {
-  if (!name || !name.trim()) return 'W';
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 /**
@@ -207,7 +198,12 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       const avatar = document.createElement('div');
       avatar.className = 'gd-ward-control-avatar';
-      avatar.textContent = getWardInitials(ward.name);
+      populateWardAvatar(avatar, {
+        imageUrl: ward.imageUrl || ward.avatarUrl,
+        name: formatWardDisplayName(ward.name, ward.id),
+        imgClass: 'gd-ward-control-avatar-img',
+        iconClass: 'gd-ward-avatar-icon',
+      });
 
       const statusDot = document.createElement('span');
       statusDot.className = 'gd-ward-status-dot online';
