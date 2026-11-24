@@ -343,6 +343,18 @@ if (typeof document !== 'undefined') {
               }
               if (currentAvatar) localStorage.setItem('guardrail_user_avatar', currentAvatar);
             }
+            const rawWardId = (payload.data as any)?.assignedWardId;
+            const rawWardName = (payload.data as any)?.assignedWardName;
+            const rawWardEmail = (payload.data as any)?.assignedWardEmail;
+            if (rawWardId && typeof localStorage !== 'undefined') {
+              localStorage.setItem('guardrail_assigned_ward_id', rawWardId);
+              if (rawWardName) localStorage.setItem('guardrail_assigned_ward_name', rawWardName);
+              if (rawWardEmail) localStorage.setItem('guardrail_assigned_ward_email', rawWardEmail);
+            } else if (!rawWardId && typeof localStorage !== 'undefined') {
+              localStorage.removeItem('guardrail_assigned_ward_id');
+              localStorage.removeItem('guardrail_assigned_ward_name');
+              localStorage.removeItem('guardrail_assigned_ward_email');
+            }
             shell.setProfile({
               actorId: payload.data.actorId,
               role: payload.data.role,
@@ -351,10 +363,10 @@ if (typeof document !== 'undefined') {
               avatarUrl: currentAvatar,
               imageUrl: currentAvatar,
               isAuthenticated: true,
-              relationshipLabel: payload.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User',
-              assignedWardId: (payload.data as any)?.assignedWardId || undefined,
-              assignedWardName: (payload.data as any)?.assignedWardName || undefined,
-              assignedWardEmail: (payload.data as any)?.assignedWardEmail || undefined,
+              relationshipLabel: rawWardId ? (payload.data.role === 'TRUSTED_CONTACT' ? 'Designated Caretaker' : 'User') : undefined,
+              assignedWardId: rawWardId || undefined,
+              assignedWardName: rawWardName || undefined,
+              assignedWardEmail: rawWardEmail || undefined,
             });
           }
         })

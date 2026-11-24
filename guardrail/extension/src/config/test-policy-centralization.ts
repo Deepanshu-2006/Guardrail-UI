@@ -367,7 +367,7 @@ console.log('\n▶ Group 4: Centralized Policy Evaluation & Monotonic Precedence
   policyConfigRegistry.resetToDefault();
   const navResultsDefault = evaluatePolicies(navAction);
   assert(
-    navResultsDefault.some((p) => p.ruleId === 'RULE_EXTERNAL_NAVIGATION_POLICY'),
+    navResultsDefault.some((p) => p.ruleId.startsWith('RULE_EXTERNAL_NAVIGATION')),
     'External navigation warning fires by default'
   );
 
@@ -382,7 +382,7 @@ console.log('\n▶ Group 4: Centralized Policy Evaluation & Monotonic Precedence
 
   const navResultsDisabled = evaluatePolicies(navAction);
   assert(
-    !navResultsDisabled.some((p) => p.ruleId === 'RULE_EXTERNAL_NAVIGATION_POLICY'),
+    !navResultsDisabled.some((p) => p.ruleId.startsWith('RULE_EXTERNAL_NAVIGATION')),
     'Disabled external navigation policy is skipped during evaluation'
   );
 

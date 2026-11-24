@@ -1065,6 +1065,7 @@ async function runTestSuite(): Promise<void> {
   } else {
     console.log('🎉 ALL PERSISTENCE, CONCURRENCY, OFFLINE & INVARIANT REQUIREMENTS SATISFIED!');
     console.log('====================================================================\n');
+    process.exit(0);
   }
 }
 

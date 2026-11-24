@@ -1000,6 +1000,61 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       return;
     }
 
+    // 3d. Ward Disconnect Endpoint (/api/v1/ward/disconnect & /api/v1/trusted-contacts/disconnect)
+    if (request.method === 'POST' && (requestPath === '/api/v1/ward/disconnect' || requestPath === '/api/v1/trusted-contacts/disconnect')) {
+      applyCorsHeaders(response, request.headers.origin);
+      response.setHeader('content-type', 'application/json; charset=utf-8');
+      response.setHeader('cache-control', 'no-store');
+      response.setHeader('x-content-type-options', 'nosniff');
+
+      let bodyStr = '';
+      request.on('data', (chunk) => { bodyStr += chunk; });
+      request.on('end', async () => {
+        try {
+          const body = bodyStr ? JSON.parse(bodyStr) : {};
+          const wardId = typeof body.wardId === 'string' && body.wardId.trim() ? body.wardId.trim() : null;
+
+          const db = (runtime.contactRegistry as any)?.database;
+          if (db) {
+            db.prepare("DELETE FROM trusted_contacts").run();
+          }
+
+          // Emit real-time notification to all connected dashboard SSE streams
+          defaultApprovalEventHub.emit({
+            type: 'ward_synced' as any,
+            ward: {
+              actorId: null,
+              fullName: null,
+              email: null,
+              picture: null,
+              isAuthenticated: false,
+              isLinked: false,
+            },
+          } as any);
+
+          response.statusCode = 200;
+          response.end(JSON.stringify({
+            success: true,
+            data: {
+              disconnected: true,
+              timestamp: new Date().toISOString(),
+            },
+          }));
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({
+            success: false,
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: err?.message || 'Failed to disconnect ward',
+              statusCode: 500,
+            },
+          }));
+        }
+      });
+      return;
+    }
+
     // 3f. Web Push VAPID Public Key Discovery (/api/v1/push/vapid-public-key)
     if (request.method === 'GET' && requestPath === '/api/v1/push/vapid-public-key') {
       applyCorsHeaders(response, request.headers.origin);

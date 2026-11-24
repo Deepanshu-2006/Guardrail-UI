@@ -417,7 +417,7 @@ const ambientAction: GuardrailAction = {
   type: ActionType.CLICK,
   timestamp: new Date().toISOString(),
   category: ActionCategory.DESTRUCTIVE,
-  element: { tagName: 'BUTTON', visibleText: 'Delete' },
+  element: { tagName: 'BUTTON', visibleText: 'Delete Account Permanently' },
   page: { url: 'https://third-party.example.org', title: 'Third Party' },
 };
 

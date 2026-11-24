@@ -32,6 +32,10 @@ export async function getStoredWardToken(): Promise<string | undefined> {
       // Storage unavailable or permission denied
     }
   }
+  if (typeof localStorage !== 'undefined') {
+    const local = localStorage.getItem('guardrailAuthToken') || localStorage.getItem('guardrail_ward_auth_token');
+    if (local && local.trim()) return local.trim();
+  }
 
   return undefined;
 }
@@ -43,6 +47,9 @@ export async function setStoredWardToken(token: string): Promise<void> {
       chrome.storage.local.set({ guardrailAuthToken: clean }, () => resolve());
     });
   }
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('guardrailAuthToken', clean);
+  }
 }
 
 export async function clearStoredWardToken(): Promise<void> {
@@ -51,6 +58,10 @@ export async function clearStoredWardToken(): Promise<void> {
       chrome.storage.local.remove(['guardrailAuthToken'], () => resolve());
     });
   }
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('guardrailAuthToken');
+    localStorage.removeItem('guardrail_ward_auth_token');
+  }
 }
 
 /**
@@ -58,9 +69,16 @@ export async function clearStoredWardToken(): Promise<void> {
  */
 export async function signOutWard(): Promise<void> {
   await clearStoredWardToken();
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem('guardrailActiveContacts');
+    } catch {}
+  }
   if (typeof chrome !== 'undefined' && chrome.storage?.local) {
     await new Promise<void>((resolve) => {
-      chrome.storage.local.set({ guardrailWardLoggedOut: 'true' }, () => resolve());
+      chrome.storage.local.remove(['guardrailActiveContacts'], () => {
+        chrome.storage.local.set({ guardrailWardLoggedOut: 'true' }, () => resolve());
+      });
     });
   }
 }

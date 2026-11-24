@@ -377,8 +377,10 @@ export class DashboardShell {
           if (event?.data) {
             const parsed = JSON.parse(event.data);
             if (parsed.ward) {
-              const { actorId, fullName, email, isAuthenticated } = parsed.ward;
-              this.applyAuthoritativeWard(actorId, fullName, email, isAuthenticated);
+              const { actorId, fullName, email, isAuthenticated, isLinked } = parsed.ward;
+              const effectiveAuth = isLinked !== false && isAuthenticated !== false && Boolean(actorId);
+              this.applyAuthoritativeWard(effectiveAuth ? actorId : null, effectiveAuth ? fullName : null, effectiveAuth ? email : null, effectiveAuth);
+              void this.fetchRelationships({ isBackground: true });
               return;
             }
           }
@@ -1917,30 +1919,39 @@ export class DashboardShell {
         if (effectiveWardName) localStorage.setItem('guardrail_assigned_ward_name', effectiveWardName);
         if (effectiveWardEmail) localStorage.setItem('guardrail_assigned_ward_email', effectiveWardEmail);
       }
+      this.state.connectedUsers = [
+        {
+          id: effectiveWardId,
+          userId: effectiveWardId,
+          wardId: effectiveWardId,
+          wardName: effectiveWardName,
+          wardEmail: effectiveWardEmail,
+          status: 'ACTIVE',
+          relationshipLabel: 'Designated Caretaker',
+          createdAt: new Date().toISOString(),
+        } as any,
+      ];
+      this.state.connectedUsersStatus = 'idle';
     } else {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem('guardrail_assigned_ward_id');
         localStorage.removeItem('guardrail_assigned_ward_name');
         localStorage.removeItem('guardrail_assigned_ward_email');
       }
+      this.state.connectedUsers = [];
+      this.state.connectedUsersStatus = 'empty';
+      this.state.wardPolicySummary = null;
+      this.state.wardPolicyStatus = 'empty';
     }
 
     const prev = this.state.contactProfile;
     if (prev) {
-      const isSame =
-        prev.assignedWardId === effectiveWardId &&
-        prev.assignedWardName === effectiveWardName &&
-        prev.assignedWardEmail === effectiveWardEmail;
-
-      if (isSame && !this.isPollingHaltedDueToAuth) {
-        return;
-      }
-
       this.state.contactProfile = {
         ...prev,
         assignedWardId: effectiveWardId,
         assignedWardName: effectiveWardName,
         assignedWardEmail: effectiveWardEmail,
+        relationshipLabel: effectiveWardId ? 'Designated Caretaker' : undefined,
       };
     }
 
@@ -2873,8 +2884,7 @@ export class DashboardShell {
           type: 'success',
           text: `Trusted contact relationship with ${trimmedId} has been revoked. They can no longer evaluate browser actions.`,
         };
-        await this.fetchRelationships({ isBackground: true });
-        this.render();
+        await this.disconnectWard();
         return { success: true };
       } else {
         const errorMsg = res.error.message || 'Failed to revoke trusted contact.';
@@ -3168,27 +3178,56 @@ export class DashboardShell {
   }
 
   /**
-   * Unlinks the active ward relationship from the trusted contact portal.
+   * Unlinks the active ward relationship from the trusted contact portal and backend.
    */
-  public disconnectWard(): void {
+  public async disconnectWard(): Promise<void> {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('guardrail_assigned_ward_id');
+      localStorage.removeItem('guardrail_assigned_ward_name');
+      localStorage.removeItem('guardrail_assigned_ward_email');
     }
+    const currentWardId = this.state.contactProfile?.assignedWardId;
     if (this.state.contactProfile) {
       this.state.contactProfile = {
         ...this.state.contactProfile,
         assignedWardId: undefined,
+        assignedWardName: undefined,
+        assignedWardEmail: undefined,
         relationshipLabel: undefined,
       };
-      this.state.wardPolicySummary = null;
-      this.state.wardPolicyStatus = 'empty';
-      this.state.wardPolicyError = null;
-      this.state.relationshipActionMessage = {
-        type: 'info',
-        text: 'Ward relationship disconnected. Your review queue is now unlinked.',
-      };
-      this.render();
     }
+    this.state.connectedUsers = [];
+    this.state.connectedUsersStatus = 'empty';
+    this.state.wardPolicySummary = null;
+    this.state.wardPolicyStatus = 'empty';
+    this.state.wardPolicyError = null;
+    this.state.relationshipActionMessage = {
+      type: 'info',
+      text: 'Ward relationship disconnected. Your review queue is now unlinked.',
+    };
+    this.render();
+
+    try {
+      const baseUrl = typeof (this.apiClient as any)?.getBaseUrl === 'function'
+        ? (this.apiClient as any).getBaseUrl()
+        : 'http://localhost:3000';
+      const token = typeof (this.apiClient as any)?.getToken === 'function'
+        ? await (this.apiClient as any).getToken()
+        : (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null);
+
+      await fetch(`${baseUrl}/api/v1/ward/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ wardId: currentWardId }),
+      });
+    } catch (err) {
+      console.warn('[Dashboard] Disconnect ward request error:', err);
+    }
+    await this.fetchRelationships({ isBackground: true });
+    this.render();
   }
 
   /**

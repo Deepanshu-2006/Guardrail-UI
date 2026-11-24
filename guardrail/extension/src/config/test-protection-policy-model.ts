@@ -240,7 +240,7 @@ async function runTestSuite(): Promise<void> {
     const mergeRes = mergeConfigWithDefaults(partialConfig);
     assertEquals(mergeRes.healthStatus, ConfigHealthStatus.DEGRADED, 'Partial config results in DEGRADED health status');
     assertEquals(mergeRes.config.thresholds.lowMax, 24, 'Missing thresholds filled with default lowMax');
-    assertEquals(mergeRes.config.policies.length, 6, 'Missing policies filled with default policies');
+    assertEquals(mergeRes.config.policies.length, DEFAULT_GUARDRAIL_POLICY_CONFIG.policies.length, 'Missing policies filled with default policies');
   }
 
   // ---------------------------------------------------------------------------

@@ -111,10 +111,17 @@ async function main(): Promise<void> {
         createdAt: now,
       };
 
-      db.prepare(`
-        INSERT OR REPLACE INTO trusted_contacts (id, user_id, status, created_at, payload_json)
-        VALUES (?, ?, 'ACTIVE', ?, ?)
-      `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS server_seed_meta (key TEXT PRIMARY KEY, value TEXT);
+      `);
+      const seeded = db.prepare("SELECT value FROM server_seed_meta WHERE key = 'initial_contact_seeded'").get();
+      if (!seeded) {
+        db.prepare(`
+          INSERT INTO trusted_contacts (id, user_id, status, created_at, payload_json)
+          VALUES (?, ?, 'ACTIVE', ?, ?)
+        `).run(defaultCaretakerId, defaultWardId, now, JSON.stringify(contactPayload));
+        db.prepare("INSERT INTO server_seed_meta (key, value) VALUES ('initial_contact_seeded', 'true')").run();
+      }
     }
   } catch (err) {
     console.warn('[serve-dev] Contact seed error:', err);

@@ -153,5 +153,48 @@ function wrapServiceWithEventHub(service: ApprovalService, pushService?: PushNot
     return cancelled;
   };
 
+  const origRevokeContact = service.revokeTrustedContact.bind(service);
+  service.revokeTrustedContact = (contactId, authContext) => {
+    const revoked = origRevokeContact(contactId, authContext);
+    if (revoked) {
+      try {
+        defaultApprovalEventHub.emit({
+          type: 'ward_synced' as any,
+          ward: {
+            actorId: null,
+            fullName: null,
+            email: null,
+            picture: null,
+            isAuthenticated: false,
+            isLinked: false,
+          },
+        } as any);
+      } catch (e) {
+        console.warn('[EventEmittingApprovalService] Failed to emit revoke contact event:', e);
+      }
+    }
+    return revoked;
+  };
+
+  const origAcceptInvitation = service.acceptInvitation.bind(service);
+  service.acceptInvitation = (code, authContext, contactInfo) => {
+    const result = origAcceptInvitation(code, authContext, contactInfo);
+    try {
+      defaultApprovalEventHub.emit({
+        type: 'ward_synced' as any,
+        ward: {
+          actorId: result.invitation.userId,
+          fullName: result.invitation.wardName || (result.invitation.userId.startsWith('usr_') ? result.invitation.userId.slice(4) : result.invitation.userId),
+          email: result.invitation.wardEmail,
+          isAuthenticated: true,
+          isLinked: true,
+        },
+      } as any);
+    } catch (e) {
+      console.warn('[EventEmittingApprovalService] Failed to emit accept invitation event:', e);
+    }
+    return result;
+  };
+
   return service;
 }

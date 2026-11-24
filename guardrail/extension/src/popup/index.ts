@@ -157,22 +157,7 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
       } catch {}
     }
   } else {
-    cachedContacts = [
-      {
-        id: 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b',
-        name: 'Deepanshu Khatri',
-        contactName: 'Deepanshu Khatri',
-        contactEmail: 'deepanshukhatri20061972@gmail.com',
-        contactAvatarUrl: DEEPANSHU_CLERK_AVATAR,
-        avatarUrl: DEEPANSHU_CLERK_AVATAR,
-        relationshipLabel: 'Designated Caretaker',
-      },
-    ];
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem('guardrailActiveContacts', JSON.stringify(cachedContacts));
-      } catch {}
-    }
+    cachedContacts = null;
   }
 
   // Render status into popup DOM - starts compact (360px) looking exactly like before
@@ -182,14 +167,18 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
     const primaryContact = cachedContacts[0];
     const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
     updatePopupToPairedState(primaryName, cachedContacts);
+  } else {
+    updatePopupToUnpairedState();
   }
 
   // Check guardian coverage (truthful caretaker link status)
   const coverage = await checkActiveGuardianCoverage();
-  if (coverage.isLinked) {
+  if (coverage.isLinked && coverage.contacts.length > 0) {
     const primaryContact = coverage.contacts[0];
     const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
     updatePopupToPairedState(primaryName, coverage.contacts);
+  } else {
+    updatePopupToUnpairedState();
   }
 
   setupPopupActions();
@@ -197,6 +186,9 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
 
   // Pre-load invitation & QR code in background so initial open cascade runs without network delay
   void loadOrGenerateInvitation();
+
+  // Continuous connection polling so changes from dashboard sync live
+  startConnectionPolling();
 }
 
 export interface ActiveGuardianContact {
@@ -217,8 +209,27 @@ async function checkActiveGuardianCoverage(): Promise<{
   contacts: ActiveGuardianContact[];
 }> {
   const env = resolveEnvironmentConfig();
-  const token = await getStoredWardToken();
-  if (!token) return { isLinked: false, contacts: [] };
+  let token = await getStoredWardToken();
+  if (!token) {
+    let isLoggedOut = false;
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const items = await new Promise<Record<string, unknown>>((resolve) => {
+        chrome.storage.local.get(['guardrailWardLoggedOut'], resolve);
+      });
+      isLoggedOut = Boolean(items.guardrailWardLoggedOut);
+    }
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('guardrailWardLoggedOut') === 'true') {
+      isLoggedOut = true;
+    }
+    if (isLoggedOut) {
+      return { isLinked: false, contacts: [] };
+    }
+    if (env.environment === 'development' || env.serviceType === 'live') {
+      token = 'test-ward-token';
+    } else {
+      return { isLinked: false, contacts: [] };
+    }
+  }
 
   try {
     const res = await fetch(`${env.apiBaseUrl}/api/v1/trusted-contacts`, {
@@ -228,7 +239,15 @@ async function checkActiveGuardianCoverage(): Promise<{
         Accept: 'application/json',
       },
     });
-    if (!res.ok) return { isLinked: false, contacts: [] };
+    if (!res.ok) {
+      if (typeof localStorage !== 'undefined') {
+        try { localStorage.removeItem('guardrailActiveContacts'); } catch {}
+      }
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        chrome.storage.local.remove(['guardrailActiveContacts']);
+      }
+      return { isLinked: false, contacts: [] };
+    }
     const body = (await res.json()) as { success: boolean; data?: any[] };
     const rawList = Array.isArray(body.data) ? body.data : [];
     const contacts: ActiveGuardianContact[] = rawList.map((c) => {
@@ -475,6 +494,53 @@ function updatePopupToPairedState(
 }
 
 /**
+ * Updates UI when Caretaker is unlinked / disconnected.
+ */
+function updatePopupToUnpairedState(): void {
+  const onboardingBanner = document.getElementById('onboarding-banner');
+  const onboardingTitle = document.getElementById('onboarding-status-title');
+  const onboardingDesc = document.getElementById('onboarding-status-desc');
+  const btnOpenOnboarding = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
+
+  if (onboardingBanner) onboardingBanner.className = 'onboarding-banner';
+  if (onboardingTitle) onboardingTitle.textContent = 'Caretaker Pairing';
+  savedDescBeforeOpen = 'Not Connected';
+  if (onboardingDesc) {
+    onboardingDesc.textContent = 'Not Connected';
+    onboardingDesc.classList.remove('is-pairing');
+  }
+  if (btnOpenOnboarding) {
+    if (document.body.classList.contains('pairing-open')) {
+      btnOpenOnboarding.textContent = 'Close ✕';
+    } else {
+      btnOpenOnboarding.textContent = 'Setup →';
+    }
+  }
+
+  renderActiveGuardians([]);
+
+  const liveStatus = document.getElementById('pairing-live-status');
+  if (liveStatus) {
+    liveStatus.style.display = '';
+    liveStatus.innerHTML = '';
+    liveStatus.className = 'pairing-live-status';
+  }
+  const pairingFooter = liveStatus?.closest('.pairing-footer') as HTMLElement | null;
+  if (pairingFooter) {
+    pairingFooter.style.display = '';
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem('guardrailActiveContacts');
+    } catch {}
+  }
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    chrome.storage.local.remove(['guardrailActiveContacts']);
+  }
+}
+
+/**
  * Renders currently connected guardians in the left pairing flyout.
  */
 function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
@@ -632,6 +698,7 @@ function setupPopupActions(): void {
       e.preventDefault();
       await signOutWard();
       renderWardAccountCard(null);
+      updatePopupToUnpairedState();
       await syncWardIdentityToBackend(null);
       const wardVal = document.getElementById('ext-ward-val');
       if (wardVal) wardVal.textContent = 'Unauthenticated';
@@ -1099,17 +1166,18 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
 }
 
 /**
- * Periodically polls the backend to detect when Caretaker accepts the code.
+ * Periodically polls the backend to detect caretaker link and unlink status changes.
  */
 function startConnectionPolling(): void {
   stopConnectionPolling();
   connectionPollingTimer = setInterval(() => {
     void checkActiveGuardianCoverage().then(({ isLinked, contacts }) => {
-      if (isLinked) {
+      if (isLinked && contacts.length > 0) {
         const primaryContact = contacts[0];
-        const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
+        const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
         updatePopupToPairedState(primaryName, contacts);
-        stopConnectionPolling();
+      } else {
+        updatePopupToUnpairedState();
       }
     });
   }, 2500);
