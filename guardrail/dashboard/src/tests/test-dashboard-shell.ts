@@ -4508,8 +4508,8 @@ async function runDashboardTests() {
     assert(cssContent.includes('.gd-detail-status-pill.approved::before'), 'Stylesheet provides non-color checkmark indicator for approval');
   }
 
-  // Test Suite 51: View Entrance Animation Play-Twice Limit & Reload Reset
-  console.log('\n▶ Test Suite 51: View Entrance Animation Play-Twice Limit & Reload Reset');
+  // Test Suite 51: View Entrance Animation Play on Every Navigation & Reload Reset
+  console.log('\n▶ Test Suite 51: View Entrance Animation Play on Every Navigation & Reload Reset');
   {
     const shell = new DashboardShell({
       container: testContainer,
@@ -4540,19 +4540,19 @@ async function runDashboardTests() {
     const pendingEl2 = rootElement.querySelector('#view-pending');
     assert(pendingEl2 !== null && pendingEl2.classList.contains('gd-view-initial-enter'), 'Pending section has gd-view-initial-enter on second visit');
 
-    // 51.5: Switching to overview a third time DOES NOT trigger animation (max 2 reached)
+    // 51.5: Switching to overview a third time triggers animation (no 2-times limitation)
     shell.setActiveView('overview');
-    assert(shell.getViewEntranceCount('overview') === 2, 'Overview entrance count capped at 2');
+    assert(shell.getViewEntranceCount('overview') === 3, 'Overview entrance count is 3 on third visit');
     const overviewEl3 = rootElement.querySelector('#view-overview');
-    assert(overviewEl3 !== null && !overviewEl3.classList.contains('gd-view-initial-enter'), 'Overview section renders statically without gd-view-initial-enter on 3rd visit');
+    assert(overviewEl3 !== null && overviewEl3.classList.contains('gd-view-initial-enter'), 'Overview section triggers gd-view-initial-enter on 3rd visit');
 
-    // 51.6: Switching to pending a third time DOES NOT trigger animation (max 2 reached)
+    // 51.6: Switching to pending a third time triggers animation (no 2-times limitation)
     shell.setActiveView('pending');
-    assert(shell.getViewEntranceCount('pending') === 2, 'Pending entrance count capped at 2');
+    assert(shell.getViewEntranceCount('pending') === 3, 'Pending entrance count is 3 on third visit');
     const pendingEl3 = rootElement.querySelector('#view-pending');
-    assert(pendingEl3 !== null && !pendingEl3.classList.contains('gd-view-initial-enter'), 'Pending section renders statically without gd-view-initial-enter on 3rd visit');
+    assert(pendingEl3 !== null && pendingEl3.classList.contains('gd-view-initial-enter'), 'Pending section triggers gd-view-initial-enter on 3rd visit');
 
-    // 51.7: History and Settings can still trigger their 2 allowed animations
+    // 51.7: History and Settings can still trigger their allowed animations
     shell.setActiveView('history');
     assert(shell.getViewEntranceCount('history') === 1, 'History entrance count is 1 on first visit');
     const historyEl = rootElement.querySelector('#view-history');
@@ -4563,7 +4563,7 @@ async function runDashboardTests() {
     const settingsEl = rootElement.querySelector('#view-settings');
     assert(settingsEl !== null && settingsEl.classList.contains('gd-view-initial-enter'), 'Settings section has gd-view-initial-enter on first visit');
 
-    // 51.8: Resetting counts (simulating browser reload) allows animations to trigger twice again
+    // 51.8: Resetting counts (simulating browser reload) allows animations to trigger again
     shell.resetViewEntranceCounts();
     assert(shell.getViewEntranceCount('overview') === 0, 'Counters reset to 0 on reload reset');
     assert(shell.getViewEntranceCount('pending') === 0, 'Pending counter reset to 0 on reload reset');

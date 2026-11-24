@@ -1219,13 +1219,6 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
     revealCards.forEach((el) => {
       if (el.classList.contains('is-revealed')) return;
 
-      // Special handling for Recent Activity:
-      // The heading is always visible initially, but its list/placeholder items
-      // only reveal and render with cascade animation when the user scrolls down.
-      if (el.id === 'gd-overview-recent-activity' && !hasScrolledDown) {
-        return;
-      }
-
       if (typeof el.getBoundingClientRect === 'function') {
         const rect = el.getBoundingClientRect();
         // Ignore unrendered/zero-dimension elements
@@ -1252,10 +1245,6 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
           (entries, obs) => {
             entries.forEach((entry) => {
               if (entry.isIntersecting) {
-                // If it's recent activity and user hasn't scrolled down yet, wait for scroll event
-                if (entry.target.id === 'gd-overview-recent-activity' && !hasScrolledDown) {
-                  return;
-                }
                 entry.target.classList.add('is-revealed');
                 obs.unobserve(entry.target);
               }

@@ -223,20 +223,6 @@ export class DashboardShell {
    * Initializes the dashboard shell in the DOM.
    */
   private init(): void {
-    if (this.autoFetch && this.apiClient) {
-      if (this.state.pendingRequests.length === 0) {
-        this.state.pendingStatus = 'loading';
-      }
-      if (this.state.connectedUsers.length === 0) {
-        this.state.connectedUsersStatus = 'loading';
-      }
-      if (this.state.invitations.length === 0) {
-        this.state.invitationsStatus = 'loading';
-      }
-      if (this.state.historyRequests.length === 0) {
-        this.state.historyStatus = 'loading';
-      }
-    }
     this.render();
     this.setupListeners();
     if (this.autoFetch && this.apiClient) {
@@ -690,12 +676,9 @@ export class DashboardShell {
       this.mainContentEl.appendChild(authBanner);
     }
 
-    // Play entrance animations once when each view is first opened/reloaded, never repeating on background polling
+    // Play entrance animations when view is opened/entered, never repeating on background polling
     const currentView = this.state.activeView;
     const isViewEntering = this.activeEnteringView === currentView;
-    if (isViewEntering) {
-      this.activeEnteringView = null;
-    }
 
     // View 1: Overview
     const overviewSection = renderOverview({
@@ -939,16 +922,11 @@ export class DashboardShell {
 
   /**
    * Starts an entrance animation window for a newly opened or reloaded view.
-   * Triggers at most twice per view per session, resetting upon page reload.
-   * Preserves gd-view-initial-enter across any rapid initial network fetches during this window,
-   * then removes it cleanly once completed so subsequent polling/re-renders stay completely static.
+   * Preserves gd-view-initial-enter across any initial network fetches during this window,
+   * then removes it cleanly once completed so subsequent background polling stays completely static.
    */
   private startViewEntrance(view: DashboardView): void {
     const count = this.viewEntranceCounts.get(view) ?? 0;
-    if (count >= DashboardShell.MAX_VIEW_ENTRANCE_ANIMATIONS) {
-      this.activeEnteringView = null;
-      return;
-    }
     this.viewEntranceCounts.set(view, count + 1);
 
     if (this.viewEnterTimer) {
@@ -964,7 +942,7 @@ export class DashboardShell {
         const enteringEls = this.mainContentEl.querySelectorAll('.gd-view-initial-enter');
         enteringEls.forEach((el) => el.classList.remove('gd-view-initial-enter'));
       }
-    }, 4200);
+    }, 2500);
   }
 
   /**
@@ -1016,7 +994,7 @@ export class DashboardShell {
 
     // When switching to pending view, refresh pending requests if autoFetch is enabled
     if (view === 'pending' && this.autoFetch && this.apiClient && this.state.pendingStatus !== 'loading') {
-      void this.fetchPendingRequests();
+      void this.fetchPendingRequests({ isBackground: true });
     }
     // When switching to history view, refresh decision history if autoFetch is enabled
     if (view === 'history' && this.autoFetch && this.apiClient && this.state.historyStatus !== 'loading') {

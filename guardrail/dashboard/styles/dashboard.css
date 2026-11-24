@@ -1076,203 +1076,308 @@ textarea:focus-visible,
   opacity: 0;
   transform: translateY(14px) scale(0.92);
   animation: gd-char-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(0.10s + var(--char-idx, 0) * 0.032s);
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.020s);
   white-space: pre;
 }
 
 /* 1. App-level entrance (Plays once on initial app load) */
 .gd-initial-load .gd-top-header {
-  animation: gd-render-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+  animation: gd-render-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both;
 }
 
 /* 2. View-level entrance (Plays once when each view is first opened, never on polling/re-renders) */
 .gd-view-section.gd-view-initial-enter .gd-section-header {
-  animation: gd-render-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.10s both;
+  animation: gd-render-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both;
 }
 
 .gd-view-section.gd-view-initial-enter .gd-section-subtitle {
-  animation: gd-render-in-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
+  animation: gd-render-in-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-protection-status-card {
-  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+/* Overview: Strict Top-to-Bottom Sequential Entrance */
+#view-overview.gd-view-initial-enter .gd-section-header {
+  animation: gd-render-in 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.02s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-protection-status-card .gd-protection-title {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+#view-overview.gd-view-initial-enter .gd-section-title .gd-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(14px) scale(0.92);
+  animation: gd-char-reveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation-delay: calc(0.04s + var(--char-idx, 0) * 0.020s) !important;
+  white-space: pre;
 }
-.gd-view-section.gd-view-initial-enter .gd-protection-status-card .gd-protection-badge {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-protection-status-card .gd-protection-desc {
-  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
-}
-
-/* Overview: Metrics Row (Sequential stagger with left-reveal values & narrative units) */
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-index {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.64s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-unit {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-desc {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+#view-overview.gd-view-initial-enter .gd-section-subtitle {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
+/* Overview: Service Protection Status Card (Top Alert/Banner) */
+#view-overview.gd-view-initial-enter .gd-protection-status-card {
+  animation: gd-render-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-index {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both;
+#view-overview.gd-view-initial-enter .gd-protection-status-card .gd-protection-title {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both;
+#view-overview.gd-view-initial-enter .gd-protection-status-card .gd-protection-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.78s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-unit {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-desc {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
+#view-overview.gd-view-initial-enter .gd-protection-status-card .gd-protection-desc {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both;
+/* Overview: Metrics Row (Sequential stagger rendering strictly one by one) */
+/* Metric Card 1: Assigned Wards */
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) {
+  animation: gd-render-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-index {
-  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-index {
+  animation: gd-render-in-left 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-label {
-  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-label {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-value {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-value {
+  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-desc {
-  animation: gd-render-in-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-unit {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
-
-/* Overview: Main Content Columns */
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-header {
-  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both;
-}
-
-/* Overview Pending Section: Empty State left-to-right icon & text */
-.gd-view-section.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-icon svg {
-  animation: gd-icon-svg-gleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.62s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-text {
-  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.20s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(1) .gd-metric-desc {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both !important;
 }
 
-/* Overview Pending Section: Action items */
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1),
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-card-alert-banner,
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-error-banner,
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-section .gd-overview-pending-skeleton {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.86s both;
+/* Metric Card 2: Pending Approvals */
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) {
+  animation: gd-render-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1) .gd-risk-badge {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.90s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-index {
+  animation: gd-render-in-left 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.58s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1) .gd-overview-pending-desc {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-label {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both !important;
 }
-
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-value {
+  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) .gd-risk-badge {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.02s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-unit {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) .gd-overview-pending-desc {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(2) .gd-metric-desc {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.74s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both;
+/* Metric Card 3: Protection Status */
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) {
+  animation: gd-render-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.70s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) .gd-risk-badge {
-  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.14s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-index {
+  animation: gd-render-in-left 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) .gd-overview-pending-desc {
-  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-label {
+  animation: gd-text-reveal-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both !important;
 }
-
-/* Overview: Recent Activity Section */
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-header {
-  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-value {
+  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.80s both !important;
 }
-
-/* Overview Recent Activity: Empty State */
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-icon {
-  animation: gd-icon-enter-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-icon svg {
-  animation: gd-icon-svg-gleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-title {
-  animation: gd-text-reveal-left 0.62s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both;
-}
-.gd-view-section.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-text {
-  animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both;
+#view-overview.gd-view-initial-enter .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-desc {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both !important;
 }
 
-/* Overview Recent Activity: Animations trigger when scrolled into view via #gd-overview-recent-activity.is-revealed */
-
-/* Overview: Right Column (Connect a Ward) */
-.gd-view-section.gd-view-initial-enter .gd-setup-header {
-  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.84s both;
+/* Overview: Middle Row (Left: Pending Approvals, Right: Active Ward Oversight or Connect Ward) */
+/* Left: Pending Approvals Section */
+#view-overview.gd-view-initial-enter #gd-overview-pending-section,
+#view-overview.gd-view-initial-enter .gd-overview-pending-section {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-header {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-icon {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-icon svg {
+  animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.96s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-title {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-empty-pending .gd-placeholder-text {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1),
+#view-overview.gd-view-initial-enter .gd-overview-pending-section .gd-card-alert-banner,
+#view-overview.gd-view-initial-enter .gd-overview-pending-section .gd-error-banner,
+#view-overview.gd-view-initial-enter .gd-overview-pending-section .gd-overview-pending-skeleton {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1) .gd-risk-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.96s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(1) .gd-overview-pending-desc {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.06s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) .gd-risk-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.10s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(2) .gd-overview-pending-desc {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.14s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) .gd-risk-badge {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-overview-pending-list > :nth-child(3) .gd-overview-pending-desc {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both;
+/* Right: Active Ward Oversight Card */
+#view-overview.gd-view-initial-enter #gd-active-ward-card {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  animation: gd-section-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-number {
-  animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both;
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-kicker {
+  animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.98s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-text {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-hero-name {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.02s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-hero-name .gd-char {
+  display: inline-block !important;
+  opacity: 0;
+  transform: translateY(115%);
+  animation: gd-name-char-scroll-up 0.48s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation-delay: calc(1.04s + var(--char-idx, 0) * 0.022s) !important;
+  white-space: pre;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-meta-line {
+  animation: gd-ward-slide-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-guarantee-note {
+  animation: gd-ward-slide-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.24s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-action-links {
+  animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.30s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.08s both;
+/* Right (Alternate): Connect a Ward Card */
+#view-overview.gd-view-initial-enter #gd-setup-card,
+#view-overview.gd-view-initial-enter .gd-setup-header {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.94s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-number {
-  animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.12s both;
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.00s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-text {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both;
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-number {
+  animation: gd-icon-enter-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-text {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.08s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.14s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-number {
+  animation: gd-icon-enter-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.18s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-text {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-number {
+  animation: gd-icon-enter-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.30s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-text {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.34s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-setup-form {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.38s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) {
-  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.22s both;
+/* Overview: Bottom Row (Left: Recent Activity / Decisions, Right: Decoupled Architecture Callout) */
+/* Left: Recent Activity Section */
+#view-overview.gd-view-initial-enter #gd-overview-recent-activity,
+#view-overview.gd-view-initial-enter .gd-recent-activity-card {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.36s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-number {
-  animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.26s both;
+#view-overview.gd-view-initial-enter .gd-recent-activity-header {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.36s both !important;
 }
-.gd-view-section.gd-view-initial-enter .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-text {
-  animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.32s both;
+#view-overview.gd-view-initial-enter #gd-overview-recent-activity .gd-recent-activity-list,
+#view-overview.gd-view-initial-enter #gd-overview-recent-activity .gd-placeholder,
+#view-overview.gd-view-initial-enter #gd-overview-recent-activity .gd-btn-view-all-history {
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-icon {
+  animation: gd-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 1.42s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-icon svg {
+  animation: gd-icon-svg-gleam 0.58s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-title {
+  animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-card .gd-placeholder .gd-placeholder-text {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.56s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.42s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title,
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-desc {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.46s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-meta {
+  animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title,
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-desc {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.54s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.58s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title,
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-desc {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.62s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(4) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.66s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-recent-activity-list > :nth-child(5) {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.74s both !important;
+}
+#view-overview.gd-view-initial-enter .gd-btn-view-all-history {
+  animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.80s both !important;
 }
 
-.gd-view-section.gd-view-initial-enter .gd-setup-form {
-  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.36s both;
+/* Right: Decoupled Architecture Callout */
+#view-overview.gd-view-initial-enter #gd-overview-callout,
+#view-overview.gd-view-initial-enter .gd-callout {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.40s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-overview-callout .gd-callout-title,
+#view-overview.gd-view-initial-enter .gd-callout .gd-callout-title {
+  animation: gd-text-reveal-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 1.44s both !important;
+}
+#view-overview.gd-view-initial-enter #gd-overview-callout .gd-callout-text,
+#view-overview.gd-view-initial-enter .gd-callout .gd-callout-text {
+  animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both !important;
 }
 
 /* Pending Approvals & History: Layout and Panels */
@@ -2218,207 +2323,208 @@ textarea:focus-visible,
 
 /* -----------------------------------------------------------------------------
    Overview View: Scroll-Triggered Reveal for Below-The-Fold Sections
+   Only active when NOT in initial entrance animation window
    ----------------------------------------------------------------------------- */
 
 /* 10. Overview Pending Approvals Section (when scrolled to) */
-#gd-overview-pending-section.is-revealed .gd-overview-pending-header {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-header {
   animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-icon {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-icon {
   animation: gd-icon-enter-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-icon svg {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-icon svg {
   animation: gd-icon-svg-gleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-title {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-title {
   animation: gd-text-reveal-left 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-text {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-empty-pending .gd-placeholder-text {
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) .gd-risk-badge {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) .gd-risk-badge {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) .gd-overview-pending-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(1) .gd-overview-pending-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) .gd-risk-badge {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) .gd-risk-badge {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) .gd-overview-pending-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(2) .gd-overview-pending-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) .gd-risk-badge {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) .gd-risk-badge {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
-#gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) .gd-overview-pending-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-pending-section.is-revealed .gd-overview-pending-list > :nth-child(3) .gd-overview-pending-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.48s both;
 }
 
 /* 11. Overview Recent Decisions / Activity (when scrolled to) */
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-header {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-header {
   animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-icon {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-icon {
   animation: gd-icon-enter-left 0.58s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-icon svg {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-icon svg {
   animation: gd-icon-svg-gleam 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-title {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-title {
   animation: gd-text-reveal-left 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-text {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-placeholder .gd-placeholder-text {
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
 /* Row 1 */
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-title,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-meta {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-recent-activity-meta {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text::before {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-icon,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-label,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(1) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
 
 /* Row 2 */
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-title,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-meta {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-recent-activity-meta {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text::before {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-icon,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-label,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(2) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
 }
 
 /* Row 3 */
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.46s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-title,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-meta {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-recent-activity-meta {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text::before {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-icon,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.60s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-label,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(3) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
 }
 
 /* Row 4 */
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-title,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-title,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.66s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-meta {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-recent-activity-meta {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.72s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text::before {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-icon,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.76s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-label,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(4) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
 }
 
 /* Row 5 */
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.78s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-title,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-desc {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-title,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-desc {
   animation: gd-text-reveal-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.82s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-meta {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-recent-activity-meta {
   animation: gd-render-in-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.88s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text::before {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-icon,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text::before {
   animation: gd-status-icon-enter-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.92s both;
 }
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label,
-#gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-label,
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-recent-activity-list > :nth-child(5) .gd-activity-status-text:not(:has(.gd-activity-status-label)) {
   animation: gd-text-reveal-left 0.56s cubic-bezier(0.16, 1, 0.3, 1) 1.04s both;
 }
 
-#gd-overview-recent-activity.is-revealed .gd-btn-view-all-history {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-recent-activity.is-revealed .gd-btn-view-all-history {
   animation: gd-render-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 1.15s both;
 }
 
 /* 12. Connect a Ward Card (when scrolled to) */
-#gd-setup-card.is-revealed .gd-setup-header {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-header {
   animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
-#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-number {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-number {
   animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
 }
-#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-text {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(1) .gd-step-text {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
-#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-number {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-number {
   animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.30s both;
 }
-#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-text {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(2) .gd-step-text {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
 }
-#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-number {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-number {
   animation: gd-icon-enter-left 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
-#gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-text {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-steps .gd-setup-step:nth-child(3) .gd-step-text {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
 }
-#gd-setup-card.is-revealed .gd-setup-form {
+#view-overview:not(.gd-view-initial-enter) #gd-setup-card.is-revealed .gd-setup-form {
   animation: gd-render-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
 }
 
-#gd-active-ward-card.is-revealed {
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed {
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
 
 /* 13. Decoupled Architecture Callout (when scrolled to) */
-#gd-overview-callout.is-revealed .gd-callout-title {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-callout.is-revealed .gd-callout-title {
   animation: gd-text-reveal-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
 }
-#gd-overview-callout.is-revealed .gd-callout-text {
+#view-overview:not(.gd-view-initial-enter) #gd-overview-callout.is-revealed .gd-callout-text {
   animation: gd-render-in 0.50s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
 }
 
@@ -3748,28 +3854,24 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------------
-   Active Ward Oversight: Side-Sliding Entrance & Character Scroll-Up Animation
+   Active Ward Oversight: Side-Sliding Entrance & Character Scroll-Up Animation (Scroll Reveal)
    ----------------------------------------------------------------------------- */
-#view-overview.gd-view-initial-enter #gd-active-ward-card,
-#gd-active-ward-card.is-revealed {
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed {
   opacity: 1 !important;
   pointer-events: auto !important;
   animation: gd-section-slide-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both !important;
 }
 
-#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-kicker,
-#gd-active-ward-card.is-revealed .gd-ward-kicker {
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-kicker {
   animation: gd-render-in-left 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
 }
 
-#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-hero-name,
-#gd-active-ward-card.is-revealed .gd-ward-hero-name {
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-hero-name {
   animation: gd-render-in-left 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
 /* Kinetic character-by-character bottom-to-up scrolling animation */
-#view-overview.gd-view-initial-enter .gd-ward-hero-name .gd-char,
-#gd-active-ward-card.is-revealed .gd-ward-hero-name .gd-char {
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-hero-name .gd-char {
   display: inline-block;
   opacity: 0;
   transform: translateY(115%);
@@ -3778,20 +3880,17 @@ textarea:focus-visible,
   white-space: pre;
 }
 
-#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-meta-line,
-#gd-active-ward-card.is-revealed .gd-ward-meta-line,
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-meta-line,
 #gd-active-ward-card.gd-card-animating-in .gd-ward-meta-line {
   animation: gd-ward-slide-left 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
 }
 
-#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-guarantee-note,
-#gd-active-ward-card.is-revealed .gd-ward-guarantee-note,
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-guarantee-note,
 #gd-active-ward-card.gd-card-animating-in .gd-ward-guarantee-note {
   animation: gd-ward-slide-left 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
 }
 
-#view-overview.gd-view-initial-enter #gd-active-ward-card .gd-ward-action-links,
-#gd-active-ward-card.is-revealed .gd-ward-action-links,
+#view-overview:not(.gd-view-initial-enter) #gd-active-ward-card.is-revealed .gd-ward-action-links,
 #gd-active-ward-card.gd-card-animating-in .gd-ward-action-links {
   animation: gd-ward-slide-left 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both;
 }
