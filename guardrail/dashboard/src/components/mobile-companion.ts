@@ -49,11 +49,59 @@ export interface MobileCompanionProps {
   onSignOut?: () => void;
 }
 
-function getGreetingPrefix(): string {
-  const hr = new Date().getHours();
-  if (hr < 12) return 'Good morning';
-  if (hr < 17) return 'Good afternoon';
-  return 'Good evening';
+interface GreetingMeta {
+  lead: string;
+  accent: string;
+  phaseLabel: string;
+  theme: 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night';
+  iconSvg: string;
+}
+
+function getRealTimeGreeting(now: Date = new Date()): GreetingMeta {
+  const hr = now.getHours();
+  if (hr >= 5 && hr < 8) {
+    return {
+      lead: 'Early',
+      accent: 'morning.',
+      phaseLabel: 'Dawn Watch',
+      theme: 'dawn',
+      iconSvg: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="m5.6 7.6 2.1 2.1"/><path d="m18.4 7.6-2.1 2.1"/><path d="M4 17h16"/><path d="M8 17a4 4 0 0 1 8 0"/><path d="M2 20h20" opacity="0.45"/></svg>`,
+    };
+  }
+  if (hr >= 8 && hr < 12) {
+    return {
+      lead: 'Good',
+      accent: 'morning.',
+      phaseLabel: 'Morning Brief',
+      theme: 'morning',
+      iconSvg: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`,
+    };
+  }
+  if (hr >= 12 && hr < 17) {
+    return {
+      lead: 'Good',
+      accent: 'afternoon.',
+      phaseLabel: 'Midday Guard',
+      theme: 'afternoon',
+      iconSvg: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v3"/><path d="M12 20v3"/><path d="M4.22 4.22l2.12 2.12"/><path d="M17.66 17.66l2.12 2.12"/><path d="M1 12h3"/><path d="M20 12h3"/></svg>`,
+    };
+  }
+  if (hr >= 17 && hr < 21) {
+    return {
+      lead: 'Good',
+      accent: 'evening.',
+      phaseLabel: 'Dusk Watch',
+      theme: 'evening',
+      iconSvg: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10V3"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 18a4 4 0 0 0-8 0"/></svg>`,
+    };
+  }
+  return {
+    lead: 'Quiet',
+    accent: 'night.',
+    phaseLabel: 'Night Watch',
+    theme: 'night',
+    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/></svg>`,
+  };
 }
 
 function getInitials(name?: string | null): string {
@@ -176,13 +224,39 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   main.className = 'gd-m-main';
 
   if (activeTab === 'queue') {
-    // Editorial Greeting
+    // Editorial Real-Time Greeting
+    const now = new Date();
+    const greeting = getRealTimeGreeting(now);
     const greetingBlock = document.createElement('section');
-    greetingBlock.className = 'gd-m-greeting';
+    greetingBlock.className = `gd-m-greeting theme-${greeting.theme}`;
+
+    const eyebrow = document.createElement('div');
+    eyebrow.className = 'gd-m-greet-eyebrow';
+
+    const clockText = document.createElement('span');
+    clockText.className = 'gd-m-greet-clock';
+    const dayStr = now.toLocaleDateString([], { weekday: 'short' }).toUpperCase();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    clockText.innerHTML = `<span class="gd-m-live-dot" aria-hidden="true"></span><span>${dayStr} · ${timeStr} · ${greeting.phaseLabel.toUpperCase()}</span>`;
+
+    const celestial = document.createElement('span');
+    celestial.className = 'gd-m-greet-celestial';
+    celestial.setAttribute('aria-hidden', 'true');
+    celestial.innerHTML = greeting.iconSvg;
+
+    eyebrow.appendChild(clockText);
+    eyebrow.appendChild(celestial);
 
     const greetTitle = document.createElement('h1');
     greetTitle.className = 'gd-m-greet-title';
-    greetTitle.textContent = getGreetingPrefix();
+    const leadSpan = document.createElement('span');
+    leadSpan.className = 'gd-m-greet-lead';
+    leadSpan.textContent = greeting.lead + ' ';
+    const accentEm = document.createElement('em');
+    accentEm.className = 'gd-m-greet-accent';
+    accentEm.textContent = greeting.accent;
+    greetTitle.appendChild(leadSpan);
+    greetTitle.appendChild(accentEm);
 
     const greetSub = document.createElement('p');
     greetSub.className = 'gd-m-greet-sub';
@@ -191,9 +265,18 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     } else if (filteredPending.length === 0) {
       greetSub.textContent = `All ${connectedWards.length || 1} protected wards are clear`;
     } else {
-      greetSub.textContent = `${filteredPending.length} ${filteredPending.length === 1 ? 'request' : 'requests'} awaiting your decision`;
+      const cntStrong = document.createElement('strong');
+      cntStrong.className = 'gd-m-greet-count';
+      cntStrong.textContent = String(filteredPending.length);
+      greetSub.appendChild(cntStrong);
+      greetSub.appendChild(
+        document.createTextNode(
+          ` ${filteredPending.length === 1 ? 'request' : 'requests'} awaiting your decision`
+        )
+      );
     }
 
+    greetingBlock.appendChild(eyebrow);
     greetingBlock.appendChild(greetTitle);
     greetingBlock.appendChild(greetSub);
     main.appendChild(greetingBlock);
