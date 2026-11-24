@@ -843,7 +843,7 @@ export class DashboardShell {
         this.setHistoryFilters({ ...this.state.historyFilters, wardId });
         this.setActiveView('history');
       },
-      onOpenWardsControl: () => this.openWardsControlModal(),
+      onOpenWardsControl: (fallbackWards) => this.openWardsControlModal(fallbackWards),
       onOpenAuth: () => this.openAuthModal(),
       onSelectPending: (id) => {
         this.setActiveView('pending');
@@ -2224,12 +2224,35 @@ export class DashboardShell {
   /**
    * Opens the Wards Control Center dialog for inspecting, filtering, and managing connected wards.
    */
-  public openWardsControlModal(): void {
+  public openWardsControlModal(fallbackWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[]): void {
     if (typeof document === 'undefined') return;
     this.closeWardsControlModal();
 
+    let wards = this.getConnectedWards();
+    if (wards.length === 0 && fallbackWards && fallbackWards.length > 0) {
+      wards = [...fallbackWards];
+    }
+    if (wards.length === 0 && this.state.contactProfile?.assignedWardId) {
+      wards = [{
+        id: this.state.contactProfile.assignedWardId,
+        name: this.state.contactProfile.assignedWardName || formatWardDisplayName(undefined, this.state.contactProfile.assignedWardId),
+        email: this.state.contactProfile.assignedWardEmail,
+        relationshipLabel: this.state.contactProfile.relationshipLabel,
+      }];
+    }
+    if (wards.length === 0 && typeof localStorage !== 'undefined') {
+      const storedId = localStorage.getItem('guardrail_assigned_ward_id');
+      if (storedId) {
+        wards = [{
+          id: storedId,
+          name: localStorage.getItem('guardrail_assigned_ward_name') || formatWardDisplayName(undefined, storedId),
+          email: localStorage.getItem('guardrail_assigned_ward_email') || undefined,
+        }];
+      }
+    }
+
     const modal = renderWardsControlModal({
-      connectedWards: this.getConnectedWards(),
+      connectedWards: wards,
       pendingRequests: this.state.pendingRequests,
       onClose: () => {
         this.closeWardsControlModal();

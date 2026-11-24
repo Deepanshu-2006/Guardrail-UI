@@ -39,7 +39,7 @@ export interface OverviewProps {
   onDisconnectWard?: (wardId?: string) => void;
   onFilterWardPending?: (wardId: string) => void;
   onFilterWardHistory?: (wardId: string) => void;
-  onOpenWardsControl?: () => void;
+  onOpenWardsControl?: (fallbackWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[]) => void;
   onRefresh?: () => void;
   onOpenAuth?: () => void;
   connectedWards?: readonly { id: string; name: string; email?: string; relationshipLabel?: string }[];
@@ -313,7 +313,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const triggerWardsModal = () => {
     if (props.onOpenWardsControl) {
-      props.onOpenWardsControl();
+      props.onOpenWardsControl(wardsList);
     } else {
       // Fallback self-contained handler for isolated overview renders
       document.querySelectorAll('#gd-wards-control-modal-root').forEach((el) => el.remove());

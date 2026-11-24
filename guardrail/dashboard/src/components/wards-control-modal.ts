@@ -1,9 +1,9 @@
 /**
  * Guardrail Trusted Contact Portal — Wards Control Center Modal
  *
- * Interactive popup modal launched from the Overview "01 / Wards" metric card
- * or account area to inspect, filter, manage, and selectively disconnect
- * protected wards linked to the caretaker account.
+ * Minimal editorial popup modal for inspecting, filtering, and controlling
+ * active wards linked to the caretaker account. Adheres to the Quiet Assurance
+ * aesthetic: zero pure-white fills, refined typography, and organic opening animation.
  */
 
 import { ApprovalRequest } from '../types.js';
@@ -54,7 +54,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   card.className = 'gd-wards-modal-card';
 
   // =========================================================================
-  // 1. HEADER SECTION
+  // 1. HEADER SECTION (Minimal, typography-driven)
   // =========================================================================
   const header = document.createElement('header');
   header.className = 'gd-wards-modal-header';
@@ -69,7 +69,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   titleIcon.className = 'gd-wards-modal-title-icon';
   titleIcon.setAttribute('aria-hidden', 'true');
   titleIcon.innerHTML = `
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
       <circle cx="9" cy="7" r="4"></circle>
       <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -90,21 +90,14 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   titleRow.appendChild(titleIcon);
   titleRow.appendChild(title);
   titleRow.appendChild(countBadge);
-
-  const subtitle = document.createElement('p');
-  subtitle.className = 'gd-wards-modal-subtitle';
-  subtitle.textContent =
-    'Inspect active ward connections, review pending approval queues, or manage caretaker relationships.';
-
   headerLeft.appendChild(titleRow);
-  headerLeft.appendChild(subtitle);
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'gd-wards-modal-close-btn';
   closeBtn.setAttribute('aria-label', 'Close wards control dialog');
   closeBtn.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
@@ -118,52 +111,43 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   card.appendChild(header);
 
   // =========================================================================
-  // 2. SUMMARY STRIP
+  // 2. SLEEK MINIMAL SUMMARY STRIP (No boxes, pure editorial typography)
   // =========================================================================
   const allPending = props.pendingRequests ?? [];
   const summaryStrip = document.createElement('div');
   summaryStrip.className = 'gd-wards-modal-summary-strip';
 
-  const stat1 = document.createElement('div');
+  const stat1 = document.createElement('span');
   stat1.className = 'gd-wards-summary-stat';
-  const stat1Label = document.createElement('span');
-  stat1Label.className = 'gd-wards-stat-label';
-  stat1Label.textContent = 'Active Wards';
-  const stat1Val = document.createElement('span');
-  stat1Val.className = 'gd-wards-stat-val';
-  stat1Val.textContent = String(wardCount);
-  stat1.appendChild(stat1Label);
-  stat1.appendChild(stat1Val);
+  stat1.textContent = `${wardCount} Connected`;
 
-  const stat2 = document.createElement('div');
-  stat2.className = 'gd-wards-summary-stat';
-  const stat2Label = document.createElement('span');
-  stat2Label.className = 'gd-wards-stat-label';
-  stat2Label.textContent = 'Pending Reviews';
-  const stat2Val = document.createElement('span');
-  stat2Val.className = `gd-wards-stat-val ${allPending.length > 0 ? 'gd-stat-warning' : ''}`;
-  stat2Val.textContent = String(allPending.length);
-  stat2.appendChild(stat2Label);
-  stat2.appendChild(stat2Val);
+  const statDivider1 = document.createElement('span');
+  statDivider1.className = 'gd-wards-stat-bullet';
+  statDivider1.textContent = '•';
 
-  const stat3 = document.createElement('div');
-  stat3.className = 'gd-wards-summary-stat';
-  const stat3Label = document.createElement('span');
-  stat3Label.className = 'gd-wards-stat-label';
-  stat3Label.textContent = 'Oversight Mode';
-  const stat3Val = document.createElement('span');
-  stat3Val.className = 'gd-wards-stat-val gd-stat-active';
-  stat3Val.textContent = 'Live Protection';
-  stat3.appendChild(stat3Label);
-  stat3.appendChild(stat3Val);
+  const stat2 = document.createElement('span');
+  stat2.className = `gd-wards-summary-stat ${allPending.length > 0 ? 'gd-stat-warning' : ''}`;
+  stat2.textContent = allPending.length > 0
+    ? `${allPending.length} Needs Review`
+    : 'All Clear';
+
+  const statDivider2 = document.createElement('span');
+  statDivider2.className = 'gd-wards-stat-bullet';
+  statDivider2.textContent = '•';
+
+  const stat3 = document.createElement('span');
+  stat3.className = 'gd-wards-summary-stat gd-stat-active';
+  stat3.textContent = 'Live Protection';
 
   summaryStrip.appendChild(stat1);
+  summaryStrip.appendChild(statDivider1);
   summaryStrip.appendChild(stat2);
+  summaryStrip.appendChild(statDivider2);
   summaryStrip.appendChild(stat3);
   card.appendChild(summaryStrip);
 
   // =========================================================================
-  // 3. WARDS LIST SECTION
+  // 3. MODAL BODY (No white boxes, open spatial rhythm)
   // =========================================================================
   const body = document.createElement('div');
   body.className = 'gd-wards-modal-body';
@@ -175,7 +159,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
     const emptyIcon = document.createElement('div');
     emptyIcon.className = 'gd-wards-empty-icon';
     emptyIcon.innerHTML = `
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
         <circle cx="9" cy="7" r="4"></circle>
         <line x1="17" y1="11" x2="23" y2="11"></line>
@@ -184,12 +168,11 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
     const emptyTitle = document.createElement('h3');
     emptyTitle.className = 'gd-wards-empty-title';
-    emptyTitle.textContent = 'No Wards Connected Yet';
+    emptyTitle.textContent = 'No Wards Connected';
 
     const emptyDesc = document.createElement('p');
     emptyDesc.className = 'gd-wards-empty-desc';
-    emptyDesc.textContent =
-      'Your caretaker portal is currently not linked to any active wards. Enter a pairing code below to connect your first ward.';
+    emptyDesc.textContent = 'Enter an 8-character pairing code below to link a ward.';
 
     emptyState.appendChild(emptyIcon);
     emptyState.appendChild(emptyTitle);
@@ -204,11 +187,10 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       wardCard.className = 'gd-ward-control-card';
       wardCard.setAttribute('data-ward-id', ward.id);
 
-      // Pending count for this specific ward
       const wardPending = allPending.filter((r) => r.requesterId === ward.id || (r as any).wardId === ward.id);
       const pendingCount = wardPending.length;
 
-      // Top row: Avatar + Identity + Status Chip
+      // Top row: Avatar + Identity + Queue Status Chip
       const topRow = document.createElement('div');
       topRow.className = 'gd-ward-control-top';
 
@@ -218,7 +200,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       const statusDot = document.createElement('span');
       statusDot.className = 'gd-ward-status-dot online';
-      statusDot.title = 'Connected and active';
+      statusDot.title = 'Active';
       avatar.appendChild(statusDot);
 
       const identityCol = document.createElement('div');
@@ -231,24 +213,19 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       nameEl.className = 'gd-ward-control-name';
       nameEl.textContent = formatWardDisplayName(ward.name, ward.id);
 
-      const badgeRel = document.createElement('span');
-      badgeRel.className = 'gd-ward-rel-badge';
-      badgeRel.textContent = ward.relationshipLabel || 'Protected Ward';
+      const idTag = document.createElement('span');
+      idTag.className = 'gd-ward-control-id-tag';
+      idTag.textContent = ward.id;
 
       nameRow.appendChild(nameEl);
-      nameRow.appendChild(badgeRel);
+      nameRow.appendChild(idTag);
 
       const emailEl = document.createElement('div');
       emailEl.className = 'gd-ward-control-email';
       emailEl.textContent = ward.email || 'Email not registered';
 
-      const idTag = document.createElement('span');
-      idTag.className = 'gd-ward-control-id-tag';
-      idTag.textContent = `ID: ${ward.id}`;
-
       identityCol.appendChild(nameRow);
       identityCol.appendChild(emailEl);
-      identityCol.appendChild(idTag);
 
       const queueStatus = document.createElement('div');
       queueStatus.className = 'gd-ward-queue-status';
@@ -268,7 +245,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       } else {
         const badgeText = document.createElement('span');
         badgeText.className = 'gd-badge-text';
-        badgeText.textContent = '✓ Queue All Clear';
+        badgeText.textContent = '✓ All Clear';
         pendingBadge.appendChild(badgeText);
       }
 
@@ -283,7 +260,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       const actionsRow = document.createElement('div');
       actionsRow.className = 'gd-ward-control-actions';
 
-      // Primary Action: Review or View History
+      // Primary Action: Review Approvals or View History
       const reviewBtn = document.createElement('button');
       reviewBtn.type = 'button';
       reviewBtn.className = pendingCount > 0 ? 'gd-ward-btn-primary' : 'gd-ward-btn-secondary';
@@ -291,7 +268,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       const reviewBtnText = document.createElement('span');
       reviewBtnText.textContent = pendingCount > 0
         ? `Review Approvals (${pendingCount})`
-        : 'View Decision History';
+        : 'View History';
 
       const reviewArrow = document.createElement('span');
       reviewArrow.className = 'gd-arrow';
@@ -310,11 +287,11 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
         }
       });
 
-      // Secondary Action: Disconnect Ward (with inline confirmation)
+      // Secondary Action: Disconnect Ward
       const disconnectBtn = document.createElement('button');
       disconnectBtn.type = 'button';
       disconnectBtn.className = 'gd-ward-btn-disconnect';
-      disconnectBtn.textContent = 'Disconnect Ward';
+      disconnectBtn.textContent = 'Disconnect';
 
       // Inline Confirmation container
       const confirmContainer = document.createElement('div');
@@ -323,7 +300,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
 
       const confirmPrompt = document.createElement('p');
       confirmPrompt.className = 'gd-ward-confirm-prompt';
-      confirmPrompt.textContent = `Disconnect ${formatWardDisplayName(ward.name, ward.id)}? Pending requests from this ward will be unlinked.`;
+      confirmPrompt.textContent = `Disconnect ${formatWardDisplayName(ward.name, ward.id)}?`;
 
       const confirmButtonsRow = document.createElement('div');
       confirmButtonsRow.className = 'gd-ward-confirm-buttons';
@@ -377,23 +354,18 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   }
 
   // =========================================================================
-  // 4. QUICK PAIR / CONNECT NEW WARD SECTION
+  // 3. QUICK PAIR / CONNECT NEW WARD SECTION (Minimal, unboxed)
   // =========================================================================
   const pairSection = document.createElement('div');
   pairSection.className = 'gd-wards-pair-section';
 
   const pairHeader = document.createElement('div');
   pairHeader.className = 'gd-wards-pair-header';
-  pairHeader.innerHTML = `
-    <h4 class="gd-wards-pair-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-      Pair Another Ward
-    </h4>
-    <p class="gd-wards-pair-desc">Enter the 8-character pairing code from the ward's extension to establish caretaker protection.</p>
-  `;
+
+  const pairTitle = document.createElement('h4');
+  pairTitle.className = 'gd-wards-pair-title';
+  pairTitle.textContent = '+ Pair Another Ward';
+  pairHeader.appendChild(pairTitle);
 
   const pairForm = document.createElement('form');
   pairForm.className = 'gd-wards-pair-form';
@@ -404,9 +376,9 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   const pairInput = document.createElement('input');
   pairInput.type = 'text';
   pairInput.className = 'gd-wards-pair-input';
-  pairInput.placeholder = 'e.g. WARD-9821';
+  pairInput.placeholder = 'PAIRING CODE (e.g. WARD-9821)';
   pairInput.maxLength = 12;
-  pairInput.setAttribute('aria-label', '8-character ward pairing code');
+  pairInput.setAttribute('aria-label', 'Ward pairing code');
   pairInput.autocomplete = 'off';
   pairInput.spellcheck = false;
 
@@ -431,7 +403,7 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
     e.preventDefault();
     const code = pairInput.value.trim().toUpperCase();
     if (!code) {
-      statusFeedback.textContent = 'Please enter a valid pairing code.';
+      statusFeedback.textContent = 'Please enter a pairing code.';
       statusFeedback.className = 'gd-wards-pair-feedback error';
       statusFeedback.style.display = 'block';
       return;
@@ -445,17 +417,17 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
       if (props.onConnectInvitation) {
         const result = await props.onConnectInvitation(code);
         if (result.success) {
-          statusFeedback.textContent = `Successfully connected to ward (${result.wardId || 'Active'})!`;
+          statusFeedback.textContent = `Connected successfully!`;
           statusFeedback.className = 'gd-wards-pair-feedback success';
           statusFeedback.style.display = 'block';
           pairInput.value = '';
         } else {
-          statusFeedback.textContent = result.error || 'Failed to connect ward. Check that the code is valid.';
+          statusFeedback.textContent = result.error || 'Failed to connect. Check code.';
           statusFeedback.className = 'gd-wards-pair-feedback error';
           statusFeedback.style.display = 'block';
         }
       } else {
-        statusFeedback.textContent = 'Invitation service unavailable.';
+        statusFeedback.textContent = 'Service unavailable.';
         statusFeedback.className = 'gd-wards-pair-feedback error';
         statusFeedback.style.display = 'block';
       }
