@@ -106,7 +106,11 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   avatarBtn.type = 'button';
   avatarBtn.className = 'gd-m-avatar-btn';
   avatarBtn.setAttribute('aria-label', 'Open account and settings');
-  avatarBtn.textContent = getInitials(profile?.actorId || 'DK');
+  if (profile?.isAuthenticated && profile.actorId && !/^usr_/i.test(profile.actorId)) {
+    avatarBtn.textContent = getInitials(profile.actorId);
+  } else {
+    avatarBtn.appendChild(createIcon('user'));
+  }
   avatarBtn.addEventListener('click', () => props.onSelectTab('settings'));
   topBar.appendChild(avatarBtn);
 
@@ -332,6 +336,11 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
 
         main.appendChild(list);
       }
+
+      const footerNote = document.createElement('div');
+      footerNote.className = 'gd-m-footer-note';
+      footerNote.textContent = `Separation of Duties Active · ${connectedWards.length || 1} Protected ${connectedWards.length === 1 ? 'Ward' : 'Wards'}`;
+      main.appendChild(footerNote);
     }
   } else if (activeTab === 'history') {
     const headerBlock = document.createElement('section');
@@ -530,10 +539,10 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   pillDock.className = 'gd-m-pill-dock';
   pillDock.setAttribute('aria-label', 'Mobile companion navigation');
 
-  const dockTabs: Array<{ id: MobileTab; label: string; icon: 'pending' | 'history' | 'overview' }> = [
-    { id: 'queue', label: 'Queue', icon: 'pending' },
+  const dockTabs: Array<{ id: MobileTab; label: string; icon: 'clock' | 'history' | 'users' }> = [
+    { id: 'queue', label: 'Queue', icon: 'clock' },
     { id: 'history', label: 'History', icon: 'history' },
-    { id: 'wards', label: 'Wards', icon: 'overview' },
+    { id: 'wards', label: 'Wards', icon: 'users' },
   ];
 
   dockTabs.forEach((t) => {
