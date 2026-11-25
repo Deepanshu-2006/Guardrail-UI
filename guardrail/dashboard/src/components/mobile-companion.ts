@@ -437,10 +437,10 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     }
   } else if (activeTab === 'history') {
     const headerBlock = document.createElement('section');
-    headerBlock.className = 'gd-m-greeting';
+    headerBlock.className = 'gd-m-page-header';
     headerBlock.innerHTML = `
-      <h1 class="gd-m-greet-title">Decision History</h1>
-      <p class="gd-m-greet-sub">${filteredHistory.length} recorded ${filteredHistory.length === 1 ? 'decision' : 'decisions'}</p>
+      <h1 class="gd-m-page-title">Decision History</h1>
+      <p class="gd-m-page-sub">${filteredHistory.length} recorded ${filteredHistory.length === 1 ? 'decision' : 'decisions'}</p>
     `;
     main.appendChild(headerBlock);
 
@@ -453,6 +453,11 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       `;
       main.appendChild(empty);
     } else {
+      const historyKicker = document.createElement('div');
+      historyKicker.className = 'gd-m-section-kicker';
+      historyKicker.textContent = `Recorded decisions (${filteredHistory.length})`;
+      main.appendChild(historyKicker);
+
       const list = document.createElement('div');
       list.className = 'gd-m-list';
       filteredHistory.slice(0, 25).forEach((req) => {
@@ -480,8 +485,16 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
 
         const rSub = document.createElement('div');
         rSub.className = 'gd-m-row-sub';
-        const ts = formatTimestamp(req.resolvedAt || req.createdAt);
-        rSub.textContent = `${wardName} · ${host} · ${ts}`;
+        const rawDate = req.resolvedAt || req.createdAt;
+        const ts = rawDate
+          ? new Date(rawDate).toLocaleString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : formatTimestamp(rawDate);
+        rSub.textContent = `${wardName.split(' ')[0]} · ${host} · ${ts}`;
 
         info.appendChild(rTitle);
         info.appendChild(rSub);
@@ -496,6 +509,11 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         list.appendChild(row);
       });
       main.appendChild(list);
+
+      const footerNote = document.createElement('div');
+      footerNote.className = 'gd-m-footer-note';
+      footerNote.textContent = 'Audit Log · Immutable Decision Record';
+      main.appendChild(footerNote);
     }
   } else if (activeTab === 'wards') {
     const headerBlock = document.createElement('section');
