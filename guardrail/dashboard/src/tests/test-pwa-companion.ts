@@ -705,6 +705,86 @@ async function runPwaCompanionTests() {
     (globalThis as any).window.location.search = prevSearch;
   }
 
+  // =========================================================================
+  // Suite 9: Ward Policy Viewer Sheet (in Wards Tab)
+  // =========================================================================
+  console.log('\n▶ Test Suite 9: Ward Policy Viewer Sheet (in Wards Tab)');
+  {
+    const { renderMobileCompanion } = await import('../components/mobile-companion.js');
+    let selectedTab = '';
+    let selectedWard = '';
+    const wardsView = renderMobileCompanion({
+      activeTab: 'wards',
+      profile: {
+        actorId: 'tc_dave',
+        assignedWardId: 'usr_alice',
+        assignedWardName: 'Alice Johnson',
+        isAuthenticated: true,
+      },
+      pendingRequests: [],
+      historyRequests: [],
+      connectedWards: [{ id: 'usr_alice', name: 'Alice Johnson', email: 'alice@example.com' }],
+      activeWardFilter: 'ALL',
+      isRefreshing: false,
+      isBackendUnavailable: false,
+      onSelectTab: (t) => {
+        selectedTab = t;
+      },
+      onSelectWardFilter: (w) => {
+        selectedWard = w;
+      },
+      onOpenRequestSheet: () => {},
+      onRefresh: () => {},
+      onOpenAuth: () => {},
+      onSignOut: () => {},
+      onLoadWardPolicy: async (wardId) => ({
+        summary: {
+          wardId,
+          policyVersion: '2.1.0',
+          schemaVersion: '1',
+          updatedAt: new Date().toISOString(),
+          overallStatus: 'ACTIVE',
+          sensitivityPreset: 'balanced',
+          stagingModeEnabled: true,
+          categoryProtections: {
+            destructiveActions: 'PROTECT',
+            boundaryGuards: 'PROTECT',
+            paymentActions: 'PROTECT',
+            sensitiveData: 'WARN',
+            externalNavigation: 'WARN',
+          },
+          relationship: { contactId: 'tc_dave', status: 'ACTIVE' },
+        },
+        auditHistory: [
+          {
+            id: 'aud_1',
+            wardId,
+            actorId: wardId,
+            changeType: 'POLICY_UPDATED',
+            summary: 'Enabled Payment Actions protection',
+            timestamp: new Date().toISOString(),
+          } as any,
+        ],
+      }),
+    });
+
+    const wardRow = wardsView.querySelector('.gd-m-row') as HTMLElement | null;
+    assert(wardRow !== null, 'Ward row renders in Wards tab');
+    wardRow?.click();
+
+    await new Promise((r) => setTimeout(r, 15));
+    const policySheet = (globalThis as any).document.body.querySelector('.gd-m-policy-sheet');
+    assert(policySheet !== null, 'Clicking ward row opens Ward Policy bottom sheet');
+    const sheetText = policySheet?.textContent || '';
+    assert(sheetText.includes('Protection ACTIVE'), 'Policy sheet displays active protection status');
+    assert(sheetText.includes('Destructive Actions'), 'Policy sheet displays category protection rules');
+    assert(sheetText.includes('Enabled Payment Actions protection'), 'Policy sheet displays policy audit log entry');
+
+    const queueBtn = policySheet?.querySelector('.gd-btn-approve-touch') as HTMLElement | null;
+    queueBtn?.click();
+    assert(selectedWard === 'usr_alice' && selectedTab === 'queue', 'Queue action filters to ward and switches to Queue tab');
+  }
+
   console.log('\n======================================================');
   console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
   console.log('======================================================\n');

@@ -701,6 +701,7 @@ export class DashboardShell {
         onSubscribePush: () => this.handleSubscribePush(),
         onUnsubscribePush: () => this.handleUnsubscribePush(),
         onSendTestPush: () => this.handleSendTestPush(),
+        onLoadWardPolicy: (wardId) => this.fetchWardPolicyForMobile(wardId),
       });
       this.rootContainer.appendChild(mobileView);
       if (this.pendingDeepLinkRequestId && this.state.pendingRequests.some((r) => r.id === this.pendingDeepLinkRequestId)) {
@@ -3098,6 +3099,79 @@ export class DashboardShell {
         }
       }
     });
+  }
+
+  /**
+   * Loads ward protection policy summary & audit history for the mobile Wards policy sheet.
+   */
+  private async fetchWardPolicyForMobile(wardId: string): Promise<{
+    summary: import('./types.js').TrustedContactPolicySummary | null;
+    auditHistory: PolicyAuditRecord[] | null;
+    auditRestricted?: boolean;
+    error?: string | null;
+  }> {
+    if (!this.apiClient) {
+      return {
+        summary: this.state.wardPolicySummary?.wardId === wardId ? this.state.wardPolicySummary : null,
+        auditHistory: this.state.wardPolicyAuditHistory ?? null,
+      };
+    }
+
+    let summary: import('./types.js').TrustedContactPolicySummary | null = null;
+    let auditHistory: PolicyAuditRecord[] | null = null;
+    let auditRestricted = false;
+    let error: string | null = null;
+
+    try {
+      const res = await this.apiClient.getUserPolicy(wardId);
+      if (res.success && res.data) {
+        if (res.data.viewType === 'TRUSTED_CONTACT_SUMMARY') {
+          summary = res.data.summary;
+        } else if (res.data.viewType === 'WARD_FULL_POLICY') {
+          const full = res.data.config;
+          summary = {
+            wardId,
+            policyVersion: full.policyVersion,
+            schemaVersion: full.schemaVersion,
+            updatedAt: full.updatedAt,
+            overallStatus: 'ACTIVE',
+            sensitivityPreset: 'balanced',
+            stagingModeEnabled: true,
+            categoryProtections: {
+              destructiveActions: (full.policies.find((p) => p.id === 'POLICY_CONTROLLED_DESTRUCTIVE')?.decision as any) ?? 'PROTECT',
+              paymentActions: (full.policies.find((p) => p.id === 'POLICY_CONTROLLED_PAYMENT')?.decision as any) ?? 'PROTECT',
+              boundaryGuards: (full.policies.find((p) => p.id === 'POLICY_UNSUPPORTED_BOUNDARY_GUARD')?.decision as any) ?? 'PROTECT',
+              sensitiveData: (full.policies.find((p) => p.id === 'POLICY_AUTHENTICATION_BOUNDARY')?.decision as any) ?? 'WARN',
+              externalNavigation: (full.policies.find((p) => p.id === 'POLICY_EXTERNAL_NAVIGATION')?.decision as any) ?? 'WARN',
+            },
+            relationship: {
+              contactId: this.state.contactProfile?.actorId ?? 'contact',
+              relationshipLabel: this.state.contactProfile?.relationshipLabel,
+              status: 'ACTIVE',
+            },
+          };
+        }
+      } else if (!res.success) {
+        error = res.error?.message || 'Unable to load ward policy.';
+      }
+    } catch {
+      error = 'Unable to reach policy service.';
+    }
+
+    if (typeof this.apiClient.getPolicyAuditHistory === 'function') {
+      try {
+        const auditRes = await this.apiClient.getPolicyAuditHistory(wardId);
+        if (auditRes.success) {
+          auditHistory = auditRes.data;
+        } else {
+          auditRestricted = true;
+        }
+      } catch {
+        auditRestricted = true;
+      }
+    }
+
+    return { summary, auditHistory, auditRestricted, error };
   }
 
   /**

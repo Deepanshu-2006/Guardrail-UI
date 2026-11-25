@@ -7487,6 +7487,119 @@ textarea:focus-visible,
   flex-shrink: 0;
 }
 
+.gd-m-policy-sheet {
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.gd-m-policy-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gd-m-policy-loading {
+  padding: 18px 12px;
+  text-align: center;
+  color: #55614E;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.gd-m-policy-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gd-m-policy-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(31, 41, 26, 0.08);
+  color: #2B3823;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gd-m-policy-pill.active {
+  background: rgba(31, 84, 48, 0.14);
+  color: #1F5430;
+}
+
+.gd-m-policy-pill.paused {
+  background: rgba(154, 52, 18, 0.12);
+  color: #9A3412;
+}
+
+.gd-m-policy-rules .gd-m-setting-item {
+  padding: 11px 0;
+}
+
+.gd-m-policy-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gd-m-policy-badge.protect {
+  background: rgba(31, 84, 48, 0.14);
+  color: #1F5430;
+}
+
+.gd-m-policy-badge.warn {
+  background: rgba(180, 83, 9, 0.14);
+  color: #92400E;
+}
+
+.gd-m-policy-badge.allow {
+  background: rgba(31, 41, 26, 0.08);
+  color: #46533F;
+}
+
+.gd-m-policy-note {
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(31, 41, 26, 0.05);
+  color: #55614E;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.gd-m-policy-audit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-m-policy-audit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(31, 41, 26, 0.05);
+}
+
+.gd-m-policy-audit-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1F291A;
+}
+
+.gd-m-policy-audit-time {
+  font-size: 11.5px;
+  color: #55614E;
+  white-space: nowrap;
+}
+
 .gd-m-page-header {
   display: flex;
   flex-direction: column;
@@ -13593,6 +13706,119 @@ article.gd-card-collapsed,
   flex-shrink: 0;
 }
 
+.gd-m-policy-sheet {
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.gd-m-policy-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gd-m-policy-loading {
+  padding: 18px 12px;
+  text-align: center;
+  color: #55614E;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.gd-m-policy-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gd-m-policy-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(31, 41, 26, 0.08);
+  color: #2B3823;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gd-m-policy-pill.active {
+  background: rgba(31, 84, 48, 0.14);
+  color: #1F5430;
+}
+
+.gd-m-policy-pill.paused {
+  background: rgba(154, 52, 18, 0.12);
+  color: #9A3412;
+}
+
+.gd-m-policy-rules .gd-m-setting-item {
+  padding: 11px 0;
+}
+
+.gd-m-policy-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gd-m-policy-badge.protect {
+  background: rgba(31, 84, 48, 0.14);
+  color: #1F5430;
+}
+
+.gd-m-policy-badge.warn {
+  background: rgba(180, 83, 9, 0.14);
+  color: #92400E;
+}
+
+.gd-m-policy-badge.allow {
+  background: rgba(31, 41, 26, 0.08);
+  color: #46533F;
+}
+
+.gd-m-policy-note {
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(31, 41, 26, 0.05);
+  color: #55614E;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.gd-m-policy-audit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-m-policy-audit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(31, 41, 26, 0.05);
+}
+
+.gd-m-policy-audit-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1F291A;
+}
+
+.gd-m-policy-audit-time {
+  font-size: 11.5px;
+  color: #55614E;
+  white-space: nowrap;
+}
+
 .gd-m-page-header {
   display: flex;
   flex-direction: column;
@@ -19200,6 +19426,119 @@ article.gd-card-collapsed,
 
 .gd-m-offline-banner svg {
   flex-shrink: 0;
+}
+
+.gd-m-policy-sheet {
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.gd-m-policy-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gd-m-policy-loading {
+  padding: 18px 12px;
+  text-align: center;
+  color: #55614E;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.gd-m-policy-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gd-m-policy-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(31, 41, 26, 0.08);
+  color: #2B3823;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gd-m-policy-pill.active {
+  background: rgba(31, 84, 48, 0.14);
+  color: #1F5430;
+}
+
+.gd-m-policy-pill.paused {
+  background: rgba(154, 52, 18, 0.12);
+  color: #9A3412;
+}
+
+.gd-m-policy-rules .gd-m-setting-item {
+  padding: 11px 0;
+}
+
+.gd-m-policy-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gd-m-policy-badge.protect {
+  background: rgba(31, 84, 48, 0.14);
+  color: #1F5430;
+}
+
+.gd-m-policy-badge.warn {
+  background: rgba(180, 83, 9, 0.14);
+  color: #92400E;
+}
+
+.gd-m-policy-badge.allow {
+  background: rgba(31, 41, 26, 0.08);
+  color: #46533F;
+}
+
+.gd-m-policy-note {
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(31, 41, 26, 0.05);
+  color: #55614E;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.gd-m-policy-audit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-m-policy-audit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(31, 41, 26, 0.05);
+}
+
+.gd-m-policy-audit-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1F291A;
+}
+
+.gd-m-policy-audit-time {
+  font-size: 11.5px;
+  color: #55614E;
+  white-space: nowrap;
 }
 
 .gd-m-page-header {
