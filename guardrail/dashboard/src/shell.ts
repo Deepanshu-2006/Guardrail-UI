@@ -590,6 +590,12 @@ export class DashboardShell {
         onConnectWard: (this.apiClient || this.isMockService()) ? (code) => this.connectInvitation(code) : undefined,
         onOpenAuth: () => this.openAuthModal(),
         onSignOut: () => this.handleSignOut(),
+        pushStatus: this.state.pushStatus,
+        isSubscribingPush: this.state.isSubscribingPush,
+        pushActionMessage: this.state.pushActionMessage,
+        onSubscribePush: () => this.handleSubscribePush(),
+        onUnsubscribePush: () => this.handleUnsubscribePush(),
+        onSendTestPush: () => this.handleSendTestPush(),
       });
       this.rootContainer.appendChild(mobileView);
       return;

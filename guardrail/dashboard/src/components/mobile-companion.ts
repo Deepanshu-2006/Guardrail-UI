@@ -48,6 +48,17 @@ export interface MobileCompanionProps {
   onConnectWard?: (code: string) => Promise<{ success: boolean; message?: string }>;
   onOpenAuth?: () => void;
   onSignOut?: () => void;
+  pushStatus?: {
+    readonly isSupported: boolean;
+    readonly permission: NotificationPermission | 'unsupported';
+    readonly isSubscribed: boolean;
+    readonly vapidConfigured?: boolean;
+  };
+  isSubscribingPush?: boolean;
+  pushActionMessage?: string | null;
+  onSubscribePush?: () => Promise<void> | void;
+  onUnsubscribePush?: () => Promise<void> | void;
+  onSendTestPush?: () => Promise<void> | void;
 }
 
 function getInitials(name?: string | null): string {
@@ -253,6 +264,117 @@ function openHistoryDetailSheet(
   sheet.appendChild(topRow);
   sheet.appendChild(actionBlock);
   sheet.appendChild(metaList);
+  sheet.appendChild(actions);
+
+  overlay.appendChild(backdrop);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+}
+
+const NOTIF_DISMISS_KEY = 'gd_m_notif_prompt_dismissed';
+let hasShownNotifPromptInSession = false;
+
+function openNotificationPromptSheet(
+  onEnable: () => Promise<void> | void
+): void {
+  if (document.querySelector('.gd-m-notif-sheet-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gd-sheet-portal gd-m-notif-sheet-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Enable push notifications');
+
+  const dismiss = (remember: boolean) => {
+    if (remember) {
+      try {
+        window.localStorage?.setItem(NOTIF_DISMISS_KEY, '1');
+      } catch {
+        // Ignore storage errors
+      }
+    }
+    overlay.remove();
+    document.removeEventListener('keydown', onKeyDown);
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') dismiss(true);
+  };
+  document.addEventListener('keydown', onKeyDown);
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'gd-sheet-backdrop';
+  backdrop.addEventListener('click', () => dismiss(true));
+
+  const sheet = document.createElement('div');
+  sheet.className = 'gd-mobile-action-sheet gd-m-audit-sheet';
+
+  const handle = document.createElement('div');
+  handle.className = 'gd-sheet-drag-handle';
+  handle.setAttribute('aria-hidden', 'true');
+
+  const topRow = document.createElement('div');
+  topRow.className = 'gd-m-audit-top';
+
+  const bellWrap = document.createElement('div');
+  bellWrap.className = 'gd-m-audit-verdict';
+  bellWrap.innerHTML = `
+    <span class="gd-m-notif-icon" aria-hidden="true">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+    </span>
+    <div class="gd-m-audit-verdict-copy">
+      <div class="gd-m-audit-verdict-title" style="color:#141B11;">Enable Alerts</div>
+      <div class="gd-m-audit-verdict-time">Real-time lock-screen approvals</div>
+    </div>
+  `;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'gd-sheet-btn-close';
+  closeBtn.setAttribute('aria-label', 'Dismiss notification prompt');
+  closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  closeBtn.addEventListener('click', () => dismiss(true));
+
+  topRow.appendChild(bellWrap);
+  topRow.appendChild(closeBtn);
+
+  const copyBlock = document.createElement('div');
+  copyBlock.className = 'gd-m-audit-action';
+  copyBlock.style.borderBottom = 'none';
+  copyBlock.innerHTML = `
+    <p class="gd-m-audit-reason" style="margin:0;color:#2B3823;font-size:14.5px;line-height:1.5;">
+      Get notified immediately when a protected ward requests approval, so you can review and decide right from your phone.
+    </p>
+  `;
+
+  const actions = document.createElement('div');
+  actions.className = 'gd-sheet-actions';
+
+  const enableBtn = document.createElement('button');
+  enableBtn.type = 'button';
+  enableBtn.className = 'gd-btn-approve-touch';
+  enableBtn.textContent = 'Allow Notifications';
+  enableBtn.addEventListener('click', async () => {
+    enableBtn.disabled = true;
+    enableBtn.textContent = 'Enabling…';
+    try {
+      await onEnable();
+    } finally {
+      dismiss(true);
+    }
+  });
+
+  const laterBtn = document.createElement('button');
+  laterBtn.type = 'button';
+  laterBtn.className = 'gd-m-notif-later-btn';
+  laterBtn.textContent = 'Not Now';
+  laterBtn.addEventListener('click', () => dismiss(true));
+
+  actions.appendChild(enableBtn);
+  actions.appendChild(laterBtn);
+
+  sheet.appendChild(handle);
+  sheet.appendChild(topRow);
+  sheet.appendChild(copyBlock);
   sheet.appendChild(actions);
 
   overlay.appendChild(backdrop);
@@ -758,6 +880,18 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
 
     const card = document.createElement('div');
     card.className = 'gd-m-settings-list';
+    const pushSupported = props.pushStatus?.isSupported ?? (typeof Notification !== 'undefined');
+    const pushPerm = props.pushStatus?.permission ?? (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
+    const isSubscribed = Boolean(props.pushStatus?.isSubscribed);
+    const pushBadgeText = !pushSupported
+      ? 'Unsupported'
+      : isSubscribed
+        ? 'Active'
+        : pushPerm === 'denied'
+          ? 'Blocked'
+          : 'Off';
+    const pushBadgeClass = isSubscribed ? 'approved' : pushPerm === 'denied' ? 'rejected' : '';
+
     card.innerHTML = `
       <div class="gd-m-setting-item">
         <span class="gd-m-setting-label">Reviewer ID</span>
@@ -771,8 +905,50 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         <span class="gd-m-setting-label">Execution Model</span>
         <span class="gd-m-setting-pill">Decoupled Consent-Only</span>
       </div>
+      <div class="gd-m-setting-item">
+        <span class="gd-m-setting-label">Push Alerts</span>
+        <span class="gd-m-history-status ${pushBadgeClass}">${pushBadgeText}</span>
+      </div>
     `;
     main.appendChild(card);
+
+    if (pushSupported && props.onSubscribePush && pushPerm !== 'denied') {
+      const pushActions = document.createElement('div');
+      pushActions.className = 'gd-m-push-actions';
+      if (!isSubscribed) {
+        const subBtn = document.createElement('button');
+        subBtn.type = 'button';
+        subBtn.className = 'gd-m-hero-cta';
+        subBtn.disabled = Boolean(props.isSubscribingPush);
+        subBtn.textContent = props.isSubscribingPush ? 'Enabling Alerts…' : 'Allow Push Notifications';
+        subBtn.addEventListener('click', () => void props.onSubscribePush?.());
+        pushActions.appendChild(subBtn);
+      } else {
+        if (props.onSendTestPush) {
+          const testBtn = document.createElement('button');
+          testBtn.type = 'button';
+          testBtn.className = 'gd-m-notif-later-btn';
+          testBtn.textContent = 'Send Test Notification';
+          testBtn.addEventListener('click', () => void props.onSendTestPush?.());
+          pushActions.appendChild(testBtn);
+        }
+        if (props.onUnsubscribePush) {
+          const unsubBtn = document.createElement('button');
+          unsubBtn.type = 'button';
+          unsubBtn.className = 'gd-m-notif-later-btn';
+          unsubBtn.textContent = 'Pause Alerts';
+          unsubBtn.addEventListener('click', () => void props.onUnsubscribePush?.());
+          pushActions.appendChild(unsubBtn);
+        }
+      }
+      if (props.pushActionMessage) {
+        const msg = document.createElement('div');
+        msg.className = 'gd-m-pair-msg';
+        msg.textContent = props.pushActionMessage;
+        pushActions.appendChild(msg);
+      }
+      main.appendChild(pushActions);
+    }
 
     if (profile?.isAuthenticated && props.onSignOut) {
       const signOutBtn = document.createElement('button');
@@ -870,6 +1046,29 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   dockWrap.appendChild(pillDock);
   dockWrap.appendChild(queueCircle);
   shell.appendChild(dockWrap);
+
+  const canPromptForPush =
+    Boolean(props.profile?.isAuthenticated) &&
+    Boolean(props.onSubscribePush) &&
+    Boolean(props.pushStatus?.isSupported) &&
+    !props.pushStatus?.isSubscribed &&
+    props.pushStatus?.permission === 'default';
+
+  if (canPromptForPush && !hasShownNotifPromptInSession) {
+    let dismissed = false;
+    try {
+      dismissed = typeof window !== 'undefined' && window.localStorage.getItem(NOTIF_DISMISS_KEY) === '1';
+    } catch {
+      dismissed = false;
+    }
+    if (!dismissed) {
+      hasShownNotifPromptInSession = true;
+      const onSubscribePush = props.onSubscribePush!;
+      queueMicrotask(() => {
+        openNotificationPromptSheet(onSubscribePush);
+      });
+    }
+  }
 
   return shell;
 }
