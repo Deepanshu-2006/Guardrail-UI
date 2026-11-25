@@ -300,6 +300,8 @@ function openHistoryDetailSheet(
 
 const NOTIF_DISMISS_KEY = 'gd_m_notif_prompt_dismissed';
 let hasShownNotifPromptInSession = false;
+let mobileHistoryStatusFilter: 'ALL' | 'APPROVED' | 'REJECTED' = 'ALL';
+let mobileHistorySearchQuery = '';
 
 function openWardPolicySheet(
   ward: ConnectedWard,
@@ -1049,67 +1051,170 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       `;
       main.appendChild(empty);
     } else {
-      const historyKicker = document.createElement('div');
-      historyKicker.className = 'gd-m-section-kicker';
-      historyKicker.textContent = `Recorded decisions (${filteredHistory.length})`;
-      main.appendChild(historyKicker);
+      const controls = document.createElement('div');
+      controls.className = 'gd-m-history-controls';
 
-      const list = document.createElement('div');
-      list.className = 'gd-m-list';
-      filteredHistory.slice(0, 25).forEach((req) => {
-        const ward = connectedWards.find(
-          (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
-        );
-        const wardName = formatWardDisplayName(ward?.name, req.requesterId);
-        const host = resolveSafeHostname(req);
-        const status = req.status || ApprovalStatus.APPROVED;
-        const statusClass = status.toLowerCase();
+      const searchWrap = document.createElement('div');
+      searchWrap.className = 'gd-m-history-search-wrap';
+      searchWrap.innerHTML = `<svg class="gd-m-history-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
 
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'gd-m-row gd-m-history-row';
+      const searchInput = document.createElement('input');
+      searchInput.type = 'search';
+      searchInput.className = 'gd-m-history-search';
+      searchInput.placeholder = 'Search action, site, or note…';
+      searchInput.setAttribute('aria-label', 'Search decision history');
+      searchInput.value = mobileHistorySearchQuery;
+      searchWrap.appendChild(searchInput);
 
-        const mark = document.createElement('span');
-        mark.className = `gd-m-history-mark ${statusClass}`;
-        mark.textContent = status === ApprovalStatus.APPROVED ? '✓' : status === ApprovalStatus.REJECTED ? '✕' : '•';
+      const segWrap = document.createElement('div');
+      segWrap.className = 'gd-m-history-seg';
+      segWrap.setAttribute('role', 'tablist');
+      segWrap.setAttribute('aria-label', 'Filter history by decision');
 
-        const info = document.createElement('div');
-        info.className = 'gd-m-row-info';
+      const resultsContainer = document.createElement('div');
+      resultsContainer.className = 'gd-m-history-results';
 
-        const rTitle = document.createElement('div');
-        rTitle.className = 'gd-m-row-title';
-        rTitle.textContent = req.actionDescription;
+      const renderHistoryResults = () => {
+        resultsContainer.innerHTML = '';
+        const q = mobileHistorySearchQuery.trim().toLowerCase();
+        const visibleHistory = filteredHistory.filter((req) => {
+          const st = (req.status || ApprovalStatus.APPROVED).toUpperCase();
+          if (mobileHistoryStatusFilter !== 'ALL' && st !== mobileHistoryStatusFilter) {
+            return false;
+          }
+          if (!q) return true;
+          const ward = connectedWards.find(
+            (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
+          );
+          const wardName = formatWardDisplayName(ward?.name, req.requesterId).toLowerCase();
+          const host = resolveSafeHostname(req).toLowerCase();
+          const note = (req.decision?.decisionReason || req.cancellationReason || '').toLowerCase();
+          const desc = (req.actionDescription || '').toLowerCase();
+          const cat = (req.category || '').toLowerCase();
+          return (
+            desc.includes(q) ||
+            host.includes(q) ||
+            wardName.includes(q) ||
+            note.includes(q) ||
+            cat.includes(q)
+          );
+        });
 
-        const rSub = document.createElement('div');
-        rSub.className = 'gd-m-row-sub';
-        const rawDate = req.resolvedAt || req.createdAt;
-        const ts = rawDate
-          ? new Date(rawDate).toLocaleString([], {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : formatTimestamp(rawDate);
-        rSub.textContent = `${wardName.split(' ')[0]} · ${host} · ${ts}`;
+        const historyKicker = document.createElement('div');
+        historyKicker.className = 'gd-m-section-kicker';
+        historyKicker.textContent = `Recorded decisions (${visibleHistory.length})`;
+        resultsContainer.appendChild(historyKicker);
 
-        info.appendChild(rTitle);
-        info.appendChild(rSub);
+        if (visibleHistory.length === 0) {
+          const noMatch = document.createElement('div');
+          noMatch.className = 'gd-m-empty-card';
+          noMatch.innerHTML = `
+            <h2 class="gd-m-empty-title">No matching decisions</h2>
+            <p class="gd-m-empty-desc">Try a different search term or status filter.</p>
+          `;
+          resultsContainer.appendChild(noMatch);
+          return;
+        }
 
-        const statusTag = document.createElement('span');
-        statusTag.className = `gd-m-history-status ${statusClass}`;
-        statusTag.textContent = status;
+        const list = document.createElement('div');
+        list.className = 'gd-m-list';
+        visibleHistory.slice(0, 30).forEach((req) => {
+          const ward = connectedWards.find(
+            (w) => w.id.toLowerCase() === (req.requesterId || '').toLowerCase()
+          );
+          const wardName = formatWardDisplayName(ward?.name, req.requesterId);
+          const host = resolveSafeHostname(req);
+          const status = req.status || ApprovalStatus.APPROVED;
+          const statusClass = status.toLowerCase();
 
-        row.appendChild(mark);
-        row.appendChild(info);
-        row.appendChild(statusTag);
-        const fullTs = formatTimestamp(rawDate);
-        row.addEventListener('click', () =>
-          openHistoryDetailSheet(req, wardName, host, status, fullTs)
-        );
-        list.appendChild(row);
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'gd-m-row gd-m-history-row';
+
+          const mark = document.createElement('span');
+          mark.className = `gd-m-history-mark ${statusClass}`;
+          mark.textContent = status === ApprovalStatus.APPROVED ? '✓' : status === ApprovalStatus.REJECTED ? '✕' : '•';
+
+          const info = document.createElement('div');
+          info.className = 'gd-m-row-info';
+
+          const rTitle = document.createElement('div');
+          rTitle.className = 'gd-m-row-title';
+          rTitle.textContent = req.actionDescription;
+
+          const rSub = document.createElement('div');
+          rSub.className = 'gd-m-row-sub';
+          const rawDate = req.resolvedAt || req.createdAt;
+          const ts = rawDate
+            ? new Date(rawDate).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : formatTimestamp(rawDate);
+          rSub.textContent = `${wardName.split(' ')[0]} · ${host} · ${ts}`;
+
+          info.appendChild(rTitle);
+          info.appendChild(rSub);
+
+          const statusTag = document.createElement('span');
+          statusTag.className = `gd-m-history-status ${statusClass}`;
+          statusTag.textContent = status;
+
+          row.appendChild(mark);
+          row.appendChild(info);
+          row.appendChild(statusTag);
+          const fullTs = formatTimestamp(rawDate);
+          row.addEventListener('click', () =>
+            openHistoryDetailSheet(req, wardName, host, status, fullTs)
+          );
+          list.appendChild(row);
+        });
+        resultsContainer.appendChild(list);
+      };
+
+      const statusOptions: Array<{ id: 'ALL' | 'APPROVED' | 'REJECTED'; label: string }> = [
+        { id: 'ALL', label: 'All' },
+        { id: 'APPROVED', label: 'Approved' },
+        { id: 'REJECTED', label: 'Rejected' },
+      ];
+      const segButtons: HTMLButtonElement[] = [];
+      statusOptions.forEach((opt) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isActive = mobileHistoryStatusFilter === opt.id;
+        btn.className = `gd-m-history-seg-btn ${isActive ? 'active' : ''}`;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        btn.textContent = opt.label;
+        btn.addEventListener('click', () => {
+          mobileHistoryStatusFilter = opt.id;
+          segButtons.forEach((b, idx) => {
+            const active = statusOptions[idx].id === mobileHistoryStatusFilter;
+            if (active) {
+              b.classList.add('active');
+            } else {
+              b.classList.remove('active');
+            }
+            b.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          renderHistoryResults();
+        });
+        segButtons.push(btn);
+        segWrap.appendChild(btn);
       });
-      main.appendChild(list);
+
+      searchInput.addEventListener('input', () => {
+        mobileHistorySearchQuery = searchInput.value;
+        renderHistoryResults();
+      });
+
+      controls.appendChild(searchWrap);
+      controls.appendChild(segWrap);
+      main.appendChild(controls);
+      renderHistoryResults();
+      main.appendChild(resultsContainer);
 
       const footerNote = document.createElement('div');
       footerNote.className = 'gd-m-footer-note';

@@ -807,6 +807,91 @@ async function runPwaCompanionTests() {
     assert(selectedWard === 'usr_alice' && selectedTab === 'queue', 'Queue action filters to ward and switches to Queue tab');
   }
 
+  // =========================================================================
+  // Suite 10: Search & Status Filter in Mobile History Tab
+  // =========================================================================
+  console.log('\n▶ Test Suite 10: Search & Status Filter in Mobile History Tab');
+  {
+    const { renderMobileCompanion } = await import('../components/mobile-companion.js');
+    const historyView = renderMobileCompanion({
+      activeTab: 'history',
+      profile: {
+        actorId: 'tc_dave',
+        assignedWardId: 'usr_alice',
+        assignedWardName: 'Alice Johnson',
+        isAuthenticated: true,
+      },
+      pendingRequests: [],
+      historyRequests: [
+        {
+          id: 'apr_hist_1',
+          requesterId: 'usr_alice',
+          status: ApprovalStatus.APPROVED,
+          actionType: 'PAYMENT',
+          riskLevel: RiskLevel.MEDIUM,
+          riskScore: 40,
+          riskReasons: ['Subscription'],
+          actionDescription: 'Confirm Cloud Workspace Renewal',
+          hostname: 'billing.stripe.com',
+          createdAt: new Date().toISOString(),
+          resolvedAt: new Date().toISOString(),
+          actionPayload: { targetUrl: 'https://billing.stripe.com' },
+        },
+        {
+          id: 'apr_hist_2',
+          requesterId: 'usr_bob',
+          status: ApprovalStatus.REJECTED,
+          actionType: 'DOWNLOAD',
+          riskLevel: RiskLevel.CRITICAL,
+          riskScore: 95,
+          riskReasons: ['Untrusted binary'],
+          actionDescription: 'Download Unverified Utility',
+          hostname: 'soft-mirror.example.net',
+          createdAt: new Date().toISOString(),
+          resolvedAt: new Date().toISOString(),
+          actionPayload: { targetUrl: 'https://soft-mirror.example.net' },
+        },
+      ],
+      connectedWards: [
+        { id: 'usr_alice', name: 'Alice Johnson' },
+        { id: 'usr_bob', name: 'Bob Williams' },
+      ],
+      activeWardFilter: 'ALL',
+      isRefreshing: false,
+      isBackendUnavailable: false,
+      onSelectTab: () => {},
+      onSelectWardFilter: () => {},
+      onOpenRequestSheet: () => {},
+      onRefresh: () => {},
+      onOpenAuth: () => {},
+      onSignOut: () => {},
+    });
+
+    assert(historyView.querySelectorAll('.gd-m-history-row').length === 2, 'Initially renders all 2 history records');
+
+    const segButtons = historyView.querySelectorAll('.gd-m-history-seg-btn');
+    assert(segButtons.length === 3, 'Renders All / Approved / Rejected filter pills');
+    (segButtons[2] as HTMLElement)?.click();
+    assert(historyView.querySelectorAll('.gd-m-history-row').length === 1, 'Rejected filter narrows to 1 record');
+    assert(
+      (historyView.querySelector('.gd-m-history-row')?.textContent || '').includes('Download Unverified Utility'),
+      'Rejected filter shows the rejected decision'
+    );
+
+    (segButtons[0] as HTMLElement)?.click();
+    const searchInput = historyView.querySelector<HTMLInputElement>('.gd-m-history-search');
+    assert(searchInput !== null, 'Renders compact history search input');
+    if (searchInput) {
+      searchInput.value = 'stripe';
+      searchInput.dispatchEvent({ type: 'input' } as any);
+    }
+    assert(historyView.querySelectorAll('.gd-m-history-row').length === 1, 'Search query filters history records');
+    assert(
+      (historyView.querySelector('.gd-m-history-row')?.textContent || '').includes('Confirm Cloud Workspace Renewal'),
+      'Search query matches domain/action in history'
+    );
+  }
+
   console.log('\n======================================================');
   console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
   console.log('======================================================\n');
