@@ -669,6 +669,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
               status: 'ALL',
               riskLevel: 'ALL',
               dateRange: 'ALL',
+              wardId: 'ALL',
               searchQuery: '',
             });
           },

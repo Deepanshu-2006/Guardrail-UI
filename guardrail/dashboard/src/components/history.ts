@@ -912,6 +912,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
           status: 'ALL',
           riskLevel: 'ALL',
           dateRange: 'ALL',
+          wardId: 'ALL',
           searchQuery: '',
         });
       },

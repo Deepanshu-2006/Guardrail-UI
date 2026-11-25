@@ -504,6 +504,7 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
         status: 'ALL',
         riskLevel: 'ALL',
         dateRange: 'ALL',
+        wardId: 'ALL',
         searchQuery: '',
       });
     });

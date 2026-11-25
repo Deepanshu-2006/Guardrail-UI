@@ -16,6 +16,7 @@
 
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
+import { getRealTimeScenery } from './pixel-scenery.js';
 import { showConnectWardModal } from './connect-modal.js';
 import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
@@ -84,10 +85,30 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   section.setAttribute('aria-labelledby', 'overview-title');
 
   // =========================================================================
-  // SECTION A: PAGE INTRODUCTION
+  // SECTION A: PAGE INTRODUCTION (With Real-Time Animated Pixel Scenery)
   // =========================================================================
+  const now = new Date();
+  const scenery = getRealTimeScenery(now);
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   const header = document.createElement('header');
-  header.className = 'gd-section-header';
+  header.className = `gd-section-header gd-overview-scenery-header phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
+
+  const sceneArt = document.createElement('div');
+  sceneArt.className = 'gd-overview-scenery-art';
+  sceneArt.setAttribute('aria-hidden', 'true');
+  sceneArt.innerHTML = scenery.svg;
+
+  const sceneScrim = document.createElement('div');
+  sceneScrim.className = 'gd-overview-scenery-scrim';
+  sceneScrim.setAttribute('aria-hidden', 'true');
+
+  const headerContent = document.createElement('div');
+  headerContent.className = 'gd-overview-scenery-content';
+
+  const greetingKicker = document.createElement('div');
+  greetingKicker.className = 'gd-overview-greeting-kicker';
+  greetingKicker.textContent = `${timeStr} · ${scenery.greeting}`;
 
   const title = document.createElement('h1');
   title.id = 'overview-title';
@@ -98,8 +119,13 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent = 'Your trusted contact activity and pending decisions.';
 
-  header.appendChild(title);
-  header.appendChild(subtitle);
+  headerContent.appendChild(greetingKicker);
+  headerContent.appendChild(title);
+  headerContent.appendChild(subtitle);
+
+  header.appendChild(sceneArt);
+  header.appendChild(sceneScrim);
+  header.appendChild(headerContent);
   section.appendChild(header);
 
   // =========================================================================

@@ -1187,6 +1187,29 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
             <h2 class="gd-m-empty-title">No matching decisions</h2>
             <p class="gd-m-empty-desc">Try a different search term or status filter.</p>
           `;
+          const clearBtn = document.createElement('button');
+          clearBtn.type = 'button';
+          clearBtn.className = 'gd-m-notif-later-btn';
+          clearBtn.style.marginTop = '12px';
+          clearBtn.textContent = 'Clear Filters';
+          clearBtn.addEventListener('click', () => {
+            mobileHistoryStatusFilter = 'ALL';
+            mobileHistorySearchQuery = '';
+            searchInput.value = '';
+            segButtons.forEach((b, idx) => {
+              const active = statusOptions[idx].id === 'ALL';
+              if (active) b.classList.add('active');
+              else b.classList.remove('active');
+              b.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            syncHistoryGlider(true, true);
+            if ((activeWardFilter || 'ALL') !== 'ALL') {
+              props.onSelectWardFilter('ALL');
+            } else {
+              renderHistoryResults();
+            }
+          });
+          noMatch.appendChild(clearBtn);
           resultsContainer.appendChild(noMatch);
           return;
         }
