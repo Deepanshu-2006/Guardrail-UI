@@ -6794,6 +6794,86 @@ textarea:focus-visible,
   opacity: 0.78;
 }
 
+.gd-m-top-greeting-pill {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid rgba(31, 41, 26, 0.10);
+}
+
+.gd-m-top-greeting-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.gd-m-top-greeting-art svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.gd-m-top-greeting-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gd-m-top-greeting-pill.is-light .gd-m-top-greeting-scrim {
+  background: linear-gradient(90deg, rgba(237, 230, 214, 0.88) 0%, rgba(237, 230, 214, 0.62) 60%, rgba(237, 230, 214, 0.08) 100%);
+}
+
+.gd-m-top-greeting-pill.is-dark .gd-m-top-greeting-scrim {
+  background: linear-gradient(90deg, rgba(13, 19, 15, 0.86) 0%, rgba(13, 19, 15, 0.56) 60%, rgba(13, 19, 15, 0.08) 100%);
+}
+
+.gd-m-top-greeting-text {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gd-m-top-greeting-label {
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.gd-m-top-greeting-dot {
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.gd-m-top-greeting-time {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.82;
+}
+
+.gd-m-top-greeting-pill.is-light .gd-m-top-greeting-text {
+  color: #141B11;
+}
+
+.gd-m-top-greeting-pill.is-dark .gd-m-top-greeting-text {
+  color: #F4EFE2;
+}
+
 .gd-m-refresh-btn {
   width: 36px;
   height: 36px;
@@ -12570,6 +12650,86 @@ article.gd-card-collapsed,
   opacity: 0.78;
 }
 
+.gd-m-top-greeting-pill {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid rgba(31, 41, 26, 0.10);
+}
+
+.gd-m-top-greeting-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.gd-m-top-greeting-art svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.gd-m-top-greeting-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gd-m-top-greeting-pill.is-light .gd-m-top-greeting-scrim {
+  background: linear-gradient(90deg, rgba(237, 230, 214, 0.88) 0%, rgba(237, 230, 214, 0.62) 60%, rgba(237, 230, 214, 0.08) 100%);
+}
+
+.gd-m-top-greeting-pill.is-dark .gd-m-top-greeting-scrim {
+  background: linear-gradient(90deg, rgba(13, 19, 15, 0.86) 0%, rgba(13, 19, 15, 0.56) 60%, rgba(13, 19, 15, 0.08) 100%);
+}
+
+.gd-m-top-greeting-text {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gd-m-top-greeting-label {
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.gd-m-top-greeting-dot {
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.gd-m-top-greeting-time {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.82;
+}
+
+.gd-m-top-greeting-pill.is-light .gd-m-top-greeting-text {
+  color: #141B11;
+}
+
+.gd-m-top-greeting-pill.is-dark .gd-m-top-greeting-text {
+  color: #F4EFE2;
+}
+
 .gd-m-refresh-btn {
   width: 36px;
   height: 36px;
@@ -17843,6 +18003,86 @@ article.gd-card-collapsed,
   font-family: var(--gd-font-mono);
   font-size: 11px;
   opacity: 0.78;
+}
+
+.gd-m-top-greeting-pill {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid rgba(31, 41, 26, 0.10);
+}
+
+.gd-m-top-greeting-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.gd-m-top-greeting-art svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.gd-m-top-greeting-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gd-m-top-greeting-pill.is-light .gd-m-top-greeting-scrim {
+  background: linear-gradient(90deg, rgba(237, 230, 214, 0.88) 0%, rgba(237, 230, 214, 0.62) 60%, rgba(237, 230, 214, 0.08) 100%);
+}
+
+.gd-m-top-greeting-pill.is-dark .gd-m-top-greeting-scrim {
+  background: linear-gradient(90deg, rgba(13, 19, 15, 0.86) 0%, rgba(13, 19, 15, 0.56) 60%, rgba(13, 19, 15, 0.08) 100%);
+}
+
+.gd-m-top-greeting-text {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gd-m-top-greeting-label {
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.gd-m-top-greeting-dot {
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.gd-m-top-greeting-time {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.82;
+}
+
+.gd-m-top-greeting-pill.is-light .gd-m-top-greeting-text {
+  color: #141B11;
+}
+
+.gd-m-top-greeting-pill.is-dark .gd-m-top-greeting-text {
+  color: #F4EFE2;
 }
 
 .gd-m-refresh-btn {

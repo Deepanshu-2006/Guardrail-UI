@@ -171,45 +171,62 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   avatarBtn.addEventListener('click', () => props.onSelectTab('settings'));
   topBar.appendChild(avatarBtn);
 
-  const pillStrip = document.createElement('div');
-  pillStrip.className = 'gd-m-ward-pills';
-  pillStrip.setAttribute('role', 'tablist');
-  pillStrip.setAttribute('aria-label', 'Filter by protected ward');
+  const showWardFilter = activeTab === 'queue' || activeTab === 'history';
+  if (showWardFilter) {
+    const pillStrip = document.createElement('div');
+    pillStrip.className = 'gd-m-ward-pills';
+    pillStrip.setAttribute('role', 'tablist');
+    pillStrip.setAttribute('aria-label', 'Filter by protected ward');
 
-  const sourceForCounts = activeTab === 'history' ? historyRequests : pendingRequests;
-  const makePill = (id: string, label: string, count: number) => {
-    const pill = document.createElement('button');
-    pill.type = 'button';
-    const isActive = (activeWardFilter || 'ALL') === id;
-    pill.className = `gd-m-pill ${isActive ? 'active' : ''}`;
-    pill.setAttribute('role', 'tab');
-    pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    const sourceForCounts = activeTab === 'history' ? historyRequests : pendingRequests;
+    const makePill = (id: string, label: string, count: number) => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      const isActive = (activeWardFilter || 'ALL') === id;
+      pill.className = `gd-m-pill ${isActive ? 'active' : ''}`;
+      pill.setAttribute('role', 'tab');
+      pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
 
-    const textSpan = document.createElement('span');
-    textSpan.textContent = label;
-    pill.appendChild(textSpan);
+      const textSpan = document.createElement('span');
+      textSpan.textContent = label;
+      pill.appendChild(textSpan);
 
-    if (count > 0) {
-      const cnt = document.createElement('span');
-      cnt.className = 'gd-m-pill-count';
-      cnt.textContent = String(count);
-      pill.appendChild(cnt);
-    }
+      if (count > 0) {
+        const cnt = document.createElement('span');
+        cnt.className = 'gd-m-pill-count';
+        cnt.textContent = String(count);
+        pill.appendChild(cnt);
+      }
 
-    pill.addEventListener('click', () => props.onSelectWardFilter(id));
-    return pill;
-  };
+      pill.addEventListener('click', () => props.onSelectWardFilter(id));
+      return pill;
+    };
 
-  pillStrip.appendChild(makePill('ALL', 'All', sourceForCounts.length));
-  connectedWards.forEach((w) => {
-    const wCount = sourceForCounts.filter(
-      (r) => (r.requesterId || '').toLowerCase() === w.id.toLowerCase()
-    ).length;
-    const firstName = formatWardDisplayName(w.name, w.id).split(' ')[0];
-    pillStrip.appendChild(makePill(w.id, firstName, wCount));
-  });
+    pillStrip.appendChild(makePill('ALL', 'All', sourceForCounts.length));
+    connectedWards.forEach((w) => {
+      const wCount = sourceForCounts.filter(
+        (r) => (r.requesterId || '').toLowerCase() === w.id.toLowerCase()
+      ).length;
+      const firstName = formatWardDisplayName(w.name, w.id).split(' ')[0];
+      pillStrip.appendChild(makePill(w.id, firstName, wCount));
+    });
 
-  topBar.appendChild(pillStrip);
+    topBar.appendChild(pillStrip);
+  } else {
+    const topGreeting = document.createElement('div');
+    topGreeting.className = `gd-m-top-greeting-pill phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    topGreeting.innerHTML = `
+      <div class="gd-m-top-greeting-art" aria-hidden="true">${scenery.svg}</div>
+      <div class="gd-m-top-greeting-scrim" aria-hidden="true"></div>
+      <div class="gd-m-top-greeting-text">
+        <span class="gd-m-top-greeting-label">${scenery.greeting}</span>
+        <span class="gd-m-top-greeting-dot" aria-hidden="true">·</span>
+        <span class="gd-m-top-greeting-time">${timeStr}</span>
+      </div>
+    `;
+    topBar.appendChild(topGreeting);
+  }
 
   const refreshBtn = document.createElement('button');
   refreshBtn.type = 'button';
