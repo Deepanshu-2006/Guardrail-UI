@@ -252,7 +252,8 @@ function attachSlidingGlider(
   container: HTMLElement,
   gliderClass: string,
   getActiveBtn: () => HTMLElement | null,
-  cacheKey: string
+  cacheKey: string,
+  animOptions: { duration?: number; easing?: string } = {}
 ): (animate: boolean, updateCache?: boolean) => void {
   const glider = document.createElement('span');
   glider.className = gliderClass;
@@ -279,24 +280,34 @@ function attachSlidingGlider(
 
     container.classList.add('has-glider');
     const prev = mobileGliderCache.get(cacheKey);
-    if (animate && prev && (Math.abs(prev.left - targetLeft) > 0.5 || Math.abs(prev.width - targetWidth) > 0.5)) {
-      if (glider.style) {
-        glider.style.transition = 'none';
-        glider.style.width = `${prev.width}px`;
-        glider.style.transform = `translate3d(${prev.left}px, 0, 0)`;
-      }
-      void (glider as any).offsetWidth;
-      if (glider.style) {
-        glider.style.transition = '';
-        glider.style.width = `${targetWidth}px`;
-        glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
-      }
-    } else if (glider.style) {
+    if (glider.style) {
       glider.style.transition = 'none';
       glider.style.width = `${targetWidth}px`;
       glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
-      void (glider as any).offsetWidth;
-      glider.style.transition = '';
+    }
+
+    if (
+      animate &&
+      prev &&
+      (Math.abs(prev.left - targetLeft) > 0.5 || Math.abs(prev.width - targetWidth) > 0.5)
+    ) {
+      if (typeof (glider as any).animate === 'function') {
+        try {
+          (glider as any).animate(
+            [
+              { transform: `translate3d(${prev.left}px, 0, 0)`, width: `${prev.width}px` },
+              { transform: `translate3d(${targetLeft}px, 0, 0)`, width: `${targetWidth}px` },
+            ],
+            {
+              duration: animOptions.duration ?? 420,
+              easing: animOptions.easing ?? 'cubic-bezier(0.34, 1.35, 0.64, 1)',
+              fill: 'both',
+            }
+          );
+        } catch {
+          // ignore animation errors in constrained environments
+        }
+      }
     }
 
     if (typeof (activeBtn as any).scrollIntoView === 'function' && (container as any).scrollWidth > (container as any).clientWidth) {
@@ -712,7 +723,8 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       pillStrip,
       'gd-m-pill-glider',
       () => pillStrip.querySelector<HTMLElement>('.gd-m-pill.active'),
-      'm-ward-pills'
+      'm-ward-pills',
+      { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
     );
   } else {
     const topGreeting = document.createElement('div');

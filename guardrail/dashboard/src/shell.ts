@@ -727,7 +727,11 @@ export class DashboardShell {
         mobileView.classList.add('is-ambient-update');
       } else if (isTabSwitch) {
         const nextMain = mobileView.querySelector('.gd-m-main');
-        nextMain?.classList.add('is-tab-entering');
+        const tabOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
+        const prevIdx = this.lastMobileTabRendered ? tabOrder[this.lastMobileTabRendered] : 3;
+        const nextIdx = tabOrder[this.mobileTab];
+        const dirClass = nextIdx >= prevIdx ? 'is-tab-entering-right' : 'is-tab-entering-left';
+        nextMain?.classList.add('is-tab-entering', dirClass);
       }
 
       while (this.rootContainer.firstChild) {
