@@ -7839,9 +7839,9 @@ textarea:focus-visible,
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(244, 240, 230, 0.9) 0%,
-    rgba(244, 240, 230, 0.72) 48%,
-    rgba(244, 240, 230, 0.16) 100%
+    rgba(244, 240, 230, 0.82) 0%,
+    rgba(244, 240, 230, 0.42) 45%,
+    transparent 100%
   );
 }
 
@@ -7894,6 +7894,78 @@ textarea:focus-visible,
 
 .gd-desktop-ambient {
   left: 254px;
+}
+
+.gd-desktop-ambient .gd-m-bg-horizon {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-bg-cloud {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-mote {
+  opacity: 0.85;
+}
+
+.gd-desktop-ambient .gd-m-beam {
+  opacity: 0.8;
+}
+
+@keyframes gd-frost-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.36);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes gd-frost-header-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.28);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane,
+.gd-card,
+.gd-fullwidth-controls-bar,
+.gd-history-notice,
+.gd-decision-notice {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 18px;
+  animation: gd-frost-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane {
+  padding: 14px 18px;
+}
+
+.gd-section-header:not(.gd-overview-scenery-header) {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 16px;
+  animation: gd-frost-header-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
 }
 
 .gd-sidebar {
@@ -8197,9 +8269,9 @@ textarea:focus-visible,
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(244, 240, 230, 0.9) 0%,
-    rgba(244, 240, 230, 0.72) 48%,
-    rgba(244, 240, 230, 0.16) 100%
+    rgba(244, 240, 230, 0.82) 0%,
+    rgba(244, 240, 230, 0.42) 45%,
+    transparent 100%
   );
 }
 
@@ -8252,6 +8324,78 @@ textarea:focus-visible,
 
 .gd-desktop-ambient {
   left: 254px;
+}
+
+.gd-desktop-ambient .gd-m-bg-horizon {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-bg-cloud {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-mote {
+  opacity: 0.85;
+}
+
+.gd-desktop-ambient .gd-m-beam {
+  opacity: 0.8;
+}
+
+@keyframes gd-frost-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.36);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes gd-frost-header-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.28);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane,
+.gd-card,
+.gd-fullwidth-controls-bar,
+.gd-history-notice,
+.gd-decision-notice {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 18px;
+  animation: gd-frost-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane {
+  padding: 14px 18px;
+}
+
+.gd-section-header:not(.gd-overview-scenery-header) {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 16px;
+  animation: gd-frost-header-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
 }
 
 .gd-sidebar {
@@ -14532,9 +14676,9 @@ article.gd-card-collapsed,
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(244, 240, 230, 0.9) 0%,
-    rgba(244, 240, 230, 0.72) 48%,
-    rgba(244, 240, 230, 0.16) 100%
+    rgba(244, 240, 230, 0.82) 0%,
+    rgba(244, 240, 230, 0.42) 45%,
+    transparent 100%
   );
 }
 
@@ -14587,6 +14731,78 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+}
+
+.gd-desktop-ambient .gd-m-bg-horizon {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-bg-cloud {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-mote {
+  opacity: 0.85;
+}
+
+.gd-desktop-ambient .gd-m-beam {
+  opacity: 0.8;
+}
+
+@keyframes gd-frost-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.36);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes gd-frost-header-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.28);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane,
+.gd-card,
+.gd-fullwidth-controls-bar,
+.gd-history-notice,
+.gd-decision-notice {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 18px;
+  animation: gd-frost-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane {
+  padding: 14px 18px;
+}
+
+.gd-section-header:not(.gd-overview-scenery-header) {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 16px;
+  animation: gd-frost-header-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
 }
 
 .gd-sidebar {
@@ -14890,9 +15106,9 @@ article.gd-card-collapsed,
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(244, 240, 230, 0.9) 0%,
-    rgba(244, 240, 230, 0.72) 48%,
-    rgba(244, 240, 230, 0.16) 100%
+    rgba(244, 240, 230, 0.82) 0%,
+    rgba(244, 240, 230, 0.42) 45%,
+    transparent 100%
   );
 }
 
@@ -14945,6 +15161,78 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+}
+
+.gd-desktop-ambient .gd-m-bg-horizon {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-bg-cloud {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-mote {
+  opacity: 0.85;
+}
+
+.gd-desktop-ambient .gd-m-beam {
+  opacity: 0.8;
+}
+
+@keyframes gd-frost-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.36);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes gd-frost-header-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.28);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane,
+.gd-card,
+.gd-fullwidth-controls-bar,
+.gd-history-notice,
+.gd-decision-notice {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 18px;
+  animation: gd-frost-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane {
+  padding: 14px 18px;
+}
+
+.gd-section-header:not(.gd-overview-scenery-header) {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 16px;
+  animation: gd-frost-header-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
 }
 
 .gd-sidebar {
@@ -20728,9 +21016,9 @@ article.gd-card-collapsed,
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(244, 240, 230, 0.9) 0%,
-    rgba(244, 240, 230, 0.72) 48%,
-    rgba(244, 240, 230, 0.16) 100%
+    rgba(244, 240, 230, 0.82) 0%,
+    rgba(244, 240, 230, 0.42) 45%,
+    transparent 100%
   );
 }
 
@@ -20783,6 +21071,78 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+}
+
+.gd-desktop-ambient .gd-m-bg-horizon {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-bg-cloud {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-mote {
+  opacity: 0.85;
+}
+
+.gd-desktop-ambient .gd-m-beam {
+  opacity: 0.8;
+}
+
+@keyframes gd-frost-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.36);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes gd-frost-header-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.28);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane,
+.gd-card,
+.gd-fullwidth-controls-bar,
+.gd-history-notice,
+.gd-decision-notice {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 18px;
+  animation: gd-frost-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane {
+  padding: 14px 18px;
+}
+
+.gd-section-header:not(.gd-overview-scenery-header) {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 16px;
+  animation: gd-frost-header-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
 }
 
 .gd-sidebar {
@@ -21086,9 +21446,9 @@ article.gd-card-collapsed,
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(244, 240, 230, 0.9) 0%,
-    rgba(244, 240, 230, 0.72) 48%,
-    rgba(244, 240, 230, 0.16) 100%
+    rgba(244, 240, 230, 0.82) 0%,
+    rgba(244, 240, 230, 0.42) 45%,
+    transparent 100%
   );
 }
 
@@ -21141,6 +21501,78 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+}
+
+.gd-desktop-ambient .gd-m-bg-horizon {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-bg-cloud {
+  opacity: 0.8;
+}
+
+.gd-desktop-ambient .gd-m-mote {
+  opacity: 0.85;
+}
+
+.gd-desktop-ambient .gd-m-beam {
+  opacity: 0.8;
+}
+
+@keyframes gd-frost-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.36);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes gd-frost-header-reveal {
+  0% {
+    background: rgba(237, 230, 214, 0);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    background: rgba(237, 230, 214, 0.28);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane,
+.gd-card,
+.gd-fullwidth-controls-bar,
+.gd-history-notice,
+.gd-decision-notice {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 18px;
+  animation: gd-frost-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
+}
+
+.gd-recent-activity-list,
+.gd-overview-col-secondary,
+.gd-list-pane,
+.gd-detail-pane {
+  padding: 14px 18px;
+}
+
+.gd-section-header:not(.gd-overview-scenery-header) {
+  background: rgba(237, 230, 214, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border-radius: 16px;
+  animation: gd-frost-header-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) 180ms forwards;
 }
 
 .gd-sidebar {
