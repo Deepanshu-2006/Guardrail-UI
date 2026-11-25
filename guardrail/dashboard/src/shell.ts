@@ -135,6 +135,8 @@ export class DashboardShell {
   private mobileWardFilter: string = 'ALL';
   private isMobileViewportMode: boolean = false;
   private resizeHandler: (() => void) | null = null;
+  private onlineHandler: (() => void) | null = null;
+  private offlineHandler: (() => void) | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -326,6 +328,17 @@ export class DashboardShell {
         }, 120);
       };
       window.addEventListener('resize', this.resizeHandler);
+
+      this.onlineHandler = () => {
+        this.isBackendUnavailable = false;
+        this.render();
+        void this.refresh();
+      };
+      this.offlineHandler = () => {
+        this.render();
+      };
+      window.addEventListener('online', this.onlineHandler);
+      window.addEventListener('offline', this.offlineHandler);
     }
 
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
@@ -3958,6 +3971,16 @@ export class DashboardShell {
     if (this.keyHandler && typeof window !== 'undefined') {
       window.removeEventListener('keydown', this.keyHandler);
       this.keyHandler = null;
+    }
+
+    if (this.onlineHandler && typeof window !== 'undefined') {
+      window.removeEventListener('online', this.onlineHandler);
+      this.onlineHandler = null;
+    }
+
+    if (this.offlineHandler && typeof window !== 'undefined') {
+      window.removeEventListener('offline', this.offlineHandler);
+      this.offlineHandler = null;
     }
 
     if (this.visibilityChangeHandler && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {

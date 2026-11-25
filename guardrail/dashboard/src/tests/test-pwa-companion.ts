@@ -569,6 +569,69 @@ async function runPwaCompanionTests() {
     assert(swContent.includes('clearAppBadge'), 'Service worker supports clearing app badge');
   }
 
+  // =========================================================================
+  // Suite 7: Mobile Offline Banner & Pull-to-Refresh
+  // =========================================================================
+  console.log('\n▶ Test Suite 7: Mobile Offline Banner & Pull-to-Refresh');
+  {
+    const { renderMobileCompanion } = await import('../components/mobile-companion.js');
+    let refreshed = 0;
+    const baseProps = {
+      activeTab: 'queue' as const,
+      profile: {
+        actorId: 'tc_dave',
+        assignedWardId: 'usr_alice',
+        assignedWardName: 'Alice Johnson',
+        isAuthenticated: true,
+      },
+      pendingRequests: [],
+      historyRequests: [],
+      connectedWards: [{ id: 'usr_alice', name: 'Alice Johnson' }],
+      activeWardFilter: 'ALL',
+      isRefreshing: false,
+      isBackendUnavailable: false,
+      onSelectTab: () => {},
+      onSelectWardFilter: () => {},
+      onOpenRequestSheet: () => {},
+      onRefresh: () => {
+        refreshed += 1;
+      },
+      onOpenAuth: () => {},
+      onSignOut: () => {},
+    };
+
+    const onlineView = renderMobileCompanion(baseProps);
+    assert(
+      onlineView.querySelector('.gd-m-offline-banner') === null,
+      'Offline banner is hidden when online and backend is available'
+    );
+
+    const offlineView = renderMobileCompanion({
+      ...baseProps,
+      isBackendUnavailable: true,
+    });
+    const banner = offlineView.querySelector('.gd-m-offline-banner');
+    assert(banner !== null, 'Offline/connectivity banner renders when backend is unavailable');
+    assert(banner?.getAttribute('role') === 'status', 'Offline banner has role="status"');
+
+    const ptrIndicator = onlineView.querySelector('.gd-m-ptr-indicator') as HTMLElement | null;
+    assert(ptrIndicator !== null, 'Pull-to-refresh indicator is rendered at top of mobile view');
+
+    onlineView.dispatchEvent({ type: 'touchstart', touches: [{ clientY: 100 }] } as any);
+    onlineView.dispatchEvent({
+      type: 'touchmove',
+      touches: [{ clientY: 260 }],
+      cancelable: true,
+      preventDefault: () => {},
+    } as any);
+    assert(
+      ptrIndicator?.classList.contains('is-ready') === true,
+      'Pulling down past threshold marks indicator as ready to refresh'
+    );
+    onlineView.dispatchEvent({ type: 'touchend' } as any);
+    assert(refreshed === 1, 'Releasing pull-to-refresh triggers onRefresh callback');
+  }
+
   console.log('\n======================================================');
   console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
   console.log('======================================================\n');

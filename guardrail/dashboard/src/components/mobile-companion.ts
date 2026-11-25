@@ -504,6 +504,125 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   const main = document.createElement('main');
   main.className = 'gd-m-main';
 
+  // Pull-to-refresh indicator & gesture
+  const ptrIndicator = document.createElement('div');
+  ptrIndicator.className = 'gd-m-ptr-indicator';
+  ptrIndicator.setAttribute('aria-hidden', 'true');
+  ptrIndicator.innerHTML = `
+    <span class="gd-m-ptr-arrow">↓</span>
+    <span class="gd-m-ptr-label">Pull to refresh</span>
+  `;
+  main.appendChild(ptrIndicator);
+
+  const ptrArrow = ptrIndicator.querySelector('.gd-m-ptr-arrow') as HTMLElement | null;
+  const ptrLabel = ptrIndicator.querySelector('.gd-m-ptr-label') as HTMLElement | null;
+
+  let ptrArmed = false;
+  let ptrStartY = 0;
+  let ptrPullDist = 0;
+  const PTR_THRESHOLD = 52;
+
+  const resetPtr = () => {
+    ptrArmed = false;
+    ptrPullDist = 0;
+    ptrIndicator.classList.remove('is-pulling', 'is-ready', 'is-refreshing');
+    ptrIndicator.style.height = '0px';
+    ptrIndicator.style.opacity = '0';
+    if (ptrArrow) ptrArrow.style.transform = '';
+    if (ptrLabel) ptrLabel.textContent = 'Pull to refresh';
+  };
+
+  shell.addEventListener('touchstart', (e: TouchEvent) => {
+    const scrollTop =
+      (typeof window !== 'undefined' ? window.scrollY : 0) ||
+      (typeof document !== 'undefined' ? document.documentElement?.scrollTop || 0 : 0) ||
+      main.scrollTop ||
+      0;
+    const modalOpen = typeof document !== 'undefined' && Boolean(document.querySelector('.gd-sheet-portal'));
+    if (scrollTop <= 2 && !modalOpen && e.touches && e.touches.length === 1) {
+      ptrArmed = true;
+      ptrStartY = e.touches[0].clientY;
+      ptrPullDist = 0;
+    } else {
+      ptrArmed = false;
+    }
+  }, { passive: true });
+
+  shell.addEventListener('touchmove', (e: TouchEvent) => {
+    if (!ptrArmed || !e.touches || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - ptrStartY;
+    if (dy <= 0) {
+      resetPtr();
+      return;
+    }
+    ptrPullDist = Math.min(84, Math.round(dy * 0.45));
+    if (ptrPullDist > 8 && e.cancelable) {
+      e.preventDefault();
+    }
+    const isReady = ptrPullDist >= PTR_THRESHOLD;
+    ptrIndicator.classList.add('is-pulling');
+    if (isReady) {
+      ptrIndicator.classList.add('is-ready');
+    } else {
+      ptrIndicator.classList.remove('is-ready');
+    }
+    ptrIndicator.style.height = `${ptrPullDist}px`;
+    ptrIndicator.style.opacity = String(Math.min(1, ptrPullDist / 42));
+    if (ptrArrow) {
+      ptrArrow.style.transform = isReady ? 'rotate(180deg)' : `rotate(${Math.min(160, ptrPullDist * 2)}deg)`;
+    }
+    if (ptrLabel) {
+      ptrLabel.textContent = isReady ? 'Release to refresh' : 'Pull to refresh';
+    }
+  }, { passive: false });
+
+  const finishPtr = () => {
+    if (!ptrArmed) return;
+    const shouldRefresh = ptrPullDist >= PTR_THRESHOLD;
+    ptrArmed = false;
+    if (shouldRefresh) {
+      ptrIndicator.classList.remove('is-pulling', 'is-ready');
+      ptrIndicator.classList.add('is-refreshing');
+      ptrIndicator.style.height = '44px';
+      ptrIndicator.style.opacity = '1';
+      if (ptrLabel) ptrLabel.textContent = 'Refreshing…';
+      props.onRefresh();
+      setTimeout(() => {
+        resetPtr();
+      }, 650);
+    } else {
+      resetPtr();
+    }
+  };
+  shell.addEventListener('touchend', finishPtr, { passive: true });
+  shell.addEventListener('touchcancel', resetPtr, { passive: true });
+
+  // Subtle tonal Offline / Connectivity Banner
+  const isBrowserOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if (isBrowserOffline || props.isBackendUnavailable) {
+    const offlineBanner = document.createElement('div');
+    offlineBanner.className = 'gd-m-offline-banner';
+    offlineBanner.setAttribute('role', 'status');
+    offlineBanner.setAttribute('aria-live', 'polite');
+    offlineBanner.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+        <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+      <span>${
+        isBrowserOffline
+          ? "You're offline · Decisions require internet connection"
+          : 'Connection interrupted · Reconnecting to Guardrail…'
+      }</span>
+    `;
+    main.appendChild(offlineBanner);
+  }
+
   if (activeTab === 'queue') {
     // Pixelated Real-Time Scenery Greeting
     const greetingBlock = document.createElement('section');
