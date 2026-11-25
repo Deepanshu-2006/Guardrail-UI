@@ -345,7 +345,7 @@ function openWardPolicySheet(
 
   const subEl = document.createElement('div');
   subEl.className = 'gd-m-audit-verdict-time';
-  subEl.textContent = `${ward.email || ward.id} · ${pendingCount > 0 ? `${pendingCount} pending` : 'Clear'}`;
+  subEl.textContent = ward.email || ward.id;
 
   copyEl.appendChild(titleEl);
   copyEl.appendChild(subEl);
@@ -372,20 +372,16 @@ function openWardPolicySheet(
   const queueBtn = document.createElement('button');
   queueBtn.type = 'button';
   queueBtn.className = 'gd-btn-approve-touch';
-  queueBtn.textContent = pendingCount > 0 ? `Review ${pendingCount} Pending for ${firstName}` : `Open Queue for ${firstName}`;
+  queueBtn.textContent =
+    pendingCount > 0
+      ? `Review ${pendingCount} Pending for ${firstName} →`
+      : `View Queue for ${firstName}`;
   queueBtn.addEventListener('click', () => {
     close();
     onViewQueue();
   });
 
-  const dismissBtn = document.createElement('button');
-  dismissBtn.type = 'button';
-  dismissBtn.className = 'gd-m-notif-later-btn';
-  dismissBtn.textContent = 'Close';
-  dismissBtn.addEventListener('click', close);
-
   actions.appendChild(queueBtn);
-  actions.appendChild(dismissBtn);
 
   sheet.appendChild(handle);
   sheet.appendChild(topRow);
@@ -407,29 +403,24 @@ function openWardPolicySheet(
         return;
       }
 
-      const pillsRow = document.createElement('div');
-      pillsRow.className = 'gd-m-policy-pills';
-      const statusPill = document.createElement('span');
-      statusPill.className = `gd-m-policy-pill ${summary.overallStatus === 'ACTIVE' ? 'active' : 'paused'}`;
-      statusPill.textContent = `Protection ${summary.overallStatus}`;
-      const presetPill = document.createElement('span');
-      presetPill.className = 'gd-m-policy-pill';
-      presetPill.textContent = `${summary.sensitivityPreset.charAt(0).toUpperCase() + summary.sensitivityPreset.slice(1)} Preset`;
-      const stagingPill = document.createElement('span');
-      stagingPill.className = 'gd-m-policy-pill';
-      stagingPill.textContent = summary.stagingModeEnabled ? 'Staging Mode On' : 'Staging Mode Off';
-      pillsRow.appendChild(statusPill);
-      pillsRow.appendChild(presetPill);
-      pillsRow.appendChild(stagingPill);
-      body.appendChild(pillsRow);
+      const isActive = summary.overallStatus === 'ACTIVE';
+      const statusCard = document.createElement('div');
+      statusCard.className = `gd-m-policy-status-card ${isActive ? 'active' : 'paused'}`;
+      const presetLabel = summary.sensitivityPreset.charAt(0).toUpperCase() + summary.sensitivityPreset.slice(1);
+      const stagingLabel = summary.stagingModeEnabled ? 'Staging On' : 'Staging Off';
+      statusCard.innerHTML = `
+        <span class="gd-m-policy-status-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        <div class="gd-m-policy-status-copy">
+          <div class="gd-m-policy-status-title">${isActive ? 'Protection Active' : 'Protection Paused'}</div>
+          <div class="gd-m-policy-status-sub">${presetLabel} · ${stagingLabel} · v${summary.policyVersion || '1.0'}</div>
+        </div>
+      `;
+      body.appendChild(statusCard);
 
-      const rulesKicker = document.createElement('div');
-      rulesKicker.className = 'gd-m-section-kicker';
-      rulesKicker.textContent = `Protection Rules · v${summary.policyVersion || '1'}`;
-      body.appendChild(rulesKicker);
-
-      const rulesCard = document.createElement('div');
-      rulesCard.className = 'gd-m-settings-card gd-m-policy-rules';
+      const rulesList = document.createElement('div');
+      rulesList.className = 'gd-m-policy-rules';
       const categories: Array<[string, string]> = [
         ['Destructive Actions', summary.categoryProtections?.destructiveActions ?? 'PROTECT'],
         ['Boundary Guards', summary.categoryProtections?.boundaryGuards ?? 'PROTECT'],
@@ -439,52 +430,52 @@ function openWardPolicySheet(
       ];
       categories.forEach(([label, level]) => {
         const item = document.createElement('div');
-        item.className = 'gd-m-setting-item';
+        item.className = 'gd-m-policy-rule-row';
         const lbl = document.createElement('span');
-        lbl.className = 'gd-m-setting-label';
+        lbl.className = 'gd-m-policy-rule-label';
         lbl.textContent = label;
-        const badge = document.createElement('span');
         const norm = String(level || 'PROTECT').toUpperCase();
-        badge.className = `gd-m-policy-badge ${norm === 'PROTECT' ? 'protect' : norm === 'WARN' ? 'warn' : 'allow'}`;
-        badge.textContent = norm;
+        const stateEl = document.createElement('span');
+        stateEl.className = `gd-m-policy-state ${norm === 'PROTECT' ? 'protect' : norm === 'WARN' ? 'warn' : 'allow'}`;
+        const stateText = norm === 'PROTECT' ? 'Protected' : norm === 'WARN' ? 'Warn' : 'Allowed';
+        stateEl.innerHTML = `<span class="gd-m-policy-dot" aria-hidden="true"></span><span>${stateText}</span>`;
         item.appendChild(lbl);
-        item.appendChild(badge);
-        rulesCard.appendChild(item);
+        item.appendChild(stateEl);
+        rulesList.appendChild(item);
       });
-      body.appendChild(rulesCard);
+      body.appendChild(rulesList);
 
-      const auditKicker = document.createElement('div');
-      auditKicker.className = 'gd-m-section-kicker';
-      auditKicker.textContent = 'Policy Audit Log';
-      body.appendChild(auditKicker);
+      if (auditHistory && auditHistory.length > 0) {
+        const auditKicker = document.createElement('div');
+        auditKicker.className = 'gd-m-section-kicker';
+        auditKicker.textContent = 'Recent Policy Changes';
+        body.appendChild(auditKicker);
 
-      if (auditRestricted) {
-        const note = document.createElement('div');
-        note.className = 'gd-m-policy-note';
-        note.textContent = 'Detailed policy audit history is private to the ward under Ward Sovereignty.';
-        body.appendChild(note);
-      } else if (!auditHistory || auditHistory.length === 0) {
-        const note = document.createElement('div');
-        note.className = 'gd-m-policy-note';
-        note.textContent = 'No recent policy changes recorded.';
-        body.appendChild(note);
-      } else {
         const auditList = document.createElement('div');
         auditList.className = 'gd-m-policy-audit';
-        auditHistory.slice(0, 4).forEach((entry) => {
+        auditHistory.slice(0, 3).forEach((entry) => {
           const row = document.createElement('div');
           row.className = 'gd-m-policy-audit-row';
-          const mainTxt = document.createElement('div');
+          const mainTxt = document.createElement('span');
           mainTxt.className = 'gd-m-policy-audit-title';
           mainTxt.textContent = entry.summary || entry.changeType || 'Policy updated';
-          const tsTxt = document.createElement('div');
+          const tsTxt = document.createElement('span');
           tsTxt.className = 'gd-m-policy-audit-time';
-          tsTxt.textContent = entry.timestamp ? new Date(entry.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+          tsTxt.textContent = entry.timestamp
+            ? new Date(entry.timestamp).toLocaleString([], { month: 'short', day: 'numeric' })
+            : '';
           row.appendChild(mainTxt);
           row.appendChild(tsTxt);
           auditList.appendChild(row);
         });
         body.appendChild(auditList);
+      } else {
+        const caption = document.createElement('div');
+        caption.className = 'gd-m-policy-caption';
+        caption.textContent = auditRestricted
+          ? `Policy audit log is private to ${firstName} under Ward Sovereignty.`
+          : 'No recent policy changes recorded.';
+        body.appendChild(caption);
       }
     })
     .catch(() => {

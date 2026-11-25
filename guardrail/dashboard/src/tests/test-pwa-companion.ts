@@ -776,7 +776,7 @@ async function runPwaCompanionTests() {
     const policySheet = (globalThis as any).document.body.querySelector('.gd-m-policy-sheet');
     assert(policySheet !== null, 'Clicking ward row opens Ward Policy bottom sheet');
     const sheetText = policySheet?.textContent || '';
-    assert(sheetText.includes('Protection ACTIVE'), 'Policy sheet displays active protection status');
+    assert(sheetText.includes('Protection Active'), 'Policy sheet displays active protection status');
     assert(sheetText.includes('Destructive Actions'), 'Policy sheet displays category protection rules');
     assert(sheetText.includes('Enabled Payment Actions protection'), 'Policy sheet displays policy audit log entry');
 
