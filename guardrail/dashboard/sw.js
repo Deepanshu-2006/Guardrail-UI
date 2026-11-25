@@ -162,14 +162,48 @@ self.addEventListener('push', (event) => {
     notificationOptions.actions = payload.actions;
   }
 
+  const updateBadge = async () => {
+    const nav = self.navigator;
+    if (!nav || (typeof nav.setAppBadge !== 'function' && typeof nav.clearAppBadge !== 'function')) {
+      return;
+    }
+    try {
+      const explicitCount =
+        typeof payload.badgeCount === 'number'
+          ? payload.badgeCount
+          : typeof payload.data?.pendingCount === 'number'
+            ? payload.data.pendingCount
+            : null;
+
+      if (explicitCount !== null) {
+        if (explicitCount > 0 && typeof nav.setAppBadge === 'function') {
+          await nav.setAppBadge(explicitCount);
+        } else if (typeof nav.clearAppBadge === 'function') {
+          await nav.clearAppBadge();
+        }
+        return;
+      }
+
+      if (typeof nav.setAppBadge === 'function') {
+        const activeNotifications = await self.registration.getNotifications();
+        await nav.setAppBadge(Math.max(1, activeNotifications.length));
+      }
+    } catch {
+      // Ignore unsupported or restricted badging errors
+    }
+  };
+
   event.waitUntil(
-    self.registration.showNotification(payload.title, notificationOptions).catch((err) => {
-      console.warn('[Guardrail SW] showNotification rich failed, retrying standard:', err);
-      return self.registration.showNotification(payload.title, {
-        body: payload.body,
-        icon: '/icons/icon-192.png',
-      });
-    })
+    self.registration
+      .showNotification(payload.title, notificationOptions)
+      .catch((err) => {
+        console.warn('[Guardrail SW] showNotification rich failed, retrying standard:', err);
+        return self.registration.showNotification(payload.title, {
+          body: payload.body,
+          icon: '/icons/icon-192.png',
+        });
+      })
+      .then(() => updateBadge())
   );
 });
 

@@ -223,3 +223,35 @@ export class DashboardPushService {
 }
 
 export const defaultDashboardPushService = DashboardPushService.getInstance();
+
+type BadgingNavigator = {
+  setAppBadge?: (count?: number) => Promise<void>;
+  clearAppBadge?: () => Promise<void>;
+};
+
+/**
+ * Syncs the home-screen PWA icon badge with the current pending approval count.
+ * Clears the badge when count <= 0. Safe no-op on unsupported browsers.
+ */
+export async function syncAppBadge(
+  pendingCount: number,
+  nav: unknown = typeof navigator !== 'undefined' ? navigator : undefined
+): Promise<void> {
+  const badgingNav = nav as BadgingNavigator | undefined;
+  if (!badgingNav) return;
+
+  const normalized = Number.isFinite(pendingCount) ? Math.max(0, Math.floor(pendingCount)) : 0;
+  try {
+    if (normalized > 0) {
+      if (typeof badgingNav.setAppBadge === 'function') {
+        await badgingNav.setAppBadge(normalized);
+      }
+    } else if (typeof badgingNav.clearAppBadge === 'function') {
+      await badgingNav.clearAppBadge();
+    } else if (typeof badgingNav.setAppBadge === 'function') {
+      await badgingNav.setAppBadge(0);
+    }
+  } catch {
+    // Badging API may throw when not installed or permission-restricted; ignore silently
+  }
+}

@@ -518,6 +518,57 @@ async function runPwaCompanionTests() {
     assert(closed === true, 'Clicking backdrop triggers onClose');
   }
 
+  // =========================================================================
+  // Suite 6: App Icon Badging (navigator.setAppBadge / clearAppBadge)
+  // =========================================================================
+  console.log('\n▶ Test Suite 6: App Icon Badging (navigator.setAppBadge / clearAppBadge)');
+  {
+    const { syncAppBadge } = await import('../services/push-notification-service.js');
+
+    let setCount: number | null = null;
+    let cleared = false;
+    const mockNav = {
+      setAppBadge: async (count?: number) => {
+        setCount = count ?? null;
+      },
+      clearAppBadge: async () => {
+        cleared = true;
+      },
+    };
+
+    await syncAppBadge(3, mockNav);
+    assert(setCount === 3, 'Sets app icon badge to pending request count (3)');
+
+    await syncAppBadge(0, mockNav);
+    assert(cleared === true, 'Clears app icon badge when pending count hits 0');
+
+    cleared = false;
+    await syncAppBadge(-2, mockNav);
+    assert(cleared === true, 'Normalizes negative count to clearAppBadge');
+
+    let fallbackZero: number | null = null;
+    await syncAppBadge(0, {
+      setAppBadge: async (count?: number) => {
+        fallbackZero = count ?? null;
+      },
+    });
+    assert(fallbackZero === 0, 'Falls back to setAppBadge(0) when clearAppBadge is absent');
+
+    await syncAppBadge(2, {
+      setAppBadge: async () => {
+        throw new Error('Badging restricted');
+      },
+    });
+    assert(true, 'Swallows Badging API errors safely on restricted/unsupported browsers');
+
+    const swPath = fs.existsSync(path.resolve(process.cwd(), 'sw.js'))
+      ? path.resolve(process.cwd(), 'sw.js')
+      : path.resolve(process.cwd(), 'guardrail/dashboard/sw.js');
+    const swContent = fs.readFileSync(swPath, 'utf-8');
+    assert(swContent.includes('setAppBadge'), 'Service worker updates app badge on background push');
+    assert(swContent.includes('clearAppBadge'), 'Service worker supports clearing app badge');
+  }
+
   console.log('\n======================================================');
   console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
   console.log('======================================================\n');

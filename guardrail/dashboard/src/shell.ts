@@ -33,7 +33,7 @@ import { renderDecisionHistory, renderHistoryRecordDetail } from './components/h
 import { filterRequests } from './components/filters.js';
 import { renderSettings } from './components/settings.js';
 import { isInvitationExpired } from './components/relationships.js';
-import { defaultDashboardPushService } from './services/push-notification-service.js';
+import { defaultDashboardPushService, syncAppBadge } from './services/push-notification-service.js';
 import { createIcon, setAnimatedHeading } from './components/icons.js';
 import { PwaInstallManager } from './components/pwa-install-banner.js';
 import { renderMobileActionSheet } from './components/mobile-action-sheet.js';
@@ -555,6 +555,8 @@ export class DashboardShell {
         }
       }
     }
+
+    void syncAppBadge(this.state.contactProfile?.isAuthenticated ? this.state.pendingRequests.length : 0);
 
     if (typeof window !== 'undefined' && (window.innerWidth <= 768 || (window.location?.search || '').includes('source=pwa'))) {
       this.isMobileViewportMode = true;
