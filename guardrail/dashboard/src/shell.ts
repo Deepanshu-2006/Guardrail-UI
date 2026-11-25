@@ -134,6 +134,7 @@ export class DashboardShell {
   private mobileBottomNavEl: HTMLElement | null = null;
   private mobileTab: MobileTab = 'queue';
   private mobileWardFilter: string = 'ALL';
+  private lastMobileTabRendered: MobileTab | null = null;
   private isMobileViewportMode: boolean = false;
   private resizeHandler: (() => void) | null = null;
   private onlineHandler: (() => void) | null = null;
@@ -667,9 +668,17 @@ export class DashboardShell {
       this.appWrapper = null;
       this.sidebarEl = null;
       this.workspaceEl = null;
-      while (this.rootContainer.firstChild) {
-        this.rootContainer.removeChild(this.rootContainer.firstChild);
-      }
+
+      const existingShell = this.rootContainer.querySelector('.gd-m-shell') as HTMLElement | null;
+      const existingAmbient = existingShell?.querySelector('.gd-m-ambient') as HTMLElement | null;
+      const existingPillStrip = existingShell?.querySelector('.gd-m-pill-strip') as HTMLElement | null;
+      const prevPillScrollLeft = existingPillStrip ? existingPillStrip.scrollLeft : 0;
+      const existingMain = existingShell?.querySelector('.gd-m-main') as HTMLElement | null;
+      const isTabSwitch = this.lastMobileTabRendered !== null && this.lastMobileTabRendered !== this.mobileTab;
+      const isSameTabUpdate = this.lastMobileTabRendered === this.mobileTab;
+      const prevScrollY = typeof window.scrollY === 'number' ? window.scrollY : 0;
+      const prevMainScrollTop = existingMain ? existingMain.scrollTop : 0;
+
       const mobileView = renderMobileCompanion({
         activeTab: this.mobileTab,
         profile: this.state.contactProfile,
@@ -704,7 +713,43 @@ export class DashboardShell {
         onSendTestPush: () => this.handleSendTestPush(),
         onLoadWardPolicy: (wardId) => this.fetchWardPolicyForMobile(wardId),
       });
+
+      // Keep ambient backdrop continuous across tab switches & polls so clouds/motes never jump
+      if (existingAmbient) {
+        const freshAmbient = mobileView.querySelector('.gd-m-ambient');
+        if (freshAmbient) {
+          existingAmbient.className = freshAmbient.className;
+          freshAmbient.replaceWith(existingAmbient);
+        }
+      }
+
+      if (isSameTabUpdate) {
+        mobileView.classList.add('is-ambient-update');
+      } else if (isTabSwitch) {
+        const nextMain = mobileView.querySelector('.gd-m-main');
+        nextMain?.classList.add('is-tab-entering');
+      }
+
+      while (this.rootContainer.firstChild) {
+        this.rootContainer.removeChild(this.rootContainer.firstChild);
+      }
       this.rootContainer.appendChild(mobileView);
+
+      const nextPillStrip = mobileView.querySelector('.gd-m-pill-strip') as HTMLElement | null;
+      if (nextPillStrip && prevPillScrollLeft > 0) {
+        nextPillStrip.scrollLeft = prevPillScrollLeft;
+      }
+
+      const nextMain = mobileView.querySelector('.gd-m-main') as HTMLElement | null;
+      if (isTabSwitch) {
+        if (nextMain) nextMain.scrollTop = 0;
+        if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+      } else if (isSameTabUpdate) {
+        if (nextMain && prevMainScrollTop > 0) nextMain.scrollTop = prevMainScrollTop;
+        if (prevScrollY > 0 && typeof window.scrollTo === 'function') window.scrollTo(0, prevScrollY);
+      }
+
+      this.lastMobileTabRendered = this.mobileTab;
       if (this.pendingDeepLinkRequestId && this.state.pendingRequests.some((r) => r.id === this.pendingDeepLinkRequestId)) {
         queueMicrotask(() => this.tryOpenDeepLinkedRequest());
       }
@@ -713,6 +758,7 @@ export class DashboardShell {
 
     if (this.isMobileViewportMode) {
       this.isMobileViewportMode = false;
+      this.lastMobileTabRendered = null;
       this.appWrapper = null;
     }
 

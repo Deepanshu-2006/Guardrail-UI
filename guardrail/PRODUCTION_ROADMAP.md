@@ -146,6 +146,9 @@ flowchart TD
   1. PWA `manifest.webmanifest` with standalone display and brand theme colors.
   2. "Add to Home Screen" mobile install guidance banner.
   3. Multi-ward selector dropdown in Pending Approvals & History when protecting >1 ward.
+  4. **Desktop-to-Phone PWA Handoff & Strict Install-Only Mobile Browser Gate** *(planned after core PWA UX is complete)*:
+     - Desktop **Get Mobile App** QR code (plus copy/handoff link) in Settings so caretakers can send the PWA directly to their phone from the desktop dashboard.
+     - Strict install-only screen when opened in a mobile web browser (`!standalone`), blocking dashboard usage in mobile Safari/Chrome until launched as the installed Home Screen PWA.
 * **Files:**
   - `guardrail/dashboard/public/manifest.webmanifest`
   - `guardrail/dashboard/src/shell.ts`
