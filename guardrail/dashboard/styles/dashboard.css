@@ -8071,8 +8071,8 @@ textarea:focus-visible,
   left: 0;
   width: 0;
   border-radius: 999px;
-  background: rgba(237, 230, 214, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(135deg, rgba(237, 230, 214, 0.22) 0%, rgba(196, 212, 182, 0.14) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 10px rgba(0, 0, 0, 0.2);
   pointer-events: none;
   z-index: 0;
   opacity: 0;
@@ -8090,18 +8090,28 @@ textarea:focus-visible,
 .gd-m-dock-btn {
   position: relative;
   z-index: 1;
+  transition: color 220ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .gd-m-dock-btn .gd-m-dock-icon {
-  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .gd-m-dock-btn.active .gd-m-dock-icon {
-  transform: translateY(-2px) scale(1.12);
+  transform: translateY(-2px) scale(1.14);
+}
+
+.gd-m-dock-circle {
+  transition:
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 240ms ease,
+    color 240ms ease,
+    box-shadow 260ms ease;
 }
 
 .gd-m-dock-circle.active {
-  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.28), 0 10px 28px rgba(20, 27, 17, 0.28);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.3), 0 12px 28px rgba(15, 21, 13, 0.32);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
@@ -15059,8 +15069,8 @@ article.gd-card-collapsed,
   left: 0;
   width: 0;
   border-radius: 999px;
-  background: rgba(237, 230, 214, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(135deg, rgba(237, 230, 214, 0.22) 0%, rgba(196, 212, 182, 0.14) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 10px rgba(0, 0, 0, 0.2);
   pointer-events: none;
   z-index: 0;
   opacity: 0;
@@ -15078,18 +15088,28 @@ article.gd-card-collapsed,
 .gd-m-dock-btn {
   position: relative;
   z-index: 1;
+  transition: color 220ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .gd-m-dock-btn .gd-m-dock-icon {
-  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .gd-m-dock-btn.active .gd-m-dock-icon {
-  transform: translateY(-2px) scale(1.12);
+  transform: translateY(-2px) scale(1.14);
+}
+
+.gd-m-dock-circle {
+  transition:
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 240ms ease,
+    color 240ms ease,
+    box-shadow 260ms ease;
 }
 
 .gd-m-dock-circle.active {
-  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.28), 0 10px 28px rgba(20, 27, 17, 0.28);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.3), 0 12px 28px rgba(15, 21, 13, 0.32);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
@@ -21550,8 +21570,8 @@ article.gd-card-collapsed,
   left: 0;
   width: 0;
   border-radius: 999px;
-  background: rgba(237, 230, 214, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(135deg, rgba(237, 230, 214, 0.22) 0%, rgba(196, 212, 182, 0.14) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 10px rgba(0, 0, 0, 0.2);
   pointer-events: none;
   z-index: 0;
   opacity: 0;
@@ -21569,18 +21589,28 @@ article.gd-card-collapsed,
 .gd-m-dock-btn {
   position: relative;
   z-index: 1;
+  transition: color 220ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .gd-m-dock-btn .gd-m-dock-icon {
-  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .gd-m-dock-btn.active .gd-m-dock-icon {
-  transform: translateY(-2px) scale(1.12);
+  transform: translateY(-2px) scale(1.14);
+}
+
+.gd-m-dock-circle {
+  transition:
+    transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 240ms ease,
+    color 240ms ease,
+    box-shadow 260ms ease;
 }
 
 .gd-m-dock-circle.active {
-  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.28), 0 10px 28px rgba(20, 27, 17, 0.28);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.3), 0 12px 28px rgba(15, 21, 13, 0.32);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-btn.active {

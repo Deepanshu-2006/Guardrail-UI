@@ -673,6 +673,8 @@ export class DashboardShell {
       const existingAmbient = existingShell?.querySelector('.gd-m-ambient') as HTMLElement | null;
       const existingTopbar = existingShell?.querySelector('.gd-m-topbar') as HTMLElement | null;
       const existingPillStrip = existingShell?.querySelector('.gd-m-ward-pills') as HTMLElement | null;
+      const existingDockWrap = existingShell?.querySelector('.gd-m-dock-wrap') as HTMLElement | null;
+      const existingPillDock = existingDockWrap?.querySelector('.gd-m-pill-dock') as HTMLElement | null;
       const prevPillScrollLeft = existingPillStrip ? existingPillStrip.scrollLeft : 0;
       const existingMain = existingShell?.querySelector('.gd-m-main') as HTMLElement | null;
       const isTabSwitch = this.lastMobileTabRendered !== null && this.lastMobileTabRendered !== this.mobileTab;
@@ -758,16 +760,51 @@ export class DashboardShell {
         }
       }
 
+      // Keep bottom dock mounted in-place across all mobile renders so the dock glider & icons animate natively
+      let preservedPillDock: HTMLElement | null = null;
+      const freshDockWrap = mobileView.querySelector('.gd-m-dock-wrap');
+      if (existingDockWrap && existingPillDock && freshDockWrap) {
+        const dockBtns = Array.from(existingPillDock.querySelectorAll('.gd-m-dock-btn')) as HTMLElement[];
+        dockBtns.forEach((btn) => {
+          const isActive = (btn.dataset?.tabId ?? '') === this.mobileTab;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-current', isActive ? 'page' : 'false');
+        });
+        const existingCircle = existingDockWrap.querySelector('.gd-m-dock-circle') as HTMLElement | null;
+        const freshCircle = freshDockWrap.querySelector('.gd-m-dock-circle') as HTMLElement | null;
+        if (existingCircle && freshCircle) {
+          const isQueue = this.mobileTab === 'queue';
+          existingCircle.classList.toggle('active', isQueue);
+          existingCircle.setAttribute('aria-current', isQueue ? 'page' : 'false');
+          existingCircle.setAttribute('aria-label', freshCircle.getAttribute('aria-label') || 'Pending queue');
+          const existingBadge = existingCircle.querySelector('.gd-m-dock-circle-badge');
+          const freshBadge = freshCircle.querySelector('.gd-m-dock-circle-badge');
+          if (existingBadge && freshBadge) {
+            existingBadge.textContent = freshBadge.textContent;
+          } else if (existingBadge && !freshBadge) {
+            existingBadge.remove();
+          } else if (!existingBadge && freshBadge) {
+            existingCircle.appendChild(freshBadge.cloneNode(true));
+          }
+        }
+        freshDockWrap.replaceWith(existingDockWrap);
+        preservedPillDock = existingPillDock;
+      }
+
       while (this.rootContainer.firstChild) {
         this.rootContainer.removeChild(this.rootContainer.firstChild);
       }
       this.rootContainer.appendChild(mobileView);
 
-      if (preservedPillStrip) {
+      if (preservedPillStrip || preservedPillDock) {
+        const runSync = () => {
+          if (preservedPillStrip) (preservedPillStrip as any).__syncGlider?.(true, true);
+          if (preservedPillDock) (preservedPillDock as any).__syncGlider?.(true, true);
+        };
         if (typeof requestAnimationFrame === 'function') {
-          requestAnimationFrame(() => (preservedPillStrip as any).__syncGlider?.(true, true));
+          requestAnimationFrame(runSync);
         } else {
-          (preservedPillStrip as any).__syncGlider?.(true, true);
+          runSync();
         }
       }
 

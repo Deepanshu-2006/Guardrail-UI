@@ -1539,6 +1539,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     btn.type = 'button';
     const isActive = activeTab === t.id;
     btn.className = `gd-m-dock-btn ${isActive ? 'active' : ''}`;
+    if (btn.dataset) btn.dataset.tabId = t.id;
     btn.setAttribute('aria-current', isActive ? 'page' : 'false');
 
     const iconSpan = document.createElement('span');
@@ -1556,12 +1557,13 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     pillDock.appendChild(btn);
   });
 
-  attachSlidingGlider(
+  const syncDockGlider = attachSlidingGlider(
     pillDock,
     'gd-m-dock-glider',
     () => pillDock.querySelector<HTMLElement>('.gd-m-dock-btn.active'),
     'm-dock-pill'
   );
+  (pillDock as any).__syncGlider = syncDockGlider;
 
   const queueCircle = document.createElement('button');
   queueCircle.type = 'button';
