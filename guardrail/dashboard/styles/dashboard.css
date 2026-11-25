@@ -21755,15 +21755,67 @@ article.gd-card-collapsed,
 }
 
 @keyframes gd-px-bird-glide-a {
-  0%, 100% { transform: translate(0, 0); }
-  35% { transform: translate(-1.8px, -1px); }
-  70% { transform: translate(1.2px, -0.5px); }
+  0% {
+    transform: translate(34px, 2px);
+    opacity: 0;
+  }
+  10% {
+    transform: translate(26px, 0.5px);
+    opacity: 1;
+  }
+  35% {
+    transform: translate(8px, -1.5px);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-12px, -0.5px);
+    opacity: 1;
+  }
+  88% {
+    transform: translate(-34px, -2.5px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-44px, -3.5px);
+    opacity: 0;
+  }
 }
 
 @keyframes gd-px-bird-glide-b {
-  0%, 100% { transform: translate(0, 0); }
-  40% { transform: translate(1.5px, -0.9px); }
-  75% { transform: translate(-1.2px, 0.4px); }
+  0% {
+    transform: translate(30px, 1px);
+    opacity: 0;
+  }
+  10% {
+    transform: translate(22px, 0px);
+    opacity: 1;
+  }
+  40% {
+    transform: translate(2px, -2px);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-20px, -0.5px);
+    opacity: 1;
+  }
+  88% {
+    transform: translate(-35px, -2px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-45px, -3px);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-px-wing-flap-up {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes gd-px-wing-flap-down {
+  0%, 49% { opacity: 0; }
+  50%, 100% { opacity: 1; }
 }
 
 @keyframes gd-px-star-twinkle {
@@ -21808,21 +21860,46 @@ article.gd-card-collapsed,
   animation: gd-px-sun-core-breathe 5s ease-in-out infinite;
 }
 
-.gd-overview-scenery-art .gd-px-sun-rays,
-.gd-m-scenery-art .gd-px-sun-rays {
+.gd-overview-scenery-art .gd-px-sun-rays-a,
+.gd-m-scenery-art .gd-px-sun-rays-a {
   animation: gd-px-sun-pulse 3.6s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-sun-rays-b,
+.gd-m-scenery-art .gd-px-sun-rays-b {
+  animation: gd-px-sun-pulse 3.6s ease-in-out 1.8s infinite;
 }
 
 .gd-overview-scenery-art .gd-px-bird-a,
 .gd-m-scenery-art .gd-px-bird-a {
-  animation: gd-px-bird-glide-a 7s ease-in-out infinite;
-  will-change: transform;
+  animation: gd-px-bird-glide-a 14s linear infinite;
+  will-change: transform, opacity;
 }
 
 .gd-overview-scenery-art .gd-px-bird-b,
 .gd-m-scenery-art .gd-px-bird-b {
-  animation: gd-px-bird-glide-b 8.5s ease-in-out infinite;
-  will-change: transform;
+  animation: gd-px-bird-glide-b 16s linear -5.5s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-bird-a .gd-px-wing-up,
+.gd-m-scenery-art .gd-px-bird-a .gd-px-wing-up {
+  animation: gd-px-wing-flap-up 0.56s steps(1, end) infinite;
+}
+
+.gd-overview-scenery-art .gd-px-bird-a .gd-px-wing-down,
+.gd-m-scenery-art .gd-px-bird-a .gd-px-wing-down {
+  animation: gd-px-wing-flap-down 0.56s steps(1, end) infinite;
+}
+
+.gd-overview-scenery-art .gd-px-bird-b .gd-px-wing-up,
+.gd-m-scenery-art .gd-px-bird-b .gd-px-wing-up {
+  animation: gd-px-wing-flap-up 0.64s steps(1, end) -0.24s infinite;
+}
+
+.gd-overview-scenery-art .gd-px-bird-b .gd-px-wing-down,
+.gd-m-scenery-art .gd-px-bird-b .gd-px-wing-down {
+  animation: gd-px-wing-flap-down 0.64s steps(1, end) -0.24s infinite;
 }
 
 .gd-overview-scenery-art .gd-px-star-a,
@@ -21843,6 +21920,241 @@ article.gd-card-collapsed,
 .gd-overview-scenery-art .gd-px-window,
 .gd-m-scenery-art .gd-px-window {
   animation: gd-px-window-flicker 5.5s ease-in-out infinite;
+}
+
+@keyframes gd-px-pine-sway-a {
+  0%, 100% { transform: skewX(0deg); }
+  45% { transform: skewX(2.4deg); }
+  75% { transform: skewX(-1.4deg); }
+}
+
+@keyframes gd-px-pine-sway-b {
+  0%, 100% { transform: skewX(0deg); }
+  40% { transform: skewX(-2deg); }
+  78% { transform: skewX(1.8deg); }
+}
+
+@keyframes gd-px-mist-drift {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.22;
+  }
+  50% {
+    transform: translateX(5px);
+    opacity: 0.42;
+  }
+}
+
+@keyframes gd-px-bird-glide-c {
+  0% {
+    transform: translate(-30px, 2px);
+    opacity: 0;
+  }
+  12% {
+    transform: translate(-20px, 0.5px);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(8px, -1.5px);
+    opacity: 0.9;
+  }
+  88% {
+    transform: translate(32px, -0.5px);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(42px, -2px);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-px-mote-drift {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.72;
+  }
+  80% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(7px, -4px);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-px-horizon-glow {
+  0%, 100% { opacity: 0.16; }
+  50% { opacity: 0.34; }
+}
+
+@keyframes gd-px-window-halo {
+  0%, 100% { opacity: 0.14; }
+  45% { opacity: 0.28; }
+  75% { opacity: 0.18; }
+}
+
+@keyframes gd-px-smoke-rise {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  18% {
+    transform: translate(0.6px, -1.5px);
+    opacity: 0.62;
+  }
+  60% {
+    transform: translate(2.2px, -5px);
+    opacity: 0.36;
+  }
+  100% {
+    transform: translate(4px, -8.5px);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-px-shooting-star {
+  0%, 84% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  86% {
+    transform: translate(0, 0);
+    opacity: 0.95;
+  }
+  94% {
+    transform: translate(20px, 6px);
+    opacity: 0.9;
+  }
+  97%, 100% {
+    transform: translate(26px, 8px);
+    opacity: 0;
+  }
+}
+
+@keyframes gd-px-firefly {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(1.4px, -1.2px);
+    opacity: 0.92;
+  }
+  55% {
+    transform: translate(-1px, -2px);
+    opacity: 0.25;
+  }
+  80% {
+    transform: translate(0.8px, -0.6px);
+    opacity: 0.85;
+  }
+}
+
+.gd-overview-scenery-art .gd-px-pine-sway-a,
+.gd-m-scenery-art .gd-px-pine-sway-a {
+  animation: gd-px-pine-sway-a 6.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-pine-sway-b,
+.gd-m-scenery-art .gd-px-pine-sway-b {
+  animation: gd-px-pine-sway-b 7.6s ease-in-out -2.2s infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-mist,
+.gd-m-scenery-art .gd-px-mist {
+  animation: gd-px-mist-drift 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-bird-c,
+.gd-m-scenery-art .gd-px-bird-c {
+  animation: gd-px-bird-glide-c 18s linear -4s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-bird-c .gd-px-wing-up,
+.gd-m-scenery-art .gd-px-bird-c .gd-px-wing-up {
+  animation: gd-px-wing-flap-up 0.68s steps(1, end) infinite;
+}
+
+.gd-overview-scenery-art .gd-px-bird-c .gd-px-wing-down,
+.gd-m-scenery-art .gd-px-bird-c .gd-px-wing-down {
+  animation: gd-px-wing-flap-down 0.68s steps(1, end) infinite;
+}
+
+.gd-overview-scenery-art .gd-px-mote-a,
+.gd-m-scenery-art .gd-px-mote-a {
+  animation: gd-px-mote-drift 7.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-mote-b,
+.gd-m-scenery-art .gd-px-mote-b {
+  animation: gd-px-mote-drift 9s ease-in-out -3s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-mote-c,
+.gd-m-scenery-art .gd-px-mote-c {
+  animation: gd-px-mote-drift 8.2s ease-in-out -5.5s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-horizon-glow,
+.gd-m-scenery-art .gd-px-horizon-glow {
+  animation: gd-px-horizon-glow 6s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-window-halo,
+.gd-m-scenery-art .gd-px-window-halo {
+  animation: gd-px-window-halo 5.5s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-smoke-1,
+.gd-m-scenery-art .gd-px-smoke-1 {
+  animation: gd-px-smoke-rise 4.8s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-smoke-2,
+.gd-m-scenery-art .gd-px-smoke-2 {
+  animation: gd-px-smoke-rise 4.8s ease-out -1.6s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-smoke-3,
+.gd-m-scenery-art .gd-px-smoke-3 {
+  animation: gd-px-smoke-rise 4.8s ease-out -3.2s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-shooting-star,
+.gd-m-scenery-art .gd-px-shooting-star {
+  animation: gd-px-shooting-star 19s ease-in -6s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-firefly-1,
+.gd-m-scenery-art .gd-px-firefly-1 {
+  animation: gd-px-firefly 4.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-firefly-2,
+.gd-m-scenery-art .gd-px-firefly-2 {
+  animation: gd-px-firefly 5.4s ease-in-out -1.9s infinite;
+  will-change: transform, opacity;
+}
+
+.gd-overview-scenery-art .gd-px-firefly-3,
+.gd-m-scenery-art .gd-px-firefly-3 {
+  animation: gd-px-firefly 4.9s ease-in-out -3.4s infinite;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

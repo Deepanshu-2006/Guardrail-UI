@@ -18,17 +18,28 @@ function rect(x: number, y: number, w: number, h: number, fill: string): string 
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
 }
 
-function pixelPine(x: number, baseY: number, height: number, fill: string, trunkFill: string): string {
-  const parts: string[] = [];
-  parts.push(rect(x, baseY - 2, 1, 2, trunkFill));
+function pixelPine(
+  x: number,
+  baseY: number,
+  height: number,
+  fill: string,
+  trunkFill: string,
+  swayVariant: 'a' | 'b' = 'a'
+): string {
+  const canopy: string[] = [];
   const layers = Math.max(2, Math.floor((height - 2) / 2));
   for (let i = 0; i < layers; i++) {
     const w = 1 + i * 2;
     const lx = x - i;
     const ly = baseY - height + i * 2;
-    parts.push(rect(lx, ly, w, 2, fill));
+    canopy.push(rect(lx, ly, w, 2, fill));
   }
-  return parts.join('');
+  return [
+    rect(x, baseY - 2, 1, 2, trunkFill),
+    `<g class="gd-px-pine-sway-${swayVariant}" style="transform-origin:${x}px ${baseY - 2}px">`,
+    ...canopy,
+    `</g>`,
+  ].join('');
 }
 
 function pixelCloud(x: number, y: number, light: string, shade: string): string {
@@ -54,11 +65,12 @@ function buildMorningSvg(): string {
     rect(70, 15, 10, 2, '#F5C45E'),
     rect(69, 17, 12, 4, '#EAA844'),
     `</g>`,
-    `<g class="gd-px-sun-rays">`,
-    // stepped rays
+    `<g class="gd-px-sun-rays-a">`,
     rect(74, 11, 2, 1, '#F7D47A'),
     rect(66, 16, 2, 1, '#F7D47A'),
     rect(82, 16, 2, 1, '#F7D47A'),
+    `</g>`,
+    `<g class="gd-px-sun-rays-b">`,
     rect(68, 13, 1, 1, '#F7D47A'),
     rect(81, 13, 1, 1, '#F7D47A'),
     `</g>`,
@@ -71,14 +83,28 @@ function buildMorningSvg(): string {
 
   const birds = [
     `<g class="gd-px-bird-a">`,
+    `<g class="gd-px-wing-up">`,
     rect(57, 13, 1, 1, '#3B4834'),
     rect(59, 13, 1, 1, '#3B4834'),
     rect(58, 14, 1, 1, '#3B4834'),
     `</g>`,
+    `<g class="gd-px-wing-down">`,
+    rect(57, 14, 1, 1, '#3B4834'),
+    rect(58, 13, 1, 1, '#3B4834'),
+    rect(59, 14, 1, 1, '#3B4834'),
+    `</g>`,
+    `</g>`,
     `<g class="gd-px-bird-b">`,
+    `<g class="gd-px-wing-up">`,
     rect(62, 11, 1, 1, '#3B4834'),
     rect(64, 11, 1, 1, '#3B4834'),
     rect(63, 12, 1, 1, '#3B4834'),
+    `</g>`,
+    `<g class="gd-px-wing-down">`,
+    rect(62, 12, 1, 1, '#3B4834'),
+    rect(63, 11, 1, 1, '#3B4834'),
+    rect(64, 12, 1, 1, '#3B4834'),
+    `</g>`,
     `</g>`,
   ].join('');
 
@@ -89,6 +115,15 @@ function buildMorningSvg(): string {
     rect(50, 21, 24, 3, '#859674'),
     rect(56, 19, 12, 2, '#859674'),
     rect(80, 22, 16, 2, '#859674'),
+  ].join('');
+
+  const mist = [
+    `<g class="gd-px-mist">`,
+    rect(4, 24, 24, 1, '#FAF6EC'),
+    rect(10, 23, 14, 1, '#FAF6EC'),
+    rect(48, 24, 22, 1, '#FAF6EC'),
+    rect(54, 23, 12, 1, '#FAF6EC'),
+    `</g>`,
   ].join('');
 
   const midHills = [
@@ -102,13 +137,13 @@ function buildMorningSvg(): string {
   const foreGround = [
     rect(0, 30, 96, 4, '#2A3723'),
     rect(64, 29, 32, 1, '#2A3723'),
-    pixelPine(68, 30, 7, '#1F2B19', '#161F12'),
-    pixelPine(75, 30, 9, '#23301D', '#161F12'),
-    pixelPine(83, 30, 6, '#1F2B19', '#161F12'),
-    pixelPine(90, 30, 8, '#23301D', '#161F12'),
+    pixelPine(68, 30, 7, '#1F2B19', '#161F12', 'a'),
+    pixelPine(75, 30, 9, '#23301D', '#161F12', 'b'),
+    pixelPine(83, 30, 6, '#1F2B19', '#161F12', 'a'),
+    pixelPine(90, 30, 8, '#23301D', '#161F12', 'b'),
   ].join('');
 
-  return `<svg viewBox="0 0 96 34" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">${sky}${sun}${clouds}${birds}${farHills}${midHills}${foreGround}</svg>`;
+  return `<svg viewBox="0 0 96 34" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">${sky}${sun}${clouds}${birds}${farHills}${mist}${midHills}${foreGround}</svg>`;
 }
 
 function buildAfternoonSvg(): string {
@@ -125,12 +160,35 @@ function buildAfternoonSvg(): string {
     rect(75, 5, 6, 4, '#F0C24D'),
     rect(76, 9, 4, 1, '#F5D46B'),
     `</g>`,
+    `<g class="gd-px-sun-rays-a">`,
+    rect(77, 2, 2, 1, '#F5D46B'),
+    rect(73, 6, 1, 2, '#F5D46B'),
+    rect(82, 6, 1, 2, '#F5D46B'),
+    `</g>`,
   ].join('');
 
   const clouds = [
     `<g class="gd-px-cloud-a">${pixelCloud(44, 6, '#FAF8F1', '#DCE3D5')}</g>`,
     `<g class="gd-px-cloud-b">${pixelCloud(60, 11, '#FAF8F1', '#DCE3D5')}</g>`,
     `<g class="gd-px-cloud-c">${pixelCloud(82, 13, '#FAF8F1', '#DCE3D5')}</g>`,
+  ].join('');
+
+  const afternoonLife = [
+    `<g class="gd-px-bird-c">`,
+    `<g class="gd-px-wing-up">`,
+    rect(53, 9, 1, 1, '#445939'),
+    rect(55, 9, 1, 1, '#445939'),
+    rect(54, 10, 1, 1, '#445939'),
+    `</g>`,
+    `<g class="gd-px-wing-down">`,
+    rect(53, 10, 1, 1, '#445939'),
+    rect(54, 9, 1, 1, '#445939'),
+    rect(55, 10, 1, 1, '#445939'),
+    `</g>`,
+    `</g>`,
+    `<g class="gd-px-mote-a">${rect(58, 22, 1, 1, '#FAF8F1')}</g>`,
+    `<g class="gd-px-mote-b">${rect(72, 24, 1, 1, '#F5D46B')}</g>`,
+    `<g class="gd-px-mote-c">${rect(84, 21, 1, 1, '#FAF8F1')}</g>`,
   ].join('');
 
   const farHills = [
@@ -150,12 +208,12 @@ function buildAfternoonSvg(): string {
   const foreGround = [
     rect(0, 30, 96, 4, '#24321E'),
     rect(66, 29, 30, 1, '#24321E'),
-    pixelPine(70, 30, 8, '#1B2716', '#131C0F'),
-    pixelPine(78, 30, 6, '#212F1B', '#131C0F'),
-    pixelPine(86, 30, 9, '#1B2716', '#131C0F'),
+    pixelPine(70, 30, 8, '#1B2716', '#131C0F', 'a'),
+    pixelPine(78, 30, 6, '#212F1B', '#131C0F', 'b'),
+    pixelPine(86, 30, 9, '#1B2716', '#131C0F', 'a'),
   ].join('');
 
-  return `<svg viewBox="0 0 96 34" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">${sky}${sun}${clouds}${farHills}${midHills}${foreGround}</svg>`;
+  return `<svg viewBox="0 0 96 34" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">${sky}${sun}${clouds}${afternoonLife}${farHills}${midHills}${foreGround}</svg>`;
 }
 
 function buildEveningSvg(): string {
@@ -168,6 +226,10 @@ function buildEveningSvg(): string {
   ].join('');
 
   const sun = [
+    `<g class="gd-px-horizon-glow">`,
+    rect(58, 21, 34, 2, '#F0B34D'),
+    rect(64, 19, 22, 2, '#F6D16D'),
+    `</g>`,
     `<g class="gd-px-sun-core">`,
     rect(72, 17, 6, 1, '#F6D16D'),
     rect(70, 18, 10, 5, '#F0B34D'),
@@ -190,12 +252,16 @@ function buildEveningSvg(): string {
     rect(0, 28, 96, 6, '#1B2219'),
     rect(58, 26, 38, 2, '#1B2219'),
     rect(66, 25, 22, 1, '#1B2219'),
-    pixelPine(64, 27, 7, '#121811', '#0D120C'),
-    pixelPine(79, 27, 8, '#121811', '#0D120C'),
-    pixelPine(88, 27, 6, '#121811', '#0D120C'),
-    // tiny warm cabin silhouette & lit window
+    pixelPine(64, 27, 7, '#121811', '#0D120C', 'a'),
+    pixelPine(79, 27, 8, '#121811', '#0D120C', 'b'),
+    pixelPine(88, 27, 6, '#121811', '#0D120C', 'a'),
+    // tiny warm cabin silhouette, chimney smoke & lit window
     rect(71, 24, 5, 3, '#141913'),
     rect(70, 23, 7, 1, '#0E120D'),
+    `<g class="gd-px-smoke-1">${rect(74, 21, 1, 1, '#C27453')}</g>`,
+    `<g class="gd-px-smoke-2">${rect(74, 21, 1, 1, '#D6894F')}</g>`,
+    `<g class="gd-px-smoke-3">${rect(74, 21, 1, 1, '#8E5854')}</g>`,
+    `<g class="gd-px-window-halo">${rect(72, 24, 4, 3, '#F6BF58')}</g>`,
     `<g class="gd-px-window">${rect(73, 25, 2, 1, '#F6BF58')}</g>`,
   ].join('');
 
@@ -230,6 +296,10 @@ function buildNightSvg(): string {
     rect(84, 10, 3, 1, '#D5DEC9'),
     rect(85, 9, 1, 3, '#D5DEC9'),
     `</g>`,
+    `<g class="gd-px-shooting-star">`,
+    rect(52, 5, 2, 1, '#EDE6D6'),
+    rect(54, 5, 1, 1, '#F7D47A'),
+    `</g>`,
   ].join('');
 
   const moon = [
@@ -253,14 +323,22 @@ function buildNightSvg(): string {
     rect(0, 28, 96, 6, '#0E1511'),
     rect(58, 26, 38, 2, '#0E1511'),
     rect(68, 25, 22, 1, '#0E1511'),
-    pixelPine(63, 27, 7, '#090E0B', '#070A08'),
-    pixelPine(77, 27, 9, '#090E0B', '#070A08'),
-    pixelPine(86, 27, 6, '#090E0B', '#070A08'),
-    pixelPine(91, 27, 8, '#090E0B', '#070A08'),
-    // tiny warm cabin window glow
+    pixelPine(63, 27, 7, '#090E0B', '#070A08', 'a'),
+    pixelPine(77, 27, 9, '#090E0B', '#070A08', 'b'),
+    pixelPine(86, 27, 6, '#090E0B', '#070A08', 'a'),
+    pixelPine(91, 27, 8, '#090E0B', '#070A08', 'b'),
+    // tiny warm cabin window glow & chimney smoke
     rect(69, 24, 5, 3, '#131A15'),
     rect(68, 23, 7, 1, '#0A0F0C'),
+    `<g class="gd-px-smoke-1">${rect(72, 21, 1, 1, '#9EB09E')}</g>`,
+    `<g class="gd-px-smoke-2">${rect(72, 21, 1, 1, '#D5DEC9')}</g>`,
+    `<g class="gd-px-smoke-3">${rect(72, 21, 1, 1, '#9EB09E')}</g>`,
+    `<g class="gd-px-window-halo">${rect(70, 24, 4, 3, '#EBB04E')}</g>`,
     `<g class="gd-px-window">${rect(71, 25, 2, 1, '#EBB04E')}</g>`,
+    // forest fireflies
+    `<g class="gd-px-firefly-1">${rect(60, 26, 1, 1, '#EBB04E')}</g>`,
+    `<g class="gd-px-firefly-2">${rect(75, 25, 1, 1, '#D5DEC9')}</g>`,
+    `<g class="gd-px-firefly-3">${rect(84, 26, 1, 1, '#EBB04E')}</g>`,
   ].join('');
 
   return `<svg viewBox="0 0 96 34" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">${sky}${stars}${moon}${farHills}${foreGround}</svg>`;
