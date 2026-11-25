@@ -263,7 +263,12 @@ function attachSlidingGlider(
     const activeBtn = getActiveBtn();
     if (!activeBtn) {
       container.classList.remove('has-glider');
-      mobileGliderCache.delete(cacheKey);
+      const containerW = (container as any).offsetWidth as number | undefined;
+      if (typeof containerW === 'number' && containerW > 0) {
+        mobileGliderCache.set(cacheKey, { left: Math.max(0, containerW - 44), width: 38 });
+      } else {
+        mobileGliderCache.delete(cacheKey);
+      }
       return;
     }
     const targetLeft = (activeBtn as any).offsetLeft as number | undefined;
@@ -281,17 +286,10 @@ function attachSlidingGlider(
         glider.style.transform = `translate3d(${prev.left}px, 0, 0)`;
       }
       void (glider as any).offsetWidth;
-      const run = () => {
-        if (glider.style) {
-          glider.style.transition = '';
-          glider.style.width = `${targetWidth}px`;
-          glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
-        }
-      };
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(run);
-      } else {
-        run();
+      if (glider.style) {
+        glider.style.transition = '';
+        glider.style.width = `${targetWidth}px`;
+        glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
       }
     } else if (glider.style) {
       glider.style.transition = 'none';
@@ -301,12 +299,22 @@ function attachSlidingGlider(
       glider.style.transition = '';
     }
 
+    if (typeof (activeBtn as any).scrollIntoView === 'function' && (container as any).scrollWidth > (container as any).clientWidth) {
+      try {
+        (activeBtn as any).scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      } catch {
+        // ignore in mock DOM
+      }
+    }
+
     if (updateCache) {
       mobileGliderCache.set(cacheKey, { left: targetLeft, width: targetWidth });
     }
   };
 
-  if (typeof requestAnimationFrame === 'function') {
+  if (typeof queueMicrotask === 'function') {
+    queueMicrotask(() => sync(true, true));
+  } else if (typeof requestAnimationFrame === 'function') {
     requestAnimationFrame(() => sync(true, true));
   }
   return sync;
