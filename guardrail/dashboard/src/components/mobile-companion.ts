@@ -139,7 +139,8 @@ function openHistoryDetailSheet(
 
   const statusClass = status.toLowerCase();
   const risk = (req.riskLevel || RiskLevel.LOW).toUpperCase();
-  const riskClass = risk.toLowerCase();
+  const isApproved = status === ApprovalStatus.APPROVED;
+  const isRejected = status === ApprovalStatus.REJECTED;
 
   const overlay = document.createElement('div');
   overlay.className = 'gd-sheet-portal gd-m-history-sheet-overlay';
@@ -161,30 +162,31 @@ function openHistoryDetailSheet(
   backdrop.addEventListener('click', closeSheet);
 
   const sheet = document.createElement('div');
-  sheet.className = 'gd-mobile-action-sheet';
+  sheet.className = 'gd-mobile-action-sheet gd-m-audit-sheet';
 
   const handle = document.createElement('div');
   handle.className = 'gd-sheet-drag-handle';
   handle.setAttribute('aria-hidden', 'true');
 
-  const header = document.createElement('div');
-  header.className = 'gd-sheet-header';
+  // Top-right close button + Clean Verdict Header (zero boxes)
+  const topRow = document.createElement('div');
+  topRow.className = 'gd-m-audit-top';
 
-  const badgeRow = document.createElement('div');
-  badgeRow.className = 'gd-sheet-badge-row';
+  const verdictWrap = document.createElement('div');
+  verdictWrap.className = `gd-m-audit-verdict ${statusClass}`;
 
-  const wardEl = document.createElement('span');
-  wardEl.className = 'gd-m-hero-ward';
-  wardEl.style.padding = '0';
-  wardEl.style.background = 'transparent';
-  wardEl.textContent = wardName;
+  const iconSvg = isApproved
+    ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
-  const riskPill = document.createElement('span');
-  riskPill.className = `gd-m-risk-pill ${riskClass}`;
-  riskPill.textContent = risk;
-
-  badgeRow.appendChild(wardEl);
-  badgeRow.appendChild(riskPill);
+  const verdictWord = isApproved ? 'Approved' : isRejected ? 'Rejected' : status;
+  verdictWrap.innerHTML = `
+    <span class="gd-m-audit-icon" aria-hidden="true">${iconSvg}</span>
+    <div class="gd-m-audit-verdict-copy">
+      <div class="gd-m-audit-verdict-title">${verdictWord}</div>
+      <div class="gd-m-audit-verdict-time">${fullTimestamp}</div>
+    </div>
+  `;
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -193,76 +195,49 @@ function openHistoryDetailSheet(
   closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
   closeBtn.addEventListener('click', closeSheet);
 
-  header.appendChild(badgeRow);
-  header.appendChild(closeBtn);
+  topRow.appendChild(verdictWrap);
+  topRow.appendChild(closeBtn);
 
-  const body = document.createElement('div');
-  body.className = 'gd-sheet-body';
+  // Action & Site Name Block (prominent, borderless)
+  const actionBlock = document.createElement('div');
+  actionBlock.className = 'gd-m-audit-action';
 
-  // Prominent Approval / Rejection Verdict Hero Banner
-  const isApproved = status === ApprovalStatus.APPROVED;
-  const verdictBanner = document.createElement('div');
-  verdictBanner.className = `gd-m-verdict-banner ${statusClass}`;
-  const verdictIconSvg = isApproved
-    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-  const verdictLabel = isApproved ? 'Action Approved' : status === ApprovalStatus.REJECTED ? 'Action Rejected' : status;
-  verdictBanner.innerHTML = `
-    <span class="gd-m-verdict-icon" aria-hidden="true">${verdictIconSvg}</span>
-    <div class="gd-m-verdict-text">
-      <div class="gd-m-verdict-title">${verdictLabel}</div>
-      <div class="gd-m-verdict-sub">Decided ${fullTimestamp}</div>
-    </div>
-  `;
+  const siteLine = document.createElement('div');
+  siteLine.className = 'gd-m-audit-site';
+  siteLine.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span>${host}</span>`;
 
   const title = document.createElement('h2');
-  title.className = 'gd-sheet-action-title';
+  title.className = 'gd-m-audit-title';
   title.textContent = req.actionDescription;
 
-  const metaRow = document.createElement('div');
-  metaRow.className = 'gd-sheet-meta-row';
+  const reasonText = document.createElement('p');
+  reasonText.className = 'gd-m-audit-reason';
+  reasonText.textContent =
+    req.riskReasons?.[0] || 'Action triggered Guardrail protective policy review.';
 
-  const domainPill = document.createElement('span');
-  domainPill.className = 'gd-sheet-domain-pill';
-  domainPill.textContent = host;
-  metaRow.appendChild(domainPill);
+  actionBlock.appendChild(siteLine);
+  actionBlock.appendChild(title);
+  actionBlock.appendChild(reasonText);
 
-  if (req.category) {
-    const catPill = document.createElement('span');
-    catPill.className = 'gd-sheet-category-pill';
-    catPill.textContent = req.category.replace(/_/g, ' ');
-    metaRow.appendChild(catPill);
-  }
-
-  const riskBox = document.createElement('div');
-  riskBox.className = 'gd-sheet-risk-box';
-  const riskHead = document.createElement('div');
-  riskHead.className = 'gd-sheet-risk-headline';
-  riskHead.textContent = 'Why this action was held:';
-  riskBox.appendChild(riskHead);
-
-  const reasonsList = document.createElement('ul');
-  reasonsList.className = 'gd-sheet-reasons-list';
-  const reasons = req.riskReasons?.length
-    ? req.riskReasons
-    : ['Action triggered Guardrail protective policy review.'];
-  reasons.forEach((reason) => {
-    const li = document.createElement('li');
-    li.textContent = reason;
-    reasonsList.appendChild(li);
-  });
-  riskBox.appendChild(reasonsList);
-
-  const auditNote = document.createElement('div');
-  auditNote.className = 'gd-sheet-decoupling-note';
-  const shortId = req.id.length > 18 ? `${req.id.slice(0, 14)}…` : req.id;
-  auditNote.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span><strong>Immutable Decision Record:</strong> Request ${shortId}</span>`;
-
-  body.appendChild(verdictBanner);
-  body.appendChild(title);
-  body.appendChild(metaRow);
-  body.appendChild(riskBox);
-  body.appendChild(auditNote);
+  // Clean hairline-separated metadata rows (zero boxes)
+  const shortId = req.id.length > 20 ? `${req.id.slice(0, 14)}…` : req.id;
+  const catText = req.category ? req.category.replace(/_/g, ' ') : 'Action';
+  const metaList = document.createElement('div');
+  metaList.className = 'gd-m-audit-meta';
+  metaList.innerHTML = `
+    <div class="gd-m-setting-item">
+      <span class="gd-m-setting-label">Ward</span>
+      <span class="gd-m-setting-val">${wardName}</span>
+    </div>
+    <div class="gd-m-setting-item">
+      <span class="gd-m-setting-label">Category · Risk</span>
+      <span class="gd-m-setting-val">${catText} · ${risk}</span>
+    </div>
+    <div class="gd-m-setting-item">
+      <span class="gd-m-setting-label">Request ID</span>
+      <span class="gd-m-setting-val" title="${req.id}">${shortId}</span>
+    </div>
+  `;
 
   const actions = document.createElement('div');
   actions.className = 'gd-sheet-actions';
@@ -270,13 +245,14 @@ function openHistoryDetailSheet(
   const doneBtn = document.createElement('button');
   doneBtn.type = 'button';
   doneBtn.className = 'gd-btn-approve-touch';
-  doneBtn.textContent = 'Close';
+  doneBtn.textContent = 'Done';
   doneBtn.addEventListener('click', closeSheet);
   actions.appendChild(doneBtn);
 
   sheet.appendChild(handle);
-  sheet.appendChild(header);
-  sheet.appendChild(body);
+  sheet.appendChild(topRow);
+  sheet.appendChild(actionBlock);
+  sheet.appendChild(metaList);
   sheet.appendChild(actions);
 
   overlay.appendChild(backdrop);
