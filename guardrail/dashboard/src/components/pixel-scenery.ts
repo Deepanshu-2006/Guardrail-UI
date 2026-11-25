@@ -379,6 +379,53 @@ export function getRealTimeScenery(now: Date = new Date()): SceneryMeta {
 }
 
 /**
+ * Creates the borderless, background-merged pixel scenery + time + greeting
+ * element displayed on the right side of desktop page headers.
+ */
+export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement {
+  const scenery = getRealTimeScenery(now);
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const greetingCard = document.createElement('div');
+  greetingCard.className = `gd-overview-greeting-card phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
+
+  const sceneArt = document.createElement('div');
+  sceneArt.className = 'gd-overview-scenery-art';
+  sceneArt.setAttribute('aria-hidden', 'true');
+  sceneArt.innerHTML = scenery.svg;
+
+  const sceneScrim = document.createElement('div');
+  sceneScrim.className = 'gd-overview-scenery-scrim';
+  sceneScrim.setAttribute('aria-hidden', 'true');
+
+  const cardContent = document.createElement('div');
+  cardContent.className = 'gd-overview-greeting-card-content';
+
+  const timeChip = document.createElement('div');
+  timeChip.className = 'gd-px-time-badge';
+  const pulseDot = document.createElement('span');
+  pulseDot.className = 'gd-px-clock-dot';
+  pulseDot.setAttribute('aria-hidden', 'true');
+  const timeText = document.createElement('span');
+  timeText.textContent = timeStr;
+  timeChip.appendChild(pulseDot);
+  timeChip.appendChild(timeText);
+
+  const greetingText = document.createElement('div');
+  greetingText.className = 'gd-px-greeting-text';
+  greetingText.textContent = scenery.greeting;
+
+  cardContent.appendChild(timeChip);
+  cardContent.appendChild(greetingText);
+
+  greetingCard.appendChild(sceneArt);
+  greetingCard.appendChild(sceneScrim);
+  greetingCard.appendChild(cardContent);
+
+  return greetingCard;
+}
+
+/**
  * Creates the full-viewport ambient animated pixel backdrop (sunbeam/moonlight,
  * drifting pixel clouds, floating motes, and bottom pixel mountain/pine horizon).
  */

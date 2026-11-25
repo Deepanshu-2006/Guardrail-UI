@@ -16,7 +16,7 @@
 
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
-import { getRealTimeScenery } from './pixel-scenery.js';
+import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { showConnectWardModal } from './connect-modal.js';
 import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
@@ -85,46 +85,13 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   section.setAttribute('aria-labelledby', 'overview-title');
 
   // =========================================================================
-  // SECTION A: PAGE INTRODUCTION (With Real-Time Animated Pixel Scenery)
+  // SECTION A: PAGE INTRODUCTION (Left Heading + Right Pixel Greeting Card)
   // =========================================================================
-  const now = new Date();
-  const scenery = getRealTimeScenery(now);
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
   const header = document.createElement('header');
-  header.className = `gd-section-header gd-overview-scenery-header phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
+  header.className = 'gd-section-header gd-overview-header-split';
 
-  const sceneArt = document.createElement('div');
-  sceneArt.className = 'gd-overview-scenery-art';
-  sceneArt.setAttribute('aria-hidden', 'true');
-  sceneArt.innerHTML = scenery.svg;
-
-  const sceneScrim = document.createElement('div');
-  sceneScrim.className = 'gd-overview-scenery-scrim';
-  sceneScrim.setAttribute('aria-hidden', 'true');
-
-  const headerContent = document.createElement('div');
-  headerContent.className = 'gd-overview-scenery-content';
-
-  const greetingKicker = document.createElement('div');
-  greetingKicker.className = 'gd-overview-greeting-kicker';
-
-  const timeChip = document.createElement('span');
-  timeChip.className = 'gd-px-time-badge';
-  const pulseDot = document.createElement('span');
-  pulseDot.className = 'gd-px-clock-dot';
-  pulseDot.setAttribute('aria-hidden', 'true');
-  const timeText = document.createElement('span');
-  timeText.textContent = timeStr;
-  timeChip.appendChild(pulseDot);
-  timeChip.appendChild(timeText);
-
-  const greetingText = document.createElement('span');
-  greetingText.className = 'gd-px-greeting-text';
-  greetingText.textContent = scenery.greeting;
-
-  greetingKicker.appendChild(timeChip);
-  greetingKicker.appendChild(greetingText);
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'gd-section-title-group';
 
   const title = document.createElement('h1');
   title.id = 'overview-title';
@@ -135,13 +102,13 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   subtitle.className = 'gd-section-subtitle';
   subtitle.textContent = 'Your trusted contact activity and pending decisions.';
 
-  headerContent.appendChild(greetingKicker);
-  headerContent.appendChild(title);
-  headerContent.appendChild(subtitle);
+  titleGroup.appendChild(title);
+  titleGroup.appendChild(subtitle);
 
-  header.appendChild(sceneArt);
-  header.appendChild(sceneScrim);
-  header.appendChild(headerContent);
+  const greetingCard = createMergedGreetingWidget();
+
+  header.appendChild(titleGroup);
+  header.appendChild(greetingCard);
   section.appendChild(header);
 
   // =========================================================================

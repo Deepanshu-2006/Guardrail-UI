@@ -16,6 +16,7 @@ import { ApprovalRequest, ApprovalStatus, RequestFilters, RiskLevel, ViewStatus 
 import { renderDecisionConfirmation } from './decision-confirmation.js';
 import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isRequestExpired } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
+import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { createIcon, populateWardAvatar, setAnimatedHeading } from './icons.js';
 
 export interface PendingApprovalsProps {
@@ -284,7 +285,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   // 1. Page Header (Editorial, Unboxed, Minimal)
   const header = document.createElement('header');
-  header.className = 'gd-section-header';
+  header.className = 'gd-section-header gd-overview-header-split';
 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
@@ -352,7 +353,9 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     headerActions.appendChild(refreshBtn);
   }
 
-  header.appendChild(headerActions);
+  headerActions.className = 'gd-pending-header-actions gd-header-actions-inline';
+  titleGroup.appendChild(headerActions);
+  header.appendChild(createMergedGreetingWidget());
   section.appendChild(header);
 
   // Stale Data Notice (if backend is offline but cached records exist)

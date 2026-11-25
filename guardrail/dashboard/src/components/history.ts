@@ -30,6 +30,7 @@ import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../
 import { formatTimestamp, getRiskLevelExplanation } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { populateWardAvatar, setAnimatedHeading } from './icons.js';
+import { createMergedGreetingWidget } from './pixel-scenery.js';
 
 export interface DecisionHistoryProps {
   /** Authoritative historical / resolved requests */
@@ -626,7 +627,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   // 1. Header
   const header = document.createElement('header');
-  header.className = 'gd-section-header gd-history-header';
+  header.className = 'gd-section-header gd-history-header gd-overview-header-split';
 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
@@ -713,7 +714,9 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
     headerActions.appendChild(refreshBtn);
   }
 
-  header.appendChild(headerActions);
+  headerActions.className = 'gd-history-header-actions gd-header-actions-inline';
+  titleGroup.appendChild(headerActions);
+  header.appendChild(createMergedGreetingWidget());
 
   section.appendChild(header);
 

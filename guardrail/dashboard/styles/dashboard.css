@@ -781,12 +781,14 @@ textarea:focus-visible,
 .gd-top-header {
   height: 54px;
   min-height: 54px;
-  background-color: var(--gd-bg-canvas);
+  background: transparent;
+  background-color: transparent;
   border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 48px;
+  position: relative;
   z-index: 10;
 }
 
@@ -22544,6 +22546,360 @@ article.gd-card-collapsed,
 @media (prefers-reduced-motion: reduce) {
   .gd-overview-scenery-art [class^="gd-px-"],
   .gd-m-scenery-art [class^="gd-px-"] {
+    animation: none;
+  }
+}
+
+/* Compact desktop top-bar scenery pill on non-Overview pages */
+.gd-topbar-scenery {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(27, 36, 24, 0.14);
+  box-shadow: 0 1px 4px rgba(27, 36, 24, 0.06);
+}
+
+.gd-topbar-scenery-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(250, 246, 237, 0.72) 0%,
+    rgba(250, 246, 237, 0.45) 60%,
+    rgba(250, 246, 237, 0.14) 100%
+  );
+}
+
+.gd-topbar-scenery.is-dark .gd-topbar-scenery-scrim {
+  background: linear-gradient(
+    90deg,
+    rgba(19, 24, 18, 0.78) 0%,
+    rgba(19, 24, 18, 0.52) 60%,
+    rgba(19, 24, 18, 0.18) 100%
+  );
+}
+
+.gd-topbar-scenery-content {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gd-topbar-scenery-time,
+.gd-topbar-scenery-sep,
+.gd-topbar-scenery-greeting {
+  font-family: 'Silkscreen', var(--gd-font-mono);
+  font-size: 12.5px;
+  line-height: 1;
+  color: #1B2418;
+  text-shadow: 1px 1px 0 rgba(250, 246, 237, 0.9);
+}
+
+.gd-topbar-scenery-greeting {
+  font-weight: 700;
+}
+
+.gd-topbar-scenery.is-dark .gd-topbar-scenery-time,
+.gd-topbar-scenery.is-dark .gd-topbar-scenery-sep,
+.gd-topbar-scenery.is-dark .gd-topbar-scenery-greeting {
+  color: #FAF6ED;
+  text-shadow: 1px 1px 0 rgba(14, 19, 13, 0.88);
+}
+
+.gd-topbar-scenery.is-dark .gd-px-clock-dot {
+  background: #F6BF58;
+}
+
+@media (max-width: 768px) {
+  .gd-topbar-scenery {
+    display: none;
+  }
+}
+
+/* Overview split header: unboxed Overview heading on left, pixel greeting card on right */
+.gd-section-header.gd-overview-header-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.gd-section-header.gd-overview-header-split .gd-section-title-group {
+  flex: 0 1 auto;
+}
+
+.gd-overview-greeting-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+  padding: 38px 46px;
+  width: 100%;
+  min-height: 176px;
+  display: flex;
+  align-items: center;
+  flex: 1 1 520px;
+  max-width: 660px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.gd-header-actions-inline {
+  margin-top: 12px;
+  justify-content: flex-start;
+}
+
+.gd-overview-greeting-card-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gd-overview-greeting-card .gd-px-time-badge {
+  font-size: 15px;
+}
+
+.gd-overview-greeting-card .gd-px-greeting-text {
+  font-size: 22px;
+}
+
+.gd-overview-greeting-card.is-dark .gd-overview-scenery-scrim {
+  background: linear-gradient(
+    90deg,
+    rgba(19, 24, 18, 0.88) 0%,
+    rgba(19, 24, 18, 0.66) 50%,
+    rgba(19, 24, 18, 0.18) 100%
+  );
+}
+
+.gd-overview-greeting-card.is-dark .gd-px-time-badge,
+.gd-overview-greeting-card.is-dark .gd-px-greeting-text {
+  color: #FAF6ED;
+  text-shadow: 1px 1px 0 rgba(14, 19, 13, 0.88);
+}
+
+.gd-overview-greeting-card.is-dark .gd-px-clock-dot {
+  background: #F6BF58;
+}
+
+@media (max-width: 860px) {
+  .gd-overview-greeting-card {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Greeting card choreographed entry animation (Horizon Bloom + Staggered Pixel Type) */
+@keyframes gd-greeting-card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes gd-px-time-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gd-px-greeting-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    letter-spacing: 0.09em;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 0.03em;
+  }
+}
+
+.gd-overview-greeting-card,
+.gd-m-greeting.gd-m-scenery {
+  animation: gd-greeting-card-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gd-overview-greeting-card .gd-px-time-badge,
+.gd-m-greeting.gd-m-scenery .gd-m-scenery-time {
+  animation: gd-px-time-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+}
+
+.gd-overview-greeting-card .gd-px-greeting-text,
+.gd-m-greeting.gd-m-scenery .gd-m-greet-title {
+  animation: gd-px-greeting-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 230ms both;
+}
+
+.gd-m-greeting.gd-m-scenery .gd-m-greet-sub {
+  animation: gd-px-time-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) 310ms both;
+}
+
+/* Overview Hero Greeting Card: Dawn Horizon Wipe + Light Sweep + Spring Pixel Reveal */
+@keyframes gd-overview-hero-wipe {
+  0% {
+    opacity: 0;
+    clip-path: inset(12% 92% 12% 0%);
+    transform: translateX(-10px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0% 0% 0% 0%);
+    transform: translateX(0);
+  }
+}
+
+@keyframes gd-overview-art-settle {
+  0% {
+    transform: scale(1.1);
+    filter: brightness(1.08) saturate(0.85);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes gd-overview-sheen-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  25% {
+    opacity: 0.45;
+  }
+  75% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+@keyframes gd-overview-dot-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.65);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gd-overview-time-spring {
+  0% {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gd-overview-greeting-cinematic {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+    letter-spacing: 0.22em;
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    letter-spacing: 0.03em;
+    filter: blur(0px);
+  }
+}
+
+#view-overview .gd-overview-greeting-card {
+  animation: gd-overview-hero-wipe 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#view-overview .gd-overview-greeting-card .gd-overview-scenery-art {
+  animation: gd-overview-art-settle 920ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#view-overview .gd-overview-greeting-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 48%;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(250, 246, 237, 0.52) 50%,
+    transparent 100%
+  );
+  animation: gd-overview-sheen-sweep 1100ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
+}
+
+#view-overview .gd-overview-greeting-card .gd-px-time-badge {
+  animation: gd-overview-time-spring 520ms cubic-bezier(0.34, 1.45, 0.64, 1) 200ms both;
+}
+
+#view-overview .gd-overview-greeting-card .gd-px-clock-dot {
+  animation:
+    gd-overview-dot-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 340ms both,
+    gd-px-dot-blink 1.4s steps(1, end) 800ms infinite;
+}
+
+#view-overview .gd-overview-greeting-card .gd-px-greeting-text {
+  animation: gd-overview-greeting-cinematic 640ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-overview-greeting-card,
+  .gd-m-greeting.gd-m-scenery,
+  .gd-overview-greeting-card .gd-px-time-badge,
+  .gd-m-greeting.gd-m-scenery .gd-m-scenery-time,
+  .gd-overview-greeting-card .gd-px-greeting-text,
+  .gd-m-greeting.gd-m-scenery .gd-m-greet-title,
+  .gd-m-greeting.gd-m-scenery .gd-m-greet-sub,
+  #view-overview .gd-overview-greeting-card::after,
+  #view-overview .gd-overview-greeting-card .gd-overview-scenery-art,
+  #view-overview .gd-overview-greeting-card .gd-px-clock-dot {
     animation: none;
   }
 }

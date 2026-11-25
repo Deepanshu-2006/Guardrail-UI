@@ -16,6 +16,7 @@ import {
 } from '../types.js';
 import { renderRelationshipManagementSection } from './relationships.js';
 import { setAnimatedHeading } from './icons.js';
+import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { formatWardDisplayName } from './overview.js';
 import { PwaInstallManager } from './pwa-install-banner.js';
 
@@ -75,7 +76,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   // Header
   const header = document.createElement('header');
-  header.className = 'gd-section-header';
+  header.className = 'gd-section-header gd-overview-header-split';
+
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'gd-section-title-group';
 
   const title = document.createElement('h1');
   title.id = 'settings-title';
@@ -87,8 +91,10 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   subtitle.textContent =
     'Profile, connections, and system preferences.';
 
-  header.appendChild(title);
-  header.appendChild(subtitle);
+  titleGroup.appendChild(title);
+  titleGroup.appendChild(subtitle);
+  header.appendChild(titleGroup);
+  header.appendChild(createMergedGreetingWidget());
   section.appendChild(header);
 
   // Card 1: Reviewer Identity & Authorization Hierarchy
