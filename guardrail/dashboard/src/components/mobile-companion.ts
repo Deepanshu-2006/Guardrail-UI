@@ -247,6 +247,7 @@ function openHistoryDetailSheet(
   // Clean hairline-separated metadata rows (zero boxes)
   const shortId = req.id.length > 20 ? `${req.id.slice(0, 14)}…` : req.id;
   const catText = req.category ? req.category.replace(/_/g, ' ') : 'Action';
+  const reviewerNote = req.decision?.decisionReason || req.cancellationReason;
   const metaList = document.createElement('div');
   metaList.className = 'gd-m-audit-meta';
   metaList.innerHTML = `
@@ -258,11 +259,23 @@ function openHistoryDetailSheet(
       <span class="gd-m-setting-label">Category · Risk</span>
       <span class="gd-m-setting-val">${catText} · ${risk}</span>
     </div>
+    ${
+      reviewerNote
+        ? `<div class="gd-m-setting-item">
+             <span class="gd-m-setting-label">Note</span>
+             <span class="gd-m-setting-val gd-m-audit-note-val"></span>
+           </div>`
+        : ''
+    }
     <div class="gd-m-setting-item">
       <span class="gd-m-setting-label">Request ID</span>
       <span class="gd-m-setting-val" title="${req.id}">${shortId}</span>
     </div>
   `;
+  const noteValEl = metaList.querySelector('.gd-m-audit-note-val');
+  if (noteValEl && reviewerNote) {
+    noteValEl.textContent = reviewerNote;
+  }
 
   const actions = document.createElement('div');
   actions.className = 'gd-sheet-actions';
@@ -373,9 +386,11 @@ function openWardPolicySheet(
   queueBtn.type = 'button';
   queueBtn.className = 'gd-btn-approve-touch';
   queueBtn.textContent =
-    pendingCount > 0
-      ? `Review ${pendingCount} Pending for ${firstName} →`
-      : `View Queue for ${firstName}`;
+    pendingCount === 1
+      ? `Review ${firstName}'s Request →`
+      : pendingCount > 1
+        ? `Review ${pendingCount} Requests →`
+        : `View ${firstName}'s Queue`;
   queueBtn.addEventListener('click', () => {
     close();
     onViewQueue();
@@ -405,17 +420,15 @@ function openWardPolicySheet(
 
       const isActive = summary.overallStatus === 'ACTIVE';
       const statusCard = document.createElement('div');
-      statusCard.className = `gd-m-policy-status-card ${isActive ? 'active' : 'paused'}`;
+      statusCard.className = `gd-m-policy-status-row ${isActive ? 'active' : 'paused'}`;
       const presetLabel = summary.sensitivityPreset.charAt(0).toUpperCase() + summary.sensitivityPreset.slice(1);
       const stagingLabel = summary.stagingModeEnabled ? 'Staging On' : 'Staging Off';
       statusCard.innerHTML = `
-        <span class="gd-m-policy-status-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="gd-m-policy-status-left">
+          <span class="gd-m-policy-status-dot" aria-hidden="true"></span>
+          <span class="gd-m-policy-status-title">${isActive ? 'Protection Active' : 'Protection Paused'}</span>
         </span>
-        <div class="gd-m-policy-status-copy">
-          <div class="gd-m-policy-status-title">${isActive ? 'Protection Active' : 'Protection Paused'}</div>
-          <div class="gd-m-policy-status-sub">${presetLabel} · ${stagingLabel} · v${summary.policyVersion || '1.0'}</div>
-        </div>
+        <span class="gd-m-policy-status-sub">${presetLabel} · ${stagingLabel}</span>
       `;
       body.appendChild(statusCard);
 

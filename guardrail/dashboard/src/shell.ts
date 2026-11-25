@@ -3192,12 +3192,12 @@ export class DashboardShell {
         request: req,
         wardName,
         isSubmitting: this.isSubmittingDecision,
-        onApprove: async (id) => {
-          await this.submitDecision(id, 'APPROVED');
+        onApprove: async (id, reason) => {
+          await this.submitDecision(id, 'APPROVED', reason);
           this.closeMobileActionSheet();
         },
-        onReject: async (id) => {
-          await this.submitDecision(id, 'REJECTED');
+        onReject: async (id, reason) => {
+          await this.submitDecision(id, 'REJECTED', reason);
           this.closeMobileActionSheet();
         },
         onClose: () => {

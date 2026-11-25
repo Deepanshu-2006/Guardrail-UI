@@ -454,17 +454,21 @@ async function runPwaCompanionTests() {
     };
 
     let approvedId = '';
+    let approvedReason: string | undefined;
     let rejectedId = '';
+    let rejectedReason: string | undefined;
     let closed = false;
 
     const sheetContainer = renderMobileActionSheet({
       request: mockRequest,
       wardName: 'Alice Johnson',
-      onApprove: (id) => {
+      onApprove: (id, reason) => {
         approvedId = id;
+        approvedReason = reason;
       },
-      onReject: (id) => {
+      onReject: (id, reason) => {
         rejectedId = id;
+        rejectedReason = reason;
       },
       onClose: () => {
         closed = true;
@@ -504,13 +508,31 @@ async function runPwaCompanionTests() {
     assert(approveTouchBtn !== null, 'Renders touch-friendly Approve Action button');
     assert(rejectTouchBtn !== null, 'Renders touch-friendly Reject Action button');
 
+    const noteInput = sheet?.querySelector<HTMLInputElement>('.gd-m-decision-note-input');
+    assert(noteInput !== null, 'Renders optional caretaker note input');
+    if (noteInput) {
+      noteInput.value = 'Verified by phone with Alice';
+    }
+
     // Trigger Approve Action
     approveTouchBtn?.click();
     assert(approvedId === 'apr_mobile_wire_001', 'Clicking Approve button triggers onApprove with request ID');
+    assert(
+      approvedReason === 'Verified by phone with Alice',
+      'Approve passes optional caretaker note to callback'
+    );
+
+    if (noteInput) {
+      noteInput.value = 'Unrecognized merchant';
+    }
 
     // Trigger Reject Action
     rejectTouchBtn?.click();
     assert(rejectedId === 'apr_mobile_wire_001', 'Clicking Reject button triggers onReject with request ID');
+    assert(
+      rejectedReason === 'Unrecognized merchant',
+      'Reject passes optional caretaker note to callback'
+    );
 
     // Close on backdrop click
     const backdrop = sheetContainer.querySelector<HTMLElement>('.gd-sheet-backdrop');

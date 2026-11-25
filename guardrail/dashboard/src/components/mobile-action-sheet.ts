@@ -169,9 +169,27 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
   body.appendChild(riskBox);
   body.appendChild(decouplingNote);
 
+  // Optional Caretaker Note Input
+  const noteWrap = document.createElement('div');
+  noteWrap.className = 'gd-m-decision-note-wrap';
+
+  const noteInput = document.createElement('input');
+  noteInput.type = 'text';
+  noteInput.className = 'gd-m-decision-note-input';
+  noteInput.maxLength = 240;
+  noteInput.disabled = isSubmitting;
+  noteInput.placeholder = 'Optional note (e.g. Verified with ward)…';
+  noteInput.setAttribute('aria-label', 'Optional caretaker note');
+  noteWrap.appendChild(noteInput);
+
   // Action Buttons Footer
   const actions = document.createElement('div');
   actions.className = 'gd-sheet-actions';
+
+  const getNote = (): string | undefined => {
+    const val = (noteInput.value || '').trim();
+    return val ? val : undefined;
+  };
 
   const approveBtn = document.createElement('button');
   approveBtn.type = 'button';
@@ -184,7 +202,7 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
     <span>${isSubmitting ? 'Submitting...' : 'Approve Action'}</span>
   `;
   approveBtn.addEventListener('click', () => {
-    props.onApprove(request.id);
+    props.onApprove(request.id, getNote());
   });
 
   const rejectBtn = document.createElement('button');
@@ -199,9 +217,10 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
     <span>${isSubmitting ? 'Submitting...' : 'Reject Action'}</span>
   `;
   rejectBtn.addEventListener('click', () => {
-    props.onReject(request.id);
+    props.onReject(request.id, getNote());
   });
 
+  actions.appendChild(noteWrap);
   actions.appendChild(approveBtn);
   actions.appendChild(rejectBtn);
 
