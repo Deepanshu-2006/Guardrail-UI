@@ -291,7 +291,12 @@ function attachSlidingGlider(
       prev &&
       (Math.abs(prev.left - targetLeft) > 0.5 || Math.abs(prev.width - targetWidth) > 0.5)
     ) {
-      if (typeof (glider as any).animate === 'function') {
+      if ((container as any).isConnected && glider.style) {
+        // Already mounted in live DOM: let native CSS transition glide smoothly from prev -> target
+        glider.style.transition = '';
+        glider.style.width = `${targetWidth}px`;
+        glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
+      } else if (typeof (glider as any).animate === 'function') {
         try {
           (glider as any).animate(
             [
@@ -691,6 +696,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       pill.type = 'button';
       const isActive = (activeWardFilter || 'ALL') === id;
       pill.className = `gd-m-pill ${isActive ? 'active' : ''}`;
+      if (pill.dataset) pill.dataset.wardId = id;
       pill.setAttribute('role', 'tab');
       pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
 
@@ -719,13 +725,14 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     });
 
     topBar.appendChild(pillStrip);
-    attachSlidingGlider(
+    const syncWardGlider = attachSlidingGlider(
       pillStrip,
       'gd-m-pill-glider',
       () => pillStrip.querySelector<HTMLElement>('.gd-m-pill.active'),
       'm-ward-pills',
       { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
     );
+    (pillStrip as any).__syncGlider = syncWardGlider;
   } else {
     const topGreeting = document.createElement('div');
     topGreeting.className = `gd-m-top-greeting-pill phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;

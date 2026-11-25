@@ -671,7 +671,8 @@ export class DashboardShell {
 
       const existingShell = this.rootContainer.querySelector('.gd-m-shell') as HTMLElement | null;
       const existingAmbient = existingShell?.querySelector('.gd-m-ambient') as HTMLElement | null;
-      const existingPillStrip = existingShell?.querySelector('.gd-m-pill-strip') as HTMLElement | null;
+      const existingTopbar = existingShell?.querySelector('.gd-m-topbar') as HTMLElement | null;
+      const existingPillStrip = existingShell?.querySelector('.gd-m-ward-pills') as HTMLElement | null;
       const prevPillScrollLeft = existingPillStrip ? existingPillStrip.scrollLeft : 0;
       const existingMain = existingShell?.querySelector('.gd-m-main') as HTMLElement | null;
       const isTabSwitch = this.lastMobileTabRendered !== null && this.lastMobileTabRendered !== this.mobileTab;
@@ -734,13 +735,44 @@ export class DashboardShell {
         nextMain?.classList.add('is-tab-entering', dirClass);
       }
 
+      // Keep top bar & its ward-pill glider mounted in-place on same-tab ward switches so the glider glides natively
+      let preservedPillStrip: HTMLElement | null = null;
+      const freshTopbar = mobileView.querySelector('.gd-m-topbar');
+      const freshPillStrip = freshTopbar?.querySelector('.gd-m-ward-pills');
+      if (isSameTabUpdate && existingTopbar && existingPillStrip && freshTopbar && freshPillStrip) {
+        const activeWard = this.mobileWardFilter || 'ALL';
+        const existingPills = Array.from(existingPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+        const freshPills = Array.from(freshPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+        if (existingPills.length === freshPills.length) {
+          existingPills.forEach((pill, i) => {
+            const wardId = pill.dataset?.wardId ?? 'ALL';
+            const isActive = wardId === activeWard;
+            pill.classList.toggle('active', isActive);
+            pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            const freshCount = freshPills[i]?.querySelector('.gd-m-pill-count')?.textContent ?? null;
+            const existingCountEl = pill.querySelector('.gd-m-pill-count');
+            if (existingCountEl && freshCount) existingCountEl.textContent = freshCount;
+          });
+          freshTopbar.replaceWith(existingTopbar);
+          preservedPillStrip = existingPillStrip;
+        }
+      }
+
       while (this.rootContainer.firstChild) {
         this.rootContainer.removeChild(this.rootContainer.firstChild);
       }
       this.rootContainer.appendChild(mobileView);
 
-      const nextPillStrip = mobileView.querySelector('.gd-m-pill-strip') as HTMLElement | null;
-      if (nextPillStrip && prevPillScrollLeft > 0) {
+      if (preservedPillStrip) {
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(() => (preservedPillStrip as any).__syncGlider?.(true, true));
+        } else {
+          (preservedPillStrip as any).__syncGlider?.(true, true);
+        }
+      }
+
+      const nextPillStrip = mobileView.querySelector('.gd-m-ward-pills') as HTMLElement | null;
+      if (nextPillStrip && prevPillScrollLeft > 0 && nextPillStrip !== existingPillStrip) {
         nextPillStrip.scrollLeft = prevPillScrollLeft;
       }
 
