@@ -6,7 +6,15 @@
  * crafted in Guardrail's Quiet Assurance (#EDE6D6 / #1F291A) editorial palette.
  */
 
-import { ApprovalRequest, ApprovalStatus, ConnectedWard, ContactProfile, RiskLevel } from '../types.js';
+import {
+  ApprovalRequest,
+  ApprovalStatus,
+  ConnectedWard,
+  ContactProfile,
+  PolicyAuditRecord,
+  RiskLevel,
+  TrustedContactPolicySummary,
+} from '../types.js';
 import { createIcon } from './icons.js';
 import { formatTimestamp, isRequestExpired } from './detail.js';
 import { getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
@@ -59,6 +67,12 @@ export interface MobileCompanionProps {
   onSubscribePush?: () => Promise<void> | void;
   onUnsubscribePush?: () => Promise<void> | void;
   onSendTestPush?: () => Promise<void> | void;
+  onLoadWardPolicy?: (wardId: string) => Promise<{
+    summary: TrustedContactPolicySummary | null;
+    auditHistory: PolicyAuditRecord[] | null;
+    auditRestricted?: boolean;
+    error?: string | null;
+  }>;
 }
 
 function getInitials(name?: string | null): string {
@@ -273,6 +287,210 @@ function openHistoryDetailSheet(
 
 const NOTIF_DISMISS_KEY = 'gd_m_notif_prompt_dismissed';
 let hasShownNotifPromptInSession = false;
+
+function openWardPolicySheet(
+  ward: ConnectedWard,
+  pendingCount: number,
+  onLoadWardPolicy: NonNullable<MobileCompanionProps['onLoadWardPolicy']>,
+  onViewQueue: () => void
+): void {
+  document.querySelector('.gd-m-policy-sheet-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gd-sheet-portal gd-m-policy-sheet-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', `${formatWardDisplayName(ward.name, ward.id)} protection policy`);
+
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', onKeyDown);
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKeyDown);
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'gd-sheet-backdrop';
+  backdrop.addEventListener('click', close);
+
+  const sheet = document.createElement('div');
+  sheet.className = 'gd-mobile-action-sheet gd-m-audit-sheet gd-m-policy-sheet';
+
+  const handle = document.createElement('div');
+  handle.className = 'gd-sheet-drag-handle';
+  handle.setAttribute('aria-hidden', 'true');
+
+  const wardName = formatWardDisplayName(ward.name, ward.id);
+  const firstName = wardName.split(' ')[0];
+
+  const topRow = document.createElement('div');
+  topRow.className = 'gd-m-audit-top';
+
+  const titleWrap = document.createElement('div');
+  titleWrap.className = 'gd-m-audit-verdict';
+
+  const avatarEl = document.createElement('span');
+  avatarEl.className = 'gd-m-ward-avatar';
+  avatarEl.textContent = getInitials(wardName);
+
+  const copyEl = document.createElement('div');
+  copyEl.className = 'gd-m-audit-verdict-copy';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'gd-m-audit-verdict-title';
+  titleEl.style.color = '#141B11';
+  titleEl.textContent = wardName;
+
+  const subEl = document.createElement('div');
+  subEl.className = 'gd-m-audit-verdict-time';
+  subEl.textContent = `${ward.email || ward.id} · ${pendingCount > 0 ? `${pendingCount} pending` : 'Clear'}`;
+
+  copyEl.appendChild(titleEl);
+  copyEl.appendChild(subEl);
+  titleWrap.appendChild(avatarEl);
+  titleWrap.appendChild(copyEl);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'gd-sheet-btn-close';
+  closeBtn.setAttribute('aria-label', 'Close policy sheet');
+  closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  closeBtn.addEventListener('click', close);
+
+  topRow.appendChild(titleWrap);
+  topRow.appendChild(closeBtn);
+
+  const body = document.createElement('div');
+  body.className = 'gd-m-policy-body';
+  body.innerHTML = `<div class="gd-m-policy-loading">Loading protection rules…</div>`;
+
+  const actions = document.createElement('div');
+  actions.className = 'gd-sheet-actions';
+
+  const queueBtn = document.createElement('button');
+  queueBtn.type = 'button';
+  queueBtn.className = 'gd-btn-approve-touch';
+  queueBtn.textContent = pendingCount > 0 ? `Review ${pendingCount} Pending for ${firstName}` : `Open Queue for ${firstName}`;
+  queueBtn.addEventListener('click', () => {
+    close();
+    onViewQueue();
+  });
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.type = 'button';
+  dismissBtn.className = 'gd-m-notif-later-btn';
+  dismissBtn.textContent = 'Close';
+  dismissBtn.addEventListener('click', close);
+
+  actions.appendChild(queueBtn);
+  actions.appendChild(dismissBtn);
+
+  sheet.appendChild(handle);
+  sheet.appendChild(topRow);
+  sheet.appendChild(body);
+  sheet.appendChild(actions);
+
+  overlay.appendChild(backdrop);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  void onLoadWardPolicy(ward.id)
+    .then(({ summary, auditHistory, auditRestricted, error }) => {
+      body.innerHTML = '';
+      if (error || !summary) {
+        const errEl = document.createElement('div');
+        errEl.className = 'gd-m-policy-loading';
+        errEl.textContent = error || 'Protection policy summary is unavailable right now.';
+        body.appendChild(errEl);
+        return;
+      }
+
+      const pillsRow = document.createElement('div');
+      pillsRow.className = 'gd-m-policy-pills';
+      const statusPill = document.createElement('span');
+      statusPill.className = `gd-m-policy-pill ${summary.overallStatus === 'ACTIVE' ? 'active' : 'paused'}`;
+      statusPill.textContent = `Protection ${summary.overallStatus}`;
+      const presetPill = document.createElement('span');
+      presetPill.className = 'gd-m-policy-pill';
+      presetPill.textContent = `${summary.sensitivityPreset.charAt(0).toUpperCase() + summary.sensitivityPreset.slice(1)} Preset`;
+      const stagingPill = document.createElement('span');
+      stagingPill.className = 'gd-m-policy-pill';
+      stagingPill.textContent = summary.stagingModeEnabled ? 'Staging Mode On' : 'Staging Mode Off';
+      pillsRow.appendChild(statusPill);
+      pillsRow.appendChild(presetPill);
+      pillsRow.appendChild(stagingPill);
+      body.appendChild(pillsRow);
+
+      const rulesKicker = document.createElement('div');
+      rulesKicker.className = 'gd-m-section-kicker';
+      rulesKicker.textContent = `Protection Rules · v${summary.policyVersion || '1'}`;
+      body.appendChild(rulesKicker);
+
+      const rulesCard = document.createElement('div');
+      rulesCard.className = 'gd-m-settings-card gd-m-policy-rules';
+      const categories: Array<[string, string]> = [
+        ['Destructive Actions', summary.categoryProtections?.destructiveActions ?? 'PROTECT'],
+        ['Boundary Guards', summary.categoryProtections?.boundaryGuards ?? 'PROTECT'],
+        ['Payment Actions', summary.categoryProtections?.paymentActions ?? 'PROTECT'],
+        ['Sensitive Data Input', summary.categoryProtections?.sensitiveData ?? 'WARN'],
+        ['External Navigation', summary.categoryProtections?.externalNavigation ?? 'WARN'],
+      ];
+      categories.forEach(([label, level]) => {
+        const item = document.createElement('div');
+        item.className = 'gd-m-setting-item';
+        const lbl = document.createElement('span');
+        lbl.className = 'gd-m-setting-label';
+        lbl.textContent = label;
+        const badge = document.createElement('span');
+        const norm = String(level || 'PROTECT').toUpperCase();
+        badge.className = `gd-m-policy-badge ${norm === 'PROTECT' ? 'protect' : norm === 'WARN' ? 'warn' : 'allow'}`;
+        badge.textContent = norm;
+        item.appendChild(lbl);
+        item.appendChild(badge);
+        rulesCard.appendChild(item);
+      });
+      body.appendChild(rulesCard);
+
+      const auditKicker = document.createElement('div');
+      auditKicker.className = 'gd-m-section-kicker';
+      auditKicker.textContent = 'Policy Audit Log';
+      body.appendChild(auditKicker);
+
+      if (auditRestricted) {
+        const note = document.createElement('div');
+        note.className = 'gd-m-policy-note';
+        note.textContent = 'Detailed policy audit history is private to the ward under Ward Sovereignty.';
+        body.appendChild(note);
+      } else if (!auditHistory || auditHistory.length === 0) {
+        const note = document.createElement('div');
+        note.className = 'gd-m-policy-note';
+        note.textContent = 'No recent policy changes recorded.';
+        body.appendChild(note);
+      } else {
+        const auditList = document.createElement('div');
+        auditList.className = 'gd-m-policy-audit';
+        auditHistory.slice(0, 4).forEach((entry) => {
+          const row = document.createElement('div');
+          row.className = 'gd-m-policy-audit-row';
+          const mainTxt = document.createElement('div');
+          mainTxt.className = 'gd-m-policy-audit-title';
+          mainTxt.textContent = entry.summary || entry.changeType || 'Policy updated';
+          const tsTxt = document.createElement('div');
+          tsTxt.className = 'gd-m-policy-audit-time';
+          tsTxt.textContent = entry.timestamp ? new Date(entry.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+          row.appendChild(mainTxt);
+          row.appendChild(tsTxt);
+          auditList.appendChild(row);
+        });
+        body.appendChild(auditList);
+      }
+    })
+    .catch(() => {
+      body.innerHTML = `<div class="gd-m-policy-loading">Unable to load protection rules right now.</div>`;
+    });
+}
 
 function openNotificationPromptSheet(
   onEnable: () => Promise<void> | void
@@ -945,8 +1163,15 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       row.appendChild(info);
       row.appendChild(badge);
       row.addEventListener('click', () => {
-        props.onSelectWardFilter(ward.id);
-        props.onSelectTab('queue');
+        if (props.onLoadWardPolicy) {
+          openWardPolicySheet(ward, pCount, props.onLoadWardPolicy, () => {
+            props.onSelectWardFilter(ward.id);
+            props.onSelectTab('queue');
+          });
+        } else {
+          props.onSelectWardFilter(ward.id);
+          props.onSelectTab('queue');
+        }
       });
       list.appendChild(row);
     });
