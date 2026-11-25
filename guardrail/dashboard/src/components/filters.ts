@@ -599,7 +599,7 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
 
   const pillButtons: { id: string; el: HTMLButtonElement }[] = [];
 
-  const syncGlider = (animate: boolean) => {
+  const syncGlider = (animate: boolean, updateCache: boolean = true) => {
     const activeEntry = pillButtons.find((p) => p.id === currentActiveId) || pillButtons[0];
     if (!activeEntry) return;
     const btn = activeEntry.el;
@@ -640,7 +640,9 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
       glider.style.transition = '';
     }
 
-    wardSwitcherGliderCache.set(cacheKey, { left: targetLeft, width: targetWidth });
+    if (updateCache) {
+      wardSwitcherGliderCache.set(cacheKey, { left: targetLeft, width: targetWidth });
+    }
   };
 
   const activatePill = (nextIdRaw: string) => {
@@ -656,7 +658,7 @@ export function renderWardSwitcher(options: WardSwitcherOptions): HTMLElement {
         item.el.setAttribute('aria-selected', 'false');
       }
     }
-    syncGlider(true);
+    syncGlider(true, false);
     options.onSelectWard(nextIdRaw);
   };
 

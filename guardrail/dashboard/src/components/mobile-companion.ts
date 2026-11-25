@@ -302,6 +302,75 @@ const NOTIF_DISMISS_KEY = 'gd_m_notif_prompt_dismissed';
 let hasShownNotifPromptInSession = false;
 let mobileHistoryStatusFilter: 'ALL' | 'APPROVED' | 'REJECTED' = 'ALL';
 let mobileHistorySearchQuery = '';
+const mobileGliderCache = new Map<string, { left: number; width: number }>();
+
+/**
+ * Attaches a sliding background pill indicator behind segmented buttons so switching
+ * smoothly animates from the previous button's position to the active button.
+ */
+function attachSlidingGlider(
+  container: HTMLElement,
+  gliderClass: string,
+  getActiveBtn: () => HTMLElement | null,
+  cacheKey: string
+): (animate: boolean, updateCache?: boolean) => void {
+  const glider = document.createElement('span');
+  glider.className = gliderClass;
+  glider.setAttribute('aria-hidden', 'true');
+  container.appendChild(glider);
+
+  const sync = (animate: boolean, updateCache: boolean = true) => {
+    const activeBtn = getActiveBtn();
+    if (!activeBtn) {
+      container.classList.remove('has-glider');
+      mobileGliderCache.delete(cacheKey);
+      return;
+    }
+    const targetLeft = (activeBtn as any).offsetLeft as number | undefined;
+    const targetWidth = (activeBtn as any).offsetWidth as number | undefined;
+    if (typeof targetLeft !== 'number' || typeof targetWidth !== 'number' || targetWidth <= 0) {
+      return;
+    }
+
+    container.classList.add('has-glider');
+    const prev = mobileGliderCache.get(cacheKey);
+    if (animate && prev && (Math.abs(prev.left - targetLeft) > 0.5 || Math.abs(prev.width - targetWidth) > 0.5)) {
+      if (glider.style) {
+        glider.style.transition = 'none';
+        glider.style.width = `${prev.width}px`;
+        glider.style.transform = `translate3d(${prev.left}px, 0, 0)`;
+      }
+      void (glider as any).offsetWidth;
+      const run = () => {
+        if (glider.style) {
+          glider.style.transition = '';
+          glider.style.width = `${targetWidth}px`;
+          glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
+        }
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(run);
+      } else {
+        run();
+      }
+    } else if (glider.style) {
+      glider.style.transition = 'none';
+      glider.style.width = `${targetWidth}px`;
+      glider.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
+      void (glider as any).offsetWidth;
+      glider.style.transition = '';
+    }
+
+    if (updateCache) {
+      mobileGliderCache.set(cacheKey, { left: targetLeft, width: targetWidth });
+    }
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => sync(true, true));
+  }
+  return sync;
+}
 
 function openWardPolicySheet(
   ward: ConnectedWard,
@@ -691,6 +760,12 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     });
 
     topBar.appendChild(pillStrip);
+    attachSlidingGlider(
+      pillStrip,
+      'gd-m-pill-glider',
+      () => pillStrip.querySelector<HTMLElement>('.gd-m-pill.active'),
+      'm-ward-pills'
+    );
   } else {
     const topGreeting = document.createElement('div');
     topGreeting.className = `gd-m-top-greeting-pill phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
@@ -1180,6 +1255,12 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         { id: 'REJECTED', label: 'Rejected' },
       ];
       const segButtons: HTMLButtonElement[] = [];
+      const syncHistoryGlider = attachSlidingGlider(
+        segWrap,
+        'gd-m-history-seg-glider',
+        () => segButtons.find((b) => b.classList.contains('active')) || segButtons[0] || null,
+        'm-history-seg'
+      );
       statusOptions.forEach((opt) => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1199,6 +1280,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
             }
             b.setAttribute('aria-selected', active ? 'true' : 'false');
           });
+          syncHistoryGlider(true, true);
           renderHistoryResults();
         });
         segButtons.push(btn);
@@ -1477,6 +1559,13 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     btn.addEventListener('click', () => props.onSelectTab(t.id));
     pillDock.appendChild(btn);
   });
+
+  attachSlidingGlider(
+    pillDock,
+    'gd-m-dock-glider',
+    () => pillDock.querySelector<HTMLElement>('.gd-m-dock-btn.active'),
+    'm-dock-pill'
+  );
 
   const queueCircle = document.createElement('button');
   queueCircle.type = 'button';

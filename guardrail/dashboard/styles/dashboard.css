@@ -6742,6 +6742,7 @@ textarea:focus-visible,
 }
 
 .gd-m-ward-pills {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -6763,6 +6764,8 @@ textarea:focus-visible,
 }
 
 .gd-m-pill {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6786,6 +6789,31 @@ textarea:focus-visible,
   background: #1F291A;
   color: #EDE6D6;
   box-shadow: 0 2px 6px rgba(20, 27, 17, 0.16);
+}
+
+.gd-m-ward-pills.has-glider .gd-m-pill.active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.gd-m-pill-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #1F291A;
+  box-shadow: 0 2px 6px rgba(20, 27, 17, 0.16);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-ward-pills.has-glider .gd-m-pill-glider {
+  opacity: 1;
 }
 
 .gd-m-pill-count {
@@ -7717,6 +7745,7 @@ textarea:focus-visible,
 }
 
 .gd-m-history-seg {
+  position: relative;
   display: inline-flex;
   align-self: flex-start;
   padding: 3px;
@@ -7725,7 +7754,28 @@ textarea:focus-visible,
   gap: 2px;
 }
 
+.gd-m-history-seg-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #1F291A;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-history-seg.has-glider .gd-m-history-seg-glider {
+  opacity: 1;
+}
+
 .gd-m-history-seg-btn {
+  position: relative;
+  z-index: 1;
   border: none;
   background: transparent;
   color: #46533F;
@@ -7735,12 +7785,48 @@ textarea:focus-visible,
   padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: color 180ms ease;
 }
 
 .gd-m-history-seg-btn.active {
   background: #1F291A;
   color: #EDE6D6;
+}
+
+.gd-m-history-seg.has-glider .gd-m-history-seg-btn.active {
+  background: transparent;
+}
+
+.gd-m-pill-dock {
+  position: relative;
+}
+
+.gd-m-dock-glider {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-pill-dock.has-glider .gd-m-dock-glider {
+  opacity: 1;
+}
+
+.gd-m-dock-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
+  background: transparent;
 }
 
 .gd-m-history-results {
@@ -13117,6 +13203,7 @@ article.gd-card-collapsed,
 }
 
 .gd-m-ward-pills {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -13138,6 +13225,8 @@ article.gd-card-collapsed,
 }
 
 .gd-m-pill {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -13161,6 +13250,31 @@ article.gd-card-collapsed,
   background: #1F291A;
   color: #EDE6D6;
   box-shadow: 0 2px 6px rgba(20, 27, 17, 0.16);
+}
+
+.gd-m-ward-pills.has-glider .gd-m-pill.active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.gd-m-pill-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #1F291A;
+  box-shadow: 0 2px 6px rgba(20, 27, 17, 0.16);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-ward-pills.has-glider .gd-m-pill-glider {
+  opacity: 1;
 }
 
 .gd-m-pill-count {
@@ -14092,6 +14206,7 @@ article.gd-card-collapsed,
 }
 
 .gd-m-history-seg {
+  position: relative;
   display: inline-flex;
   align-self: flex-start;
   padding: 3px;
@@ -14100,7 +14215,28 @@ article.gd-card-collapsed,
   gap: 2px;
 }
 
+.gd-m-history-seg-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #1F291A;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-history-seg.has-glider .gd-m-history-seg-glider {
+  opacity: 1;
+}
+
 .gd-m-history-seg-btn {
+  position: relative;
+  z-index: 1;
   border: none;
   background: transparent;
   color: #46533F;
@@ -14110,12 +14246,48 @@ article.gd-card-collapsed,
   padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: color 180ms ease;
 }
 
 .gd-m-history-seg-btn.active {
   background: #1F291A;
   color: #EDE6D6;
+}
+
+.gd-m-history-seg.has-glider .gd-m-history-seg-btn.active {
+  background: transparent;
+}
+
+.gd-m-pill-dock {
+  position: relative;
+}
+
+.gd-m-dock-glider {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-pill-dock.has-glider .gd-m-dock-glider {
+  opacity: 1;
+}
+
+.gd-m-dock-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
+  background: transparent;
 }
 
 .gd-m-history-results {
@@ -18995,6 +19167,7 @@ article.gd-card-collapsed,
 }
 
 .gd-m-ward-pills {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -19016,6 +19189,8 @@ article.gd-card-collapsed,
 }
 
 .gd-m-pill {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19039,6 +19214,31 @@ article.gd-card-collapsed,
   background: #1F291A;
   color: #EDE6D6;
   box-shadow: 0 2px 6px rgba(20, 27, 17, 0.16);
+}
+
+.gd-m-ward-pills.has-glider .gd-m-pill.active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.gd-m-pill-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #1F291A;
+  box-shadow: 0 2px 6px rgba(20, 27, 17, 0.16);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-ward-pills.has-glider .gd-m-pill-glider {
+  opacity: 1;
 }
 
 .gd-m-pill-count {
@@ -19970,6 +20170,7 @@ article.gd-card-collapsed,
 }
 
 .gd-m-history-seg {
+  position: relative;
   display: inline-flex;
   align-self: flex-start;
   padding: 3px;
@@ -19978,7 +20179,28 @@ article.gd-card-collapsed,
   gap: 2px;
 }
 
+.gd-m-history-seg-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #1F291A;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-history-seg.has-glider .gd-m-history-seg-glider {
+  opacity: 1;
+}
+
 .gd-m-history-seg-btn {
+  position: relative;
+  z-index: 1;
   border: none;
   background: transparent;
   color: #46533F;
@@ -19988,12 +20210,48 @@ article.gd-card-collapsed,
   padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: color 180ms ease;
 }
 
 .gd-m-history-seg-btn.active {
   background: #1F291A;
   color: #EDE6D6;
+}
+
+.gd-m-history-seg.has-glider .gd-m-history-seg-btn.active {
+  background: transparent;
+}
+
+.gd-m-pill-dock {
+  position: relative;
+}
+
+.gd-m-dock-glider {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), width 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+.gd-m-pill-dock.has-glider .gd-m-dock-glider {
+  opacity: 1;
+}
+
+.gd-m-dock-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
+  background: transparent;
 }
 
 .gd-m-history-results {

@@ -868,6 +868,9 @@ async function runPwaCompanionTests() {
     });
 
     assert(historyView.querySelectorAll('.gd-m-history-row').length === 2, 'Initially renders all 2 history records');
+    assert(historyView.querySelector('.gd-m-pill-glider') !== null, 'Top ward pill strip includes sliding glider');
+    assert(historyView.querySelector('.gd-m-history-seg-glider') !== null, 'History status filter includes sliding glider');
+    assert(historyView.querySelector('.gd-m-dock-glider') !== null, 'Bottom pill dock includes sliding glider');
 
     const segButtons = historyView.querySelectorAll('.gd-m-history-seg-btn');
     assert(segButtons.length === 3, 'Renders All / Approved / Rejected filter pills');
