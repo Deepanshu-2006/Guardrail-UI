@@ -28,6 +28,7 @@ import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview, formatWardDisplayName } from './components/overview.js';
+import { createAmbientBackdrop, getRealTimeScenery } from './components/pixel-scenery.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
 import { filterRequests } from './components/filters.js';
@@ -749,10 +750,12 @@ export class DashboardShell {
       this.rootContainer.appendChild(this.liveAnnouncerEl);
 
       // App Wrapper
+      const desktopScenery = getRealTimeScenery();
       this.appWrapper = document.createElement('div');
-      this.appWrapper.className = this.isEntryAnimationActive
-        ? 'gd-dashboard-app gd-initial-load'
-        : 'gd-dashboard-app';
+      this.appWrapper.className = `${
+        this.isEntryAnimationActive ? 'gd-dashboard-app gd-initial-load' : 'gd-dashboard-app'
+      } phase-${desktopScenery.phase}`;
+      this.appWrapper.appendChild(createAmbientBackdrop(desktopScenery.phase, 'gd-desktop-ambient'));
 
       // 1. Sidebar (Navigation + Account Profile)
       this.sidebarEl = renderNavigation({

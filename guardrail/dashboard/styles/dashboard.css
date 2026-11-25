@@ -7887,6 +7887,32 @@ textarea:focus-visible,
   will-change: transform;
 }
 
+.gd-dashboard-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.gd-desktop-ambient {
+  left: 254px;
+}
+
+.gd-sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+.gd-main-workspace {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .gd-desktop-ambient {
+    left: 0;
+  }
+}
+
 .gd-m-pill-dock {
   position: relative;
 }
@@ -8217,6 +8243,32 @@ textarea:focus-visible,
 .gd-m-scenery-art svg {
   animation: gd-scenery-drift 18s ease-in-out infinite alternate;
   will-change: transform;
+}
+
+.gd-dashboard-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.gd-desktop-ambient {
+  left: 254px;
+}
+
+.gd-sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+.gd-main-workspace {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .gd-desktop-ambient {
+    left: 0;
+  }
 }
 
 .gd-m-pill-dock {
@@ -14528,6 +14580,32 @@ article.gd-card-collapsed,
   will-change: transform;
 }
 
+.gd-dashboard-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.gd-desktop-ambient {
+  left: 254px;
+}
+
+.gd-sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+.gd-main-workspace {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .gd-desktop-ambient {
+    left: 0;
+  }
+}
+
 .gd-m-pill-dock {
   position: relative;
 }
@@ -14858,6 +14936,32 @@ article.gd-card-collapsed,
 .gd-m-scenery-art svg {
   animation: gd-scenery-drift 18s ease-in-out infinite alternate;
   will-change: transform;
+}
+
+.gd-dashboard-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.gd-desktop-ambient {
+  left: 254px;
+}
+
+.gd-sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+.gd-main-workspace {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .gd-desktop-ambient {
+    left: 0;
+  }
 }
 
 .gd-m-pill-dock {
@@ -20672,6 +20776,32 @@ article.gd-card-collapsed,
   will-change: transform;
 }
 
+.gd-dashboard-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.gd-desktop-ambient {
+  left: 254px;
+}
+
+.gd-sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+.gd-main-workspace {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .gd-desktop-ambient {
+    left: 0;
+  }
+}
+
 .gd-m-pill-dock {
   position: relative;
 }
@@ -21002,6 +21132,32 @@ article.gd-card-collapsed,
 .gd-m-scenery-art svg {
   animation: gd-scenery-drift 18s ease-in-out infinite alternate;
   will-change: transform;
+}
+
+.gd-dashboard-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.gd-desktop-ambient {
+  left: 254px;
+}
+
+.gd-sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+.gd-main-workspace {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .gd-desktop-ambient {
+    left: 0;
+  }
 }
 
 .gd-m-pill-dock {

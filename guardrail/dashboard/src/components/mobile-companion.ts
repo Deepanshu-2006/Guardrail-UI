@@ -17,7 +17,7 @@ import {
 } from '../types.js';
 import { createIcon } from './icons.js';
 import { formatTimestamp, isRequestExpired } from './detail.js';
-import { getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
+import { createAmbientBackdrop, getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
 
 function formatWardDisplayName(name?: string | null, requesterId?: string | null): string {
   if (name && name.trim()) return name.trim();
@@ -90,66 +90,6 @@ function getRiskPriority(level?: RiskLevel): number {
     case RiskLevel.MEDIUM: return 2;
     default: return 1;
   }
-}
-
-function createAmbientBackdrop(phase: SceneryPhase): HTMLElement {
-  const layer = document.createElement('div');
-  layer.className = `gd-m-ambient phase-${phase}`;
-  layer.setAttribute('aria-hidden', 'true');
-
-  // Diagonal animated sunbeam / moonlight wash
-  const beam = document.createElement('div');
-  beam.className = 'gd-m-beam';
-  layer.appendChild(beam);
-
-  // 3 stepped pixel clouds drifting across the canvas
-  const cloudSvg = `<svg viewBox="0 0 24 8" shape-rendering="crispEdges"><rect x="6" y="0" width="10" height="2" fill="currentColor"/><rect x="3" y="2" width="17" height="2" fill="currentColor"/><rect x="0" y="4" width="24" height="2" fill="currentColor"/><rect x="2" y="6" width="19" height="2" fill="currentColor" opacity="0.65"/></svg>`;
-  [
-    { cls: 'c1', top: '16%', w: 88 },
-    { cls: 'c2', top: '49%', w: 68 },
-    { cls: 'c3', top: '76%', w: 96 },
-  ].forEach((c) => {
-    const cloud = document.createElement('div');
-    cloud.className = `gd-m-bg-cloud ${c.cls}`;
-    cloud.style.top = c.top;
-    cloud.style.width = `${c.w}px`;
-    cloud.innerHTML = cloudSvg;
-    layer.appendChild(cloud);
-  });
-
-  // Visible crisp pixel motes / fireflies / stars
-  const motes = [
-    { x: 8, y: 15, s: 6, dur: 10, del: -1, dx: 16, dy: -32 },
-    { x: 86, y: 21, s: 7, dur: 12, del: -4, dx: -14, dy: -28 },
-    { x: 14, y: 46, s: 6, dur: 13, del: -6, dx: 18, dy: -26 },
-    { x: 90, y: 52, s: 8, dur: 11, del: -2, dx: -16, dy: -30 },
-    { x: 10, y: 74, s: 7, dur: 14, del: -5, dx: 14, dy: -34 },
-    { x: 46, y: 80, s: 6, dur: 11, del: -8, dx: -10, dy: -26 },
-    { x: 84, y: 81, s: 8, dur: 13, del: -3, dx: 12, dy: -30 },
-    { x: 26, y: 86, s: 6, dur: 12, del: -7, dx: 16, dy: -24 },
-    { x: 68, y: 73, s: 7, dur: 15, del: -4, dx: -14, dy: -28 },
-  ];
-
-  motes.forEach((m, idx) => {
-    const el = document.createElement('span');
-    el.className = `gd-m-mote ${idx % 2 === 0 ? 'alt' : ''}`;
-    el.style.cssText = `left:${m.x}%;top:${m.y}%;width:${m.s}px;height:${m.s}px;--dur:${m.dur}s;--del:${m.del}s;--dx:${m.dx}px;--dy:${m.dy}px;`;
-    layer.appendChild(el);
-  });
-
-  // Bottom pixel-art mountain & pine horizon silhouette
-  const horizon = document.createElement('div');
-  horizon.className = 'gd-m-bg-horizon';
-  horizon.innerHTML = `<svg viewBox="0 0 96 22" preserveAspectRatio="none" shape-rendering="crispEdges">
-    <path d="M0 14 H14 V11 H24 V8 H36 V11 H48 V13 H62 V9 H74 V6 H86 V10 H96 V22 H0 Z" fill="currentColor" opacity="0.42"/>
-    <path d="M0 17 H10 V15 H22 V17 H38 V14 H50 V16 H68 V13 H82 V15 H96 V22 H0 Z" fill="currentColor" opacity="0.72"/>
-    <rect x="11" y="10" width="1" height="5" fill="currentColor"/><rect x="9" y="11" width="5" height="2" fill="currentColor"/><rect x="10" y="9" width="3" height="2" fill="currentColor"/>
-    <rect x="77" y="9" width="1" height="5" fill="currentColor"/><rect x="75" y="10" width="5" height="2" fill="currentColor"/><rect x="76" y="8" width="3" height="2" fill="currentColor"/>
-    <rect x="87" y="11" width="1" height="4" fill="currentColor"/><rect x="85" y="12" width="5" height="2" fill="currentColor"/><rect x="86" y="10" width="3" height="2" fill="currentColor"/>
-  </svg>`;
-  layer.appendChild(horizon);
-
-  return layer;
 }
 
 function openHistoryDetailSheet(
