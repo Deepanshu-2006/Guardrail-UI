@@ -582,27 +582,38 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   } else {
     // Settings Tab
     const headerBlock = document.createElement('section');
-    headerBlock.className = 'gd-m-greeting';
+    headerBlock.className = 'gd-m-page-header';
     headerBlock.innerHTML = `
-      <h1 class="gd-m-greet-title">Settings</h1>
-      <p class="gd-m-greet-sub">Reviewer account & mobile companion</p>
+      <h1 class="gd-m-page-title">Settings</h1>
+      <p class="gd-m-page-sub">Reviewer account & mobile companion</p>
     `;
     main.appendChild(headerBlock);
+
+    const settingsKicker = document.createElement('div');
+    settingsKicker.className = 'gd-m-section-kicker';
+    settingsKicker.textContent = 'Account & safety';
+    main.appendChild(settingsKicker);
+
+    const rawActorId = profile?.actorId || 'Guest';
+    const displayActorId =
+      rawActorId.length > 22
+        ? `${rawActorId.slice(0, 12)}…${rawActorId.slice(-5)}`
+        : rawActorId;
 
     const card = document.createElement('div');
     card.className = 'gd-m-settings-list';
     card.innerHTML = `
       <div class="gd-m-setting-item">
         <span class="gd-m-setting-label">Reviewer ID</span>
-        <span class="gd-m-setting-val">${profile?.actorId || 'Guest'}</span>
+        <span class="gd-m-setting-pill" title="${rawActorId}">${displayActorId}</span>
       </div>
       <div class="gd-m-setting-item">
         <span class="gd-m-setting-label">Protected Wards</span>
-        <span class="gd-m-setting-val">${connectedWards.length} Connected</span>
+        <span class="gd-m-setting-pill">${connectedWards.length} Connected</span>
       </div>
       <div class="gd-m-setting-item">
         <span class="gd-m-setting-label">Execution Model</span>
-        <span class="gd-m-setting-val">Decoupled Consent-Only</span>
+        <span class="gd-m-setting-pill">Decoupled Consent-Only</span>
       </div>
     `;
     main.appendChild(card);
@@ -622,6 +633,11 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       signInBtn.addEventListener('click', () => props.onOpenAuth?.());
       main.appendChild(signInBtn);
     }
+
+    const footerNote = document.createElement('div');
+    footerNote.className = 'gd-m-footer-note';
+    footerNote.textContent = 'Separation of Duties Active · Local Consent Only';
+    main.appendChild(footerNote);
   }
 
   shell.appendChild(main);
