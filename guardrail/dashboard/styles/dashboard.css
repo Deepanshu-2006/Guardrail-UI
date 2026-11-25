@@ -21724,3 +21724,130 @@ article.gd-card-collapsed,
     margin-top: 10px;
   }
 }
+
+/* Pixel scenery internal animations (shared by Desktop Overview & Mobile PWA) */
+@keyframes gd-px-cloud-drift-a {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(4.5px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes gd-px-cloud-drift-b {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-3.5px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes gd-px-cloud-drift-c {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(2.5px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes gd-px-sun-pulse {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
+@keyframes gd-px-sun-core-breathe {
+  0%, 100% { opacity: 0.94; }
+  50% { opacity: 1; }
+}
+
+@keyframes gd-px-bird-glide-a {
+  0%, 100% { transform: translate(0, 0); }
+  35% { transform: translate(-1.8px, -1px); }
+  70% { transform: translate(1.2px, -0.5px); }
+}
+
+@keyframes gd-px-bird-glide-b {
+  0%, 100% { transform: translate(0, 0); }
+  40% { transform: translate(1.5px, -0.9px); }
+  75% { transform: translate(-1.2px, 0.4px); }
+}
+
+@keyframes gd-px-star-twinkle {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.35; }
+  70% { opacity: 0.85; }
+}
+
+@keyframes gd-px-moon-glow {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+@keyframes gd-px-window-flicker {
+  0%, 100% { opacity: 1; }
+  30% { opacity: 0.78; }
+  52% { opacity: 0.96; }
+  74% { opacity: 0.68; }
+  88% { opacity: 0.98; }
+}
+
+.gd-overview-scenery-art .gd-px-cloud-a,
+.gd-m-scenery-art .gd-px-cloud-a {
+  animation: gd-px-cloud-drift-a 16s ease-in-out infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-cloud-b,
+.gd-m-scenery-art .gd-px-cloud-b {
+  animation: gd-px-cloud-drift-b 21s ease-in-out infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-cloud-c,
+.gd-m-scenery-art .gd-px-cloud-c {
+  animation: gd-px-cloud-drift-c 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-sun-core,
+.gd-m-scenery-art .gd-px-sun-core {
+  animation: gd-px-sun-core-breathe 5s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-sun-rays,
+.gd-m-scenery-art .gd-px-sun-rays {
+  animation: gd-px-sun-pulse 3.6s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-bird-a,
+.gd-m-scenery-art .gd-px-bird-a {
+  animation: gd-px-bird-glide-a 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-bird-b,
+.gd-m-scenery-art .gd-px-bird-b {
+  animation: gd-px-bird-glide-b 8.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.gd-overview-scenery-art .gd-px-star-a,
+.gd-m-scenery-art .gd-px-star-a {
+  animation: gd-px-star-twinkle 3.8s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-star-b,
+.gd-m-scenery-art .gd-px-star-b {
+  animation: gd-px-star-twinkle 4.6s ease-in-out 1.8s infinite;
+}
+
+.gd-overview-scenery-art .gd-px-moon,
+.gd-m-scenery-art .gd-px-moon {
+  animation: gd-px-moon-glow 6s ease-in-out infinite;
+}
+
+.gd-overview-scenery-art .gd-px-window,
+.gd-m-scenery-art .gd-px-window {
+  animation: gd-px-window-flicker 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-overview-scenery-art [class^="gd-px-"],
+  .gd-m-scenery-art [class^="gd-px-"] {
+    animation: none;
+  }
+}
