@@ -108,7 +108,23 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const greetingKicker = document.createElement('div');
   greetingKicker.className = 'gd-overview-greeting-kicker';
-  greetingKicker.textContent = `${timeStr} · ${scenery.greeting}`;
+
+  const timeChip = document.createElement('span');
+  timeChip.className = 'gd-px-time-badge';
+  const pulseDot = document.createElement('span');
+  pulseDot.className = 'gd-px-clock-dot';
+  pulseDot.setAttribute('aria-hidden', 'true');
+  const timeText = document.createElement('span');
+  timeText.textContent = timeStr;
+  timeChip.appendChild(pulseDot);
+  timeChip.appendChild(timeText);
+
+  const greetingText = document.createElement('span');
+  greetingText.className = 'gd-px-greeting-text';
+  greetingText.textContent = scenery.greeting;
+
+  greetingKicker.appendChild(timeChip);
+  greetingKicker.appendChild(greetingText);
 
   const title = document.createElement('h1');
   title.id = 'overview-title';

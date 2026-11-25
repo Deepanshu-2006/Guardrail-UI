@@ -881,8 +881,14 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     sceneContent.className = 'gd-m-scenery-content';
 
     const clockLine = document.createElement('div');
-    clockLine.className = 'gd-m-scenery-time';
-    clockLine.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    clockLine.className = 'gd-m-scenery-time gd-px-time-badge';
+    const clockDot = document.createElement('span');
+    clockDot.className = 'gd-px-clock-dot';
+    clockDot.setAttribute('aria-hidden', 'true');
+    const clockText = document.createElement('span');
+    clockText.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    clockLine.appendChild(clockDot);
+    clockLine.appendChild(clockText);
 
     const greetTitle = document.createElement('h1');
     greetTitle.className = 'gd-m-greet-title';
