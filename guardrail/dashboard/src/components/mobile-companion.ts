@@ -179,16 +179,11 @@ function openHistoryDetailSheet(
   wardEl.style.background = 'transparent';
   wardEl.textContent = wardName;
 
-  const statusPill = document.createElement('span');
-  statusPill.className = `gd-m-history-status ${statusClass}`;
-  statusPill.textContent = status;
-
   const riskPill = document.createElement('span');
   riskPill.className = `gd-m-risk-pill ${riskClass}`;
   riskPill.textContent = risk;
 
   badgeRow.appendChild(wardEl);
-  badgeRow.appendChild(statusPill);
   badgeRow.appendChild(riskPill);
 
   const closeBtn = document.createElement('button');
@@ -203,6 +198,22 @@ function openHistoryDetailSheet(
 
   const body = document.createElement('div');
   body.className = 'gd-sheet-body';
+
+  // Prominent Approval / Rejection Verdict Hero Banner
+  const isApproved = status === ApprovalStatus.APPROVED;
+  const verdictBanner = document.createElement('div');
+  verdictBanner.className = `gd-m-verdict-banner ${statusClass}`;
+  const verdictIconSvg = isApproved
+    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  const verdictLabel = isApproved ? 'Action Approved' : status === ApprovalStatus.REJECTED ? 'Action Rejected' : status;
+  verdictBanner.innerHTML = `
+    <span class="gd-m-verdict-icon" aria-hidden="true">${verdictIconSvg}</span>
+    <div class="gd-m-verdict-text">
+      <div class="gd-m-verdict-title">${verdictLabel}</div>
+      <div class="gd-m-verdict-sub">Decided ${fullTimestamp}</div>
+    </div>
+  `;
 
   const title = document.createElement('h2');
   title.className = 'gd-sheet-action-title';
@@ -245,8 +256,9 @@ function openHistoryDetailSheet(
   const auditNote = document.createElement('div');
   auditNote.className = 'gd-sheet-decoupling-note';
   const shortId = req.id.length > 18 ? `${req.id.slice(0, 14)}…` : req.id;
-  auditNote.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span><strong>Immutable Decision Record:</strong> Decided ${fullTimestamp} · Request ${shortId}</span>`;
+  auditNote.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span><strong>Immutable Decision Record:</strong> Request ${shortId}</span>`;
 
+  body.appendChild(verdictBanner);
   body.appendChild(title);
   body.appendChild(metaRow);
   body.appendChild(riskBox);

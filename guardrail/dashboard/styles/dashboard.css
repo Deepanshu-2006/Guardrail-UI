@@ -7284,6 +7284,75 @@ textarea:focus-visible,
   color: #9A2B22;
 }
 
+.gd-m-verdict-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(31, 41, 26, 0.06);
+  border: 1px solid rgba(31, 41, 26, 0.09);
+}
+
+.gd-m-verdict-banner.approved {
+  background: rgba(39, 97, 56, 0.11);
+  border-color: rgba(39, 97, 56, 0.22);
+}
+
+.gd-m-verdict-banner.rejected {
+  background: rgba(163, 59, 49, 0.11);
+  border-color: rgba(163, 59, 49, 0.22);
+}
+
+.gd-m-verdict-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gd-m-verdict-banner.approved .gd-m-verdict-icon {
+  background: #226036;
+  color: #EDE6D6;
+}
+
+.gd-m-verdict-banner.rejected .gd-m-verdict-icon {
+  background: #9A2B22;
+  color: #EDE6D6;
+}
+
+.gd-m-verdict-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gd-m-verdict-title {
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.gd-m-verdict-banner.approved .gd-m-verdict-title {
+  color: #1B4E2B;
+}
+
+.gd-m-verdict-banner.rejected .gd-m-verdict-title {
+  color: #88231B;
+}
+
+.gd-m-verdict-sub {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  color: #4E5947;
+}
+
 .gd-m-page-header {
   display: flex;
   flex-direction: column;
@@ -13187,6 +13256,75 @@ article.gd-card-collapsed,
   color: #9A2B22;
 }
 
+.gd-m-verdict-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(31, 41, 26, 0.06);
+  border: 1px solid rgba(31, 41, 26, 0.09);
+}
+
+.gd-m-verdict-banner.approved {
+  background: rgba(39, 97, 56, 0.11);
+  border-color: rgba(39, 97, 56, 0.22);
+}
+
+.gd-m-verdict-banner.rejected {
+  background: rgba(163, 59, 49, 0.11);
+  border-color: rgba(163, 59, 49, 0.22);
+}
+
+.gd-m-verdict-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gd-m-verdict-banner.approved .gd-m-verdict-icon {
+  background: #226036;
+  color: #EDE6D6;
+}
+
+.gd-m-verdict-banner.rejected .gd-m-verdict-icon {
+  background: #9A2B22;
+  color: #EDE6D6;
+}
+
+.gd-m-verdict-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gd-m-verdict-title {
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.gd-m-verdict-banner.approved .gd-m-verdict-title {
+  color: #1B4E2B;
+}
+
+.gd-m-verdict-banner.rejected .gd-m-verdict-title {
+  color: #88231B;
+}
+
+.gd-m-verdict-sub {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  color: #4E5947;
+}
+
 .gd-m-page-header {
   display: flex;
   flex-direction: column;
@@ -18591,6 +18729,75 @@ article.gd-card-collapsed,
 .gd-m-history-status.rejected {
   background: rgba(163, 59, 49, 0.13);
   color: #9A2B22;
+}
+
+.gd-m-verdict-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(31, 41, 26, 0.06);
+  border: 1px solid rgba(31, 41, 26, 0.09);
+}
+
+.gd-m-verdict-banner.approved {
+  background: rgba(39, 97, 56, 0.11);
+  border-color: rgba(39, 97, 56, 0.22);
+}
+
+.gd-m-verdict-banner.rejected {
+  background: rgba(163, 59, 49, 0.11);
+  border-color: rgba(163, 59, 49, 0.22);
+}
+
+.gd-m-verdict-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gd-m-verdict-banner.approved .gd-m-verdict-icon {
+  background: #226036;
+  color: #EDE6D6;
+}
+
+.gd-m-verdict-banner.rejected .gd-m-verdict-icon {
+  background: #9A2B22;
+  color: #EDE6D6;
+}
+
+.gd-m-verdict-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gd-m-verdict-title {
+  font-family: 'Space Grotesk', var(--gd-font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.gd-m-verdict-banner.approved .gd-m-verdict-title {
+  color: #1B4E2B;
+}
+
+.gd-m-verdict-banner.rejected .gd-m-verdict-title {
+  color: #88231B;
+}
+
+.gd-m-verdict-sub {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  color: #4E5947;
 }
 
 .gd-m-page-header {
