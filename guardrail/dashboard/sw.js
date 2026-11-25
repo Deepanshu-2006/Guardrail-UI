@@ -210,20 +210,32 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const targetUrl = event.notification.data?.url || '/#pending';
+  const data = event.notification.data || {};
+  const requestId = typeof data.requestId === 'string' && data.requestId ? data.requestId : null;
+  const fallbackUrl = requestId ? `/#detail/${encodeURIComponent(requestId)}` : '/#pending';
+  const targetUrl =
+    typeof data.url === 'string' && data.url && (!requestId || data.url.includes('#detail/'))
+      ? data.url
+      : fallbackUrl;
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing tab if open
+      // Focus existing tab if open and deep-link directly via postMessage
       for (const client of clientList) {
-        if ('focus' in client) {
-          if (client.url.includes(self.location.origin)) {
+        if ('focus' in client && client.url.includes(self.location.origin)) {
+          if (requestId && typeof client.postMessage === 'function') {
+            client.postMessage({
+              type: 'GUARDRAIL_OPEN_REQUEST',
+              requestId,
+              url: targetUrl,
+            });
+          } else if (typeof client.navigate === 'function') {
             client.navigate(targetUrl);
-            return client.focus();
           }
+          return client.focus();
         }
       }
-      // Otherwise open new standalone window
+      // Otherwise open new standalone window at the deep-linked request URL
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl);
       }

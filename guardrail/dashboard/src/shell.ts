@@ -137,6 +137,8 @@ export class DashboardShell {
   private resizeHandler: (() => void) | null = null;
   private onlineHandler: (() => void) | null = null;
   private offlineHandler: (() => void) | null = null;
+  private swMessageHandler: ((event: MessageEvent) => void) | null = null;
+  private pendingDeepLinkRequestId: string | null = null;
 
   constructor(options: DashboardShellOptions) {
     if (typeof options.container === 'string') {
@@ -190,6 +192,8 @@ export class DashboardShell {
         initialContactProfile.assignedWardEmail = storedWardEmail;
       }
     }
+
+    this.pendingDeepLinkRequestId = this.getDeepLinkedRequestIdFromLocation();
 
     this.state = {
       activeView: options.initialView ?? this.getViewFromHash() ?? 'overview',
@@ -302,6 +306,12 @@ export class DashboardShell {
   private setupListeners(): void {
     if (typeof window !== 'undefined') {
       this.hashChangeHandler = () => {
+        const deepLinkId = this.getDeepLinkedRequestIdFromLocation();
+        if (deepLinkId) {
+          this.pendingDeepLinkRequestId = deepLinkId;
+          this.tryOpenDeepLinkedRequest();
+          return;
+        }
         const view = this.getViewFromHash();
         if (view && view !== this.state.activeView) {
           this.setActiveView(view, false);
@@ -350,6 +360,21 @@ export class DashboardShell {
 
     // Register Service Worker for standalone PWA capabilities
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      if (typeof navigator.serviceWorker.addEventListener === 'function') {
+        this.swMessageHandler = (event: MessageEvent) => {
+          const msg = event?.data;
+          if (msg && msg.type === 'GUARDRAIL_OPEN_REQUEST' && typeof msg.requestId === 'string' && msg.requestId) {
+            this.pendingDeepLinkRequestId = msg.requestId;
+            this.mobileTab = 'queue';
+            this.mobileWardFilter = 'ALL';
+            this.tryOpenDeepLinkedRequest();
+            if (!this.state.pendingRequests.some((r) => r.id === msg.requestId)) {
+              void this.refresh();
+            }
+          }
+        };
+        navigator.serviceWorker.addEventListener('message', this.swMessageHandler);
+      }
       try {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
           console.warn('[Guardrail Shell] SW registration non-fatal:', err);
@@ -521,10 +546,75 @@ export class DashboardShell {
   private getViewFromHash(): DashboardView | null {
     if (typeof window === 'undefined' || !window.location.hash) return null;
     const cleanHash = window.location.hash.replace(/^#/, '').toLowerCase();
+    if (cleanHash.startsWith('detail/')) {
+      return 'pending';
+    }
     if (cleanHash === 'overview' || cleanHash === 'pending' || cleanHash === 'history' || cleanHash === 'settings') {
       return cleanHash as DashboardView;
     }
     return null;
+  }
+
+  /**
+   * Extracts a deep-linked approval request ID from `#detail/<id>` or `?requestId=<id>`.
+   */
+  private getDeepLinkedRequestIdFromLocation(): string | null {
+    if (typeof window === 'undefined' || !window.location) return null;
+    const hash = window.location.hash || '';
+    const detailMatch = hash.match(/^#(?:detail|pending)\/([^/?#]+)/i);
+    if (detailMatch?.[1]) {
+      try {
+        return decodeURIComponent(detailMatch[1]);
+      } catch {
+        return detailMatch[1];
+      }
+    }
+    const search = window.location.search || '';
+    if (search) {
+      try {
+        const params = new URLSearchParams(search);
+        const reqParam = params.get('requestId') || params.get('open');
+        if (reqParam) return reqParam;
+      } catch {
+        // Ignore malformed query string
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Opens the Review & Decide sheet (mobile) or detail pane (desktop) for a notification deep link.
+   */
+  private tryOpenDeepLinkedRequest(): void {
+    const reqId = this.pendingDeepLinkRequestId;
+    if (!reqId || !this.state.contactProfile?.isAuthenticated) return;
+    const found = this.state.pendingRequests.find((r) => r.id === reqId);
+    if (!found) return;
+
+    this.pendingDeepLinkRequestId = null;
+    this.mobileTab = 'queue';
+    this.mobileWardFilter = 'ALL';
+    this.state.activeView = 'pending';
+    this.state.selectedRequestId = reqId;
+
+    if (typeof window !== 'undefined' && window.location?.hash?.toLowerCase().startsWith('#detail/')) {
+      try {
+        window.history?.replaceState?.(null, '', `${window.location.pathname}${window.location.search}#pending`);
+      } catch {
+        // Ignore history restriction
+      }
+    }
+
+    const isMobile =
+      this.isMobileViewportMode ||
+      (typeof window !== 'undefined' &&
+        (window.innerWidth <= 768 || (window.location?.search || '').includes('source=pwa')));
+
+    if (isMobile) {
+      this.openMobileActionSheet(reqId);
+    } else {
+      this.selectRequest(reqId, true);
+    }
   }
 
   /**
@@ -613,6 +703,9 @@ export class DashboardShell {
         onSendTestPush: () => this.handleSendTestPush(),
       });
       this.rootContainer.appendChild(mobileView);
+      if (this.pendingDeepLinkRequestId && this.state.pendingRequests.some((r) => r.id === this.pendingDeepLinkRequestId)) {
+        queueMicrotask(() => this.tryOpenDeepLinkedRequest());
+      }
       return;
     }
 
@@ -3981,6 +4074,16 @@ export class DashboardShell {
     if (this.offlineHandler && typeof window !== 'undefined') {
       window.removeEventListener('offline', this.offlineHandler);
       this.offlineHandler = null;
+    }
+
+    if (
+      this.swMessageHandler &&
+      typeof navigator !== 'undefined' &&
+      'serviceWorker' in navigator &&
+      typeof navigator.serviceWorker.removeEventListener === 'function'
+    ) {
+      navigator.serviceWorker.removeEventListener('message', this.swMessageHandler);
+      this.swMessageHandler = null;
     }
 
     if (this.visibilityChangeHandler && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {

@@ -632,6 +632,79 @@ async function runPwaCompanionTests() {
     assert(refreshed === 1, 'Releasing pull-to-refresh triggers onRefresh callback');
   }
 
+  // =========================================================================
+  // Suite 8: Notification Deep-Linking (#detail/<requestId> & SW postMessage)
+  // =========================================================================
+  console.log('\n▶ Test Suite 8: Notification Deep-Linking (#detail/<requestId> & SW postMessage)');
+  {
+    const swPath = fs.existsSync(path.resolve(process.cwd(), 'sw.js'))
+      ? path.resolve(process.cwd(), 'sw.js')
+      : path.resolve(process.cwd(), 'guardrail/dashboard/sw.js');
+    const swContent = fs.readFileSync(swPath, 'utf-8');
+    assert(swContent.includes('GUARDRAIL_OPEN_REQUEST'), 'Service worker posts GUARDRAIL_OPEN_REQUEST to active window');
+    assert(swContent.includes('#detail/'), 'Service worker constructs #detail/<requestId> deep-link URLs');
+
+    const { DashboardShell } = await import('../shell.js');
+    const prevHash = (globalThis as any).window.location.hash;
+    const prevSearch = (globalThis as any).window.location.search;
+    (globalThis as any).window.location.hash = '#detail/apr_deep_02';
+    (globalThis as any).window.location.search = '?source=pwa';
+
+    const rootEl = new MockDOMElement('div');
+    const shell = new DashboardShell({
+      container: rootEl as any,
+      initialProfile: {
+        actorId: 'tc_dave',
+        assignedWardId: 'usr_alice',
+        assignedWardName: 'Alice Johnson',
+        isAuthenticated: true,
+      },
+      initialRequests: [
+        {
+          id: 'apr_deep_01',
+          requesterId: 'usr_alice',
+          status: 'PENDING',
+          actionType: 'PAYMENT',
+          riskLevel: 'MEDIUM',
+          riskScore: 40,
+          riskReasons: ['First request'],
+          actionDescription: 'First Request',
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 600000).toISOString(),
+          actionPayload: { targetUrl: 'https://example.com' },
+        },
+        {
+          id: 'apr_deep_02',
+          requesterId: 'usr_alice',
+          status: 'PENDING',
+          actionType: 'PAYMENT',
+          riskLevel: 'CRITICAL',
+          riskScore: 95,
+          riskReasons: ['Deep-linked wire transfer'],
+          actionDescription: 'Deep-Linked Wire Transfer ($900.00)',
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 600000).toISOString(),
+          actionPayload: { targetUrl: 'https://bank.example.com' },
+        },
+      ],
+      disablePolling: true,
+    });
+
+    // Wait for queueMicrotask deep-link trigger
+    await new Promise((r) => setTimeout(r, 10));
+    const openedSheet = (globalThis as any).document.body.querySelector('.gd-mobile-action-sheet');
+    assert(openedSheet !== null, 'Deep-linked #detail/<requestId> automatically opens Review & Decide bottom sheet');
+    assert(
+      (openedSheet?.textContent || '').includes('Deep-Linked Wire Transfer ($900.00)'),
+      'Deep-linked sheet displays the exact target approval request'
+    );
+
+    shell.closeMobileActionSheet();
+    shell.destroy();
+    (globalThis as any).window.location.hash = prevHash;
+    (globalThis as any).window.location.search = prevSearch;
+  }
+
   console.log('\n======================================================');
   console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
   console.log('======================================================\n');
