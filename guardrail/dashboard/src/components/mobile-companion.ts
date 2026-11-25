@@ -127,6 +127,151 @@ function createAmbientBackdrop(phase: SceneryPhase): HTMLElement {
   return layer;
 }
 
+function openHistoryDetailSheet(
+  req: ApprovalRequest,
+  wardName: string,
+  host: string,
+  status: string,
+  fullTimestamp: string
+): void {
+  const existing = document.querySelector('.gd-m-history-sheet-overlay');
+  existing?.remove();
+
+  const statusClass = status.toLowerCase();
+  const risk = (req.riskLevel || RiskLevel.LOW).toUpperCase();
+  const riskClass = risk.toLowerCase();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gd-sheet-portal gd-m-history-sheet-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Decision audit details');
+
+  const closeSheet = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', onKeyDown);
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') closeSheet();
+  };
+  document.addEventListener('keydown', onKeyDown);
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'gd-sheet-backdrop';
+  backdrop.addEventListener('click', closeSheet);
+
+  const sheet = document.createElement('div');
+  sheet.className = 'gd-mobile-action-sheet';
+
+  const handle = document.createElement('div');
+  handle.className = 'gd-sheet-drag-handle';
+  handle.setAttribute('aria-hidden', 'true');
+
+  const header = document.createElement('div');
+  header.className = 'gd-sheet-header';
+
+  const badgeRow = document.createElement('div');
+  badgeRow.className = 'gd-sheet-badge-row';
+
+  const wardEl = document.createElement('span');
+  wardEl.className = 'gd-m-hero-ward';
+  wardEl.style.padding = '0';
+  wardEl.style.background = 'transparent';
+  wardEl.textContent = wardName;
+
+  const statusPill = document.createElement('span');
+  statusPill.className = `gd-m-history-status ${statusClass}`;
+  statusPill.textContent = status;
+
+  const riskPill = document.createElement('span');
+  riskPill.className = `gd-m-risk-pill ${riskClass}`;
+  riskPill.textContent = risk;
+
+  badgeRow.appendChild(wardEl);
+  badgeRow.appendChild(statusPill);
+  badgeRow.appendChild(riskPill);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'gd-sheet-btn-close';
+  closeBtn.setAttribute('aria-label', 'Close decision details');
+  closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  closeBtn.addEventListener('click', closeSheet);
+
+  header.appendChild(badgeRow);
+  header.appendChild(closeBtn);
+
+  const body = document.createElement('div');
+  body.className = 'gd-sheet-body';
+
+  const title = document.createElement('h2');
+  title.className = 'gd-sheet-action-title';
+  title.textContent = req.actionDescription;
+
+  const metaRow = document.createElement('div');
+  metaRow.className = 'gd-sheet-meta-row';
+
+  const domainPill = document.createElement('span');
+  domainPill.className = 'gd-sheet-domain-pill';
+  domainPill.textContent = host;
+  metaRow.appendChild(domainPill);
+
+  if (req.category) {
+    const catPill = document.createElement('span');
+    catPill.className = 'gd-sheet-category-pill';
+    catPill.textContent = req.category.replace(/_/g, ' ');
+    metaRow.appendChild(catPill);
+  }
+
+  const riskBox = document.createElement('div');
+  riskBox.className = 'gd-sheet-risk-box';
+  const riskHead = document.createElement('div');
+  riskHead.className = 'gd-sheet-risk-headline';
+  riskHead.textContent = 'Why this action was held:';
+  riskBox.appendChild(riskHead);
+
+  const reasonsList = document.createElement('ul');
+  reasonsList.className = 'gd-sheet-reasons-list';
+  const reasons = req.riskReasons?.length
+    ? req.riskReasons
+    : ['Action triggered Guardrail protective policy review.'];
+  reasons.forEach((reason) => {
+    const li = document.createElement('li');
+    li.textContent = reason;
+    reasonsList.appendChild(li);
+  });
+  riskBox.appendChild(reasonsList);
+
+  const auditNote = document.createElement('div');
+  auditNote.className = 'gd-sheet-decoupling-note';
+  const shortId = req.id.length > 18 ? `${req.id.slice(0, 14)}…` : req.id;
+  auditNote.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span><strong>Immutable Decision Record:</strong> Decided ${fullTimestamp} · Request ${shortId}</span>`;
+
+  body.appendChild(title);
+  body.appendChild(metaRow);
+  body.appendChild(riskBox);
+  body.appendChild(auditNote);
+
+  const actions = document.createElement('div');
+  actions.className = 'gd-sheet-actions';
+
+  const doneBtn = document.createElement('button');
+  doneBtn.type = 'button';
+  doneBtn.className = 'gd-btn-approve-touch';
+  doneBtn.textContent = 'Close';
+  doneBtn.addEventListener('click', closeSheet);
+  actions.appendChild(doneBtn);
+
+  sheet.appendChild(handle);
+  sheet.appendChild(header);
+  sheet.appendChild(body);
+  sheet.appendChild(actions);
+
+  overlay.appendChild(backdrop);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+}
+
 export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement {
   const now = new Date();
   const scenery = getRealTimeScenery(now);
@@ -469,7 +614,8 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         const status = req.status || ApprovalStatus.APPROVED;
         const statusClass = status.toLowerCase();
 
-        const row = document.createElement('div');
+        const row = document.createElement('button');
+        row.type = 'button';
         row.className = 'gd-m-row gd-m-history-row';
 
         const mark = document.createElement('span');
@@ -506,6 +652,10 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         row.appendChild(mark);
         row.appendChild(info);
         row.appendChild(statusTag);
+        const fullTs = formatTimestamp(rawDate);
+        row.addEventListener('click', () =>
+          openHistoryDetailSheet(req, wardName, host, status, fullTs)
+        );
         list.appendChild(row);
       });
       main.appendChild(list);
