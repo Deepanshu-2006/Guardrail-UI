@@ -7684,90 +7684,171 @@ export function createSettingsClockworkProp(): HTMLElement {
     : 'Click to open portal calibration controls';
   btn.tabIndex = -1;
 
-  const mainGearPath = buildHorologicalGearPath(35, 55, 17.5, 14.1, 14);
-  const pinionGearPath = buildHorologicalGearPath(54.5, 40.5, 10.6, 8.1, 10);
-  const crownGearPath = buildHorologicalGearPath(19.5, 36.5, 9.6, 7.3, 9);
+  const mainGearPath = buildHorologicalGearPath(34, 59, 12.8, 10.1, 14);
+  const pinionGearPath = buildHorologicalGearPath(50.5, 48.5, 8.2, 6.2, 10);
+  const crownGearPath = buildHorologicalGearPath(25, 42, 7.6, 5.7, 9);
 
-  const buildSpokes = (cx: number, cy: number, rIn: number, rOut: number, count: number) =>
+  const buildSpokes = (cx: number, cy: number, rIn: number, rOut: number, count: number, color = '#E2AE4B') =>
     Array.from({ length: count }, (_, idx) => {
       const a = (idx * Math.PI * 2) / count;
-      return `<line x1="${(cx + Math.cos(a) * rIn).toFixed(2)}" y1="${(cy + Math.sin(a) * rIn).toFixed(2)}" x2="${(cx + Math.cos(a) * rOut).toFixed(2)}" y2="${(cy + Math.sin(a) * rOut).toFixed(2)}" stroke="#6A4712" stroke-width="1.5" stroke-linecap="round"/>`;
+      return `<line x1="${(cx + Math.cos(a) * rIn).toFixed(2)}" y1="${(cy + Math.sin(a) * rIn).toFixed(2)}" x2="${(cx + Math.cos(a) * rOut).toFixed(2)}" y2="${(cy + Math.sin(a) * rOut).toFixed(2)}" stroke="${color}" stroke-width="1.35" stroke-linecap="round"/>`;
     }).join('');
+
+  const chapterTicks = Array.from({ length: 12 }, (_, idx) => {
+    const a = (idx * Math.PI * 2) / 12;
+    const x1 = 39 + Math.cos(a) * 24.4;
+    const y1 = 51 + Math.sin(a) * 24.4;
+    const x2 = 39 + Math.cos(a) * (idx % 3 === 0 ? 22.0 : 23.0);
+    const y2 = 51 + Math.sin(a) * (idx % 3 === 0 ? 22.0 : 23.0);
+    return `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="rgba(246, 212, 128, ${idx % 3 === 0 ? '0.68' : '0.32'})" stroke-width="${idx % 3 === 0 ? '1.2' : '0.75'}" stroke-linecap="round"/>`;
+  }).join('');
 
   btn.innerHTML = `
     <span class="gd-clockwork-note" aria-hidden="true">${sharedWorkshopOpen ? 'Release' : 'Wind desk'}</span>
     <span class="gd-clockwork-aura" aria-hidden="true"></span>
-    <svg class="gd-prop-svg" width="76" height="92" viewBox="0 0 76 92" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <span class="gd-cw-wind-wave" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="78" height="92" viewBox="0 0 78 92" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="gd-cw-brass" x1="8%" y1="6%" x2="92%" y2="94%">
-          <stop offset="0%" stop-color="#FFF0AD"/>
-          <stop offset="32%" stop-color="#DFAB4B"/>
-          <stop offset="72%" stop-color="#9A681B"/>
-          <stop offset="100%" stop-color="#53350B"/>
+          <stop offset="0%" stop-color="#FFF4BE"/>
+          <stop offset="30%" stop-color="#E0AC4A"/>
+          <stop offset="72%" stop-color="#9B681B"/>
+          <stop offset="100%" stop-color="#4E3109"/>
+        </linearGradient>
+        <linearGradient id="gd-cw-bezel" x1="12%" y1="4%" x2="88%" y2="96%">
+          <stop offset="0%" stop-color="#FFF5C8"/>
+          <stop offset="22%" stop-color="#E6B655"/>
+          <stop offset="55%" stop-color="#B07A22"/>
+          <stop offset="82%" stop-color="#F1CD74"/>
+          <stop offset="100%" stop-color="#5B3B0C"/>
         </linearGradient>
         <linearGradient id="gd-cw-steel" x1="10%" y1="10%" x2="90%" y2="90%">
-          <stop offset="0%" stop-color="#8CB2D4"/>
-          <stop offset="45%" stop-color="#456A8F"/>
-          <stop offset="100%" stop-color="#22374D"/>
+          <stop offset="0%" stop-color="#AFC8E0"/>
+          <stop offset="45%" stop-color="#486B8E"/>
+          <stop offset="100%" stop-color="#1E3145"/>
         </linearGradient>
         <linearGradient id="gd-cw-copper" x1="15%" y1="10%" x2="85%" y2="90%">
-          <stop offset="0%" stop-color="#F6CE8F"/>
-          <stop offset="50%" stop-color="#BA7A3B"/>
-          <stop offset="100%" stop-color="#6B3D14"/>
+          <stop offset="0%" stop-color="#FAD496"/>
+          <stop offset="50%" stop-color="#BE7D3B"/>
+          <stop offset="100%" stop-color="#693B12"/>
+        </linearGradient>
+        <linearGradient id="gd-cw-walnut" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#2D1708"/>
+          <stop offset="35%" stop-color="#6E3F1E"/>
+          <stop offset="75%" stop-color="#4B2810"/>
+          <stop offset="100%" stop-color="#241205"/>
         </linearGradient>
         <radialGradient id="gd-cw-plate" cx="44%" cy="38%" r="68%">
-          <stop offset="0%" stop-color="#4A3923"/>
-          <stop offset="68%" stop-color="#2E2214"/>
-          <stop offset="100%" stop-color="#19120A"/>
+          <stop offset="0%" stop-color="#3B2D1C"/>
+          <stop offset="70%" stop-color="#23190F"/>
+          <stop offset="100%" stop-color="#130D07"/>
         </radialGradient>
+        <radialGradient id="gd-cw-dial-warm" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(255, 206, 94, 0.42)"/>
+          <stop offset="65%" stop-color="rgba(224, 152, 46, 0.16)"/>
+          <stop offset="100%" stop-color="rgba(224, 152, 46, 0)"/>
+        </radialGradient>
+        <clipPath id="gd-cw-dial-clip">
+          <circle cx="39" cy="51" r="25.6"/>
+        </clipPath>
       </defs>
 
-      <!-- Resting floor shadow -->
-      <ellipse cx="38" cy="86" rx="22" ry="2.8" fill="rgba(26, 20, 12, 0.16)"/>
+      <!-- Grounded contact shadow under mahogany cradle plinth (stationary on desk) -->
+      <ellipse cx="39" cy="85.8" rx="23" ry="2.6" fill="rgba(22, 14, 6, 0.24)"/>
 
-      <!-- Top watchmaker suspension ring -->
-      <circle cx="38" cy="11" r="5.5" stroke="#4D320C" stroke-width="2.6" fill="none"/>
-      <circle cx="38" cy="11" r="5.5" stroke="url(#gd-cw-brass)" stroke-width="1.6" fill="none"/>
-      <rect x="35.2" y="15.5" width="5.6" height="4.8" rx="1" fill="url(#gd-cw-brass)" stroke="#4A300B" stroke-width="0.75"/>
+      <!-- Turned Mahogany & Brass Chronometer Cradle Base (stationary on desk) -->
+      <path d="M21 76.5 L57 76.5 L59.5 83.2 C60 84.5, 59 85.2, 57.5 85.2 L20.5 85.2 C19 85.2, 18 84.5, 18.5 83.2 Z" fill="url(#gd-cw-walnut)" stroke="#190C03" stroke-width="0.9"/>
+      <line x1="21.5" y1="78.2" x2="56.5" y2="78.2" stroke="rgba(244, 204, 152, 0.28)" stroke-width="0.7"/>
+      <rect x="27" y="75.2" width="24" height="3.2" rx="1" fill="url(#gd-cw-brass)" stroke="#472E0A" stroke-width="0.65"/>
 
-      <!-- Forged dark-bronze horological frame plate & brass corner rivets -->
-      <path d="M13 30 C13 21.5, 22 18.5, 38 18.5 C54 18.5, 63 21.5, 63 30 L64 62 C64 73.5, 53 80, 38 80 C23 80, 12 73.5, 12 62 Z" fill="url(#gd-cw-plate)" stroke="url(#gd-cw-brass)" stroke-width="1.4"/>
-      <path d="M16 32 C16 24.5, 24 21.5, 38 21.5 C52 21.5, 60 24.5, 60 32 L60.5 60.5 C60.5 70, 51 76.5, 38 76.5 C25 76.5, 15.5 70, 15.5 60.5 Z" fill="none" stroke="rgba(242, 204, 118, 0.28)" stroke-width="0.75"/>
-      <circle cx="20" cy="25.5" r="1.4" fill="#DFAB4B"/>
-      <circle cx="56" cy="25.5" r="1.4" fill="#DFAB4B"/>
-      <circle cx="19" cy="70.5" r="1.4" fill="#DFAB4B"/>
-      <circle cx="57" cy="70.5" r="1.4" fill="#DFAB4B"/>
+      <!-- Articulated Chronometer Case (rocks with hand-winding torque in its walnut cradle) -->
+      <g class="gd-cw-case-body" style="transform-origin: 39px 76px;">
+        <!-- Articulated Oval Pocket Watch Bow -->
+        <g class="gd-cw-bow" style="transform-origin: 39px 18px;">
+          <ellipse cx="39" cy="11.5" rx="7.5" ry="5.5" stroke="#452D0A" stroke-width="2.9" fill="none"/>
+          <ellipse cx="39" cy="11.5" rx="7.5" ry="5.5" stroke="url(#gd-cw-bezel)" stroke-width="1.6" fill="none"/>
+        </g>
+        <rect x="36.2" y="16.2" width="5.6" height="4.8" rx="0.8" fill="url(#gd-cw-brass)" stroke="#472E0A" stroke-width="0.7"/>
 
-      <!-- Gear 3: Burnished Copper-Brass Winding Crown Wheel (9T, ratio +1.556x) -->
-      <g class="gd-cw-gear-crown" style="transform-origin: 19.5px 36.5px;">
-        <path d="${crownGearPath}" fill="url(#gd-cw-copper)" stroke="#47270A" stroke-width="0.75" stroke-linejoin="round"/>
-        <circle cx="19.5" cy="36.5" r="5.2" fill="#2A1E12" stroke="#D9A35E" stroke-width="0.7"/>
-        ${buildSpokes(19.5, 36.5, 1.5, 5.2, 4)}
-        <circle cx="19.5" cy="36.5" r="1.8" fill="#F2D084" stroke="#47270A" stroke-width="0.6"/>
-      </g>
+        <!-- Knurled Fluted Onion Winding Crown (twists & clicks down on wind!) -->
+        <g class="gd-cw-winding-crown">
+          <rect x="33.5" y="13.5" width="11" height="4.4" rx="1.8" fill="url(#gd-cw-bezel)" stroke="#472E0A" stroke-width="0.8"/>
+          <line x1="35.8" y1="13.8" x2="35.8" y2="17.6" stroke="#53350B" stroke-width="0.75"/>
+          <line x1="39" y1="13.8" x2="39" y2="17.6" stroke="#53350B" stroke-width="0.75"/>
+          <line x1="42.2" y1="13.8" x2="42.2" y2="17.6" stroke="#53350B" stroke-width="0.75"/>
+        </g>
 
-      <!-- Gear 2: Heat-Blued Steel Escape Pinion (10T, ratio -1.4x) -->
-      <g class="gd-cw-gear-pinion" style="transform-origin: 54.5px 40.5px;">
-        <path d="${pinionGearPath}" fill="url(#gd-cw-steel)" stroke="#162434" stroke-width="0.75" stroke-linejoin="round"/>
-        <circle cx="54.5" cy="40.5" r="5.9" fill="#1F2B38" stroke="#7EA4C8" stroke-width="0.7"/>
-        ${buildSpokes(54.5, 40.5, 1.8, 5.9, 4)}
-        <circle cx="54.5" cy="40.5" r="2.1" fill="#F2CE74" stroke="#452E0B" stroke-width="0.65"/>
-        <circle cx="54.5" cy="40.5" r="0.9" fill="#9E2424"/>
-      </g>
+        <!-- Outer Stepped Burnished Brass Chronometer Case Bezel -->
+        <circle cx="39" cy="51" r="30.2" fill="url(#gd-cw-bezel)" stroke="#3F2808" stroke-width="1.05"/>
+        <circle cx="39" cy="51" r="27.4" fill="none" stroke="rgba(255, 248, 212, 0.55)" stroke-width="0.75"/>
+        <circle cx="39" cy="51" r="26.0" fill="url(#gd-cw-plate)" stroke="#3D2607" stroke-width="0.9"/>
 
-      <!-- Gear 1: Main Great Brass Escape Wheel (14T, ratio 1.0x) -->
-      <g class="gd-cw-gear-main" style="transform-origin: 35px 55px;">
-        <path d="${mainGearPath}" fill="url(#gd-cw-brass)" stroke="#452D09" stroke-width="0.85" stroke-linejoin="round"/>
-        <circle cx="35" cy="55" r="11.2" fill="#22190F" stroke="rgba(255, 240, 176, 0.55)" stroke-width="0.8"/>
-        ${buildSpokes(35, 55, 3.2, 11.2, 5)}
-        <circle cx="35" cy="55" r="3.8" fill="url(#gd-cw-brass)" stroke="#452D09" stroke-width="0.75"/>
-        <circle cx="35" cy="55" r="1.65" fill="#A82424" stroke="#FFF2BA" stroke-width="0.45"/>
-      </g>
+        <!-- Inside Exhibition Movement (clipped cleanly inside dial glass) -->
+        <g clip-path="url(#gd-cw-dial-clip)">
+          <!-- Warm amber internal movement illumination when wound -->
+          <circle class="gd-cw-dial-glow" cx="39" cy="51" r="25" fill="url(#gd-cw-dial-warm)" opacity="0"/>
 
-      <!-- Pivoting Steel Anchor Escapement Lever -->
-      <g class="gd-cw-anchor" style="transform-origin: 38px 27px;">
-        <path d="M29 36 L36.4 26.2 L39.6 26.2 L47 36 L44.5 37.8 L38 29.5 L31.5 37.8 Z" fill="url(#gd-cw-steel)" stroke="#14202C" stroke-width="0.75" stroke-linejoin="round"/>
-        <circle cx="38" cy="27" r="2.2" fill="#F3D27E" stroke="#472E0A" stroke-width="0.65"/>
+          <!-- Cotes de Geneve vertical striped watchmaker backplate + chapter railway ring -->
+          <g opacity="0.16" stroke="#EBC470" stroke-width="2.2">
+            <line x1="17" y1="25" x2="17" y2="77"/>
+            <line x1="23" y1="25" x2="23" y2="77"/>
+            <line x1="29" y1="25" x2="29" y2="77"/>
+            <line x1="35" y1="25" x2="35" y2="77"/>
+            <line x1="41" y1="25" x2="41" y2="77"/>
+            <line x1="47" y1="25" x2="47" y2="77"/>
+            <line x1="53" y1="25" x2="53" y2="77"/>
+            <line x1="59" y1="25" x2="59" y2="77"/>
+          </g>
+          <circle cx="39" cy="51" r="24.2" fill="none" stroke="rgba(246, 212, 128, 0.25)" stroke-width="0.65"/>
+          ${chapterTicks}
+
+          <!-- Gear 3: Burnished Copper Winding Wheel under Crown (9T) -->
+          <g class="gd-cw-gear-crown" style="transform-origin: 25px 42px;">
+            <path d="${crownGearPath}" fill="url(#gd-cw-copper)" stroke="#47270A" stroke-width="0.7" stroke-linejoin="round"/>
+            <circle cx="25" cy="42" r="4.1" fill="#23180E" stroke="#DFAB5E" stroke-width="0.65"/>
+            ${buildSpokes(25, 42, 1.2, 4.1, 4, '#DFAB5E')}
+            <circle cx="25" cy="42" r="1.5" fill="#F4D388" stroke="#472E0A" stroke-width="0.55"/>
+          </g>
+
+          <!-- Gear 2: Heat-Blued Steel Intermediate Pinion (10T) -->
+          <g class="gd-cw-gear-pinion" style="transform-origin: 50.5px 48.5px;">
+            <path d="${pinionGearPath}" fill="url(#gd-cw-steel)" stroke="#162434" stroke-width="0.7" stroke-linejoin="round"/>
+            <circle cx="50.5" cy="48.5" r="4.5" fill="#18222D" stroke="#8CB2D4" stroke-width="0.65"/>
+            ${buildSpokes(50.5, 48.5, 1.4, 4.5, 4, '#8CB2D4')}
+            <circle cx="50.5" cy="48.5" r="1.7" fill="#F2CE74" stroke="#452E0B" stroke-width="0.55"/>
+            <circle cx="50.5" cy="48.5" r="0.75" fill="#A62222"/>
+          </g>
+
+          <!-- Gear 1: Main Brass Great Wheel (14T) -->
+          <g class="gd-cw-gear-main" style="transform-origin: 34px 59px;">
+            <path d="${mainGearPath}" fill="url(#gd-cw-brass)" stroke="#452D09" stroke-width="0.8" stroke-linejoin="round"/>
+            <circle cx="34" cy="59" r="8.2" fill="#1E150C" stroke="rgba(255, 240, 176, 0.52)" stroke-width="0.7"/>
+            ${buildSpokes(34, 59, 2.4, 8.2, 5, '#E2AE4B')}
+            <circle cx="34" cy="59" r="3.0" fill="url(#gd-cw-brass)" stroke="#452D09" stroke-width="0.7"/>
+            <circle cx="34" cy="59" r="1.35" fill="#A82424" stroke="#FFF2BA" stroke-width="0.4"/>
+          </g>
+
+          <!-- Oscillating Swiss Lever Balance Wheel & Spiral Blued-Steel Hairspring -->
+          <g class="gd-cw-anchor" style="transform-origin: 42.5px 38px;">
+            <circle cx="42.5" cy="38" r="8.4" stroke="#472E0A" stroke-width="2.1" fill="none"/>
+            <circle cx="42.5" cy="38" r="8.4" stroke="url(#gd-cw-brass)" stroke-width="1.35" fill="none"/>
+            <line x1="34.5" y1="38" x2="50.5" y2="38" stroke="#D9A344" stroke-width="1.05"/>
+            <line x1="42.5" y1="30" x2="42.5" y2="46" stroke="#D9A344" stroke-width="1.05"/>
+            <path d="M42.5 38 C43.5 38, 43.8 36.8, 42.5 36.4 C40.8 36.0, 40.2 38.2, 41.6 39.6 C43.2 41.0, 45.4 39.2, 45.0 36.8" stroke="#78A2CC" stroke-width="0.7" fill="none" stroke-linecap="round"/>
+          </g>
+
+          <!-- Carved Brass Balance Cock Bridge spanning over balance wheel pivot -->
+          <path d="M52 29 C55 31, 56 35, 53 38 L42.5 38" stroke="#472E0A" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+          <path d="M52 29 C55 31, 56 35, 53 38 L42.5 38" stroke="url(#gd-cw-brass)" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+          <circle cx="42.5" cy="38" r="2.1" fill="url(#gd-cw-brass)" stroke="#472E0A" stroke-width="0.65"/>
+          <circle cx="42.5" cy="38" r="0.95" fill="#B22222"/>
+          <circle cx="52.6" cy="30.2" r="1.25" fill="#7EA4C8" stroke="#18222C" stroke-width="0.45"/>
+
+          <!-- Sapphire Exhibition Crystal Glint + Diagonal Light Sweep -->
+          <path d="M16 44 C19 30, 32 25, 45 27 C34 29, 23 36, 19 49 Z" fill="rgba(255, 252, 240, 0.14)"/>
+          <path d="M19 42 C21 34, 27 29, 34 27.8" stroke="rgba(255, 255, 255, 0.36)" stroke-width="1.15" stroke-linecap="round" fill="none"/>
+          <rect class="gd-cw-crystal-sweep" x="4" y="20" width="16" height="62" rx="4" fill="rgba(255, 250, 224, 0.34)" style="opacity: 0;"/>
+        </g>
       </g>
     </svg>
   `;
@@ -7781,8 +7862,10 @@ export function createSettingsClockworkProp(): HTMLElement {
   let mainAngle = 0;
   let gearVel = 0;
   let anchorPhase = 0;
+  let clickBurst = 0;
   let lastTs = 0;
   let rafId: number | null = null;
+  let clickAnimTimer: number | null = null;
 
   const syncWorkshopClass = (open: boolean) => {
     if (btn?.classList) {
@@ -7821,23 +7904,25 @@ export function createSettingsClockworkProp(): HTMLElement {
     const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
     lastTs = ts;
 
-    const targetCruise = sharedWorkshopOpen ? 34 : 0;
+    clickBurst = Math.max(0, clickBurst - dt * 1.15);
+    const targetCruise = sharedWorkshopOpen ? 38 : 0;
     gearVel += (targetCruise - gearVel) * Math.min(1, dt * (sharedWorkshopOpen ? 3.8 : 2.8));
     mainAngle = (mainAngle + gearVel * dt) % 3600;
 
     let anchorDeg = 0;
-    if (sharedWorkshopOpen || Math.abs(gearVel) > 1.5) {
-      anchorPhase += dt * (sharedWorkshopOpen ? 10.5 : 8.5);
-      const energy = sharedWorkshopOpen ? 1 : Math.min(1, Math.abs(gearVel) / 60);
-      anchorDeg = Math.sin(anchorPhase) * 8.5 * energy;
+    if (sharedWorkshopOpen || Math.abs(gearVel) > 1.5 || clickBurst > 0.05) {
+      anchorPhase += dt * (sharedWorkshopOpen ? 10.5 + clickBurst * 6 : 8.5);
+      const baseEnergy = sharedWorkshopOpen ? 1 : Math.min(1, Math.abs(gearVel) / 60);
+      anchorDeg = Math.sin(anchorPhase) * (34 * baseEnergy + clickBurst * 26);
     }
 
     applyTransforms(anchorDeg);
 
-    if (sharedWorkshopOpen || Math.abs(gearVel) > 0.45) {
+    if (sharedWorkshopOpen || Math.abs(gearVel) > 0.45 || clickBurst > 0.05) {
       rafId = requestAnimationFrame(step);
     } else {
       gearVel = 0;
+      clickBurst = 0;
       applyTransforms(0);
       rafId = null;
       lastTs = 0;
@@ -7864,7 +7949,18 @@ export function createSettingsClockworkProp(): HTMLElement {
 
   btn.addEventListener('click', () => {
     sharedWorkshopOpen = !sharedWorkshopOpen;
-    gearVel += sharedWorkshopOpen ? 165 : -85;
+    clickBurst = 1;
+    gearVel += sharedWorkshopOpen ? 340 : -240;
+    if (btn.classList) {
+      btn.classList.remove('is-winding', 'is-unwinding');
+      void btn.offsetWidth;
+      btn.classList.add(sharedWorkshopOpen ? 'is-winding' : 'is-unwinding');
+    }
+    if (clickAnimTimer !== null) clearTimeout(clickAnimTimer);
+    clickAnimTimer = window.setTimeout(() => {
+      btn.classList?.remove('is-winding', 'is-unwinding');
+    }, 950);
+
     playClockworkMechanismSound(sharedWorkshopOpen);
     syncWorkshopClass(sharedWorkshopOpen);
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {

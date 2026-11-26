@@ -27220,6 +27220,104 @@ body.gd-kbd-open .gd-m-shell {
     box-shadow: 0 4px 10px rgba(24, 31, 20, 0.22);
   }
 
+  .gd-prop-settings-clockwork .gd-cw-winding-crown {
+    transform-origin: 39px 16px;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-clockwork:hover .gd-cw-winding-crown {
+    transform: translateY(-0.8px) scaleX(0.92);
+  }
+
+  .gd-prop-settings-clockwork.is-open .gd-cw-winding-crown {
+    transform: translateY(1.2px) scaleX(1.04);
+  }
+
+  .gd-prop-settings-clockwork.is-open .gd-cw-dial-glow {
+    opacity: 0.9 !important;
+    transition: opacity 0.45s ease;
+  }
+
+  .gd-prop-settings-clockwork.is-winding .gd-cw-case-body {
+    animation: gd-cw-wind-torque 0.82s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-clockwork.is-unwinding .gd-cw-case-body {
+    animation: gd-cw-release-kick 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-clockwork.is-winding .gd-cw-bow,
+  .gd-prop-settings-clockwork.is-unwinding .gd-cw-bow {
+    animation: gd-cw-bow-swing 0.88s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-clockwork.is-winding .gd-cw-winding-crown {
+    animation: gd-cw-crown-ratchet 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-clockwork.is-winding .gd-cw-crystal-sweep {
+    animation: gd-cw-crystal-glint 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .gd-cw-wind-wave {
+    position: absolute;
+    left: 39px;
+    top: 51px;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    border: 1.8px solid rgba(218, 166, 56, 0.88);
+    transform: translate(-50%, -50%) scale(0.75);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .gd-prop-settings-clockwork.is-winding .gd-cw-wind-wave {
+    animation: gd-cw-wind-ripple 0.88s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes gd-cw-wind-torque {
+    0%   { transform: rotate(0deg) scale(1); }
+    18%  { transform: rotate(-4.5deg) translateY(1.5px) scale(0.96); }
+    42%  { transform: rotate(3.2deg) translateY(-2.2px) scale(1.035); }
+    68%  { transform: rotate(-1.4deg) translateY(0.5px) scale(0.99); }
+    100% { transform: rotate(0deg) translateY(0) scale(1); }
+  }
+
+  @keyframes gd-cw-release-kick {
+    0%   { transform: rotate(0deg) scale(1); }
+    24%  { transform: rotate(3.4deg) translateY(1.2px) scale(0.97); }
+    56%  { transform: rotate(-1.8deg) translateY(-0.6px) scale(1.01); }
+    100% { transform: rotate(0deg) translateY(0) scale(1); }
+  }
+
+  @keyframes gd-cw-bow-swing {
+    0%   { transform: rotate(0deg); }
+    22%  { transform: rotate(-19deg); }
+    52%  { transform: rotate(12deg); }
+    78%  { transform: rotate(-5deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  @keyframes gd-cw-crown-ratchet {
+    0%   { transform: translateY(0) scaleX(1); }
+    20%  { transform: translateY(-2.4px) scaleX(0.84); }
+    42%  { transform: translateY(1.6px) scaleX(1.06); }
+    64%  { transform: translateY(-1.2px) scaleX(0.9); }
+    100% { transform: translateY(1.2px) scaleX(1.04); }
+  }
+
+  @keyframes gd-cw-crystal-glint {
+    0%   { transform: translate(-18px, -10px) rotate(26deg); opacity: 0; }
+    25%  { opacity: 0.95; }
+    100% { transform: translate(62px, 16px) rotate(26deg); opacity: 0; }
+  }
+
+  @keyframes gd-cw-wind-ripple {
+    0%   { transform: translate(-50%, -50%) scale(0.82); opacity: 0.9; }
+    100% { transform: translate(-50%, -50%) scale(1.68); opacity: 0; }
+  }
+
   .gd-clockwork-aura {
     position: absolute;
     width: 98px;
