@@ -973,6 +973,13 @@ export function createPendingHourglassProp(): HTMLElement {
     if (viewEl) {
       viewEl.classList.toggle('gd-pending-hourglass-on', flowing);
     }
+    if (typeof document !== 'undefined') {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (appEl) {
+        const isPendingActive = Boolean(viewEl && viewEl.classList.contains('active'));
+        appEl.classList.toggle('gd-pending-sandstorm-on', flowing && isPendingActive);
+      }
+    }
   };
 
   const renderSandGeometry = (flippedOdd: boolean, pouring: boolean, tiltDeg: number) => {
@@ -1167,10 +1174,248 @@ export function createPendingHourglassProp(): HTMLElement {
     // Flip 180° — sand stays in its current bulb, which is now physically on top!
     targetAngle += 180;
     sharedHourglassAngle = targetAngle;
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('gd-hourglass-flip'));
+    }
     ensureRunning();
   });
 
   return btn;
+}
+
+/**
+ * Full-workspace Golden Sandstorm canvas overlay triggered when the Pending
+ * Approvals hourglass flips and pours (.gd-pending-sandstorm-on).
+ */
+export function createPendingSandstormOverlay(): HTMLElement {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'gd-pending-sandstorm';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') {
+    return canvas;
+  }
+  const ctx = canvas.getContext?.('2d');
+  if (!ctx) return canvas;
+
+  interface SandParticle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    len: number;
+    alpha: number;
+    color: string;
+    phase: number;
+    layer: 0 | 1 | 2; // 0: distant dust, 1: crisp mid grains, 2: fast foreground streaks
+  }
+
+  interface WindRibbon {
+    x: number;
+    y: number;
+    vx: number;
+    width: number;
+    amp: number;
+    freq: number;
+    phase: number;
+    alpha: number;
+  }
+
+  // High-contrast bronze, ochre, amber, and sunlit gold so grains read crisply on cream/parchment
+  const palette = ['#9C651C', '#B87A24', '#D69834', '#E8B84E', '#7A4E14', '#C98A2E'];
+  let width = 800;
+  let height = 600;
+  let gust = 0.48;
+  let stormAlpha = 0;
+  let clock = 0;
+  let lastTs = 0;
+  let rafId: number | null = null;
+  let boardAngle = 0;
+  let boardVel = 0;
+
+  const resize = () => {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    width = Math.max(320, window.innerWidth - 240);
+    height = Math.max(320, window.innerHeight);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  const particles: SandParticle[] = Array.from({ length: 135 }, (_, i) => {
+    const layer = (i % 6 === 0 ? 2 : i % 3 === 0 ? 0 : 1) as 0 | 1 | 2;
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: layer === 2 ? 360 + Math.random() * 240 : layer === 1 ? 210 + Math.random() * 190 : 120 + Math.random() * 110,
+      vy: 10 + Math.random() * 44,
+      size: layer === 2 ? 1.5 + Math.random() * 1.4 : layer === 1 ? 1.1 + Math.random() * 1.1 : 0.8 + Math.random() * 0.7,
+      len: layer === 2 ? 16 + Math.random() * 22 : layer === 1 ? 5 + Math.random() * 10 : 2 + Math.random() * 4,
+      alpha: layer === 2 ? 0.42 + Math.random() * 0.32 : layer === 1 ? 0.35 + Math.random() * 0.4 : 0.2 + Math.random() * 0.22,
+      color: palette[i % palette.length],
+      phase: Math.random() * Math.PI * 2,
+      layer,
+    };
+  });
+
+  const ribbons: WindRibbon[] = Array.from({ length: 7 }, (_, i) => ({
+    x: (i / 7) * width,
+    y: (0.12 + (i % 5) * 0.18) * height,
+    vx: 165 + i * 24,
+    width: 150 + (i % 3) * 70,
+    amp: 12 + (i % 3) * 8,
+    freq: 0.022 + (i % 2) * 0.01,
+    phase: i * 1.1,
+    alpha: 0.09 + (i % 3) * 0.035,
+  }));
+
+  const isStormActive = () =>
+    Boolean(document.querySelector('.gd-dashboard-app.gd-pending-sandstorm-on'));
+
+  const step = (ts: number) => {
+    if (!document.contains(canvas)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+    clock += dt;
+
+    const active = isStormActive();
+    const targetAlpha = active ? 1 : 0;
+    stormAlpha += (targetAlpha - stormAlpha) * Math.min(1, dt * (active ? 4.8 : 3.0));
+    // Periodic natural wind surges while active
+    const waveGust = active ? 0.46 + Math.max(0, Math.sin(clock * 1.35)) * 0.26 : 0.35;
+    gust += (waveGust - gust) * Math.min(1, dt * 1.8);
+
+    ctx.clearRect(0, 0, width, height);
+
+    if (stormAlpha > 0.01) {
+      const speedMul = 0.7 + gust * 1.3;
+
+      // 1. Swirling translucent desert wind ribbons
+      for (const r of ribbons) {
+        r.x += r.vx * speedMul * dt;
+        if (r.x - r.width > width + 40) {
+          r.x = -r.width - 40;
+          r.y = (0.1 + Math.random() * 0.8) * height;
+        }
+        ctx.save();
+        ctx.strokeStyle = 'rgba(196, 134, 42, 1)';
+        ctx.globalAlpha = r.alpha * stormAlpha;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        const steps = 10;
+        for (let s = 0; s <= steps; s++) {
+          const rx = r.x - (s / steps) * r.width;
+          const ry = r.y + Math.sin(rx * r.freq + clock * 4 + r.phase) * r.amp;
+          if (s === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 2. Layered wind-swept sand grains + gusts
+      for (const p of particles) {
+        const swirl = Math.sin(clock * 3.8 + p.phase + p.x * 0.008) * (24 + p.layer * 14);
+        const lift = Math.cos(clock * 2.3 + p.phase) * 14;
+        p.x += (p.vx + lift) * speedMul * dt;
+        p.y += (p.vy + swirl) * speedMul * dt;
+
+        if (p.x > width + 36) {
+          p.x = -30;
+          p.y = Math.random() * height;
+        }
+        if (p.y > height + 24) {
+          p.y = -14;
+        } else if (p.y < -24) {
+          p.y = height + 14;
+        }
+
+        const a = p.alpha * stormAlpha;
+        ctx.globalAlpha = a;
+
+        if (p.layer === 0) {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = p.size;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x - p.len * speedMul, p.y - ((p.vy + swirl * 0.35) / p.vx) * p.len * speedMul);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Physical pendulum swing on the hanging greeting board during sandstorm gusts
+    const boardEl = document.querySelector('#view-pending .gd-overview-greeting-card .gd-wood-board') as HTMLElement | null;
+    if (boardEl) {
+      const windTorque = active
+        ? (2.4 + gust * 4.2 + Math.sin(clock * 2.9) * 1.8 + Math.sin(clock * 5.7) * 0.9)
+        : 0;
+      const boardAccel = windTorque * 3.8 - boardAngle * 14 - boardVel * 2.4;
+      boardVel += boardAccel * dt;
+      boardAngle += boardVel * dt;
+      if (Math.abs(boardAngle) > 0.03 || Math.abs(boardVel) > 0.05) {
+        boardEl.style.transformOrigin = '50% -26px';
+        boardEl.style.transform = `translateX(${(boardAngle * 1.1).toFixed(2)}px) rotate(${boardAngle.toFixed(2)}deg)`;
+      } else if (!active) {
+        boardAngle = 0;
+        boardVel = 0;
+        boardEl.style.transform = '';
+      }
+    }
+
+    if (active || stormAlpha > 0.015 || Math.abs(boardAngle) > 0.04 || Math.abs(boardVel) > 0.06) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      ctx.clearRect(0, 0, width, height);
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null) {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  window.addEventListener('gd-hourglass-flip', () => {
+    gust = 1.25;
+    ensureRunning();
+  });
+
+  if (typeof MutationObserver === 'function') {
+    requestAnimationFrame(() => {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (!appEl) return;
+      const obs = new MutationObserver(() => {
+        if (!document.contains(canvas)) {
+          obs.disconnect();
+          return;
+        }
+        if (isStormActive()) ensureRunning();
+      });
+      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
+      if (isStormActive()) ensureRunning();
+    });
+  }
+
+  return canvas;
 }
 
 /**
@@ -1254,7 +1499,12 @@ export function createPendingOwlProp(): HTMLElement {
   let swoopY = 0;
   let swoopVelY = 0;
   let swoopClock = -1;
+  let stormClock = 0;
   let rafId: number | null = null;
+
+  const isStorming = () =>
+    typeof document !== 'undefined' &&
+    Boolean(document.querySelector('.gd-dashboard-app.gd-pending-sandstorm-on'));
 
   const stepOwl = () => {
     if (typeof document !== 'undefined' && !document.contains(owlBtn)) {
@@ -1262,11 +1512,19 @@ export function createPendingOwlProp(): HTMLElement {
       return;
     }
 
+    const storming = isStorming();
+    if (storming) {
+      stormClock += 0.016;
+    } else {
+      stormClock = 0;
+    }
+
     headRot += (targetHeadRot - headRot) * 0.16;
     headX += (targetHeadX - headX) * 0.16;
 
     if (headEl) {
-      headEl.style.transform = `translateX(${headX.toFixed(2)}px) rotate(${headRot.toFixed(2)}deg)`;
+      const windHeadTilt = storming ? -4.5 + Math.sin(stormClock * 7.5) * 1.6 : 0;
+      headEl.style.transform = `translateX(${headX.toFixed(2)}px) rotate(${(headRot + windHeadTilt).toFixed(2)}deg)`;
     }
 
     if (swoopClock >= 0) {
@@ -1284,9 +1542,18 @@ export function createPendingOwlProp(): HTMLElement {
         owlBtn.classList.remove('is-swooping');
         if (bodyEl) bodyEl.style.transform = '';
       }
+    } else if (bodyEl) {
+      if (storming) {
+        // Brace & crouch against wind gusts on the wooden rail
+        const gustBuffet = Math.sin(stormClock * 6.2) * 1.2 + Math.sin(stormClock * 2.9) * 1.4;
+        bodyEl.style.transform = `translate(${(1.2 + gustBuffet * 0.35).toFixed(2)}px, 3px) rotate(${(-4.5 + gustBuffet).toFixed(2)}deg)`;
+      } else {
+        bodyEl.style.transform = '';
+      }
     }
 
     const moving =
+      storming ||
       Math.abs(targetHeadRot - headRot) > 0.1 ||
       Math.abs(targetHeadX - headX) > 0.05 ||
       swoopClock >= 0;
@@ -1303,6 +1570,31 @@ export function createPendingOwlProp(): HTMLElement {
       rafId = requestAnimationFrame(stepOwl);
     }
   };
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('gd-hourglass-flip', () => {
+      if (!document.contains(owlBtn)) return;
+      owlBtn.classList.add('is-wind-bracing');
+      setTimeout(() => owlBtn.classList.remove('is-wind-bracing'), 950);
+      ensureRunning();
+    });
+  }
+
+  if (typeof MutationObserver === 'function' && typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (!appEl) return;
+      const obs = new MutationObserver(() => {
+        if (!document.contains(owlBtn)) {
+          obs.disconnect();
+          return;
+        }
+        if (isStorming()) ensureRunning();
+      });
+      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
+      if (isStorming()) ensureRunning();
+    });
+  }
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     const onMove = (e: MouseEvent) => {

@@ -29,7 +29,7 @@ import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview, formatWardDisplayName } from './components/overview.js';
 import { createAmbientBackdrop, getRealTimeScenery, markGreetingWidgetSettled } from './components/pixel-scenery.js';
-import { createLanternFirefliesOverlay } from './components/interactive-props.js';
+import { createLanternFirefliesOverlay, createPendingSandstormOverlay } from './components/interactive-props.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
 import { filterRequests } from './components/filters.js';
@@ -1132,6 +1132,7 @@ export class DashboardShell {
       } phase-${desktopScenery.phase}`;
       this.appWrapper.appendChild(createAmbientBackdrop(desktopScenery.phase, 'gd-desktop-ambient'));
       this.appWrapper.appendChild(createLanternFirefliesOverlay());
+      this.appWrapper.appendChild(createPendingSandstormOverlay());
 
       // 1. Sidebar (Navigation + Account Profile)
       this.sidebarEl = renderNavigation({
@@ -1831,6 +1832,10 @@ export class DashboardShell {
     }
 
     if (this.state.activeView === view) return;
+
+    if (view !== 'pending' && this.appWrapper) {
+      this.appWrapper.classList.remove('gd-pending-sandstorm-on');
+    }
 
     markGreetingWidgetSettled();
     this.state.activeView = view;
