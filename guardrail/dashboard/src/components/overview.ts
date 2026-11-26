@@ -377,10 +377,30 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     }
   });
 
+  const wardKeyItems = wardsList.map((w) => {
+    const matchWard = (r: ApprovalRequest) =>
+      r.requesterId === w.id || (r as { wardId?: string }).wardId === w.id;
+    const pendingForWard = (props.pendingRequests ?? []).filter(matchWard).length;
+    const recentForWard = (props.recentActivity ?? []).filter(matchWard).length;
+    return {
+      id: w.id,
+      name: w.name,
+      relationshipLabel: w.relationshipLabel,
+      pendingCount: pendingForWard,
+      recentCount: recentForWard,
+    };
+  });
+
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValueRow);
   wardCard.appendChild(wardDesc);
-  wardCard.appendChild(createWardKeyRackProp(wardsList.map((w) => w.name)));
+  wardCard.appendChild(
+    createWardKeyRackProp(wardKeyItems, {
+      onInspectPending: props.onFilterWardPending,
+      onInspectHistory: props.onFilterWardHistory,
+      onOpenWards: triggerWardsModal,
+    })
+  );
   grid.appendChild(wardCard);
 
   // Metric 2: Pending Actions (Interactive — opens Pending Approvals popup)

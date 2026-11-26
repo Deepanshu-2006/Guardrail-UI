@@ -1313,26 +1313,64 @@ function playBrassKeysClink(): void {
   }
 }
 
+export interface WardKeyPropItem {
+  id: string;
+  name: string;
+  relationshipLabel?: string;
+  pendingCount?: number;
+  recentCount?: number;
+}
+
+export interface WardKeyRackCallbacks {
+  onInspectPending?: (wardId: string) => void;
+  onInspectHistory?: (wardId: string) => void;
+  onOpenWards?: () => void;
+}
+
 /**
  * Miniature Carved Oak & Brass Keyhook Rack perched atop the 01 / Wards frame.
  * Holds an antique brass skeleton key per connected ward (up to 4 visible keys).
- * Hovering gently rustles the keys; clicking swings & clinks a key like a pendulum,
- * shows a tiny warm parchment key tag, and highlights that ward's name inside the card.
+ * Keys with pending approvals display a warm glowing amber wax jewel.
+ * - Hovering rustles the keys and shows a quick parchment hover tag.
+ * - Clicking a key clinks & unlocks a parchment ward key-folio with direct
+ *   Pending / History filter jumps for that ward (double-click jumps immediately).
  */
-export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
+export function createWardKeyRackProp(
+  wardsInput: readonly (string | WardKeyPropItem)[] = [],
+  callbacks: WardKeyRackCallbacks = {}
+): HTMLElement {
+  const wards: WardKeyPropItem[] = wardsInput.map((item, idx) =>
+    typeof item === 'string'
+      ? { id: `ward_${idx}`, name: item, pendingCount: 0, recentCount: 0 }
+      : {
+          id: item.id,
+          name: item.name,
+          relationshipLabel: item.relationshipLabel,
+          pendingCount: item.pendingCount ?? 0,
+          recentCount: item.recentCount ?? 0,
+        }
+  );
+
+  const rackWrap = document.createElement('div');
+  rackWrap.className = 'gd-prop-btn gd-prop-ward-keyrack';
+
   const rackBtn = document.createElement('button');
   rackBtn.type = 'button';
-  rackBtn.className = 'gd-prop-btn gd-prop-ward-keyrack';
+  rackBtn.className = 'gd-keyrack-trigger';
   rackBtn.setAttribute(
     'aria-label',
-    wardNames.length > 0
-      ? `Inspect hanging brass ward keys (${wardNames.length} connected)`
-      : 'Inspect brass ward key rack'
+    wards.length > 0
+      ? `Inspect ward keys (${wards.length} connected)`
+      : 'Inspect ward key rack'
   );
-  rackBtn.title = wardNames.length > 0 ? 'Click a key to cycle connected wards' : 'Waiting for first ward key';
+  rackBtn.setAttribute('aria-expanded', 'false');
+  rackBtn.title =
+    wards.length > 0
+      ? 'Click a key for ward actions · Double-click to jump straight to queue'
+      : 'Click to link your first ward';
   rackBtn.tabIndex = -1;
 
-  const visibleCount = wardNames.length > 0 ? Math.min(4, wardNames.length) : 1;
+  const visibleCount = wards.length > 0 ? Math.min(4, wards.length) : 1;
   const xLayoutMap: Record<number, number[]> = {
     1: [47],
     2: [36, 58],
@@ -1340,12 +1378,11 @@ export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
     4: [24, 39.5, 54.5, 70],
   };
   const keyPositions = xLayoutMap[visibleCount] ?? [47];
-  const isEmptyRack = wardNames.length === 0;
+  const isEmptyRack = wards.length === 0;
 
   const buildBowPath = (cx: number, variant: number): string => {
     switch (variant % 4) {
       case 0:
-        // Classic quatrefoil/trefoil bow
         return `
           <circle cx="${cx}" cy="16.4" r="3.4" fill="none" stroke="url(#gd-kr-brass-${variant % 3})" stroke-width="1.75"/>
           <circle cx="${cx - 1.8}" cy="16.4" r="1.4" fill="none" stroke="#442B08" stroke-width="0.55" opacity="0.55"/>
@@ -1353,19 +1390,16 @@ export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
           <circle cx="${cx}" cy="16.4" r="3.4" fill="none" stroke="#362006" stroke-width="0.65"/>
         `;
       case 1:
-        // Oval filigree bow
         return `
           <ellipse cx="${cx}" cy="16.5" rx="3.1" ry="3.9" fill="none" stroke="url(#gd-kr-brass-${variant % 3})" stroke-width="1.8"/>
           <ellipse cx="${cx}" cy="16.5" rx="3.1" ry="3.9" fill="none" stroke="#362006" stroke-width="0.65"/>
         `;
       case 2:
-        // Diamond ornate bow
         return `
           <path d="M${cx} 12.6 L${cx + 3.5} 16.5 L${cx} 20.3 L${cx - 3.5} 16.5 Z" fill="none" stroke="url(#gd-kr-brass-${variant % 3})" stroke-width="1.8" stroke-linejoin="round"/>
           <path d="M${cx} 12.6 L${cx + 3.5} 16.5 L${cx} 20.3 L${cx - 3.5} 16.5 Z" fill="none" stroke="#362006" stroke-width="0.65" stroke-linejoin="round"/>
         `;
       default:
-        // Heart-scroll bow
         return `
           <path d="M${cx} 19.8 C${cx - 4.2} 17.6, ${cx - 4} 13.3, ${cx - 1.3} 13.3 C${cx - 0.3} 13.3, ${cx} 14.3, ${cx} 14.3 C${cx} 14.3, ${cx + 0.3} 13.3, ${cx + 1.3} 13.3 C${cx + 4} 13.3, ${cx + 4.2} 17.6, ${cx} 19.8 Z" fill="none" stroke="url(#gd-kr-brass-0)" stroke-width="1.7" stroke-linejoin="round"/>
           <path d="M${cx} 19.8 C${cx - 4.2} 17.6, ${cx - 4} 13.3, ${cx - 1.3} 13.3 C${cx - 0.3} 13.3, ${cx} 14.3, ${cx} 14.3 C${cx} 14.3, ${cx + 0.3} 13.3, ${cx + 1.3} 13.3 C${cx + 4} 13.3, ${cx + 4.2} 17.6, ${cx} 19.8 Z" fill="none" stroke="#362006" stroke-width="0.6" stroke-linejoin="round"/>
@@ -1388,26 +1422,24 @@ export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
 
   const hooksAndKeysSvg = keyPositions
     .map((cx, i) => {
+      const ward = wards[i];
+      const hasPending = Boolean(ward && (ward.pendingCount ?? 0) > 0);
       const gradId = isEmptyRack ? 'gd-kr-pewter' : `gd-kr-brass-${i % 3}`;
       const strokeOutline = isEmptyRack ? '#3A3A3A' : '#3B2507';
       const shaftLen = i % 2 === 0 ? 31.5 : 33;
       return `
-        <!-- Fixed brass J-hook on mahogany rail -->
         <circle cx="${cx}" cy="9.2" r="1.25" fill="#E8BA54" stroke="#3B2507" stroke-width="0.55"/>
         <path d="M${cx} 9.8 V12.3 C${cx} 13.7, ${cx + 1.6} 13.7, ${cx + 1.7} 12.1" fill="none" stroke="#C9922F" stroke-width="1.35" stroke-linecap="round"/>
 
-        <!-- Swinging Ward Key ${i + 1} -->
-        <g class="gd-ward-key${isEmptyRack ? ' is-empty' : ''}" data-key-idx="${i}" style="transform-origin: ${cx}px 12.6px;">
-          <!-- Split ring resting over hook -->
+        <g class="gd-ward-key${isEmptyRack ? ' is-empty' : ''}${hasPending ? ' has-pending' : ''}" data-key-idx="${i}" style="transform-origin: ${cx}px 12.6px;">
+          <rect x="${cx - 6}" y="10.5" width="12" height="25" fill="transparent"/>
           <circle cx="${cx}" cy="12.7" r="1.85" fill="none" stroke="url(#${gradId})" stroke-width="1.05"/>
           <circle cx="${cx}" cy="12.7" r="1.85" fill="none" stroke="${strokeOutline}" stroke-width="0.4"/>
           ${buildBowPath(cx, i)}
-          <!-- Collar + turned shank -->
+          ${hasPending ? `<circle class="gd-key-pending-gem" cx="${cx}" cy="16.4" r="1.8" fill="#E36D2B" stroke="#FFF4CE" stroke-width="0.6"/>` : ''}
           <rect x="${cx - 1.5}" y="19.6" width="3" height="1.5" rx="0.6" fill="url(#${gradId})" stroke="${strokeOutline}" stroke-width="0.55"/>
           <rect x="${cx - 0.9}" y="21.1" width="1.8" height="${(shaftLen - 21.1).toFixed(1)}" rx="0.8" fill="url(#${gradId})" stroke="${strokeOutline}" stroke-width="0.6"/>
-          <!-- Notched key bit -->
           <path d="${buildBitPath(cx, i, shaftLen)}" fill="url(#${gradId})" stroke="${strokeOutline}" stroke-width="0.6" stroke-linejoin="round"/>
-          <!-- Warm brass catch-glint -->
           <line class="gd-key-glint" x1="${cx - 0.25}" y1="22" x2="${cx - 0.25}" y2="${(shaftLen - 2.5).toFixed(1)}" stroke="#FFF7CE" stroke-width="0.65" stroke-linecap="round"/>
         </g>
       `;
@@ -1451,40 +1483,66 @@ export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
         </linearGradient>
       </defs>
 
-      <!-- Resting contact shadow along top card frame -->
       <ellipse cx="47" cy="36.8" rx="37" ry="1.8" fill="rgba(26, 18, 10, 0.22)"/>
-
-      <!-- Carved oak rack uprights & brass feet resting on card border -->
       <rect x="11.5" y="7" width="4.2" height="28.5" rx="1.2" fill="url(#gd-kr-wood)" stroke="#291709" stroke-width="1"/>
       <rect x="78.3" y="7" width="4.2" height="28.5" rx="1.2" fill="url(#gd-kr-wood)" stroke="#291709" stroke-width="1"/>
       <rect x="10.2" y="34.2" width="6.8" height="2.4" rx="1" fill="url(#gd-kr-brass-0)" stroke="#3B2507" stroke-width="0.75"/>
       <rect x="77" y="34.2" width="6.8" height="2.4" rx="1" fill="url(#gd-kr-brass-0)" stroke="#3B2507" stroke-width="0.75"/>
-
-      <!-- Main mahogany key rail & subtle brass scroll plaque -->
       <rect x="9.5" y="4.5" width="75" height="6.2" rx="2" fill="url(#gd-kr-wood)" stroke="#291709" stroke-width="1.1"/>
       <line x1="12.5" y1="6.1" x2="81.5" y2="6.1" stroke="rgba(255, 228, 178, 0.34)" stroke-width="0.8" stroke-linecap="round"/>
       <rect x="36" y="1.8" width="22" height="4.2" rx="1.5" fill="url(#gd-kr-brass-0)" stroke="#3B2507" stroke-width="0.8"/>
       <circle cx="13.6" cy="7.6" r="1" fill="#E8BA54"/>
       <circle cx="80.4" cy="7.6" r="1" fill="#E8BA54"/>
 
-      <!-- Hanging brass hooks & ward keys -->
       ${hooksAndKeysSvg}
     </svg>
   `;
 
+  // Hanging cream parchment key-tag folio for instant ward actions
+  const folioEl = document.createElement('div');
+  folioEl.className = 'gd-keyrack-folio';
+  folioEl.setAttribute('role', 'region');
+  folioEl.setAttribute('aria-label', 'Ward key quick actions');
+  folioEl.innerHTML = `
+    <div class="gd-folio-top">
+      <span class="gd-folio-eyelet" aria-hidden="true"></span>
+      <span class="gd-folio-kicker">WARD KEY</span>
+      <div class="gd-folio-pager">
+        <button type="button" class="gd-folio-nav-btn gd-folio-prev" aria-label="Previous ward key" title="Previous ward key">&lsaquo;</button>
+        <button type="button" class="gd-folio-nav-btn gd-folio-next" aria-label="Next ward key" title="Next ward key">&rsaquo;</button>
+      </div>
+    </div>
+    <div class="gd-folio-title"></div>
+    <div class="gd-folio-meta"></div>
+    <div class="gd-folio-actions">
+      <button type="button" class="gd-folio-act-btn gd-folio-pending-btn"></button>
+      <button type="button" class="gd-folio-act-btn gd-folio-history-btn"></button>
+    </div>
+  `;
+
+  rackWrap.appendChild(rackBtn);
+  rackWrap.appendChild(folioEl);
+
   const keyEls = Array.from(rackBtn.querySelectorAll('.gd-ward-key')) as SVGGElement[];
   const tagEl = rackBtn.querySelector('.gd-keyrack-tag') as HTMLElement | null;
   const tagTextEl = rackBtn.querySelector('.gd-keyrack-tag-text') as HTMLElement | null;
+  const folioKickerEl = folioEl.querySelector('.gd-folio-kicker') as HTMLElement | null;
+  const folioTitleEl = folioEl.querySelector('.gd-folio-title') as HTMLElement | null;
+  const folioMetaEl = folioEl.querySelector('.gd-folio-meta') as HTMLElement | null;
+  const folioPagerEl = folioEl.querySelector('.gd-folio-pager') as HTMLElement | null;
+  const folioPrevBtn = folioEl.querySelector('.gd-folio-prev') as HTMLButtonElement | null;
+  const folioNextBtn = folioEl.querySelector('.gd-folio-next') as HTMLButtonElement | null;
+  const folioPendingBtn = folioEl.querySelector('.gd-folio-pending-btn') as HTMLButtonElement | null;
+  const folioHistoryBtn = folioEl.querySelector('.gd-folio-history-btn') as HTMLButtonElement | null;
 
-  // Per-key damped pendulum angles & angular velocities
   const angles = keyEls.map(() => 0);
   const vels = keyEls.map(() => 0);
   let swingRaf: number | null = null;
   let activeWardIdx = -1;
-  let clearTimer: ReturnType<typeof setTimeout> | null = null;
+  let isOpen = false;
 
   const stepKeys = () => {
-    if (typeof document !== 'undefined' && !document.contains(rackBtn)) {
+    if (typeof document !== 'undefined' && !document.contains(rackWrap)) {
       swingRaf = null;
       return;
     }
@@ -1525,62 +1583,219 @@ export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
     }
   };
 
+  const getCardNameEls = (): HTMLElement[] => {
+    const cardEl = rackWrap.closest('.gd-metric-card-ward') as HTMLElement | null;
+    return cardEl ? (Array.from(cardEl.querySelectorAll('.gd-ward-inline-name')) as HTMLElement[]) : [];
+  };
+
+  const closeFolio = () => {
+    isOpen = false;
+    activeWardIdx = -1;
+    rackWrap.classList.remove('is-open');
+    rackBtn.setAttribute('aria-expanded', 'false');
+    keyEls.forEach((k) => k.classList.remove('is-active'));
+    getCardNameEls().forEach((el) => el.classList.remove('is-key-lit'));
+    tagEl?.classList.remove('is-visible');
+  };
+
+  const openWardFolio = (idx: number, playAudio = true) => {
+    if (playAudio) playBrassKeysClink();
+
+    const nameEls = getCardNameEls();
+    nameEls.forEach((el) => el.classList.remove('is-key-lit'));
+    keyEls.forEach((k) => k.classList.remove('is-active'));
+
+    isOpen = true;
+    rackWrap.classList.add('is-open');
+    rackBtn.setAttribute('aria-expanded', 'true');
+    tagEl?.classList.remove('is-visible');
+
+    if (wards.length === 0) {
+      activeWardIdx = 0;
+      kickKeys(0, 2.8);
+      if (folioKickerEl) folioKickerEl.textContent = 'SPARE HOOK';
+      if (folioTitleEl) folioTitleEl.textContent = 'No wards linked';
+      if (folioMetaEl) folioMetaEl.textContent = 'Connect a ward to hang their key here.';
+      if (folioPagerEl) folioPagerEl.style.display = 'none';
+      if (folioPendingBtn) {
+        folioPendingBtn.textContent = 'Connect Ward →';
+        folioPendingBtn.className = 'gd-folio-act-btn gd-folio-pending-btn is-alert';
+        folioPendingBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          closeFolio();
+          callbacks.onOpenWards?.();
+        };
+      }
+      if (folioHistoryBtn) folioHistoryBtn.style.display = 'none';
+      return;
+    }
+
+    const total = wards.length;
+    activeWardIdx = ((idx % total) + total) % total;
+    const ward = wards[activeWardIdx];
+    const keySlot = Math.min(keyEls.length - 1, activeWardIdx % Math.max(1, keyEls.length));
+
+    keyEls[keySlot]?.classList.add('is-active');
+    kickKeys(keySlot, 3.5);
+    nameEls[activeWardIdx]?.classList.add('is-key-lit');
+
+    const pending = ward.pendingCount ?? 0;
+    const recent = ward.recentCount ?? 0;
+    const rel = ward.relationshipLabel?.trim() || 'Protected Ward';
+
+    if (folioKickerEl) {
+      folioKickerEl.textContent = total > 1 ? `KEY ${activeWardIdx + 1} OF ${total}` : 'WARD KEY';
+    }
+    if (folioTitleEl) folioTitleEl.textContent = ward.name;
+    if (folioMetaEl) {
+      folioMetaEl.textContent =
+        pending > 0
+          ? `${rel} · ${pending} awaiting review`
+          : `${rel} · Queue clear`;
+    }
+    if (folioPagerEl) {
+      folioPagerEl.style.display = total > 1 ? 'inline-flex' : 'none';
+    }
+    if (folioPendingBtn) {
+      folioPendingBtn.textContent = pending > 0 ? `Review (${pending}) →` : 'Pending →';
+      folioPendingBtn.className = `gd-folio-act-btn gd-folio-pending-btn${pending > 0 ? ' is-alert' : ''}`;
+      folioPendingBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        closeFolio();
+        if (callbacks.onInspectPending) {
+          callbacks.onInspectPending(ward.id);
+        } else {
+          callbacks.onOpenWards?.();
+        }
+      };
+    }
+    if (folioHistoryBtn) {
+      folioHistoryBtn.style.display = '';
+      folioHistoryBtn.textContent = recent > 0 ? `History (${recent}) →` : 'History →';
+      folioHistoryBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        closeFolio();
+        if (callbacks.onInspectHistory) {
+          callbacks.onInspectHistory(ward.id);
+        } else {
+          callbacks.onOpenWards?.();
+        }
+      };
+    }
+  };
+
+  // Stop clicks & keys inside keyrack/folio from accidentally triggering parent card click
+  rackWrap.addEventListener('click', (e) => e.stopPropagation());
+  rackWrap.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Escape' && isOpen) closeFolio();
+  });
+
+  // Hovering peeks a lightweight one-line parchment label and rustles keys when closed
+  rackBtn.addEventListener('mousemove', (e) => {
+    if (isOpen || wards.length === 0) return;
+    const target = e.target as { closest?: (sel: string) => Element | null } | null;
+    const keyGroup = target?.closest?.('.gd-ward-key') as SVGGElement | null;
+    if (!keyGroup) return;
+    const slot = Number(keyGroup.getAttribute('data-key-idx') ?? '-1');
+    if (slot >= 0 && slot < wards.length && tagEl && tagTextEl) {
+      const w = wards[slot];
+      const pending = w.pendingCount ?? 0;
+      tagTextEl.textContent = pending > 0 ? `${w.name} · ${pending} waiting` : w.name;
+      tagEl.classList.add('is-visible');
+      getCardNameEls().forEach((el, i) => el.classList.toggle('is-key-lit', i === slot));
+    }
+  });
+
   rackBtn.addEventListener('mouseenter', () => {
-    kickKeys(Math.floor(keyEls.length / 2), 1.45);
+    kickKeys(Math.floor(keyEls.length / 2), 1.35);
+  });
+
+  rackBtn.addEventListener('mouseleave', () => {
+    if (isOpen) return;
+    tagEl?.classList.remove('is-visible');
+    getCardNameEls().forEach((el) => el.classList.remove('is-key-lit'));
   });
 
   rackBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    playBrassKeysClink();
-
-    const cardEl = rackBtn.closest('.gd-metric-card-ward') as HTMLElement | null;
-    const nameEls = cardEl ? (Array.from(cardEl.querySelectorAll('.gd-ward-inline-name')) as HTMLElement[]) : [];
-    nameEls.forEach((el) => el.classList.remove('is-key-lit'));
-    keyEls.forEach((k) => k.classList.remove('is-active'));
-
-    const total = Math.max(wardNames.length, nameEls.length);
-    const clickedKeyGroup = (e.target as Element | null)?.closest('.gd-ward-key') as SVGGElement | null;
+    const target = e.target as { closest?: (sel: string) => Element | null } | null;
+    const clickedKeyGroup = target?.closest?.('.gd-ward-key') as SVGGElement | null;
     const clickedSlotAttr = clickedKeyGroup?.getAttribute('data-key-idx');
-    const clickedSlot = clickedSlotAttr !== null && clickedSlotAttr !== undefined ? Number(clickedSlotAttr) : -1;
+    const clickedSlot =
+      clickedSlotAttr !== null && clickedSlotAttr !== undefined ? Number(clickedSlotAttr) : -1;
 
-    if (total === 0) {
-      kickKeys(0, 2.8);
-      if (tagEl && tagTextEl) {
-        tagTextEl.textContent = 'No wards linked yet';
-        tagEl.classList.add('is-visible');
-      }
-    } else {
-      if (clickedSlot >= 0 && clickedSlot < total && clickedSlot !== activeWardIdx) {
-        activeWardIdx = clickedSlot;
+    if (wards.length === 0) {
+      if (isOpen) {
+        closeFolio();
       } else {
-        activeWardIdx = (activeWardIdx + 1) % total;
+        openWardFolio(0, true);
       }
-
-      const keySlot = Math.min(keyEls.length - 1, activeWardIdx % Math.max(1, keyEls.length));
-      keyEls[keySlot]?.classList.add('is-active');
-      kickKeys(keySlot, 3.6);
-
-      const targetNameEl = nameEls[activeWardIdx] ?? null;
-      if (targetNameEl) {
-        targetNameEl.classList.add('is-key-lit');
-      }
-
-      const wardLabel = wardNames[activeWardIdx] || targetNameEl?.textContent?.trim() || `Ward ${activeWardIdx + 1}`;
-      if (tagEl && tagTextEl) {
-        tagTextEl.textContent = total > 1 ? `${wardLabel} · ${activeWardIdx + 1}/${total}` : wardLabel;
-        tagEl.classList.add('is-visible');
-      }
+      return;
     }
 
-    if (clearTimer) clearTimeout(clearTimer);
-    clearTimer = setTimeout(() => {
-      keyEls.forEach((k) => k.classList.remove('is-active'));
-      nameEls.forEach((el) => el.classList.remove('is-key-lit'));
-      tagEl?.classList.remove('is-visible');
-    }, 2800);
+    if (clickedSlot >= 0 && clickedSlot < wards.length) {
+      if (isOpen && activeWardIdx === clickedSlot) {
+        closeFolio();
+      } else {
+        openWardFolio(clickedSlot, true);
+      }
+    } else if (!isOpen) {
+      openWardFolio(0, true);
+    } else if (wards.length > 1) {
+      openWardFolio((activeWardIdx + 1) % wards.length, true);
+    } else {
+      closeFolio();
+    }
   });
 
-  return rackBtn;
+  // Double-clicking a key immediately opens that ward's filtered queue
+  rackBtn.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    if (wards.length === 0) {
+      closeFolio();
+      callbacks.onOpenWards?.();
+      return;
+    }
+    const target = e.target as { closest?: (sel: string) => Element | null } | null;
+    const clickedKeyGroup = target?.closest?.('.gd-ward-key') as SVGGElement | null;
+    const slot = Number(clickedKeyGroup?.getAttribute('data-key-idx') ?? (activeWardIdx >= 0 ? activeWardIdx : 0));
+    const idx = Math.max(0, Math.min(wards.length - 1, slot));
+    const ward = wards[idx];
+    closeFolio();
+    if ((ward.pendingCount ?? 0) > 0 && callbacks.onInspectPending) {
+      callbacks.onInspectPending(ward.id);
+    } else if (callbacks.onInspectHistory) {
+      callbacks.onInspectHistory(ward.id);
+    } else {
+      callbacks.onOpenWards?.();
+    }
+  });
+
+  folioPrevBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (wards.length > 1) openWardFolio(activeWardIdx - 1, true);
+  });
+
+  folioNextBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (wards.length > 1) openWardFolio(activeWardIdx + 1, true);
+  });
+
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    const onDocClick = (ev: MouseEvent) => {
+      if (!document.contains(rackWrap)) {
+        document.removeEventListener('click', onDocClick);
+        return;
+      }
+      if (isOpen && ev.target && !rackWrap.contains(ev.target as Node)) {
+        closeFolio();
+      }
+    };
+    document.addEventListener('click', onDocClick);
+  }
+
+  return rackWrap;
 }
 
 /**

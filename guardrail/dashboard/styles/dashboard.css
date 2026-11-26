@@ -26375,14 +26375,35 @@ body.gd-kbd-open .gd-m-shell {
     right: 68px;
     z-index: 6 !important;
     overflow: visible;
+    cursor: default;
   }
 
-  .gd-prop-btn.gd-prop-ward-keyrack:hover {
+  .gd-prop-btn.gd-prop-ward-keyrack.is-open {
+    z-index: 32 !important;
+  }
+
+  .gd-prop-btn.gd-prop-ward-keyrack:hover,
+  .gd-prop-btn.gd-prop-ward-keyrack:active {
+    transform: none;
+  }
+
+  .gd-keyrack-trigger {
+    position: relative;
+    display: block;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .gd-keyrack-trigger:hover {
     transform: translateY(-1px);
   }
 
   .gd-prop-ward-keyrack .gd-keyrack-svg {
     overflow: visible;
+    display: block;
   }
 
   .gd-prop-ward-keyrack .gd-ward-key {
@@ -26395,6 +26416,15 @@ body.gd-kbd-open .gd-m-shell {
     filter: drop-shadow(0 0 5px rgba(235, 180, 58, 0.72));
   }
 
+  .gd-prop-ward-keyrack .gd-key-pending-gem {
+    animation: gd-key-gem-pulse 1.9s ease-in-out infinite;
+  }
+
+  @keyframes gd-key-gem-pulse {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(227, 109, 43, 0.55)); }
+    50%      { filter: drop-shadow(0 0 5px rgba(255, 168, 76, 0.95)); }
+  }
+
   .gd-prop-ward-keyrack .gd-key-glint {
     opacity: 0.35;
     transition: opacity 0.4s ease;
@@ -26405,7 +26435,7 @@ body.gd-kbd-open .gd-m-shell {
     opacity: 1;
   }
 
-  /* Warm hand-tied parchment luggage tag popping above the keyhook rack on click */
+  /* Compact hover parchment tag peeking above the keyhook rack */
   .gd-prop-ward-keyrack .gd-keyrack-tag {
     position: absolute;
     bottom: calc(100% + 4px);
@@ -26427,7 +26457,7 @@ body.gd-kbd-open .gd-m-shell {
     white-space: nowrap;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.2s ease, transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .gd-prop-ward-keyrack .gd-keyrack-tag.is-visible {
@@ -26443,6 +26473,145 @@ body.gd-kbd-open .gd-m-shell {
     border: 1.2px solid #D9A74A;
     box-shadow: inset 0 1px 1px rgba(24, 15, 5, 0.5);
     flex-shrink: 0;
+  }
+
+  /* Hanging Parchment Key Folio card dropped from the keyhook rack on click */
+  .gd-keyrack-folio {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: -12px;
+    width: 214px;
+    background: linear-gradient(180deg, #FCF7EB 0%, #F1E6CE 100%);
+    color: #2D1F10;
+    border: 1.5px solid #B5925B;
+    border-radius: 9px;
+    padding: 9px 11px 10px;
+    box-shadow:
+      0 14px 28px rgba(30, 20, 9, 0.24),
+      0 2px 6px rgba(30, 20, 9, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px) scale(0.94);
+    transform-origin: top center;
+    transition: opacity 0.2s ease, transform 0.24s cubic-bezier(0.34, 1.4, 0.64, 1);
+    text-align: left;
+  }
+
+  .gd-prop-ward-keyrack.is-open .gd-keyrack-folio {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+
+  .gd-folio-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .gd-folio-eyelet {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #8B6024;
+    border: 1.4px solid #E2B354;
+    box-shadow: inset 0 1px 1px rgba(24, 15, 5, 0.45);
+    flex-shrink: 0;
+  }
+
+  .gd-folio-kicker {
+    font-family: var(--gd-font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #7D5929;
+  }
+
+  .gd-folio-pager {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .gd-folio-nav-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid #CBB285;
+    background: rgba(255, 252, 244, 0.8);
+    color: #4E371B;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .gd-folio-nav-btn:hover {
+    background: #F4E2B8;
+    border-color: #9C7128;
+  }
+
+  .gd-folio-title {
+    font-family: var(--gd-font-sans, inherit);
+    font-size: 13px;
+    font-weight: 700;
+    color: #24180A;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gd-folio-meta {
+    font-size: 11px;
+    color: #6B5337;
+    margin-top: 2px;
+    margin-bottom: 8px;
+    line-height: 1.25;
+  }
+
+  .gd-folio-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .gd-folio-act-btn {
+    flex: 1 1 0;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #C5AD82;
+    background: rgba(255, 251, 240, 0.9);
+    color: #3D2B14;
+    font-family: var(--gd-font-sans, inherit);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.14s ease;
+  }
+
+  .gd-folio-act-btn:hover {
+    background: #F5E7C4;
+    border-color: #9A6E24;
+    transform: translateY(-1px);
+  }
+
+  .gd-folio-act-btn.is-alert {
+    background: linear-gradient(180deg, #F5B454 0%, #DF8D26 100%);
+    border-color: #9E5E12;
+    color: #241303;
+    font-weight: 700;
+  }
+
+  .gd-folio-act-btn.is-alert:hover {
+    background: linear-gradient(180deg, #F8BF69 0%, #E79831 100%);
   }
 
   .gd-ward-inline-name {
