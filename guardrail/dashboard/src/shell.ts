@@ -140,6 +140,7 @@ export class DashboardShell {
   private hasCompletedMobileInitialOpen: boolean = false;
   private lastMobileRenderSig: string | null = null;
   private mobileSpaceSlideTimer: ReturnType<typeof setTimeout> | null = null;
+  private mobileTopRollTimer: ReturnType<typeof setTimeout> | null = null;
   private isMobileViewportMode: boolean = false;
   private resizeHandler: (() => void) | null = null;
   private onlineHandler: (() => void) | null = null;
@@ -797,13 +798,27 @@ export class DashboardShell {
             existingAvatar.innerHTML = freshAvatar.innerHTML;
           }
 
-          const freshPillStrip = freshTopbar.querySelector('.gd-m-ward-pills') as HTMLElement | null;
-          const existingTopGreeting = existingTopbar.querySelector('.gd-m-top-greeting-pill') as HTMLElement | null;
-          const freshTopGreeting = freshTopbar.querySelector('.gd-m-top-greeting-pill') as HTMLElement | null;
+          const existingRoller = existingTopbar.querySelector('.gd-m-top-roller') as HTMLElement | null;
+          if (existingRoller) {
+            if (this.mobileTopRollTimer) {
+              clearTimeout(this.mobileTopRollTimer);
+              this.mobileTopRollTimer = null;
+            }
+            existingRoller.querySelectorAll('.gd-m-roller-exiting').forEach((n) => n.remove());
+            existingRoller.classList.remove('is-rolling');
+            existingRoller.querySelectorAll('.gd-m-roller-item').forEach((n) => {
+              n.classList.remove('gd-m-roller-item', 'gd-m-roller-entering', 'is-roll-up', 'is-roll-down', 'is-go');
+            });
+          }
 
-          if (existingPillStrip && freshPillStrip) {
+          const freshPillStrip = freshTopbar.querySelector('.gd-m-ward-pills') as HTMLElement | null;
+          const existingTopGreeting = (existingRoller || existingTopbar).querySelector('.gd-m-top-greeting-pill') as HTMLElement | null;
+          const freshTopGreeting = freshTopbar.querySelector('.gd-m-top-greeting-pill') as HTMLElement | null;
+          const currentPillStrip = (existingRoller || existingTopbar).querySelector('.gd-m-ward-pills') as HTMLElement | null;
+
+          if (currentPillStrip && freshPillStrip) {
             const activeWard = this.mobileWardFilter || 'ALL';
-            const existingPills = Array.from(existingPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+            const existingPills = Array.from(currentPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
             const freshPills = Array.from(freshPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
             if (existingPills.length === freshPills.length) {
               existingPills.forEach((pill, i) => {
@@ -821,9 +836,10 @@ export class DashboardShell {
                   pill.appendChild(freshCountEl.cloneNode(true));
                 }
               });
-              preservedPillStrip = existingPillStrip;
+              preservedPillStrip = currentPillStrip;
             } else {
-              existingPillStrip.replaceWith(freshPillStrip);
+              currentPillStrip.replaceWith(freshPillStrip);
+              preservedPillStrip = freshPillStrip;
             }
           } else if (existingTopGreeting && freshTopGreeting) {
             const eLabel = existingTopGreeting.querySelector('.gd-m-top-greeting-label');
@@ -837,10 +853,41 @@ export class DashboardShell {
               eTime.textContent = fTime.textContent;
             }
           } else {
-            const existingMiddle = existingPillStrip || existingTopGreeting;
+            const existingMiddle = currentPillStrip || existingTopGreeting;
             const freshMiddle = freshPillStrip || freshTopGreeting;
-            if (existingMiddle && freshMiddle) {
+            if (existingRoller && existingMiddle && freshMiddle && typeof requestAnimationFrame === 'function') {
+              const dirClass = freshTopGreeting ? 'is-roll-up' : 'is-roll-down';
+              existingRoller.classList.add('is-rolling');
+              existingMiddle.classList.add('gd-m-roller-item', 'gd-m-roller-exiting', dirClass);
+              freshMiddle.classList.add('gd-m-roller-item', 'gd-m-roller-entering', dirClass);
+              existingRoller.appendChild(freshMiddle);
+              if (freshPillStrip) {
+                (freshPillStrip as any).__syncGlider?.(true, true);
+                preservedPillStrip = freshPillStrip;
+              }
+              void existingRoller.offsetWidth;
+              requestAnimationFrame(() => {
+                existingMiddle.classList.add('is-go');
+                freshMiddle.classList.add('is-go');
+              });
+              const finishTopRoll = () => {
+                if (this.mobileTopRollTimer) {
+                  clearTimeout(this.mobileTopRollTimer);
+                  this.mobileTopRollTimer = null;
+                }
+                if (existingMiddle.parentNode === existingRoller) {
+                  existingMiddle.remove();
+                }
+                freshMiddle.classList.remove('gd-m-roller-item', 'gd-m-roller-entering', 'is-roll-up', 'is-roll-down', 'is-go');
+                existingRoller.classList.remove('is-rolling');
+                if (freshPillStrip) {
+                  (freshPillStrip as any).__syncGlider?.(true, true);
+                }
+              };
+              this.mobileTopRollTimer = setTimeout(finishTopRoll, 410);
+            } else if (existingMiddle && freshMiddle) {
               existingMiddle.replaceWith(freshMiddle);
+              if (freshPillStrip) preservedPillStrip = freshPillStrip;
             } else {
               existingTopbar.replaceWith(freshTopbar);
             }
@@ -4487,6 +4534,11 @@ export class DashboardShell {
     if (this.visibilityChangeHandler && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
       document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
       this.visibilityChangeHandler = null;
+    }
+
+    if (this.mobileTopRollTimer) {
+      clearTimeout(this.mobileTopRollTimer);
+      this.mobileTopRollTimer = null;
     }
 
     if (this.pwaUnsubscribe) {

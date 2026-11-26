@@ -6935,6 +6935,89 @@ textarea:focus-visible,
   color: #F4EFE2;
 }
 
+.gd-m-top-roller {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 520px;
+}
+
+.gd-m-top-roller.is-rolling {
+  overflow: hidden;
+  border-radius: 999px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-roller-item {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease;
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-top-greeting-pill.gd-m-roller-item {
+  left: 0;
+  right: 0;
+}
+
+.gd-m-roller-exiting.is-roll-up {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-up.is-go {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down.is-go {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-top-roller.is-rolling > .gd-m-roller-item {
+    transition: none;
+  }
+}
+
 .gd-m-refresh-btn {
   width: 36px;
   height: 36px;
@@ -13976,6 +14059,89 @@ article.gd-card-collapsed,
   color: #F4EFE2;
 }
 
+.gd-m-top-roller {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 520px;
+}
+
+.gd-m-top-roller.is-rolling {
+  overflow: hidden;
+  border-radius: 999px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-roller-item {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease;
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-top-greeting-pill.gd-m-roller-item {
+  left: 0;
+  right: 0;
+}
+
+.gd-m-roller-exiting.is-roll-up {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-up.is-go {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down.is-go {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-top-roller.is-rolling > .gd-m-roller-item {
+    transition: none;
+  }
+}
+
 .gd-m-refresh-btn {
   width: 36px;
   height: 36px;
@@ -20531,6 +20697,89 @@ article.gd-card-collapsed,
   color: #F4EFE2;
 }
 
+.gd-m-top-roller {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 520px;
+}
+
+.gd-m-top-roller.is-rolling {
+  overflow: hidden;
+  border-radius: 999px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-roller-item {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease;
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-top-greeting-pill.gd-m-roller-item {
+  left: 0;
+  right: 0;
+}
+
+.gd-m-roller-exiting.is-roll-up {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-up.is-go {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down.is-go {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-top-roller.is-rolling > .gd-m-roller-item {
+    transition: none;
+  }
+}
+
 .gd-m-refresh-btn {
   width: 36px;
   height: 36px;
@@ -23163,6 +23412,89 @@ article.gd-card-collapsed,
 .gd-m-dock-btn,
 .gd-m-dock-circle,
 .gd-m-pill,
+.gd-m-top-roller {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 520px;
+}
+
+.gd-m-top-roller.is-rolling {
+  overflow: hidden;
+  border-radius: 999px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-roller-item {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease;
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-top-greeting-pill.gd-m-roller-item {
+  left: 0;
+  right: 0;
+}
+
+.gd-m-roller-exiting.is-roll-up {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-up.is-go {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down.is-go {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-top-roller.is-rolling > .gd-m-roller-item {
+    transition: none;
+  }
+}
+
 .gd-m-refresh-btn {
   transition:
     transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -23823,6 +24155,89 @@ article.gd-card-collapsed,
   .gd-m-pill:active,
   .gd-m-refresh-btn:active {
     transform: none;
+  }
+}
+
+.gd-m-top-roller {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 520px;
+}
+
+.gd-m-top-roller.is-rolling {
+  overflow: hidden;
+  border-radius: 999px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-roller-item {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms ease;
+}
+
+.gd-m-top-roller.is-rolling > .gd-m-top-greeting-pill.gd-m-roller-item {
+  left: 0;
+  right: 0;
+}
+
+.gd-m-roller-exiting.is-roll-up {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-up.is-go {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-up.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+.gd-m-roller-exiting.is-roll-down.is-go {
+  transform: translate3d(0, 108%, 0) rotateX(-50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down {
+  transform: translate3d(0, -108%, 0) rotateX(50deg) scale(0.92);
+  opacity: 0;
+}
+
+.gd-m-roller-entering.is-roll-down.is-go {
+  transform: translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-top-roller.is-rolling > .gd-m-roller-item {
+    transition: none;
   }
 }
 

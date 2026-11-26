@@ -681,6 +681,9 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   avatarBtn.addEventListener('click', () => props.onSelectTab('settings'));
   topBar.appendChild(avatarBtn);
 
+  const topRoller = document.createElement('div');
+  topRoller.className = 'gd-m-top-roller';
+
   const showWardFilter = activeTab === 'queue' || activeTab === 'history';
   if (showWardFilter) {
     const pillStrip = document.createElement('div');
@@ -722,7 +725,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       pillStrip.appendChild(makePill(w.id, firstName, wCount));
     });
 
-    topBar.appendChild(pillStrip);
+    topRoller.appendChild(pillStrip);
     const syncWardGlider = attachSlidingGlider(
       pillStrip,
       'gd-m-pill-glider',
@@ -744,8 +747,9 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         <span class="gd-m-top-greeting-time">${timeStr}</span>
       </div>
     `;
-    topBar.appendChild(topGreeting);
+    topRoller.appendChild(topGreeting);
   }
+  topBar.appendChild(topRoller);
 
   const refreshBtn = document.createElement('button');
   refreshBtn.type = 'button';
