@@ -4480,6 +4480,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
   const INTRO_DURATION = 1.2;
   const ERA_DURATION = 5.0;
   const TRANSITION_DUR = 1.3;
+  const ERA_KEYS = ['steam', 'knights', 'egypt', 'volcano'] as const;
   const ERAS = [
     {
       year: '1885 AD',
@@ -4526,6 +4527,352 @@ export function createHistoryRewindOverlay(): HTMLElement {
     hot: boolean;
   }
 
+  interface HeadingBloodDrip {
+    slot: number;
+    offsetRatio: number;
+    phase: 'swell' | 'fall' | 'splat';
+    progress: number;
+    speed: number;
+    fallDist: number;
+    vy: number;
+    maxDropDist: number;
+    splatAge: number;
+    radius: number;
+  }
+
+  interface HeadingEraParticle {
+    mode: 'steam' | 'sand' | 'dust' | 'ember' | 'ash';
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    r: number;
+    grow: number;
+    age: number;
+    maxAge: number;
+    seed: number;
+  }
+
+  const headingDrips: HeadingBloodDrip[] = Array.from({ length: 11 }, (_, idx) => ({
+    slot: idx,
+    offsetRatio: 0.22 + ((idx * 37) % 56) / 100,
+    phase: 'swell',
+    progress: (idx * 0.23) % 0.9,
+    speed: 0.36 + ((idx * 19) % 32) / 100,
+    fallDist: 0,
+    vy: 0,
+    maxDropDist: 36 + ((idx * 17) % 34),
+    splatAge: 0,
+    radius: 2.1 + (idx % 3) * 0.55,
+  }));
+  const headingParticles: HeadingEraParticle[] = [];
+  let headingEmitAcc = 0;
+  let lastEraAttr: string | null = null;
+
+  const syncHeadingEraAttr = (nextEra: string | null) => {
+    if (nextEra === lastEraAttr) return;
+    lastEraAttr = nextEra;
+    if (typeof document === 'undefined') return;
+    const appEl = document.querySelector('.gd-dashboard-app');
+    if (!appEl) return;
+    if (nextEra) appEl.setAttribute('data-history-era', nextEra);
+    else appEl.removeAttribute('data-history-era');
+  };
+
+  const updateAndDrawHeadingEraFx = (dt: number, eraIdx: number, alpha: number, isActiveEra: boolean) => {
+    if (typeof document === 'undefined') return;
+    const titleEl = document.getElementById('history-title');
+    if (!titleEl) {
+      headingParticles.length = 0;
+      return;
+    }
+    const titleRect = titleEl.getBoundingClientRect();
+    if (titleRect.width <= 0 || titleRect.height <= 0 || alpha <= 0.02) {
+      if (alpha <= 0.02) headingParticles.length = 0;
+      return;
+    }
+
+    const charEls = Array.from(titleEl.querySelectorAll('.gd-char')) as HTMLElement[];
+    const charRects = charEls
+      .map((el) => ({ ch: el.textContent || '', r: el.getBoundingClientRect() }))
+      .filter((c) => c.ch.trim().length > 0 && c.r.width > 0);
+    if (charRects.length === 0) return;
+
+    // Emit fresh era-specific physics particles tied strictly to #history-title glyphs
+    if (isActiveEra) {
+      headingEmitAcc += dt;
+      if (eraIdx === 0) {
+        // Railway: billowing boiler steam puffs & faint coal glints
+        while (headingEmitAcc >= 0.055) {
+          headingEmitAcc -= 0.055;
+          const pick = charRects[Math.floor(Math.random() * charRects.length)].r;
+          headingParticles.push({
+            mode: 'steam',
+            x: pick.left + Math.random() * pick.width,
+            y: pick.top + 6 + Math.random() * (pick.height * 0.45),
+            vx: 16 + Math.random() * 26,
+            vy: -(24 + Math.random() * 28),
+            r: 4.5 + Math.random() * 4.5,
+            grow: 11 + Math.random() * 8,
+            age: 0,
+            maxAge: 0.9 + Math.random() * 0.75,
+            seed: Math.random() * 6.28,
+          });
+        }
+      } else if (eraIdx === 2) {
+        // Ancient Egypt: swirling sunlit sand grains + warm desert ochre dust veils
+        while (headingEmitAcc >= 0.022) {
+          headingEmitAcc -= 0.022;
+          const isDust = Math.random() < 0.24;
+          const yBand = titleRect.top + 4 + Math.random() * (titleRect.height - 6);
+          headingParticles.push({
+            mode: isDust ? 'dust' : 'sand',
+            x: titleRect.left - 18 + Math.random() * (isDust ? titleRect.width * 0.75 : titleRect.width * 0.9),
+            y: yBand,
+            vx: isDust ? 68 + Math.random() * 64 : 115 + Math.random() * 110,
+            vy: (Math.random() - 0.56) * 24,
+            r: isDust ? 7 + Math.random() * 8 : 0.9 + Math.random() * 1.4,
+            grow: isDust ? 9 : 0,
+            age: 0,
+            maxAge: isDust ? 0.85 + Math.random() * 0.45 : 0.55 + Math.random() * 0.45,
+            seed: Math.random() * 6.28,
+          });
+        }
+      } else if (eraIdx === 3) {
+        // Volcanic: rising glowing fire embers & volcanic ash off burning letters
+        while (headingEmitAcc >= 0.032) {
+          headingEmitAcc -= 0.032;
+          const pick = charRects[Math.floor(Math.random() * charRects.length)].r;
+          const isAsh = Math.random() < 0.28;
+          headingParticles.push({
+            mode: isAsh ? 'ash' : 'ember',
+            x: pick.left + Math.random() * pick.width,
+            y: pick.top + 4 + Math.random() * (pick.height * 0.5),
+            vx: (Math.random() - 0.5) * 28,
+            vy: -(36 + Math.random() * 48),
+            r: isAsh ? 1.5 + Math.random() * 1.6 : 1.1 + Math.random() * 1.7,
+            grow: isAsh ? 2.5 : -0.4,
+            age: 0,
+            maxAge: 0.75 + Math.random() * 0.7,
+            seed: Math.random() * 6.28,
+          });
+        }
+      } else {
+        headingEmitAcc = 0;
+      }
+      if (headingParticles.length > 150) {
+        headingParticles.splice(0, headingParticles.length - 150);
+      }
+    }
+
+    // 1. Knights Era: Glossy wet blood droplets hanging from & dripping off actual letters
+    if (isActiveEra && eraIdx === 1) {
+      ctx.save();
+      for (const drip of headingDrips) {
+        const charIdx = Math.min(charRects.length - 1, Math.floor((drip.slot / headingDrips.length) * charRects.length));
+        const cr = charRects[charIdx].r;
+        const ax = cr.left + cr.width * drip.offsetRatio;
+        const ay = cr.bottom - 8;
+
+        if (drip.phase === 'swell') {
+          drip.progress += dt * drip.speed;
+          const swell = Math.min(1, drip.progress);
+          const stretch = Math.pow(swell, 1.8) * 8.5;
+          const dr = drip.radius * (0.45 + 0.65 * swell);
+
+          // Glossy blood bead & stretched crimson filament clinging to letter stroke
+          ctx.globalAlpha = alpha * 0.92;
+          ctx.fillStyle = '#8F0909';
+          ctx.beginPath();
+          ctx.moveTo(ax - dr * 0.85, ay);
+          ctx.quadraticCurveTo(ax - dr * 0.35, ay + stretch * 0.65, ax - dr, ay + stretch);
+          ctx.arc(ax, ay + stretch, dr, Math.PI, 0, true);
+          ctx.quadraticCurveTo(ax + dr * 0.35, ay + stretch * 0.65, ax + dr * 0.85, ay);
+          ctx.closePath();
+          ctx.fill();
+
+          // Wet specular highlight on hanging crimson bead
+          ctx.fillStyle = 'rgba(255, 195, 195, 0.72)';
+          ctx.beginPath();
+          ctx.arc(ax - dr * 0.32, ay + stretch - dr * 0.2, Math.max(0.6, dr * 0.28), 0, Math.PI * 2);
+          ctx.fill();
+
+          if (drip.progress >= 1) {
+            drip.phase = 'fall';
+            drip.fallDist = stretch;
+            drip.vy = 28;
+          }
+        } else if (drip.phase === 'fall') {
+          drip.vy += 420 * dt;
+          drip.fallDist += drip.vy * dt;
+          const dy = ay + drip.fallDist;
+          const dr = drip.radius * 0.92;
+
+          // Tapered falling crimson teardrop
+          ctx.globalAlpha = alpha * 0.94;
+          const bg = ctx.createLinearGradient(ax, dy - dr * 2.8, ax, dy + dr);
+          bg.addColorStop(0, '#B91C1C');
+          bg.addColorStop(0.6, '#7E0707');
+          bg.addColorStop(1, '#4A0303');
+          ctx.fillStyle = bg;
+          ctx.beginPath();
+          ctx.moveTo(ax, dy - dr * 2.9);
+          ctx.quadraticCurveTo(ax + dr * 1.1, dy - dr * 0.3, ax + dr, dy);
+          ctx.arc(ax, dy, dr, 0, Math.PI, false);
+          ctx.quadraticCurveTo(ax - dr * 1.1, dy - dr * 0.3, ax, dy - dr * 2.9);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(255, 204, 204, 0.78)';
+          ctx.beginPath();
+          ctx.arc(ax - dr * 0.28, dy - dr * 0.15, Math.max(0.55, dr * 0.26), 0, Math.PI * 2);
+          ctx.fill();
+
+          // Tiny residual stain droplet clinging at origin
+          ctx.globalAlpha = alpha * 0.68;
+          ctx.fillStyle = '#7F0808';
+          ctx.beginPath();
+          ctx.ellipse(ax, ay + 0.8, dr * 0.85, 1.3, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (drip.fallDist >= drip.maxDropDist) {
+            drip.phase = 'splat';
+            drip.splatAge = 0;
+          }
+        } else {
+          drip.splatAge += dt;
+          const sy = ay + drip.maxDropDist;
+          const fade = Math.max(0, 1 - drip.splatAge / 0.42);
+          ctx.globalAlpha = alpha * fade * 0.86;
+          ctx.fillStyle = '#860909';
+          ctx.beginPath();
+          ctx.ellipse(ax, sy, drip.radius * 1.85, drip.radius * 0.62, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(ax - drip.radius * 1.9, sy - 1.2, 0.95, 0, Math.PI * 2);
+          ctx.arc(ax + drip.radius * 2.1, sy - 0.8, 0.8, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (drip.splatAge >= 0.42) {
+            drip.phase = 'swell';
+            drip.progress = 0;
+            drip.fallDist = 0;
+            drip.vy = 0;
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    // 2. Volcanic Era: Live flickering flame tongues dancing along #history-title letter crowns
+    if (isActiveEra && eraIdx === 3) {
+      ctx.save();
+      for (let i = 0; i < charRects.length; i += 1) {
+        const cr = charRects[i].r;
+        const seed = i * 1.73;
+        const baseX = cr.left + cr.width * 0.5;
+        const baseY = cr.top + 10;
+        const sway = Math.sin(clock * 11.5 + seed) * 3.8 + Math.cos(clock * 7.2 + seed * 1.4) * 2.2;
+        const flameH = 14 + Math.sin(clock * 14 + seed * 2.1) * 5.5 + (i % 2) * 3.5;
+        const flameW = Math.max(5.5, cr.width * 0.48);
+
+        // Outer orange-red flame tongue
+        ctx.globalAlpha = alpha * 0.68;
+        const fg = ctx.createLinearGradient(baseX, baseY + 4, baseX + sway, baseY - flameH);
+        fg.addColorStop(0, '#D92B04');
+        fg.addColorStop(0.5, '#FF7A14');
+        fg.addColorStop(1, 'rgba(255, 224, 112, 0)');
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.moveTo(baseX - flameW, baseY + 4);
+        ctx.quadraticCurveTo(baseX - flameW * 0.65, baseY - flameH * 0.55, baseX + sway, baseY - flameH);
+        ctx.quadraticCurveTo(baseX + flameW * 0.65, baseY - flameH * 0.55, baseX + flameW, baseY + 4);
+        ctx.closePath();
+        ctx.fill();
+
+        // Inner bright white-gold core
+        ctx.globalAlpha = alpha * 0.76;
+        ctx.fillStyle = '#FFE485';
+        ctx.beginPath();
+        ctx.moveTo(baseX - flameW * 0.42, baseY + 3);
+        ctx.quadraticCurveTo(baseX - flameW * 0.2, baseY - flameH * 0.35, baseX + sway * 0.6, baseY - flameH * 0.62);
+        ctx.quadraticCurveTo(baseX + flameW * 0.2, baseY - flameH * 0.35, baseX + flameW * 0.42, baseY + 3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 3. Draw active heading particles (steam puffs, desert sand/dust, fire embers/ash)
+    for (let i = headingParticles.length - 1; i >= 0; i -= 1) {
+      const p = headingParticles[i];
+      p.age += dt;
+      if (p.age >= p.maxAge) {
+        headingParticles.splice(i, 1);
+        continue;
+      }
+      const lifeRatio = p.age / p.maxAge;
+      if (p.mode === 'steam') {
+        p.x += (p.vx + Math.sin(clock * 3.4 + p.seed) * 14) * dt;
+        p.y += p.vy * dt;
+        p.vx *= Math.pow(0.55, dt);
+        const curR = p.r + p.grow * lifeRatio;
+        const fade = Math.sin(lifeRatio * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = alpha * fade * 0.48;
+        ctx.fillStyle = '#FAF8F3';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (p.mode === 'dust') {
+        p.x += p.vx * dt;
+        p.y += (p.vy + Math.sin(clock * 4.5 + p.seed) * 12) * dt;
+        const curR = p.r + p.grow * lifeRatio;
+        const fade = Math.sin(lifeRatio * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = alpha * fade * 0.28;
+        ctx.fillStyle = '#E0B462';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, curR * 1.45, curR * 0.72, -0.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (p.mode === 'sand') {
+        p.x += p.vx * dt;
+        p.y += (p.vy + Math.sin(clock * 8 + p.seed) * 18) * dt;
+        const fade = Math.sin(lifeRatio * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = alpha * fade * 0.85;
+        ctx.fillStyle = p.seed > 3.1 ? '#E8BE68' : '#A6752B';
+        ctx.fillRect(p.x, p.y, p.r * 1.8, p.r);
+        ctx.restore();
+      } else if (p.mode === 'ember') {
+        p.x += (p.vx + Math.sin(clock * 7 + p.seed) * 20) * dt;
+        p.y += p.vy * dt;
+        const curR = Math.max(0.5, p.r + p.grow * lifeRatio);
+        const fade = 1 - lifeRatio;
+        ctx.save();
+        ctx.globalAlpha = alpha * fade * 0.92;
+        ctx.fillStyle = lifeRatio < 0.35 ? '#FFF3A8' : '#FF6B14';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        p.x += (p.vx + Math.sin(clock * 4 + p.seed) * 14) * dt;
+        p.y += p.vy * 0.72 * dt;
+        const curR = p.r + p.grow * lifeRatio;
+        const fade = Math.sin(lifeRatio * Math.PI);
+        ctx.save();
+        ctx.globalAlpha = alpha * fade * 0.44;
+        ctx.fillStyle = '#382B22';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  };
   const eraPlumes: PlumeParticle[] = [];
   const eraSparks: PhysicsSpark[] = [];
   let steamEmitAcc = 0;
@@ -7324,10 +7671,13 @@ export function createHistoryRewindOverlay(): HTMLElement {
       if (lingerPages.length > 0) lingerPages.length = 0;
       if (eraPlumes.length > 0) eraPlumes.length = 0;
       if (eraSparks.length > 0) eraSparks.length = 0;
+      if (headingParticles.length > 0) headingParticles.length = 0;
+      syncHeadingEraAttr(null);
     }
     const TOTAL_CYCLE_DURATION = ERAS.length * ERA_DURATION;
     if (!active) {
       introRemaining = 0;
+      syncHeadingEraAttr(null);
       hudEl.classList.remove('is-visible', 'is-rewinding');
     } else if (introRemaining > 0) {
       introRemaining = Math.max(0, introRemaining - dt);
@@ -7413,7 +7763,9 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const effectiveJourneyTime = Math.min(journeyTime, TOTAL_CYCLE_DURATION - 0.001);
     const currentEraIdx = Math.floor(effectiveJourneyTime / ERA_DURATION) % ERAS.length;
     const currentEraT = effectiveJourneyTime % ERA_DURATION;
-    updateEraEmitters(dt, currentEraIdx, currentEraT, active && introRemaining <= 0.15);
+    const isEraActive = active && introRemaining <= 0.15;
+    syncHeadingEraAttr(isEraActive ? ERA_KEYS[currentEraIdx] : null);
+    updateEraEmitters(dt, currentEraIdx, currentEraT, isEraActive);
 
     ctx.clearRect(0, 0, width, height);
 
@@ -7474,6 +7826,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
         }
       }
       drawEraPlumesAndSparks(Math.max(rewindAlpha, active ? 1 : 0.65));
+      updateAndDrawHeadingEraFx(dt, currentEraIdx, rewindAlpha, isEraActive);
 
       // 2. Ascending golden-sepia memory sparks
       for (const s of sparks) {
