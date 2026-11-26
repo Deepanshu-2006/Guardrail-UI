@@ -23050,11 +23050,11 @@ article.gd-card-collapsed,
 }
 
 .gd-wood-joint.is-left {
-  left: calc(50% - 173px);
+  left: calc(50% - 114px);
 }
 
 .gd-wood-joint.is-right {
-  left: calc(50% + 173px);
+  left: calc(50% + 114px);
 }
 
 .gd-wood-joint:hover,

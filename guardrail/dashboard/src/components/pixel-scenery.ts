@@ -394,15 +394,15 @@ function buildWeatheredChainSvg(): string {
       if (i % 2 === 0) {
         parts.push(
           `<g class="gd-chain-link" transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
-            <rect x="-8" y="-3.6" width="16" height="7.2" rx="3.6" fill="none" stroke="#3B3935" stroke-width="2.4"/>
-            <rect x="-8" y="-3.6" width="16" height="7.2" rx="3.6" fill="none" stroke="#76726A" stroke-width="0.8" opacity="0.55"/>
+            <rect x="-7.4" y="-3.5" width="14.8" height="7" rx="3.5" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+            <rect x="-7.4" y="-3.5" width="14.8" height="7" rx="3.5" fill="none" stroke="#76726A" stroke-width="0.8" opacity="0.55"/>
           </g>`
         );
       } else {
         parts.push(
           `<g class="gd-chain-link" transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
-            <rect x="-7.5" y="-1.7" width="15" height="3.4" rx="1.7" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
-            <line x1="-4.5" y1="-0.6" x2="4" y2="-0.6" stroke="#858077" stroke-width="0.7" stroke-linecap="round" opacity="0.6"/>
+            <rect x="-6.8" y="-1.7" width="13.6" height="3.4" rx="1.7" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+            <line x1="-4" y1="-0.6" x2="3.5" y2="-0.6" stroke="#858077" stroke-width="0.7" stroke-linecap="round" opacity="0.6"/>
           </g>`
         );
       }
@@ -412,40 +412,40 @@ function buildWeatheredChainSvg(): string {
 
   return `
     <svg viewBox="0 0 560 128" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
-      <!-- Vertical top forged links anchored above viewport edge down to junction ring -->
+      <!-- Vertical top forged links anchored above viewport edge down to junction ring (280, 38) -->
       <g class="gd-chain-top">
-        <rect x="276.6" y="-34" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
-        <rect x="276.6" y="-34" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
-        <rect x="278.4" y="-22.5" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
-        <rect x="276.6" y="-12.5" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
-        <rect x="276.6" y="-12.5" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
-        <rect x="278.4" y="-1" width="3.2" height="12.5" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+        <rect x="276.6" y="-36" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+        <rect x="276.6" y="-36" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
+        <rect x="278.4" y="-24" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+        <rect x="276.6" y="-14" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+        <rect x="276.6" y="-14" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
+        <rect x="278.4" y="-3" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
         <rect x="276.6" y="7" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
         <rect x="276.6" y="7" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
-        <rect x="278.4" y="18.5" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
-        <rect x="276.6" y="28.5" width="6.8" height="13" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+        <rect x="278.4" y="18" width="3.2" height="12" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+        <rect x="276.6" y="25.5" width="6.8" height="12" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
       </g>
 
       <!-- Twin diagonal weathered iron chains -->
-      ${renderArm('gd-chain-left-arm', 280, 44, 104, 114.5)}
-      ${renderArm('gd-chain-right-arm', 280, 44, 456, 121.5)}
+      ${renderArm('gd-chain-left-arm', 280, 38, 164, 116)}
+      ${renderArm('gd-chain-right-arm', 280, 38, 396, 120)}
 
       <!-- Central forged iron ring -->
       <g class="gd-chain-ring">
-        <circle cx="280" cy="44" r="7.6" fill="none" stroke="#3B3935" stroke-width="2.8"/>
-        <circle cx="280" cy="44" r="7.6" fill="none" stroke="#7D786E" stroke-width="0.8" opacity="0.55"/>
+        <circle cx="280" cy="38" r="7.4" fill="none" stroke="#3B3935" stroke-width="2.8"/>
+        <circle cx="280" cy="38" r="7.4" fill="none" stroke="#7D786E" stroke-width="0.8" opacity="0.55"/>
       </g>
 
       <!-- Left & right forged iron strap brackets anchored into tilted plank top -->
       <g class="gd-chain-eye-left">
-        <circle cx="104" cy="114.5" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
-        <path d="M97 115.5 H111 V125 H97 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
-        <circle cx="104" cy="120.5" r="1.4" fill="#1F1D1A"/>
+        <circle cx="164" cy="116" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
+        <path d="M157 117 H171 V126.5 H157 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
+        <circle cx="164" cy="122" r="1.4" fill="#1F1D1A"/>
       </g>
       <g class="gd-chain-eye-right">
-        <circle cx="456" cy="121.5" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
-        <path d="M449 122.5 H463 V132 H449 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
-        <circle cx="456" cy="127.5" r="1.4" fill="#1F1D1A"/>
+        <circle cx="396" cy="120" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
+        <path d="M389 121 H403 V130.5 H389 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
+        <circle cx="396" cy="126" r="1.4" fill="#1F1D1A"/>
       </g>
     </svg>
   `;
@@ -554,10 +554,9 @@ function buildBrokenWoodBoardSvg(): string {
 }
 
 /**
- * Attaches frame-rate-independent pendulum & grab-release spring physics
- * to the hanging wooden board with live forged-iron chain tracking and two
- * clickable iron joints: clicking a joint unhooks that side so the board
- * swings & hangs from the remaining chain, and clicking again re-hooks it.
+ * Attaches real-time rigid-body pendulum mechanics, inextensible chain length
+ * constraints, lever-arm (`r x F`) pointer torque, and 12-node Verlet chain link
+ * simulation to the hanging broken wooden board and its two clickable iron joints.
  */
 function attachWoodBoardSpringPhysics(
   board: HTMLElement,
@@ -580,6 +579,46 @@ function attachWoodBoardSpringPhysics(
   const leftLinks = Array.from(hanger.querySelectorAll('.gd-chain-left-arm .gd-chain-link')) as SVGGElement[];
   const rightLinks = Array.from(hanger.querySelectorAll('.gd-chain-right-arm .gd-chain-link')) as SVGGElement[];
 
+  // SVG reference anchor geometry
+  const ANCHOR_X = 280;
+  const ANCHOR_Y = -24;
+  const RING_REST_Y = 38;
+  const TOP_CHAIN_LEN = RING_REST_Y - ANCHOR_Y; // 62
+  const LX0 = -116;
+  const LY0 = -2;
+  const RX0 = 116;
+  const RY0 = 2;
+  const LEFT_REST_X = ANCHOR_X + LX0; // 164
+  const LEFT_REST_Y = 118 + LY0; // 116
+  const RIGHT_REST_X = ANCHOR_X + RX0; // 396
+  const RIGHT_REST_Y = 118 + RY0; // 120
+  const ARM_LEN = Math.hypot(LEFT_REST_X - ANCHOR_X, LEFT_REST_Y - RING_REST_Y); // ~139.8
+  const MAX_SINGLE_LEN = TOP_CHAIN_LEN + ARM_LEN; // ~201.8
+
+  interface VerletNode {
+    x: number;
+    y: number;
+    ox: number;
+    oy: number;
+  }
+
+  const buildChainNodes = (x1: number, y1: number, x2: number, y2: number, count: number): VerletNode[] => {
+    const nodes: VerletNode[] = [];
+    for (let i = 0; i <= count; i++) {
+      const t = i / count;
+      const x = x1 + (x2 - x1) * t;
+      const y = y1 + (y2 - y1) * t;
+      nodes.push({ x, y, ox: x, oy: y });
+    }
+    return nodes;
+  };
+
+  const leftChainCount = Math.max(1, leftLinks.length);
+  const rightChainCount = Math.max(1, rightLinks.length);
+  const segLen = (ARM_LEN + 0.6) / leftChainCount;
+  let leftNodes = buildChainNodes(ANCHOR_X, RING_REST_Y, LEFT_REST_X, LEFT_REST_Y, leftChainCount);
+  let rightNodes = buildChainNodes(ANCHOR_X, RING_REST_Y, RIGHT_REST_X, RIGHT_REST_Y, rightChainCount);
+
   let detachedSide: 'none' | 'left' | 'right' = 'none';
   let swing = 0;
   let tx = 0;
@@ -588,8 +627,8 @@ function attachWoodBoardSpringPhysics(
   let vTx = 0;
   let vTy = 0;
 
-  let looseAngle = 0;
-  let vLooseAngle = 0;
+  let ringX = ANCHOR_X;
+  let ringY = RING_REST_Y;
 
   let hovered = false;
   let hoverTargetSwing = 0;
@@ -599,6 +638,7 @@ function attachWoodBoardSpringPhysics(
   let activePointerId: number | null = null;
   let dragStartX = 0;
   let dragStartY = 0;
+  let grabLever = 0; // -1 (left) .. +1 (right) where cursor grabbed board
   let lastClientX: number | null = null;
   let lastClientY: number | null = null;
   let dragTargetSwing = 0;
@@ -609,18 +649,7 @@ function attachWoodBoardSpringPhysics(
   let rafId: number | null = null;
   let lastTs = 0;
 
-  // Rubber-band clamp so chains tighten naturally when pulled hard
   const rubber = (val: number, max: number): number => max * Math.tanh(val / max);
-
-  const getEquilibrium = (): { baseTx: number; baseTy: number; baseSwing: number } => {
-    if (detachedSide === 'left') {
-      return { baseTx: -88, baseTy: 22, baseSwing: -11.5 };
-    }
-    if (detachedSide === 'right') {
-      return { baseTx: 88, baseTy: 22, baseSwing: 11.5 };
-    }
-    return { baseTx: 0, baseTy: 0, baseSwing: 0 };
-  };
 
   const computeBoardAnchors = (curTx: number, curTy: number, curSwing: number) => {
     const svgScale = 560 / Math.max(260, Math.min(cachedBoardWidth, 560));
@@ -630,86 +659,216 @@ function attachWoodBoardSpringPhysics(
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
 
-    // Pivot matches CSS .gd-wood-hover transform-origin (50% 0% -> SVG 280, 118)
-    const lx0 = -176;
-    const ly0 = -3.5;
-    const rx0 = 176;
-    const ry0 = 3.5;
-
-    const leftX = 280 + dxSvg + lx0 * cos - ly0 * sin;
-    const leftY = 118 + dySvg + lx0 * sin + ly0 * cos;
-    const rightX = 280 + dxSvg + rx0 * cos - ry0 * sin;
-    const rightY = 118 + dySvg + rx0 * sin + ry0 * cos;
-    return { dxSvg, dySvg, leftX, leftY, rightX, rightY };
+    const leftX = ANCHOR_X + dxSvg + LX0 * cos - LY0 * sin;
+    const leftY = 118 + dySvg + LX0 * sin + LY0 * cos;
+    const rightX = ANCHOR_X + dxSvg + RX0 * cos - RY0 * sin;
+    const rightY = 118 + dySvg + RX0 * sin + RY0 * cos;
+    return { svgScale, dxSvg, dySvg, leftX, leftY, rightX, rightY };
   };
 
-  const syncChainGeometry = (curTx: number, curTy: number, curSwing: number, curLooseAngle: number): void => {
-    const { dxSvg, dySvg, leftX, leftY, rightX, rightY } = computeBoardAnchors(curTx, curTy, curSwing);
-
-    let ringX = 280 + dxSvg * 0.28 + curSwing * -0.9;
-    let ringY = 44 + dySvg * 0.36 + Math.abs(dxSvg) * 0.04;
+  // True physical equilibrium: surviving eyelet hangs on taut MAX_SINGLE_LEN chain while board tilts ~15deg
+  const getEquilibrium = (): { baseTx: number; baseTy: number; baseSwing: number } => {
     if (detachedSide === 'left') {
-      ringX = 280 + (rightX - 280) * 0.56;
-      ringY = 46 + dySvg * 0.32;
-    } else if (detachedSide === 'right') {
-      ringX = 280 + (leftX - 280) * 0.56;
-      ringY = 46 + dySvg * 0.32;
+      const tilt = -15.5;
+      const rad = (tilt * Math.PI) / 180;
+      // Put surviving right eyelet under chain at slight 4deg plumb bias so board center shifts cleanly without clipping
+      const eyeTargetX = ANCHOR_X + MAX_SINGLE_LEN * Math.sin((4.5 * Math.PI) / 180);
+      const eyeTargetY = ANCHOR_Y + MAX_SINGLE_LEN * Math.cos((4.5 * Math.PI) / 180);
+      const dxSvg = eyeTargetX - (ANCHOR_X + RX0 * Math.cos(rad) - RY0 * Math.sin(rad));
+      const dySvg = eyeTargetY - (118 + RX0 * Math.sin(rad) + RY0 * Math.cos(rad));
+      const invScale = Math.max(260, Math.min(cachedBoardWidth, 560)) / 560;
+      return { baseTx: dxSvg * invScale, baseTy: dySvg / 1.015, baseSwing: tilt };
+    }
+    if (detachedSide === 'right') {
+      const tilt = 15.5;
+      const rad = (tilt * Math.PI) / 180;
+      const eyeTargetX = ANCHOR_X - MAX_SINGLE_LEN * Math.sin((4.5 * Math.PI) / 180);
+      const eyeTargetY = ANCHOR_Y + MAX_SINGLE_LEN * Math.cos((4.5 * Math.PI) / 180);
+      const dxSvg = eyeTargetX - (ANCHOR_X + LX0 * Math.cos(rad) - LY0 * Math.sin(rad));
+      const dySvg = eyeTargetY - (118 + LX0 * Math.sin(rad) + LY0 * Math.cos(rad));
+      const invScale = Math.max(260, Math.min(cachedBoardWidth, 560)) / 560;
+      return { baseTx: dxSvg * invScale, baseTy: dySvg / 1.015, baseSwing: tilt };
+    }
+    return { baseTx: 0, baseTy: 0, baseSwing: 0 };
+  };
+
+  const solveVerletChain = (
+    nodes: VerletNode[],
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    endPinned: boolean,
+    dt: number,
+    subSegLen: number
+  ): boolean => {
+    const count = nodes.length - 1;
+    const damp = Math.pow(0.18, dt);
+    const gravity = 2400 * dt * dt;
+
+    nodes[0].x = startX;
+    nodes[0].y = startY;
+    nodes[0].ox = startX;
+    nodes[0].oy = startY;
+
+    let maxDelta = 0;
+    for (let i = 1; i <= count; i++) {
+      if (i === count && endPinned) {
+        nodes[i].x = endX;
+        nodes[i].y = endY;
+        nodes[i].ox = endX;
+        nodes[i].oy = endY;
+        continue;
+      }
+      const n = nodes[i];
+      const vx = (n.x - n.ox) * damp;
+      const vy = (n.y - n.oy) * damp;
+      n.ox = n.x;
+      n.oy = n.y;
+      n.x += vx;
+      n.y += vy + gravity;
     }
 
+    for (let iter = 0; iter < 7; iter++) {
+      nodes[0].x = startX;
+      nodes[0].y = startY;
+      if (endPinned) {
+        nodes[count].x = endX;
+        nodes[count].y = endY;
+      }
+      for (let i = 0; i < count; i++) {
+        const a = nodes[i];
+        const b = nodes[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.0001;
+        const diff = (subSegLen - d) / d;
+        const wA = i === 0 ? 0 : 0.5;
+        const wB = i + 1 === count && endPinned ? 0 : 0.5;
+        const wSum = wA + wB;
+        if (!wSum) continue;
+        const shiftX = dx * diff;
+        const shiftY = dy * diff;
+        if (wA) {
+          a.x -= shiftX * (wA / wSum);
+          a.y -= shiftY * (wA / wSum);
+        }
+        if (wB) {
+          b.x += shiftX * (wB / wSum);
+          b.y += shiftY * (wB / wSum);
+        }
+      }
+    }
+
+    for (let i = 1; i <= count; i++) {
+      maxDelta = Math.max(maxDelta, Math.abs(nodes[i].x - nodes[i].ox), Math.abs(nodes[i].y - nodes[i].oy));
+    }
+    return maxDelta > 0.08;
+  };
+
+  const renderLinksFromNodes = (links: SVGGElement[], nodes: VerletNode[]): void => {
+    const count = Math.min(links.length, nodes.length - 1);
+    for (let i = 0; i < count; i++) {
+      const a = nodes[i];
+      const b = nodes[i + 1];
+      const cx = (a.x + b.x) * 0.5;
+      const cy = (a.y + b.y) * 0.5;
+      const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+      links[i].setAttribute('transform', `translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${angle.toFixed(1)})`);
+    }
+  };
+
+  // Enforce inextensible chain length constraint on attached eyelets (taut ceiling circle!)
+  const enforceChainConstraint = (): void => {
+    const { svgScale, leftX, leftY, rightX, rightY } = computeBoardAnchors(tx, ty, swing);
+    const invScale = 1 / svgScale;
+
+    const clampEyeletToCeiling = (ex: number, ey: number, maxR: number): void => {
+      const dx = ex - ANCHOR_X;
+      const dy = ey - ANCHOR_Y;
+      const d = Math.hypot(dx, dy);
+      if (d > maxR && d > 0.001) {
+        const nx = dx / d;
+        const ny = dy / d;
+        const pen = d - maxR;
+        tx -= nx * pen * invScale;
+        ty -= ny * pen / 1.015;
+        // Cancel outward radial velocity + impart small chain-catch rotational impulse!
+        const vxSvg = vTx * svgScale;
+        const vySvg = vTy * 1.015;
+        const vDotN = vxSvg * nx + vySvg * ny;
+        if (vDotN > 0) {
+          vTx -= (vDotN * nx * 1.15) * invScale;
+          vTy -= (vDotN * ny * 1.15) / 1.015;
+        }
+      }
+    };
+
+    if (detachedSide === 'left') {
+      clampEyeletToCeiling(rightX, rightY, MAX_SINGLE_LEN);
+    } else if (detachedSide === 'right') {
+      clampEyeletToCeiling(leftX, leftY, MAX_SINGLE_LEN);
+    } else {
+      clampEyeletToCeiling(leftX, leftY, MAX_SINGLE_LEN);
+      clampEyeletToCeiling(rightX, rightY, MAX_SINGLE_LEN);
+    }
+  };
+
+  const syncChainGeometry = (dt: number): boolean => {
+    const { leftX, leftY, rightX, rightY } = computeBoardAnchors(tx, ty, swing);
+
+    // Compute inextensible top junction ring position along ceiling arc of radius TOP_CHAIN_LEN
+    let pullX = ANCHOR_X;
+    let pullY = RING_REST_Y;
+    if (detachedSide === 'left') {
+      pullX = rightX;
+      pullY = rightY;
+    } else if (detachedSide === 'right') {
+      pullX = leftX;
+      pullY = leftY;
+    } else {
+      pullX = (leftX + rightX) * 0.5;
+      pullY = (leftY + rightY) * 0.5;
+    }
+
+    const rdx = pullX - ANCHOR_X;
+    const rdy = Math.max(24, pullY - ANCHOR_Y);
+    const rd = Math.hypot(rdx, rdy) || 1;
+    ringX = ANCHOR_X + (rdx / rd) * TOP_CHAIN_LEN;
+    ringY = ANCHOR_Y + (rdy / rd) * TOP_CHAIN_LEN;
+
     if (topDropGroup) {
-      const topAngle = (Math.atan2(ringX - 280, Math.max(40, ringY + 34)) * 180) / Math.PI;
-      const topScale = Math.hypot(ringX - 280, ringY + 34) / 78;
+      const topAngle = (Math.atan2(ringX - ANCHOR_X, Math.max(24, ringY - ANCHOR_Y)) * 180) / Math.PI;
       topDropGroup.setAttribute(
         'transform',
-        `translate(280, -34) rotate(${(-topAngle).toFixed(2)}) scale(1, ${topScale.toFixed(3)}) translate(-280, 34)`
+        `translate(${ANCHOR_X}, ${ANCHOR_Y}) rotate(${(-topAngle).toFixed(2)}) translate(${-ANCHOR_X}, ${-ANCHOR_Y})`
       );
     }
 
     if (ringGroup) {
-      ringGroup.setAttribute('transform', `translate(${(ringX - 280).toFixed(1)}, ${(ringY - 44).toFixed(1)})`);
+      ringGroup.setAttribute('transform', `translate(${(ringX - ANCHOR_X).toFixed(1)}, ${(ringY - RING_REST_Y).toFixed(1)})`);
     }
 
     if (leftEyeGroup) {
       leftEyeGroup.setAttribute(
         'transform',
-        `translate(${(leftX - 104).toFixed(1)}, ${(leftY - 114.5).toFixed(1)}) rotate(${curSwing.toFixed(2)}, 104, 114.5)`
+        `translate(${(leftX - LEFT_REST_X).toFixed(1)}, ${(leftY - LEFT_REST_Y).toFixed(1)}) rotate(${swing.toFixed(2)}, ${LEFT_REST_X}, ${LEFT_REST_Y})`
       );
     }
 
     if (rightEyeGroup) {
       rightEyeGroup.setAttribute(
         'transform',
-        `translate(${(rightX - 456).toFixed(1)}, ${(rightY - 121.5).toFixed(1)}) rotate(${curSwing.toFixed(2)}, 456, 121.5)`
+        `translate(${(rightX - RIGHT_REST_X).toFixed(1)}, ${(rightY - RIGHT_REST_Y).toFixed(1)}) rotate(${swing.toFixed(2)}, ${RIGHT_REST_X}, ${RIGHT_REST_Y})`
       );
     }
 
-    const updateArm = (links: SVGGElement[], x1: number, y1: number, x2: number, y2: number): void => {
-      if (!links.length) return;
-      const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-      const count = links.length;
-      for (let i = 0; i < count; i++) {
-        const t = (i + 0.5) / (count + 0.15);
-        const cx = x1 + (x2 - x1) * t;
-        const cy = y1 + (y2 - y1) * t;
-        links[i].setAttribute('transform', `translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${angle.toFixed(1)})`);
-      }
-    };
+    const leftActive = solveVerletChain(leftNodes, ringX, ringY, leftX, leftY, detachedSide !== 'left', dt, segLen);
+    const rightActive = solveVerletChain(rightNodes, ringX, ringY, rightX, rightY, detachedSide !== 'right', dt, segLen);
+    renderLinksFromNodes(leftLinks, leftNodes);
+    renderLinksFromNodes(rightLinks, rightNodes);
 
-    const looseRad = (curLooseAngle * Math.PI) / 180;
-    if (detachedSide === 'left') {
-      const endX = ringX + Math.sin(looseRad) * 126;
-      const endY = ringY + Math.cos(looseRad) * 126;
-      updateArm(leftLinks, ringX, ringY, endX, endY);
-      updateArm(rightLinks, ringX, ringY, rightX, rightY);
-    } else if (detachedSide === 'right') {
-      const endX = ringX + Math.sin(looseRad) * 126;
-      const endY = ringY + Math.cos(looseRad) * 126;
-      updateArm(leftLinks, ringX, ringY, leftX, leftY);
-      updateArm(rightLinks, ringX, ringY, endX, endY);
-    } else {
-      updateArm(leftLinks, ringX, ringY, leftX, leftY);
-      updateArm(rightLinks, ringX, ringY, rightX, rightY);
-    }
+    return leftActive || rightActive;
   };
 
   const step = (ts: number): void => {
@@ -717,7 +876,7 @@ function attachWoodBoardSpringPhysics(
       rafId = null;
       return;
     }
-    const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.032) : 0.016;
+    const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.025) : 0.016;
     lastTs = ts;
 
     const { baseTx, baseTy, baseSwing } = getEquilibrium();
@@ -725,10 +884,10 @@ function attachWoodBoardSpringPhysics(
     const targetTx = dragging ? baseTx + dragTargetTx : baseTx;
     const targetTy = dragging ? baseTy + dragTargetTy : hovered ? baseTy + hoverTargetTy : baseTy;
 
-    const kSwing = dragging ? 260 : detachedSide === 'none' ? 105 : 72;
-    const dSwing = dragging ? 25 : detachedSide === 'none' ? 5.5 : 3.4;
-    const kPos = dragging ? 295 : detachedSide === 'none' ? 145 : 105;
-    const dPos = dragging ? 27 : detachedSide === 'none' ? 11 : 6.2;
+    const kSwing = dragging ? 260 : detachedSide === 'none' ? 110 : 78;
+    const dSwing = dragging ? 24 : detachedSide === 'none' ? 5.8 : 3.2;
+    const kPos = dragging ? 290 : detachedSide === 'none' ? 150 : 112;
+    const dPos = dragging ? 26 : detachedSide === 'none' ? 11.5 : 6.4;
 
     vSwing += ((targetSwing - swing) * kSwing - vSwing * dSwing) * dt;
     vTx += ((targetTx - tx) * kPos - vTx * dPos) * dt;
@@ -738,19 +897,12 @@ function attachWoodBoardSpringPhysics(
     tx += vTx * dt;
     ty += vTy * dt;
 
-    const targetLooseAngle = detachedSide === 'left' ? -6 : detachedSide === 'right' ? 6 : 0;
-    if (detachedSide !== 'none') {
-      vLooseAngle += ((targetLooseAngle - looseAngle) * 85 - vLooseAngle * 3.4) * dt;
-      looseAngle += vLooseAngle * dt;
-    }
-
-    const looseSettled =
-      detachedSide === 'none' ||
-      (Math.abs(targetLooseAngle - looseAngle) < 0.04 && Math.abs(vLooseAngle) < 0.08);
+    enforceChainConstraint();
+    const chainsMoving = syncChainGeometry(dt);
 
     const settled =
       !dragging &&
-      looseSettled &&
+      !chainsMoving &&
       Math.abs(targetSwing - swing) < 0.015 &&
       Math.abs(targetTx - tx) < 0.03 &&
       Math.abs(targetTy - ty) < 0.03 &&
@@ -765,23 +917,18 @@ function attachWoodBoardSpringPhysics(
       vSwing = 0;
       vTx = 0;
       vTy = 0;
-      if (detachedSide !== 'none') {
-        looseAngle = targetLooseAngle;
-        vLooseAngle = 0;
-      }
       if (swing === 0 && tx === 0 && ty === 0) {
         hoverWrap.style.transform = '';
       } else {
         hoverWrap.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotate(${swing.toFixed(3)}deg)`;
       }
-      syncChainGeometry(tx, ty, swing, looseAngle);
+      syncChainGeometry(0.016);
       rafId = null;
       lastTs = 0;
       return;
     }
 
     hoverWrap.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotate(${swing.toFixed(3)}deg)`;
-    syncChainGeometry(tx, ty, swing, looseAngle);
     rafId = requestAnimationFrame(step);
   };
 
@@ -811,46 +958,47 @@ function attachWoodBoardSpringPhysics(
     if (rect.width) cachedBoardWidth = rect.width;
 
     if (detachedSide === side) {
-      // Re-hook this joint cleanly back into horizontal balance
       const hoistSign = side === 'left' ? 1 : -1;
       detachedSide = 'none';
-      vSwing += hoistSign * 26;
-      vTy -= 78;
-      vTx += hoistSign * 42;
+      vSwing += hoistSign * 28;
+      vTy -= 82;
+      vTx += hoistSign * 44;
       updateJointVisualState();
       ensureLoop();
       return;
     }
 
     if (detachedSide === 'none') {
-      const { leftX, leftY, rightX, rightY } = computeBoardAnchors(tx, ty, swing);
-      const ringX = 280;
-      const ringY = 44;
       if (side === 'left') {
-        looseAngle = (Math.atan2(leftX - ringX, Math.max(20, leftY - ringY)) * 180) / Math.PI;
-        vLooseAngle = -45;
         detachedSide = 'left';
-        vSwing -= 48;
-        vTy += 130;
-        vTx -= 115;
+        vSwing -= 52;
+        vTy += 115;
+        vTx -= 95;
+        // Inject sideways whip velocity into the newly snapped loose left chain nodes
+        for (let i = 1; i < leftNodes.length; i++) {
+          leftNodes[i].ox += (i / leftNodes.length) * 3.8;
+        }
       } else {
-        looseAngle = (Math.atan2(rightX - ringX, Math.max(20, rightY - ringY)) * 180) / Math.PI;
-        vLooseAngle = 45;
         detachedSide = 'right';
-        vSwing += 48;
-        vTy += 130;
-        vTx += 115;
+        vSwing += 52;
+        vTy += 115;
+        vTx += 95;
+        for (let i = 1; i < rightNodes.length; i++) {
+          rightNodes[i].ox -= (i / rightNodes.length) * 3.8;
+        }
       }
       updateJointVisualState();
       ensureLoop();
       return;
     }
 
-    // Other joint is already unhooked -> metallic resistance shake on the last surviving joint!
     const shakeDir = side === 'left' ? -1 : 1;
-    vSwing += shakeDir * 44;
-    vTy += 78;
-    vLooseAngle += shakeDir * 64;
+    vSwing += shakeDir * 42;
+    vTy += 72;
+    const looseList = detachedSide === 'left' ? leftNodes : rightNodes;
+    for (let i = 1; i < looseList.length; i++) {
+      looseList[i].ox -= shakeDir * (i / looseList.length) * 4.2;
+    }
     const activeBtn = side === 'left' ? leftJointBtn : rightJointBtn;
     activeBtn.classList.add('is-strained');
     setTimeout(() => activeBtn.classList.remove('is-strained'), 260);
@@ -880,19 +1028,17 @@ function attachWoodBoardSpringPhysics(
       const dx = event.clientX - dragStartX;
       const dy = event.clientY - dragStartY;
       if (Math.hypot(dx, dy) > 4) movedEnough = true;
-      dragTargetTx = rubber(dx * 0.48, 56);
-      dragTargetTy = Math.max(-14, rubber(dy * 0.44, 34));
-      dragTargetSwing = rubber(-dx * 0.16, 12);
+      dragTargetTx = rubber(dx * 0.5, 58);
+      dragTargetTy = Math.max(-22, rubber(dy * 0.44, 34));
+      dragTargetSwing = rubber(-dx * 0.14 + dy * grabLever * 0.16, 13.5);
 
       if (lastClientX !== null && lastClientY !== null) {
         const stepX = event.clientX - lastClientX;
         const stepY = event.clientY - lastClientY;
-        vSwing += Math.max(-20, Math.min(20, -stepX * 0.55));
-        vTx += Math.max(-28, Math.min(28, stepX * 1.25));
+        // r x F torque from grab lever arm!
+        vSwing += Math.max(-22, Math.min(22, -stepX * 0.5 + stepY * grabLever * 0.55));
+        vTx += Math.max(-28, Math.min(28, stepX * 1.2));
         vTy += Math.max(-22, Math.min(22, stepY * 1.0));
-        if (detachedSide !== 'none') {
-          vLooseAngle += Math.max(-35, Math.min(35, -stepX * 1.2));
-        }
       }
       lastClientX = event.clientX;
       lastClientY = event.clientY;
@@ -905,7 +1051,7 @@ function attachWoodBoardSpringPhysics(
     if (rect.width) {
       const relX = Math.max(-0.5, Math.min(0.5, (event.clientX - rect.left) / rect.width - 0.5)) * 2;
       hoverTargetSwing = relX * 2.2;
-      hoverTargetTy = 2.5;
+      hoverTargetTy = detachedSide === 'none' ? 2.5 : 0;
     }
 
     if (lastClientX === null) {
@@ -915,19 +1061,18 @@ function attachWoodBoardSpringPhysics(
       return;
     }
 
-    // Cursor brush nudges the hanging plank along the direction you sweep
     const vx = Math.max(-46, Math.min(46, event.clientX - lastClientX));
     const vy = Math.max(-30, Math.min(30, event.clientY - (lastClientY ?? event.clientY)));
     lastClientX = event.clientX;
     lastClientY = event.clientY;
 
     if (Math.abs(vx) > 0.3 || Math.abs(vy) > 0.3) {
-      vSwing += -vx * 0.95;
-      vTx += vx * 2.6;
-      vTy += vy * 1.25;
-      if (detachedSide !== 'none') {
-        vLooseAngle += -vx * 1.3;
-      }
+      const hoverLever = rect.width
+        ? Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width - 0.5) * 2))
+        : 0;
+      vSwing += -vx * 0.85 + vy * hoverLever * 0.65;
+      vTx += vx * 2.4;
+      vTy += vy * 1.15;
     }
     ensureLoop();
   });
@@ -936,6 +1081,10 @@ function attachWoodBoardSpringPhysics(
     if (event.button !== 0 && event.pointerType === 'mouse') return;
     const rect = board.getBoundingClientRect();
     if (rect.width) cachedBoardWidth = rect.width;
+
+    grabLever = rect.width
+      ? Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width - 0.5) * 2))
+      : 0;
 
     dragging = true;
     movedEnough = false;
@@ -946,13 +1095,10 @@ function attachWoodBoardSpringPhysics(
     lastClientY = event.clientY;
     dragTargetTx = 0;
     dragTargetTy = 5;
-    dragTargetSwing = 0;
+    dragTargetSwing = grabLever * 2.8;
 
-    if (rect.width) {
-      const rel = (event.clientX - rect.left) / rect.width - 0.5;
-      vSwing += rel * 24;
-      vTy += 42;
-    }
+    vSwing += grabLever * 16;
+    vTy += 38;
 
     board.classList.add('is-grabbing');
     try {
@@ -978,16 +1124,18 @@ function attachWoodBoardSpringPhysics(
       // Ignore synthetic events
     }
 
-    // Quick click/tap without drag knocks that edge of the board vigorously
     if (wasQuickKnock) {
       const rect = board.getBoundingClientRect();
       const rawRel = rect.width ? (event.clientX - rect.left) / rect.width - 0.5 : 0.25;
       const lever = Math.abs(rawRel) < 0.08 ? 0.28 : Math.max(-0.5, Math.min(0.5, rawRel));
-      vSwing += lever * 68;
-      vTy += 105;
+      vSwing += lever * 72;
+      vTy += 96;
       vTx += -lever * 22;
       if (detachedSide !== 'none') {
-        vLooseAngle += lever * 78;
+        const looseList = detachedSide === 'left' ? leftNodes : rightNodes;
+        for (let i = 1; i < looseList.length; i++) {
+          looseList[i].ox -= lever * (i / looseList.length) * 4.5;
+        }
       }
     }
     ensureLoop();
