@@ -7983,49 +7983,75 @@ export function createSettingsWaxSealProp(): HTMLElement {
   btn.type = 'button';
   btn.className = 'gd-prop-btn gd-prop-settings-seal';
   btn.setAttribute('aria-label', 'Press brass signet wax seal');
-  btn.title = 'Click to press brass signet seal';
+  btn.title = 'Click to press & emboss crimson wax seal';
   btn.tabIndex = -1;
 
   btn.innerHTML = `
-    <svg class="gd-prop-svg" width="54" height="44" viewBox="0 0 54 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <span class="gd-seal-spark" style="--sx: -16px; --sy: -10px;" aria-hidden="true"></span>
+    <span class="gd-seal-spark" style="--sx: -8px; --sy: -15px;" aria-hidden="true"></span>
+    <span class="gd-seal-spark" style="--sx: 12px; --sy: -13px;" aria-hidden="true"></span>
+    <span class="gd-seal-spark" style="--sx: 18px; --sy: -6px;" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="60" height="48" viewBox="0 0 60 48" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="gd-seal-wax" cx="38%" cy="34%" r="68%">
-          <stop offset="0%" stop-color="#D44438"/>
-          <stop offset="55%" stop-color="#9A2018"/>
-          <stop offset="100%" stop-color="#5E100B"/>
+        <radialGradient id="gd-seal-wax" cx="36%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#DF4C3E"/>
+          <stop offset="52%" stop-color="#9E1E16"/>
+          <stop offset="85%" stop-color="#6B100A"/>
+          <stop offset="100%" stop-color="#480804"/>
         </radialGradient>
-        <linearGradient id="gd-seal-brass" x1="15%" y1="5%" x2="85%" y2="95%">
-          <stop offset="0%" stop-color="#FFF0AC"/>
-          <stop offset="45%" stop-color="#DCA647"/>
-          <stop offset="100%" stop-color="#764F14"/>
+        <linearGradient id="gd-seal-brass" x1="12%" y1="5%" x2="88%" y2="95%">
+          <stop offset="0%" stop-color="#FFF2B4"/>
+          <stop offset="44%" stop-color="#DFA847"/>
+          <stop offset="82%" stop-color="#8E5F15"/>
+          <stop offset="100%" stop-color="#51340A"/>
         </linearGradient>
         <linearGradient id="gd-seal-walnut" x1="15%" y1="10%" x2="85%" y2="90%">
-          <stop offset="0%" stop-color="#7B4C28"/>
-          <stop offset="50%" stop-color="#4A2A14"/>
-          <stop offset="100%" stop-color="#281508"/>
+          <stop offset="0%" stop-color="#8A542B"/>
+          <stop offset="48%" stop-color="#522E15"/>
+          <stop offset="100%" stop-color="#281407"/>
+        </linearGradient>
+        <linearGradient id="gd-seal-parchment" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#FAF0D7"/>
+          <stop offset="100%" stop-color="#DCC79C"/>
         </linearGradient>
       </defs>
-      <!-- Rest shadow along timber top -->
-      <ellipse cx="26" cy="40.5" rx="19" ry="2.4" fill="rgba(26, 18, 10, 0.24)"/>
-      <!-- Organic poured crimson sealing-wax medallion -->
-      <path d="M10 34 C9.5 29.5, 13.5 27, 19.5 26.5 C26.5 26, 33 27.2, 36.5 30.8 C38.5 33, 37.5 37.8, 33 39.2 C28 40.8, 17 40.5, 12.2 38.2 C9.8 37, 10.2 35.4, 10 34 Z" fill="url(#gd-seal-wax)" stroke="#470A06" stroke-width="0.9"/>
-      <ellipse cx="23.5" cy="33" rx="9.2" ry="4.4" fill="none" stroke="rgba(255, 198, 178, 0.34)" stroke-width="0.8"/>
-      <!-- Embossed Guardrail shield keyhole crest -->
-      <path d="M23.5 30.4 L26.2 31.6 L25.6 34.4 L23.5 35.6 L21.4 34.4 L20.8 31.6 Z" fill="#B52E24" stroke="rgba(255, 224, 196, 0.45)" stroke-width="0.65"/>
 
-      <!-- Articulated Signet Stamp (hovering at slight angle, snaps down onto wax) -->
-      <g class="gd-seal-stamp" style="transform-origin: 36px 26px;">
-        <!-- Turned walnut handle -->
-        <path d="M32 13 C31 8, 33 4.5, 36 4.5 C39 4.5, 41 8, 40 13 L38.2 21 L33.8 21 Z" fill="url(#gd-seal-walnut)" stroke="#231207" stroke-width="0.85"/>
-        <ellipse cx="34.6" cy="9.5" rx="1.1" ry="3.2" fill="rgba(255, 222, 188, 0.24)"/>
-        <!-- Brass ferrule collar & engraved die base -->
-        <rect x="31.5" y="20.5" width="9" height="3.2" rx="1" fill="url(#gd-seal-brass)" stroke="#4A300B" stroke-width="0.7"/>
-        <ellipse cx="36" cy="25.5" rx="8.4" ry="3.2" fill="url(#gd-seal-brass)" stroke="#4A300B" stroke-width="0.8"/>
+      <!-- Resting floor shadow along timber frame -->
+      <ellipse cx="27" cy="43.5" rx="22" ry="2.8" fill="rgba(22, 14, 6, 0.28)"/>
+
+      <!-- Official parchment ribbon strip tucked under wax over wood edge -->
+      <path d="M13 38 L34 38 L36 46.5 L24 44 L12 46.5 Z" fill="url(#gd-seal-parchment)" stroke="#755D37" stroke-width="0.75"/>
+      <line x1="16" y1="41.5" x2="32" y2="41.5" stroke="rgba(162, 126, 70, 0.45)" stroke-width="0.7"/>
+
+      <!-- Sculpted organic scalloped crimson sealing-wax medallion -->
+      <g class="gd-seal-wax-group" style="transform-origin: 24px 36px;">
+        <path d="M8.5 36.2 C7.8 32.8, 10.6 29.8, 14.5 28.8 C18.5 27.6, 23 27.2, 27.5 27.8 C32.8 28.4, 38.2 30.2, 39.2 33.8 C40.1 36.8, 37.8 40.4, 33.5 41.6 C29 42.8, 18.8 42.8, 13.5 41.2 C10 40.1, 8.9 38.4, 8.5 36.2 Z" fill="url(#gd-seal-wax)" stroke="#3D0603" stroke-width="0.95"/>
+        <!-- Raised irregular wax pool rim highlight & recessed inner bowl -->
+        <ellipse cx="24" cy="34.8" rx="12.2" ry="5.5" fill="rgba(74, 8, 4, 0.42)" stroke="rgba(255, 198, 180, 0.36)" stroke-width="0.85"/>
+        <ellipse cx="24" cy="34.8" rx="9.8" ry="4.1" fill="none" stroke="rgba(255, 224, 172, 0.28)" stroke-width="0.7"/>
+        <!-- Embossed Guardrail shield signet crest (brightens to gold foil on press) -->
+        <g class="gd-seal-crest" style="opacity: 0.85; transition: opacity 0.3s ease, filter 0.35s ease;">
+          <path d="M24 31.6 L27.4 33.1 L26.6 36.4 L24 38.0 L21.4 36.4 L20.6 33.1 Z" fill="#C43528" stroke="#F6D078" stroke-width="0.85" stroke-linejoin="round"/>
+          <circle cx="24" cy="34.6" r="1.05" fill="#FDE49B"/>
+        </g>
+      </g>
+
+      <!-- Turned Rosewood & Brass Signet Stamp -->
+      <g class="gd-seal-stamp" style="transform-origin: 39px 27px;">
+        <!-- Turned handle body + lathe collar -->
+        <path d="M35 13 C33.8 7.5, 35.8 3.8, 39 3.8 C42.2 3.8, 44.2 7.5, 43 13 L41.2 21.5 L36.8 21.5 Z" fill="url(#gd-seal-walnut)" stroke="#1E0E04" stroke-width="0.85"/>
+        <ellipse cx="37.4" cy="8.8" rx="1.2" ry="3.4" fill="rgba(255, 224, 188, 0.28)"/>
+        <path d="M36.8 18.8 Q39 19.6 41.2 18.8" stroke="rgba(255, 210, 160, 0.3)" stroke-width="0.6" fill="none"/>
+        <!-- Double-stepped brass bolster ferrule + engraved brass die -->
+        <rect x="34.6" y="21.0" width="8.8" height="2.6" rx="1" fill="url(#gd-seal-brass)" stroke="#472E09" stroke-width="0.7"/>
+        <ellipse cx="39" cy="26.2" rx="9.2" ry="3.6" fill="url(#gd-seal-brass)" stroke="#472E09" stroke-width="0.85"/>
+        <ellipse cx="39" cy="25.6" rx="7.2" ry="2.2" fill="none" stroke="rgba(255, 248, 206, 0.5)" stroke-width="0.65"/>
       </g>
     </svg>
   `;
 
   let stampTimer: number | null = null;
+  let embossTimer: number | null = null;
   const actuate = (withAudio: boolean) => {
     if (btn.classList) {
       btn.classList.remove('is-waking');
@@ -8035,14 +8061,21 @@ export function createSettingsWaxSealProp(): HTMLElement {
     pulseCardWake(btn);
     if (withAudio) {
       playQuickTones([
-        { delay: 0.05, freq: 145, endFreq: 56, dur: 0.14, peak: 0.04, type: 'triangle' },
-        { delay: 0.06, freq: 1580, endFreq: 1220, dur: 0.09, peak: 0.015 },
+        { delay: 0.22, freq: 148, endFreq: 52, dur: 0.16, peak: 0.044, type: 'triangle' },
+        { delay: 0.24, freq: 1640, endFreq: 1220, dur: 0.1, peak: 0.017 },
       ]);
     }
+    window.setTimeout(() => {
+      if (btn.classList) btn.classList.add('is-embossed');
+    }, 300);
     if (stampTimer !== null) clearTimeout(stampTimer);
+    if (embossTimer !== null) clearTimeout(embossTimer);
     stampTimer = window.setTimeout(() => {
       btn.classList?.remove('is-waking');
-    }, 640);
+    }, 760);
+    embossTimer = window.setTimeout(() => {
+      btn.classList?.remove('is-embossed');
+    }, 4200);
   };
 
   btn.addEventListener('click', (e) => {
@@ -8056,61 +8089,102 @@ export function createSettingsWaxSealProp(): HTMLElement {
 
 /**
  * Prop 2 (Card: Connected Users & Trusted Contacts):
- * Twin forged brass link rings & dual forest-olive woven silk bookmark ribbons.
- * Clicking (or cascade beat #2) swings both silk ribbon tails with damped pendulum physics.
+ * True 3D-interwoven twin forged brass link rings with stitched leather clasp & dual silk bookmarks with brass aglets.
+ * Hovering flutters tails; clicking pops the clasp tension & whips a 2-segment wave down both braided silk ribbons.
  */
 export function createSettingsRibbonClaspProp(): HTMLElement {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'gd-prop-btn gd-prop-settings-ribbon';
   btn.setAttribute('aria-label', 'Sway linked contact silk ribbons');
-  btn.title = 'Click to sway linked brass clasp & silk ribbon';
+  btn.title = 'Click to chime brass links & whip silk bookmark ribbons';
   btn.tabIndex = -1;
 
   btn.innerHTML = `
-    <svg class="gd-prop-svg" width="52" height="44" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class="gd-prop-svg" width="58" height="50" viewBox="0 0 58 50" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="gd-rib-brass" x1="10%" y1="10%" x2="90%" y2="90%">
-          <stop offset="0%" stop-color="#FFF0AD"/>
-          <stop offset="48%" stop-color="#DDA647"/>
-          <stop offset="100%" stop-color="#6F4912"/>
+        <linearGradient id="gd-rib-brass" x1="10%" y1="5%" x2="90%" y2="95%">
+          <stop offset="0%" stop-color="#FFF2B4"/>
+          <stop offset="48%" stop-color="#DFA847"/>
+          <stop offset="100%" stop-color="#6B4610"/>
         </linearGradient>
         <linearGradient id="gd-rib-olive" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#6D8F4B"/>
-          <stop offset="55%" stop-color="#455E2E"/>
-          <stop offset="100%" stop-color="#273619"/>
+          <stop offset="0%" stop-color="#769A52"/>
+          <stop offset="55%" stop-color="#455F2E"/>
+          <stop offset="100%" stop-color="#253417"/>
         </linearGradient>
         <linearGradient id="gd-rib-crimson" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#B84B3C"/>
-          <stop offset="60%" stop-color="#872B1F"/>
-          <stop offset="100%" stop-color="#56160E"/>
+          <stop offset="0%" stop-color="#C25140"/>
+          <stop offset="58%" stop-color="#8A2A1E"/>
+          <stop offset="100%" stop-color="#53140C"/>
         </linearGradient>
       </defs>
-      <!-- Braided silk ribbon tails draping smoothly down over frame edge -->
-      <g class="gd-ribbon-tail-left" style="transform-origin: 21px 18px;">
-        <path d="M17.5 17 L23.5 17 L22.8 40.5 L20.4 37.5 L17.8 40.5 Z" fill="url(#gd-rib-olive)" stroke="#1E2814" stroke-width="0.75" stroke-linejoin="round"/>
-        <line x1="20.4" y1="18.5" x2="20.4" y2="35.5" stroke="rgba(236, 224, 192, 0.36)" stroke-width="0.65" stroke-dasharray="1.5 1.5"/>
+
+      <!-- Back ring halves (behind leather binder & threaded ribbons) -->
+      <g class="gd-ribbon-ring-left" style="transform-origin: 22px 15px;">
+        <path d="M22 8.8 C26.6 8.8, 30 11.4, 30 15 C30 18.6, 26.6 21.2, 22 21.2" stroke="#452D0A" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+        <path d="M22 8.8 C26.6 8.8, 30 11.4, 30 15 C30 18.6, 26.6 21.2, 22 21.2" stroke="url(#gd-rib-brass)" stroke-width="2.1" fill="none" stroke-linecap="round"/>
       </g>
-      <g class="gd-ribbon-tail-right" style="transform-origin: 30px 18px;">
-        <path d="M27 17 L33 17 L33.6 37.5 L30.8 34.8 L27.6 38 Z" fill="url(#gd-rib-crimson)" stroke="#3D120C" stroke-width="0.75" stroke-linejoin="round"/>
+      <g class="gd-ribbon-ring-right" style="transform-origin: 35px 15px;">
+        <path d="M35 8.8 C30.4 8.8, 27 11.4, 27 15" stroke="#452D0A" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+        <path d="M35 8.8 C30.4 8.8, 27 11.4, 27 15" stroke="url(#gd-rib-brass)" stroke-width="2.1" fill="none" stroke-linecap="round"/>
       </g>
 
-      <!-- Twin interlocking brass link rings anchored on timber ledge -->
-      <ellipse cx="21" cy="14" rx="7.2" ry="5.5" stroke="#452D0A" stroke-width="3.2" fill="none"/>
-      <ellipse cx="21" cy="14" rx="7.2" ry="5.5" stroke="url(#gd-rib-brass)" stroke-width="1.9" fill="none"/>
-      <ellipse cx="31" cy="14" rx="7.2" ry="5.5" stroke="#452D0A" stroke-width="3.2" fill="none"/>
-      <ellipse cx="31" cy="14" rx="7.2" ry="5.5" stroke="url(#gd-rib-brass)" stroke-width="1.9" fill="none"/>
-      <!-- Center stitched leather-brass binder bridge -->
-      <rect x="22.8" y="11" width="6.4" height="6" rx="1.4" fill="url(#gd-rib-brass)" stroke="#452D0A" stroke-width="0.8"/>
+      <!-- Articulated braided silk ribbon tails with hinged lower swallowtail & brass aglet tips -->
+      <g class="gd-ribbon-tail-left" style="transform-origin: 22px 19px;">
+        <path d="M18.6 18 L25.2 18 L24.6 31 L19.1 31 Z" fill="url(#gd-rib-olive)" stroke="#1D2713" stroke-width="0.75"/>
+        <line x1="21.9" y1="19" x2="21.9" y2="30" stroke="rgba(242, 232, 198, 0.42)" stroke-width="0.75" stroke-dasharray="1.6 1.6"/>
+        <g class="gd-ribbon-tip-left" style="transform-origin: 21.9px 30.5px;">
+          <path d="M19.1 30.5 L24.6 30.5 L24.2 44.5 L21.8 41.2 L19.4 44.5 Z" fill="url(#gd-rib-olive)" stroke="#1D2713" stroke-width="0.75" stroke-linejoin="round"/>
+          <line x1="21.9" y1="31.5" x2="21.9" y2="40" stroke="rgba(242, 232, 198, 0.42)" stroke-width="0.75" stroke-dasharray="1.6 1.6"/>
+          <rect x="19.1" y="42.2" width="5.2" height="1.9" rx="0.6" fill="url(#gd-rib-brass)" stroke="#472E09" stroke-width="0.45"/>
+        </g>
+      </g>
+
+      <g class="gd-ribbon-tail-right" style="transform-origin: 35px 19px;">
+        <path d="M31.6 18 L38.2 18 L38.0 29.5 L31.8 29.5 Z" fill="url(#gd-rib-crimson)" stroke="#3D120C" stroke-width="0.75"/>
+        <g class="gd-ribbon-tip-right" style="transform-origin: 34.9px 29px;">
+          <path d="M31.8 29 L38.0 29 L38.4 42 L35.1 38.8 L31.9 42.2 Z" fill="url(#gd-rib-crimson)" stroke="#3D120C" stroke-width="0.75" stroke-linejoin="round"/>
+          <rect x="32.1" y="39.8" width="5.6" height="1.9" rx="0.6" fill="url(#gd-rib-brass)" stroke="#472E09" stroke-width="0.45"/>
+        </g>
+      </g>
+
+      <!-- Front interwoven ring arcs passing OVER the silk ribbons -->
+      <g class="gd-ribbon-ring-left-front" style="transform-origin: 22px 15px;">
+        <path d="M22 21.2 C17.4 21.2, 14 18.6, 14 15 C14 11.4, 17.4 8.8, 22 8.8" stroke="#452D0A" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+        <path d="M22 21.2 C17.4 21.2, 14 18.6, 14 15 C14 11.4, 17.4 8.8, 22 8.8" stroke="url(#gd-rib-brass)" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+      </g>
+      <g class="gd-ribbon-ring-right-front" style="transform-origin: 35px 15px;">
+        <path d="M27 15 C27 18.6, 30.4 21.2, 35 21.2 C39.6 21.2, 43 18.6, 43 15 C43 11.4, 39.6 8.8, 35 8.8" stroke="#452D0A" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+        <path d="M27 15 C27 18.6, 30.4 21.2, 35 21.2 C39.6 21.2, 43 18.6, 43 15 C43 11.4, 39.6 8.8, 35 8.8" stroke="url(#gd-rib-brass)" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <!-- Bridle-leather & brass-riveted clasp center bridge -->
+      <rect x="25.2" y="11.2" width="6.8" height="7.6" rx="1.6" fill="#5A3316" stroke="#2D1808" stroke-width="0.85"/>
+      <rect x="26.3" y="12.3" width="4.6" height="5.4" rx="1" fill="url(#gd-rib-brass)" stroke="#472E0A" stroke-width="0.65"/>
+      <circle cx="28.6" cy="15" r="1.05" fill="#472E0A"/>
     </svg>
   `;
 
   const tailL = btn.querySelector('.gd-ribbon-tail-left') as SVGGElement | null;
   const tailR = btn.querySelector('.gd-ribbon-tail-right') as SVGGElement | null;
+  const tipL = btn.querySelector('.gd-ribbon-tip-left') as SVGGElement | null;
+  const tipR = btn.querySelector('.gd-ribbon-tip-right') as SVGGElement | null;
+  const ringL = btn.querySelector('.gd-ribbon-ring-left') as SVGGElement | null;
+  const ringLF = btn.querySelector('.gd-ribbon-ring-left-front') as SVGGElement | null;
+  const ringR = btn.querySelector('.gd-ribbon-ring-right') as SVGGElement | null;
+  const ringRF = btn.querySelector('.gd-ribbon-ring-right-front') as SVGGElement | null;
+
   let angL = 0;
   let velL = 0;
+  let angTipL = 0;
+  let velTipL = 0;
   let angR = 0;
   let velR = 0;
+  let angTipR = 0;
+  let velTipR = 0;
+  let ringSep = 0;
+  let ringVel = 0;
   let lastTs = 0;
   let rafId: number | null = null;
 
@@ -8121,49 +8195,84 @@ export function createSettingsRibbonClaspProp(): HTMLElement {
     }
     const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
     lastTs = ts;
-    velL = (velL + (-38 * angL) * dt) * Math.pow(0.14, dt);
+
+    velL = (velL + (-42 * angL) * dt) * Math.pow(0.16, dt);
     angL += velL * dt;
-    velR = (velR + (-44 * angR + (angL - angR) * 8) * dt) * Math.pow(0.16, dt);
+    velTipL = (velTipL + (-54 * angTipL + (angL - angTipL) * 26) * dt) * Math.pow(0.18, dt);
+    angTipL += velTipL * dt;
+
+    velR = (velR + (-48 * angR + (angL - angR) * 10) * dt) * Math.pow(0.18, dt);
     angR += velR * dt;
+    velTipR = (velTipR + (-58 * angTipR + (angR - angTipR) * 28) * dt) * Math.pow(0.18, dt);
+    angTipR += velTipR * dt;
+
+    ringVel = (ringVel + (-95 * ringSep) * dt) * Math.pow(0.08, dt);
+    ringSep += ringVel * dt;
 
     if (tailL) tailL.style.transform = `rotate(${angL.toFixed(2)}deg)`;
+    if (tipL) tipL.style.transform = `rotate(${angTipL.toFixed(2)}deg)`;
     if (tailR) tailR.style.transform = `rotate(${angR.toFixed(2)}deg)`;
+    if (tipR) tipR.style.transform = `rotate(${angTipR.toFixed(2)}deg)`;
 
-    if (Math.abs(angL) > 0.1 || Math.abs(velL) > 0.25 || Math.abs(angR) > 0.1 || Math.abs(velR) > 0.25) {
+    const leftTf = `translateX(${(-ringSep * 1.4).toFixed(2)}px) rotate(${(-ringSep * 2.2).toFixed(2)}deg)`;
+    const rightTf = `translateX(${(ringSep * 1.4).toFixed(2)}px) rotate(${(ringSep * 2.2).toFixed(2)}deg)`;
+    if (ringL) ringL.style.transform = leftTf;
+    if (ringLF) ringLF.style.transform = leftTf;
+    if (ringR) ringR.style.transform = rightTf;
+    if (ringRF) ringRF.style.transform = rightTf;
+
+    const moving =
+      Math.abs(angL) > 0.08 ||
+      Math.abs(velL) > 0.25 ||
+      Math.abs(angTipL) > 0.08 ||
+      Math.abs(angR) > 0.08 ||
+      Math.abs(velR) > 0.25 ||
+      Math.abs(ringSep) > 0.04 ||
+      Math.abs(ringVel) > 0.2;
+
+    if (moving) {
       rafId = requestAnimationFrame(step);
     } else {
       angL = 0;
+      angTipL = 0;
       angR = 0;
-      if (tailL) tailL.style.transform = '';
-      if (tailR) tailR.style.transform = '';
+      angTipR = 0;
+      ringSep = 0;
+      for (const el of [tailL, tipL, tailR, tipR, ringL, ringLF, ringR, ringRF]) {
+        if (el) el.style.transform = '';
+      }
       rafId = null;
       lastTs = 0;
     }
   };
 
-  const actuate = (withAudio: boolean) => {
-    velL += 145;
-    velR -= 115;
-    pulseCardWake(btn);
-    if (withAudio) {
-      playQuickTones([
-        { delay: 0, freq: 2480, endFreq: 2340, dur: 0.11, peak: 0.018 },
-        { delay: 0.045, freq: 3320, endFreq: 3120, dur: 0.09, peak: 0.012 },
-      ]);
-    }
+  const ensureRunning = () => {
     if (rafId === null && typeof requestAnimationFrame === 'function') {
       lastTs = 0;
       rafId = requestAnimationFrame(step);
     }
   };
 
-  btn.addEventListener('mouseenter', () => {
-    velL += 55;
-    velR -= 42;
-    if (rafId === null && typeof requestAnimationFrame === 'function') {
-      lastTs = 0;
-      rafId = requestAnimationFrame(step);
+  const actuate = (withAudio: boolean) => {
+    velL += 175;
+    velTipL -= 110;
+    velR -= 145;
+    velTipR += 95;
+    ringVel += 26;
+    pulseCardWake(btn);
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0, freq: 2480, endFreq: 2340, dur: 0.12, peak: 0.02 },
+        { delay: 0.045, freq: 3360, endFreq: 3120, dur: 0.1, peak: 0.015 },
+      ]);
     }
+    ensureRunning();
+  };
+
+  btn.addEventListener('mouseenter', () => {
+    velL += 70;
+    velR -= 55;
+    ensureRunning();
   });
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -8176,70 +8285,120 @@ export function createSettingsRibbonClaspProp(): HTMLElement {
 
 /**
  * Prop 3 (Card: Ward Protection Policy / Safety Invariants):
- * Forged steel shackle & chamfered antique brass security padlock.
- * Clicking (or cascade beat #3) snaps the steel shackle firmly with an iron tumbler clack.
+ * Antique Chubb-style levered brass & steel vault padlock with pivoted keyhole dust flap + skeleton key.
+ * Clicking flips open the keyhole escutcheon cover, turns the miniature brass key, pops the notched steel shackle, then locks shut.
  */
 export function createSettingsPadlockProp(): HTMLElement {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'gd-prop-btn gd-prop-settings-padlock';
   btn.setAttribute('aria-label', 'Inspect forged brass policy padlock');
-  btn.title = 'Click to snap forged brass lock shackle';
+  btn.title = 'Click to turn skeleton key & inspect brass vault lock';
   btn.tabIndex = -1;
 
   btn.innerHTML = `
-    <svg class="gd-prop-svg" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class="gd-prop-svg" width="54" height="46" viewBox="0 0 54 46" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="gd-lock-brass" x1="12%" y1="6%" x2="88%" y2="94%">
-          <stop offset="0%" stop-color="#FFF0AF"/>
-          <stop offset="35%" stop-color="#D9A344"/>
-          <stop offset="80%" stop-color="#8C5D17"/>
-          <stop offset="100%" stop-color="#4A2E09"/>
+          <stop offset="0%" stop-color="#FFF2B6"/>
+          <stop offset="35%" stop-color="#DDA647"/>
+          <stop offset="80%" stop-color="#8E5F16"/>
+          <stop offset="100%" stop-color="#482C08"/>
         </linearGradient>
         <linearGradient id="gd-lock-steel" x1="10%" y1="0%" x2="90%" y2="100%">
-          <stop offset="0%" stop-color="#DCE4EC"/>
-          <stop offset="50%" stop-color="#7B8C9C"/>
-          <stop offset="100%" stop-color="#374452"/>
+          <stop offset="0%" stop-color="#E4ECF4"/>
+          <stop offset="48%" stop-color="#7B8E9F"/>
+          <stop offset="100%" stop-color="#313E4D"/>
         </linearGradient>
       </defs>
-      <ellipse cx="22" cy="40.5" rx="13" ry="2.2" fill="rgba(26, 18, 10, 0.22)"/>
-      <!-- Hardened Steel Shackle -->
+
+      <ellipse cx="22" cy="42.5" rx="14" ry="2.4" fill="rgba(22, 14, 6, 0.25)"/>
+
+      <!-- Hardened Case-Forged Notched Steel Shackle -->
       <g class="gd-padlock-shackle">
-        <path d="M14.5 21 V13.5 C14.5 8.5, 29.5 8.5, 29.5 13.5 V21" stroke="#242E38" stroke-width="4.4" stroke-linecap="round" fill="none"/>
-        <path d="M14.5 21 V13.5 C14.5 8.5, 29.5 8.5, 29.5 13.5 V21" stroke="url(#gd-lock-steel)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+        <path d="M14.2 23 V14.5 C14.2 9, 29.8 9, 29.8 14.5 V23" stroke="#222C36" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+        <path d="M14.2 23 V14.5 C14.2 9, 29.8 9, 29.8 14.5 V23" stroke="url(#gd-lock-steel)" stroke-width="2.7" stroke-linecap="round" fill="none"/>
+        <!-- Mechanical locking notch visible when shackle pops up -->
+        <rect x="27.8" y="19.5" width="2.5" height="2.2" fill="#222C36"/>
       </g>
-      <!-- Chamfered Solid Brass Lock Body & Keyhole -->
+
+      <!-- Chamfered Solid Chubb Brass Casing + Corner Rivets + Pivoted Escutcheon Flap -->
       <g class="gd-padlock-body">
-        <path d="M10.5 20.5 L33.5 20.5 L32 37.5 C31.8 39, 30.8 39.5, 29.2 39.5 L14.8 39.5 C13.2 39.5, 12.2 39, 12 37.5 Z" fill="url(#gd-lock-brass)" stroke="#3D2608" stroke-width="1"/>
-        <line x1="12.5" y1="22.2" x2="31.5" y2="22.2" stroke="rgba(255, 245, 200, 0.45)" stroke-width="0.75"/>
-        <circle cx="14.5" cy="36.2" r="1.05" fill="#52350B"/>
-        <circle cx="29.5" cy="36.2" r="1.05" fill="#52350B"/>
-        <!-- Forged keyhole & escutcheon plate -->
-        <ellipse cx="22" cy="30" rx="4.2" ry="5" fill="#7D5214" stroke="#452B08" stroke-width="0.7"/>
-        <circle cx="22" cy="28.4" r="1.6" fill="#1E1408"/>
-        <path d="M21 29.2 L20.5 33.2 L23.5 33.2 L23 29.2 Z" fill="#1E1408"/>
+        <path d="M10 22 L34 22 L32.4 39.2 C32.1 40.8, 31 41.4, 29.3 41.4 L14.7 41.4 C13 41.4, 11.9 40.8, 11.6 39.2 Z" fill="url(#gd-lock-brass)" stroke="#3D2608" stroke-width="1"/>
+        <!-- Milled vertical side flutes -->
+        <line x1="13" y1="24" x2="14" y2="39" stroke="rgba(68, 42, 8, 0.28)" stroke-width="0.9"/>
+        <line x1="31" y1="24" x2="30" y2="39" stroke="rgba(68, 42, 8, 0.28)" stroke-width="0.9"/>
+        <line x1="12" y1="23.6" x2="32" y2="23.6" stroke="rgba(255, 246, 206, 0.52)" stroke-width="0.8"/>
+        <circle cx="14.5" cy="25.5" r="0.95" fill="#52350B"/>
+        <circle cx="29.5" cy="25.5" r="0.95" fill="#52350B"/>
+        <circle cx="15" cy="38.2" r="0.95" fill="#52350B"/>
+        <circle cx="29" cy="38.2" r="0.95" fill="#52350B"/>
+
+        <!-- Recessed warded keyhole plate -->
+        <ellipse cx="22" cy="31.5" rx="4.4" ry="5.2" fill="#6F4810" stroke="#422907" stroke-width="0.7"/>
+        <circle cx="22" cy="29.8" r="1.65" fill="#181006"/>
+        <path d="M21 30.6 L20.4 34.8 L23.6 34.8 L23 30.6 Z" fill="#181006"/>
+
+        <!-- Hinged pivoted brass keyhole dust-cover flap -->
+        <g class="gd-padlock-flap">
+          <ellipse cx="22" cy="31.5" rx="4.2" ry="5" fill="url(#gd-lock-brass)" stroke="#422907" stroke-width="0.75"/>
+          <circle cx="21" cy="25.8" r="1.15" fill="#FBE5A2" stroke="#422907" stroke-width="0.6"/>
+          <path d="M20.2 31.8 Q22 33.4 23.8 31.8" stroke="#53350B" stroke-width="0.7" fill="none"/>
+        </g>
+      </g>
+
+      <!-- Companion Antique Brass Skeleton Key tucked beside lock (glides in & turns on unlock!) -->
+      <g class="gd-padlock-key">
+        <circle cx="43.5" cy="35" r="4.2" stroke="#472E09" stroke-width="2.1" fill="none"/>
+        <circle cx="43.5" cy="35" r="4.2" stroke="url(#gd-lock-brass)" stroke-width="1.2" fill="none"/>
+        <rect x="42.7" y="22.5" width="1.6" height="8.5" rx="0.6" fill="url(#gd-lock-brass)" stroke="#472E09" stroke-width="0.55"/>
+        <path d="M44.3 23.2 H47.2 V24.8 H45.8 V26.0 H47.0 V27.4 H44.3 Z" fill="url(#gd-lock-brass)" stroke="#472E09" stroke-width="0.5"/>
       </g>
     </svg>
   `;
 
-  let lockTimer: number | null = null;
-  const actuate = (withAudio: boolean) => {
-    if (btn.classList) {
-      btn.classList.remove('is-waking');
-      void btn.offsetWidth;
-      btn.classList.add('is-waking');
+  let t1: number | null = null;
+  let t2: number | null = null;
+  let t3: number | null = null;
+  let t4: number | null = null;
+
+  const clearTimers = () => {
+    for (const id of [t1, t2, t3, t4]) {
+      if (id !== null) clearTimeout(id);
     }
-    pulseCardWake(btn);
+  };
+
+  const actuate = (withAudio: boolean) => {
+    clearTimers();
+    btn.classList?.remove('is-waking', 'is-key-turning', 'is-vault-open');
+    void btn.offsetWidth;
+    btn.classList?.add('is-waking');
+    pulseCardWake(btn, 1800);
+
     if (withAudio) {
       playQuickTones([
-        { delay: 0, freq: 1180, endFreq: 860, dur: 0.05, peak: 0.024, type: 'triangle' },
-        { delay: 0.16, freq: 2320, endFreq: 1620, dur: 0.085, peak: 0.032, type: 'triangle' },
+        { delay: 0.04, freq: 920, endFreq: 720, dur: 0.055, peak: 0.02, type: 'triangle' },
+        { delay: 0.28, freq: 1460, endFreq: 1120, dur: 0.06, peak: 0.024, type: 'triangle' },
+        { delay: 0.44, freq: 2420, endFreq: 1740, dur: 0.095, peak: 0.032, type: 'triangle' },
+        { delay: 1.95, freq: 1180, endFreq: 840, dur: 0.08, peak: 0.026, type: 'triangle' },
       ]);
     }
-    if (lockTimer !== null) clearTimeout(lockTimer);
-    lockTimer = window.setTimeout(() => {
+
+    t1 = window.setTimeout(() => {
+      btn.classList?.add('is-key-turning');
+    }, 150);
+
+    t2 = window.setTimeout(() => {
+      btn.classList?.add('is-vault-open');
+    }, 420);
+
+    t3 = window.setTimeout(() => {
+      btn.classList?.remove('is-key-turning', 'is-vault-open');
+    }, 1920);
+
+    t4 = window.setTimeout(() => {
       btn.classList?.remove('is-waking');
-    }, 640);
+    }, 2240);
   };
 
   btn.addEventListener('click', (e) => {
@@ -8253,81 +8412,106 @@ export function createSettingsPadlockProp(): HTMLElement {
 
 /**
  * Prop 4 (Card: Device Push Notifications & Lock-Screen Alerts):
- * Antique brass hotel/dispatch desk bell on a turned mahogany base.
- * Clicking (or cascade beat #4) presses the plunger, rings a two-note brass ping,
- * and sends a subtle concentric sound ripple outward.
+ * 19th-century brushed brass concierge dispatch bell with stepped walnut plinth, inner clapper bead & twin sound ripples.
+ * Clicking depresses the finial plunger, rebounds the dome & clapper, fires staggered acoustic rings, and shifts combo pitch.
  */
 export function createSettingsServiceBellProp(): HTMLElement {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'gd-prop-btn gd-prop-settings-bell';
   btn.setAttribute('aria-label', 'Ring brass notification service bell');
-  btn.title = 'Click to ring brass alert service bell';
+  btn.title = 'Click to ring brass alert service bell (tap repeatedly for concierge chime)';
   btn.tabIndex = -1;
 
   btn.innerHTML = `
-    <span class="gd-settings-bell-wave" aria-hidden="true"></span>
-    <svg class="gd-prop-svg" width="46" height="40" viewBox="0 0 46 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <span class="gd-settings-bell-wave gd-settings-bell-wave-1" aria-hidden="true"></span>
+    <span class="gd-settings-bell-wave gd-settings-bell-wave-2" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="52" height="44" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="gd-deskbell-dome" cx="36%" cy="30%" r="68%">
-          <stop offset="0%" stop-color="#FFF5C8"/>
-          <stop offset="42%" stop-color="#E2AE4B"/>
-          <stop offset="82%" stop-color="#9A681A"/>
-          <stop offset="100%" stop-color="#53350B"/>
+        <radialGradient id="gd-deskbell-dome" cx="35%" cy="28%" r="70%">
+          <stop offset="0%" stop-color="#FFF7D0"/>
+          <stop offset="40%" stop-color="#E5B24E"/>
+          <stop offset="80%" stop-color="#9B681A"/>
+          <stop offset="100%" stop-color="#4F3209"/>
         </radialGradient>
         <linearGradient id="gd-deskbell-wood" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#331B0B"/>
-          <stop offset="35%" stop-color="#6A3B1B"/>
-          <stop offset="75%" stop-color="#4A2710"/>
-          <stop offset="100%" stop-color="#291407"/>
+          <stop offset="0%" stop-color="#2D1608"/>
+          <stop offset="35%" stop-color="#6E3E1D"/>
+          <stop offset="75%" stop-color="#4B2710"/>
+          <stop offset="100%" stop-color="#251205"/>
         </linearGradient>
       </defs>
-      <ellipse cx="23" cy="36.8" rx="17" ry="2.2" fill="rgba(26, 18, 10, 0.24)"/>
-      <!-- Turned mahogany base plinth -->
-      <rect x="7" y="30" width="32" height="5.4" rx="2.2" fill="url(#gd-deskbell-wood)" stroke="#1E0E04" stroke-width="0.85"/>
-      <line x1="9" y1="31.3" x2="37" y2="31.3" stroke="rgba(242, 200, 148, 0.25)" stroke-width="0.65"/>
+
+      <ellipse cx="26" cy="40.2" rx="19" ry="2.4" fill="rgba(22, 14, 6, 0.26)"/>
+
+      <!-- Stepped turned mahogany base plinth + brass bezel pins -->
+      <rect x="7" y="34" width="38" height="4.8" rx="2.2" fill="url(#gd-deskbell-wood)" stroke="#1B0C03" stroke-width="0.85"/>
+      <rect x="10" y="31.8" width="32" height="2.8" rx="1.2" fill="#3D1F0D" stroke="#1B0C03" stroke-width="0.7"/>
+      <line x1="11.5" y1="33.1" x2="40.5" y2="33.1" stroke="rgba(244, 204, 152, 0.28)" stroke-width="0.65"/>
+      <circle cx="11.2" cy="36.3" r="0.85" fill="#DFAD4C"/>
+      <circle cx="40.8" cy="36.3" r="0.85" fill="#DFAD4C"/>
+
+      <!-- Suspended internal brass clapper bead peeking beneath skirt rim -->
+      <g class="gd-deskbell-clapper" style="transform-origin: 26px 26px;">
+        <line x1="26" y1="26" x2="26" y2="31.5" stroke="#53370E" stroke-width="1.2"/>
+        <circle cx="26" cy="31.6" r="1.9" fill="#FCE5A0" stroke="#472E0A" stroke-width="0.65"/>
+      </g>
 
       <!-- Finial Plunger Rod & Cap -->
       <g class="gd-deskbell-plunger">
-        <rect x="21.8" y="8.2" width="2.4" height="5.5" fill="#9A7230" stroke="#452D09" stroke-width="0.6"/>
-        <ellipse cx="23" cy="8.2" rx="4.2" ry="2.0" fill="#FFE79E" stroke="#4A300B" stroke-width="0.75"/>
+        <rect x="24.6" y="8.2" width="2.8" height="6.2" fill="#9E7430" stroke="#452D09" stroke-width="0.65"/>
+        <ellipse cx="26" cy="8.2" rx="4.8" ry="2.2" fill="#FFEA9F" stroke="#4A300B" stroke-width="0.8"/>
+        <ellipse cx="26" cy="7.6" rx="2.8" ry="0.9" fill="rgba(255, 255, 255, 0.55)"/>
       </g>
 
-      <!-- Polished Brass Dome -->
-      <g class="gd-deskbell-dome" style="transform-origin: 23px 30px;">
-        <path d="M10.2 30 C10.2 19, 15.8 13, 23 13 C30.2 13, 35.8 19, 35.8 30 Z" fill="url(#gd-deskbell-dome)" stroke="#472E0A" stroke-width="0.95"/>
-        <path d="M15.2 25.5 C15.2 20, 17.8 16.2, 21 15.2" stroke="rgba(255, 255, 255, 0.72)" stroke-width="1.45" stroke-linecap="round" fill="none"/>
-        <rect x="9.2" y="28.6" width="27.6" height="2" rx="1" fill="#F0CA74" stroke="#472E0A" stroke-width="0.65"/>
+      <!-- Brushed Brass Concierge Dome with equatorial engraving band -->
+      <g class="gd-deskbell-dome" style="transform-origin: 26px 32px;">
+        <path d="M11.6 31.8 C11.6 19.8, 17.8 13.5, 26 13.5 C34.2 13.5, 40.4 19.8, 40.4 31.8 Z" fill="url(#gd-deskbell-dome)" stroke="#472E0A" stroke-width="0.95"/>
+        <path d="M17.0 27.0 C17.0 21.0, 20.0 17.0, 23.6 15.8" stroke="rgba(255, 255, 255, 0.78)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M13.2 26.8 H38.8" stroke="rgba(84, 52, 12, 0.35)" stroke-width="0.75"/>
+        <rect x="10.4" y="30.2" width="31.2" height="2.4" rx="1.1" fill="#F2CC76" stroke="#472E0A" stroke-width="0.7"/>
       </g>
     </svg>
   `;
 
-  const waveEl = btn.querySelector('.gd-settings-bell-wave') as HTMLElement | null;
+  const wave1 = btn.querySelector('.gd-settings-bell-wave-1') as HTMLElement | null;
+  const wave2 = btn.querySelector('.gd-settings-bell-wave-2') as HTMLElement | null;
   let bellTimer: number | null = null;
+  let combo = 0;
+  let lastRingAt = 0;
+
   const actuate = (withAudio: boolean) => {
+    const now = Date.now();
+    combo = now - lastRingAt < 900 ? (combo + 1) % 3 : 0;
+    lastRingAt = now;
+
     if (btn.classList) {
       btn.classList.remove('is-waking');
       void btn.offsetWidth;
       btn.classList.add('is-waking');
     }
-    if (waveEl?.classList) {
-      waveEl.classList.remove('is-ringing');
-      void waveEl.offsetWidth;
-      waveEl.classList.add('is-ringing');
+    for (const w of [wave1, wave2]) {
+      if (w?.classList) {
+        w.classList.remove('is-ringing');
+        void w.offsetWidth;
+        w.classList.add('is-ringing');
+      }
     }
     pulseCardWake(btn);
     if (withAudio) {
+      const pitchMul = combo === 0 ? 1 : combo === 1 ? 1.122 : 1.26;
       playQuickTones([
-        { delay: 0.03, freq: 1975.53, dur: 0.75, peak: 0.034 },
-        { delay: 0.03, freq: 3968.0, dur: 0.35, peak: 0.011 },
-        { delay: 0.14, freq: 2637.02, dur: 0.9, peak: 0.026 },
+        { delay: 0.03, freq: 1975.53 * pitchMul, dur: 0.78, peak: 0.034 },
+        { delay: 0.03, freq: 3968.0 * pitchMul, dur: 0.36, peak: 0.011 },
+        { delay: 0.14, freq: 2637.02 * pitchMul, dur: 0.94, peak: 0.026 },
       ]);
     }
     if (bellTimer !== null) clearTimeout(bellTimer);
     bellTimer = window.setTimeout(() => {
       btn.classList?.remove('is-waking');
-      waveEl?.classList?.remove('is-ringing');
-    }, 900);
+      wave1?.classList?.remove('is-ringing');
+      wave2?.classList?.remove('is-ringing');
+    }, 1050);
   };
 
   btn.addEventListener('click', (e) => {

@@ -27249,125 +27249,208 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-prop-btn.gd-prop-settings-seal {
     position: absolute !important;
-    top: -34px;
-    right: 52px;
+    top: -38px;
+    right: 48px;
     z-index: 6 !important;
     overflow: visible;
   }
 
   .gd-prop-btn.gd-prop-settings-ribbon {
     position: absolute !important;
-    top: -21px;
-    right: 88px;
+    top: -22px;
+    right: 84px;
     z-index: 6 !important;
     overflow: visible;
   }
 
   .gd-prop-btn.gd-prop-settings-padlock {
     position: absolute !important;
-    top: -34px;
-    right: 64px;
+    top: -37px;
+    right: 58px;
     z-index: 6 !important;
     overflow: visible;
   }
 
   .gd-prop-btn.gd-prop-settings-bell {
     position: absolute !important;
-    top: -31px;
-    right: 58px;
+    top: -34px;
+    right: 54px;
     z-index: 6 !important;
     overflow: visible;
   }
 
   .gd-prop-settings-seal .gd-seal-stamp {
-    transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .gd-prop-settings-seal:hover .gd-seal-stamp {
-    transform: translateY(-2px) rotate(-6deg);
+    transform: translateY(-3px) rotate(-8deg);
   }
 
   .gd-prop-settings-seal.is-waking .gd-seal-stamp {
-    animation: gd-seal-press 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: gd-seal-press 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .gd-prop-settings-seal.is-waking .gd-seal-wax-group {
+    animation: gd-seal-wax-squish 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .gd-prop-settings-seal.is-embossed .gd-seal-crest {
+    filter: drop-shadow(0 0 4px rgba(255, 224, 130, 0.95));
+    opacity: 1 !important;
+  }
+
+  .gd-seal-spark {
+    position: absolute;
+    left: 22px;
+    top: 32px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #FFF3B0 0%, #DF8B2B 70%, transparent 100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .gd-prop-settings-seal.is-waking .gd-seal-spark {
+    animation: gd-seal-spark-burst 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.28s forwards;
   }
 
   @keyframes gd-seal-press {
     0%   { transform: translateY(0) rotate(0deg); }
-    24%  { transform: translateY(-5px) rotate(-8deg); }
-    46%  { transform: translate(-12px, 8px) rotate(0deg); }
-    64%  { transform: translate(-12px, 8px) rotate(0deg); }
+    22%  { transform: translate(-4px, -7px) rotate(-9deg); }
+    44%  { transform: translate(-13px, 8.5px) rotate(0deg); }
+    64%  { transform: translate(-13px, 8.5px) rotate(0deg); }
+    82%  { transform: translate(-6px, -2px) rotate(-4deg); }
     100% { transform: translateY(0) rotate(0deg); }
   }
 
+  @keyframes gd-seal-wax-squish {
+    0%, 38% { transform: scale(1, 1); }
+    46%     { transform: scale(1.09, 0.87); }
+    64%     { transform: scale(1.03, 0.96); }
+    100%    { transform: scale(1, 1); }
+  }
+
+  @keyframes gd-seal-spark-burst {
+    0%   { transform: translate(0, 0) scale(0.4); opacity: 0.95; }
+    100% { transform: translate(var(--sx, 14px), var(--sy, -12px)) scale(0.1); opacity: 0; }
+  }
+
   .gd-prop-settings-padlock .gd-padlock-shackle {
-    transition: transform 0.18s ease;
+    transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .gd-prop-settings-padlock .gd-padlock-flap {
+    transform-origin: 21px 25px;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-padlock .gd-padlock-key {
+    transform-origin: 41px 32px;
+    transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  }
+
+  .gd-prop-settings-padlock:hover .gd-padlock-flap {
+    transform: rotate(-18deg);
   }
 
   .gd-prop-settings-padlock:hover .gd-padlock-shackle {
     transform: translateY(-2px);
   }
 
-  .gd-prop-settings-padlock.is-waking .gd-padlock-shackle {
-    animation: gd-padlock-snap 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  .gd-prop-settings-padlock.is-waking .gd-padlock-flap,
+  .gd-prop-settings-padlock.is-vault-open .gd-padlock-flap {
+    transform: rotate(-56deg);
+  }
+
+  .gd-prop-settings-padlock.is-vault-open .gd-padlock-shackle {
+    transform: translateY(-6.5px);
   }
 
   .gd-prop-settings-padlock.is-waking .gd-padlock-body {
-    animation: gd-padlock-body-kick 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: gd-padlock-body-kick 0.54s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  @keyframes gd-padlock-snap {
-    0%   { transform: translateY(0); }
-    32%  { transform: translateY(-4.5px); }
-    52%  { transform: translateY(1px); }
-    72%  { transform: translateY(-1px); }
-    100% { transform: translateY(0); }
+  .gd-prop-settings-padlock.is-key-turning .gd-padlock-key {
+    transform: translate(-15px, -1px) rotate(-85deg) scale(0.95);
   }
 
   @keyframes gd-padlock-body-kick {
-    0%, 42% { transform: translateY(0); }
-    56%     { transform: translateY(2.2px); }
-    76%     { transform: translateY(-0.8px); }
-    100%    { transform: translateY(0); }
+    0%   { transform: translateY(0); }
+    35%  { transform: translateY(-2.4px) rotate(-1.5deg); }
+    62%  { transform: translateY(2px) rotate(1deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+  }
+
+  .gd-prop-settings-bell .gd-deskbell-dome {
+    transition: transform 0.2s ease;
+  }
+
+  .gd-prop-settings-bell:hover .gd-deskbell-dome {
+    transform: translateY(-1px);
   }
 
   .gd-prop-settings-bell.is-waking .gd-deskbell-plunger {
-    animation: gd-deskbell-tap 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: gd-deskbell-tap 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   .gd-prop-settings-bell.is-waking .gd-deskbell-dome {
-    animation: gd-deskbell-shiver 0.72s ease-out forwards;
+    animation: gd-deskbell-shiver 0.85s ease-out forwards;
+  }
+
+  .gd-prop-settings-bell.is-waking .gd-deskbell-clapper {
+    animation: gd-deskbell-clapper 0.72s ease-out forwards;
   }
 
   .gd-settings-bell-wave {
     position: absolute;
-    left: 23px;
-    top: 18px;
-    width: 24px;
-    height: 24px;
+    left: 26px;
+    top: 19px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    border: 1.4px solid rgba(212, 162, 64, 0.86);
+    border: 1.5px solid rgba(218, 166, 56, 0.9);
     transform: translate(-50%, -50%) scale(0.5);
     opacity: 0;
     pointer-events: none;
   }
 
+  .gd-settings-bell-wave-2 {
+    border-color: rgba(235, 194, 92, 0.72);
+    border-width: 1.2px;
+  }
+
   .gd-settings-bell-wave.is-ringing {
-    animation: gd-furin-ring-wave 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: gd-furin-ring-wave 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .gd-settings-bell-wave-2.is-ringing {
+    animation: gd-furin-ring-wave 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.14s forwards;
   }
 
   @keyframes gd-deskbell-tap {
     0%   { transform: translateY(0); }
-    28%  { transform: translateY(4px); }
-    62%  { transform: translateY(-0.6px); }
+    24%  { transform: translateY(4.8px); }
+    58%  { transform: translateY(-0.8px); }
     100% { transform: translateY(0); }
   }
 
   @keyframes gd-deskbell-shiver {
+    0%   { transform: scale(1, 1) rotate(0deg); }
+    16%  { transform: scale(1.06, 0.94) rotate(-3.2deg); }
+    32%  { transform: scale(0.97, 1.03) rotate(3.0deg); }
+    50%  { transform: scale(1.03, 0.97) rotate(-2.2deg); }
+    70%  { transform: scale(0.99, 1.01) rotate(1.3deg); }
+    100% { transform: scale(1, 1) rotate(0deg); }
+  }
+
+  @keyframes gd-deskbell-clapper {
     0%   { transform: rotate(0deg); }
-    18%  { transform: rotate(-3.5deg); }
-    36%  { transform: rotate(3.2deg); }
-    54%  { transform: rotate(-2.2deg); }
-    72%  { transform: rotate(1.4deg); }
+    18%  { transform: rotate(22deg); }
+    38%  { transform: rotate(-18deg); }
+    60%  { transform: rotate(12deg); }
+    80%  { transform: rotate(-6deg); }
     100% { transform: rotate(0deg); }
   }
 
