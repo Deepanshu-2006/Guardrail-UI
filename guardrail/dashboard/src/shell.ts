@@ -1680,7 +1680,7 @@ export class DashboardShell {
     if (restoreSelector && typeof document !== 'undefined') {
       const inputToFocus = this.rootContainer.querySelector(restoreSelector) as HTMLInputElement | null;
       if (inputToFocus) {
-        inputToFocus.focus();
+        inputToFocus.focus({ preventScroll: true });
         if (cursorStart !== null && cursorEnd !== null && typeof inputToFocus.setSelectionRange === 'function') {
           try {
             inputToFocus.setSelectionRange(cursorStart, cursorEnd);
@@ -1851,13 +1851,16 @@ export class DashboardShell {
     // Announce view change to screen readers
     this.announce(`Navigated to ${this.formatViewTitle(view)}`);
 
-    // Move focus to main content region for screen readers
+    // Move focus to main content region for screen readers without scrolling .gd-content-body
     if (this.mainContentEl && typeof this.mainContentEl.focus === 'function') {
       try {
-        this.mainContentEl.focus();
+        this.mainContentEl.focus({ preventScroll: true });
       } catch {
         // Ignore in headless test environments
       }
+    }
+    if (this.contentBodyEl) {
+      this.contentBodyEl.scrollTop = 0;
     }
   }
 

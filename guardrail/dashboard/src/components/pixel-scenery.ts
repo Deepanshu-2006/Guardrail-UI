@@ -412,14 +412,14 @@ function buildWeatheredChainSvg(): string {
 
   return `
     <svg viewBox="0 0 560 128" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
-      <!-- Top forged ceiling bracket -->
-      <rect x="262" y="-1" width="36" height="9" rx="2" fill="#3D3A36" stroke="#23211E" stroke-width="1"/>
-      <line x1="265" y1="2.5" x2="295" y2="2.5" stroke="#6E6A63" stroke-width="0.8" opacity="0.55"/>
-      <circle cx="269" cy="4" r="1.4" fill="#23211E"/>
-      <circle cx="291" cy="4" r="1.4" fill="#23211E"/>
-
-      <!-- Vertical top forged links down to junction ring -->
+      <!-- Vertical top forged links extending past top viewport edge down to junction ring -->
       <g>
+        <rect x="276.6" y="-34" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+        <rect x="276.6" y="-34" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
+        <rect x="278.4" y="-22.5" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+        <rect x="276.6" y="-12.5" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+        <rect x="276.6" y="-12.5" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
+        <rect x="278.4" y="-1" width="3.2" height="12.5" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
         <rect x="276.6" y="7" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
         <rect x="276.6" y="7" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
         <rect x="278.4" y="18.5" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
@@ -562,6 +562,12 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   const greetingCard = document.createElement('div');
   greetingCard.className = `gd-overview-greeting-card phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
 
+  const swingWrap = document.createElement('div');
+  swingWrap.className = 'gd-wood-swing';
+
+  const hoverWrap = document.createElement('div');
+  hoverWrap.className = 'gd-wood-hover';
+
   const hanger = document.createElement('div');
   hanger.className = 'gd-wood-hanger';
   hanger.setAttribute('aria-hidden', 'true');
@@ -614,8 +620,10 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   board.appendChild(grain);
   board.appendChild(windowEl);
 
-  greetingCard.appendChild(hanger);
-  greetingCard.appendChild(board);
+  hoverWrap.appendChild(hanger);
+  hoverWrap.appendChild(board);
+  swingWrap.appendChild(hoverWrap);
+  greetingCard.appendChild(swingWrap);
 
   return greetingCard;
 }
