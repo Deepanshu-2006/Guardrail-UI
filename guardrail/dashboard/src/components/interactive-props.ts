@@ -8377,6 +8377,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
   let scrollEnergy = 0;
   let smoothWeightDocY: number | null = null;
   let prevWeightDocY: number | null = null;
+  let naturalWeightCreep = 0;
   let gongStrikePulse = 0;
   let bottomStrike = 0;
   let cradlePress = 0;
@@ -8480,9 +8481,9 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     { passive: true },
   );
 
-  const largeBrassPath = buildHorologicalGearPath(0, 0, 30, 24.5, 18);
-  const medBronzePath = buildHorologicalGearPath(0, 0, 21.5, 17.2, 13);
-  const smallPinionPath = buildHorologicalGearPath(0, 0, 16, 12.6, 10);
+  const largeBrassPath = buildHorologicalGearPath(0, 0, 27, 21.8, 18);
+  const medBronzePath = buildHorologicalGearPath(0, 0, 22, 17.6, 14);
+  const smallPinionPath = buildHorologicalGearPath(0, 0, 14.5, 11.2, 10);
 
   const drawMetallicGear = (
     cx: number,
@@ -8502,67 +8503,148 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.globalAlpha = alpha;
 
     // Grounded soft shadow on wall behind card
-    ctx.fillStyle = 'rgba(24, 16, 8, 0.18)';
+    ctx.fillStyle = 'rgba(20, 14, 6, 0.24)';
     ctx.beginPath();
-    ctx.arc(2.8, 3.2, outerR * 0.94, 0, Math.PI * 2);
+    ctx.arc(2.4, 2.8, outerR * 0.94, 0, Math.PI * 2);
     ctx.fill();
 
-    // Brushed metallic tooth & rim fill
+    // Brushed metallic tooth & rim fill with beveled edge
     const g = ctx.createLinearGradient(-outerR, -outerR, outerR, outerR);
     if (isSteel) {
-      g.addColorStop(0, '#96B2CD');
-      g.addColorStop(0.5, '#48637D');
-      g.addColorStop(1, '#1E2C3A');
+      g.addColorStop(0, '#AEC8E0');
+      g.addColorStop(0.45, '#4A6985');
+      g.addColorStop(1, '#1B2938');
     } else {
-      g.addColorStop(0, '#FFF1AF');
-      g.addColorStop(0.38, '#D59D3B');
-      g.addColorStop(0.82, '#8C5D14');
-      g.addColorStop(1, '#4A2F07');
+      g.addColorStop(0, '#FFF4B8');
+      g.addColorStop(0.36, '#DDA440');
+      g.addColorStop(0.8, '#936217');
+      g.addColorStop(1, '#4B3008');
     }
     ctx.fillStyle = g;
     ctx.fill(new Path2D(pathStr));
-    ctx.strokeStyle = isSteel ? 'rgba(20, 30, 42, 0.8)' : 'rgba(60, 36, 7, 0.76)';
-    ctx.lineWidth = 0.95;
+    ctx.strokeStyle = isSteel ? 'rgba(18, 28, 40, 0.9)' : 'rgba(54, 32, 6, 0.88)';
+    ctx.lineWidth = 1.0;
     ctx.stroke(new Path2D(pathStr));
 
-    // Machined inner bevel step + recessed ring
-    ctx.fillStyle = 'rgba(28, 20, 12, 0.24)';
+    // Opaque engine-turned dark horological backplate (prevents chain/lines bleeding through)
+    const backGrad = ctx.createRadialGradient(-innerR * 0.25, -innerR * 0.25, 1, 0, 0, innerR);
+    if (isSteel) {
+      backGrad.addColorStop(0, '#283644');
+      backGrad.addColorStop(1, '#161F28');
+    } else {
+      backGrad.addColorStop(0, '#3D2D1B');
+      backGrad.addColorStop(1, '#21170D');
+    }
+    ctx.fillStyle = backGrad;
     ctx.beginPath();
     ctx.arc(0, 0, innerR, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = isSteel ? 'rgba(176, 206, 232, 0.5)' : 'rgba(255, 242, 186, 0.56)';
-    ctx.lineWidth = 0.9;
+
+    // Crisp recessed metallic bevel ring
+    ctx.strokeStyle = isSteel ? 'rgba(186, 214, 238, 0.65)' : 'rgba(255, 240, 180, 0.68)';
+    ctx.lineWidth = 1.05;
     ctx.stroke();
 
-    // Fine watchmaker spokes & rim screws
-    ctx.strokeStyle = isSteel ? '#506B84' : '#9E6E20';
-    ctx.lineWidth = Math.max(1.8, outerR * 0.11);
+    // Subtle concentric lathe-turned guilloché ring inside recess
+    ctx.strokeStyle = isSteel ? 'rgba(128, 162, 194, 0.25)' : 'rgba(232, 190, 96, 0.24)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.arc(0, 0, innerR * 0.64, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Sculpted watchmaker spokes with crisp metallic sheen
+    ctx.strokeStyle = isSteel ? '#6B8AA8' : '#E0AB4B';
+    ctx.lineWidth = Math.max(2.0, outerR * 0.115);
     ctx.lineCap = 'round';
     ctx.beginPath();
     for (let i = 0; i < spokes; i += 1) {
       const a = (i * Math.PI * 2) / spokes;
-      ctx.moveTo(Math.cos(a) * (outerR * 0.18), Math.sin(a) * (outerR * 0.18));
-      ctx.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
+      ctx.moveTo(Math.cos(a) * (outerR * 0.2), Math.sin(a) * (outerR * 0.2));
+      ctx.lineTo(Math.cos(a) * (innerR - 0.8), Math.sin(a) * (innerR - 0.8));
     }
     ctx.stroke();
 
+    // Tiny rim jewel screws aligned with spoke tips
+    ctx.fillStyle = isSteel ? '#DFB358' : '#FFF0AC';
+    for (let i = 0; i < spokes; i += 1) {
+      const a = ((i + 0.5) * Math.PI * 2) / spokes;
+      const sr = innerR + (outerR * 0.78 - innerR) * 0.45;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * sr, Math.sin(a) * sr, Math.max(0.75, outerR * 0.036), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // Turned brass collet arbor + gleaming horological ruby pivot jewel
-    ctx.fillStyle = isSteel ? '#E4B85B' : '#FCE6A2';
+    ctx.fillStyle = isSteel ? '#E5B95B' : '#FDE7A3';
     ctx.beginPath();
-    ctx.arc(0, 0, outerR * 0.21, 0, Math.PI * 2);
+    ctx.arc(0, 0, outerR * 0.22, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(52, 34, 10, 0.7)';
-    ctx.lineWidth = 0.75;
+    ctx.strokeStyle = 'rgba(48, 30, 8, 0.82)';
+    ctx.lineWidth = 0.85;
     ctx.stroke();
 
-    ctx.fillStyle = '#9E2222';
+    ctx.fillStyle = '#A62222';
     ctx.beginPath();
-    ctx.arc(0, 0, Math.max(1.8, outerR * 0.085), 0, Math.PI * 2);
+    ctx.arc(0, 0, Math.max(2.0, outerR * 0.095), 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255, 224, 218, 0.8)';
+    ctx.fillStyle = 'rgba(255, 228, 222, 0.88)';
     ctx.beginPath();
-    ctx.arc(-outerR * 0.025, -outerR * 0.025, Math.max(0.65, outerR * 0.03), 0, Math.PI * 2);
+    ctx.arc(-outerR * 0.028, -outerR * 0.028, Math.max(0.7, outerR * 0.035), 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.restore();
+  };
+
+  const drawMountedRatchetClick = (
+    pivotX: number,
+    pivotY: number,
+    armAngle: number,
+    tickAngle: number,
+    flipTooth: boolean,
+    alpha: number,
+  ) => {
+    ctx.save();
+    ctx.translate(pivotX, pivotY);
+    ctx.rotate(armAngle);
+    if (flipTooth) ctx.scale(1, -1);
+    ctx.globalAlpha = alpha;
+
+    // Dark-bronze mounting stud plate
+    ctx.fillStyle = '#332210';
+    ctx.strokeStyle = '#181008';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, 4.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Articulated curved blued-steel click pawl resting onto crown wheel teeth
+    ctx.save();
+    ctx.rotate(tickAngle);
+    const pg = ctx.createLinearGradient(0, -3, 18, 3);
+    pg.addColorStop(0, '#6B8AA8');
+    pg.addColorStop(1, '#253647');
+    ctx.fillStyle = pg;
+    ctx.strokeStyle = '#131C26';
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(-2, -2.8);
+    ctx.quadraticCurveTo(9, -4.0, 17.5, -0.5);
+    ctx.lineTo(13.5, 3.0);
+    ctx.quadraticCurveTo(6, 1.5, -2, 2.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Brass pivot screw head
+    ctx.fillStyle = '#F2CE74';
+    ctx.strokeStyle = '#472E0A';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
 
     ctx.restore();
   };
@@ -8901,6 +8983,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
       lastScrollTop = -1;
       smoothWeightDocY = null;
       prevWeightDocY = null;
+      naturalWeightCreep = 0;
       gongStrikePulse = 0;
       bottomStrike = 0;
       cradlePress = 0;
@@ -8968,6 +9051,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     if (!active && deploy <= 0.015) {
       smoothWeightDocY = null;
       prevWeightDocY = null;
+      naturalWeightCreep = 0;
       cradlePress = 0;
       bottomGongTriggered = false;
       strikeTimerElapsed = -1;
@@ -9008,8 +9092,8 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
         const rightRailX = Math.min(clipRight - 10, firstCard.right + 15);
         const slideOut = 1 - ease;
 
-        // 1. Continuous Brass Chains running cleanly down to corner pulley sheaves just under lastCard
-        const topRailY = firstCard.top + 27;
+        // 1. Continuous Brass Chains emerging cleanly from the top sprockets down to corner brackets
+        const topRailY = firstCard.top + 30;
         const botRailY = lastCard.bottom - 10;
 
         if (botRailY > topRailY + 24) {
@@ -9018,22 +9102,33 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
             : 1;
           const scrollRatio = Math.min(1, Math.max(0, curScrollTop / maxScroll));
 
-          const minWeightY = topRailY + 76;
+          const minWeightY = topRailY + 72;
           const maxWeightY = Math.max(minWeightY + 12, botRailY - 56);
           const minWeightDocY = minWeightY + curScrollTop;
           const maxWeightDocY = maxWeightY + curScrollTop;
+          const railSpanDoc = Math.max(24, maxWeightDocY - minWeightDocY);
 
-          // Rest toward lower viewport & ride smoothly down all the way to the bottom rail as user scrolls
-          const visFraction = 0.68 + scrollRatio * 0.24;
-          const rawTargetVisY = clipTop + (clipBot - clipTop) * visFraction;
-          const targetWeightVisY = Math.min(maxWeightY, Math.max(minWeightY, rawTargetVisY));
-          const targetWeightDocY = targetWeightVisY + curScrollTop;
+          // Natural mechanical downward descent when active + ease creep cleanly near bottom
+          if (active && scrollRatio < 0.94) {
+            const maxCreep = Math.max(0, Math.min(260, (clipBot - 95 - minWeightY) * (1 - scrollRatio)));
+            naturalWeightCreep = Math.min(maxCreep, naturalWeightCreep + dt * 24);
+          } else if (scrollRatio >= 0.94) {
+            naturalWeightCreep += (0 - naturalWeightCreep) * Math.min(1, dt * 6.5);
+          }
+
+          // Travel proportionally down the document rails in sync with scroll + steady gravity descent
+          const escTick = Math.sin(clock * Math.PI * 1.15) * 0.65;
+          const targetWeightDocY = Math.min(
+            maxWeightDocY,
+            Math.max(minWeightDocY, minWeightDocY + railSpanDoc * scrollRatio + naturalWeightCreep + escTick),
+          );
 
           if (smoothWeightDocY === null) {
             smoothWeightDocY = minWeightDocY;
             prevWeightDocY = smoothWeightDocY;
           } else {
-            smoothWeightDocY += (targetWeightDocY - smoothWeightDocY) * Math.min(1, dt * 8.2);
+            // Responsive brass tracking with smooth physical inertia
+            smoothWeightDocY += (targetWeightDocY - smoothWeightDocY) * Math.min(1, dt * 8.5);
           }
           smoothWeightDocY = Math.min(maxWeightDocY, Math.max(minWeightDocY, smoothWeightDocY));
 
@@ -9041,7 +9136,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           drawPulleyAndChain(leftRailX, topRailY, botRailY, clipTop, clipBot, chainPhase, ease * 0.78);
           drawPulleyAndChain(rightRailX, topRailY, botRailY, clipTop, clipBot, chainPhase, ease * 0.78);
 
-          const sway = Math.sin(clock * 1.35) * (3.5 + scrollEnergy * 2.5);
+          const sway = Math.sin(clock * 0.92) * (4.8 + scrollEnergy * 2.0);
           const baseWeightVisY = smoothWeightDocY - curScrollTop;
           const leftWeightY = Math.min(maxWeightY, Math.max(minWeightY, baseWeightVisY + sway));
           const rightWeightY = Math.min(maxWeightY, Math.max(minWeightY, baseWeightVisY - sway));
@@ -9136,7 +9231,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           prevWeightDocY = smoothWeightDocY;
         }
 
-        // 2. TOP ONLY: Crown Clockwork Gear Train tucked strictly behind the TOP corners of the first card
+        // 2. TOP ONLY: High-visibility Mounted Mainspring & Crown Clockwork Trains tucked behind upper oak corners
         if (firstCard.bottom >= clipTop - 70 && firstCard.top <= clipBot + 70) {
           const topHovered =
             pointerX >= firstCard.left &&
@@ -9152,43 +9247,101 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           const mainRad = (baseDeg * Math.PI) / 180;
           const subRad = (-baseDeg * 1.38 * Math.PI) / 180;
 
-          // Top-right crown gear + blued-steel pinion + ratchet pawl
-          const rightGx = firstCard.right + 11 - slideOut * 28;
-          const rightGy = firstCard.top + 27;
-          drawMetallicGear(rightGx, rightGy, largeBrassPath, 30, 20.2, 6, mainRad, false, ease * 0.88);
-          drawMetallicGear(
-            rightGx + 14.5,
-            rightGy + 38,
-            smallPinionPath,
-            16,
-            10.5,
-            4,
-            -mainRad * 1.8 + 0.2,
-            true,
-            ease * 0.86,
-          );
+          // TOP-RIGHT: 18T Main Brass Crown Wheel (prominent above/right corner) + 10T Chain-Drive Steel Pinion + Mounted Click Pawl
+          const rightGx = firstCard.right - 2 - slideOut * 22;
+          const rightGy = firstCard.top + 4;
+          const rightPinionX = rightRailX;
+          const rightPinionY = firstCard.top + 36;
+          const rightClickPx = rightGx + 25;
+          const rightClickPy = rightGy - 23;
+          const rightClickAngle = Math.atan2(rightGy - 6 - rightClickPy, rightGx + 25.5 - rightClickPx);
 
-          const pawlTick = Math.sin(mainRad * 18) * 0.14;
+          // Forged dark-bronze mounting bridge behind right gears
           ctx.save();
-          ctx.translate(rightGx + 22, rightGy - 23);
-          ctx.rotate(0.55 + pawlTick);
-          ctx.globalAlpha = ease * 0.82;
-          ctx.fillStyle = '#3C4D5E';
-          ctx.strokeStyle = '#18212A';
-          ctx.lineWidth = 0.8;
+          ctx.globalAlpha = ease * 0.92;
+          ctx.strokeStyle = '#3B2710';
+          ctx.lineWidth = 4.6;
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.moveTo(0, -2.5);
-          ctx.lineTo(11, 0);
-          ctx.lineTo(2, 2.8);
-          ctx.closePath();
-          ctx.fill();
+          ctx.moveTo(rightGx, rightGy);
+          ctx.lineTo(rightPinionX, rightPinionY);
+          ctx.moveTo(rightClickPx, rightClickPy);
+          ctx.lineTo(rightGx, rightGy);
+          ctx.stroke();
+          ctx.strokeStyle = '#C89638';
+          ctx.lineWidth = 1.6;
           ctx.stroke();
           ctx.restore();
 
-          // Top-left secondary escapement wheel strictly at TOP-LEFT corner (never bottom-left)
-          const leftGx = firstCard.left - 8 + slideOut * 22;
-          const leftGy = firstCard.top + 27;
-          drawMetallicGear(leftGx, leftGy, medBronzePath, 21.5, 14.2, 5, subRad, false, ease * 0.86);
+          drawMetallicGear(rightGx, rightGy, largeBrassPath, 27, 17.5, 6, mainRad, false, ease * 0.96);
+          drawMetallicGear(
+            rightPinionX,
+            rightPinionY,
+            smallPinionPath,
+            14.5,
+            8.8,
+            4,
+            -mainRad * 1.8 + 0.2,
+            true,
+            ease * 0.96,
+          );
+
+          const pawlTick = Math.sin(mainRad * 18) * 0.11;
+          drawMountedRatchetClick(
+            rightClickPx,
+            rightClickPy,
+            rightClickAngle,
+            pawlTick,
+            false,
+            ease * 0.94,
+          );
+
+          // TOP-LEFT: Prominent 14T Bronze Mainspring Wheel + 10T Left Chain-Drive Steel Pinion + Mounted Click Pawl
+          const leftGx = firstCard.left + 4 + slideOut * 20;
+          const leftGy = firstCard.top - 1;
+          const leftPinionX = leftRailX;
+          const leftPinionY = firstCard.top + 28;
+          const leftClickPx = leftGx - 22;
+          const leftClickPy = leftGy - 20;
+          const leftClickAngle = Math.atan2(leftGy - 4 - leftClickPy, leftGx - 21 - leftClickPx);
+
+          ctx.save();
+          ctx.globalAlpha = ease * 0.92;
+          ctx.strokeStyle = '#3B2710';
+          ctx.lineWidth = 4.6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(leftGx, leftGy);
+          ctx.lineTo(leftPinionX, leftPinionY);
+          ctx.moveTo(leftClickPx, leftClickPy);
+          ctx.lineTo(leftGx, leftGy);
+          ctx.stroke();
+          ctx.strokeStyle = '#C89638';
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
+          ctx.restore();
+
+          drawMetallicGear(leftGx, leftGy, medBronzePath, 22, 14.2, 5, subRad, false, ease * 0.96);
+          drawMetallicGear(
+            leftPinionX,
+            leftPinionY,
+            smallPinionPath,
+            14.5,
+            8.8,
+            4,
+            -subRad * 1.4 + 0.15,
+            true,
+            ease * 0.96,
+          );
+
+          drawMountedRatchetClick(
+            leftClickPx,
+            leftClickPy,
+            leftClickAngle,
+            pawlTick,
+            true,
+            ease * 0.94,
+          );
         }
 
         // 3. BOTTOM ONLY: Tubular Brass Westminster Chimes (Left) & Gridiron Regulator Pendulum (Right) seated cleanly under corners
