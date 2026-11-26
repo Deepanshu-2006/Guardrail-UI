@@ -2477,6 +2477,11 @@ let sharedHourglassAngle = 0;
 let sharedBulbASand = 0; // 0..1 fraction of sand in Bulb A (y=21..52); Bulb B holds (1 - sharedBulbASand)
 let sharedStormCalmingRemaining = 0; // seconds left in Option-2 dramatic wind-down after mid-storm flip
 
+const historyEraLiveState = {
+  active: false,
+  weights: [0, 0, 0, 0] as [number, number, number, number],
+};
+
 /**
  * Shared spring-physics & 3D letter-flip interaction for animated page headings
  * when their companion prop (Overview Lantern or Pending Hourglass) is active.
@@ -2485,7 +2490,7 @@ export function attachInteractiveHeadingSprings(
   titleEl: HTMLElement,
   isActiveFn: () => boolean,
   onLetterClick?: (charRect: DOMRect) => void,
-  mode: 'thermal' | 'wind-banner' | 'tick' = 'thermal',
+  mode: 'thermal' | 'wind-banner' | 'tick' | 'history-eras' = 'thermal',
 ): void {
   const chars = Array.from(titleEl.querySelectorAll('.gd-char')) as HTMLElement[];
   if (!chars.length || typeof requestAnimationFrame !== 'function') return;
@@ -2495,10 +2500,14 @@ export function attachInteractiveHeadingSprings(
     y: number;
     rot: number;
     flip: number;
+    sx: number;
+    sy: number;
     vx: number;
     vy: number;
     vrot: number;
     vflip: number;
+    vsx: number;
+    vsy: number;
     glow: number;
   }
 
@@ -2507,10 +2516,14 @@ export function attachInteractiveHeadingSprings(
     y: 0,
     rot: 0,
     flip: 0,
+    sx: 1,
+    sy: 1,
     vx: 0,
     vy: 0,
     vrot: 0,
     vflip: 0,
+    vsx: 0,
+    vsy: 0,
     glow: 0,
   }));
 
@@ -2558,6 +2571,8 @@ export function attachInteractiveHeadingSprings(
       let targetX = 0;
       let targetY = 0;
       let targetRot = 0;
+      let targetSx = 1;
+      let targetSy = 1;
       let targetGlow = 0;
 
       if (active) {
@@ -2572,6 +2587,65 @@ export function attachInteractiveHeadingSprings(
           targetX = loose * (14 + gustStrength * 14) + wave * loose * 4.5;
           targetY = -loose * (8 + gustStrength * 10) + wave * loose * (11 + gustStrength * 6);
           targetRot = loose * 6 + waveDeriv * loose * (13 + gustStrength * 8);
+        } else if (mode === 'history-eras') {
+          const [wSteam, wKnights, wEgypt, wVolcano] = historyEraLiveState.active
+            ? historyEraLiveState.weights
+            : ([0, 0, 0, 0] as const);
+          const wTotal = Math.min(1, wSteam + wKnights + wEgypt + wVolcano);
+          const wTick = Math.max(0, 1 - wTotal);
+          const u = i / Math.max(1, chars.length - 1);
+
+          // 0. Neutral mechanical tick during pocket-watch wind-up / wind-down
+          const beat = clock * 2.4;
+          const stepIdx = Math.floor(beat);
+          const frac = beat - stepIdx;
+          const snapped = stepIdx + Math.min(1, frac * 4.2);
+          const tickY = Math.sin(snapped * 0.95 + i * 0.65) * 1.9 - 1.1;
+          const tickRot = Math.cos(snapped * 1.15 + i * 0.85) * 1.5;
+
+          // 1. Steam Locomotive: rhythmic chugging piston wave & boiler exhaust pop
+          const chugPhase = clock * 5.8 - u * 2.1;
+          const exhaust = Math.pow(Math.max(0, Math.sin(clock * 2.9)), 8);
+          const steamX = Math.cos(chugPhase) * 2.4 + exhaust * 1.6;
+          const steamY = Math.sin(chugPhase) * 2.8 - 1.4 - exhaust * 3.4;
+          const steamRot = Math.cos(chugPhase) * 3.2;
+          const steamSx = 1 - exhaust * 0.03;
+          const steamSy = 1 + exhaust * 0.055;
+
+          // 2. Knights Age (Blood): heavy viscous sag, lub-dub heartbeat heave & sword-clash tremor
+          const hb =
+            Math.pow(Math.max(0, Math.sin(clock * 3.1)), 6) * 0.75 +
+            Math.pow(Math.max(0, Math.sin(clock * 3.1 - 0.55)), 8) * 0.55;
+          const clash = Math.pow(Math.max(0, Math.sin(clock * 1.25)), 18);
+          const knightsX = Math.sin(clock * 46 + i * 1.1) * clash * 2.6;
+          const knightsY = 2.4 + Math.sin(clock * 1.4 + i * 0.8) * 1.5 + hb * 2.2;
+          const knightsRot = Math.sin(clock * 1.1 + i * 0.9) * 1.6 + Math.cos(clock * 42 + i) * clash * 3.2;
+          const knightsSx = 1 - 0.025 - hb * 0.015;
+          const knightsSy = 1 + 0.055 + hb * 0.04;
+
+          // 3. Ancient Egypt (Dust & Sand): warm khamsin wind wave flowing left-to-right
+          const gustWave = 0.6 + 0.4 * Math.sin(clock * 1.6);
+          const dunePhase = clock * 3.8 - u * 4.4;
+          const egyptX = Math.cos(dunePhase * 0.75) * 2.6 + gustWave * 2.4;
+          const egyptY = Math.sin(dunePhase) * (2.6 + gustWave * 1.1) - 0.8;
+          const egyptRot = 2.2 + Math.sin(dunePhase) * (3.6 + gustWave * 1.2);
+          const egyptSx = 1 + Math.sin(dunePhase) * 0.03;
+          const egyptSy = 1 - Math.sin(dunePhase) * 0.025;
+
+          // 4. Volcanic Age (Fire): blistering upward flame shimmer & caldera tremble
+          const quake = Math.pow(Math.max(0, Math.sin(clock * 1.4)), 14);
+          const flameDance = Math.sin(clock * 10.5 + i * 1.45) * 2.5 + Math.cos(clock * 16.2 + i * 2.3) * 1.3;
+          const volcanoX = Math.sin(clock * 9.2 + i * 1.7) * 1.5 + Math.sin(clock * 54 + i) * quake * 3.2;
+          const volcanoY = -3.4 + flameDance - quake * 1.4;
+          const volcanoRot = Math.sin(clock * 12.8 + i * 1.9) * 3.9;
+          const volcanoSx = 1 - Math.sin(clock * 14 + i * 1.7) * 0.028;
+          const volcanoSy = 1 + Math.sin(clock * 14 + i * 1.7) * 0.065;
+
+          targetX = wSteam * steamX + wKnights * knightsX + wEgypt * egyptX + wVolcano * volcanoX;
+          targetY = wTick * tickY + wSteam * steamY + wKnights * knightsY + wEgypt * egyptY + wVolcano * volcanoY;
+          targetRot = wTick * tickRot + wSteam * steamRot + wKnights * knightsRot + wEgypt * egyptRot + wVolcano * volcanoRot;
+          targetSx = wTick * 1 + wSteam * steamSx + wKnights * knightsSx + wEgypt * egyptSx + wVolcano * volcanoSx;
+          targetSy = wTick * 1 + wSteam * steamSy + wKnights * knightsSy + wEgypt * egyptSy + wVolcano * volcanoSy;
         } else if (mode === 'tick') {
           const beat = clock * 2.4;
           const stepIdx = Math.floor(beat);
@@ -2608,22 +2682,27 @@ export function attachInteractiveHeadingSprings(
       s.vy += ((targetY - s.y) * kSpring - s.vy * kDamp) * dt;
       s.vrot += ((targetRot - s.rot) * (active ? 130 : 210) - s.vrot * (active ? 10 : 15)) * dt;
       s.vflip += ((0 - s.flip) * 95 - s.vflip * 9) * dt;
+      s.vsx += ((targetSx - s.sx) * (active ? 150 : 220) - s.vsx * 13) * dt;
+      s.vsy += ((targetSy - s.sy) * (active ? 150 : 220) - s.vsy * 13) * dt;
 
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       s.rot += s.vrot * dt;
       s.flip += s.vflip * dt;
+      s.sx += s.vsx * dt;
+      s.sy += s.vsy * dt;
       s.glow += (targetGlow - s.glow) * Math.min(1, dt * 12);
 
       if (
         Math.abs(s.x) > 0.05 || Math.abs(s.y) > 0.05 ||
         Math.abs(s.rot) > 0.05 || Math.abs(s.flip) > 0.2 ||
+        Math.abs(s.sx - 1) > 0.004 || Math.abs(s.sy - 1) > 0.004 ||
         Math.abs(s.vx) > 0.1 || Math.abs(s.vy) > 0.1
       ) {
         anyMoving = true;
       }
 
-      ch.style.transform = `translate3d(${s.x.toFixed(2)}px, ${s.y.toFixed(2)}px, 0) rotate(${s.rot.toFixed(2)}deg) rotateY(${s.flip.toFixed(1)}deg)`;
+      ch.style.transform = `translate3d(${s.x.toFixed(2)}px, ${s.y.toFixed(2)}px, 0) rotate(${s.rot.toFixed(2)}deg) rotateY(${s.flip.toFixed(1)}deg) scale(${s.sx.toFixed(3)}, ${s.sy.toFixed(3)})`;
       ch.style.setProperty('--char-glow', s.glow.toFixed(2));
     }
 
@@ -4541,7 +4620,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
   }
 
   interface HeadingEraParticle {
-    mode: 'steam' | 'sand' | 'dust' | 'ember' | 'ash';
+    mode: 'steam' | 'steam_spark' | 'sand_streak' | 'sand_fall' | 'dust' | 'ember' | 'ash';
     x: number;
     y: number;
     vx: number;
@@ -4553,33 +4632,122 @@ export function createHistoryRewindOverlay(): HTMLElement {
     seed: number;
   }
 
-  const headingDrips: HeadingBloodDrip[] = Array.from({ length: 11 }, (_, idx) => ({
+  const headingDrips: HeadingBloodDrip[] = Array.from({ length: 15 }, (_, idx) => ({
     slot: idx,
-    offsetRatio: 0.22 + ((idx * 37) % 56) / 100,
-    phase: 'swell',
-    progress: (idx * 0.23) % 0.9,
-    speed: 0.36 + ((idx * 19) % 32) / 100,
-    fallDist: 0,
-    vy: 0,
-    maxDropDist: 36 + ((idx * 17) % 34),
+    offsetRatio: 0.18 + ((idx * 41) % 64) / 100,
+    phase: idx % 3 === 0 ? 'fall' : 'swell',
+    progress: (idx * 0.21) % 0.92,
+    speed: 0.42 + ((idx * 17) % 38) / 100,
+    fallDist: idx % 3 === 0 ? 12 + (idx % 4) * 5 : 0,
+    vy: idx % 3 === 0 ? 40 : 0,
+    maxDropDist: 34 + ((idx * 23) % 42),
     splatAge: 0,
-    radius: 2.1 + (idx % 3) * 0.55,
+    radius: 1.9 + (idx % 4) * 0.48,
   }));
   const headingParticles: HeadingEraParticle[] = [];
   let headingEmitAcc = 0;
   let lastEraAttr: string | null = null;
 
-  const syncHeadingEraAttr = (nextEra: string | null) => {
-    if (nextEra === lastEraAttr) return;
-    lastEraAttr = nextEra;
-    if (typeof document === 'undefined') return;
-    const appEl = document.querySelector('.gd-dashboard-app');
-    if (!appEl) return;
-    if (nextEra) appEl.setAttribute('data-history-era', nextEra);
-    else appEl.removeAttribute('data-history-era');
+  // RGB[A] palette anchors for continuous gradient & glow blending across eras:
+  // [Neutral, Steam (1885), Knights Blood (1420), Egypt Sand (2500 BC), Volcano Fire (66M BC)]
+  const ERA_COLOR_STOPS = {
+    c0: [
+      [42, 33, 24],
+      [96, 112, 124],
+      [246, 46, 46],
+      [250, 218, 138],
+      [255, 250, 186],
+    ],
+    c1: [
+      [31, 24, 17],
+      [48, 59, 68],
+      [168, 8, 8],
+      [208, 146, 52],
+      [255, 128, 22],
+    ],
+    c2: [
+      [22, 16, 11],
+      [104, 72, 42],
+      [68, 2, 2],
+      [114, 68, 18],
+      [148, 18, 4],
+    ],
+    glowTop: [
+      [255, 220, 150, 0],
+      [248, 250, 252, 0.85],
+      [255, 115, 115, 0.26],
+      [255, 236, 178, 0.42],
+      [255, 164, 38, 0.94],
+    ],
+    glowBottom: [
+      [218, 158, 52, 0.22],
+      [235, 242, 246, 0.72],
+      [130, 5, 5, 0.66],
+      [194, 138, 48, 0.56],
+      [220, 42, 4, 0.78],
+    ],
+  } as const;
+
+  const blendRgb = (stops: readonly (readonly [number, number, number])[], w: readonly [number, number, number, number], wN: number) => {
+    const r = Math.round(wN * stops[0][0] + w[0] * stops[1][0] + w[1] * stops[2][0] + w[2] * stops[3][0] + w[3] * stops[4][0]);
+    const g = Math.round(wN * stops[0][1] + w[0] * stops[1][1] + w[1] * stops[2][1] + w[2] * stops[3][1] + w[3] * stops[4][1]);
+    const b = Math.round(wN * stops[0][2] + w[0] * stops[1][2] + w[1] * stops[2][2] + w[2] * stops[3][2] + w[3] * stops[4][2]);
+    return `rgb(${r}, ${g}, ${b})`;
   };
 
-  const updateAndDrawHeadingEraFx = (dt: number, eraIdx: number, alpha: number, isActiveEra: boolean) => {
+  const blendRgba = (
+    stops: readonly (readonly [number, number, number, number])[],
+    w: readonly [number, number, number, number],
+    wN: number,
+    volcanoFlicker = 1,
+  ) => {
+    const w3 = w[3] * volcanoFlicker;
+    const r = Math.round(wN * stops[0][0] + w[0] * stops[1][0] + w[1] * stops[2][0] + w[2] * stops[3][0] + w3 * stops[4][0]);
+    const g = Math.round(wN * stops[0][1] + w[0] * stops[1][1] + w[1] * stops[2][1] + w[2] * stops[3][1] + w3 * stops[4][1]);
+    const b = Math.round(wN * stops[0][2] + w[0] * stops[1][2] + w[1] * stops[2][2] + w[2] * stops[3][2] + w3 * stops[4][2]);
+    const a = wN * stops[0][3] + w[0] * stops[1][3] + w[1] * stops[2][3] + w[2] * stops[3][3] + w3 * stops[4][3];
+    return `rgba(${r}, ${g}, ${b}, ${Math.min(1, Math.max(0, a)).toFixed(3)})`;
+  };
+
+  const syncHeadingEraVisuals = (
+    nextEra: string | null,
+    weights: readonly [number, number, number, number],
+    nowClock: number,
+  ) => {
+    if (typeof document === 'undefined') return;
+    if (nextEra !== lastEraAttr) {
+      lastEraAttr = nextEra;
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (appEl) {
+        if (nextEra) appEl.setAttribute('data-history-era', nextEra);
+        else appEl.removeAttribute('data-history-era');
+      }
+    }
+    const titleEl = document.getElementById('history-title');
+    if (!titleEl) return;
+    const wSum = Math.min(1, weights[0] + weights[1] + weights[2] + weights[3]);
+    if (!nextEra && wSum <= 0.01) {
+      titleEl.style.removeProperty('--era-c0');
+      titleEl.style.removeProperty('--era-c1');
+      titleEl.style.removeProperty('--era-c2');
+      titleEl.style.removeProperty('--era-glow-top');
+      titleEl.style.removeProperty('--era-glow-bottom');
+      return;
+    }
+    const wN = Math.max(0, 1 - wSum);
+    const vFlicker = 0.8 + 0.22 * Math.sin(nowClock * 10.5) + 0.1 * Math.cos(nowClock * 17.2);
+    titleEl.style.setProperty('--era-c0', blendRgb(ERA_COLOR_STOPS.c0, weights, wN));
+    titleEl.style.setProperty('--era-c1', blendRgb(ERA_COLOR_STOPS.c1, weights, wN));
+    titleEl.style.setProperty('--era-c2', blendRgb(ERA_COLOR_STOPS.c2, weights, wN));
+    titleEl.style.setProperty('--era-glow-top', blendRgba(ERA_COLOR_STOPS.glowTop, weights, wN, vFlicker));
+    titleEl.style.setProperty('--era-glow-bottom', blendRgba(ERA_COLOR_STOPS.glowBottom, weights, wN, vFlicker));
+  };
+
+  const updateAndDrawHeadingEraFx = (
+    dt: number,
+    weights: readonly [number, number, number, number],
+    alpha: number,
+  ) => {
     if (typeof document === 'undefined') return;
     const titleEl = document.getElementById('history-title');
     if (!titleEl) {
@@ -4587,8 +4755,10 @@ export function createHistoryRewindOverlay(): HTMLElement {
       return;
     }
     const titleRect = titleEl.getBoundingClientRect();
-    if (titleRect.width <= 0 || titleRect.height <= 0 || alpha <= 0.02) {
-      if (alpha <= 0.02) headingParticles.length = 0;
+    const [wSteam, wKnights, wEgypt, wVolcano] = weights;
+    const wTotal = wSteam + wKnights + wEgypt + wVolcano;
+    if (titleRect.width <= 0 || titleRect.height <= 0 || alpha <= 0.02 || wTotal <= 0.01) {
+      if (alpha <= 0.02 || wTotal <= 0.01) headingParticles.length = 0;
       return;
     }
 
@@ -4598,76 +4768,117 @@ export function createHistoryRewindOverlay(): HTMLElement {
       .filter((c) => c.ch.trim().length > 0 && c.r.width > 0);
     if (charRects.length === 0) return;
 
-    // Emit fresh era-specific physics particles tied strictly to #history-title glyphs
-    if (isActiveEra) {
-      headingEmitAcc += dt;
-      if (eraIdx === 0) {
-        // Railway: billowing boiler steam puffs & faint coal glints
-        while (headingEmitAcc >= 0.055) {
-          headingEmitAcc -= 0.055;
-          const pick = charRects[Math.floor(Math.random() * charRects.length)].r;
-          headingParticles.push({
-            mode: 'steam',
-            x: pick.left + Math.random() * pick.width,
-            y: pick.top + 6 + Math.random() * (pick.height * 0.45),
-            vx: 16 + Math.random() * 26,
-            vy: -(24 + Math.random() * 28),
-            r: 4.5 + Math.random() * 4.5,
-            grow: 11 + Math.random() * 8,
-            age: 0,
-            maxAge: 0.9 + Math.random() * 0.75,
-            seed: Math.random() * 6.28,
-          });
-        }
-      } else if (eraIdx === 2) {
-        // Ancient Egypt: swirling sunlit sand grains + warm desert ochre dust veils
-        while (headingEmitAcc >= 0.022) {
-          headingEmitAcc -= 0.022;
-          const isDust = Math.random() < 0.24;
-          const yBand = titleRect.top + 4 + Math.random() * (titleRect.height - 6);
-          headingParticles.push({
-            mode: isDust ? 'dust' : 'sand',
-            x: titleRect.left - 18 + Math.random() * (isDust ? titleRect.width * 0.75 : titleRect.width * 0.9),
-            y: yBand,
-            vx: isDust ? 68 + Math.random() * 64 : 115 + Math.random() * 110,
-            vy: (Math.random() - 0.56) * 24,
-            r: isDust ? 7 + Math.random() * 8 : 0.9 + Math.random() * 1.4,
-            grow: isDust ? 9 : 0,
-            age: 0,
-            maxAge: isDust ? 0.85 + Math.random() * 0.45 : 0.55 + Math.random() * 0.45,
-            seed: Math.random() * 6.28,
-          });
-        }
-      } else if (eraIdx === 3) {
-        // Volcanic: rising glowing fire embers & volcanic ash off burning letters
-        while (headingEmitAcc >= 0.032) {
-          headingEmitAcc -= 0.032;
-          const pick = charRects[Math.floor(Math.random() * charRects.length)].r;
-          const isAsh = Math.random() < 0.28;
-          headingParticles.push({
-            mode: isAsh ? 'ash' : 'ember',
-            x: pick.left + Math.random() * pick.width,
-            y: pick.top + 4 + Math.random() * (pick.height * 0.5),
-            vx: (Math.random() - 0.5) * 28,
-            vy: -(36 + Math.random() * 48),
-            r: isAsh ? 1.5 + Math.random() * 1.6 : 1.1 + Math.random() * 1.7,
-            grow: isAsh ? 2.5 : -0.4,
-            age: 0,
-            maxAge: 0.75 + Math.random() * 0.7,
-            seed: Math.random() * 6.28,
-          });
-        }
-      } else {
-        headingEmitAcc = 0;
+    // Emit fresh weighted physics particles across active & transitioning eras
+    headingEmitAcc += dt;
+    while (headingEmitAcc >= 0.024) {
+      headingEmitAcc -= 0.024;
+
+      if (wSteam > 0.08 && Math.random() < wSteam * 0.72) {
+        // Prefer boiler-stack indices (D, i, H, r) + general letter steam condensation
+        const stackIdx = Math.random() < 0.45
+          ? [0, Math.floor(charRects.length * 0.35), Math.floor(charRects.length * 0.56), charRects.length - 1][Math.floor(Math.random() * 4)]
+          : Math.floor(Math.random() * charRects.length);
+        const pick = charRects[Math.min(charRects.length - 1, stackIdx)].r;
+        const isBoilerSpark = Math.random() < 0.14;
+        headingParticles.push({
+          mode: isBoilerSpark ? 'steam_spark' : 'steam',
+          x: pick.left + Math.random() * pick.width,
+          y: pick.top + 4 + Math.random() * (pick.height * 0.42),
+          vx: isBoilerSpark ? 8 + Math.random() * 18 : 18 + Math.random() * 34,
+          vy: isBoilerSpark ? -(38 + Math.random() * 30) : -(26 + Math.random() * 34),
+          r: isBoilerSpark ? 1.1 + Math.random() * 1.1 : 5 + Math.random() * 5.5,
+          grow: isBoilerSpark ? -0.3 : 14 + Math.random() * 10,
+          age: 0,
+          maxAge: isBoilerSpark ? 0.5 + Math.random() * 0.35 : 0.95 + Math.random() * 0.75,
+          seed: Math.random() * 6.28,
+        });
       }
-      if (headingParticles.length > 150) {
-        headingParticles.splice(0, headingParticles.length - 150);
+
+      if (wEgypt > 0.08 && Math.random() < wEgypt * 0.95) {
+        const roll = Math.random();
+        if (roll < 0.24) {
+          // Sweeping ochre desert khamsin dust cloud across title
+          headingParticles.push({
+            mode: 'dust',
+            x: titleRect.left - 24 + Math.random() * (titleRect.width * 0.68),
+            y: titleRect.top + 2 + Math.random() * (titleRect.height - 4),
+            vx: 82 + Math.random() * 78,
+            vy: -14 + (Math.random() - 0.5) * 18,
+            r: 10 + Math.random() * 11,
+            grow: 12,
+            age: 0,
+            maxAge: 0.78 + Math.random() * 0.45,
+            seed: Math.random() * 6.28,
+          });
+        } else if (roll < 0.84) {
+          // Fast directional sunlit silica sand streaks whipping left-to-right
+          headingParticles.push({
+            mode: 'sand_streak',
+            x: titleRect.left - 20 + Math.random() * (titleRect.width * 0.85),
+            y: titleRect.top + 3 + Math.random() * (titleRect.height - 5),
+            vx: 155 + Math.random() * 145,
+            vy: -10 + (Math.random() - 0.5) * 28,
+            r: 0.9 + Math.random() * 1.4,
+            grow: 0,
+            age: 0,
+            maxAge: 0.46 + Math.random() * 0.38,
+            seed: Math.random() * 6.28,
+          });
+        } else {
+          // Fine sandstone grains eroding off letter bottom edges
+          const pick = charRects[Math.floor(Math.random() * charRects.length)].r;
+          headingParticles.push({
+            mode: 'sand_fall',
+            x: pick.left + Math.random() * pick.width,
+            y: pick.bottom - 9,
+            vx: 22 + Math.random() * 26,
+            vy: 28 + Math.random() * 34,
+            r: 0.85 + Math.random() * 1.1,
+            grow: 0,
+            age: 0,
+            maxAge: 0.55 + Math.random() * 0.4,
+            seed: Math.random() * 6.28,
+          });
+        }
+      }
+
+      if (wVolcano > 0.08 && Math.random() < wVolcano * 0.92) {
+        const pick = charRects[Math.floor(Math.random() * charRects.length)].r;
+        const isAsh = Math.random() < 0.25;
+        headingParticles.push({
+          mode: isAsh ? 'ash' : 'ember',
+          x: pick.left + Math.random() * pick.width,
+          y: pick.top + 4 + Math.random() * (pick.height * 0.52),
+          vx: (Math.random() - 0.5) * 34,
+          vy: -(42 + Math.random() * 58),
+          r: isAsh ? 1.5 + Math.random() * 1.8 : 1.1 + Math.random() * 1.9,
+          grow: isAsh ? 2.6 : -0.45,
+          age: 0,
+          maxAge: 0.72 + Math.random() * 0.68,
+          seed: Math.random() * 6.28,
+        });
       }
     }
 
-    // 1. Knights Era: Glossy wet blood droplets hanging from & dripping off actual letters
-    if (isActiveEra && eraIdx === 1) {
+    if (headingParticles.length > 190) {
+      headingParticles.splice(0, headingParticles.length - 190);
+    }
+
+    // 1. Knights Age: Wet crimson gloss meniscus + 15 cohesive blood drips with crown splatters
+    if (wKnights > 0.02) {
+      const kAlpha = alpha * Math.pow(wKnights, 0.85);
       ctx.save();
+
+      // Subtle glossy wet crimson pooling along glyph lower curves
+      for (let i = 0; i < charRects.length; i += 2) {
+        const cr = charRects[i].r;
+        ctx.globalAlpha = kAlpha * 0.52;
+        ctx.fillStyle = '#6E0505';
+        ctx.beginPath();
+        ctx.ellipse(cr.left + cr.width * 0.5, cr.bottom - 8.5, cr.width * 0.34, 1.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       for (const drip of headingDrips) {
         const charIdx = Math.min(charRects.length - 1, Math.floor((drip.slot / headingDrips.length) * charRects.length));
         const cr = charRects[charIdx].r;
@@ -4675,64 +4886,79 @@ export function createHistoryRewindOverlay(): HTMLElement {
         const ay = cr.bottom - 8;
 
         if (drip.phase === 'swell') {
-          drip.progress += dt * drip.speed;
+          drip.progress += dt * drip.speed * (0.45 + 0.55 * wKnights);
           const swell = Math.min(1, drip.progress);
-          const stretch = Math.pow(swell, 1.8) * 8.5;
-          const dr = drip.radius * (0.45 + 0.65 * swell);
+          const stretch = Math.pow(swell, 1.75) * 10.5;
+          const dr = drip.radius * (0.48 + 0.68 * swell);
 
-          // Glossy blood bead & stretched crimson filament clinging to letter stroke
-          ctx.globalAlpha = alpha * 0.92;
-          ctx.fillStyle = '#8F0909';
+          // Glossy wet crimson meniscus + stretched neck filament
+          ctx.globalAlpha = kAlpha * 0.94;
+          const swellGrad = ctx.createLinearGradient(ax, ay, ax, ay + stretch + dr);
+          swellGrad.addColorStop(0, '#6B0505');
+          swellGrad.addColorStop(0.55, '#B20C0C');
+          swellGrad.addColorStop(1, '#580202');
+          ctx.fillStyle = swellGrad;
           ctx.beginPath();
-          ctx.moveTo(ax - dr * 0.85, ay);
-          ctx.quadraticCurveTo(ax - dr * 0.35, ay + stretch * 0.65, ax - dr, ay + stretch);
+          ctx.moveTo(ax - dr * 0.9, ay);
+          ctx.quadraticCurveTo(ax - dr * 0.3, ay + stretch * 0.62, ax - dr, ay + stretch);
           ctx.arc(ax, ay + stretch, dr, Math.PI, 0, true);
-          ctx.quadraticCurveTo(ax + dr * 0.35, ay + stretch * 0.65, ax + dr * 0.85, ay);
+          ctx.quadraticCurveTo(ax + dr * 0.3, ay + stretch * 0.62, ax + dr * 0.9, ay);
           ctx.closePath();
           ctx.fill();
 
-          // Wet specular highlight on hanging crimson bead
-          ctx.fillStyle = 'rgba(255, 195, 195, 0.72)';
+          // Sharp wet highlight on blood bead
+          ctx.fillStyle = 'rgba(255, 210, 210, 0.82)';
           ctx.beginPath();
-          ctx.arc(ax - dr * 0.32, ay + stretch - dr * 0.2, Math.max(0.6, dr * 0.28), 0, Math.PI * 2);
+          ctx.arc(ax - dr * 0.32, ay + stretch - dr * 0.22, Math.max(0.65, dr * 0.3), 0, Math.PI * 2);
           ctx.fill();
 
           if (drip.progress >= 1) {
             drip.phase = 'fall';
             drip.fallDist = stretch;
-            drip.vy = 28;
+            drip.vy = 32;
           }
         } else if (drip.phase === 'fall') {
-          drip.vy += 420 * dt;
+          drip.vy += 450 * dt;
           drip.fallDist += drip.vy * dt;
           const dy = ay + drip.fallDist;
-          const dr = drip.radius * 0.92;
+          const dr = drip.radius * 0.94;
 
-          // Tapered falling crimson teardrop
-          ctx.globalAlpha = alpha * 0.94;
-          const bg = ctx.createLinearGradient(ax, dy - dr * 2.8, ax, dy + dr);
-          bg.addColorStop(0, '#B91C1C');
-          bg.addColorStop(0.6, '#7E0707');
-          bg.addColorStop(1, '#4A0303');
+          // Tapered falling droplet + faint trailing crimson wake
+          ctx.globalAlpha = kAlpha * 0.95;
+          const bg = ctx.createLinearGradient(ax, dy - dr * 3.2, ax, dy + dr);
+          bg.addColorStop(0, '#D91C1C');
+          bg.addColorStop(0.55, '#8A0707');
+          bg.addColorStop(1, '#440202');
           ctx.fillStyle = bg;
           ctx.beginPath();
-          ctx.moveTo(ax, dy - dr * 2.9);
-          ctx.quadraticCurveTo(ax + dr * 1.1, dy - dr * 0.3, ax + dr, dy);
+          ctx.moveTo(ax, dy - dr * 3.2);
+          ctx.quadraticCurveTo(ax + dr * 1.12, dy - dr * 0.3, ax + dr, dy);
           ctx.arc(ax, dy, dr, 0, Math.PI, false);
-          ctx.quadraticCurveTo(ax - dr * 1.1, dy - dr * 0.3, ax, dy - dr * 2.9);
+          ctx.quadraticCurveTo(ax - dr * 1.12, dy - dr * 0.3, ax, dy - dr * 3.2);
           ctx.closePath();
           ctx.fill();
 
-          ctx.fillStyle = 'rgba(255, 204, 204, 0.78)';
+          // Trailing satellite micro-bead while in first half of fall
+          if (drip.fallDist < drip.maxDropDist * 0.65) {
+            const satY = dy - dr * 4.4;
+            ctx.globalAlpha = kAlpha * 0.72;
+            ctx.fillStyle = '#9D0B0B';
+            ctx.beginPath();
+            ctx.arc(ax, satY, dr * 0.36, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.globalAlpha = kAlpha * 0.85;
+          ctx.fillStyle = 'rgba(255, 214, 214, 0.82)';
           ctx.beginPath();
-          ctx.arc(ax - dr * 0.28, dy - dr * 0.15, Math.max(0.55, dr * 0.26), 0, Math.PI * 2);
+          ctx.arc(ax - dr * 0.28, dy - dr * 0.16, Math.max(0.55, dr * 0.28), 0, Math.PI * 2);
           ctx.fill();
 
-          // Tiny residual stain droplet clinging at origin
-          ctx.globalAlpha = alpha * 0.68;
-          ctx.fillStyle = '#7F0808';
+          // Lingering origin stain bead clinging under glyph
+          ctx.globalAlpha = kAlpha * 0.72;
+          ctx.fillStyle = '#7C0707';
           ctx.beginPath();
-          ctx.ellipse(ax, ay + 0.8, dr * 0.85, 1.3, 0, 0, Math.PI * 2);
+          ctx.ellipse(ax, ay + 0.8, dr * 0.88, 1.35, 0, 0, Math.PI * 2);
           ctx.fill();
 
           if (drip.fallDist >= drip.maxDropDist) {
@@ -4742,18 +4968,27 @@ export function createHistoryRewindOverlay(): HTMLElement {
         } else {
           drip.splatAge += dt;
           const sy = ay + drip.maxDropDist;
-          const fade = Math.max(0, 1 - drip.splatAge / 0.42);
-          ctx.globalAlpha = alpha * fade * 0.86;
-          ctx.fillStyle = '#860909';
+          const splatNorm = Math.min(1, drip.splatAge / 0.48);
+          const fade = Math.max(0, 1 - splatNorm);
+
+          // Glossy puddle + 4 dynamic outward micro-splash beads
+          ctx.globalAlpha = kAlpha * fade * 0.88;
+          ctx.fillStyle = '#860808';
           ctx.beginPath();
-          ctx.ellipse(ax, sy, drip.radius * 1.85, drip.radius * 0.62, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(ax - drip.radius * 1.9, sy - 1.2, 0.95, 0, Math.PI * 2);
-          ctx.arc(ax + drip.radius * 2.1, sy - 0.8, 0.8, 0, Math.PI * 2);
+          ctx.ellipse(ax, sy, drip.radius * (1.4 + splatNorm * 0.9), drip.radius * 0.56, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          if (drip.splatAge >= 0.42) {
+          const splashDirs = [-1.9, -0.85, 0.95, 2.05];
+          for (let s = 0; s < splashDirs.length; s += 1) {
+            const dir = splashDirs[s];
+            const sx = ax + dir * drip.radius * (1.2 + splatNorm * 2.6);
+            const arcY = sy - Math.sin(splatNorm * Math.PI) * (3.2 + (s % 2) * 1.8);
+            ctx.beginPath();
+            ctx.arc(sx, arcY, 0.85 + (s % 2) * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          if (drip.splatAge >= 0.48) {
             drip.phase = 'swell';
             drip.progress = 0;
             drip.fallDist = 0;
@@ -4764,46 +4999,59 @@ export function createHistoryRewindOverlay(): HTMLElement {
       ctx.restore();
     }
 
-    // 2. Volcanic Era: Live flickering flame tongues dancing along #history-title letter crowns
-    if (isActiveEra && eraIdx === 3) {
+    // 2. Volcanic Era: Multi-layered additive flame tongues roaring off letter crowns
+    if (wVolcano > 0.02) {
+      const vAlpha = alpha * Math.pow(wVolcano, 0.85);
       ctx.save();
       for (let i = 0; i < charRects.length; i += 1) {
         const cr = charRects[i].r;
         const seed = i * 1.73;
         const baseX = cr.left + cr.width * 0.5;
-        const baseY = cr.top + 10;
-        const sway = Math.sin(clock * 11.5 + seed) * 3.8 + Math.cos(clock * 7.2 + seed * 1.4) * 2.2;
-        const flameH = 14 + Math.sin(clock * 14 + seed * 2.1) * 5.5 + (i % 2) * 3.5;
-        const flameW = Math.max(5.5, cr.width * 0.48);
+        const baseY = cr.top + 11;
+        const sway = Math.sin(clock * 12.2 + seed) * 4.4 + Math.cos(clock * 8.1 + seed * 1.5) * 2.4;
+        const flameH = (16 + Math.sin(clock * 15.2 + seed * 2.1) * 6.5 + (i % 2) * 4.2) * (0.55 + 0.45 * wVolcano);
+        const flameW = Math.max(6, cr.width * 0.52);
 
-        // Outer orange-red flame tongue
-        ctx.globalAlpha = alpha * 0.68;
+        // Soft warm magma halo glow behind glyph top
+        ctx.globalAlpha = vAlpha * 0.45;
+        const glowGrad = ctx.createRadialGradient(baseX, baseY - 2, 1, baseX, baseY - 4, flameW * 1.9);
+        glowGrad.addColorStop(0, 'rgba(255, 134, 24, 0.8)');
+        glowGrad.addColorStop(1, 'rgba(255, 78, 12, 0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(baseX, baseY - 4, flameW * 1.9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Outer red-orange undulating flame tongue
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = vAlpha * 0.64;
         const fg = ctx.createLinearGradient(baseX, baseY + 4, baseX + sway, baseY - flameH);
-        fg.addColorStop(0, '#D92B04');
-        fg.addColorStop(0.5, '#FF7A14');
+        fg.addColorStop(0, '#D92604');
+        fg.addColorStop(0.45, '#FF7A12');
         fg.addColorStop(1, 'rgba(255, 224, 112, 0)');
         ctx.fillStyle = fg;
         ctx.beginPath();
         ctx.moveTo(baseX - flameW, baseY + 4);
-        ctx.quadraticCurveTo(baseX - flameW * 0.65, baseY - flameH * 0.55, baseX + sway, baseY - flameH);
-        ctx.quadraticCurveTo(baseX + flameW * 0.65, baseY - flameH * 0.55, baseX + flameW, baseY + 4);
+        ctx.quadraticCurveTo(baseX - flameW * 0.72 + sway * 0.25, baseY - flameH * 0.52, baseX + sway, baseY - flameH);
+        ctx.quadraticCurveTo(baseX + flameW * 0.72 + sway * 0.25, baseY - flameH * 0.52, baseX + flameW, baseY + 4);
         ctx.closePath();
         ctx.fill();
 
-        // Inner bright white-gold core
-        ctx.globalAlpha = alpha * 0.76;
-        ctx.fillStyle = '#FFE485';
+        // Incandescent pale butter-gold inner flame core
+        ctx.globalAlpha = vAlpha * 0.72;
+        ctx.fillStyle = '#FFEA96';
         ctx.beginPath();
         ctx.moveTo(baseX - flameW * 0.42, baseY + 3);
-        ctx.quadraticCurveTo(baseX - flameW * 0.2, baseY - flameH * 0.35, baseX + sway * 0.6, baseY - flameH * 0.62);
-        ctx.quadraticCurveTo(baseX + flameW * 0.2, baseY - flameH * 0.35, baseX + flameW * 0.42, baseY + 3);
+        ctx.quadraticCurveTo(baseX - flameW * 0.22, baseY - flameH * 0.34, baseX + sway * 0.62, baseY - flameH * 0.64);
+        ctx.quadraticCurveTo(baseX + flameW * 0.22, baseY - flameH * 0.34, baseX + flameW * 0.42, baseY + 3);
         ctx.closePath();
         ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
       }
       ctx.restore();
     }
 
-    // 3. Draw active heading particles (steam puffs, desert sand/dust, fire embers/ash)
+    // 3. Draw active heading particles (volumetric steam clouds, khamsin sand/dust streaks, fire embers/ash)
     for (let i = headingParticles.length - 1; i >= 0; i -= 1) {
       const p = headingParticles[i];
       p.age += dt;
@@ -4813,59 +5061,101 @@ export function createHistoryRewindOverlay(): HTMLElement {
       }
       const lifeRatio = p.age / p.maxAge;
       if (p.mode === 'steam') {
-        p.x += (p.vx + Math.sin(clock * 3.4 + p.seed) * 14) * dt;
+        p.x += (p.vx + Math.sin(clock * 3.6 + p.seed) * 16) * dt;
         p.y += p.vy * dt;
         p.vx *= Math.pow(0.55, dt);
         const curR = p.r + p.grow * lifeRatio;
-        const fade = Math.sin(lifeRatio * Math.PI);
+        const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.15, wSteam);
         ctx.save();
-        ctx.globalAlpha = alpha * fade * 0.48;
-        ctx.fillStyle = '#FAF8F3';
+        ctx.globalAlpha = fade * 0.62;
+        const sg = ctx.createRadialGradient(p.x, p.y, 0.5, p.x, p.y, curR);
+        sg.addColorStop(0, 'rgba(255, 253, 248, 0.92)');
+        sg.addColorStop(0.55, 'rgba(244, 242, 236, 0.48)');
+        sg.addColorStop(1, 'rgba(232, 232, 228, 0)');
+        ctx.fillStyle = sg;
         ctx.beginPath();
         ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (p.mode === 'steam_spark') {
+        p.x += (p.vx + Math.sin(clock * 8 + p.seed) * 18) * dt;
+        p.y += p.vy * dt;
+        const fade = (1 - lifeRatio) * alpha * Math.max(0.2, wSteam);
+        ctx.save();
+        ctx.globalAlpha = fade * 0.85;
+        ctx.fillStyle = '#FF9C3A';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       } else if (p.mode === 'dust') {
         p.x += p.vx * dt;
-        p.y += (p.vy + Math.sin(clock * 4.5 + p.seed) * 12) * dt;
+        p.y += (p.vy + Math.sin(clock * 4.8 + p.seed) * 14) * dt;
         const curR = p.r + p.grow * lifeRatio;
-        const fade = Math.sin(lifeRatio * Math.PI);
+        const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.15, wEgypt);
         ctx.save();
-        ctx.globalAlpha = alpha * fade * 0.28;
-        ctx.fillStyle = '#E0B462';
+        ctx.globalAlpha = fade * 0.36;
+        const dg = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, curR * 1.45);
+        dg.addColorStop(0, 'rgba(232, 186, 98, 0.78)');
+        dg.addColorStop(0.6, 'rgba(196, 140, 56, 0.32)');
+        dg.addColorStop(1, 'rgba(176, 122, 44, 0)');
+        ctx.fillStyle = dg;
         ctx.beginPath();
-        ctx.ellipse(p.x, p.y, curR * 1.45, curR * 0.72, -0.1, 0, Math.PI * 2);
+        ctx.ellipse(p.x, p.y, curR * 1.55, curR * 0.72, -0.08, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-      } else if (p.mode === 'sand') {
+      } else if (p.mode === 'sand_streak') {
         p.x += p.vx * dt;
-        p.y += (p.vy + Math.sin(clock * 8 + p.seed) * 18) * dt;
-        const fade = Math.sin(lifeRatio * Math.PI);
+        p.y += (p.vy + Math.sin(clock * 8.5 + p.seed) * 20) * dt;
+        const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.2, wEgypt);
+        const streakLen = Math.min(12, Math.hypot(p.vx, p.vy) * 0.045);
+        const ang = Math.atan2(p.vy, p.vx);
         ctx.save();
-        ctx.globalAlpha = alpha * fade * 0.85;
-        ctx.fillStyle = p.seed > 3.1 ? '#E8BE68' : '#A6752B';
-        ctx.fillRect(p.x, p.y, p.r * 1.8, p.r);
+        ctx.globalAlpha = fade * 0.88;
+        ctx.strokeStyle = p.seed > 3.1 ? '#F2CE78' : '#AD792A';
+        ctx.lineWidth = p.r;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x - Math.cos(ang) * streakLen, p.y - Math.sin(ang) * streakLen);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        ctx.restore();
+      } else if (p.mode === 'sand_fall') {
+        p.vy += 120 * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        const fade = (1 - lifeRatio) * alpha * Math.max(0.2, wEgypt);
+        ctx.save();
+        ctx.globalAlpha = fade * 0.82;
+        ctx.fillStyle = '#CE9842';
+        ctx.fillRect(p.x, p.y, p.r * 1.3, p.r * 1.3);
         ctx.restore();
       } else if (p.mode === 'ember') {
-        p.x += (p.vx + Math.sin(clock * 7 + p.seed) * 20) * dt;
+        const prevX = p.x;
+        const prevY = p.y;
+        p.x += (p.vx + Math.sin(clock * 8 + p.seed) * 24) * dt;
         p.y += p.vy * dt;
-        const curR = Math.max(0.5, p.r + p.grow * lifeRatio);
-        const fade = 1 - lifeRatio;
+        const curR = Math.max(0.55, p.r + p.grow * lifeRatio);
+        const fade = (1 - lifeRatio) * alpha * Math.max(0.2, wVolcano);
         ctx.save();
-        ctx.globalAlpha = alpha * fade * 0.92;
-        ctx.fillStyle = lifeRatio < 0.35 ? '#FFF3A8' : '#FF6B14';
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.94;
+        ctx.strokeStyle = lifeRatio < 0.35 ? '#FFF5B8' : '#FF7218';
+        ctx.lineWidth = curR * 1.15;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
         ctx.restore();
       } else {
-        p.x += (p.vx + Math.sin(clock * 4 + p.seed) * 14) * dt;
-        p.y += p.vy * 0.72 * dt;
+        p.x += (p.vx + Math.sin(clock * 4 + p.seed) * 16) * dt;
+        p.y += p.vy * 0.68 * dt;
         const curR = p.r + p.grow * lifeRatio;
-        const fade = Math.sin(lifeRatio * Math.PI);
+        const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.15, wVolcano);
         ctx.save();
-        ctx.globalAlpha = alpha * fade * 0.44;
-        ctx.fillStyle = '#382B22';
+        ctx.globalAlpha = fade * 0.46;
+        ctx.fillStyle = '#33251D';
         ctx.beginPath();
         ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
         ctx.fill();
@@ -7667,17 +7957,22 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const historyVisible = isHistoryVisible();
     let active = isRewindActive() && historyVisible;
     if (active) ensureHudMounted();
+    const zeroWeights: [number, number, number, number] = [0, 0, 0, 0];
     if (!historyVisible) {
       if (lingerPages.length > 0) lingerPages.length = 0;
       if (eraPlumes.length > 0) eraPlumes.length = 0;
       if (eraSparks.length > 0) eraSparks.length = 0;
       if (headingParticles.length > 0) headingParticles.length = 0;
-      syncHeadingEraAttr(null);
+      historyEraLiveState.active = false;
+      historyEraLiveState.weights = zeroWeights;
+      syncHeadingEraVisuals(null, zeroWeights, clock);
     }
     const TOTAL_CYCLE_DURATION = ERAS.length * ERA_DURATION;
     if (!active) {
       introRemaining = 0;
-      syncHeadingEraAttr(null);
+      historyEraLiveState.active = false;
+      historyEraLiveState.weights = zeroWeights;
+      syncHeadingEraVisuals(null, zeroWeights, clock);
       hudEl.classList.remove('is-visible', 'is-rewinding');
     } else if (introRemaining > 0) {
       introRemaining = Math.max(0, introRemaining - dt);
@@ -7764,7 +8059,32 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const currentEraIdx = Math.floor(effectiveJourneyTime / ERA_DURATION) % ERAS.length;
     const currentEraT = effectiveJourneyTime % ERA_DURATION;
     const isEraActive = active && introRemaining <= 0.15;
-    syncHeadingEraAttr(isEraActive ? ERA_KEYS[currentEraIdx] : null);
+
+    const eraWeights: [number, number, number, number] = [0, 0, 0, 0];
+    if (isEraActive) {
+      if (journeyTime < ERA_DURATION) {
+        const u = Math.min(1, currentEraT / 0.85);
+        eraWeights[0] = u * u * (3 - 2 * u);
+      } else if (currentEraT < TRANSITION_DUR) {
+        const prevIdx = (currentEraIdx + ERAS.length - 1) % ERAS.length;
+        const u = currentEraT / TRANSITION_DUR;
+        const ease = u * u * (3 - 2 * u);
+        eraWeights[prevIdx] = 1 - ease;
+        eraWeights[currentEraIdx] = ease;
+      } else if (currentEraIdx === ERAS.length - 1 && journeyTime > TOTAL_CYCLE_DURATION - 0.85) {
+        const out = Math.max(0, (TOTAL_CYCLE_DURATION - journeyTime) / 0.85);
+        eraWeights[currentEraIdx] = out * out * (3 - 2 * out);
+      } else {
+        eraWeights[currentEraIdx] = 1;
+      }
+      historyEraLiveState.active = true;
+      historyEraLiveState.weights = [eraWeights[0], eraWeights[1], eraWeights[2], eraWeights[3]];
+    } else {
+      historyEraLiveState.active = false;
+      historyEraLiveState.weights = [0, 0, 0, 0];
+    }
+
+    syncHeadingEraVisuals(isEraActive ? ERA_KEYS[currentEraIdx] : null, eraWeights, clock);
     updateEraEmitters(dt, currentEraIdx, currentEraT, isEraActive);
 
     ctx.clearRect(0, 0, width, height);
@@ -7826,7 +8146,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
         }
       }
       drawEraPlumesAndSparks(Math.max(rewindAlpha, active ? 1 : 0.65));
-      updateAndDrawHeadingEraFx(dt, currentEraIdx, rewindAlpha, isEraActive);
+      updateAndDrawHeadingEraFx(dt, eraWeights, rewindAlpha);
 
       // 2. Ascending golden-sepia memory sparks
       for (const s of sparks) {

@@ -646,7 +646,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
       typeof document !== 'undefined' &&
       Boolean(document.querySelector('.gd-dashboard-app.gd-history-rewind-on')),
     undefined,
-    'tick',
+    'history-eras',
   );
   titleRow.appendChild(title);
 

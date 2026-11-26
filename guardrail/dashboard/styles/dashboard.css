@@ -27257,55 +27257,21 @@ body.gd-kbd-open .gd-m-shell {
   }
 
   .gd-dashboard-app.gd-history-rewind-on #history-title .gd-char {
-    text-shadow: 0 2px 10px rgba(218, 158, 52, 0.28);
-    transition: color 0.45s ease, text-shadow 0.45s ease, filter 0.45s ease;
-  }
-
-  /* Era-reactive Decision History Title Treatments (steam -> knights blood -> egypt sand -> volcano fire) */
-  .gd-dashboard-app.gd-history-rewind-on[data-history-era="steam"] #history-title .gd-char {
-    color: #2E3A42 !important;
-    -webkit-text-fill-color: #2E3A42 !important;
-    text-shadow:
-      0 -1px 0 rgba(255, 255, 255, 0.72),
-      0 3px 14px rgba(235, 240, 242, 0.85),
-      0 1px 2px rgba(20, 28, 34, 0.42) !important;
-    filter: drop-shadow(0 -2px 6px rgba(255, 255, 255, 0.45));
-  }
-
-  .gd-dashboard-app.gd-history-rewind-on[data-history-era="knights"] #history-title .gd-char {
-    background: linear-gradient(180deg, #DC2626 0%, #9E0A0A 52%, #4D0303 100%);
+    background-image: linear-gradient(
+      180deg,
+      var(--era-c0, #3A2C1C) 0%,
+      var(--era-c1, #261C12) 52%,
+      var(--era-c2, #1B140C) 100%
+    );
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     text-shadow: none !important;
-    filter: drop-shadow(0 2px 6px rgba(132, 8, 8, 0.46));
-  }
-
-  .gd-dashboard-app.gd-history-rewind-on[data-history-era="egypt"] #history-title .gd-char {
-    background: linear-gradient(180deg, #F0C978 0%, #C78B30 50%, #7C4E14 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: none !important;
-    filter: drop-shadow(0 2px 5px rgba(168, 118, 38, 0.44));
-  }
-
-  .gd-dashboard-app.gd-history-rewind-on[data-history-era="volcano"] #history-title .gd-char {
-    background: linear-gradient(180deg, #FFF6B0 0%, #FF9B24 36%, #E23204 74%, #5A0C02 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: none !important;
-    animation: gd-volcano-text-burn 1.4s ease-in-out infinite alternate;
-  }
-
-  @keyframes gd-volcano-text-burn {
-    0% {
-      filter: drop-shadow(0 -2px 8px rgba(255, 118, 22, 0.65)) drop-shadow(0 2px 5px rgba(176, 32, 4, 0.5));
-    }
-    100% {
-      filter: drop-shadow(0 -4px 13px rgba(255, 168, 38, 0.88)) drop-shadow(0 2px 8px rgba(214, 42, 6, 0.7));
-    }
+    filter:
+      drop-shadow(0 -2px 7px var(--era-glow-top, rgba(255, 224, 158, 0)))
+      drop-shadow(0 2px 7px var(--era-glow-bottom, rgba(218, 158, 52, 0.24)));
+    transform-origin: 50% 62%;
+    will-change: transform, filter;
   }
 
   @keyframes gd-history-card-rewind {
