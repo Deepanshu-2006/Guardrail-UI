@@ -33,6 +33,7 @@ import {
   createHistoryRewindOverlay,
   createLanternFirefliesOverlay,
   createPendingSandstormOverlay,
+  createSettingsWaxFlowOverlay,
 } from './components/interactive-props.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
@@ -1134,6 +1135,7 @@ export class DashboardShell {
       this.appWrapper.appendChild(createLanternFirefliesOverlay());
       this.appWrapper.appendChild(createPendingSandstormOverlay());
       this.appWrapper.appendChild(createHistoryRewindOverlay());
+      this.appWrapper.appendChild(createSettingsWaxFlowOverlay());
 
       // 1. Sidebar (Navigation + Account Profile)
       this.sidebarEl = renderNavigation({

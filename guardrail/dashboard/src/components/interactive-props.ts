@@ -7790,9 +7790,9 @@ export function createSettingsClockworkProp(): HTMLElement {
       else btn.classList.remove('is-open');
     }
     btn.setAttribute('aria-pressed', open ? 'true' : 'false');
-    btn.title = open ? 'Click to release wound mechanism' : 'Click to wind up & wake all Settings cards';
+    btn.title = open ? 'Click to stop molten wax & clear' : 'Click to pour molten red wax across Settings cards';
     if (noteEl) {
-      noteEl.textContent = open ? 'Release' : 'Wind desk';
+      noteEl.textContent = open ? 'Stop pour' : 'Pour wax';
     }
     if (typeof document !== 'undefined') {
       const appEl = document.querySelector('.gd-dashboard-app');
@@ -8334,5 +8334,659 @@ export function createSettingsServiceBellProp(): HTMLElement {
   attachSettingsCascadeListener(btn, 800, actuate);
 
   return btn;
+}
+
+/**
+ * Full-screen Viscous Molten Red Sealing-Wax Cascade triggered by the Settings Clockwork
+ * crucible spout (.gd-settings-workshop-on).
+ * Models viscoelastic Rayleigh-Plateau filament pouring, surface-tension meniscus pools
+ * on actual DOM wooden card rims, slow sinuous creeping rivulets down card faces, bottom-edge
+ * hanging stalactite neck-stretching, and falling teardrop cascades from card to card.
+ */
+export function createSettingsWaxFlowOverlay(): HTMLElement {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'gd-settings-wax';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') {
+    return canvas;
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  const isWaxActive = () =>
+    Boolean(document.querySelector('.gd-dashboard-app.gd-settings-workshop-on'));
+  const isSettingsVisible = () => {
+    const view = document.getElementById('view-settings');
+    return Boolean(view && view.classList.contains('active') && document.contains(view));
+  };
+
+  interface CardPool {
+    cardEl: HTMLElement;
+    centerOffsetX: number; // relative to card.left
+    leftExtent: number;
+    rightExtent: number;
+    thickness: number;
+    targetVolume: number;
+    temp: number; // 1 = glowing molten cherry, 0 = satin burgundy-crimson
+    lastRivuletSpawnAt: number;
+  }
+
+  interface CardRivulet {
+    cardEl: HTMLElement;
+    startOffsetX: number;
+    phase: number;
+    freq: number;
+    amp: number;
+    headY: number; // relative to card.top
+    vy: number;
+    width: number;
+    temp: number;
+    hanging: number; // 0..1 tension stretch at card bottom rim before pinch-off
+    pinchedCount: number;
+    maxDrops: number;
+    stale: boolean;
+  }
+
+  interface FallingDrop {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    radius: number;
+    temp: number;
+    ignoreCardEl: HTMLElement | null;
+    trail: Array<{ x: number; y: number }>;
+  }
+
+  let width = 800;
+  let height = 600;
+  let overlayAlpha = 0;
+  let pourElapsed = 0;
+  let pourStreamLength = 0;
+  let clock = 0;
+  let lastTs = 0;
+  let lastDripAudioAt = 0;
+  let wasActive = false;
+  let rafId: number | null = null;
+  let pointerX = -999;
+  let pointerY = -999;
+
+  const pools: CardPool[] = [];
+  const rivulets: CardRivulet[] = [];
+  const drops: FallingDrop[] = [];
+
+  const resize = () => {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    width = Math.max(320, window.innerWidth);
+    height = Math.max(320, window.innerHeight);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener(
+    'mousemove',
+    (e: MouseEvent) => {
+      if (!document.contains(canvas)) return;
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+    },
+    { passive: true },
+  );
+
+  const playSoftWaxDrip = (pitchBoost = 0) => {
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (nowMs - lastDripAudioAt < 185) return;
+    lastDripAudioAt = nowMs;
+    playQuickTones([
+      {
+        delay: 0,
+        freq: 290 + pitchBoost,
+        endFreq: 540 + pitchBoost * 1.4,
+        dur: 0.065,
+        peak: 0.015,
+      },
+    ]);
+  };
+
+  const getNozzleScreenPos = () => {
+    const propEl = document.querySelector('#view-settings .gd-prop-settings-clockwork') as HTMLElement | null;
+    if (propEl) {
+      const r = propEl.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        return { x: r.left + r.width * 0.5, y: r.bottom - 5 };
+      }
+    }
+    return { x: Math.min(width * 0.34, 300), y: 158 };
+  };
+
+  const addOrFeedPool = (cardEl: HTMLElement, hitScreenX: number, addVolume: number, rRect: DOMRect) => {
+    const relX = Math.max(16, Math.min(rRect.width - 16, hitScreenX - rRect.left));
+    let pool = pools.find((p) => p.cardEl === cardEl && Math.abs(p.centerOffsetX - relX) < 58);
+    if (!pool) {
+      pool = {
+        cardEl,
+        centerOffsetX: relX,
+        leftExtent: 10,
+        rightExtent: 12,
+        thickness: 3.4,
+        targetVolume: addVolume,
+        temp: 1.0,
+        lastRivuletSpawnAt: clock - 0.5,
+      };
+      pools.push(pool);
+    } else {
+      pool.targetVolume = Math.min(140, pool.targetVolume + addVolume);
+      pool.temp = Math.min(1, pool.temp + 0.38);
+    }
+
+    // Spawn viscous creeping rivulets fanning across & downward off this card's wood rail
+    const cardRivs = rivulets.filter((rv) => rv.cardEl === cardEl && !rv.stale);
+    if (cardRivs.length < 5 && clock - pool.lastRivuletSpawnAt > 0.42) {
+      pool.lastRivuletSpawnAt = clock;
+      const spreadBias = (Math.random() - 0.32) * (pool.leftExtent + pool.rightExtent + 46);
+      const startOff = Math.max(18, Math.min(rRect.width - 18, pool.centerOffsetX + spreadBias));
+      rivulets.push({
+        cardEl,
+        startOffsetX: startOff,
+        phase: Math.random() * Math.PI * 2,
+        freq: 0.042 + Math.random() * 0.024,
+        amp: 3.5 + Math.random() * 5.2,
+        headY: 3,
+        vy: 56 + Math.random() * 44,
+        width: 4.8 + Math.random() * 2.8,
+        temp: 0.96,
+        hanging: 0,
+        pinchedCount: 0,
+        maxDrops: 2 + Math.floor(Math.random() * 2),
+        stale: false,
+      });
+    }
+  };
+
+  const resetWaxSimulation = () => {
+    pools.length = 0;
+    rivulets.length = 0;
+    drops.length = 0;
+    pourElapsed = 0;
+    pourStreamLength = 0;
+  };
+
+  /** Computes glossy molten sealing-wax fill color from temperature (1 = hot cherry, 0 = deep oxblood) */
+  const waxColorStop = (temp: number, layer: 'core' | 'mid' | 'edge', alpha: number): string => {
+    const t = Math.max(0, Math.min(1, temp));
+    if (layer === 'core') {
+      const r = Math.round(186 + t * 69);
+      const g = Math.round(22 + t * 62);
+      const b = Math.round(16 + t * 28);
+      return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+    }
+    if (layer === 'mid') {
+      const r = Math.round(138 + t * 52);
+      const g = Math.round(12 + t * 22);
+      const b = Math.round(11 + t * 10);
+      return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+    }
+    const r = Math.round(74 + t * 28);
+    return `rgba(${r}, 6, 5, ${alpha.toFixed(3)})`;
+  };
+
+  const drawGlossTeardrop = (
+    x: number,
+    y: number,
+    radius: number,
+    tailX: number,
+    tailY: number,
+    temp: number,
+    a: number,
+  ) => {
+    const dx = tailX - x;
+    const dy = tailY - y;
+    const tailLen = Math.min(36, Math.hypot(dx, dy));
+    const tailAng = tailLen > 1 ? Math.atan2(dy, dx) : -Math.PI / 2;
+
+    ctx.save();
+    ctx.globalAlpha = a;
+
+    // Soft cast shadow onto background wood/parchment
+    ctx.fillStyle = 'rgba(38, 8, 5, 0.24)';
+    ctx.beginPath();
+    ctx.ellipse(x + 2, y + 2.5, radius * 0.96, radius * 1.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Elongated teardrop path (rounded heavy drop + tapering sticky tail)
+    ctx.translate(x, y);
+    ctx.rotate(tailAng + Math.PI / 2);
+
+    const grad = ctx.createRadialGradient(-radius * 0.25, -radius * 0.2, radius * 0.1, 0, 0, Math.max(radius * 1.5, tailLen));
+    grad.addColorStop(0, waxColorStop(temp, 'core', 0.98));
+    grad.addColorStop(0.55, waxColorStop(temp, 'mid', 0.96));
+    grad.addColorStop(1, waxColorStop(temp, 'edge', 0.94));
+    ctx.fillStyle = grad;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -tailLen - radius * 0.45);
+    ctx.bezierCurveTo(radius * 0.35, -tailLen * 0.45, radius * 1.05, -radius * 0.4, radius, 0);
+    ctx.arc(0, 0, radius, 0, Math.PI);
+    ctx.bezierCurveTo(-radius * 1.05, -radius * 0.4, -radius * 0.35, -tailLen * 0.45, 0, -tailLen - radius * 0.45);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wet specular meniscus glint
+    ctx.strokeStyle = `rgba(255, 228, 218, ${(0.72 + temp * 0.18).toFixed(2)})`;
+    ctx.lineWidth = Math.max(0.9, radius * 0.24);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.68, Math.PI * 0.95, Math.PI * 1.38);
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
+  const step = (ts: number) => {
+    if (!document.contains(canvas)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+    clock += dt;
+
+    const settingsVisible = isSettingsVisible();
+    const active = isWaxActive() && settingsVisible;
+
+    if (!settingsVisible) {
+      resetWaxSimulation();
+      overlayAlpha = 0;
+      ctx.clearRect(0, 0, width, height);
+      rafId = null;
+      lastTs = 0;
+      return;
+    }
+
+    if (active && !wasActive) {
+      resetWaxSimulation();
+    }
+    wasActive = active;
+
+    const targetAlpha = active ? 1 : 0;
+    overlayAlpha += (targetAlpha - overlayAlpha) * Math.min(1, dt * (active ? 6.5 : 2.2));
+
+    const nozzle = getNozzleScreenPos();
+    const cardEls = Array.from(
+      document.querySelectorAll('#view-settings .gd-card'),
+    ) as HTMLElement[];
+    const cardRects = new Map<HTMLElement, DOMRect>();
+    for (const c of cardEls) {
+      const r = c.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) cardRects.set(c, r);
+    }
+
+    // Find first card sitting below the Clockwork spout (Identity Card)
+    let firstTargetCard: { el: HTMLElement; rect: DOMRect } | null = null;
+    for (const [el, rect] of cardRects.entries()) {
+      if (rect.top > nozzle.y + 8 && nozzle.x >= rect.left - 12 && nozzle.x <= rect.right + 12) {
+        if (!firstTargetCard || rect.top < firstTargetCard.rect.top) {
+          firstTargetCard = { el, rect };
+        }
+      }
+    }
+
+    // 1. Primary Molten Pour Stream from Clockwork Crucible Spout -> First Card Top Ledge
+    if (active) {
+      pourElapsed += dt;
+      const pouringNow = pourElapsed < 7.5;
+      const targetStreamDropY = firstTargetCard ? firstTargetCard.rect.top + 3 : height + 40;
+      const maxLen = Math.max(0, targetStreamDropY - nozzle.y);
+      if (pouringNow) {
+        pourStreamLength = Math.min(maxLen, pourStreamLength + (290 + pourStreamLength * 1.4) * dt);
+        if (firstTargetCard && pourStreamLength >= maxLen - 2) {
+          addOrFeedPool(firstTargetCard.el, nozzle.x, 38 * dt, firstTargetCard.rect);
+          if (Math.random() < dt * 2.8) playSoftWaxDrip(45);
+        }
+      } else {
+        pourStreamLength = Math.max(0, pourStreamLength - 340 * dt);
+      }
+    } else {
+      pourStreamLength = Math.max(0, pourStreamLength - 380 * dt);
+    }
+
+    // 2. Advance Spreading Pools on Card Top Wood Rails
+    for (const pool of pools) {
+      const r = cardRects.get(pool.cardEl);
+      if (!r) continue;
+      const maxSpreadL = Math.max(12, Math.min(pool.centerOffsetX - 10, 95));
+      const maxSpreadR = Math.max(16, Math.min(r.width - pool.centerOffsetX - 10, 220));
+      if (pool.targetVolume > 1) {
+        const take = pool.targetVolume * Math.min(1, dt * 2.2);
+        pool.targetVolume -= take;
+        pool.leftExtent = Math.min(maxSpreadL, pool.leftExtent + take * 1.55);
+        pool.rightExtent = Math.min(maxSpreadR, pool.rightExtent + take * 2.65);
+        pool.thickness = Math.min(7.8, pool.thickness + take * 0.08);
+      }
+      pool.temp = Math.max(0.18, pool.temp - dt * 0.065);
+    }
+
+    // 3. Advance Slow Viscous Creeping Rivulets & Bottom-Edge Hanging Stalactite Pinch-Offs
+    for (const rv of rivulets) {
+      const r = cardRects.get(rv.cardEl);
+      if (!r) continue;
+      rv.temp = Math.max(0.22, rv.temp - dt * 0.055);
+      const viscFactor = 0.52 + 0.65 * rv.temp;
+
+      if (rv.headY < r.height - 1.5) {
+        // Sinuous stick-slip viscous flow down the card face
+        const stickSlip = 0.72 + 0.38 * Math.sin(clock * 6.4 + rv.phase + rv.headY * 0.06);
+        rv.headY = Math.min(r.height - 1.5, rv.headY + rv.vy * viscFactor * stickSlip * dt);
+      } else if (active && rv.pinchedCount < rv.maxDrops) {
+        // Hanging heavy molten stalactite droplet swelling at bottom wood rim before pinch-off
+        rv.hanging += dt * (1.25 + Math.random() * 0.35) * viscFactor;
+        if (rv.hanging >= 1) {
+          rv.hanging = 0;
+          rv.pinchedCount += 1;
+          const endX =
+            r.left +
+            rv.startOffsetX +
+            Math.sin(rv.headY * rv.freq + rv.phase) * rv.amp +
+            Math.sin(rv.headY * 0.017 + rv.phase * 1.7) * 4;
+          drops.push({
+            x: Math.max(r.left + 12, Math.min(r.right - 12, endX)),
+            y: r.bottom + 4,
+            vx: (Math.random() - 0.35) * 18,
+            vy: 42 + Math.random() * 34,
+            radius: rv.width * 0.76,
+            temp: Math.min(1, rv.temp + 0.12),
+            ignoreCardEl: rv.cardEl,
+            trail: [],
+          });
+          playSoftWaxDrip(Math.random() * 90);
+        }
+      } else {
+        rv.stale = true;
+      }
+    }
+
+    // 4. Advance Falling Molten Teardrops + Collision with Lower Cards
+    for (let i = drops.length - 1; i >= 0; i -= 1) {
+      const d = drops[i];
+      d.trail.push({ x: d.x, y: d.y });
+      if (d.trail.length > 5) d.trail.shift();
+
+      // Gentle cursor air/touch deflection when passing near a falling droplet
+      if (pointerX > 0 && pointerY > 0) {
+        const pdx = d.x - pointerX;
+        const pdy = d.y - pointerY;
+        const pdist = Math.hypot(pdx, pdy);
+        if (pdist < 42 && pdist > 1) {
+          d.vx += (pdx / pdist) * (1 - pdist / 42) * 320 * dt;
+        }
+      }
+
+      const prevY = d.y;
+      d.vy += 860 * dt;
+      d.vx *= Math.exp(-dt * 1.4);
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.temp = Math.max(0.32, d.temp - dt * 0.14);
+
+      let landed = false;
+      for (const [cardEl, r] of cardRects.entries()) {
+        if (cardEl === d.ignoreCardEl) continue;
+        if (prevY <= r.top + 6 && d.y >= r.top && d.x >= r.left + 8 && d.x <= r.right - 8) {
+          addOrFeedPool(cardEl, d.x, 18 + d.radius * 1.6, r);
+          playSoftWaxDrip(-40 + Math.random() * 60);
+          landed = true;
+          break;
+        }
+      }
+
+      if (landed || d.y > height + 50) {
+        drops.splice(i, 1);
+      }
+    }
+
+    // ---------------- RENDER ----------------
+    ctx.clearRect(0, 0, width, height);
+
+    if (overlayAlpha > 0.01) {
+      // A. Primary Pour Filament from Clockwork Crucible Spout
+      if (pourStreamLength > 3) {
+        const endY = nozzle.y + pourStreamLength;
+        ctx.save();
+        ctx.globalAlpha = overlayAlpha;
+
+        // Soft cast shadow beside stream
+        ctx.strokeStyle = 'rgba(38, 8, 5, 0.22)';
+        ctx.lineWidth = 7.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(nozzle.x + 2, nozzle.y + 1);
+        for (let sy = 6; sy <= pourStreamLength; sy += 6) {
+          const sway = Math.sin(sy * 0.075 - clock * 8.5) * 1.8;
+          ctx.lineTo(nozzle.x + 2 + sway, nozzle.y + sy);
+        }
+        ctx.stroke();
+
+        // Main viscoelastic filament with traveling Rayleigh-Plateau bulges
+        const streamGrad = ctx.createLinearGradient(nozzle.x - 5, nozzle.y, nozzle.x + 5, endY);
+        streamGrad.addColorStop(0, '#FF5C3E');
+        streamGrad.addColorStop(0.45, '#C81B12');
+        streamGrad.addColorStop(1, '#7A0D08');
+        ctx.fillStyle = streamGrad;
+
+        const leftPts: Array<{ x: number; y: number }> = [];
+        const rightPts: Array<{ x: number; y: number }> = [];
+        const stepPx = 5;
+        for (let sy = 0; sy <= pourStreamLength; sy += stepPx) {
+          const sway = Math.sin(sy * 0.075 - clock * 8.5) * 1.8;
+          const neckThinning = Math.max(0.45, 1 - (sy / Math.max(80, pourStreamLength)) * 0.28);
+          const bulge = 1 + 0.34 * Math.sin(sy * 0.14 - clock * 14);
+          const halfW = (2.7 * neckThinning * bulge) + (sy === 0 ? 1.0 : 0);
+          leftPts.push({ x: nozzle.x + sway - halfW, y: nozzle.y + sy });
+          rightPts.push({ x: nozzle.x + sway + halfW, y: nozzle.y + sy });
+        }
+        ctx.beginPath();
+        ctx.moveTo(leftPts[0].x, leftPts[0].y);
+        for (let i = 1; i < leftPts.length; i += 1) ctx.lineTo(leftPts[i].x, leftPts[i].y);
+        const lastSw = Math.sin(pourStreamLength * 0.075 - clock * 8.5) * 1.8;
+        ctx.arc(nozzle.x + lastSw, endY, 3.6, Math.PI, 0, true);
+        for (let i = rightPts.length - 1; i >= 0; i -= 1) ctx.lineTo(rightPts[i].x, rightPts[i].y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Crisp continuous glossy highlight along left curvature
+        ctx.strokeStyle = 'rgba(255, 224, 212, 0.74)';
+        ctx.lineWidth = 1.05;
+        ctx.beginPath();
+        for (let i = 0; i < leftPts.length; i += 1) {
+          const hx = leftPts[i].x + 1.25;
+          const hy = leftPts[i].y;
+          if (i === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // B. Creeping Viscous Rivulets Down Card Faces + Hanging Bottom Rim Stalactites
+      for (const rv of rivulets) {
+        const r = cardRects.get(rv.cardEl);
+        if (!r || rv.headY < 2) continue;
+
+        ctx.save();
+        ctx.globalAlpha = overlayAlpha;
+
+        const pts: Array<{ x: number; y: number; w: number }> = [];
+        const yStep = 5;
+        for (let ry = 0; ry <= rv.headY; ry += yStep) {
+          const cx =
+            r.left +
+            rv.startOffsetX +
+            Math.sin(ry * rv.freq + rv.phase) * rv.amp +
+            Math.sin(ry * 0.017 + rv.phase * 1.7) * 4;
+          const clampedX = Math.max(r.left + 8, Math.min(r.right - 8, cx));
+          const progress = ry / Math.max(12, rv.headY);
+          const pinchNeck = progress > 0.78 ? 0.72 : 1 - progress * 0.16;
+          const w = rv.width * (0.42 + 0.18 * Math.sin(ry * 0.09 + rv.phase)) * pinchNeck;
+          pts.push({ x: clampedX, y: r.top + ry, w });
+        }
+        if (pts.length >= 2) {
+          // Cast contact shadow slightly bottom-right
+          ctx.strokeStyle = 'rgba(38, 8, 5, 0.20)';
+          ctx.lineWidth = rv.width * 0.95;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          for (let i = 0; i < pts.length; i += 1) {
+            if (i === 0) ctx.moveTo(pts[i].x + 1.5, pts[i].y + 1.5);
+            else ctx.lineTo(pts[i].x + 1.5, pts[i].y + 1.5);
+          }
+          ctx.stroke();
+
+          // Thick variable-width crimson wax stream ribbon
+          const rivGrad = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[pts.length - 1].x, pts[pts.length - 1].y);
+          rivGrad.addColorStop(0, waxColorStop(rv.temp * 0.75, 'mid', 0.94));
+          rivGrad.addColorStop(0.65, waxColorStop(rv.temp, 'core', 0.96));
+          rivGrad.addColorStop(1, waxColorStop(rv.temp, 'core', 0.98));
+          ctx.fillStyle = rivGrad;
+
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x - pts[0].w, pts[0].y);
+          for (let i = 1; i < pts.length; i += 1) {
+            ctx.lineTo(pts[i].x - pts[i].w, pts[i].y);
+          }
+          const tip = pts[pts.length - 1];
+          const headR = rv.width * (0.64 + rv.hanging * 0.25);
+          ctx.arc(tip.x, tip.y + rv.hanging * 6.5, headR, Math.PI, 0, true);
+          for (let i = pts.length - 1; i >= 0; i -= 1) {
+            ctx.lineTo(pts[i].x + pts[i].w, pts[i].y);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          // Wet specular highlight curving along ribbon & swollen head
+          ctx.strokeStyle = `rgba(255, 224, 214, ${(0.56 + rv.temp * 0.24).toFixed(2)})`;
+          ctx.lineWidth = 0.95;
+          ctx.beginPath();
+          for (let i = 0; i < pts.length; i += 1) {
+            const hx = pts[i].x - pts[i].w * 0.35;
+            if (i === 0) ctx.moveTo(hx, pts[i].y);
+            else ctx.lineTo(hx, pts[i].y);
+          }
+          ctx.stroke();
+
+          // Swollen bottom stalactite glint
+          ctx.fillStyle = 'rgba(255, 232, 224, 0.78)';
+          ctx.beginPath();
+          ctx.arc(tip.x - headR * 0.34, tip.y + rv.hanging * 6.5 - headR * 0.28, headR * 0.26, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // C. Glossy Meniscus Wax Puddles Resting Across Top Wooden Card Rails
+      for (const pool of pools) {
+        const r = cardRects.get(pool.cardEl);
+        if (!r) continue;
+        const cx = r.left + pool.centerOffsetX;
+        const lx = Math.max(r.left + 8, cx - pool.leftExtent);
+        const rx = Math.min(r.right - 8, cx + pool.rightExtent);
+        const cy = r.top + 1.5;
+        const h = pool.thickness;
+
+        ctx.save();
+        ctx.globalAlpha = overlayAlpha;
+
+        // Grounded rim shadow
+        ctx.fillStyle = 'rgba(34, 6, 4, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse((lx + rx) * 0.5 + 1, cy + h * 0.55, (rx - lx) * 0.5, h * 0.85, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const pGrad = ctx.createLinearGradient(cx, cy - h, cx, cy + h);
+        pGrad.addColorStop(0, waxColorStop(pool.temp, 'core', 0.98));
+        pGrad.addColorStop(0.55, waxColorStop(pool.temp, 'mid', 0.97));
+        pGrad.addColorStop(1, waxColorStop(pool.temp, 'edge', 0.95));
+        ctx.fillStyle = pGrad;
+
+        ctx.beginPath();
+        ctx.moveTo(lx, cy + 0.5);
+        ctx.bezierCurveTo(
+          lx + (rx - lx) * 0.24,
+          cy - h * 1.15,
+          rx - (rx - lx) * 0.26,
+          cy - h * 0.95,
+          rx,
+          cy + 0.5,
+        );
+        ctx.bezierCurveTo(
+          rx - (rx - lx) * 0.22,
+          cy + h * 0.9,
+          lx + (rx - lx) * 0.22,
+          cy + h * 1.05,
+          lx,
+          cy + 0.5,
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        // Crisp glossy wet meniscus highlight across top edge of puddle
+        ctx.strokeStyle = `rgba(255, 226, 216, ${(0.52 + pool.temp * 0.28).toFixed(2)})`;
+        ctx.lineWidth = 1.15;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(lx + (rx - lx) * 0.14, cy - h * 0.34);
+        ctx.quadraticCurveTo(cx, cy - h * 0.72, rx - (rx - lx) * 0.18, cy - h * 0.28);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // D. Free-Falling Molten Teardrops Cascading From Card to Card
+      for (const d of drops) {
+        const tail = d.trail[0] ?? { x: d.x, y: d.y - 12 };
+        drawGlossTeardrop(d.x, d.y, d.radius, tail.x, tail.y, d.temp, overlayAlpha);
+      }
+    }
+
+    if (active || overlayAlpha > 0.015 || pourStreamLength > 1 || drops.length > 0) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      resetWaxSimulation();
+      ctx.clearRect(0, 0, width, height);
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  window.addEventListener('gd-workshop-toggle', () => ensureRunning());
+
+  if (typeof MutationObserver === 'function') {
+    requestAnimationFrame(() => {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (!appEl) return;
+      const obs = new MutationObserver(() => {
+        if (!document.contains(canvas)) {
+          obs.disconnect();
+          return;
+        }
+        if (isWaxActive()) ensureRunning();
+      });
+      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
+      if (isWaxActive()) ensureRunning();
+    });
+  }
+
+  return canvas;
 }
 

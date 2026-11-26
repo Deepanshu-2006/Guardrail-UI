@@ -27166,6 +27166,27 @@ body.gd-kbd-open .gd-m-shell {
     flex-shrink: 0;
     margin-right: 2px;
     align-self: center;
+    z-index: 15 !important;
+  }
+
+  .gd-prop-settings-clockwork .gd-cw-wax-bead {
+    transform-origin: 38px 85px;
+    transition: transform 0.25s ease, filter 0.3s ease;
+  }
+
+  .gd-prop-settings-clockwork.is-open .gd-cw-wax-bead {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 5px rgba(236, 62, 42, 0.72));
+  }
+
+  .gd-settings-wax {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 12;
   }
 
   .gd-clockwork-note {
