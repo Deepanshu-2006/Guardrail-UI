@@ -1,15 +1,22 @@
 /**
  * Guardrail Pairing Code Custom Keyboard
  *
- * Dedicated mobile keypad tailored for Guardrail invitation codes (`GR-INV-XXXX-YYYY`).
- * Auto-prefixes `GR-INV-` and formats the hyphen separator while providing a dedicated
- * permanent top digit row, uppercase-only keys, live 8-slot preview, paste, and backspace.
+ * Defaults to a giant 3×4 numeric pad tailored for 8-digit Guardrail codes (`XXXX-YYYY`),
+ * while supporting a 1-tap `ABC` switch (or auto-switch on paste) for legacy `GR-INV-XXXX-YYYY` codes.
  */
+
+const NUMERIC_ROWS: readonly (readonly string[])[] = [
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+];
 
 const DIGIT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const;
 const TOP_ALPHA_KEYS = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'] as const;
 const MID_ALPHA_KEYS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'] as const;
 const BOT_ALPHA_KEYS = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'] as const;
+
+export type PairingKeyboardMode = 'numeric' | 'legacy';
 
 export interface PairingCodeKeyboardOptions {
   input: HTMLInputElement;
@@ -22,6 +29,7 @@ export interface PairingCodeKeyboardController {
   open: () => void;
   close: () => void;
   reset: () => void;
+  setMode: (mode: PairingKeyboardMode) => void;
   setStatus: (text: string, tone?: 'neutral' | 'error' | 'success') => void;
   destroy: () => void;
 }
@@ -40,10 +48,10 @@ export function closeActivePairingKeyboard(): void {
 }
 
 /**
- * Normalizes raw user input or pasted invite URLs/codes into up to 8 alphanumeric body chars.
+ * Normalizes raw user input or pasted invite URLs/codes into body chars and detected mode.
  */
-export function extractPairingCodeBody(raw: string): string {
-  if (!raw) return '';
+export function parsePairingInput(raw: string): { mode: PairingKeyboardMode; body: string } {
+  if (!raw) return { mode: 'numeric', body: '' };
   let candidate = String(raw).trim();
   const inviteMatch = candidate.match(/[?&]invite=([^&#\s]+)/i);
   if (inviteMatch && inviteMatch[1]) {
@@ -54,18 +62,41 @@ export function extractPairingCodeBody(raw: string): string {
     }
   }
   const upper = candidate.toUpperCase();
-  const withoutPrefix = upper.replace(/^GR-?INV-?/i, '').replace(/^INV-/i, '');
-  return withoutPrefix.replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  const isLegacy = /^GR-?INV-?/i.test(upper) || /[A-Z]/.test(upper.replace(/^GR-?/i, ''));
+  if (isLegacy) {
+    const withoutPrefix = upper.replace(/^GR-?INV-?/i, '').replace(/^INV-/i, '');
+    return {
+      mode: 'legacy',
+      body: withoutPrefix.replace(/[^A-Z0-9]/g, '').slice(0, 8),
+    };
+  }
+  return {
+    mode: 'numeric',
+    body: upper.replace(/\D/g, '').slice(0, 8),
+  };
 }
 
 /**
- * Formats 0..8 normalized body characters into `GR-INV-XXXX-YYYY`.
+ * Backward-compatible extractor returning up to 8 normalized alphanumeric body chars.
  */
-export function formatPairingCodeValue(body: string): string {
-  const clean = body.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
-  if (!clean) return '';
-  if (clean.length <= 4) return `GR-INV-${clean}`;
-  return `GR-INV-${clean.slice(0, 4)}-${clean.slice(4, 8)}`;
+export function extractPairingCodeBody(raw: string): string {
+  return parsePairingInput(raw).body;
+}
+
+/**
+ * Formats 0..8 body characters into `XXXX-YYYY` (numeric) or `GR-INV-XXXX-YYYY` (legacy).
+ */
+export function formatPairingCodeValue(body: string, mode: PairingKeyboardMode = 'numeric'): string {
+  if (mode === 'legacy') {
+    const clean = body.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
+    if (!clean) return '';
+    if (clean.length <= 4) return `GR-INV-${clean}`;
+    return `GR-INV-${clean.slice(0, 4)}-${clean.slice(4, 8)}`;
+  }
+  const digits = body.replace(/\D/g, '').slice(0, 8);
+  if (!digits) return '';
+  if (digits.length <= 4) return digits;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 8)}`;
 }
 
 function isDescendantOrSelf(node: unknown, root: unknown): boolean {
@@ -77,6 +108,11 @@ function isDescendantOrSelf(node: unknown, root: unknown): boolean {
   return false;
 }
 
+function setFlagClass(el: Element, cls: string, on: boolean): void {
+  if (on) el.classList.add(cls);
+  else el.classList.remove(cls);
+}
+
 /**
  * Binds the dedicated pairing-code keyboard to a Wards-tab pairing input/form.
  */
@@ -86,7 +122,9 @@ export function attachPairingCodeKeyboard(
   closeActivePairingKeyboard();
 
   const { input, pairBox, form, msgEl } = options;
-  let body = extractPairingCodeBody(input.value || '');
+  const initialParsed = parsePairingInput(input.value || '');
+  let mode: PairingKeyboardMode = initialParsed.mode;
+  let body = initialParsed.body;
   let isOpen = false;
   let isDestroyed = false;
   let closeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,7 +136,7 @@ export function attachPairingCodeKeyboard(
   kbdEl.setAttribute('role', 'region');
   kbdEl.setAttribute('aria-label', 'Ward pairing code keyboard');
 
-  // Top bar: live segmented slots + Clear & Done controls
+  // Top bar: live segmented slots + mode switcher, Clear & Done controls
   const head = document.createElement('div');
   head.className = 'gd-m-kbd-head';
 
@@ -129,6 +167,12 @@ export function attachPairingCodeKeyboard(
   const headActions = document.createElement('div');
   headActions.className = 'gd-m-kbd-head-actions';
 
+  const modeBtn = document.createElement('button');
+  modeBtn.type = 'button';
+  modeBtn.className = 'gd-m-kbd-mode-btn';
+  modeBtn.textContent = 'ABC';
+  modeBtn.setAttribute('aria-label', 'Switch to legacy alphanumeric keyboard');
+
   const clearBtn = document.createElement('button');
   clearBtn.type = 'button';
   clearBtn.className = 'gd-m-kbd-util-btn';
@@ -142,15 +186,21 @@ export function attachPairingCodeKeyboard(
   closeBtn.innerHTML =
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
+  headActions.appendChild(modeBtn);
   headActions.appendChild(clearBtn);
   headActions.appendChild(closeBtn);
   head.appendChild(preview);
   head.appendChild(headActions);
   kbdEl.appendChild(head);
 
-  // Keypad rows
   const rowsWrap = document.createElement('div');
   rowsWrap.className = 'gd-m-kbd-rows';
+
+  const numericContainer = document.createElement('div');
+  numericContainer.className = 'gd-m-kbd-mode-pane is-numeric';
+
+  const legacyContainer = document.createElement('div');
+  legacyContainer.className = 'gd-m-kbd-mode-pane is-legacy';
 
   const createKeyButton = (label: string, extraClass: string, ariaLabel?: string): HTMLButtonElement => {
     const btn = document.createElement('button');
@@ -158,62 +208,10 @@ export function attachPairingCodeKeyboard(
     btn.className = `gd-m-kbd-key ${extraClass}`.trim();
     btn.textContent = label;
     if (ariaLabel) btn.setAttribute('aria-label', ariaLabel);
-    btn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-    });
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
     return btn;
   };
 
-  // Row 1: Dedicated permanent numeric row (0-9)
-  const row1 = document.createElement('div');
-  row1.className = 'gd-m-kbd-row is-10';
-  DIGIT_KEYS.forEach((digit) => {
-    const btn = createKeyButton(digit, 'is-digit', `Digit ${digit}`);
-    btn.addEventListener('click', () => appendChar(digit));
-    row1.appendChild(btn);
-  });
-  rowsWrap.appendChild(row1);
-
-  // Row 2: Top uppercase QWERTY row
-  const row2 = document.createElement('div');
-  row2.className = 'gd-m-kbd-row is-10';
-  TOP_ALPHA_KEYS.forEach((ch) => {
-    const btn = createKeyButton(ch, 'is-alpha', ch);
-    btn.addEventListener('click', () => appendChar(ch));
-    row2.appendChild(btn);
-  });
-  rowsWrap.appendChild(row2);
-
-  // Row 3: Middle uppercase QWERTY row (9 centered keys)
-  const row3 = document.createElement('div');
-  row3.className = 'gd-m-kbd-row is-9';
-  MID_ALPHA_KEYS.forEach((ch) => {
-    const btn = createKeyButton(ch, 'is-alpha', ch);
-    btn.addEventListener('click', () => appendChar(ch));
-    row3.appendChild(btn);
-  });
-  rowsWrap.appendChild(row3);
-
-  // Row 4: Paste + bottom alpha + Backspace
-  const row4 = document.createElement('div');
-  row4.className = 'gd-m-kbd-row is-bottom';
-
-  const pasteBtn = createKeyButton('Paste', 'is-action is-paste', 'Paste code from clipboard');
-  pasteBtn.addEventListener('click', () => {
-    void handlePasteAction();
-  });
-  row4.appendChild(pasteBtn);
-
-  BOT_ALPHA_KEYS.forEach((ch) => {
-    const btn = createKeyButton(ch, 'is-alpha', ch);
-    btn.addEventListener('click', () => appendChar(ch));
-    row4.appendChild(btn);
-  });
-
-  const backspaceBtn = createKeyButton('', 'is-action is-backspace', 'Backspace');
-  backspaceBtn.innerHTML =
-    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
-  backspaceBtn.addEventListener('click', () => backspaceChar());
   const stopBackspaceRepeat = () => {
     if (repeatTimer !== null) {
       clearTimeout(repeatTimer);
@@ -224,27 +222,104 @@ export function attachPairingCodeKeyboard(
       repeatInterval = null;
     }
   };
-  backspaceBtn.addEventListener('pointerdown', () => {
-    stopBackspaceRepeat();
-    repeatTimer = setTimeout(() => {
-      repeatInterval = setInterval(() => {
-        backspaceChar();
-      }, 65);
-    }, 360);
-  });
-  backspaceBtn.addEventListener('pointerup', stopBackspaceRepeat);
-  backspaceBtn.addEventListener('pointercancel', stopBackspaceRepeat);
-  backspaceBtn.addEventListener('pointerleave', stopBackspaceRepeat);
-  row4.appendChild(backspaceBtn);
-  rowsWrap.appendChild(row4);
 
-  // Bottom bar inside keyboard: helper/status hint + Connect CTA
+  const attachBackspaceBehavior = (btn: HTMLButtonElement) => {
+    btn.innerHTML =
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
+    btn.addEventListener('click', () => backspaceChar());
+    btn.addEventListener('pointerdown', () => {
+      stopBackspaceRepeat();
+      repeatTimer = setTimeout(() => {
+        repeatInterval = setInterval(() => backspaceChar(), 65);
+      }, 360);
+    });
+    btn.addEventListener('pointerup', stopBackspaceRepeat);
+    btn.addEventListener('pointercancel', stopBackspaceRepeat);
+    btn.addEventListener('pointerleave', stopBackspaceRepeat);
+  };
+
+  // --- Numeric 3×4 dialpad ---
+  NUMERIC_ROWS.forEach((digits) => {
+    const r = document.createElement('div');
+    r.className = 'gd-m-kbd-row is-dialpad';
+    digits.forEach((d) => {
+      const btn = createKeyButton(d, 'is-dialpad-key', `Digit ${d}`);
+      btn.addEventListener('click', () => appendChar(d));
+      r.appendChild(btn);
+    });
+    numericContainer.appendChild(r);
+  });
+
+  const dialRow4 = document.createElement('div');
+  dialRow4.className = 'gd-m-kbd-row is-dialpad';
+
+  const dialPasteBtn = createKeyButton('Paste', 'is-dialpad-action is-paste', 'Paste pairing code');
+  dialPasteBtn.addEventListener('click', () => void handlePasteAction());
+  dialRow4.appendChild(dialPasteBtn);
+
+  const zeroBtn = createKeyButton('0', 'is-dialpad-key', 'Digit 0');
+  zeroBtn.addEventListener('click', () => appendChar('0'));
+  dialRow4.appendChild(zeroBtn);
+
+  const dialBackspaceBtn = createKeyButton('', 'is-dialpad-action is-backspace', 'Backspace');
+  attachBackspaceBehavior(dialBackspaceBtn);
+  dialRow4.appendChild(dialBackspaceBtn);
+  numericContainer.appendChild(dialRow4);
+
+  // --- Legacy 36-key alphanumeric layout ---
+  const lRow1 = document.createElement('div');
+  lRow1.className = 'gd-m-kbd-row is-10';
+  DIGIT_KEYS.forEach((d) => {
+    const btn = createKeyButton(d, 'is-digit', `Digit ${d}`);
+    btn.addEventListener('click', () => appendChar(d));
+    lRow1.appendChild(btn);
+  });
+  legacyContainer.appendChild(lRow1);
+
+  const lRow2 = document.createElement('div');
+  lRow2.className = 'gd-m-kbd-row is-10';
+  TOP_ALPHA_KEYS.forEach((ch) => {
+    const btn = createKeyButton(ch, 'is-alpha', ch);
+    btn.addEventListener('click', () => appendChar(ch));
+    lRow2.appendChild(btn);
+  });
+  legacyContainer.appendChild(lRow2);
+
+  const lRow3 = document.createElement('div');
+  lRow3.className = 'gd-m-kbd-row is-9';
+  MID_ALPHA_KEYS.forEach((ch) => {
+    const btn = createKeyButton(ch, 'is-alpha', ch);
+    btn.addEventListener('click', () => appendChar(ch));
+    lRow3.appendChild(btn);
+  });
+  legacyContainer.appendChild(lRow3);
+
+  const lRow4 = document.createElement('div');
+  lRow4.className = 'gd-m-kbd-row is-bottom';
+  const legacyPasteBtn = createKeyButton('Paste', 'is-action is-paste', 'Paste pairing code');
+  legacyPasteBtn.addEventListener('click', () => void handlePasteAction());
+  lRow4.appendChild(legacyPasteBtn);
+
+  BOT_ALPHA_KEYS.forEach((ch) => {
+    const btn = createKeyButton(ch, 'is-alpha', ch);
+    btn.addEventListener('click', () => appendChar(ch));
+    lRow4.appendChild(btn);
+  });
+
+  const legacyBackspaceBtn = createKeyButton('', 'is-action is-backspace', 'Backspace');
+  attachBackspaceBehavior(legacyBackspaceBtn);
+  lRow4.appendChild(legacyBackspaceBtn);
+  legacyContainer.appendChild(lRow4);
+
+  rowsWrap.appendChild(numericContainer);
+  rowsWrap.appendChild(legacyContainer);
+
+  // Footer inside keyboard: status hint + Connect CTA
   const footer = document.createElement('div');
   footer.className = 'gd-m-kbd-footer';
 
   const statusEl = document.createElement('div');
   statusEl.className = 'gd-m-kbd-status';
-  statusEl.textContent = 'GR-INV-XXXX-YYYY · 0/8';
 
   const connectBtn = document.createElement('button');
   connectBtn.type = 'button';
@@ -254,8 +329,10 @@ export function attachPairingCodeKeyboard(
   connectBtn.addEventListener('click', () => {
     if (typeof (form as any).requestSubmit === 'function') {
       form.requestSubmit();
-    } else {
+    } else if (typeof Event === 'function') {
       form.dispatchEvent(new Event('submit', { cancelable: true }));
+    } else {
+      form.dispatchEvent({ type: 'submit', preventDefault: () => {} } as any);
     }
   });
 
@@ -271,14 +348,17 @@ export function attachPairingCodeKeyboard(
     if (tone === 'success') statusEl.classList.add('is-success');
   };
 
-  const setFlagClass = (el: Element, cls: string, on: boolean) => {
-    if (on) el.classList.add(cls);
-    else el.classList.remove(cls);
-  };
-
   const syncUI = () => {
-    const formatted = formatPairingCodeValue(body);
+    const formatted = formatPairingCodeValue(body, mode);
     input.value = formatted;
+
+    setFlagClass(kbdEl, 'is-legacy-mode', mode === 'legacy');
+    setFlagClass(prefixBadge, 'is-hidden', mode !== 'legacy');
+    modeBtn.textContent = mode === 'legacy' ? '123' : 'ABC';
+    modeBtn.setAttribute(
+      'aria-label',
+      mode === 'legacy' ? 'Switch to 8-digit numeric keypad' : 'Switch to legacy alphanumeric keyboard'
+    );
 
     for (let i = 0; i < 8; i++) {
       const slot = slotEls[i];
@@ -291,11 +371,29 @@ export function attachPairingCodeKeyboard(
     const ready = body.length === 8;
     clearBtn.disabled = body.length === 0;
     setFlagClass(connectBtn, 'is-ready', ready);
-    setStatus(ready ? 'Code ready · Tap Connect' : `GR-INV- prefix added · ${body.length}/8`, ready ? 'success' : 'neutral');
+    setStatus(
+      ready
+        ? 'Code ready · Tap Connect'
+        : mode === 'legacy'
+          ? `Legacy GR-INV- mode · ${body.length}/8`
+          : `Enter 8-digit pairing code · ${body.length}/8`,
+      ready ? 'success' : 'neutral'
+    );
+  };
+
+  const setMode = (nextMode: PairingKeyboardMode) => {
+    mode = nextMode;
+    if (nextMode === 'numeric') {
+      body = body.replace(/\D/g, '').slice(0, 8);
+    }
+    syncUI();
   };
 
   const setBody = (next: string) => {
-    body = next.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
+    body =
+      mode === 'numeric'
+        ? next.replace(/\D/g, '').slice(0, 8)
+        : next.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
     if (msgEl && msgEl.textContent && body.length > 0) {
       msgEl.textContent = '';
     }
@@ -312,13 +410,21 @@ export function attachPairingCodeKeyboard(
     setBody(body.slice(0, -1));
   };
 
+  const applyParsedPaste = (text: string): boolean => {
+    const parsed = parsePairingInput(text);
+    if (!parsed.body) return false;
+    mode = parsed.mode;
+    body = parsed.body;
+    if (msgEl && msgEl.textContent) msgEl.textContent = '';
+    syncUI();
+    return true;
+  };
+
   const handlePasteAction = async () => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
         const clip = await navigator.clipboard.readText();
-        const extracted = extractPairingCodeBody(clip || '');
-        if (extracted) {
-          setBody(extracted);
+        if (applyParsedPaste(clip || '')) {
           return;
         }
         setStatus('No pairing code found in clipboard', 'error');
@@ -385,17 +491,21 @@ export function attachPairingCodeKeyboard(
     if (/^INV-[A-Z0-9_-]*$/i.test(rawVal.trim())) {
       return;
     }
-    body = extractPairingCodeBody(rawVal);
+    const parsed = parsePairingInput(rawVal);
+    mode = parsed.mode;
+    body = parsed.body;
     syncUI();
   };
 
   const onInputPaste = (e: ClipboardEvent) => {
     const text = e.clipboardData?.getData('text') || '';
-    const extracted = extractPairingCodeBody(text);
-    if (extracted) {
+    if (applyParsedPaste(text)) {
       e.preventDefault();
-      setBody(extracted);
     }
+  };
+
+  const onModeClick = () => {
+    setMode(mode === 'numeric' ? 'legacy' : 'numeric');
   };
 
   const onClearClick = () => {
@@ -422,6 +532,7 @@ export function attachPairingCodeKeyboard(
   input.addEventListener('click', onInputClick);
   input.addEventListener('input', onRawInput);
   input.addEventListener('paste', onInputPaste as any);
+  modeBtn.addEventListener('click', onModeClick);
   clearBtn.addEventListener('click', onClearClick);
   closeBtn.addEventListener('click', onCloseClick);
   if (typeof document.addEventListener === 'function') {
@@ -441,6 +552,7 @@ export function attachPairingCodeKeyboard(
     input.removeEventListener('click', onInputClick);
     input.removeEventListener('input', onRawInput);
     input.removeEventListener('paste', onInputPaste as any);
+    modeBtn.removeEventListener('click', onModeClick);
     clearBtn.removeEventListener('click', onClearClick);
     closeBtn.removeEventListener('click', onCloseClick);
     if (typeof document.removeEventListener === 'function') {
@@ -458,6 +570,7 @@ export function attachPairingCodeKeyboard(
     open,
     close,
     reset: () => setBody(''),
+    setMode,
     setStatus,
     destroy,
   };
