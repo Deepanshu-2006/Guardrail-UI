@@ -235,22 +235,27 @@ export interface CreateInvitationOptions {
 }
 
 /**
- * Generates an unambiguous, human-readable pairing code (format: 'GR-INV-XXXX-YYYY').
- * Uses a Crockford-inspired alphanumeric character set excluding easily confused glyphs (0, O, 1, I, L).
+ * Generates an 8-digit pairing code (format: 'XXXX-YYYY', e.g., '4829-1735').
+ * Uses cryptographically random digits when Web Crypto is available.
  */
 export function generateInvitationCode(): string {
-  const chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-  let p1 = '';
-  let p2 = '';
-  for (let i = 0; i < 4; i++) {
-    p1 += chars.charAt(Math.floor(Math.random() * chars.length));
-    p2 += chars.charAt(Math.floor(Math.random() * chars.length));
+  const digits = new Uint8Array(8);
+  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(digits);
+  } else {
+    for (let i = 0; i < 8; i++) {
+      digits[i] = Math.floor(Math.random() * 256);
+    }
   }
-  return `GR-INV-${p1}-${p2}`;
+  let raw = '';
+  for (let i = 0; i < 8; i++) {
+    raw += String(digits[i] % 10);
+  }
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}`;
 }
 
 /**
- * Validates an invitation pairing code format.
+ * Validates an invitation pairing code format (8-digit XXXX-YYYY, or legacy GR-INV-/GRI_/INV- tokens).
  */
 export function validateInvitationCode(
   code: unknown
@@ -263,15 +268,23 @@ export function validateInvitationCode(
 
   const trimmed = code.trim();
   const isSecureToken = /^GRI_[A-Za-z0-9_-]{43}$/.test(trimmed);
-  const normalized = isSecureToken ? trimmed : trimmed.toUpperCase();
-  // Accepts standard GR-INV-XXXX-YYYY, or testing token forms (INV-...)
+  let normalized = isSecureToken ? trimmed : trimmed.toUpperCase();
+
+  // Normalize 8-digit codes with optional space/hyphen or optional GR- prefix into XXXX-YYYY
+  const bareDigits = normalized.replace(/^(?:GR-)?/, '').replace(/[\s-]+/g, '');
+  if (/^\d{8}$/.test(bareDigits) && /^(?:GR-)?[\d\s-]+$/.test(normalized)) {
+    normalized = `${bareDigits.slice(0, 4)}-${bareDigits.slice(4, 8)}`;
+  }
+
+  // Accepts standard 8-digit XXXX-YYYY, or legacy GR-INV-XXXX-YYYY / GRI_ / INV-... tokens
   if (
+    !/^\d{4}-\d{4}$/.test(normalized) &&
     !/^GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalized) &&
     !/^GRI_[A-Za-z0-9_-]{43}$/.test(normalized) &&
     !/^INV-[A-Z0-9_-]{4,32}$/.test(normalized)
   ) {
     errors.push(
-      `Invalid invitation code format "${code}". Expected format: "GR-INV-XXXX-YYYY" (e.g. "GR-INV-4B7K-9MP2").`
+      `Invalid invitation code format "${code}". Expected an 8-digit code (e.g. "4829-1735").`
     );
     return { valid: false, errors: Object.freeze(errors) };
   }

@@ -487,7 +487,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
 
       const addDesc = document.createElement('p');
       addDesc.className = 'gd-add-ward-desc';
-      addDesc.textContent = 'Enter a pairing invitation code (e.g. GR-INV-A1B2-C3D4) to add another protected ward to your portal.';
+      addDesc.textContent = 'Enter an 8-digit pairing code (e.g. 4829-1735) to add another protected ward to your portal.';
 
       const form = document.createElement('form');
       form.className = 'gd-setup-form gd-relationships-connect-form';
@@ -499,7 +499,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       const input = document.createElement('input');
       input.type = 'text';
       input.className = 'gd-setup-input gd-mono';
-      input.placeholder = 'GR-INV-XXXX-YYYY';
+      input.placeholder = '4829-1735';
       input.maxLength = 32;
 
       const btn = document.createElement('button');

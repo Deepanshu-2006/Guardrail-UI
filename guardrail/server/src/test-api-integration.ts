@@ -112,7 +112,7 @@ try {
   if (!inviteResult.success) throw new Error(inviteResult.error.message);
   assert.equal(inviteResult.data.status, 'PENDING');
   assert.equal(inviteResult.data.deliveryStatus, 'NOT_CONFIGURED', 'missing Resend configuration is reported accurately');
-  assert.match(inviteResult.data.code ?? '', /^GRI_[A-Za-z0-9_-]{43}$/);
+  assert.match(inviteResult.data.code ?? '', /^\d{4}-\d{4}$/);
   assert.equal(inviteResult.data.recipientActorId, contactId);
   assert.notEqual(contactId, otherContactId);
   assert.equal((await ward.createInvitation({ recipientActorId: outsiderId })).success, false,
@@ -258,6 +258,24 @@ try {
   const outsider = new ApprovalApiClient({ baseUrl: `http://127.0.0.1:${server.address.port}`, environment: 'test', tokenProvider: () => 'bad-token' });
   const denied = await outsider.listPendingApprovals();
   assert.equal(denied.success, false, 'invalid credentials do not retrieve approval data');
+
+  // Verify brute-force attempt rate limit on /api/v1/invitations/accept
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const failRes = await fetch(`http://127.0.0.1:${server.address.port}/api/v1/invitations/accept`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer synthetic-outsider-token', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: 'bad' }),
+    });
+    assert.equal(failRes.status, 400);
+  }
+  const throttledRes = await fetch(`http://127.0.0.1:${server.address.port}/api/v1/invitations/accept`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer synthetic-outsider-token', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: '1234-5678' }),
+  });
+  assert.equal(throttledRes.status, 429, 'excessive failed pairing attempts return 429 RATE_LIMITED');
+  assert.ok(throttledRes.headers.get('retry-after'), '429 response includes Retry-After header');
+
   console.log('PASS: invite ownership, acceptance, expiration, revocation, durable relationship, pending retrieval, approve/reject, and persisted status over HTTP');
   console.log('PASS: invalid token rejected; test auth is synthetic and not a live identity provider');
 } finally {

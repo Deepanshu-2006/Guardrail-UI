@@ -896,19 +896,30 @@ async function runPwaCompanionTests() {
   }
 
   // =========================================================================
-  // Suite 11: Custom Ward Pairing Code Keyboard (GR-INV-XXXX-YYYY)
+  // Suite 11: Custom Ward Pairing Code Keyboard (8-digit & legacy GR-INV)
   // =========================================================================
   console.log('\n▶ Test Suite 11: Custom Ward Pairing Code Keyboard');
   {
     const { renderMobileCompanion } = await import('../components/mobile-companion.js');
-    const { extractPairingCodeBody, formatPairingCodeValue } = await import('../components/pairing-code-keyboard.js');
-
-    assert(extractPairingCodeBody('gr-inv-u6ga-4wzy') === 'U6GA4WZY', 'Normalizes lowercase GR-INV code');
-    assert(
-      extractPairingCodeBody('http://192.168.0.100:5173/?invite=GR-INV-4B7K-9MP2') === '4B7K9MP2',
-      'Extracts pairing code from invite URL'
+    const { extractPairingCodeBody, formatPairingCodeValue, parsePairingInput } = await import(
+      '../components/pairing-code-keyboard.js'
     );
-    assert(formatPairingCodeValue('U6GA4WZY') === 'GR-INV-U6GA-4WZY', 'Formats 8-char body as GR-INV-XXXX-YYYY');
+
+    assert(parsePairingInput('48291735').body === '48291735', 'Normalizes bare 8-digit pairing code');
+    assert(parsePairingInput('4829-1735').mode === 'numeric', 'Detects numeric mode for 8-digit code');
+    assert(
+      extractPairingCodeBody('http://192.168.0.100:5173/?invite=4829-1735') === '48291735',
+      'Extracts 8-digit pairing code from invite URL'
+    );
+    assert(
+      parsePairingInput('http://192.168.0.100:5173/?invite=GR-INV-4B7K-9MP2').mode === 'legacy',
+      'Detects legacy mode for GR-INV invite URL'
+    );
+    assert(formatPairingCodeValue('48291735') === '4829-1735', 'Formats 8-digit body as XXXX-YYYY');
+    assert(
+      formatPairingCodeValue('U6GA4WZY', 'legacy') === 'GR-INV-U6GA-4WZY',
+      'Formats legacy body as GR-INV-XXXX-YYYY'
+    );
 
     let submittedCode = '';
     const wardsView = renderMobileCompanion({
@@ -943,25 +954,33 @@ async function runPwaCompanionTests() {
     const kbd = (globalThis as any).document.body.querySelector('.gd-m-code-kbd');
     assert(kbd !== null, 'Opens custom pairing code keyboard when input receives focus');
 
-    const keys = kbd?.querySelectorAll('.gd-m-kbd-key') || [];
-    const findKey = (label: string) =>
-      keys.find((k: any) => (k.textContent || '').trim() === label) as HTMLElement | undefined;
+    const dialKeys = kbd?.querySelectorAll('.is-dialpad-key') || [];
+    const findDialKey = (label: string) =>
+      dialKeys.find((k: any) => (k.textContent || '').trim() === label) as HTMLElement | undefined;
 
-    for (const ch of ['4', 'B', '7', 'K', '9', 'M', 'P', '2']) {
-      findKey(ch)?.click();
+    for (const ch of ['4', '8', '2', '9', '1', '7', '3', '5']) {
+      findDialKey(ch)?.click();
     }
-    assert(pairInput?.value === 'GR-INV-4B7K-9MP2', 'Custom keypad auto-prefixes GR-INV- and auto-inserts hyphen');
+    assert(pairInput?.value === '4829-1735', '3×4 numeric pad auto-inserts hyphen as XXXX-YYYY');
 
-    const bsKey = kbd?.querySelector('.is-backspace') as HTMLElement | null;
-    bsKey?.click();
-    assert(pairInput?.value === 'GR-INV-4B7K-9MP', 'Backspace removes last code character');
-    findKey('3')?.click();
-    assert(pairInput?.value === 'GR-INV-4B7K-9MP3', 'Appends replacement character cleanly');
+    const dialBsKey = kbd?.querySelector('.is-dialpad-action.is-backspace') as HTMLElement | null;
+    dialBsKey?.click();
+    assert(pairInput?.value === '4829-173', 'Numeric pad backspace removes last digit');
+    findDialKey('6')?.click();
+    assert(pairInput?.value === '4829-1736', 'Numeric pad appends replacement digit cleanly');
+
+    // Switch to legacy alphanumeric mode via header button & back check
+    const modeBtn = kbd?.querySelector('.gd-m-kbd-mode-btn') as HTMLElement | null;
+    assert(modeBtn !== null, 'Renders legacy ABC mode toggle button');
+    modeBtn?.click();
+    assert(kbd?.classList.contains('is-legacy-mode') ?? false, 'Toggles into legacy GR-INV mode cleanly');
+    modeBtn?.click();
+    assert(!(kbd?.classList.contains('is-legacy-mode') ?? true), 'Toggles back to 3×4 numeric pad cleanly');
 
     const kbdConnectBtn = kbd?.querySelector('.gd-m-kbd-connect') as HTMLElement | null;
     kbdConnectBtn?.click();
     await new Promise((r) => setTimeout(r, 15));
-    assert(submittedCode === 'GR-INV-4B7K-9MP3', 'Submitting from custom keyboard delivers normalized GR-INV code');
+    assert(submittedCode === '4829-1736', 'Submitting from numeric pad delivers normalized XXXX-YYYY code');
   }
 
   console.log('\n======================================================');

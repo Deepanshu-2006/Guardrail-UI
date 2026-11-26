@@ -609,7 +609,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     const step1 = document.createElement('li');
     step1.className = 'gd-setup-step';
     step1.innerHTML =
-      '<strong>Step 1:</strong> Your contact generates an invitation code (e.g. <code>GR-INV-A1B2-C3D4</code>) in their Guardrail extension.';
+      '<strong>Step 1:</strong> Your contact generates an 8-digit pairing code (e.g. <code>4829-1735</code>) in their Guardrail extension.';
 
     const step2 = document.createElement('li');
     step2.className = 'gd-setup-step';
@@ -646,7 +646,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
     input.type = 'text';
     input.id = 'gd-invitation-code-input';
     input.className = 'gd-setup-input gd-mono';
-    input.placeholder = 'GR-INV-XXXX-YYYY';
+    input.placeholder = '4829-1735';
     input.maxLength = 32;
     input.autocomplete = 'off';
     input.spellcheck = false;
@@ -685,12 +685,15 @@ export function renderOverview(props: OverviewProps): HTMLElement {
         return;
       }
 
-      // Format validation: GR-INV-XXXX-YYYY or INV-...
-      const codeRegex = /^(?:GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}|INV-[A-Z0-9]+)$/;
-      if (!codeRegex.test(rawCode)) {
+      // Format validation: 8-digit XXXX-YYYY (or legacy GR-INV-XXXX-YYYY / INV-...)
+      const normalizedCandidate = /^\d{8}$/.test(rawCode)
+        ? `${rawCode.slice(0, 4)}-${rawCode.slice(4, 8)}`
+        : rawCode;
+      const codeRegex = /^(?:\d{4}-\d{4}|GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}|INV-[A-Z0-9_-]+)$/;
+      if (!codeRegex.test(normalizedCandidate)) {
         feedback.className = 'gd-setup-feedback error';
         feedback.textContent =
-          'Invalid invitation code format. Expected format: GR-INV-XXXX-YYYY (e.g., GR-INV-A1B2-C3D4).';
+          'Invalid pairing code format. Enter an 8-digit code (e.g., 4829-1735).';
         input.focus();
         return;
       }
@@ -707,7 +710,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       connectBtn.textContent = 'Connecting...';
 
       showConnectWardModal({
-        code: rawCode,
+        code: normalizedCandidate,
         onConnect: async (code) => {
           try {
             return await props.onConnectInvitation!(code);

@@ -47,7 +47,7 @@ try {
   }), /included in GUARDRAIL_ALLOWED_ORIGINS/);
 
   const created = registry.createInvitation(ownerId, { recipientActorId: recipientId });
-  assert.match(created.code ?? '', /^GRI_[A-Za-z0-9_-]{43}$/, 'backend creates an unpredictable 256-bit invitation token');
+  assert.match(created.code ?? '', /^\d{4}-\d{4}$/, 'backend creates an 8-digit XXXX-YYYY pairing code');
   const success = await coordinator.deliver(created);
   assert.equal(success.deliveryStatus, 'SUBMITTED', 'provider success is reported as submission, not inbox delivery');
   assert.equal(sendCount, 1);

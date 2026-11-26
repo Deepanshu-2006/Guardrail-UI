@@ -194,7 +194,7 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
   setupPairingPanelActions();
 
   // Pre-load invitation & QR code in background so initial open cascade runs without network delay
-  const initialCode = activePairingCode || 'GR-INV-8K2M-9Q7X';
+  const initialCode = activePairingCode || '4829-1735';
   const envConfig = resolveEnvironmentConfig();
   const initialDashboardUrl = envConfig.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173';
   void renderQrCodeSvg(`${initialDashboardUrl}/?invite=${encodeURIComponent(initialCode)}`);
@@ -862,7 +862,7 @@ export function openPairingPanel(): void {
   }
 
   // Start choreographed animations with immediate QR render
-  const codeToDisplay = activePairingCode || 'GR-INV-8K2M-9Q7X';
+  const codeToDisplay = activePairingCode || '4829-1735';
   renderPairingCodeCharacters(codeToDisplay, true);
 
   const env = resolveEnvironmentConfig();
@@ -1212,7 +1212,7 @@ export async function loadOrGenerateInvitation(forceNew = false, customRole?: st
 
   if (!inviteCode) {
     // Fallback display code
-    inviteCode = activePairingCode || 'GR-INV-8K2M-9Q7X';
+    inviteCode = activePairingCode || '4829-1735';
   }
 
   const codeChanged = activePairingCode !== inviteCode;
@@ -1507,7 +1507,7 @@ function setupPairingPanelActions(): void {
       }, 180);
 
       const role = roleInput?.value.trim() || 'Designated Caretaker';
-      const code = activePairingCode || document.getElementById('pairing-code-display')?.textContent || 'GR-INV-U6GA-4WZY';
+      const code = activePairingCode || document.getElementById('pairing-code-display')?.textContent || '4829-1735';
       const cleanCode = code.replace(/[^A-Za-z0-9-]/g, '');
 
       const minAnimationWait = new Promise((resolve) => setTimeout(resolve, 800));

@@ -108,10 +108,11 @@ console.log('▶ Scenario 1: Invitation Code Generation & Format Validation');
 
 const code1 = generateInvitationCode();
 const code2 = generateInvitationCode();
-assert(typeof code1 === 'string' && code1.startsWith('GR-INV-'), 'Code begins with GR-INV- prefix');
+assert(typeof code1 === 'string' && /^\d{4}-\d{4}$/.test(code1), 'Generated code matches 8-digit XXXX-YYYY format');
 assert(code1 !== code2, 'Subsequent generated codes are distinct');
 assert(validateInvitationCode(code1).valid, 'Generated code passes validateInvitationCode');
-assert(validateInvitationCode('GR-INV-A1B2-C3D4').valid, 'Valid GR-INV-A1B2-C3D4 is accepted');
+assert(validateInvitationCode('48291735').normalized === '4829-1735', 'Bare 8-digit numeric code normalizes to XXXX-YYYY');
+assert(validateInvitationCode('GR-INV-A1B2-C3D4').valid, 'Legacy GR-INV-A1B2-C3D4 is accepted');
 assert(validateInvitationCode('INV-TESTCODE').valid, 'Valid INV-TESTCODE is accepted');
 
 // Invalid codes
@@ -386,7 +387,7 @@ assert(postInvRes.statusCode === 201, 'POST /api/v1/invitations returns 201');
 assert(postInvRes.body.success === true, 'Response body success is true');
 const createdApiInv = postInvRes.body.data;
 assert(createdApiInv.wardId === 'usr_alice', 'API created invitation has wardId usr_alice');
-assert(createdApiInv.code.startsWith('GR-INV-'), 'API created invitation has valid code format');
+assert(/^\d{4}-\d{4}$/.test(createdApiInv.code), 'API created invitation has valid 8-digit code format');
 
 // 2. GET /api/v1/invitations (Alice lists invitations)
 const listInvsRes = await apiRouter.dispatch({
@@ -490,7 +491,7 @@ const apiClient = new ApprovalApiClient({
 // Create invitation via client
 const clientInvRes = await apiClient.createInvitation({ recipientActorId: 'usr_charlie', relationshipLabel: 'Advisor' });
 assert(clientInvRes.success === true, 'apiClient.createInvitation succeeded');
-assert(clientInvRes.data.code.startsWith('GR-INV-'), 'Client created invitation code valid');
+assert(/^\d{4}-\d{4}$/.test(clientInvRes.data.code), 'Client created invitation code valid');
 
 // List invitations via client
 const clientListRes = await apiClient.listInvitations();

@@ -385,8 +385,8 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   const pairInput = document.createElement('input');
   pairInput.type = 'text';
   pairInput.className = 'gd-wards-pair-input';
-  pairInput.placeholder = 'PAIRING CODE (e.g. WARD-9821)';
-  pairInput.maxLength = 12;
+  pairInput.placeholder = '4829-1735';
+  pairInput.maxLength = 24;
   pairInput.setAttribute('aria-label', 'Ward pairing code');
   pairInput.autocomplete = 'off';
   pairInput.spellcheck = false;

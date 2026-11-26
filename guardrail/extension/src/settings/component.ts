@@ -1409,7 +1409,7 @@ export function openInviteContactModal(
   const codeDisplay = document.createElement('span');
   codeDisplay.className = 'gd-modal-code-text';
   codeDisplay.id = 'gd-modal-pairing-code-display';
-  codeDisplay.textContent = 'GR-INV-••••-••••';
+  codeDisplay.textContent = '••••-••••';
   codeBox.appendChild(codeDisplay);
 
   const btnCopy = document.createElement('button');
@@ -1459,7 +1459,7 @@ export function openInviteContactModal(
   rootContainer.appendChild(backdrop);
   activeModalBackdrop = backdrop;
 
-  let currentPairingCode = 'GR-INV-8K2M-9Q7X';
+  let currentPairingCode = '4829-1735';
 
   const fetchOrGenerateCode = async (forceNew = false) => {
     const label = relInput.value?.trim() || 'Family Guardian';

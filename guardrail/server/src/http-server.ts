@@ -79,6 +79,33 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
   };
 
   const rateLimiter = options.routerConfig?.rateLimiter ?? new InMemoryRateLimiter(120, 60);
+  const pairingFailedAttempts = new Map<string, { count: number; windowStartMs: number }>();
+  const PAIRING_RATE_WINDOW_MS = 15 * 60 * 1000;
+  const PAIRING_MAX_FAILED_ATTEMPTS = 8;
+
+  const isPairingRateLimited = (key: string): number | null => {
+    const nowMs = Date.now();
+    const rec = pairingFailedAttempts.get(key);
+    if (!rec) return null;
+    if (nowMs - rec.windowStartMs >= PAIRING_RATE_WINDOW_MS) {
+      pairingFailedAttempts.delete(key);
+      return null;
+    }
+    if (rec.count >= PAIRING_MAX_FAILED_ATTEMPTS) {
+      return Math.max(1, Math.ceil((PAIRING_RATE_WINDOW_MS - (nowMs - rec.windowStartMs)) / 1000));
+    }
+    return null;
+  };
+
+  const recordPairingFailure = (key: string): void => {
+    const nowMs = Date.now();
+    const rec = pairingFailedAttempts.get(key);
+    if (!rec || nowMs - rec.windowStartMs >= PAIRING_RATE_WINDOW_MS) {
+      pairingFailedAttempts.set(key, { count: 1, windowStartMs: nowMs });
+    } else {
+      rec.count += 1;
+    }
+  };
   const router = new ApprovalApiRouter(runtime.service, options.tokenVerifier, {
     ...options.routerConfig,
     rateLimiter,
@@ -397,13 +424,13 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               });
               code = inv.code;
             } catch {
-              code = 'GR-INV-U6GA-4WZY';
+              code = '4829-1735';
             }
           }
 
           const dashboardBase = process.env.GUARDRAIL_DASHBOARD_URL?.trim() ||
             (config.environment === 'production' ? 'https://guardrail.app' : 'http://localhost:5173');
-          const pairingUrl = `${dashboardBase}/?invite=${encodeURIComponent(code || 'GR-INV-U6GA-4WZY')}`;
+          const pairingUrl = `${dashboardBase}/?invite=${encodeURIComponent(code || '4829-1735')}`;
 
           const escapeHtml = (str: string) => str.replace(/[&<>'"]/g, (c) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
@@ -436,7 +463,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           let qrMimeType = 'image/png';
           let gifCssWidth = 260;
           let gifCssHeight = 38;
-          const codeString = code || 'GR-INV-XXXX-XXXX';
+          const codeString = code || '4829-1735';
 
           // 1. Logo for CID embedding
           try {
@@ -1105,12 +1132,43 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       let bodyStr = '';
       request.on('data', (chunk) => { bodyStr += chunk; });
       request.on('end', async () => {
+        // Resolve caller rate-limit key before validating or accepting codes
+        const authHeader = request.headers.authorization;
+        const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? authHeader.slice(7).trim()
+          : '';
+        let contactId = 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b';
+        if (token && options.tokenVerifier) {
+          try {
+            const auth = await options.tokenVerifier.verifyToken(token);
+            if (auth?.isAuthenticated && auth.actorId) {
+              contactId = auth.actorId;
+            }
+          } catch {}
+        }
+        const remoteIp = request.socket?.remoteAddress || 'unknown';
+        const rateKey = `${contactId}:${remoteIp}`;
+        const retryAfterSeconds = isPairingRateLimited(rateKey);
+        if (retryAfterSeconds !== null) {
+          response.setHeader('Retry-After', String(retryAfterSeconds));
+          response.statusCode = 429;
+          response.end(JSON.stringify({
+            success: false,
+            error: {
+              code: 'RATE_LIMITED',
+              message: 'Too many invalid pairing attempts. Please wait a few minutes and try again.',
+            },
+          }));
+          return;
+        }
+
         try {
           const body = bodyStr ? JSON.parse(bodyStr) : {};
           const pathMatch = requestPath.match(/^\/api\/v1\/invitations\/([^/]+)\/accept$/);
           const rawCode = (pathMatch ? decodeURIComponent(pathMatch[1]) : body.code) || '';
           const codeVal = validateInvitationCode(rawCode);
           if (!codeVal.valid || !codeVal.normalized) {
+            recordPairingFailure(rateKey);
             response.statusCode = 400;
             response.end(JSON.stringify({
               success: false,
@@ -1119,21 +1177,6 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             return;
           }
           const code = codeVal.normalized;
-
-          // Resolve caretaker identity
-          const authHeader = request.headers.authorization;
-          const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
-            ? authHeader.slice(7).trim()
-            : '';
-          let contactId = 'usr_dee1b4c0-542f-4b0f-ae3c-126115be972b';
-          if (token && options.tokenVerifier) {
-            try {
-              const auth = await options.tokenVerifier.verifyToken(token);
-              if (auth?.isAuthenticated && auth.actorId) {
-                contactId = auth.actorId;
-              }
-            } catch {}
-          }
 
           const db = (runtime.contactRegistry as any)?.database;
           const now = new Date().toISOString();
@@ -1144,28 +1187,6 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             `).run(contactId, contactId, body.contactEmail || 'deepanshukhatri20061972@gmail.com', now, now);
           }
 
-          // Check if invitation exists in database
-          let invitation = runtime.contactRegistry.getInvitationByCode(code);
-          if (!invitation && db) {
-            // Find active or registered ward in guardrail_users
-            const latestWard = db.prepare(
-              "SELECT id, verified_email FROM guardrail_users WHERE role = 'USER' ORDER BY rowid DESC LIMIT 1"
-            ).get() as { id: string; verified_email?: string } | undefined;
-            const wardId = latestWard?.id || 'usr_balleballepurrr';
-            const wardEmail = latestWard?.verified_email;
-            const wardName = wardEmail
-              ? wardEmail.split('@')[0].split(/[._-]/).filter(Boolean).map((s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join(' ')
-              : (wardId.startsWith('usr_') ? wardId.slice(4) : wardId);
-
-            invitation = runtime.contactRegistry.createInvitation(wardId, {
-              customCode: code,
-              recipientActorId: '*',
-              relationshipLabel: 'Designated Caretaker',
-              wardName,
-              wardEmail,
-            } as any);
-          }
-
           const contactInfo = {
             contactName: typeof body.contactName === 'string' && body.contactName.trim() ? body.contactName.trim() : 'Deepanshu Khatri',
             contactEmail: typeof body.contactEmail === 'string' && body.contactEmail.trim() ? body.contactEmail.trim() : 'deepanshukhatri20061972@gmail.com',
@@ -1173,6 +1194,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
           };
 
           const result = runtime.contactRegistry.acceptInvitation(code, contactId, contactInfo);
+          pairingFailedAttempts.delete(rateKey);
 
           // Emit real-time notification to all connected dashboard and extension SSE streams
           defaultApprovalEventHub.emit({
@@ -1195,6 +1217,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
             data: result,
           }));
         } catch (err: any) {
+          recordPairingFailure(rateKey);
           response.statusCode = 400;
           response.end(JSON.stringify({
             success: false,

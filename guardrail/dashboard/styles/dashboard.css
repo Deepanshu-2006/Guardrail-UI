@@ -23866,6 +23866,65 @@ body.gd-kbd-open .gd-m-shell {
   background: #FFFFFF;
 }
 
+.gd-m-kbd-prefix.is-hidden {
+  display: none;
+}
+
+.gd-m-kbd-mode-btn {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 41, 26, 0.14);
+  background: rgba(31, 41, 26, 0.08);
+  color: #1F291A;
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.gd-m-kbd-mode-pane.is-legacy {
+  display: none;
+}
+
+.gd-m-kbd-mode-pane.is-numeric {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gd-m-code-kbd.is-legacy-mode .gd-m-kbd-mode-pane.is-numeric {
+  display: none;
+}
+
+.gd-m-code-kbd.is-legacy-mode .gd-m-kbd-mode-pane.is-legacy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-m-kbd-row.is-dialpad {
+  gap: 7px;
+}
+
+.gd-m-kbd-key.is-dialpad-key {
+  height: 50px;
+  border-radius: 12px;
+  font-family: var(--gd-font-mono);
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.gd-m-kbd-key.is-dialpad-action {
+  height: 50px;
+  border-radius: 12px;
+  background: #D7CEB7;
+  color: #1F291A;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
 .gd-m-kbd-head-actions {
   display: flex;
   align-items: center;

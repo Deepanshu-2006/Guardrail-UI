@@ -1381,7 +1381,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       input.className = 'gd-m-pair-input';
       input.type = 'text';
       input.setAttribute('inputmode', 'none');
-      input.setAttribute('placeholder', 'GR-INV-XXXX-YYYY');
+      input.setAttribute('placeholder', '4829-1735');
       input.setAttribute('autocomplete', 'off');
       input.setAttribute('autocapitalize', 'characters');
       input.setAttribute('spellcheck', 'false');
@@ -1410,17 +1410,26 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       });
       pairBox.addEventListener('submit', async (e) => {
         if (typeof e.preventDefault === 'function') e.preventDefault();
-        const code = (input.value || '').trim().toUpperCase();
-        if (!code) return;
-        if (code.startsWith('GR-INV-') && code.length < 16) {
+        const rawCode = (input.value || '').trim().toUpperCase();
+        if (!rawCode) return;
+        const normalizedCode = /^\d{8}$/.test(rawCode)
+          ? `${rawCode.slice(0, 4)}-${rawCode.slice(4, 8)}`
+          : rawCode;
+        if (normalizedCode.startsWith('GR-INV-') && normalizedCode.length < 16) {
           const hint = 'Enter all 8 characters (GR-INV-XXXX-YYYY).';
+          msgEl.textContent = hint;
+          pairingKeyboard.setStatus(hint, 'error');
+          return;
+        }
+        if (/^[\d-]+$/.test(normalizedCode) && !/^\d{4}-\d{4}$/.test(normalizedCode)) {
+          const hint = 'Enter all 8 digits (4829-1735).';
           msgEl.textContent = hint;
           pairingKeyboard.setStatus(hint, 'error');
           return;
         }
         msgEl.textContent = 'Connecting...';
         pairingKeyboard.setStatus('Connecting...', 'neutral');
-        const res = await props.onConnectWard!(code);
+        const res = await props.onConnectWard!(normalizedCode);
         const msg = res.message || (res.success ? 'Ward connected.' : 'Unable to pair.');
         msgEl.textContent = msg;
         if (res.success) {
