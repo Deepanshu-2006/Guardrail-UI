@@ -552,6 +552,203 @@ function buildBrokenWoodBoardSvg(): string {
 }
 
 /**
+ * Attaches frame-rate-independent pendulum & grab-release spring physics
+ * directly to the hanging wooden board: cursor sweeps brush/nudge the plank,
+ * and click-and-drag pulls & flicks it cleanly on its chains.
+ */
+function attachWoodBoardSpringPhysics(
+  board: HTMLElement,
+  hoverWrap: HTMLElement
+): void {
+  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function' || typeof board.addEventListener !== 'function') {
+    return;
+  }
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return;
+  }
+
+  let swing = 0;
+  let tx = 0;
+  let ty = 0;
+  let vSwing = 0;
+  let vTx = 0;
+  let vTy = 0;
+
+  let dragging = false;
+  let activePointerId: number | null = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let lastClientX: number | null = null;
+  let lastClientY: number | null = null;
+  let dragTargetSwing = 0;
+  let dragTargetTx = 0;
+  let dragTargetTy = 0;
+
+  let rafId: number | null = null;
+  let lastTs = 0;
+
+  // Rubber-band clamp so chains tighten naturally when pulled hard
+  const rubber = (val: number, max: number): number => max * Math.tanh(val / max);
+
+  const step = (ts: number): void => {
+    if (!board.isConnected) {
+      rafId = null;
+      return;
+    }
+    const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.032) : 0.016;
+    lastTs = ts;
+
+    const targetSwing = dragging ? dragTargetSwing : 0;
+    const targetTx = dragging ? dragTargetTx : 0;
+    const targetTy = dragging ? dragTargetTy : 0;
+
+    // Stiffer responsive follow while held; natural heavy pendulum swing on release
+    const kSwing = dragging ? 260 : 95;
+    const dSwing = dragging ? 26 : 5.2;
+    const kPos = dragging ? 300 : 140;
+    const dPos = dragging ? 28 : 11;
+
+    vSwing += ((targetSwing - swing) * kSwing - vSwing * dSwing) * dt;
+    vTx += ((targetTx - tx) * kPos - vTx * dPos) * dt;
+    vTy += ((targetTy - ty) * kPos - vTy * dPos) * dt;
+
+    swing += vSwing * dt;
+    tx += vTx * dt;
+    ty += vTy * dt;
+
+    const settled =
+      !dragging &&
+      Math.abs(swing) < 0.01 &&
+      Math.abs(tx) < 0.02 &&
+      Math.abs(ty) < 0.02 &&
+      Math.abs(vSwing) < 0.02 &&
+      Math.abs(vTx) < 0.05 &&
+      Math.abs(vTy) < 0.05;
+
+    if (settled) {
+      swing = 0;
+      tx = 0;
+      ty = 0;
+      vSwing = 0;
+      vTx = 0;
+      vTy = 0;
+      hoverWrap.style.transform = '';
+      rafId = null;
+      lastTs = 0;
+      return;
+    }
+
+    hoverWrap.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotate(${swing.toFixed(3)}deg)`;
+    rafId = requestAnimationFrame(step);
+  };
+
+  const ensureLoop = (): void => {
+    if (rafId === null) {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  board.addEventListener('pointermove', (event: PointerEvent) => {
+    if (dragging) {
+      if (event.pointerId !== activePointerId) return;
+      const dx = event.clientX - dragStartX;
+      const dy = event.clientY - dragStartY;
+      dragTargetTx = rubber(dx * 0.42, 42);
+      dragTargetTy = Math.max(-10, rubber(dy * 0.38, 26));
+      dragTargetSwing = rubber(-dx * 0.14, 10.5);
+
+      if (lastClientX !== null && lastClientY !== null) {
+        const stepX = event.clientX - lastClientX;
+        const stepY = event.clientY - lastClientY;
+        vSwing += Math.max(-16, Math.min(16, -stepX * 0.45));
+        vTx += Math.max(-24, Math.min(24, stepX * 1.1));
+        vTy += Math.max(-20, Math.min(20, stepY * 0.9));
+      }
+      lastClientX = event.clientX;
+      lastClientY = event.clientY;
+      ensureLoop();
+      return;
+    }
+
+    if (event.pointerType === 'touch') return;
+    if (lastClientX === null) {
+      lastClientX = event.clientX;
+      lastClientY = event.clientY;
+      return;
+    }
+
+    // Cursor brush nudges the hanging sign along the direction you sweep
+    const vx = Math.max(-42, Math.min(42, event.clientX - lastClientX));
+    const vy = Math.max(-28, Math.min(28, event.clientY - (lastClientY ?? event.clientY)));
+    lastClientX = event.clientX;
+    lastClientY = event.clientY;
+
+    if (Math.abs(vx) > 0.5 || Math.abs(vy) > 0.5) {
+      vSwing += -vx * 0.72;
+      vTx += vx * 2.2;
+      vTy += vy * 1.1;
+      ensureLoop();
+    }
+  });
+
+  board.addEventListener('pointerdown', (event: PointerEvent) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    dragging = true;
+    activePointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    lastClientX = event.clientX;
+    lastClientY = event.clientY;
+    dragTargetTx = 0;
+    dragTargetTy = 4;
+    dragTargetSwing = 0;
+
+    // Slight tactile grab settle on initial click
+    const rect = board.getBoundingClientRect();
+    if (rect.width) {
+      const rel = (event.clientX - rect.left) / rect.width - 0.5;
+      vSwing += rel * 18;
+      vTy += 34;
+    }
+
+    board.classList.add('is-grabbing');
+    try {
+      board.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Ignore synthetic events in tests
+    }
+    ensureLoop();
+  });
+
+  const endDrag = (event: PointerEvent): void => {
+    if (!dragging || event.pointerId !== activePointerId) return;
+    dragging = false;
+    activePointerId = null;
+    dragTargetTx = 0;
+    dragTargetTy = 0;
+    dragTargetSwing = 0;
+    board.classList.remove('is-grabbing');
+    try {
+      board.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // Ignore synthetic events
+    }
+    ensureLoop();
+  };
+
+  board.addEventListener('pointerup', endDrag);
+  board.addEventListener('pointercancel', endDrag);
+
+  board.addEventListener('pointerleave', () => {
+    if (!dragging) {
+      lastClientX = null;
+      lastClientY = null;
+    }
+  });
+}
+
+/**
  * Creates the weathered, slightly broken hanging wooden-board pixel scenery +
  * time + greeting element displayed on the right side of desktop page headers.
  */
@@ -624,6 +821,8 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   hoverWrap.appendChild(board);
   swingWrap.appendChild(hoverWrap);
   greetingCard.appendChild(swingWrap);
+
+  attachWoodBoardSpringPhysics(board, hoverWrap);
 
   return greetingCard;
 }
