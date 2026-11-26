@@ -42,6 +42,11 @@ export function createHeaderLanternProp(): HTMLElement {
       <span class="gd-ember gd-ember-3"></span>
       <span class="gd-ember gd-ember-4"></span>
     </span>
+    <span class="gd-lantern-moths" aria-hidden="true">
+      <span class="gd-lantern-moth gd-moth-1"></span>
+      <span class="gd-lantern-moth gd-moth-2"></span>
+      <span class="gd-lantern-moth gd-moth-3"></span>
+    </span>
     <span class="gd-lantern-flight-chirp" aria-hidden="true">Chirp! ♪</span>
     <svg class="gd-prop-svg" width="88" height="142" viewBox="0 0 88 142" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -247,6 +252,44 @@ function playBirdChirp(variant = 0): void {
 }
 
 /**
+ * Synthesizes a soft warm bronze nightwatch bell chime via Web Audio API.
+ */
+function playBrassBellChime(): void {
+  try {
+    if (typeof window === 'undefined') return;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sharedBirdAudioCtx) sharedBirdAudioCtx = new AudioCtx();
+    if (sharedBirdAudioCtx.state === 'suspended') {
+      void sharedBirdAudioCtx.resume();
+    }
+    const now = sharedBirdAudioCtx.currentTime;
+    const partials = [
+      { freq: 988, peak: 0.036, decay: 0.72 },
+      { freq: 1480, peak: 0.022, decay: 0.55 },
+      { freq: 2472, peak: 0.012, decay: 0.36 },
+    ];
+    for (const p of partials) {
+      const osc = sharedBirdAudioCtx.createOscillator();
+      const gain = sharedBirdAudioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(p.freq, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(p.peak, now + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+      osc.connect(gain);
+      gain.connect(sharedBirdAudioCtx.destination);
+      osc.start(now);
+      osc.stop(now + p.decay + 0.02);
+    }
+  } catch {
+    // Ignore audio errors cleanly
+  }
+}
+
+/**
  * Physics-driven full-page flight controller for the lantern bird:
  * - True curved-heading aerodynamic steering (no flat 2D card-flip squishing)
  * - Alternating vigorous wingbeats, soaring glides & dihedral banked turns
@@ -277,7 +320,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     { rx: 0.92, ry: 0.24, speed: 195, chirp: '♪ Chirp!' },
     { rx: 0.56, ry: 0.22, speed: 200, chirp: null },
     { rx: 0.16, ry: 0.28, speed: 185, chirp: 'Peep! ♪' },
-    { rx: 0.84, ry: 0.44, speed: 215, chirp: 'Hello friend! ♪' },
+    { rx: 0.84, ry: 0.44, speed: 215, chirp: '♪ Chirp!' },
     { rx: 0.44, ry: 0.58, speed: 200, chirp: null },
     { rx: 0.22, ry: 0.74, speed: 185, chirp: '♫ Chirp!' },
   ];
@@ -561,6 +604,13 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
         }
         // Take off from wooden frame into the sky!
         const prevDir = activeFrameSpot.faceDir;
+        if (
+          activeFrameSpot.selector.includes('gd-wood-board') &&
+          typeof window !== 'undefined' &&
+          typeof CustomEvent === 'function'
+        ) {
+          window.dispatchEvent(new CustomEvent('gd-nightwatch-bell-ring'));
+        }
         launchFromCurrentSpot(prevDir);
         hopSeed = 0;
         legsBeforeLand = 1;
@@ -833,18 +883,113 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
 }
 
 /**
- * Ambient drifting pixel fireflies overlay shown softly across the workspace
- * when the header lantern is lit (.gd-lantern-ambience-on).
+ * Ambient drifting golden fireflies overlay shown across the workspace when the
+ * header lantern is lit (.gd-lantern-ambience-on). Nearby fireflies gently swirl
+ * toward the user's cursor beam without blocking clicks.
  */
 export function createLanternFirefliesOverlay(): HTMLElement {
   const overlay = document.createElement('div');
   overlay.className = 'gd-lantern-fireflies';
   overlay.setAttribute('aria-hidden', 'true');
-  for (let i = 1; i <= 10; i++) {
-    const fly = document.createElement('span');
-    fly.className = `gd-firefly gd-firefly-${i}`;
-    overlay.appendChild(fly);
+
+  interface FireflyNode {
+    el: HTMLSpanElement;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    phase: number;
+    freq: number;
   }
+
+  const COUNT = 14;
+  const widthInit = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const heightInit = typeof window !== 'undefined' ? window.innerHeight : 760;
+  const flies: FireflyNode[] = [];
+  for (let i = 1; i <= COUNT; i++) {
+    const fly = document.createElement('span');
+    fly.className = `gd-firefly gd-firefly-${((i - 1) % 10) + 1}`;
+    const x = 140 + ((i * 97) % Math.max(400, widthInit - 180));
+    const y = 70 + ((i * 73) % Math.max(320, heightInit - 140));
+    fly.style.left = `${x.toFixed(1)}px`;
+    fly.style.top = `${y.toFixed(1)}px`;
+    overlay.appendChild(fly);
+    flies.push({
+      el: fly,
+      x,
+      y,
+      vx: ((i % 2 === 0 ? 1 : -1) * (10 + (i % 4) * 5)),
+      vy: ((i % 3 === 0 ? -1 : 1) * (8 + (i % 3) * 4)),
+      phase: i * 1.15,
+      freq: 0.7 + (i % 5) * 0.25,
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof requestAnimationFrame === 'function') {
+    let cursorX = -999;
+    let cursorY = -999;
+    let clock = 0;
+    let lastTs = 0;
+    let rafId: number | null = null;
+
+    const onMove = (e: MouseEvent) => {
+      cursorX = e.clientX;
+      cursorY = e.clientY;
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+
+    const step = (ts: number) => {
+      if (typeof document !== 'undefined' && !document.contains(overlay)) {
+        window.removeEventListener('mousemove', onMove);
+        rafId = null;
+        return;
+      }
+      const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
+      lastTs = ts;
+      const appLit = Boolean(document.querySelector('.gd-dashboard-app.gd-lantern-ambience-on'));
+      if (appLit) {
+        clock += dt;
+        const w = Math.max(360, window.innerWidth);
+        const h = Math.max(360, window.innerHeight);
+        for (const f of flies) {
+          f.vx += Math.cos(clock * f.freq + f.phase) * 18 * dt;
+          f.vy += Math.sin(clock * f.freq * 1.15 + f.phase) * 16 * dt;
+
+          // Interactive cursor firefly herding in overlay-local coordinates
+          if (cursorX > 0) {
+            const oRect = overlay.getBoundingClientRect();
+            const localCX = cursorX - oRect.left;
+            const localCY = cursorY - oRect.top;
+            const dx = localCX - f.x;
+            const dy = localCY - f.y;
+            const d = Math.hypot(dx, dy);
+            if (d > 24 && d < 240) {
+              const pull = (1 - d / 240) * 76;
+              // Gentle tangential swirl + warm magnetic draw
+              f.vx += ((dx / d) * pull - (dy / d) * 32) * dt;
+              f.vy += ((dy / d) * pull + (dx / d) * 32) * dt;
+            }
+          }
+
+          f.vx *= Math.pow(0.45, dt);
+          f.vy *= Math.pow(0.45, dt);
+          f.x += f.vx * dt;
+          f.y += f.vy * dt;
+
+          if (f.x < 40) f.x = w - 40;
+          else if (f.x > w - 30) f.x = 50;
+          if (f.y < 30) f.y = h - 40;
+          else if (f.y > h - 30) f.y = 40;
+
+          f.el.style.left = `${f.x.toFixed(1)}px`;
+          f.el.style.top = `${f.y.toFixed(1)}px`;
+        }
+      }
+      rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+  }
+
   return overlay;
 }
 
@@ -947,6 +1092,225 @@ export function createPottedPlantProp(): HTMLElement {
     plantBtn.classList.add('is-watered');
   });
   return plantBtn;
+}
+
+/**
+ * Sentinel Brass Mail Dispatch Box sitting on top of the 02 / Approvals frame.
+ * Red flag rises when pendingCount > 0; slot glows warm amber when lantern is lit.
+ */
+export function createApprovalsMailboxProp(pendingCount: number, onOpen?: () => void): HTMLElement {
+  const hasMail = pendingCount > 0;
+  const boxBtn = document.createElement('button');
+  boxBtn.type = 'button';
+  boxBtn.className = `gd-prop-btn gd-prop-mailbox${hasMail ? ' has-mail' : ''}`;
+  boxBtn.setAttribute(
+    'aria-label',
+    hasMail ? `${pendingCount} requests waiting in approvals dispatch box` : 'Approvals dispatch box'
+  );
+  boxBtn.title = hasMail ? `${pendingCount} pending — click to review` : 'Approvals dispatch box (All clear)';
+  boxBtn.tabIndex = -1;
+  boxBtn.innerHTML = `
+    <svg class="gd-prop-svg" width="46" height="38" viewBox="0 0 46 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Wooden mounting foot -->
+      <rect x="11" y="31" width="24" height="5" rx="1" fill="#5D442B" stroke="#2D1E10" stroke-width="1.2"/>
+      <!-- Archival Oak & Brass Postbox Body -->
+      <path d="M10 15 C10 8, 36 8, 36 15 L36 31 L10 31 Z" fill="#7A5B3A" stroke="#2D1E10" stroke-width="1.3"/>
+      <path d="M12 15 C12 10.2, 34 10.2, 34 15 L34 17 L12 17 Z" fill="#9A7952" opacity="0.65"/>
+      <!-- Brass trim band & mail chute -->
+      <rect x="9" y="18" width="28" height="2.6" rx="0.8" fill="#D9A44E" stroke="#3E280B" stroke-width="0.9"/>
+      <rect x="15" y="21.5" width="16" height="3.2" rx="1" fill="#2A1C10"/>
+      <!-- Warm candlelit mail slot glow when lantern is on -->
+      <rect class="gd-mailbox-glow" x="16" y="22.1" width="14" height="2" rx="0.7" fill="#FFE07D"/>
+      <!-- Corner brass nameplate -->
+      <rect x="18" y="26.5" width="10" height="3" rx="0.7" fill="#E5BA5C" stroke="#4A320F" stroke-width="0.7"/>
+      <!-- Pivoting Red Enamel Sentinel Flag -->
+      <g class="gd-mailbox-flag" style="transform-origin: 35px 25px;">
+        <rect x="34.2" y="9" width="2.2" height="16" rx="1" fill="#D9A44E" stroke="#3E280B" stroke-width="0.8"/>
+        <path d="M36 9 L44 9 L42.5 14 L36 14 Z" fill="#C94A38" stroke="#4A1A14" stroke-width="0.85"/>
+        <circle cx="35.3" cy="25" r="1.8" fill="#FCE28B" stroke="#3E280B" stroke-width="0.8"/>
+      </g>
+    </svg>
+  `;
+  boxBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    boxBtn.classList.remove('is-checked');
+    void boxBtn.offsetWidth;
+    boxBtn.classList.add('is-checked');
+    onOpen?.();
+  });
+  return boxBtn;
+}
+
+/**
+ * Watchman's Iron Brazier & Candle Sconce on the top-left of Recent Activity.
+ * Remains cold charcoal unlit; auto-ignites with crackling flames & sparks when lantern lights.
+ */
+export function createActivitySconceProp(): HTMLElement {
+  const sconceBtn = document.createElement('button');
+  sconceBtn.type = 'button';
+  sconceBtn.className = 'gd-prop-btn gd-prop-activity-sconce';
+  sconceBtn.setAttribute('aria-label', 'Watchman hearth sconce');
+  sconceBtn.title = 'Click to stoke embers';
+  sconceBtn.tabIndex = -1;
+  sconceBtn.innerHTML = `
+    <span class="gd-sconce-halo" aria-hidden="true"></span>
+    <span class="gd-sconce-sparks" aria-hidden="true">
+      <span class="gd-sconce-spark gd-sconce-spark-1"></span>
+      <span class="gd-sconce-spark gd-sconce-spark-2"></span>
+      <span class="gd-sconce-spark gd-sconce-spark-3"></span>
+    </span>
+    <svg class="gd-prop-svg" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Iron brazier pedestal & rim -->
+      <path d="M13 38 L31 38 L27 33 L17 33 Z" fill="#3B322A" stroke="#1E1812" stroke-width="1.2"/>
+      <path d="M11 26 L33 26 L29 33 L15 33 Z" fill="#2F2924" stroke="#1E1812" stroke-width="1.3"/>
+      <rect x="9" y="24" width="26" height="3.2" rx="1.2" fill="#4A4139" stroke="#1E1812" stroke-width="1.2"/>
+      <!-- Brass trim rivets -->
+      <circle cx="16" cy="29.5" r="1.1" fill="#D9A44E"/>
+      <circle cx="22" cy="29.5" r="1.1" fill="#D9A44E"/>
+      <circle cx="28" cy="29.5" r="1.1" fill="#D9A44E"/>
+      <!-- Charcoal ember bed -->
+      <path d="M14 24 C16 20.5, 28 20.5, 30 24 Z" fill="#241D17" stroke="#18120D" stroke-width="0.9"/>
+      <!-- Animated Hearth Flames (visible when lantern lights or stoked) -->
+      <g class="gd-sconce-flames" style="transform-origin: 22px 24px;">
+        <path d="M15 24 C15 16, 20 11, 22 7 C24 11, 29 16, 29 24 Z" fill="#F28A2E"/>
+        <path d="M18 24 C18 18, 20.5 14, 22 11 C23.5 14, 26 18, 26 24 Z" fill="#FFD666"/>
+        <path d="M20.2 24 C20.2 20, 21.5 17, 22 15 C22.5 17, 23.8 20, 23.8 24 Z" fill="#FFF7D4"/>
+      </g>
+    </svg>
+  `;
+  sconceBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sconceBtn.classList.remove('is-stoked');
+    void sconceBtn.offsetWidth;
+    sconceBtn.classList.add('is-stoked');
+    setTimeout(() => sconceBtn.classList.remove('is-stoked'), 1100);
+  });
+  return sconceBtn;
+}
+
+/**
+ * Hanging Brass Nightwatch Bell mounted beneath the wooden greeting sign.
+ * Rings with pendulum physics + bronze harmonic Web Audio chime when clicked
+ * or brushed by the swallow taking off from the board.
+ */
+export function createWoodBoardBellProp(): HTMLElement {
+  const bellBtn = document.createElement('button');
+  bellBtn.type = 'button';
+  bellBtn.className = 'gd-prop-btn gd-prop-board-bell';
+  bellBtn.setAttribute('aria-label', 'Ring brass nightwatch bell');
+  bellBtn.title = 'Click to ring brass bell';
+  bellBtn.tabIndex = -1;
+  bellBtn.innerHTML = `
+    <span class="gd-bell-wave" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="30" height="32" viewBox="0 0 30 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-bell-brass" x1="10%" y1="5%" x2="90%" y2="95%">
+          <stop offset="0%" stop-color="#FFF0AD"/>
+          <stop offset="35%" stop-color="#E0AC4B"/>
+          <stop offset="75%" stop-color="#A67422"/>
+          <stop offset="100%" stop-color="#613E0E"/>
+        </linearGradient>
+      </defs>
+      <!-- Iron bracket ring attaching cleanly to bottom of board -->
+      <rect x="12" y="0" width="6" height="4" rx="1" fill="#3B2E22" stroke="#1E160E" stroke-width="1"/>
+      <g class="gd-bell-swing" style="transform-origin: 15px 4px;">
+        <circle cx="15" cy="5.5" r="2" fill="none" stroke="#D9A44E" stroke-width="1.3"/>
+        <path d="M15 7 C10.5 7.5, 9 13, 8.2 19 L5.8 22.8 L24.2 22.8 L21.8 19 C21 13, 19.5 7.5, 15 7 Z" fill="url(#gd-bell-brass)" stroke="#4A320F" stroke-width="1.15" stroke-linejoin="round"/>
+        <path d="M12.2 10.5 C11.4 13, 11 16, 10.2 19" stroke="#FFF3BF" stroke-width="1" stroke-linecap="round" opacity="0.65"/>
+        <circle cx="15" cy="24.2" r="2.2" fill="#8C6220" stroke="#3E280B" stroke-width="0.9"/>
+      </g>
+    </svg>
+  `;
+
+  const swingEl = bellBtn.querySelector('.gd-bell-swing') as SVGGElement | null;
+  let angle = 0;
+  let vel = 0;
+  let bellRaf: number | null = null;
+
+  const stepBell = () => {
+    if (typeof document !== 'undefined' && !document.contains(bellBtn)) {
+      bellRaf = null;
+      return;
+    }
+    vel = (vel - 0.16 * angle) * 0.93;
+    angle += vel;
+    if (swingEl) swingEl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+    if (Math.abs(angle) > 0.1 || Math.abs(vel) > 0.1) {
+      bellRaf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(stepBell) : null;
+    } else {
+      if (swingEl) swingEl.style.transform = 'rotate(0deg)';
+      bellRaf = null;
+    }
+  };
+
+  const ringBell = (withAudio = true) => {
+    vel += (vel >= 0 ? 1 : -1) * 4.5 + 3.2;
+    bellBtn.classList.remove('is-ringing');
+    void bellBtn.offsetWidth;
+    bellBtn.classList.add('is-ringing');
+    if (withAudio) playBrassBellChime();
+    if (bellRaf === null && typeof requestAnimationFrame === 'function') {
+      bellRaf = requestAnimationFrame(stepBell);
+    }
+  };
+
+  bellBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    ringBell(true);
+  });
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const onBellEvent = () => {
+      if (!document.contains(bellBtn)) {
+        window.removeEventListener('gd-nightwatch-bell-ring', onBellEvent);
+        return;
+      }
+      ringBell(true);
+    };
+    window.addEventListener('gd-nightwatch-bell-ring', onBellEvent);
+  }
+
+  return bellBtn;
+}
+
+/**
+ * Brass Spyglass & Loupe resting on top of the 01 / Wards frame.
+ * Catches warm golden glints when lantern is lit; clicking triggers inspect shimmer.
+ */
+export function createWardSpyglassProp(): HTMLElement {
+  const spyBtn = document.createElement('button');
+  spyBtn.type = 'button';
+  spyBtn.className = 'gd-prop-btn gd-prop-ward-spyglass';
+  spyBtn.setAttribute('aria-label', 'Inspect wards with brass spyglass');
+  spyBtn.title = 'Click to telescope brass spyglass';
+  spyBtn.tabIndex = -1;
+  spyBtn.innerHTML = `
+    <span class="gd-spyglass-beam" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="54" height="24" viewBox="0 0 54 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Timber cradle brackets -->
+      <path d="M13 17 L11 22 M33 17 L35 22" stroke="#4D351E" stroke-width="2" stroke-linecap="round"/>
+      <g class="gd-spyglass-barrel">
+        <!-- Leather grip sleeve + primary brass tube -->
+        <rect x="6" y="8" width="18" height="8" rx="1.5" fill="#6D4B2B" stroke="#2D1E10" stroke-width="1.2"/>
+        <rect x="24" y="9" width="13" height="6" rx="1" fill="#C9963A" stroke="#3E280B" stroke-width="1.1"/>
+        <g class="gd-spyglass-extend">
+          <rect x="35" y="10" width="11" height="4" rx="1" fill="#E8BE5E" stroke="#3E280B" stroke-width="1"/>
+          <circle cx="47" cy="12" r="2.6" fill="#FCE59B" stroke="#3E280B" stroke-width="1"/>
+        </g>
+        <!-- Eyepiece cup + specular golden rim glint -->
+        <rect x="3" y="9.5" width="4" height="5" rx="1" fill="#D9A44E" stroke="#3E280B" stroke-width="1"/>
+        <line class="gd-spyglass-glint" x1="8" y1="9.8" x2="22" y2="9.8" stroke="#FFF4C2" stroke-width="1" stroke-linecap="round"/>
+      </g>
+    </svg>
+  `;
+  spyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    spyBtn.classList.remove('is-inspecting');
+    void spyBtn.offsetWidth;
+    spyBtn.classList.add('is-inspecting');
+    setTimeout(() => spyBtn.classList.remove('is-inspecting'), 1400);
+  });
+  return spyBtn;
 }
 
 /**
