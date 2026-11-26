@@ -530,7 +530,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     listPane.appendChild(skeletonCard);
 
     layout.appendChild(listPane);
-    layout.appendChild(renderProtocolSidebar());
   } else if (props.status === 'error' && props.requests.length === 0) {
     // State B: Backend Unavailable or Load Failure (Empty List)
     layout.classList.add('gd-approvals-layout-empty');
@@ -575,7 +574,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
     listPane.appendChild(errorPlaceholder);
 
     layout.appendChild(listPane);
-    layout.appendChild(renderProtocolSidebar());
   } else {
     // Combine pending requests with selectedRequestDetail if provided (e.g. freshly resolved or remote load)
     const displayRequests: ApprovalRequest[] = [...props.requests];
@@ -613,7 +611,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       listPane.appendChild(emptyPlaceholder);
 
       layout.appendChild(listPane);
-      layout.appendChild(renderProtocolSidebar());
     } else {
       // State D: Filterable Approval Items List
       const filteredRequests = filterRequests(displayRequests, activeFilters);
@@ -680,7 +677,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
         listPane.appendChild(emptyFilter);
         layout.classList.add('gd-approvals-layout-empty');
         layout.appendChild(listPane);
-        layout.appendChild(renderProtocolSidebar());
       } else {
         // Find selected request
         const selectedBaseReq = (props.selectedRequestId && filteredRequests.find(r => r.id === props.selectedRequestId))
@@ -1299,7 +1295,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
           layout.appendChild(listPane);
           layout.appendChild(detailPane);
-          layout.appendChild(renderProtocolSidebar());
         }
       }
     }
@@ -1307,166 +1302,4 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   section.appendChild(layout);
   return section;
-}
-
-/**
- * Renders the Companion Protocols & Oversight Sidebar.
- */
-function renderProtocolSidebar(): HTMLElement {
-  const sidePane = document.createElement('aside');
-  sidePane.className = 'gd-pending-sidebar gd-pending-protocols-horizontal';
-  sidePane.setAttribute('aria-label', 'Review Policies and Security Oversight');
-
-  // Console Header
-  const sideHeader = document.createElement('div');
-  sideHeader.className = 'gd-sidebar-header';
-
-  const sideHeaderLeft = document.createElement('div');
-  sideHeaderLeft.className = 'gd-sidebar-header-left';
-
-  const sideTag = document.createElement('span');
-  sideTag.className = 'gd-sidebar-console-tag';
-  sideTag.textContent = 'PROTOCOL SPECIFICATION';
-
-  const sideConsoleTitle = document.createElement('h2');
-  sideConsoleTitle.className = 'gd-sidebar-console-title';
-  sideConsoleTitle.textContent = 'Security Governance & Review Protocols';
-
-  sideHeaderLeft.appendChild(sideTag);
-  sideHeaderLeft.appendChild(sideConsoleTitle);
-  sideHeader.appendChild(sideHeaderLeft);
-
-  const sideHeaderRight = document.createElement('div');
-  sideHeaderRight.className = 'gd-sidebar-header-right';
-  sideHeaderRight.innerHTML = `
-    <span class="gd-status-dot"></span>
-    <span class="gd-sidebar-live-text">Active Safeguards Enforced</span>
-  `;
-  sideHeader.appendChild(sideHeaderRight);
-
-  sidePane.appendChild(sideHeader);
-
-  // Horizontal Grid Container for Protocol Blocks
-  const gridContainer = document.createElement('div');
-  gridContainer.className = 'gd-protocols-grid';
-
-  // Block 1: Architectural Guarantee
-  const guaranteeBlock = document.createElement('div');
-  guaranteeBlock.className = 'gd-pending-sidebar-block';
-
-  const gBadge = document.createElement('span');
-  gBadge.className = 'gd-sidebar-block-badge';
-  gBadge.textContent = '01 · ARCHITECTURAL GUARANTEE';
-
-  const gTitle = document.createElement('h3');
-  gTitle.className = 'gd-sidebar-block-title';
-  gTitle.textContent = 'Safe Approvals Guarantee';
-
-  const gText = document.createElement('p');
-  gText.className = 'gd-sidebar-block-text';
-  gText.textContent =
-    'Guardrail strictly decouples reviewer approvals from client execution. Approving an action records consent on the backend only and never remotely executes actions in the browser.';
-
-  const contrastPair = document.createElement('div');
-  contrastPair.className = 'gd-sidebar-contrast-pair';
-
-  const cp1 = document.createElement('div');
-  cp1.className = 'gd-contrast-item';
-  cp1.innerHTML = '<span class="gd-contrast-kicker">Reviewer Role</span><span class="gd-contrast-value">Audit Consent Only</span>';
-
-  const cp2 = document.createElement('div');
-  cp2.className = 'gd-contrast-item';
-  cp2.innerHTML = '<span class="gd-contrast-kicker">Browser Execution</span><span class="gd-contrast-value">Ward Local Authority</span>';
-
-  contrastPair.appendChild(cp1);
-  contrastPair.appendChild(cp2);
-
-  guaranteeBlock.appendChild(gBadge);
-  guaranteeBlock.appendChild(gTitle);
-  guaranteeBlock.appendChild(gText);
-  guaranteeBlock.appendChild(contrastPair);
-  gridContainer.appendChild(guaranteeBlock);
-
-  // Block 2: Review Guidelines
-  const guideBlock = document.createElement('div');
-  guideBlock.className = 'gd-pending-sidebar-block';
-
-  const guideBadge = document.createElement('span');
-  guideBadge.className = 'gd-sidebar-block-badge';
-  guideBadge.textContent = '02 · REVIEW STANDARDS';
-
-  const guideTitle = document.createElement('h3');
-  guideTitle.className = 'gd-sidebar-block-title';
-  guideTitle.textContent = 'Review Guidelines';
-
-  const guideList = document.createElement('ol');
-  guideList.className = 'gd-sidebar-guidelines-list';
-
-  const g1 = document.createElement('li');
-  g1.className = 'gd-sidebar-guideline-item';
-  g1.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">01</span><strong class="gd-guideline-title">Verify Destination</strong></div><p class="gd-guideline-desc">Confirm target hostname matches the expected service.</p>';
-
-  const g2 = document.createElement('li');
-  g2.className = 'gd-sidebar-guideline-item';
-  g2.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">02</span><strong class="gd-guideline-title">Evaluate Intent</strong></div><p class="gd-guideline-desc">Verify context reflects intentional browsing activity.</p>';
-
-  const g3 = document.createElement('li');
-  g3.className = 'gd-sidebar-guideline-item';
-  g3.innerHTML =
-    '<div class="gd-guideline-header"><span class="gd-guideline-num">03</span><strong class="gd-guideline-title">15-Minute Expiry</strong></div><p class="gd-guideline-desc">Requests automatically expire to prevent stale execution windows.</p>';
-
-  guideList.appendChild(g1);
-  guideList.appendChild(g2);
-  guideList.appendChild(g3);
-
-  guideBlock.appendChild(guideBadge);
-  guideBlock.appendChild(guideTitle);
-  guideBlock.appendChild(guideList);
-  gridContainer.appendChild(guideBlock);
-
-  // Block 3: Session Security Posture
-  const postureBlock = document.createElement('div');
-  postureBlock.className = 'gd-pending-sidebar-block';
-
-  const pBadge = document.createElement('span');
-  pBadge.className = 'gd-sidebar-block-badge';
-  pBadge.textContent = '03 · RUNTIME TELEMETRY';
-
-  const pTitle = document.createElement('h3');
-  pTitle.className = 'gd-sidebar-block-title';
-  pTitle.textContent = 'Session Invariants';
-
-  const pMeta = document.createElement('div');
-  pMeta.className = 'gd-sidebar-posture-meta';
-
-  const pm1 = document.createElement('div');
-  pm1.className = 'gd-sidebar-meta-row';
-  pm1.innerHTML = '<span class="gd-sidebar-meta-label">Interception</span><span class="gd-sidebar-meta-val">Staging Mode Active</span>';
-
-  const pm2 = document.createElement('div');
-  pm2.className = 'gd-sidebar-meta-row';
-  pm2.innerHTML = '<span class="gd-sidebar-meta-label">Consent Signature</span><span class="gd-sidebar-meta-val">Ed25519 Cryptographic</span>';
-
-  const pm3 = document.createElement('div');
-  pm3.className = 'gd-sidebar-meta-row';
-  pm3.innerHTML = '<span class="gd-sidebar-meta-label">Tenant Boundary</span><span class="gd-sidebar-meta-val">Strict Multi-Tenant</span>';
-
-  const pm4 = document.createElement('div');
-  pm4.className = 'gd-sidebar-meta-row';
-  pm4.innerHTML = '<span class="gd-sidebar-meta-label">Local Execution</span><span class="gd-sidebar-meta-val">Decoupled · 0 Actions</span>';
-
-  pMeta.appendChild(pm1);
-  pMeta.appendChild(pm2);
-  pMeta.appendChild(pm3);
-  pMeta.appendChild(pm4);
-
-  postureBlock.appendChild(pBadge);
-  postureBlock.appendChild(pTitle);
-  postureBlock.appendChild(pMeta);
-  gridContainer.appendChild(postureBlock);
-
-  sidePane.appendChild(gridContainer);
-  return sidePane;
 }
