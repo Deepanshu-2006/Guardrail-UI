@@ -2486,11 +2486,55 @@ export function createHistoryRewindOverlay(): HTMLElement {
   let height = 600;
   let rewindAlpha = 0;
   let clock = 0;
+  let journeyTime = 0;
+  let introRemaining = 0;
   let lastTs = 0;
   let rafId: number | null = null;
   let boardAngle = 0;
   let boardVel = 0;
   let wasRewindActive = false;
+
+  const INTRO_DURATION = 1.65;
+  const ERA_DURATION = 6.8;
+  const ERAS = [
+    { year: '1885 AD', label: '1885 AD · Steam Locomotive' },
+    { year: '1420 AD', label: '1420 AD · Medieval Knights Duel' },
+    { year: '2500 BC', label: '2500 BC · Ancient Egypt' },
+    { year: '66M BC', label: '66M BC · Cretaceous Era' },
+  ] as const;
+
+  const hudEl = document.createElement('div');
+  hudEl.className = 'gd-rewind-center-hud';
+  hudEl.setAttribute('aria-hidden', 'true');
+  hudEl.innerHTML = `
+    <div class="gd-rewind-medallion">
+      <svg class="gd-rewind-ring-svg" width="118" height="118" viewBox="0 0 118 118" fill="none">
+        <circle cx="59" cy="59" r="54" stroke="#E5BA58" stroke-width="1.5" stroke-dasharray="6 5" opacity="0.72"/>
+        <circle cx="59" cy="59" r="46" stroke="#F7DC88" stroke-width="1" opacity="0.45"/>
+      </svg>
+      <div class="gd-rewind-core">
+        <svg class="gd-rewind-arrows" width="38" height="24" viewBox="0 0 38 24" fill="none">
+          <path d="M18 4L6 12L18 20V4Z" fill="#FCE28B" stroke="#6E4A14" stroke-width="1.2" stroke-linejoin="round"/>
+          <path d="M32 4L20 12L32 20V4Z" fill="#FCE28B" stroke="#6E4A14" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+        <span class="gd-rewind-year">2026</span>
+        <span class="gd-rewind-caption">REWINDING TIME</span>
+      </div>
+    </div>
+  `;
+  const hudYearEl = hudEl.querySelector('.gd-rewind-year') as HTMLElement | null;
+
+  const eraBadgeEl = document.createElement('div');
+  eraBadgeEl.className = 'gd-rewind-era-badge';
+  eraBadgeEl.setAttribute('aria-hidden', 'true');
+  eraBadgeEl.textContent = ERAS[0].label;
+
+  const ensureHudMounted = () => {
+    const parent = canvas.parentElement;
+    if (!parent) return;
+    if (!parent.contains(hudEl)) parent.appendChild(hudEl);
+    if (!parent.contains(eraBadgeEl)) parent.appendChild(eraBadgeEl);
+  };
 
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -2691,6 +2735,491 @@ export function createHistoryRewindOverlay(): HTMLElement {
     }
   };
 
+  const drawEraSteamTrain = (eraT: number, alpha: number) => {
+    if (alpha <= 0.01) return;
+    const groundY = height - 20;
+    const progress = (eraT % ERA_DURATION) / ERA_DURATION;
+    const trainX = -180 + progress * (width + 520);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Ground & rail sleepers + distant telegraph poles
+    ctx.fillStyle = '#4A3216';
+    ctx.fillRect(0, groundY, width, 20);
+    ctx.strokeStyle = 'rgba(74, 50, 22, 0.55)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY - 1);
+    ctx.lineTo(width, groundY - 1);
+    ctx.stroke();
+
+    for (let px = 70; px < width; px += 190) {
+      ctx.fillStyle = 'rgba(74, 50, 22, 0.32)';
+      ctx.fillRect(px, groundY - 56, 2.5, 56);
+      ctx.fillRect(px - 7, groundY - 49, 16, 2);
+      ctx.beginPath();
+      ctx.moveTo(px, groundY - 48);
+      ctx.quadraticCurveTo(px + 95, groundY - 38, px + 190, groundY - 48);
+      ctx.strokeStyle = 'rgba(74, 50, 22, 0.22)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+
+    // Expanding steam & smoke plumes drifting back across the sky
+    const stackX = trainX + 76;
+    const stackY = groundY - 50;
+    for (let i = 0; i < 14; i++) {
+      const puffAge = ((clock * 0.85 + i * 0.14) % 1.9) / 1.9;
+      const puffX = stackX - puffAge * 210 - Math.sin(clock * 2 + i) * 12;
+      const puffY = stackY - puffAge * (95 + i * 5);
+      const r = 6 + puffAge * 22;
+      ctx.save();
+      ctx.globalAlpha = alpha * (1 - puffAge) * 0.34;
+      ctx.fillStyle = i % 3 === 0 ? '#7A5934' : '#B5966B';
+      ctx.beginPath();
+      ctx.arc(puffX, puffY, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Trailing 2 vintage passenger coaches + coal tender
+    const drawCoach = (cx: number) => {
+      ctx.fillStyle = '#3B2814';
+      ctx.fillRect(cx, groundY - 36, 92, 26);
+      ctx.fillRect(cx - 2, groundY - 40, 96, 5);
+      for (let w = 0; w < 4; w++) {
+        ctx.fillStyle = 'rgba(250, 212, 112, 0.65)';
+        ctx.fillRect(cx + 10 + w * 21, groundY - 30, 12, 10);
+      }
+      ctx.fillStyle = '#2E1E0E';
+      for (const wx of [cx + 16, cx + 30, cx + 62, cx + 76]) {
+        ctx.beginPath();
+        ctx.arc(wx, groundY - 6, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    drawCoach(trainX - 252);
+    drawCoach(trainX - 150);
+
+    // Coal tender
+    ctx.fillStyle = '#362411';
+    ctx.fillRect(trainX - 50, groundY - 32, 44, 22);
+    ctx.beginPath();
+    ctx.moveTo(trainX - 48, groundY - 32);
+    ctx.quadraticCurveTo(trainX - 28, groundY - 41, trainX - 8, groundY - 32);
+    ctx.fill();
+    for (const wx of [trainX - 38, trainX - 18]) {
+      ctx.beginPath();
+      ctx.arc(wx, groundY - 6, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Main 1885 Locomotive Silhouette
+    ctx.fillStyle = '#2F1F0E';
+    // Engineer cab + warm firebox glow
+    ctx.fillRect(trainX, groundY - 46, 30, 36);
+    ctx.fillRect(trainX - 3, groundY - 49, 36, 4);
+    ctx.fillStyle = 'rgba(255, 192, 74, 0.78)';
+    ctx.fillRect(trainX + 8, groundY - 40, 14, 11);
+
+    // Cylindrical boiler, steam dome, headlamp & flared smokestack
+    ctx.fillStyle = '#2F1F0E';
+    ctx.fillRect(trainX + 30, groundY - 35, 58, 22);
+    ctx.beginPath();
+    ctx.arc(trainX + 48, groundY - 35, 6.5, Math.PI, 0);
+    ctx.fill();
+    // Smokestack
+    ctx.beginPath();
+    ctx.moveTo(trainX + 71, groundY - 35);
+    ctx.lineTo(trainX + 68, groundY - 51);
+    ctx.lineTo(trainX + 83, groundY - 51);
+    ctx.lineTo(trainX + 80, groundY - 35);
+    ctx.closePath();
+    ctx.fill();
+    // Headlight beam cone
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.18;
+    ctx.fillStyle = '#FCE28B';
+    ctx.beginPath();
+    ctx.moveTo(trainX + 90, groundY - 31);
+    ctx.lineTo(trainX + 185, groundY - 48);
+    ctx.lineTo(trainX + 185, groundY - 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Cowcatcher
+    ctx.fillStyle = '#2F1F0E';
+    ctx.beginPath();
+    ctx.moveTo(trainX + 88, groundY - 18);
+    ctx.lineTo(trainX + 104, groundY - 4);
+    ctx.lineTo(trainX + 88, groundY - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Articulated driving wheels + live connecting rod
+    const wheelAngle = clock * 7.5;
+    const driveWheels = [trainX + 18, trainX + 42, trainX + 66];
+    for (const wx of driveWheels) {
+      ctx.strokeStyle = '#241709';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(wx, groundY - 9, 8.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      for (let sp = 0; sp < 4; sp++) {
+        const a = wheelAngle + (sp * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.moveTo(wx - Math.cos(a) * 8, groundY - 9 - Math.sin(a) * 8);
+        ctx.lineTo(wx + Math.cos(a) * 8, groundY - 9 + Math.sin(a) * 8);
+        ctx.stroke();
+      }
+    }
+    const rodDx = Math.cos(wheelAngle) * 4.5;
+    const rodDy = Math.sin(wheelAngle) * 4.5;
+    ctx.strokeStyle = '#C98A2E';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(driveWheels[0] + rodDx, groundY - 9 + rodDy);
+    ctx.lineTo(driveWheels[2] + rodDx, groundY - 9 + rodDy);
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
+  const drawEraMedievalDuel = (eraT: number, alpha: number) => {
+    if (alpha <= 0.01) return;
+    const groundY = height - 20;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Ground & distant castle battlements silhouette
+    ctx.fillStyle = '#3B2814';
+    ctx.fillRect(0, groundY, width, 20);
+
+    const castleX = Math.max(260, width * 0.25);
+    ctx.fillStyle = 'rgba(66, 44, 20, 0.36)';
+    ctx.fillRect(castleX, groundY - 68, 42, 68);
+    ctx.fillRect(castleX + 42, groundY - 46, 74, 46);
+    ctx.fillRect(castleX + 116, groundY - 76, 38, 76);
+    for (let bx = castleX; bx < castleX + 152; bx += 12) {
+      ctx.fillRect(bx, groundY - 52, 7, 6);
+    }
+    // Castle pennant waving
+    ctx.fillStyle = 'rgba(158, 50, 36, 0.55)';
+    const flagWave = Math.sin(clock * 5) * 4;
+    ctx.beginPath();
+    ctx.moveTo(castleX + 135, groundY - 76);
+    ctx.lineTo(castleX + 135, groundY - 96);
+    ctx.quadraticCurveTo(castleX + 150, groundY - 92 + flagWave, castleX + 164, groundY - 90 - flagWave * 0.5);
+    ctx.lineTo(castleX + 135, groundY - 84);
+    ctx.fill();
+
+    // High-arcing flaming siege boulders across the upper sky
+    const arcProg = (eraT * 0.42) % 1;
+    const bx = width * 0.22 + arcProg * (width * 0.62);
+    const by = height * 0.55 - Math.sin(arcProg * Math.PI) * (height * 0.38);
+    ctx.save();
+    ctx.fillStyle = '#4A2E12';
+    ctx.beginPath();
+    ctx.arc(bx, by, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(252, 186, 68, 0.72)';
+    ctx.beginPath();
+    ctx.arc(bx - 5, by + 2, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Two articulated Knights dueling on the horizon
+    const duelCenterX = width * 0.62;
+    const duelCycle = (clock * 1.45) % 1;
+    const lunge = Math.sin(duelCycle * Math.PI * 2);
+    const clashMoment = Math.max(0, Math.sin(duelCycle * Math.PI * 2));
+
+    const drawKnight = (kx: number, dir: 1 | -1, swordAngle: number, stepOffset: number) => {
+      ctx.save();
+      ctx.translate(kx, groundY);
+      ctx.scale(dir, 1);
+
+      // Flowing cape
+      ctx.fillStyle = dir === 1 ? '#592B1B' : '#352616';
+      ctx.beginPath();
+      ctx.moveTo(-4, -36);
+      ctx.quadraticCurveTo(-18 - Math.sin(clock * 6) * 4, -22, -16, -6);
+      ctx.lineTo(-4, -14);
+      ctx.closePath();
+      ctx.fill();
+
+      // Legs
+      ctx.strokeStyle = '#2B1C0E';
+      ctx.lineWidth = 4.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-2, -16);
+      ctx.lineTo(-6 - stepOffset, -1);
+      ctx.moveTo(3, -16);
+      ctx.lineTo(8 + stepOffset, -1);
+      ctx.stroke();
+
+      // Armored torso + visored helm + plume
+      ctx.fillStyle = '#2B1C0E';
+      ctx.fillRect(-5, -36, 12, 21);
+      ctx.beginPath();
+      ctx.arc(1, -43, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = dir === 1 ? '#9E3224' : '#B87A24';
+      ctx.beginPath();
+      ctx.ellipse(-2, -50, 6, 2.5, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Kite Shield
+      ctx.fillStyle = '#4A3219';
+      ctx.beginPath();
+      ctx.moveTo(5, -33);
+      ctx.lineTo(13, -33);
+      ctx.lineTo(11, -18);
+      ctx.lineTo(6, -15);
+      ctx.closePath();
+      ctx.fill();
+
+      // Sword Arm + Broadsword
+      ctx.save();
+      ctx.translate(4, -31);
+      ctx.rotate(swordAngle);
+      ctx.strokeStyle = '#2B1C0E';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(12, -4);
+      ctx.stroke();
+      ctx.strokeStyle = '#D8C29A';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(12, -4);
+      ctx.lineTo(36, -18);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.restore();
+    };
+
+    drawKnight(duelCenterX - 32 + lunge * 10, 1, -0.35 + lunge * 0.55, lunge * 3);
+    drawKnight(duelCenterX + 32 - lunge * 10, -1, -0.45 + lunge * 0.5, -lunge * 3);
+
+    // Metallic sword clash sparks
+    if (clashMoment > 0.72) {
+      const sparkInt = (clashMoment - 0.72) / 0.28;
+      const sx = duelCenterX;
+      const sy = groundY - 38;
+      ctx.strokeStyle = '#FFF2B8';
+      ctx.lineWidth = 1.6;
+      for (let sp = 0; sp < 7; sp++) {
+        const a = (sp / 7) * Math.PI * 2 + clock * 4;
+        const len = 6 + sparkInt * 14;
+        ctx.beginPath();
+        ctx.moveTo(sx + Math.cos(a) * 3, sy + Math.sin(a) * 3);
+        ctx.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  };
+
+  const drawEraAncientEgypt = (eraT: number, alpha: number) => {
+    if (alpha <= 0.01) return;
+    const groundY = height - 20;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Warm desert sun low on horizon
+    ctx.fillStyle = 'rgba(232, 166, 62, 0.35)';
+    ctx.beginPath();
+    ctx.arc(width * 0.72, groundY - 64, 42, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Great Pyramids silhouettes
+    ctx.fillStyle = 'rgba(116, 76, 28, 0.38)';
+    const drawPyramid = (px: number, bw: number, bh: number) => {
+      ctx.beginPath();
+      ctx.moveTo(px - bw * 0.5, groundY);
+      ctx.lineTo(px, groundY - bh);
+      ctx.lineTo(px + bw * 0.5, groundY);
+      ctx.closePath();
+      ctx.fill();
+    };
+    drawPyramid(width * 0.44, 150, 88);
+    drawPyramid(width * 0.58, 120, 70);
+    drawPyramid(width * 0.69, 86, 50);
+
+    // Ground dune
+    ctx.fillStyle = '#4A3114';
+    ctx.fillRect(0, groundY, width, 20);
+
+    // Galloping Two-Horse War Chariot moving right-to-left (rewinding!)
+    const progress = (eraT % ERA_DURATION) / ERA_DURATION;
+    const cx = width + 100 - progress * (width + 260);
+    const gallop = clock * 11;
+
+    ctx.save();
+    ctx.translate(cx, groundY);
+    // Chariot cab + spinning spoked wheel
+    ctx.fillStyle = '#2F1F0E';
+    ctx.beginPath();
+    ctx.moveTo(14, -8);
+    ctx.lineTo(38, -8);
+    ctx.lineTo(34, -26);
+    ctx.lineTo(16, -24);
+    ctx.closePath();
+    ctx.fill();
+    // Charioteer with spear
+    ctx.fillRect(21, -40, 7, 16);
+    ctx.beginPath();
+    ctx.arc(24, -44, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#2F1F0E';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(22, -35);
+    ctx.lineTo(6, -48);
+    ctx.stroke();
+
+    // Wheel
+    ctx.strokeStyle = '#2F1F0E';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(25, -8, 8, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Galloping Horse silhouette
+    const bob = Math.sin(gallop) * 2;
+    ctx.fillStyle = '#2B1C0E';
+    ctx.beginPath();
+    ctx.ellipse(-10, -22 + bob, 16, 7.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Neck & head
+    ctx.beginPath();
+    ctx.moveTo(-22, -23 + bob);
+    ctx.lineTo(-32, -37 + bob);
+    ctx.lineTo(-38, -32 + bob);
+    ctx.lineTo(-27, -18 + bob);
+    ctx.closePath();
+    ctx.fill();
+    // Animated legs
+    ctx.strokeStyle = '#2B1C0E';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-20, -17 + bob);
+    ctx.lineTo(-26 + Math.sin(gallop) * 7, -1);
+    ctx.moveTo(0, -17 + bob);
+    ctx.lineTo(6 - Math.sin(gallop) * 7, -1);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  };
+
+  const drawEraPrehistoric = (eraT: number, alpha: number) => {
+    if (alpha <= 0.01) return;
+    const groundY = height - 20;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Distant smoldering volcano silhouette
+    const vx = width * 0.78;
+    ctx.fillStyle = 'rgba(72, 42, 20, 0.42)';
+    ctx.beginPath();
+    ctx.moveTo(vx - 110, groundY);
+    ctx.lineTo(vx - 24, groundY - 96);
+    ctx.lineTo(vx + 24, groundY - 96);
+    ctx.lineTo(vx + 110, groundY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(235, 118, 42, 0.48)';
+    ctx.beginPath();
+    ctx.ellipse(vx, groundY - 96, 18, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ground
+    ctx.fillStyle = '#382410';
+    ctx.fillRect(0, groundY, width, 20);
+
+    // Striding Brachiosaurus silhouette
+    const progress = (eraT % ERA_DURATION) / ERA_DURATION;
+    const dx = width * 0.25 + progress * (width * 0.42);
+    const stride = clock * 2.8;
+    ctx.save();
+    ctx.translate(dx, groundY);
+    ctx.fillStyle = '#2A1B0C';
+    ctx.beginPath();
+    ctx.ellipse(0, -28, 26, 13, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    // Long neck + head
+    const neckSway = Math.sin(stride) * 3;
+    ctx.beginPath();
+    ctx.moveTo(16, -34);
+    ctx.quadraticCurveTo(32, -62, 38 + neckSway, -82);
+    ctx.lineTo(48 + neckSway, -80);
+    ctx.quadraticCurveTo(38, -56, 24, -26);
+    ctx.closePath();
+    ctx.fill();
+    // Tail
+    ctx.beginPath();
+    ctx.moveTo(-22, -28);
+    ctx.quadraticCurveTo(-50, -24 + neckSway, -66, -18);
+    ctx.lineTo(-22, -21);
+    ctx.closePath();
+    ctx.fill();
+    // Legs
+    ctx.strokeStyle = '#2A1B0C';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-12, -20);
+    ctx.lineTo(-14 + Math.sin(stride) * 4, -1);
+    ctx.moveTo(12, -20);
+    ctx.lineTo(14 - Math.sin(stride) * 4, -1);
+    ctx.stroke();
+    ctx.restore();
+
+    // Gliding Pterodactyls in upper sky
+    for (let p = 0; p < 3; p++) {
+      const px = ((width * 0.22 + p * 180 + clock * (24 + p * 7)) % (width + 80)) - 40;
+      const py = height * (0.16 + p * 0.08) + Math.sin(clock * 2.4 + p) * 8;
+      const wing = Math.sin(clock * 6 + p * 1.3) * 7;
+      ctx.strokeStyle = 'rgba(58, 36, 16, 0.58)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px - 14, py + wing);
+      ctx.quadraticCurveTo(px - 5, py - 5, px, py);
+      ctx.quadraticCurveTo(px + 5, py - 5, px + 14, py + wing);
+      ctx.stroke();
+    }
+
+    // Golden-amber Meteor streaking diagonally across the upper sky
+    const mProg = (eraT * 0.55) % 1;
+    const mx = width * 0.2 + mProg * (width * 0.72);
+    const my = height * 0.1 + mProg * (height * 0.28);
+    const grad = ctx.createLinearGradient(mx - 65, my - 25, mx, my);
+    grad.addColorStop(0, 'rgba(252, 226, 139, 0)');
+    grad.addColorStop(1, 'rgba(252, 210, 96, 0.85)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(mx - 65, my - 25);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+    ctx.fillStyle = '#FFF3C4';
+    ctx.beginPath();
+    ctx.arc(mx, my, 3.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  };
+
   const triggerHistoryCardsRewind = () => {
     const cards = Array.from(document.querySelectorAll('#view-history .gd-history-card')) as HTMLElement[];
     cards.forEach((card, idx) => {
@@ -2721,8 +3250,29 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
     const historyVisible = isHistoryVisible();
     const active = isRewindActive() && historyVisible;
+    if (active) ensureHudMounted();
     if (!historyVisible && lingerPages.length > 0) {
       lingerPages.length = 0;
+    }
+    if (!active) {
+      introRemaining = 0;
+      hudEl.classList.remove('is-visible');
+      eraBadgeEl.classList.remove('is-visible');
+    } else if (introRemaining > 0) {
+      introRemaining = Math.max(0, introRemaining - dt);
+      const introProgress = 1 - introRemaining / INTRO_DURATION;
+      const yearNum = Math.round(2026 - introProgress * (2026 - 1885));
+      if (hudYearEl) hudYearEl.textContent = `${yearNum} AD`;
+      hudEl.classList.toggle('is-visible', introRemaining > 0.05);
+      eraBadgeEl.classList.remove('is-visible');
+    } else {
+      journeyTime += dt;
+      hudEl.classList.remove('is-visible');
+      eraBadgeEl.classList.add('is-visible');
+      const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
+      if (eraBadgeEl.textContent !== ERAS[eraIdx].label) {
+        eraBadgeEl.textContent = ERAS[eraIdx].label;
+      }
     }
     if (wasRewindActive && !active && historyVisible) {
       spawnLingerPages();
@@ -2737,8 +3287,21 @@ export function createHistoryRewindOverlay(): HTMLElement {
     if (rewindAlpha > 0.01) {
       // 1. Rotating antique Roman-numeral clockwork rings
       for (const ring of clockRings) {
-        ring.angle += ring.spinSpeed * dt;
+        ring.angle += ring.spinSpeed * dt * (introRemaining > 0 ? 3.5 : 1);
         drawRomanClockRing(ring, ring.alpha * rewindAlpha);
+      }
+
+      // 2. Multi-Era Historical Journey silhouettes (after center rewind intro completes)
+      if (active && introRemaining <= 0.15) {
+        const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
+        const eraT = journeyTime % ERA_DURATION;
+        const fadeIn = Math.min(1, eraT / 0.8);
+        const fadeOut = Math.min(1, (ERA_DURATION - eraT) / 0.8);
+        const eraAlpha = rewindAlpha * Math.min(fadeIn, fadeOut);
+        if (eraIdx === 0) drawEraSteamTrain(eraT, eraAlpha);
+        else if (eraIdx === 1) drawEraMedievalDuel(eraT, eraAlpha);
+        else if (eraIdx === 2) drawEraAncientEgypt(eraT, eraAlpha);
+        else drawEraPrehistoric(eraT, eraAlpha);
       }
 
       // 2. Ascending golden-sepia memory sparks
@@ -2892,7 +3455,14 @@ export function createHistoryRewindOverlay(): HTMLElement {
   window.addEventListener('gd-watch-toggle', (ev: Event) => {
     const custom = ev as CustomEvent<{ open?: boolean }>;
     if (custom?.detail?.open) {
+      introRemaining = INTRO_DURATION;
+      journeyTime = 0;
+      ensureHudMounted();
       triggerHistoryCardsRewind();
+    } else {
+      introRemaining = 0;
+      hudEl.classList.remove('is-visible');
+      eraBadgeEl.classList.remove('is-visible');
     }
     ensureRunning();
   });
