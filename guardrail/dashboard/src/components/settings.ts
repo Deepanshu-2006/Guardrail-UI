@@ -90,7 +90,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     title,
     () =>
       typeof document !== 'undefined' &&
-      Boolean(document.querySelector('.gd-dashboard-app.gd-settings-blueprint-on')),
+      Boolean(document.querySelector('.gd-dashboard-app.gd-settings-workshop-on')),
     undefined,
     'tick',
   );

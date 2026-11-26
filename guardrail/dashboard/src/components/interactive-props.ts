@@ -7670,18 +7670,18 @@ function buildHorologicalGearPath(
 /**
  * Meshed Brass Clockwork Escapement beside the Settings heading.
  * - Hover gives the geared wheels crisp horological torque.
- * - Click toggles Blueprint Drafting Mode (.gd-settings-blueprint-on) with meshed
- *   opposing gear ratios and ticking anchor escapement motion.
+ * - Click toggles the Settings Workshop Calibration bar (.gd-settings-workshop-on)
+ *   with meshed opposing gear ratios and ticking anchor escapement motion.
  */
 export function createSettingsClockworkProp(): HTMLElement {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = `gd-prop-btn gd-prop-settings-clockwork${sharedWorkshopOpen ? ' is-open' : ''}`;
-  btn.setAttribute('aria-label', 'Toggle Settings Blueprint Drafting Mode');
+  btn.setAttribute('aria-label', 'Toggle Portal Calibration Controls');
   btn.setAttribute('aria-pressed', sharedWorkshopOpen ? 'true' : 'false');
   btn.title = sharedWorkshopOpen
-    ? 'Click to exit Blueprint Drafting Mode'
-    : 'Click to engage Clockwork Blueprint Drafting Mode';
+    ? 'Click to close calibration controls'
+    : 'Click to open portal calibration controls';
   btn.tabIndex = -1;
 
   const mainGearPath = buildHorologicalGearPath(35, 55, 17.5, 14.1, 14);
@@ -7695,13 +7695,8 @@ export function createSettingsClockworkProp(): HTMLElement {
     }).join('');
 
   btn.innerHTML = `
-    <span class="gd-clockwork-note" aria-hidden="true">${sharedWorkshopOpen ? 'Exit blueprint' : 'Drafting mode'}</span>
+    <span class="gd-clockwork-note" aria-hidden="true">${sharedWorkshopOpen ? 'Close controls' : 'Calibrate'}</span>
     <span class="gd-clockwork-aura" aria-hidden="true"></span>
-    <span class="gd-clockwork-motes" aria-hidden="true">
-      <span class="gd-clockwork-mote gd-clockwork-mote-1"></span>
-      <span class="gd-clockwork-mote gd-clockwork-mote-2"></span>
-      <span class="gd-clockwork-mote gd-clockwork-mote-3"></span>
-    </span>
     <svg class="gd-prop-svg" width="76" height="92" viewBox="0 0 76 92" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="gd-cw-brass" x1="8%" y1="6%" x2="92%" y2="94%">
@@ -7789,19 +7784,23 @@ export function createSettingsClockworkProp(): HTMLElement {
   let lastTs = 0;
   let rafId: number | null = null;
 
-  const syncBlueprintClass = (open: boolean) => {
-    btn.classList.toggle('is-open', open);
+  const syncWorkshopClass = (open: boolean) => {
+    if (btn?.classList) {
+      if (open) btn.classList.add('is-open');
+      else btn.classList.remove('is-open');
+    }
     btn.setAttribute('aria-pressed', open ? 'true' : 'false');
-    btn.title = open ? 'Click to exit Blueprint Drafting Mode' : 'Click to engage Clockwork Blueprint Drafting Mode';
+    btn.title = open ? 'Click to close calibration controls' : 'Click to open portal calibration controls';
     if (noteEl) {
-      noteEl.textContent = open ? 'Exit blueprint' : 'Drafting mode';
+      noteEl.textContent = open ? 'Close controls' : 'Calibrate';
     }
     if (typeof document !== 'undefined') {
       const appEl = document.querySelector('.gd-dashboard-app');
-      const viewEl = btn.closest('#view-settings');
-      if (appEl) {
+      const viewEl = typeof btn.closest === 'function' ? btn.closest('#view-settings') : null;
+      if (appEl?.classList) {
         const isSettingsMounted = Boolean(viewEl && document.contains(viewEl));
-        appEl.classList.toggle('gd-settings-blueprint-on', open && isSettingsMounted);
+        if (open && isSettingsMounted) appEl.classList.add('gd-settings-workshop-on');
+        else appEl.classList.remove('gd-settings-workshop-on');
       }
     }
   };
@@ -7854,7 +7853,7 @@ export function createSettingsClockworkProp(): HTMLElement {
 
   applyTransforms(0);
   if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => syncBlueprintClass(sharedWorkshopOpen));
+    requestAnimationFrame(() => syncWorkshopClass(sharedWorkshopOpen));
     if (sharedWorkshopOpen) ensureRunning();
   }
 
@@ -7867,7 +7866,7 @@ export function createSettingsClockworkProp(): HTMLElement {
     sharedWorkshopOpen = !sharedWorkshopOpen;
     gearVel += sharedWorkshopOpen ? 135 : -85;
     playClockworkMechanismSound(sharedWorkshopOpen);
-    syncBlueprintClass(sharedWorkshopOpen);
+    syncWorkshopClass(sharedWorkshopOpen);
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
       window.dispatchEvent(new CustomEvent('gd-workshop-toggle', { detail: { open: sharedWorkshopOpen } }));
     }
@@ -7883,7 +7882,7 @@ export function createSettingsClockworkProp(): HTMLElement {
       const nextOpen = (ev as CustomEvent<{ open?: boolean }>).detail?.open;
       if (typeof nextOpen === 'boolean' && nextOpen !== sharedWorkshopOpen) {
         sharedWorkshopOpen = nextOpen;
-        syncBlueprintClass(sharedWorkshopOpen);
+        syncWorkshopClass(sharedWorkshopOpen);
         ensureRunning();
       }
     };
@@ -7893,244 +7892,3 @@ export function createSettingsClockworkProp(): HTMLElement {
   return btn;
 }
 
-/**
- * Full-screen Horological Blueprint Drafting Mode overlay triggered when the Settings
- * Clockwork Escapement engages (.gd-settings-blueprint-on).
- * Draws architectural grid ticks, rotating brass/indigo compass schematics,
- * live vernier pointer crosshairs, and ascending golden drafting motes behind Settings cards.
- */
-export function createSettingsBlueprintOverlay(): HTMLElement {
-  const canvas = document.createElement('canvas');
-  canvas.className = 'gd-settings-blueprint';
-  canvas.setAttribute('aria-hidden', 'true');
-
-  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') {
-    return canvas;
-  }
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
-
-  const isBlueprintActive = () =>
-    Boolean(document.querySelector('.gd-dashboard-app.gd-settings-blueprint-on'));
-  const isSettingsVisible = () => {
-    const view = document.getElementById('view-settings');
-    return Boolean(view && view.classList.contains('active') && document.contains(view));
-  };
-
-  let width = 800;
-  let height = 600;
-  let overlayAlpha = 0;
-  let clock = 0;
-  let lastTs = 0;
-  let rafId: number | null = null;
-  let pointerX = -999;
-  let pointerY = -999;
-
-  const resize = () => {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    width = Math.max(320, window.innerWidth);
-    height = Math.max(320, window.innerHeight);
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  };
-  resize();
-  window.addEventListener('resize', resize, { passive: true });
-  window.addEventListener(
-    'mousemove',
-    (e: MouseEvent) => {
-      if (!document.contains(canvas)) return;
-      pointerX = e.clientX;
-      pointerY = e.clientY;
-    },
-    { passive: true },
-  );
-
-  const motes = Array.from({ length: 42 }, (_, i) => ({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    vy: -(10 + Math.random() * 18),
-    driftAmp: 8 + Math.random() * 14,
-    phase: Math.random() * Math.PI * 2,
-    r: 1.0 + Math.random() * 1.6,
-    alpha: 0.25 + Math.random() * 0.4,
-    isIndigo: i % 3 === 0,
-  }));
-
-  const drawSchematicCompass = (cx: number, cy: number, radius: number, angle: number, a: number) => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.globalAlpha = a;
-
-    // Outer calibrated compass ring + minor/major degree ticks
-    ctx.strokeStyle = 'rgba(46, 74, 102, 0.52)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = 'rgba(138, 104, 46, 0.46)';
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.82, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.strokeStyle = 'rgba(46, 74, 102, 0.48)';
-    for (let i = 0; i < 36; i += 1) {
-      const ang = (i * Math.PI * 2) / 36;
-      const isMajor = i % 3 === 0;
-      const rIn = radius * (isMajor ? 0.90 : 0.95);
-      ctx.lineWidth = isMajor ? 1.15 : 0.7;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(ang) * rIn, Math.sin(ang) * rIn);
-      ctx.lineTo(Math.cos(ang) * radius, Math.sin(ang) * radius);
-      ctx.stroke();
-    }
-
-    // Precision drafting crosshair axes & tangent diagonal arcs
-    ctx.strokeStyle = 'rgba(138, 104, 46, 0.34)';
-    ctx.lineWidth = 0.85;
-    ctx.beginPath();
-    ctx.moveTo(-radius * 1.12, 0);
-    ctx.lineTo(radius * 1.12, 0);
-    ctx.moveTo(0, -radius * 1.12);
-    ctx.lineTo(0, radius * 1.12);
-    ctx.stroke();
-
-    ctx.restore();
-  };
-
-  const step = (ts: number) => {
-    if (!document.contains(canvas)) {
-      rafId = null;
-      return;
-    }
-
-    const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
-    lastTs = ts;
-    clock += dt;
-
-    const active = isBlueprintActive() && isSettingsVisible();
-    const targetAlpha = active ? 1 : 0;
-    overlayAlpha += (targetAlpha - overlayAlpha) * Math.min(1, dt * (active ? 4.4 : 3.0));
-
-    ctx.clearRect(0, 0, width, height);
-
-    if (overlayAlpha > 0.01) {
-      // 1. Subtle architectural blueprint grid aligned behind cards
-      const gridStartX = 240;
-      const minorStep = 28;
-      const majorStep = minorStep * 4;
-
-      ctx.save();
-      ctx.globalAlpha = overlayAlpha;
-      ctx.lineWidth = 0.7;
-      ctx.strokeStyle = 'rgba(48, 76, 102, 0.055)';
-      ctx.beginPath();
-      for (let x = gridStartX; x < width; x += minorStep) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-      }
-      for (let y = 0; y < height; y += minorStep) {
-        ctx.moveTo(gridStartX, y);
-        ctx.lineTo(width, y);
-      }
-      ctx.stroke();
-
-      ctx.lineWidth = 0.95;
-      ctx.strokeStyle = 'rgba(138, 104, 46, 0.095)';
-      ctx.beginPath();
-      for (let x = gridStartX; x < width; x += majorStep) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-      }
-      for (let y = 0; y < height; y += majorStep) {
-        ctx.moveTo(gridStartX, y);
-        ctx.lineTo(width, y);
-      }
-      ctx.stroke();
-      ctx.restore();
-
-      // 2. Meshed architectural compass schematics rotating quietly in parchment sky
-      drawSchematicCompass(width * 0.36, height * 0.34, 128, clock * 0.14, overlayAlpha * 0.24);
-      drawSchematicCompass(width * 0.78, height * 0.68, 162, -clock * 0.1, overlayAlpha * 0.2);
-      drawSchematicCompass(width * 0.86, height * 0.24, 86, clock * 0.22, overlayAlpha * 0.22);
-
-      // 3. Subtle vernier caliper crosshair tracking cursor across workshop parchment
-      if (pointerX > 250 && pointerY > 0 && pointerX < width && pointerY < height) {
-        ctx.save();
-        ctx.globalAlpha = overlayAlpha * 0.22;
-        ctx.strokeStyle = 'rgba(48, 76, 102, 0.55)';
-        ctx.lineWidth = 0.75;
-        ctx.setLineDash([3, 6]);
-        ctx.beginPath();
-        ctx.moveTo(pointerX - 42, pointerY);
-        ctx.lineTo(pointerX + 42, pointerY);
-        ctx.moveTo(pointerX, pointerY - 42);
-        ctx.lineTo(pointerX, pointerY + 42);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.strokeStyle = 'rgba(154, 114, 44, 0.65)';
-        ctx.beginPath();
-        ctx.arc(pointerX, pointerY, 14, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // 4. Ascending fine gold & blueprint-indigo motes
-      for (const m of motes) {
-        m.y += m.vy * dt;
-        const mx = m.x + Math.sin(clock * 1.15 + m.phase) * m.driftAmp;
-        if (m.y < -14) {
-          m.y = height + 14;
-          m.x = 240 + Math.random() * Math.max(200, width - 240);
-        }
-        const a = m.alpha * (0.65 + 0.35 * Math.sin(clock * 2.6 + m.phase)) * overlayAlpha;
-        if (a <= 0.01) continue;
-        ctx.fillStyle = m.isIndigo
-          ? `rgba(56, 92, 124, ${a.toFixed(2)})`
-          : `rgba(218, 168, 74, ${a.toFixed(2)})`;
-        ctx.beginPath();
-        ctx.arc(mx, m.y, m.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    if (active || overlayAlpha > 0.015) {
-      rafId = requestAnimationFrame(step);
-    } else {
-      ctx.clearRect(0, 0, width, height);
-      rafId = null;
-      lastTs = 0;
-    }
-  };
-
-  const ensureRunning = () => {
-    if (rafId === null && typeof requestAnimationFrame === 'function') {
-      lastTs = 0;
-      rafId = requestAnimationFrame(step);
-    }
-  };
-
-  window.addEventListener('gd-workshop-toggle', () => ensureRunning());
-
-  if (typeof MutationObserver === 'function') {
-    requestAnimationFrame(() => {
-      const appEl = document.querySelector('.gd-dashboard-app');
-      if (!appEl) return;
-      const obs = new MutationObserver(() => {
-        if (!document.contains(canvas)) {
-          obs.disconnect();
-          return;
-        }
-        if (isBlueprintActive()) ensureRunning();
-      });
-      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
-      if (isBlueprintActive()) ensureRunning();
-    });
-  }
-
-  return canvas;
-}

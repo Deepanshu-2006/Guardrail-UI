@@ -27174,21 +27174,21 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-prop-settings-clockwork:hover .gd-clockwork-note,
   .gd-prop-settings-clockwork.is-open .gd-clockwork-note {
-    background: #233342;
+    background: #273121;
     color: #FAF4E6;
-    border-color: #233342;
+    border-color: #273121;
     transform: translateX(-50%) translateY(-1px);
-    box-shadow: 0 4px 10px rgba(24, 34, 46, 0.24);
+    box-shadow: 0 4px 10px rgba(24, 31, 20, 0.22);
   }
 
   .gd-clockwork-aura {
     position: absolute;
-    width: 102px;
-    height: 102px;
-    top: -1px;
-    left: -13px;
+    width: 98px;
+    height: 98px;
+    top: 1px;
+    left: -11px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(96, 148, 194, 0.28) 0%, rgba(226, 178, 86, 0.18) 46%, rgba(96, 148, 194, 0) 72%);
+    background: radial-gradient(circle, rgba(214, 168, 72, 0.30) 0%, rgba(188, 140, 48, 0.14) 48%, rgba(188, 140, 48, 0) 72%);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
@@ -27196,78 +27196,6 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-prop-settings-clockwork.is-open .gd-clockwork-aura {
     opacity: 1;
-  }
-
-  .gd-clockwork-motes {
-    position: absolute;
-    inset: -10px -14px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.45s ease;
-  }
-
-  .gd-prop-settings-clockwork.is-open .gd-clockwork-motes {
-    opacity: 1;
-  }
-
-  .gd-clockwork-mote {
-    position: absolute;
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: #9CC8EB;
-    box-shadow: 0 0 6px rgba(126, 178, 224, 0.85);
-    animation: gd-hg-mote-float 3.2s ease-in-out infinite;
-  }
-
-  .gd-clockwork-mote-1 { left: 16%; top: 26%; animation-delay: 0s; }
-  .gd-clockwork-mote-2 { left: 82%; top: 24%; animation-delay: -1.0s; }
-  .gd-clockwork-mote-3 { left: 50%; top: 82%; animation-delay: -2.1s; }
-
-  .gd-settings-blueprint {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 4;
-    opacity: 0;
-    transition: opacity 0.45s ease;
-  }
-
-  .gd-dashboard-app.gd-settings-blueprint-on .gd-main-content {
-    position: relative;
-    z-index: 6;
-  }
-
-  .gd-dashboard-app.gd-settings-blueprint-on .gd-settings-blueprint {
-    opacity: 1;
-  }
-
-  .gd-dashboard-app.gd-settings-blueprint-on::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    left: 0;
-    pointer-events: none;
-    z-index: 1;
-    background:
-      radial-gradient(ellipse at 54% 44%, rgba(62, 102, 138, 0.04) 38%, rgba(44, 68, 92, 0.14) 100%),
-      linear-gradient(125deg, rgba(64, 102, 136, 0.08) 0%, rgba(196, 152, 72, 0.05) 55%, rgba(56, 92, 124, 0.10) 100%);
-  }
-
-  .gd-dashboard-app.gd-settings-blueprint-on #view-settings .gd-settings-card {
-    background: linear-gradient(180deg, rgba(250, 245, 232, 0.86) 0%, rgba(244, 236, 216, 0.86) 100%) !important;
-    backdrop-filter: blur(2px);
-    box-shadow:
-      inset 0 0 0 1px rgba(56, 92, 124, 0.18),
-      0 10px 24px -8px rgba(42, 66, 90, 0.16) !important;
-    transition: background 0.4s ease, box-shadow 0.4s ease;
-  }
-
-  .gd-dashboard-app.gd-settings-blueprint-on #settings-title .gd-char {
-    text-shadow: 0 2px 10px rgba(72, 118, 158, 0.24);
   }
 }
 
