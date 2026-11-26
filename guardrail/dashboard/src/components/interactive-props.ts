@@ -5759,18 +5759,209 @@ export function createHistoryRewindOverlay(): HTMLElement {
     ctx.arc(duelCenterX + 120, groundY - 16, 78, 0, Math.PI * 2);
     ctx.fill();
 
-    // 4. Distant Trebuchet Fiery Projectile arcing across open upper sepia sky
-    const arcProg = (eraT * 0.38) % 1;
-    const bx = width * 0.24 + arcProg * (width * 0.62);
-    const by = height * 0.52 - Math.sin(arcProg * Math.PI) * (height * 0.36);
-    const emberGrad = ctx.createRadialGradient(bx, by, 1, bx, by, 12);
-    emberGrad.addColorStop(0, '#FFF4C4');
-    emberGrad.addColorStop(0.42, 'rgba(248, 146, 38, 0.72)');
-    emberGrad.addColorStop(1, 'rgba(180, 56, 12, 0)');
-    ctx.fillStyle = emberGrad;
-    ctx.beginPath();
-    ctx.arc(bx, by, 12, 0, Math.PI * 2);
-    ctx.fill();
+    // 4. Photoreal Medieval War-Arrow Volleys along true quadratic gravity arcs
+    const drawRealisticArrow = (
+      x: number,
+      y: number,
+      ang: number,
+      scale: number,
+      arrowAlpha: number,
+      isBroadhead: boolean,
+      quiver = 0,
+    ) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang + quiver);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = arrowAlpha;
+
+      // Dark horn self-nock at tail
+      ctx.fillStyle = '#181009';
+      ctx.beginPath();
+      ctx.moveTo(-21.6, -1.05);
+      ctx.lineTo(-19.2, -0.72);
+      ctx.lineTo(-19.2, 0.72);
+      ctx.lineTo(-21.6, 1.05);
+      ctx.lineTo(-20.5, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Natural parabolic barred goose-feather fletching (upper & lower vanes + quill barbs)
+      for (const side of [-1, 1] as const) {
+        const featherGrad = ctx.createLinearGradient(-19.5, 0, -10.5, side * 3.4);
+        featherGrad.addColorStop(0, '#F0E4CA');
+        featherGrad.addColorStop(0.55, '#D7C199');
+        featherGrad.addColorStop(1, '#9A7D56');
+        ctx.fillStyle = featherGrad;
+        ctx.beginPath();
+        ctx.moveTo(-19.5, side * 0.55);
+        ctx.quadraticCurveTo(-17.8, side * 3.35, -13.2, side * 3.05);
+        ctx.lineTo(-10.4, side * 0.55);
+        ctx.closePath();
+        ctx.fill();
+
+        // Delicate barred feather quill markings
+        ctx.strokeStyle = 'rgba(84, 60, 34, 0.42)';
+        ctx.lineWidth = 0.48;
+        ctx.beginPath();
+        for (let fx = -17.6; fx <= -12.0; fx += 1.85) {
+          ctx.moveTo(fx, side * 0.7);
+          ctx.lineTo(fx - 1.1, side * 2.65);
+        }
+        ctx.stroke();
+      }
+
+      // Cylindrical shaded turned ash/chestnut shaft (tapered barrel)
+      const shaftGrad = ctx.createLinearGradient(0, -1.1, 0, 1.1);
+      shaftGrad.addColorStop(0, '#8A613B');
+      shaftGrad.addColorStop(0.45, '#51341B');
+      shaftGrad.addColorStop(1, '#23140A');
+      ctx.fillStyle = shaftGrad;
+      ctx.beginPath();
+      ctx.moveTo(-19.4, -0.62);
+      ctx.lineTo(-4.0, -0.88);
+      ctx.lineTo(7.4, -0.74);
+      ctx.lineTo(7.4, 0.74);
+      ctx.lineTo(-4.0, 0.88);
+      ctx.lineTo(-19.4, 0.62);
+      ctx.closePath();
+      ctx.fill();
+
+      // Crimson waxed-silk fletching binding wraps & center cock-feather crest
+      ctx.fillStyle = '#922318';
+      ctx.fillRect(-19.4, -0.78, 1.3, 1.56);
+      ctx.fillRect(-10.9, -0.92, 1.6, 1.84);
+      ctx.fillStyle = 'rgba(244, 234, 212, 0.58)';
+      ctx.fillRect(-18.0, -0.28, 6.8, 0.56);
+
+      // Forged iron socket ferrule fitting cleanly onto shaft
+      const ferruleGrad = ctx.createLinearGradient(6.2, -1.1, 6.2, 1.1);
+      ferruleGrad.addColorStop(0, '#8F8271');
+      ferruleGrad.addColorStop(0.55, '#41372D');
+      ferruleGrad.addColorStop(1, '#1A130D');
+      ctx.fillStyle = ferruleGrad;
+      ctx.beginPath();
+      ctx.moveTo(6.0, -0.92);
+      ctx.lineTo(9.4, -1.18);
+      ctx.lineTo(9.4, 1.18);
+      ctx.lineTo(6.0, 0.92);
+      ctx.closePath();
+      ctx.fill();
+
+      // Faceted two-bevel steel head (broadhead or armor-piercing bodkin) split along central ridge
+      const tipX = isBroadhead ? 17.4 : 18.2;
+      const barbBackX = isBroadhead ? 7.8 : 9.2;
+      const wingHalfH = isBroadhead ? 2.85 : 1.72;
+      // Upper sunlit chamfered bevel
+      const topBevelGrad = ctx.createLinearGradient(8.8, -wingHalfH, tipX, 0);
+      topBevelGrad.addColorStop(0, '#D4C8B4');
+      topBevelGrad.addColorStop(0.55, '#8A7E6D');
+      topBevelGrad.addColorStop(1, '#ECE2D0');
+      ctx.fillStyle = topBevelGrad;
+      ctx.beginPath();
+      ctx.moveTo(tipX, 0);
+      ctx.lineTo(barbBackX, -wingHalfH);
+      ctx.lineTo(9.4, -0.2);
+      ctx.lineTo(9.4, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Lower shadowed forged iron bevel
+      ctx.fillStyle = '#211811';
+      ctx.beginPath();
+      ctx.moveTo(tipX, 0);
+      ctx.lineTo(9.4, 0);
+      ctx.lineTo(9.4, 0.2);
+      ctx.lineTo(barbBackX, wingHalfH);
+      ctx.closePath();
+      ctx.fill();
+
+      // Razor specular edge highlight
+      ctx.strokeStyle = 'rgba(255, 248, 232, 0.85)';
+      ctx.lineWidth = 0.55;
+      ctx.beginPath();
+      ctx.moveTo(barbBackX + 0.5, -wingHalfH + 0.35);
+      ctx.lineTo(tipX - 0.3, -0.08);
+      ctx.stroke();
+
+      ctx.restore();
+    };
+
+    const drawVolley = (
+      specs: Array<{
+        startX: number;
+        startY: number;
+        endX: number;
+        endY: number;
+        peak: number;
+        phase: number;
+        speed: number;
+        scale: number;
+        depthAlpha: number;
+        broadhead: boolean;
+      }>,
+    ) => {
+      for (const a of specs) {
+        const cycle = (eraT * a.speed + a.phase) % 1;
+        if (cycle > 0.76) continue;
+        const p = cycle / 0.76;
+        const edgeFade = Math.min(1, Math.min(p * 6.5, (1 - p) * 5.0));
+        const arrowAlpha = alpha * edgeFade * a.depthAlpha;
+        if (arrowAlpha <= 0.02) continue;
+
+        const evalPos = (u: number) => ({
+          x: a.startX + (a.endX - a.startX) * u,
+          y: a.startY + (a.endY - a.startY) * u - 4 * a.peak * u * (1 - u),
+        });
+
+        const pos = evalPos(p);
+        const vx = a.endX - a.startX;
+        const vy = a.endY - a.startY - 4 * a.peak * (1 - 2 * p);
+        const ang = Math.atan2(vy, vx);
+
+        // Curved air-wake ribbon sampled along true ballistic parabola behind tail
+        if (p > 0.06) {
+          const p0 = Math.max(0, p - 0.09);
+          const p1 = Math.max(0, p - 0.045);
+          const q0 = evalPos(p0);
+          const q1 = evalPos(p1);
+          const tailOffset = 19 * a.scale;
+          const tailX = pos.x - Math.cos(ang) * tailOffset;
+          const tailY = pos.y - Math.sin(ang) * tailOffset;
+          const wakeGrad = ctx.createLinearGradient(q0.x, q0.y, tailX, tailY);
+          wakeGrad.addColorStop(0, 'rgba(84, 62, 38, 0)');
+          wakeGrad.addColorStop(1, `rgba(84, 62, 38, ${(0.22 * arrowAlpha).toFixed(2)})`);
+          ctx.save();
+          ctx.strokeStyle = wakeGrad;
+          ctx.lineWidth = 0.85 * a.scale;
+          ctx.beginPath();
+          ctx.moveTo(q0.x, q0.y);
+          ctx.quadraticCurveTo(q1.x, q1.y, tailX, tailY);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        drawRealisticArrow(pos.x, pos.y, ang, a.scale, arrowAlpha, a.broadhead);
+      }
+    };
+
+    drawVolley([
+      // Far atmospheric volley rising high from siege lines
+      { startX: width * 0.21, startY: groundY - 24, endX: castleX + 46, endY: groundY - 52, peak: 175, phase: 0.03, speed: 0.54, scale: 0.78, depthAlpha: 0.56, broadhead: false },
+      { startX: width * 0.23, startY: groundY - 20, endX: castleX + 94, endY: groundY - 68, peak: 196, phase: 0.11, speed: 0.54, scale: 0.8, depthAlpha: 0.58, broadhead: false },
+      // Mid-ground primary attacking longbow volley (sleek wood + steel broadheads)
+      { startX: width * 0.20, startY: groundY - 32, endX: duelCenterX + 124, endY: groundY - 16, peak: 146, phase: 0.17, speed: 0.58, scale: 0.96, depthAlpha: 0.84, broadhead: true },
+      { startX: width * 0.24, startY: groundY - 22, endX: castleX + 36, endY: groundY - 40, peak: 184, phase: 0.24, speed: 0.58, scale: 1.0, depthAlpha: 0.86, broadhead: true },
+      { startX: width * 0.22, startY: groundY - 28, endX: duelCenterX + 92, endY: groundY - 22, peak: 158, phase: 0.54, speed: 0.58, scale: 0.94, depthAlpha: 0.82, broadhead: false },
+      // Castle rampart defenders' downward counter-volley
+      { startX: castleX + 24, startY: groundY - 60, endX: duelCenterX - 188, endY: groundY - 14, peak: 132, phase: 0.34, speed: 0.6, scale: 0.94, depthAlpha: 0.82, broadhead: true },
+      { startX: castleX + 52, startY: groundY - 78, endX: duelCenterX - 152, endY: groundY - 18, peak: 156, phase: 0.41, speed: 0.6, scale: 0.9, depthAlpha: 0.78, broadhead: false },
+      { startX: castleX + 16, startY: groundY - 54, endX: duelCenterX - 214, endY: groundY - 12, peak: 122, phase: 0.70, speed: 0.6, scale: 0.88, depthAlpha: 0.76, broadhead: true },
+    ]);
+
+    // Grounded battlefield arrows embedded at natural ballistic impact angles in turf & flanks
+    drawRealisticArrow(duelCenterX - 134, groundY - 7, 0.74, 0.9, alpha * 0.82, true, Math.sin(clock * 14) * 0.015);
+    drawRealisticArrow(duelCenterX + 136, groundY - 9, Math.PI - 0.68, 0.88, alpha * 0.8, false, Math.sin(clock * 11 + 1.2) * 0.012);
 
     // 5. Uneven Muddy Siege Battlefield Ground Terrain + Cobbles + Turfs
     const earthGrad = ctx.createLinearGradient(0, groundY - 7, 0, height);
