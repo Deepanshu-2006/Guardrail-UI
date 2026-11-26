@@ -12,6 +12,7 @@
  */
 
 import { ApprovalRequest, RiskLevel } from '../types.js';
+import { setupInteractiveBottomSheet } from './mobile-sheet-utils.js';
 
 export interface MobileActionSheetProps {
   request: ApprovalRequest;
@@ -37,15 +38,13 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
   // 1. Dimmed Backdrop
   const backdrop = document.createElement('div');
   backdrop.className = 'gd-sheet-backdrop';
-  backdrop.addEventListener('click', () => {
-    if (!isSubmitting) {
-      props.onClose();
-    }
-  });
 
   // 2. Action Sheet Drawer Container
   const sheet = document.createElement('div');
   sheet.className = 'gd-mobile-action-sheet';
+
+  let sheetController: { close: (immediate?: boolean) => void } | null = null;
+  let closingFromCaller = false;
 
   // Drag handle for mobile touch ergonomics
   const handle = document.createElement('div');
@@ -89,7 +88,7 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
   `;
   closeBtn.addEventListener('click', () => {
     if (!isSubmitting) {
-      props.onClose();
+      sheetController?.close(false);
     }
   });
 
@@ -233,13 +232,22 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
   container.appendChild(backdrop);
   container.appendChild(sheet);
 
-  // Escape key listener for keyboard accessibility
-  const keydownListener = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && !isSubmitting) {
-      props.onClose();
-    }
+  sheetController = setupInteractiveBottomSheet({
+    overlay: container,
+    backdrop,
+    sheet,
+    canDismiss: () => !isSubmitting,
+    onStartClose: () => {
+      if (!closingFromCaller) {
+        props.onClose();
+      }
+    },
+  });
+
+  (container as any).__closeAnimated = (immediate: boolean = false) => {
+    closingFromCaller = true;
+    sheetController?.close(immediate);
   };
-  document.addEventListener('keydown', keydownListener);
 
   return container;
 }

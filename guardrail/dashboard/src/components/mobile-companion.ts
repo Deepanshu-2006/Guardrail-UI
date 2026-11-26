@@ -18,6 +18,7 @@ import {
 import { createIcon, setAnimatedHeading } from './icons.js';
 import { formatTimestamp, isRequestExpired } from './detail.js';
 import { createAmbientBackdrop, getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
+import { setupInteractiveBottomSheet } from './mobile-sheet-utils.js';
 
 function formatWardDisplayName(name?: string | null, requesterId?: string | null): string {
   if (name && name.trim()) return name.trim();
@@ -113,21 +114,14 @@ function openHistoryDetailSheet(
   overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-label', 'Decision audit details');
 
-  const closeSheet = () => {
-    overlay.remove();
-    document.removeEventListener('keydown', onKeyDown);
-  };
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') closeSheet();
-  };
-  document.addEventListener('keydown', onKeyDown);
-
   const backdrop = document.createElement('div');
   backdrop.className = 'gd-sheet-backdrop';
-  backdrop.addEventListener('click', closeSheet);
 
   const sheet = document.createElement('div');
   sheet.className = 'gd-mobile-action-sheet gd-m-audit-sheet';
+
+  let sheetController: { close: (immediate?: boolean) => void } | null = null;
+  const closeSheet = () => sheetController?.close(false);
 
   const handle = document.createElement('div');
   handle.className = 'gd-sheet-drag-handle';
@@ -235,6 +229,7 @@ function openHistoryDetailSheet(
 
   overlay.appendChild(backdrop);
   overlay.appendChild(sheet);
+  sheetController = setupInteractiveBottomSheet({ overlay, backdrop, sheet });
   document.body.appendChild(overlay);
 }
 
@@ -350,21 +345,14 @@ function openWardPolicySheet(
   overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-label', `${formatWardDisplayName(ward.name, ward.id)} protection policy`);
 
-  const close = () => {
-    overlay.remove();
-    document.removeEventListener('keydown', onKeyDown);
-  };
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') close();
-  };
-  document.addEventListener('keydown', onKeyDown);
-
   const backdrop = document.createElement('div');
   backdrop.className = 'gd-sheet-backdrop';
-  backdrop.addEventListener('click', close);
 
   const sheet = document.createElement('div');
   sheet.className = 'gd-mobile-action-sheet gd-m-audit-sheet gd-m-policy-sheet';
+
+  let sheetController: { close: (immediate?: boolean) => void } | null = null;
+  const close = () => sheetController?.close(false);
 
   const handle = document.createElement('div');
   handle.className = 'gd-sheet-drag-handle';
@@ -440,6 +428,7 @@ function openWardPolicySheet(
 
   overlay.appendChild(backdrop);
   overlay.appendChild(sheet);
+  sheetController = setupInteractiveBottomSheet({ overlay, backdrop, sheet });
   document.body.appendChild(overlay);
 
   void onLoadWardPolicy(ward.id)
@@ -542,25 +531,21 @@ function openNotificationPromptSheet(
   overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-label', 'Enable push notifications');
 
-  const dismiss = (remember: boolean) => {
-    if (remember) {
-      try {
-        window.localStorage?.setItem(NOTIF_DISMISS_KEY, '1');
-      } catch {
-        // Ignore storage errors
-      }
+  let sheetController: { close: (immediate?: boolean) => void } | null = null;
+  const markNotifDismissed = () => {
+    try {
+      window.localStorage?.setItem(NOTIF_DISMISS_KEY, '1');
+    } catch {
+      // Ignore storage errors
     }
-    overlay.remove();
-    document.removeEventListener('keydown', onKeyDown);
   };
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') dismiss(true);
+  const dismiss = (remember: boolean) => {
+    if (remember) markNotifDismissed();
+    sheetController?.close(false);
   };
-  document.addEventListener('keydown', onKeyDown);
 
   const backdrop = document.createElement('div');
   backdrop.className = 'gd-sheet-backdrop';
-  backdrop.addEventListener('click', () => dismiss(true));
 
   const sheet = document.createElement('div');
   sheet.className = 'gd-mobile-action-sheet gd-m-audit-sheet';
@@ -636,6 +621,12 @@ function openNotificationPromptSheet(
 
   overlay.appendChild(backdrop);
   overlay.appendChild(sheet);
+  sheetController = setupInteractiveBottomSheet({
+    overlay,
+    backdrop,
+    sheet,
+    onStartClose: () => markNotifDismissed(),
+  });
   document.body.appendChild(overlay);
 }
 

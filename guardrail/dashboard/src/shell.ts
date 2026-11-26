@@ -3500,7 +3500,7 @@ export class DashboardShell {
     const req = this.state.pendingRequests.find((r) => r.id === requestId);
     if (!req || typeof document === 'undefined') return;
 
-    this.closeMobileActionSheet();
+    this.closeMobileActionSheet(true);
 
     const wards = this.getConnectedWards();
     const ward = wards.find((w) => w.id === req.requesterId || (req as any).wardId === w.id);
@@ -3534,10 +3534,15 @@ export class DashboardShell {
   /**
    * Closes and removes the mobile action sheet if open.
    */
-  public closeMobileActionSheet(): void {
+  public closeMobileActionSheet(immediate: boolean = false): void {
     if (this.mobileActionSheetEl) {
-      this.mobileActionSheetEl.remove();
+      const sheetEl = this.mobileActionSheetEl as any;
       this.mobileActionSheetEl = null;
+      if (typeof sheetEl.__closeAnimated === 'function') {
+        sheetEl.__closeAnimated(immediate);
+      } else {
+        sheetEl.remove();
+      }
     }
   }
 
