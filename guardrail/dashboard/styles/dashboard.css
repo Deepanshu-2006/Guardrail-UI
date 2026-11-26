@@ -25207,4 +25207,228 @@ body.gd-kbd-open .gd-m-shell {
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 260' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 260 L7 253 M420 260 L413 253' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M337 0 L344 5.5 L350 0' stroke='%232D2014' stroke-width='2.4' fill='none' opacity='0.88'/%3E%3Cpath d='M86 260 L92 254.5 L99 260' stroke='%232D2014' stroke-width='2.4' fill='none' opacity='0.88'/%3E%3Cpath d='M16 3 Q150 2 290 4 T404 3 M16 257 Q160 258.5 300 256 T404 257' stroke='%234E3824' stroke-width='0.9' fill='none' opacity='0.34'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
       linear-gradient(180deg, #A78A68 0%, #8E7253 52%, #765B3F 100%);
   }
+
+  /* Interactive desktop pixel & tactile props */
+  .gd-props-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9;
+    overflow: hidden;
+  }
+
+  .gd-prop-btn {
+    position: absolute;
+    pointer-events: auto;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: pointer;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+    filter: drop-shadow(0 3px 5px rgba(28, 22, 14, 0.22));
+  }
+
+  .gd-prop-btn:hover {
+    transform: translateY(-2px) scale(1.06);
+  }
+
+  .gd-prop-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* 1. Top-Left Hanging Wind Chime */
+  .gd-prop-chime {
+    left: 256px;
+    top: 10px;
+    transform-origin: 50% 0%;
+  }
+
+  .gd-prop-chime .gd-chime-rod {
+    transform-origin: 50% 6px;
+  }
+
+  .gd-prop-chime.is-ringing .gd-chime-rod-1 {
+    animation: gd-chime-sway 1.1s ease-in-out;
+  }
+  .gd-prop-chime.is-ringing .gd-chime-rod-2 {
+    animation: gd-chime-sway 1.25s ease-in-out 0.08s;
+  }
+  .gd-prop-chime.is-ringing .gd-chime-rod-3 {
+    animation: gd-chime-sway 1.15s ease-in-out 0.16s;
+  }
+
+  .gd-prop-chime .gd-prop-sparkle {
+    position: absolute;
+    right: -6px;
+    top: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #B57F27;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .gd-prop-chime.is-ringing .gd-prop-sparkle {
+    animation: gd-prop-float-up 1.1s ease-out forwards;
+  }
+
+  /* 2. Bottom-Left Brass Lantern */
+  .gd-prop-lantern {
+    left: 256px;
+    bottom: 10px;
+  }
+
+  .gd-prop-lantern .gd-lantern-glow {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    top: 10px;
+    left: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(246, 206, 102, 0.55) 0%, rgba(246, 206, 102, 0) 72%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+
+  .gd-prop-lantern.is-lit .gd-lantern-glow {
+    opacity: 1;
+    animation: gd-lantern-breathe 2.6s ease-in-out infinite;
+  }
+
+  .gd-prop-lantern:not(.is-lit) .gd-lantern-glass {
+    fill: #7C796F;
+  }
+
+  .gd-prop-lantern:not(.is-lit) .gd-lantern-flame {
+    opacity: 0;
+  }
+
+  .gd-prop-lantern.is-nudged {
+    animation: gd-prop-nudge 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* 3. Bottom-Left Potted Botanical Sprout */
+  .gd-prop-plant {
+    left: 300px;
+    bottom: 10px;
+  }
+
+  .gd-prop-plant .gd-plant-stage {
+    display: none;
+  }
+  .gd-prop-plant.stage-1 .gd-plant-s1,
+  .gd-prop-plant.stage-2 .gd-plant-s2,
+  .gd-prop-plant.stage-3 .gd-plant-s3 {
+    display: block;
+  }
+
+  .gd-prop-plant .gd-plant-droplet {
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #D9A44E;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .gd-prop-plant.is-watered .gd-plant-droplet {
+    animation: gd-prop-float-up 0.9s ease-out forwards;
+  }
+
+  /* 4. Bottom-Right Breeze Pinwheel */
+  .gd-prop-pinwheel {
+    right: 76px;
+    bottom: 10px;
+  }
+
+  /* 5. Bottom-Right Perched Pixel Songbird */
+  .gd-prop-bird {
+    right: 24px;
+    bottom: 10px;
+  }
+
+  .gd-prop-bird .gd-bird-body {
+    transform-origin: 18px 22px;
+    transition: transform 0.22s ease;
+  }
+
+  .gd-prop-bird:hover .gd-bird-body {
+    transform: rotate(-4deg);
+  }
+
+  .gd-prop-bird.is-hopping .gd-bird-body {
+    animation: gd-bird-hop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .gd-bird-chirp {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    right: 0;
+    background: #273121;
+    color: #FAF4E6;
+    font-family: var(--gd-font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid #D9A44E;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    box-shadow: 0 4px 10px rgba(24, 18, 10, 0.24);
+  }
+
+  .gd-bird-chirp.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @keyframes gd-chime-sway {
+    0% { transform: rotate(0deg); }
+    20% { transform: rotate(-11deg); }
+    45% { transform: rotate(9deg); }
+    70% { transform: rotate(-5deg); }
+    85% { transform: rotate(3deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  @keyframes gd-lantern-breathe {
+    0%, 100% { transform: scale(0.96); opacity: 0.78; }
+    50% { transform: scale(1.06); opacity: 1; }
+  }
+
+  @keyframes gd-prop-nudge {
+    0% { transform: rotate(0deg); }
+    30% { transform: rotate(-6deg); }
+    65% { transform: rotate(4deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  @keyframes gd-bird-hop {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px) rotate(-5deg); }
+    70% { transform: translateY(-2px) rotate(2deg); }
+  }
+
+  @keyframes gd-prop-float-up {
+    0% { opacity: 0; transform: translate(-50%, 4px) scale(0.8); }
+    25% { opacity: 1; transform: translate(-50%, -2px) scale(1.08); }
+    100% { opacity: 0; transform: translate(-50%, -16px) scale(0.9); }
+  }
+}
+
+@media (max-width: 768px) {
+  .gd-props-layer {
+    display: none !important;
+  }
 }
