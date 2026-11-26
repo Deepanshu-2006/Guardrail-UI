@@ -25364,12 +25364,16 @@ body.gd-kbd-open .gd-m-shell {
   .gd-hg-mote-4 { left: 86%; top: 68%; animation-delay: -2.3s; }
   .gd-hg-mote-5 { left: 48%; top: 8%; animation-delay: -1.1s; }
 
-  /* Full-Screen Golden Sandstorm Canvas & Page Atmosphere */
+  /* Full-Screen Golden Sandstorm Canvas & Page Atmosphere (emerges from behind sidebar) */
+  .gd-sidebar {
+    z-index: 12;
+  }
+
   .gd-pending-sandstorm {
     position: fixed;
-    left: 274px;
+    left: 0;
     top: 0;
-    width: calc(100vw - 274px);
+    width: 100vw;
     height: 100vh;
     pointer-events: none;
     z-index: 9;
@@ -25377,7 +25381,8 @@ body.gd-kbd-open .gd-m-shell {
     transition: opacity 0.55s ease;
   }
 
-  .gd-dashboard-app.gd-pending-sandstorm-on .gd-pending-sandstorm {
+  .gd-dashboard-app.gd-pending-sandstorm-on .gd-pending-sandstorm,
+  .gd-pending-sandstorm.is-leaves-lingering {
     opacity: 1;
   }
 
@@ -25390,7 +25395,7 @@ body.gd-kbd-open .gd-m-shell {
     content: '';
     position: fixed;
     inset: 0;
-    left: 274px;
+    left: 0;
     pointer-events: none;
     z-index: 1;
     background:

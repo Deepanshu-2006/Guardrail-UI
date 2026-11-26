@@ -1271,8 +1271,54 @@ export function createPendingSandstormOverlay(): HTMLElement {
     alpha: number;
   }
 
+  interface StormLeaf {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    rot: number;
+    rotSpeed: number;
+    tumble: number;
+    tumbleSpeed: number;
+    phase: number;
+    alpha: number;
+    color: string;
+    undersideColor: string;
+    variant: 0 | 1;
+  }
+
+  interface LingerLeaf {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    rot: number;
+    tumble: number;
+    tumbleSpeed: number;
+    phase: number;
+    swayAmp: number;
+    swayFreq: number;
+    targetY: number;
+    restRot: number;
+    alpha: number;
+    color: string;
+    undersideColor: string;
+    variant: 0 | 1;
+    settled: boolean;
+    settledAge: number;
+  }
+
   // High-contrast bronze, ochre, amber, and sunlit gold so grains read crisply on cream/parchment
   const palette = ['#9C651C', '#B87A24', '#D69834', '#E8B84E', '#7A4E14', '#C98A2E'];
+  const leafPalette = [
+    { top: '#965222', under: '#6F3A16' },
+    { top: '#B06A28', under: '#804A1A' },
+    { top: '#7D4720', under: '#5A3114' },
+    { top: '#BD7E32', under: '#8C5B20' },
+    { top: '#785B2A', under: '#553F1B' },
+  ];
   let width = 800;
   let height = 600;
   let gust = 0.48;
@@ -1282,10 +1328,11 @@ export function createPendingSandstormOverlay(): HTMLElement {
   let rafId: number | null = null;
   let boardAngle = 0;
   let boardVel = 0;
+  let wasStormActive = false;
 
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    width = Math.max(320, window.innerWidth - 240);
+    width = Math.max(320, window.innerWidth);
     height = Math.max(320, window.innerHeight);
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
@@ -1294,7 +1341,7 @@ export function createPendingSandstormOverlay(): HTMLElement {
   resize();
   window.addEventListener('resize', resize, { passive: true });
 
-  const particles: SandParticle[] = Array.from({ length: 135 }, (_, i) => {
+  const particles: SandParticle[] = Array.from({ length: 155 }, (_, i) => {
     const layer = (i % 6 === 0 ? 2 : i % 3 === 0 ? 0 : 1) as 0 | 1 | 2;
     return {
       x: Math.random() * width,
@@ -1310,6 +1357,130 @@ export function createPendingSandstormOverlay(): HTMLElement {
     };
   });
 
+  const stormLeaves: StormLeaf[] = Array.from({ length: 12 }, (_, i) => {
+    const tone = leafPalette[i % leafPalette.length];
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: 245 + Math.random() * 210,
+      vy: -12 + Math.random() * 52,
+      size: 7.5 + Math.random() * 5.0,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 4.8,
+      tumble: Math.random() * Math.PI * 2,
+      tumbleSpeed: 2.8 + Math.random() * 3.4,
+      phase: Math.random() * Math.PI * 2,
+      alpha: 0.78 + Math.random() * 0.18,
+      color: tone.top,
+      undersideColor: tone.under,
+      variant: (i % 2) as 0 | 1,
+    };
+  });
+
+  const lingerLeaves: LingerLeaf[] = [];
+
+  const traceLeafPath = (s: number, variant: 0 | 1) => {
+    ctx.beginPath();
+    if (variant === 0) {
+      // Tapered dry willow/birch leaf with curled pointed tip
+      ctx.moveTo(-s * 0.92, 0.1 * s);
+      ctx.quadraticCurveTo(-s * 0.25, -s * 0.62, s * 0.95, -0.08 * s);
+      ctx.quadraticCurveTo(s * 0.22, s * 0.56, -s * 0.92, 0.1 * s);
+    } else {
+      // Crisp lobed dry autumn leaf silhouette
+      ctx.moveTo(-s * 0.88, 0.05 * s);
+      ctx.quadraticCurveTo(-s * 0.48, -s * 0.52, -s * 0.12, -s * 0.34);
+      ctx.quadraticCurveTo(s * 0.28, -s * 0.66, s * 0.96, -0.02 * s);
+      ctx.quadraticCurveTo(s * 0.42, s * 0.58, s * 0.02, s * 0.36);
+      ctx.quadraticCurveTo(-s * 0.44, s * 0.52, -s * 0.88, 0.05 * s);
+    }
+    ctx.closePath();
+  };
+
+  const drawDryLeaf = (
+    leaf: Pick<StormLeaf, 'x' | 'y' | 'size' | 'rot' | 'tumble' | 'color' | 'undersideColor' | 'variant'>,
+    alpha: number,
+    shadowRatio: number,
+  ) => {
+    if (alpha <= 0.01) return;
+    ctx.save();
+    ctx.translate(leaf.x, leaf.y);
+
+    if (shadowRatio > 0.02) {
+      ctx.save();
+      ctx.translate(2 * shadowRatio, 3 * shadowRatio);
+      ctx.rotate(leaf.rot);
+      ctx.scale(1, Math.max(0.32, Math.abs(Math.cos(leaf.tumble))));
+      ctx.globalAlpha = alpha * 0.24 * shadowRatio;
+      ctx.fillStyle = '#38240E';
+      traceLeafPath(leaf.size, leaf.variant);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.rotate(leaf.rot);
+    const flatCos = Math.cos(leaf.tumble);
+    ctx.scale(1, (flatCos >= 0 ? 1 : -1) * Math.max(0.28, Math.abs(flatCos)));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = flatCos >= 0 ? leaf.color : leaf.undersideColor;
+    traceLeafPath(leaf.size, leaf.variant);
+    ctx.fill();
+
+    ctx.lineWidth = 0.85;
+    ctx.strokeStyle = 'rgba(54, 28, 10, 0.38)';
+    ctx.stroke();
+
+    // Fine stem, central midrib, and dry veins
+    ctx.beginPath();
+    ctx.moveTo(-leaf.size * 1.18, leaf.size * 0.08);
+    ctx.quadraticCurveTo(-leaf.size * 0.1, -leaf.size * 0.05, leaf.size * 0.84, -leaf.size * 0.03);
+    ctx.moveTo(-leaf.size * 0.32, 0);
+    ctx.lineTo(-leaf.size * 0.02, -leaf.size * 0.26);
+    ctx.moveTo(leaf.size * 0.06, -leaf.size * 0.02);
+    ctx.lineTo(leaf.size * 0.36, leaf.size * 0.24);
+    ctx.lineWidth = 0.72;
+    ctx.strokeStyle = 'rgba(58, 30, 10, 0.42)';
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
+  const spawnLingerLeaves = () => {
+    lingerLeaves.length = 0;
+    const minX = Math.min(340, width * 0.35);
+    const maxX = Math.max(minX + 80, width - 140);
+    const candidates = stormLeaves.filter(
+      (l) => l.x >= minX && l.x <= maxX && l.y >= height * 0.12 && l.y <= height * 0.64,
+    );
+
+    const slots = [0, 1];
+    for (const idx of slots) {
+      const src = candidates[idx];
+      const tone = leafPalette[(idx * 2 + 1) % leafPalette.length];
+      lingerLeaves.push({
+        x: src ? src.x : width * (0.42 + idx * 0.22) + (Math.random() - 0.5) * 70,
+        y: src ? src.y : height * (0.22 + idx * 0.11),
+        vx: 72 + Math.random() * 54,
+        vy: 28 + Math.random() * 14,
+        size: src ? src.size + 1.2 : 9.5 + idx * 1.4,
+        rot: src ? src.rot : (Math.random() - 0.5) * 0.8,
+        tumble: src ? src.tumble : Math.random() * Math.PI * 2,
+        tumbleSpeed: 1.9 + Math.random() * 1.1,
+        phase: idx * 2.1 + Math.random() * 1.2,
+        swayAmp: 36 + Math.random() * 20,
+        swayFreq: 1.55 + Math.random() * 0.45,
+        targetY: Math.max(120, height - (14 + idx * 8 + Math.random() * 7)),
+        restRot: (idx === 0 ? -0.18 : 0.24) + (Math.random() - 0.5) * 0.22,
+        alpha: 0.9,
+        color: src ? src.color : tone.top,
+        undersideColor: src ? src.undersideColor : tone.under,
+        variant: src ? src.variant : (idx as 0 | 1),
+        settled: false,
+        settledAge: 0,
+      });
+    }
+  };
+
   const ribbons: WindRibbon[] = Array.from({ length: 7 }, (_, i) => ({
     x: (i / 7) * width,
     y: (0.12 + (i % 5) * 0.18) * height,
@@ -1324,6 +1495,9 @@ export function createPendingSandstormOverlay(): HTMLElement {
   const isStormActive = () =>
     Boolean(document.querySelector('.gd-dashboard-app.gd-pending-sandstorm-on'));
 
+  const isPendingViewVisible = () =>
+    Boolean(document.querySelector('#view-pending.active'));
+
   const step = (ts: number) => {
     if (!document.contains(canvas)) {
       rafId = null;
@@ -1335,6 +1509,15 @@ export function createPendingSandstormOverlay(): HTMLElement {
     clock += dt;
 
     const active = isStormActive();
+    const pendingVisible = isPendingViewVisible();
+    if (!pendingVisible && lingerLeaves.length > 0) {
+      lingerLeaves.length = 0;
+    }
+    if (wasStormActive && !active && pendingVisible) {
+      spawnLingerLeaves();
+    }
+    wasStormActive = active;
+
     const targetAlpha = active ? 1 : 0;
     stormAlpha += (targetAlpha - stormAlpha) * Math.min(1, dt * (active ? 4.8 : 3.0));
     // Periodic natural wind surges while active
@@ -1406,7 +1589,97 @@ export function createPendingSandstormOverlay(): HTMLElement {
         }
       }
       ctx.globalAlpha = 1;
+
+      // 3. Tumbling dry leaves swept through the sandstorm
+      for (const l of stormLeaves) {
+        const eddyY = Math.sin(clock * 3.1 + l.phase + l.x * 0.007) * 56;
+        const eddyX = Math.cos(clock * 2.0 + l.phase) * 28;
+        l.x += (l.vx + eddyX) * speedMul * dt;
+        l.y += (l.vy + eddyY) * speedMul * dt;
+        l.rot += l.rotSpeed * (0.75 + gust * 0.55) * dt;
+        l.tumble += l.tumbleSpeed * (0.75 + gust * 0.55) * dt;
+
+        if (l.x > width + 48) {
+          l.x = -42;
+          l.y = Math.random() * height;
+        }
+        if (l.y > height + 36) {
+          l.y = -24;
+        } else if (l.y < -36) {
+          l.y = height + 24;
+        }
+
+        drawDryLeaf(l, l.alpha * stormAlpha, 0);
+      }
     }
+
+    // 4. Lingering dry leaves: gently float in calm air after storm ends & settle at the bottom
+    for (let i = lingerLeaves.length - 1; i >= 0; i--) {
+      const l = lingerLeaves[i];
+      if (active) {
+        // New gust picks settled/floating leaves right back up into the wind
+        l.settled = false;
+        l.vx += 420 * dt;
+        l.vy -= 130 * dt;
+        l.x += l.vx * dt;
+        l.y += l.vy * dt;
+        l.rot += 4.6 * dt;
+        l.tumble += 5.4 * dt;
+        drawDryLeaf(l, l.alpha, 0);
+        if (l.x > width + 48 || l.y < -40) {
+          lingerLeaves.splice(i, 1);
+        }
+        continue;
+      }
+
+      if (!l.settled) {
+        l.vx *= Math.exp(-dt * 1.45);
+        const swayAngle = clock * l.swayFreq + l.phase;
+        const swayVelX = Math.cos(swayAngle) * l.swayAmp;
+        const bankAngle = Math.cos(swayAngle) * 0.42;
+
+        l.x += (l.vx + swayVelX) * dt;
+        const minVisibleX = Math.min(300, width * 0.25);
+        if (l.x > width - 34) l.x = width - 34;
+        if (l.x < minVisibleX) l.x = minVisibleX;
+
+        const fallRate = l.vy * (0.72 + 0.45 * Math.abs(Math.sin(swayAngle)));
+        l.y += fallRate * dt;
+
+        const distToBottom = Math.max(0, l.targetY - l.y);
+        const nearGround = Math.max(0, 1 - distToBottom / 72);
+        const targetRot = bankAngle * (1 - nearGround) + l.restRot * nearGround;
+        l.rot += (targetRot - l.rot) * Math.min(1, dt * 6);
+
+        if (nearGround > 0.65) {
+          const flatTumble = Math.round(l.tumble / (Math.PI * 2)) * Math.PI * 2;
+          l.tumble += (flatTumble - l.tumble) * Math.min(1, dt * 7);
+        } else {
+          l.tumble += l.tumbleSpeed * (1 - nearGround * 0.75) * dt;
+        }
+
+        if (l.y >= l.targetY) {
+          l.y = l.targetY;
+          l.settled = true;
+          l.settledAge = 0;
+          l.rot = l.restRot;
+          l.tumble = Math.round(l.tumble / (Math.PI * 2)) * Math.PI * 2;
+        }
+
+        drawDryLeaf(l, l.alpha, Math.max(0, 1 - distToBottom / 85));
+      } else {
+        l.targetY = Math.min(l.targetY, height - 12);
+        l.y = l.targetY;
+        l.settledAge += dt;
+        const fade = l.settledAge <= 10 ? 1 : Math.max(0, 1 - (l.settledAge - 10) / 2.5);
+        drawDryLeaf(l, l.alpha * fade, fade);
+        if (l.settledAge >= 12.5) {
+          lingerLeaves.splice(i, 1);
+        }
+      }
+    }
+
+    canvas.classList.toggle('is-leaves-lingering', lingerLeaves.length > 0 && pendingVisible);
 
     // Physical pendulum swing + turbulent jiggle + 3D wind-pressure tilt on the hanging greeting board
     const boardEl = document.querySelector('#view-pending .gd-overview-greeting-card .gd-wood-board') as HTMLElement | null;
@@ -1439,7 +1712,13 @@ export function createPendingSandstormOverlay(): HTMLElement {
       }
     }
 
-    if (active || stormAlpha > 0.015 || Math.abs(boardAngle) > 0.04 || Math.abs(boardVel) > 0.06) {
+    if (
+      active ||
+      stormAlpha > 0.015 ||
+      lingerLeaves.length > 0 ||
+      Math.abs(boardAngle) > 0.04 ||
+      Math.abs(boardVel) > 0.06
+    ) {
       rafId = requestAnimationFrame(step);
     } else {
       ctx.clearRect(0, 0, width, height);
