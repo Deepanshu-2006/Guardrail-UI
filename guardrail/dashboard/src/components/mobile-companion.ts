@@ -738,15 +738,44 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     const topGreeting = document.createElement('div');
     topGreeting.className = `gd-m-top-greeting-pill phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    topGreeting.innerHTML = `
-      <div class="gd-m-top-greeting-art" aria-hidden="true">${scenery.svg}</div>
-      <div class="gd-m-top-greeting-scrim" aria-hidden="true"></div>
-      <div class="gd-m-top-greeting-text">
-        <span class="gd-m-top-greeting-label">${scenery.greeting}</span>
-        <span class="gd-m-top-greeting-dot" aria-hidden="true">·</span>
-        <span class="gd-m-top-greeting-time">${timeStr}</span>
-      </div>
-    `;
+
+    const topArt = document.createElement('div');
+    topArt.className = 'gd-m-top-greeting-art gd-m-scenery-art';
+    topArt.setAttribute('aria-hidden', 'true');
+    topArt.innerHTML = scenery.svg;
+
+    const topScrim = document.createElement('div');
+    topScrim.className = 'gd-m-top-greeting-scrim';
+    topScrim.setAttribute('aria-hidden', 'true');
+
+    const topText = document.createElement('div');
+    topText.className = 'gd-m-top-greeting-text';
+
+    const dotEl = document.createElement('span');
+    dotEl.className = 'gd-px-clock-dot';
+    dotEl.setAttribute('aria-hidden', 'true');
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'gd-m-top-greeting-label';
+    labelEl.textContent = scenery.greeting;
+
+    const sepEl = document.createElement('span');
+    sepEl.className = 'gd-m-top-greeting-dot';
+    sepEl.setAttribute('aria-hidden', 'true');
+    sepEl.textContent = '·';
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'gd-m-top-greeting-time';
+    timeEl.textContent = timeStr;
+
+    topText.appendChild(dotEl);
+    topText.appendChild(labelEl);
+    topText.appendChild(sepEl);
+    topText.appendChild(timeEl);
+
+    topGreeting.appendChild(topArt);
+    topGreeting.appendChild(topScrim);
+    topGreeting.appendChild(topText);
     topRoller.appendChild(topGreeting);
   }
   topBar.appendChild(topRoller);

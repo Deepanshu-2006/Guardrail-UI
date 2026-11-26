@@ -807,7 +807,7 @@ export class DashboardShell {
             existingRoller.querySelectorAll('.gd-m-roller-exiting').forEach((n) => n.remove());
             existingRoller.classList.remove('is-rolling');
             existingRoller.querySelectorAll('.gd-m-roller-item').forEach((n) => {
-              n.classList.remove('gd-m-roller-item', 'gd-m-roller-entering', 'is-roll-up', 'is-roll-down', 'is-go');
+              n.classList.remove('gd-m-roller-item', 'gd-m-roller-entering', 'is-roll-up', 'is-roll-down');
             });
           }
 
@@ -842,21 +842,22 @@ export class DashboardShell {
               preservedPillStrip = freshPillStrip;
             }
           } else if (existingTopGreeting && freshTopGreeting) {
-            const eLabel = existingTopGreeting.querySelector('.gd-m-top-greeting-label');
-            const fLabel = freshTopGreeting.querySelector('.gd-m-top-greeting-label');
+            const eLabel = existingTopGreeting.querySelector('.gd-m-top-greeting-label') as HTMLElement | null;
+            const fLabel = freshTopGreeting.querySelector('.gd-m-top-greeting-label') as HTMLElement | null;
             if (eLabel && fLabel && eLabel.textContent !== fLabel.textContent) {
               eLabel.textContent = fLabel.textContent;
             }
-            const eTime = existingTopGreeting.querySelector('.gd-m-top-greeting-time');
-            const fTime = freshTopGreeting.querySelector('.gd-m-top-greeting-time');
+            const eTime = existingTopGreeting.querySelector('.gd-m-top-greeting-time') as HTMLElement | null;
+            const fTime = freshTopGreeting.querySelector('.gd-m-top-greeting-time') as HTMLElement | null;
             if (eTime && fTime && eTime.textContent !== fTime.textContent) {
               eTime.textContent = fTime.textContent;
             }
           } else {
             const existingMiddle = currentPillStrip || existingTopGreeting;
             const freshMiddle = freshPillStrip || freshTopGreeting;
-            if (existingRoller && existingMiddle && freshMiddle && typeof requestAnimationFrame === 'function') {
+            if (existingRoller && existingMiddle && freshMiddle) {
               const dirClass = freshTopGreeting ? 'is-roll-up' : 'is-roll-down';
+              const expectedAnim = freshTopGreeting ? 'gd-m-roll-enter-up' : 'gd-m-roll-enter-down';
               existingRoller.classList.add('is-rolling');
               existingMiddle.classList.add('gd-m-roller-item', 'gd-m-roller-exiting', dirClass);
               freshMiddle.classList.add('gd-m-roller-item', 'gd-m-roller-entering', dirClass);
@@ -865,12 +866,21 @@ export class DashboardShell {
                 (freshPillStrip as any).__syncGlider?.(true, true);
                 preservedPillStrip = freshPillStrip;
               }
-              void existingRoller.offsetWidth;
-              requestAnimationFrame(() => {
-                existingMiddle.classList.add('is-go');
-                freshMiddle.classList.add('is-go');
-              });
+              let cleanedUp = false;
+              const onAnimEnd = (event: Event) => {
+                const animEvent = event as AnimationEvent;
+                if (event.target !== freshMiddle || (animEvent.animationName && animEvent.animationName !== expectedAnim)) {
+                  return;
+                }
+                finishTopRoll();
+              };
               const finishTopRoll = () => {
+                if (cleanedUp) return;
+                cleanedUp = true;
+                freshMiddle.removeEventListener('animationend', onAnimEnd);
+                if (!freshMiddle.classList.contains('gd-m-roller-entering')) {
+                  return;
+                }
                 if (this.mobileTopRollTimer) {
                   clearTimeout(this.mobileTopRollTimer);
                   this.mobileTopRollTimer = null;
@@ -878,13 +888,14 @@ export class DashboardShell {
                 if (existingMiddle.parentNode === existingRoller) {
                   existingMiddle.remove();
                 }
-                freshMiddle.classList.remove('gd-m-roller-item', 'gd-m-roller-entering', 'is-roll-up', 'is-roll-down', 'is-go');
+                freshMiddle.classList.remove('gd-m-roller-item', 'gd-m-roller-entering', 'is-roll-up', 'is-roll-down');
                 existingRoller.classList.remove('is-rolling');
                 if (freshPillStrip) {
                   (freshPillStrip as any).__syncGlider?.(true, true);
                 }
               };
-              this.mobileTopRollTimer = setTimeout(finishTopRoll, 410);
+              freshMiddle.addEventListener('animationend', onAnimEnd);
+              this.mobileTopRollTimer = setTimeout(finishTopRoll, 480);
             } else if (existingMiddle && freshMiddle) {
               existingMiddle.replaceWith(freshMiddle);
               if (freshPillStrip) preservedPillStrip = freshPillStrip;
