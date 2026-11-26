@@ -26317,7 +26317,7 @@ body.gd-kbd-open .gd-m-shell {
   .gd-dashboard-app.gd-history-rewind-on #view-history .gd-history-list-pane,
   .gd-dashboard-app.gd-history-rewind-on #view-history .gd-detail-pane,
   .gd-dashboard-app.gd-history-rewind-on #view-history .gd-empty-state {
-    background: linear-gradient(180deg, rgba(249, 240, 218, 0.84) 0%, rgba(242, 229, 199, 0.84) 100%) !important;
+    background: linear-gradient(180deg, rgba(249, 240, 218, 0.78) 0%, rgba(242, 229, 199, 0.78) 100%) !important;
     backdrop-filter: blur(2px);
     box-shadow:
       inset 0 0 38px rgba(154, 102, 34, 0.14),

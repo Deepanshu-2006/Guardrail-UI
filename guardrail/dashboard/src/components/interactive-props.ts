@@ -2495,13 +2495,43 @@ export function createHistoryRewindOverlay(): HTMLElement {
   let wasRewindActive = false;
 
   const INTRO_DURATION = 1.65;
-  const ERA_DURATION = 6.8;
+  const ERA_DURATION = 8.0;
   const ERAS = [
     { year: '1885 AD', label: '1885 AD · Steam Locomotive' },
     { year: '1420 AD', label: '1420 AD · Medieval Knights Duel' },
     { year: '2500 BC', label: '2500 BC · Ancient Egypt' },
-    { year: '66M BC', label: '66M BC · Cretaceous Era' },
+    { year: '66M BC', label: '66M BC · Cretaceous Extinction' },
   ] as const;
+
+  interface PlumeParticle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    r: number;
+    grow: number;
+    age: number;
+    maxAge: number;
+    tone: 'steam' | 'soot' | 'dust' | 'ash' | 'ember';
+  }
+
+  interface PhysicsSpark {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    maxLife: number;
+    size: number;
+    hot: boolean;
+  }
+
+  const eraPlumes: PlumeParticle[] = [];
+  const eraSparks: PhysicsSpark[] = [];
+  let steamEmitAcc = 0;
+  let dustEmitAcc = 0;
+  let volcanoEmitAcc = 0;
+  let lastClashBeat = -1;
 
   const hudEl = document.createElement('div');
   hudEl.className = 'gd-rewind-center-hud';
@@ -2735,154 +2765,417 @@ export function createHistoryRewindOverlay(): HTMLElement {
     }
   };
 
+  const drawEraPlumesAndSparks = (alpha: number) => {
+    for (const p of eraPlumes) {
+      const lifeRatio = p.age / p.maxAge;
+      const a = Math.sin(Math.min(1, lifeRatio * 4.5) * Math.PI * 0.5) * Math.pow(1 - lifeRatio, 1.35) * alpha;
+      if (a <= 0.01) continue;
+      ctx.save();
+      if (p.tone === 'ember') {
+        const g = ctx.createRadialGradient(p.x, p.y, 0.4, p.x, p.y, p.r * 2.2);
+        g.addColorStop(0, `rgba(255, 245, 190, ${Math.min(1, a * 1.4).toFixed(2)})`);
+        g.addColorStop(0.55, `rgba(252, 138, 36, ${(a * 0.85).toFixed(2)})`);
+        g.addColorStop(1, 'rgba(180, 42, 10, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const g = ctx.createRadialGradient(p.x - p.r * 0.2, p.y - p.r * 0.2, p.r * 0.12, p.x, p.y, p.r);
+        if (p.tone === 'steam') {
+          g.addColorStop(0, `rgba(255, 250, 236, ${(a * 0.72).toFixed(2)})`);
+          g.addColorStop(0.65, `rgba(228, 212, 182, ${(a * 0.36).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(228, 212, 182, 0)');
+        } else if (p.tone === 'soot') {
+          g.addColorStop(0, `rgba(74, 54, 34, ${(a * 0.56).toFixed(2)})`);
+          g.addColorStop(0.65, `rgba(118, 90, 56, ${(a * 0.24).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(118, 90, 56, 0)');
+        } else if (p.tone === 'ash') {
+          g.addColorStop(0, `rgba(54, 32, 18, ${(a * 0.68).toFixed(2)})`);
+          g.addColorStop(0.55, `rgba(148, 72, 24, ${(a * 0.32).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(92, 52, 26, 0)');
+        } else {
+          g.addColorStop(0, `rgba(218, 174, 106, ${(a * 0.45).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(218, 174, 106, 0)');
+        }
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    for (const sp of eraSparks) {
+      const a = Math.max(0, 1 - sp.life / sp.maxLife) * alpha;
+      if (a <= 0.01) continue;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = sp.hot ? '#FFF7CE' : '#FF8A2B';
+      ctx.lineWidth = sp.size;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(sp.x, sp.y);
+      ctx.lineTo(sp.x - sp.vx * 0.032, sp.y - sp.vy * 0.032);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  const updateEraEmitters = (dt: number, eraIdx: number, eraT: number, active: boolean) => {
+    // Advance existing plumes & ballistic sparks smoothly
+    for (let i = eraPlumes.length - 1; i >= 0; i--) {
+      const p = eraPlumes[i];
+      p.age += dt;
+      if (p.age >= p.maxAge) {
+        eraPlumes.splice(i, 1);
+        continue;
+      }
+      if (p.tone === 'ember') {
+        p.vy += 175 * dt;
+      } else {
+        p.vx += (-18 - p.vx) * Math.min(1, dt * 1.4);
+        p.r += p.grow * dt;
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+    }
+
+    for (let i = eraSparks.length - 1; i >= 0; i--) {
+      const sp = eraSparks[i];
+      sp.life += dt;
+      if (sp.life >= sp.maxLife) {
+        eraSparks.splice(i, 1);
+        continue;
+      }
+      sp.vy += 320 * dt;
+      sp.vx *= Math.exp(-dt * 1.6);
+      sp.x += sp.vx * dt;
+      sp.y += sp.vy * dt;
+    }
+
+    if (!active) return;
+    const groundY = height - 22;
+
+    if (eraIdx === 0) {
+      const progress = (eraT % ERA_DURATION) / ERA_DURATION;
+      const trainX = -220 + progress * (width + 640);
+      const wheelAngle = clock * 8.2;
+      const chugBurst = 0.5 + 0.5 * Math.sin(wheelAngle * 2);
+      steamEmitAcc += dt;
+      while (steamEmitAcc >= 0.045) {
+        steamEmitAcc -= 0.045;
+        // Stack exhaust (churning coal smoke + hot white steam mixing upward)
+        eraPlumes.push({
+          x: trainX + 106 + (Math.random() - 0.5) * 4,
+          y: groundY - 76,
+          vx: -28 - Math.random() * 24,
+          vy: -76 - chugBurst * 62 - Math.random() * 25,
+          r: 6 + chugBurst * 4,
+          grow: 17 + Math.random() * 12,
+          age: 0,
+          maxAge: 2.1 + Math.random() * 0.9,
+          tone: Math.random() < 0.45 ? 'soot' : 'steam',
+        });
+        // Cylinder drain-cock high-pressure white steam jetting from lower pistons
+        if (chugBurst > 0.62) {
+          eraPlumes.push({
+            x: trainX + 94,
+            y: groundY - 14,
+            vx: -72 - Math.random() * 38,
+            vy: -14 - Math.random() * 18,
+            r: 4 + Math.random() * 3,
+            grow: 18,
+            age: 0,
+            maxAge: 0.95 + Math.random() * 0.4,
+            tone: 'steam',
+          });
+        }
+      }
+    } else if (eraIdx === 2) {
+      const progress = (eraT % ERA_DURATION) / ERA_DURATION;
+      const cx = width + 140 - progress * (width + 340);
+      dustEmitAcc += dt;
+      while (dustEmitAcc >= 0.06) {
+        dustEmitAcc -= 0.06;
+        eraPlumes.push({
+          x: cx + (Math.random() - 0.3) * 52,
+          y: groundY - 3 - Math.random() * 8,
+          vx: 36 + Math.random() * 28,
+          vy: -10 - Math.random() * 16,
+          r: 6 + Math.random() * 5,
+          grow: 14,
+          age: 0,
+          maxAge: 1.2 + Math.random() * 0.6,
+          tone: 'dust',
+        });
+      }
+    } else if (eraIdx === 3) {
+      const vx = width * 0.78;
+      const craterY = groundY - 122;
+      volcanoEmitAcc += dt;
+      while (volcanoEmitAcc >= 0.055) {
+        volcanoEmitAcc -= 0.055;
+        // Towering volcanic pyroclastic ash plume
+        eraPlumes.push({
+          x: vx + (Math.random() - 0.5) * 26,
+          y: craterY,
+          vx: -14 + (Math.random() - 0.5) * 32,
+          vy: -68 - Math.random() * 44,
+          r: 12 + Math.random() * 8,
+          grow: 22 + Math.random() * 14,
+          age: 0,
+          maxAge: 2.6 + Math.random() * 1.1,
+          tone: 'ash',
+        });
+        // Ballistic incandescent lava bombs arcing from the crater
+        if (Math.random() < 0.72) {
+          eraPlumes.push({
+            x: vx + (Math.random() - 0.5) * 18,
+            y: craterY - 2,
+            vx: (Math.random() - 0.52) * 145,
+            vy: -(115 + Math.random() * 95),
+            r: 2.0 + Math.random() * 2.1,
+            grow: 0,
+            age: 0,
+            maxAge: 1.4 + Math.random() * 0.7,
+            tone: 'ember',
+          });
+        }
+      }
+    }
+  };
+
   const drawEraSteamTrain = (eraT: number, alpha: number) => {
     if (alpha <= 0.01) return;
-    const groundY = height - 20;
+    const groundY = height - 22;
     const progress = (eraT % ERA_DURATION) / ERA_DURATION;
-    const trainX = -180 + progress * (width + 520);
+    const trainX = -220 + progress * (width + 640);
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Ground & rail sleepers + distant telegraph poles
-    ctx.fillStyle = '#4A3216';
-    ctx.fillRect(0, groundY, width, 20);
-    ctx.strokeStyle = 'rgba(74, 50, 22, 0.55)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(0, groundY - 1);
-    ctx.lineTo(width, groundY - 1);
-    ctx.stroke();
+    // Ballast roadbed embankment, crosstie sleepers & gleaming steel rail
+    const railGrad = ctx.createLinearGradient(0, groundY - 2, 0, height);
+    railGrad.addColorStop(0, '#362310');
+    railGrad.addColorStop(1, '#1E1308');
+    ctx.fillStyle = railGrad;
+    ctx.fillRect(0, groundY, width, height - groundY);
 
-    for (let px = 70; px < width; px += 190) {
-      ctx.fillStyle = 'rgba(74, 50, 22, 0.32)';
-      ctx.fillRect(px, groundY - 56, 2.5, 56);
-      ctx.fillRect(px - 7, groundY - 49, 16, 2);
+    ctx.fillStyle = '#4B3319';
+    for (let sx = 0; sx < width; sx += 16) {
+      ctx.fillRect(sx, groundY - 2, 9, 3);
+    }
+    ctx.fillStyle = '#B89A68';
+    ctx.fillRect(0, groundY - 4, width, 2);
+
+    // Background misty hills & wooden telegraph poles
+    for (let px = 60; px < width; px += 210) {
+      ctx.fillStyle = 'rgba(66, 44, 22, 0.35)';
+      ctx.fillRect(px, groundY - 78, 3, 74);
+      ctx.fillRect(px - 10, groundY - 68, 22, 2.5);
       ctx.beginPath();
-      ctx.moveTo(px, groundY - 48);
-      ctx.quadraticCurveTo(px + 95, groundY - 38, px + 190, groundY - 48);
-      ctx.strokeStyle = 'rgba(74, 50, 22, 0.22)';
-      ctx.lineWidth = 0.8;
+      ctx.moveTo(px, groundY - 67);
+      ctx.quadraticCurveTo(px + 105, groundY - 54, px + 210, groundY - 67);
+      ctx.strokeStyle = 'rgba(66, 44, 22, 0.25)';
+      ctx.lineWidth = 0.9;
       ctx.stroke();
     }
 
-    // Expanding steam & smoke plumes drifting back across the sky
-    const stackX = trainX + 76;
-    const stackY = groundY - 50;
-    for (let i = 0; i < 14; i++) {
-      const puffAge = ((clock * 0.85 + i * 0.14) % 1.9) / 1.9;
-      const puffX = stackX - puffAge * 210 - Math.sin(clock * 2 + i) * 12;
-      const puffY = stackY - puffAge * (95 + i * 5);
-      const r = 6 + puffAge * 22;
-      ctx.save();
-      ctx.globalAlpha = alpha * (1 - puffAge) * 0.34;
-      ctx.fillStyle = i % 3 === 0 ? '#7A5934' : '#B5966B';
-      ctx.beginPath();
-      ctx.arc(puffX, puffY, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Trailing 2 vintage passenger coaches + coal tender
+    // 2 Detailed Pullman Passenger Coaches
     const drawCoach = (cx: number) => {
-      ctx.fillStyle = '#3B2814';
-      ctx.fillRect(cx, groundY - 36, 92, 26);
-      ctx.fillRect(cx - 2, groundY - 40, 96, 5);
-      for (let w = 0; w < 4; w++) {
-        ctx.fillStyle = 'rgba(250, 212, 112, 0.65)';
-        ctx.fillRect(cx + 10 + w * 21, groundY - 30, 12, 10);
-      }
+      const bodyGrad = ctx.createLinearGradient(cx, groundY - 56, cx, groundY - 12);
+      bodyGrad.addColorStop(0, '#462E18');
+      bodyGrad.addColorStop(1, '#26170A');
+      ctx.fillStyle = bodyGrad;
+      ctx.fillRect(cx, groundY - 52, 128, 36);
+      // Clerestory arched roof + vents
+      ctx.fillRect(cx - 3, groundY - 56, 134, 5);
       ctx.fillStyle = '#2E1E0E';
-      for (const wx of [cx + 16, cx + 30, cx + 62, cx + 76]) {
+      ctx.fillRect(cx + 12, groundY - 61, 104, 5);
+      // Arched brass-framed warm lit windows
+      for (let w = 0; w < 5; w++) {
+        const wx = cx + 12 + w * 23;
+        ctx.fillStyle = 'rgba(255, 212, 118, 0.72)';
         ctx.beginPath();
-        ctx.arc(wx, groundY - 6, 5.5, 0, Math.PI * 2);
+        ctx.roundRect(wx, groundY - 44, 15, 16, [5, 5, 1, 1]);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(182, 136, 62, 0.65)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+      // Chassis frame & twin bogies
+      ctx.fillStyle = '#1D1208';
+      ctx.fillRect(cx - 2, groundY - 16, 132, 4);
+      for (const bx of [cx + 22, cx + 106]) {
+        ctx.fillRect(bx - 16, groundY - 14, 32, 4);
+        for (const wx of [bx - 10, bx + 10]) {
+          ctx.beginPath();
+          ctx.arc(wx, groundY - 8, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     };
-    drawCoach(trainX - 252);
-    drawCoach(trainX - 150);
+    drawCoach(trainX - 344);
+    drawCoach(trainX - 204);
 
-    // Coal tender
-    ctx.fillStyle = '#362411';
-    ctx.fillRect(trainX - 50, groundY - 32, 44, 22);
+    // Coal Tender heaped with textured coal chunks
+    ctx.fillStyle = '#27190C';
+    ctx.fillRect(trainX - 66, groundY - 48, 60, 32);
+    ctx.fillRect(trainX - 69, groundY - 50, 64, 3);
+    ctx.fillStyle = '#181007';
     ctx.beginPath();
-    ctx.moveTo(trainX - 48, groundY - 32);
-    ctx.quadraticCurveTo(trainX - 28, groundY - 41, trainX - 8, groundY - 32);
+    ctx.moveTo(trainX - 62, groundY - 48);
+    ctx.lineTo(trainX - 50, groundY - 58);
+    ctx.lineTo(trainX - 36, groundY - 55);
+    ctx.lineTo(trainX - 24, groundY - 60);
+    ctx.lineTo(trainX - 10, groundY - 48);
+    ctx.closePath();
     ctx.fill();
-    for (const wx of [trainX - 38, trainX - 18]) {
+    for (const wx of [trainX - 50, trainX - 22]) {
       ctx.beginPath();
-      ctx.arc(wx, groundY - 6, 5.5, 0, Math.PI * 2);
+      ctx.arc(wx, groundY - 9, 6, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Main 1885 Locomotive Silhouette
-    ctx.fillStyle = '#2F1F0E';
-    // Engineer cab + warm firebox glow
-    ctx.fillRect(trainX, groundY - 46, 30, 36);
-    ctx.fillRect(trainX - 3, groundY - 49, 36, 4);
-    ctx.fillStyle = 'rgba(255, 192, 74, 0.78)';
-    ctx.fillRect(trainX + 8, groundY - 40, 14, 11);
+    // Heavy Cast-Iron 4-6-0 Steam Locomotive Body
+    const ironGrad = ctx.createLinearGradient(trainX, groundY - 70, trainX, groundY - 15);
+    ironGrad.addColorStop(0, '#3D2E1E');
+    ironGrad.addColorStop(0.4, '#24180D');
+    ironGrad.addColorStop(1, '#160E06');
+    ctx.fillStyle = ironGrad;
 
-    // Cylindrical boiler, steam dome, headlamp & flared smokestack
-    ctx.fillStyle = '#2F1F0E';
-    ctx.fillRect(trainX + 30, groundY - 35, 58, 22);
+    // Engineer cab + sloped roof + glowing firebox/window
+    ctx.fillRect(trainX, groundY - 66, 38, 48);
     ctx.beginPath();
-    ctx.arc(trainX + 48, groundY - 35, 6.5, Math.PI, 0);
-    ctx.fill();
-    // Smokestack
-    ctx.beginPath();
-    ctx.moveTo(trainX + 71, groundY - 35);
-    ctx.lineTo(trainX + 68, groundY - 51);
-    ctx.lineTo(trainX + 83, groundY - 51);
-    ctx.lineTo(trainX + 80, groundY - 35);
+    ctx.moveTo(trainX - 5, groundY - 66);
+    ctx.quadraticCurveTo(trainX + 19, groundY - 72, trainX + 42, groundY - 66);
+    ctx.lineTo(trainX + 42, groundY - 63);
+    ctx.lineTo(trainX - 5, groundY - 63);
     ctx.closePath();
     ctx.fill();
-    // Headlight beam cone
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.18;
-    ctx.fillStyle = '#FCE28B';
+    const fireGlow = ctx.createRadialGradient(trainX + 20, groundY - 48, 2, trainX + 20, groundY - 48, 16);
+    fireGlow.addColorStop(0, 'rgba(255, 224, 128, 0.92)');
+    fireGlow.addColorStop(1, 'rgba(220, 118, 28, 0.2)');
+    ctx.fillStyle = fireGlow;
     ctx.beginPath();
-    ctx.moveTo(trainX + 90, groundY - 31);
-    ctx.lineTo(trainX + 185, groundY - 48);
-    ctx.lineTo(trainX + 185, groundY - 12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Cowcatcher
-    ctx.fillStyle = '#2F1F0E';
-    ctx.beginPath();
-    ctx.moveTo(trainX + 88, groundY - 18);
-    ctx.lineTo(trainX + 104, groundY - 4);
-    ctx.lineTo(trainX + 88, groundY - 4);
-    ctx.closePath();
+    ctx.roundRect(trainX + 12, groundY - 58, 16, 15, [6, 6, 1, 1]);
     ctx.fill();
 
-    // Articulated driving wheels + live connecting rod
-    const wheelAngle = clock * 7.5;
-    const driveWheels = [trainX + 18, trainX + 42, trainX + 66];
-    for (const wx of driveWheels) {
+    // Long Tapered Boiler + Riveted Bands + Brass Steam/Sand Domes
+    ctx.fillStyle = ironGrad;
+    ctx.fillRect(trainX + 38, groundY - 52, 82, 31);
+    ctx.beginPath();
+    ctx.ellipse(trainX + 120, groundY - 36.5, 4, 15.5, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.fill();
+    // Metallic boiler bands
+    ctx.strokeStyle = 'rgba(206, 160, 82, 0.45)';
+    ctx.lineWidth = 1.2;
+    for (const bx of [trainX + 54, trainX + 74, trainX + 94]) {
+      ctx.beginPath();
+      ctx.moveTo(bx, groundY - 52);
+      ctx.lineTo(bx, groundY - 21);
+      ctx.stroke();
+    }
+    // Sand dome + brass steam dome + bell
+    ctx.fillStyle = '#B8842E';
+    ctx.beginPath();
+    ctx.arc(trainX + 58, groundY - 52, 8.5, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#2B1D0F';
+    ctx.beginPath();
+    ctx.arc(trainX + 82, groundY - 52, 7.5, Math.PI, 0);
+    ctx.fill();
+    // Flared Chimney Smokestack
+    ctx.fillStyle = '#1D130A';
+    ctx.beginPath();
+    ctx.moveTo(trainX + 101, groundY - 52);
+    ctx.lineTo(trainX + 98, groundY - 76);
+    ctx.lineTo(trainX + 114, groundY - 76);
+    ctx.lineTo(trainX + 111, groundY - 52);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#C9963A';
+    ctx.fillRect(trainX + 96.5, groundY - 78, 19, 3);
+
+    // Kerosene Brass Headlamp + Dusty Volumetric Cone
+    ctx.fillStyle = '#FFF4C8';
+    ctx.fillRect(trainX + 120, groundY - 55, 6, 7);
+    const beamGrad = ctx.createLinearGradient(trainX + 126, groundY - 51, trainX + 320, groundY - 40);
+    beamGrad.addColorStop(0, 'rgba(255, 232, 152, 0.34)');
+    beamGrad.addColorStop(1, 'rgba(255, 232, 152, 0)');
+    ctx.fillStyle = beamGrad;
+    ctx.beginPath();
+    ctx.moveTo(trainX + 126, groundY - 54);
+    ctx.lineTo(trainX + 320, groundY - 82);
+    ctx.lineTo(trainX + 320, groundY - 12);
+    ctx.lineTo(trainX + 126, groundY - 49);
+    ctx.closePath();
+    ctx.fill();
+
+    // Slatted Iron Cowcatcher Pilot
+    ctx.fillStyle = '#1E140B';
+    ctx.beginPath();
+    ctx.moveTo(trainX + 118, groundY - 22);
+    ctx.lineTo(trainX + 144, groundY - 5);
+    ctx.lineTo(trainX + 118, groundY - 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(182, 146, 94, 0.35)';
+    ctx.lineWidth = 1;
+    for (let k = 1; k <= 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(trainX + 118, groundY - 22 + k * 4);
+      ctx.lineTo(trainX + 122 + k * 5.5, groundY - 5);
+      ctx.stroke();
+    }
+
+    // Running board & steam piston cylinder chest
+    ctx.fillStyle = '#332415';
+    ctx.fillRect(trainX + 36, groundY - 22, 86, 3.5);
+    ctx.fillStyle = '#24180D';
+    ctx.fillRect(trainX + 86, groundY - 22, 22, 13);
+
+    // Leading pilot wheels + 3 massive spoked driving wheels + animated connecting rods
+    const wheelAngle = clock * 8.2;
+    for (const wx of [trainX + 104, trainX + 118]) {
       ctx.strokeStyle = '#241709';
       ctx.lineWidth = 2.4;
       ctx.beginPath();
-      ctx.arc(wx, groundY - 9, 8.5, 0, Math.PI * 2);
+      ctx.arc(wx, groundY - 9, 5.5, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.lineWidth = 1;
-      for (let sp = 0; sp < 4; sp++) {
-        const a = wheelAngle + (sp * Math.PI) / 4;
+    }
+    const driveWheels = [trainX + 20, trainX + 50, trainX + 80];
+    for (const wx of driveWheels) {
+      ctx.strokeStyle = '#1C1208';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(wx, groundY - 14, 11.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 1.1;
+      for (let sp = 0; sp < 6; sp++) {
+        const a = wheelAngle + (sp * Math.PI) / 3;
         ctx.beginPath();
-        ctx.moveTo(wx - Math.cos(a) * 8, groundY - 9 - Math.sin(a) * 8);
-        ctx.lineTo(wx + Math.cos(a) * 8, groundY - 9 + Math.sin(a) * 8);
+        ctx.moveTo(wx - Math.cos(a) * 11, groundY - 14 - Math.sin(a) * 11);
+        ctx.lineTo(wx + Math.cos(a) * 11, groundY - 14 + Math.sin(a) * 11);
         ctx.stroke();
       }
+      ctx.fillStyle = '#C9963A';
+      ctx.beginPath();
+      ctx.arc(wx, groundY - 14, 2.8, 0, Math.PI * 2);
+      ctx.fill();
     }
-    const rodDx = Math.cos(wheelAngle) * 4.5;
-    const rodDy = Math.sin(wheelAngle) * 4.5;
-    ctx.strokeStyle = '#C98A2E';
-    ctx.lineWidth = 2;
+
+    // Coupling & Main Drive Piston Rod
+    const rodDx = Math.cos(wheelAngle) * 6;
+    const rodDy = Math.sin(wheelAngle) * 6;
+    ctx.strokeStyle = '#D19D42';
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(driveWheels[0] + rodDx, groundY - 9 + rodDy);
-    ctx.lineTo(driveWheels[2] + rodDx, groundY - 9 + rodDy);
+    ctx.moveTo(driveWheels[0] + rodDx, groundY - 14 + rodDy);
+    ctx.lineTo(driveWheels[2] + rodDx, groundY - 14 + rodDy);
+    ctx.lineTo(trainX + 94 + Math.cos(wheelAngle) * 5, groundY - 15.5);
     ctx.stroke();
 
     ctx.restore();
@@ -2890,139 +3183,241 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
   const drawEraMedievalDuel = (eraT: number, alpha: number) => {
     if (alpha <= 0.01) return;
-    const groundY = height - 20;
+    const groundY = height - 22;
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Ground & distant castle battlements silhouette
-    ctx.fillStyle = '#3B2814';
-    ctx.fillRect(0, groundY, width, 20);
+    // Rocky battleground earth & mist
+    const earthGrad = ctx.createLinearGradient(0, groundY - 4, 0, height);
+    earthGrad.addColorStop(0, '#362310');
+    earthGrad.addColorStop(1, '#1C1207');
+    ctx.fillStyle = earthGrad;
+    ctx.fillRect(0, groundY, width, height - groundY);
 
-    const castleX = Math.max(260, width * 0.25);
-    ctx.fillStyle = 'rgba(66, 44, 20, 0.36)';
-    ctx.fillRect(castleX, groundY - 68, 42, 68);
-    ctx.fillRect(castleX + 42, groundY - 46, 74, 46);
-    ctx.fillRect(castleX + 116, groundY - 76, 38, 76);
-    for (let bx = castleX; bx < castleX + 152; bx += 12) {
-      ctx.fillRect(bx, groundY - 52, 7, 6);
+    // Imposing Battlemented Fortress Keep + Flickering Gatehouse Torches
+    const castleX = Math.max(255, width * 0.24);
+    ctx.fillStyle = 'rgba(54, 36, 18, 0.44)';
+    ctx.fillRect(castleX, groundY - 102, 54, 102);
+    ctx.fillRect(castleX + 54, groundY - 68, 106, 68);
+    ctx.fillRect(castleX + 160, groundY - 114, 48, 114);
+    for (let bx = castleX; bx < castleX + 206; bx += 14) {
+      ctx.fillRect(bx, groundY - 76, 8, 8);
     }
-    // Castle pennant waving
-    ctx.fillStyle = 'rgba(158, 50, 36, 0.55)';
-    const flagWave = Math.sin(clock * 5) * 4;
+    // Fluttering heraldic pennant
+    const fWave = Math.sin(clock * 4.8) * 5;
+    ctx.fillStyle = 'rgba(148, 42, 30, 0.65)';
     ctx.beginPath();
-    ctx.moveTo(castleX + 135, groundY - 76);
-    ctx.lineTo(castleX + 135, groundY - 96);
-    ctx.quadraticCurveTo(castleX + 150, groundY - 92 + flagWave, castleX + 164, groundY - 90 - flagWave * 0.5);
-    ctx.lineTo(castleX + 135, groundY - 84);
+    ctx.moveTo(castleX + 184, groundY - 114);
+    ctx.lineTo(castleX + 184, groundY - 142);
+    ctx.quadraticCurveTo(castleX + 204, groundY - 138 + fWave, castleX + 226, groundY - 134 - fWave * 0.6);
+    ctx.lineTo(castleX + 184, groundY - 126);
     ctx.fill();
 
-    // High-arcing flaming siege boulders across the upper sky
-    const arcProg = (eraT * 0.42) % 1;
-    const bx = width * 0.22 + arcProg * (width * 0.62);
-    const by = height * 0.55 - Math.sin(arcProg * Math.PI) * (height * 0.38);
-    ctx.save();
-    ctx.fillStyle = '#4A2E12';
+    // Distant Trebuchet Fiery Projectile arcing high across open sepia sky
+    const arcProg = (eraT * 0.38) % 1;
+    const bx = width * 0.22 + arcProg * (width * 0.66);
+    const by = height * 0.56 - Math.sin(arcProg * Math.PI) * (height * 0.4);
+    const emberGrad = ctx.createRadialGradient(bx, by, 1, bx, by, 14);
+    emberGrad.addColorStop(0, '#FFF4C4');
+    emberGrad.addColorStop(0.4, 'rgba(248, 146, 38, 0.78)');
+    emberGrad.addColorStop(1, 'rgba(180, 56, 12, 0)');
+    ctx.fillStyle = emberGrad;
     ctx.beginPath();
-    ctx.arc(bx, by, 5.5, 0, Math.PI * 2);
+    ctx.arc(bx, by, 14, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(252, 186, 68, 0.72)';
-    ctx.beginPath();
-    ctx.arc(bx - 5, by + 2, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
 
-    // Two articulated Knights dueling on the horizon
+    // Multi-Beat Choreography & Spark Emission for Real Armored Knights
     const duelCenterX = width * 0.62;
-    const duelCycle = (clock * 1.45) % 1;
-    const lunge = Math.sin(duelCycle * Math.PI * 2);
-    const clashMoment = Math.max(0, Math.sin(duelCycle * Math.PI * 2));
+    const beatCycle = (clock * 1.15) % 2;
+    const phase = beatCycle < 1 ? beatCycle : beatCycle - 1;
+    const strikeCurve = Math.sin(phase * Math.PI);
+    const beatNum = Math.floor(clock * 1.15);
+    if (strikeCurve > 0.92 && beatNum !== lastClashBeat) {
+      lastClashBeat = beatNum;
+      const sx = duelCenterX + (Math.random() - 0.5) * 6;
+      const sy = groundY - 50 + (Math.random() - 0.5) * 6;
+      for (let k = 0; k < 14; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const speed = 90 + Math.random() * 170;
+        eraSparks.push({
+          x: sx,
+          y: sy,
+          vx: Math.cos(a) * speed,
+          vy: Math.sin(a) * speed - 45,
+          life: 0,
+          maxLife: 0.38 + Math.random() * 0.35,
+          size: 1.4 + Math.random() * 1.4,
+          hot: k % 3 !== 0,
+        });
+      }
+    }
 
-    const drawKnight = (kx: number, dir: 1 | -1, swordAngle: number, stepOffset: number) => {
+    const drawRealKnight = (
+      kx: number,
+      dir: 1 | -1,
+      lean: number,
+      swordShoulderAngle: number,
+      swordElbowAngle: number,
+      shieldRaise: number,
+      isCrimson: boolean,
+    ) => {
       ctx.save();
       ctx.translate(kx, groundY);
       ctx.scale(dir, 1);
 
-      // Flowing cape
-      ctx.fillStyle = dir === 1 ? '#592B1B' : '#352616';
+      const steelGrad = ctx.createLinearGradient(-14, -78, 16, 0);
+      steelGrad.addColorStop(0, '#4F4234');
+      steelGrad.addColorStop(0.45, '#261D15');
+      steelGrad.addColorStop(1, '#150F09');
+
+      // Flowing Multi-Fold Heraldic Cloak
+      const capeWhip = Math.sin(clock * 5.2 + dir) * 5;
+      ctx.fillStyle = isCrimson ? '#5C2318' : '#2C342B';
       ctx.beginPath();
-      ctx.moveTo(-4, -36);
-      ctx.quadraticCurveTo(-18 - Math.sin(clock * 6) * 4, -22, -16, -6);
-      ctx.lineTo(-4, -14);
+      ctx.moveTo(-6, -54);
+      ctx.bezierCurveTo(-24 + lean * 8, -40, -30 + capeWhip, -18, -22 + capeWhip * 0.5, -3);
+      ctx.lineTo(-8, -14);
+      ctx.quadraticCurveTo(-5, -34, -2, -52);
       ctx.closePath();
       ctx.fill();
 
-      // Legs
-      ctx.strokeStyle = '#2B1C0E';
-      ctx.lineWidth = 4.2;
-      ctx.lineCap = 'round';
+      // Rear Leg (Thigh cuisse -> Knee poleyn -> Greave -> Sabaton)
+      ctx.fillStyle = '#1E160E';
       ctx.beginPath();
-      ctx.moveTo(-2, -16);
-      ctx.lineTo(-6 - stepOffset, -1);
-      ctx.moveTo(3, -16);
-      ctx.lineTo(8 + stepOffset, -1);
-      ctx.stroke();
-
-      // Armored torso + visored helm + plume
-      ctx.fillStyle = '#2B1C0E';
-      ctx.fillRect(-5, -36, 12, 21);
-      ctx.beginPath();
-      ctx.arc(1, -43, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = dir === 1 ? '#9E3224' : '#B87A24';
-      ctx.beginPath();
-      ctx.ellipse(-2, -50, 6, 2.5, -0.3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Kite Shield
-      ctx.fillStyle = '#4A3219';
-      ctx.beginPath();
-      ctx.moveTo(5, -33);
-      ctx.lineTo(13, -33);
-      ctx.lineTo(11, -18);
-      ctx.lineTo(6, -15);
+      ctx.moveTo(-6, -34);
+      ctx.lineTo(-14 - lean * 4, -18);
+      ctx.lineTo(-18 - lean * 5, -2);
+      ctx.lineTo(-11 - lean * 5, -2);
+      ctx.lineTo(-8 - lean * 4, -17);
+      ctx.lineTo(0, -32);
       ctx.closePath();
       ctx.fill();
 
-      // Sword Arm + Broadsword
+      // Forward Brace Leg (Articulated bent knee & steel greave)
+      ctx.fillStyle = steelGrad;
+      ctx.beginPath();
+      ctx.moveTo(2, -34);
+      ctx.lineTo(13 + lean * 5, -18);
+      ctx.lineTo(16 + lean * 5, -1);
+      ctx.lineTo(22 + lean * 5, -1);
+      ctx.lineTo(19 + lean * 5, -19);
+      ctx.lineTo(8, -34);
+      ctx.closePath();
+      ctx.fill();
+
+      // Armored Cuirass + Tapered Waist Tassets (rotated slightly by battle lean)
       ctx.save();
-      ctx.translate(4, -31);
-      ctx.rotate(swordAngle);
-      ctx.strokeStyle = '#2B1C0E';
-      ctx.lineWidth = 3.2;
+      ctx.translate(0, -33);
+      ctx.rotate(lean * 0.22);
+
+      ctx.fillStyle = steelGrad;
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(12, -4);
+      ctx.moveTo(-8, -24);
+      ctx.lineTo(9, -24);
+      ctx.lineTo(7, -8);
+      ctx.lineTo(9, 4);
+      ctx.lineTo(-7, 4);
+      ctx.lineTo(-6, -8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(225, 204, 166, 0.35)';
+      ctx.lineWidth = 0.9;
       ctx.stroke();
-      ctx.strokeStyle = '#D8C29A';
-      ctx.lineWidth = 2;
+
+      // Shoulder Pauldron Armor Plate
+      ctx.fillStyle = steelGrad;
       ctx.beginPath();
-      ctx.moveTo(12, -4);
-      ctx.lineTo(36, -18);
+      ctx.ellipse(-2, -22, 8.5, 6.5, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Gothic Armet / Sallet Knight Helmet with Pointed Visor & Plume
+      ctx.fillStyle = steelGrad;
+      ctx.beginPath();
+      ctx.moveTo(-5, -25);
+      ctx.lineTo(-5, -36);
+      ctx.quadraticCurveTo(2, -41, 10, -34);
+      ctx.lineTo(13, -30); // pointed visor nose
+      ctx.lineTo(7, -25);  // chin bevor
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Visor eye slit highlight
+      ctx.strokeStyle = '#FCE28B';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(4, -32);
+      ctx.lineTo(10, -31);
+      ctx.stroke();
+      // Crest plume
+      ctx.fillStyle = isCrimson ? '#9E3224' : '#B8842E';
+      ctx.beginPath();
+      ctx.moveTo(-1, -38);
+      ctx.quadraticCurveTo(-12, -44 - capeWhip * 0.3, -16, -34);
+      ctx.quadraticCurveTo(-8, -36, -1, -35);
+      ctx.closePath();
+      ctx.fill();
+
+      // Articulated 2-Segment Sword Arm + Steel Longsword with Crossguard & Specular Glint
+      ctx.save();
+      ctx.translate(2, -20);
+      ctx.rotate(swordShoulderAngle);
+      // Upper arm rerebrace
+      ctx.fillStyle = steelGrad;
+      ctx.fillRect(-2, -3, 14, 6);
+      ctx.translate(12, 0);
+      ctx.rotate(swordElbowAngle);
+      // Forearm vambrace + gauntlet
+      ctx.fillRect(-1, -2.5, 13, 5);
+      // Pommel + grip + cruciform crossguard + tapered longsword blade
+      ctx.fillStyle = '#C9963A';
+      ctx.fillRect(10, -2, 6, 4);
+      ctx.fillRect(15, -7.5, 2.5, 15);
+      const bladeGrad = ctx.createLinearGradient(17, 0, 56, 0);
+      bladeGrad.addColorStop(0, '#E8DCC2');
+      bladeGrad.addColorStop(0.5, '#FFFFFF');
+      bladeGrad.addColorStop(1, '#9E8C6E');
+      ctx.fillStyle = bladeGrad;
+      ctx.beginPath();
+      ctx.moveTo(17.5, -2.1);
+      ctx.lineTo(54, -0.9);
+      ctx.lineTo(59, 0);
+      ctx.lineTo(54, 0.9);
+      ctx.lineTo(17.5, 2.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Heavy Shield on off-hand
+      ctx.save();
+      ctx.translate(10, -16 - shieldRaise * 7);
+      ctx.fillStyle = isCrimson ? '#3C2614' : '#262B22';
+      ctx.beginPath();
+      ctx.moveTo(-6, -12);
+      ctx.lineTo(7, -12);
+      ctx.lineTo(6, 4);
+      ctx.lineTo(0, 13);
+      ctx.lineTo(-6, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#C9963A';
+      ctx.lineWidth = 1.4;
       ctx.stroke();
       ctx.restore();
 
+      ctx.restore();
       ctx.restore();
     };
 
-    drawKnight(duelCenterX - 32 + lunge * 10, 1, -0.35 + lunge * 0.55, lunge * 3);
-    drawKnight(duelCenterX + 32 - lunge * 10, -1, -0.45 + lunge * 0.5, -lunge * 3);
-
-    // Metallic sword clash sparks
-    if (clashMoment > 0.72) {
-      const sparkInt = (clashMoment - 0.72) / 0.28;
-      const sx = duelCenterX;
-      const sy = groundY - 38;
-      ctx.strokeStyle = '#FFF2B8';
-      ctx.lineWidth = 1.6;
-      for (let sp = 0; sp < 7; sp++) {
-        const a = (sp / 7) * Math.PI * 2 + clock * 4;
-        const len = 6 + sparkInt * 14;
-        ctx.beginPath();
-        ctx.moveTo(sx + Math.cos(a) * 3, sy + Math.sin(a) * 3);
-        ctx.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len);
-        ctx.stroke();
-      }
+    if (beatCycle < 1) {
+      // Beat 1: Left knight overhead strike, Right knight shields & parries
+      drawRealKnight(duelCenterX - 38 + strikeCurve * 16, 1, 0.25 + strikeCurve * 0.4, -1.55 + strikeCurve * 1.45, -0.35 + strikeCurve * 0.3, 0.2, true);
+      drawRealKnight(duelCenterX + 38 - strikeCurve * 8, -1, -0.25 * strikeCurve, -0.75 + strikeCurve * 0.35, -0.75, 0.85 * strikeCurve, false);
+    } else {
+      // Beat 2: Right knight horizontal riposte, Left knight blocks & counters
+      drawRealKnight(duelCenterX - 38 + strikeCurve * 8, 1, -0.2 * strikeCurve, -0.8 + strikeCurve * 0.3, -0.7, 0.9 * strikeCurve, true);
+      drawRealKnight(duelCenterX + 38 - strikeCurve * 16, -1, 0.25 + strikeCurve * 0.4, -1.45 + strikeCurve * 1.4, -0.3 + strikeCurve * 0.25, 0.2, false);
     }
 
     ctx.restore();
@@ -3030,191 +3425,432 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
   const drawEraAncientEgypt = (eraT: number, alpha: number) => {
     if (alpha <= 0.01) return;
-    const groundY = height - 20;
+    const groundY = height - 22;
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Warm desert sun low on horizon
-    ctx.fillStyle = 'rgba(232, 166, 62, 0.35)';
+    // Blazing Low Desert Sun & Heat Halo
+    const sunGrad = ctx.createRadialGradient(width * 0.72, groundY - 82, 8, width * 0.72, groundY - 82, 92);
+    sunGrad.addColorStop(0, 'rgba(255, 232, 152, 0.55)');
+    sunGrad.addColorStop(0.5, 'rgba(232, 162, 54, 0.24)');
+    sunGrad.addColorStop(1, 'rgba(232, 162, 54, 0)');
+    ctx.fillStyle = sunGrad;
     ctx.beginPath();
-    ctx.arc(width * 0.72, groundY - 64, 42, 0, Math.PI * 2);
+    ctx.arc(width * 0.72, groundY - 82, 92, 0, Math.PI * 2);
     ctx.fill();
 
-    // Great Pyramids silhouettes
-    ctx.fillStyle = 'rgba(116, 76, 28, 0.38)';
-    const drawPyramid = (px: number, bw: number, bh: number) => {
+    // Three 3D-Faceted Great Limestone Pyramids (lit sunward face + shaded shadow face)
+    const drawRealPyramid = (px: number, bw: number, bh: number) => {
+      const splitOffset = bw * 0.14;
+      ctx.fillStyle = 'rgba(136, 94, 42, 0.44)';
       ctx.beginPath();
       ctx.moveTo(px - bw * 0.5, groundY);
+      ctx.lineTo(px, groundY - bh);
+      ctx.lineTo(px + splitOffset, groundY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(72, 46, 18, 0.48)';
+      ctx.beginPath();
+      ctx.moveTo(px + splitOffset, groundY);
       ctx.lineTo(px, groundY - bh);
       ctx.lineTo(px + bw * 0.5, groundY);
       ctx.closePath();
       ctx.fill();
     };
-    drawPyramid(width * 0.44, 150, 88);
-    drawPyramid(width * 0.58, 120, 70);
-    drawPyramid(width * 0.69, 86, 50);
+    drawRealPyramid(width * 0.43, 180, 108);
+    drawRealPyramid(width * 0.59, 146, 86);
+    drawRealPyramid(width * 0.72, 98, 56);
 
-    // Ground dune
+    // Desert sand dunes & ground
     ctx.fillStyle = '#4A3114';
-    ctx.fillRect(0, groundY, width, 20);
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.quadraticCurveTo(width * 0.35, groundY - 12, width * 0.65, groundY);
+    ctx.quadraticCurveTo(width * 0.85, groundY - 8, width, groundY - 2);
+    ctx.lineTo(width, height);
+    ctx.lineTo(0, height);
+    ctx.closePath();
+    ctx.fill();
 
-    // Galloping Two-Horse War Chariot moving right-to-left (rewinding!)
+    // Articulated Galloping War Horse + Bronze Pharaoh Chariot (moving right-to-left)
     const progress = (eraT % ERA_DURATION) / ERA_DURATION;
-    const cx = width + 100 - progress * (width + 260);
-    const gallop = clock * 11;
+    const cx = width + 140 - progress * (width + 340);
+    const gallop = clock * 11.5;
+
+    const drawRealGallopingHorse = (hx: number, hy: number, phaseOffset: number, colorDark: string, scale: number) => {
+      const g = gallop + phaseOffset;
+      const bounce = Math.sin(g) * 3.2;
+      ctx.save();
+      ctx.translate(hx, hy + bounce);
+      ctx.scale(scale, scale);
+
+      // Flowing windswept horse tail
+      const tailWave = Math.sin(g * 1.1) * 4;
+      ctx.fillStyle = colorDark;
+      ctx.beginPath();
+      ctx.moveTo(22, -26);
+      ctx.quadraticCurveTo(36, -24 + tailWave, 42, -12 + tailWave);
+      ctx.quadraticCurveTo(33, -17, 22, -21);
+      ctx.closePath();
+      ctx.fill();
+
+      // Helper for 2-joint anatomical horse leg
+      const drawHorseLeg = (hipX: number, hipY: number, upperA: number, lowerA: number, thick: number) => {
+        const kx = hipX + Math.sin(upperA) * 13;
+        const ky = hipY + Math.cos(upperA) * 13;
+        const fx = kx + Math.sin(upperA + lowerA) * 12;
+        const fy = ky + Math.cos(upperA + lowerA) * 12;
+        ctx.strokeStyle = colorDark;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = thick;
+        ctx.beginPath();
+        ctx.moveTo(hipX, hipY);
+        ctx.lineTo(kx, ky);
+        ctx.stroke();
+        ctx.lineWidth = thick * 0.68;
+        ctx.beginPath();
+        ctx.moveTo(kx, ky);
+        ctx.lineTo(fx, fy);
+        ctx.stroke();
+        // Hoof
+        ctx.fillStyle = '#140C05';
+        ctx.beginPath();
+        ctx.arc(fx, fy, thick * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      };
+
+      // Far legs first for depth
+      drawHorseLeg(18, -22, Math.sin(g + 1.8) * 0.65 + 0.15, 0.38, 4.2);
+      drawHorseLeg(-14, -22, Math.sin(g + 0.4) * 0.72 - 0.15, -0.45, 4.0);
+
+      // Sculpted Equine Body (Deep chest -> tapered barrel -> arched hindquarters)
+      ctx.fillStyle = colorDark;
+      ctx.beginPath();
+      ctx.moveTo(-20, -26);
+      ctx.bezierCurveTo(-18, -36, -4, -36, 4, -34);
+      ctx.bezierCurveTo(14, -36, 26, -33, 25, -22);
+      ctx.bezierCurveTo(24, -15, 14, -16, 4, -17);
+      ctx.bezierCurveTo(-6, -16, -20, -14, -20, -26);
+      ctx.closePath();
+      ctx.fill();
+
+      // Powerful Arched Neck + Chiseled Equine Head, Ears & Plume
+      ctx.beginPath();
+      ctx.moveTo(-16, -32);
+      ctx.quadraticCurveTo(-24, -46, -31, -48);
+      ctx.lineTo(-34, -54); // pricked ear
+      ctx.lineTo(-36, -47);
+      ctx.lineTo(-43, -38); // muzzle
+      ctx.lineTo(-40, -35); // lower jaw
+      ctx.quadraticCurveTo(-30, -35, -24, -24);
+      ctx.closePath();
+      ctx.fill();
+
+      // Streaming horse mane & royal feathered chariot plume
+      ctx.fillStyle = '#B8842E';
+      ctx.beginPath();
+      ctx.moveTo(-29, -51);
+      ctx.quadraticCurveTo(-24, -59, -16, -54);
+      ctx.quadraticCurveTo(-23, -52, -28, -48);
+      ctx.closePath();
+      ctx.fill();
+
+      // Near muscular legs
+      drawHorseLeg(20, -21, Math.sin(g + 2.5) * 0.72 + 0.12, 0.42, 4.5);
+      drawHorseLeg(-15, -21, Math.sin(g) * 0.78 - 0.2, -0.52, 4.3);
+
+      ctx.restore();
+    };
 
     ctx.save();
     ctx.translate(cx, groundY);
-    // Chariot cab + spinning spoked wheel
-    ctx.fillStyle = '#2F1F0E';
+
+    // Chariot Draught Yoke Pole connecting cab to horses
+    ctx.strokeStyle = '#6B491C';
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(14, -8);
-    ctx.lineTo(38, -8);
-    ctx.lineTo(34, -26);
-    ctx.lineTo(16, -24);
-    ctx.closePath();
-    ctx.fill();
-    // Charioteer with spear
-    ctx.fillRect(21, -40, 7, 16);
-    ctx.beginPath();
-    ctx.arc(24, -44, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#2F1F0E';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(22, -35);
-    ctx.lineTo(6, -48);
+    ctx.moveTo(42, -16);
+    ctx.lineTo(-22, -26);
     ctx.stroke();
 
-    // Wheel
-    ctx.strokeStyle = '#2F1F0E';
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(25, -8, 8, 0, Math.PI * 2);
-    ctx.stroke();
+    // Two Paired War Stallions (far golden-bronze stallion + near dark obsidian stallion)
+    drawRealGallopingHorse(-14, -1, 0.55, '#593A1A', 0.96);
+    drawRealGallopingHorse(-4, 0, 0, '#27190C', 1.0);
 
-    // Galloping Horse silhouette
-    const bob = Math.sin(gallop) * 2;
-    ctx.fillStyle = '#2B1C0E';
+    // Pharaoh Warrior holding Reins & Drawn Composite Bow inside Carved Bronze Chariot
+    ctx.fillStyle = '#2B1B0C';
+    // Curved ornate chariot cab & quiver
     ctx.beginPath();
-    ctx.ellipse(-10, -22 + bob, 16, 7.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Neck & head
-    ctx.beginPath();
-    ctx.moveTo(-22, -23 + bob);
-    ctx.lineTo(-32, -37 + bob);
-    ctx.lineTo(-38, -32 + bob);
-    ctx.lineTo(-27, -18 + bob);
+    ctx.moveTo(32, -14);
+    ctx.lineTo(62, -14);
+    ctx.quadraticCurveTo(60, -36, 48, -36);
+    ctx.lineTo(34, -34);
     ctx.closePath();
     ctx.fill();
-    // Animated legs
-    ctx.strokeStyle = '#2B1C0E';
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.moveTo(-20, -17 + bob);
-    ctx.lineTo(-26 + Math.sin(gallop) * 7, -1);
-    ctx.moveTo(0, -17 + bob);
-    ctx.lineTo(6 - Math.sin(gallop) * 7, -1);
+    ctx.strokeStyle = '#C9963A';
+    ctx.lineWidth = 1.4;
     ctx.stroke();
+
+    // Pharaoh Charioteer Silhouette with War Crown & Composite Bow
+    ctx.fillStyle = '#24160A';
+    ctx.beginPath();
+    ctx.moveTo(43, -34);
+    ctx.lineTo(49, -56);
+    ctx.lineTo(56, -55);
+    ctx.lineTo(54, -34);
+    ctx.closePath();
+    ctx.fill();
+    // Crowned head (Khepresh war helm silhouette)
+    ctx.beginPath();
+    ctx.ellipse(50, -61, 5, 6, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // Drawn bow facing forward
+    ctx.strokeStyle = '#D19D42';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(36, -48, 12, Math.PI * 0.55, Math.PI * 1.45);
+    ctx.stroke();
+    // Reins to stallions
+    ctx.strokeStyle = 'rgba(209, 157, 66, 0.72)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(45, -48);
+    ctx.lineTo(-26, -41);
+    ctx.stroke();
+
+    // Spinning 8-Spoked Bronze Chariot Wheel
+    const wAngle = -clock * 12;
+    const wx = 46;
+    const wy = -13;
+    ctx.strokeStyle = '#24160A';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.arc(wx, wy, 12.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#C9963A';
+    ctx.lineWidth = 1.3;
+    for (let s = 0; s < 4; s++) {
+      const a = wAngle + (s * Math.PI) / 4;
+      ctx.beginPath();
+      ctx.moveTo(wx - Math.cos(a) * 12, wy - Math.sin(a) * 12);
+      ctx.lineTo(wx + Math.cos(a) * 12, wy + Math.sin(a) * 12);
+      ctx.stroke();
+    }
+
     ctx.restore();
-
     ctx.restore();
   };
 
   const drawEraPrehistoric = (eraT: number, alpha: number) => {
     if (alpha <= 0.01) return;
-    const groundY = height - 20;
+    const groundY = height - 22;
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Distant smoldering volcano silhouette
+    // Craggy Volcanic Ridge + Magma Glow + Flowing Lava Rivers
     const vx = width * 0.78;
-    ctx.fillStyle = 'rgba(72, 42, 20, 0.42)';
+    const volGrad = ctx.createLinearGradient(vx, groundY - 126, vx, groundY);
+    volGrad.addColorStop(0, '#3D2212');
+    volGrad.addColorStop(0.5, '#2A180D');
+    volGrad.addColorStop(1, '#1A0E06');
+    ctx.fillStyle = volGrad;
     ctx.beginPath();
-    ctx.moveTo(vx - 110, groundY);
-    ctx.lineTo(vx - 24, groundY - 96);
-    ctx.lineTo(vx + 24, groundY - 96);
-    ctx.lineTo(vx + 110, groundY);
+    ctx.moveTo(vx - 155, groundY);
+    ctx.lineTo(vx - 88, groundY - 52);
+    ctx.lineTo(vx - 30, groundY - 122);
+    ctx.lineTo(vx - 10, groundY - 116);
+    ctx.lineTo(vx + 10, groundY - 117);
+    ctx.lineTo(vx + 32, groundY - 124);
+    ctx.lineTo(vx + 92, groundY - 58);
+    ctx.lineTo(vx + 155, groundY);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = 'rgba(235, 118, 42, 0.48)';
+
+    // Incandescent Crater Magma Throat & Underlit Pyroclastic Glow
+    const magmaPulse = 0.8 + 0.2 * Math.sin(clock * 6.5);
+    const craterGlow = ctx.createRadialGradient(vx, groundY - 124, 4, vx, groundY - 135, 95);
+    craterGlow.addColorStop(0, `rgba(255, 240, 158, ${(0.85 * magmaPulse).toFixed(2)})`);
+    craterGlow.addColorStop(0.35, `rgba(246, 114, 24, ${(0.55 * magmaPulse).toFixed(2)})`);
+    craterGlow.addColorStop(1, 'rgba(154, 34, 12, 0)');
+    ctx.fillStyle = craterGlow;
     ctx.beginPath();
-    ctx.ellipse(vx, groundY - 96, 18, 4, 0, 0, Math.PI * 2);
+    ctx.arc(vx, groundY - 135, 95, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ground
-    ctx.fillStyle = '#382410';
-    ctx.fillRect(0, groundY, width, 20);
+    // Glowing Molten Lava Fissures pulsing down the volcano slopes
+    ctx.strokeStyle = `rgba(255, 146, 38, ${(0.82 * magmaPulse).toFixed(2)})`;
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(vx - 12, groundY - 116);
+    ctx.quadraticCurveTo(vx - 26, groundY - 82, vx - 46, groundY - 48);
+    ctx.quadraticCurveTo(vx - 58, groundY - 26, vx - 72, groundY);
+    ctx.moveTo(vx + 14, groundY - 116);
+    ctx.quadraticCurveTo(vx + 28, groundY - 76, vx + 48, groundY - 38);
+    ctx.lineTo(vx + 62, groundY);
+    ctx.stroke();
 
-    // Striding Brachiosaurus silhouette
+    // Scorched Volcanic Ground Terrain
+    ctx.fillStyle = '#2B1A0D';
+    ctx.fillRect(0, groundY, width, height - groundY);
+
+    // Fierce Articulated Predatory T-Rex Stalking & Roaring on Center-Left Horizon
+    const roarCycle = Math.max(0, Math.sin(clock * 2.2));
+    const stride = clock * 3.1;
     const progress = (eraT % ERA_DURATION) / ERA_DURATION;
-    const dx = width * 0.25 + progress * (width * 0.42);
-    const stride = clock * 2.8;
+    const tx = width * 0.28 + progress * (width * 0.16);
     ctx.save();
-    ctx.translate(dx, groundY);
-    ctx.fillStyle = '#2A1B0C';
+    ctx.translate(tx, groundY);
+
+    const dinoGrad = ctx.createLinearGradient(-50, -90, 60, 0);
+    dinoGrad.addColorStop(0, '#362312');
+    dinoGrad.addColorStop(1, '#1A0F07');
+    ctx.fillStyle = dinoGrad;
+
+    // Far Muscular Leg
+    const fLegSwing = Math.sin(stride + Math.PI) * 7;
     ctx.beginPath();
-    ctx.ellipse(0, -28, 26, 13, -0.08, 0, Math.PI * 2);
-    ctx.fill();
-    // Long neck + head
-    const neckSway = Math.sin(stride) * 3;
-    ctx.beginPath();
-    ctx.moveTo(16, -34);
-    ctx.quadraticCurveTo(32, -62, 38 + neckSway, -82);
-    ctx.lineTo(48 + neckSway, -80);
-    ctx.quadraticCurveTo(38, -56, 24, -26);
+    ctx.moveTo(-6, -42);
+    ctx.lineTo(-14 + fLegSwing * 0.5, -22);
+    ctx.lineTo(-8 + fLegSwing, -2);
+    ctx.lineTo(2 + fLegSwing, -1);
+    ctx.lineTo(-4 + fLegSwing * 0.5, -21);
+    ctx.lineTo(6, -40);
     ctx.closePath();
     ctx.fill();
-    // Tail
+
+    // Heavy Sweeping Theropod Tail + Deep Ribbed Torso + Curved Neck
     ctx.beginPath();
-    ctx.moveTo(-22, -28);
-    ctx.quadraticCurveTo(-50, -24 + neckSway, -66, -18);
-    ctx.lineTo(-22, -21);
+    ctx.moveTo(-88, -42 + Math.sin(stride) * 3); // sharp tail tip
+    ctx.quadraticCurveTo(-52, -52, -16, -62);   // dorsal spine curve
+    ctx.quadraticCurveTo(10, -72, 28, -76);     // thick S-neck back
+    ctx.lineTo(36, -62);                        // throat
+    ctx.quadraticCurveTo(22, -40, 2, -34);      // deep chest/belly
+    ctx.quadraticCurveTo(-36, -34, -88, -42 + Math.sin(stride) * 3);
     ctx.closePath();
     ctx.fill();
-    // Legs
-    ctx.strokeStyle = '#2A1B0C';
-    ctx.lineWidth = 5;
+
+    // Massive Tyrannosaur Skull + Snapping Upper/Lower Jaws + Razor Teeth
+    ctx.save();
+    ctx.translate(28, -73);
+    // Upper cranium & serrated teeth
+    ctx.fillStyle = dinoGrad;
     ctx.beginPath();
-    ctx.moveTo(-12, -20);
-    ctx.lineTo(-14 + Math.sin(stride) * 4, -1);
-    ctx.moveTo(12, -20);
-    ctx.lineTo(14 - Math.sin(stride) * 4, -1);
+    ctx.moveTo(-4, -10);
+    ctx.lineTo(14, -15);  // fierce brow crest
+    ctx.lineTo(36, -8);   // broad snout tip
+    ctx.lineTo(34, 1);
+    ctx.lineTo(2, 2);
+    ctx.closePath();
+    ctx.fill();
+    // Razor upper teeth silhouettes
+    ctx.fillStyle = '#F7EAD0';
+    for (let t = 8; t <= 31; t += 4.5) {
+      ctx.beginPath();
+      ctx.moveTo(t, 1);
+      ctx.lineTo(t + 1.5, 4.5);
+      ctx.lineTo(t + 3, 1);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Fierce glowing amber predator eye slit
+    ctx.fillStyle = '#F5B841';
+    ctx.beginPath();
+    ctx.arc(10, -7, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hinged roaring lower jaw
+    ctx.save();
+    ctx.rotate(0.08 + roarCycle * 0.42);
+    ctx.fillStyle = '#1E1108';
+    ctx.beginPath();
+    ctx.moveTo(2, 1);
+    ctx.lineTo(32, 3);
+    ctx.lineTo(29, 8);
+    ctx.lineTo(-2, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+
+    // Tiny two-clawed theropod forelimb
+    ctx.strokeStyle = '#1E1108';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(16, -50);
+    ctx.lineTo(26, -44);
+    ctx.lineTo(29, -40);
+    ctx.stroke();
+
+    // Near Powerful Clawed Leg
+    const nLegSwing = Math.sin(stride) * 8;
+    ctx.fillStyle = '#24160A';
+    ctx.beginPath();
+    ctx.moveTo(-10, -44);
+    ctx.quadraticCurveTo(2, -32, -8 + nLegSwing * 0.5, -20);
+    ctx.lineTo(-2 + nLegSwing, -2);
+    ctx.lineTo(11 + nLegSwing, -1); // clawed theropod foot
+    ctx.lineTo(2 + nLegSwing * 0.5, -21);
+    ctx.quadraticCurveTo(10, -34, 6, -44);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Facedown Armored Triceratops standing ground on right flank
+    const triX = tx + 165;
+    ctx.save();
+    ctx.translate(triX, groundY);
+    ctx.fillStyle = '#23160B';
+    ctx.beginPath();
+    ctx.ellipse(0, -24, 30, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Tail & sturdy quadrupedal legs
+    ctx.beginPath();
+    ctx.moveTo(26, -24);
+    ctx.lineTo(54, -14);
+    ctx.lineTo(26, -18);
+    ctx.fill();
+    ctx.fillRect(-18, -20, 7, 20);
+    ctx.fillRect(10, -20, 8, 20);
+    // Scalloped armored frill + lowered triple horns facing T-Rex
+    ctx.beginPath();
+    ctx.moveTo(-22, -30);
+    ctx.lineTo(-14, -48); // bony frill crest
+    ctx.lineTo(-26, -42);
+    ctx.lineTo(-42, -26); // beak
+    ctx.lineTo(-28, -18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#EAD9B8';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-28, -32);
+    ctx.lineTo(-48, -39); // twin brow horns pointed at T-Rex
+    ctx.moveTo(-38, -28);
+    ctx.lineTo(-46, -32); // nasal horn
     ctx.stroke();
     ctx.restore();
 
-    // Gliding Pterodactyls in upper sky
-    for (let p = 0; p < 3; p++) {
-      const px = ((width * 0.22 + p * 180 + clock * (24 + p * 7)) % (width + 80)) - 40;
-      const py = height * (0.16 + p * 0.08) + Math.sin(clock * 2.4 + p) * 8;
-      const wing = Math.sin(clock * 6 + p * 1.3) * 7;
-      ctx.strokeStyle = 'rgba(58, 36, 16, 0.58)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(px - 14, py + wing);
-      ctx.quadraticCurveTo(px - 5, py - 5, px, py);
-      ctx.quadraticCurveTo(px + 5, py - 5, px + 14, py + wing);
-      ctx.stroke();
-    }
-
-    // Golden-amber Meteor streaking diagonally across the upper sky
-    const mProg = (eraT * 0.55) % 1;
-    const mx = width * 0.2 + mProg * (width * 0.72);
-    const my = height * 0.1 + mProg * (height * 0.28);
-    const grad = ctx.createLinearGradient(mx - 65, my - 25, mx, my);
-    grad.addColorStop(0, 'rgba(252, 226, 139, 0)');
-    grad.addColorStop(1, 'rgba(252, 210, 96, 0.85)');
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 3.2;
+    // Extinction Asteroid / Blazing Meteor tearing across upper sky
+    const mProg = (eraT * 0.45) % 1;
+    const mx = width * 0.16 + mProg * (width * 0.72);
+    const my = height * 0.08 + mProg * (height * 0.28);
+    const meteorGrad = ctx.createLinearGradient(mx - 95, my - 36, mx, my);
+    meteorGrad.addColorStop(0, 'rgba(255, 180, 62, 0)');
+    meteorGrad.addColorStop(0.65, 'rgba(255, 128, 32, 0.48)');
+    meteorGrad.addColorStop(1, 'rgba(255, 244, 198, 0.95)');
+    ctx.strokeStyle = meteorGrad;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(mx - 65, my - 25);
+    ctx.moveTo(mx - 95, my - 36);
     ctx.lineTo(mx, my);
     ctx.stroke();
-    ctx.fillStyle = '#FFF3C4';
+    ctx.fillStyle = '#FFF9DF';
     ctx.beginPath();
-    ctx.arc(mx, my, 3.8, 0, Math.PI * 2);
+    ctx.arc(mx, my, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -3251,8 +3887,10 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const historyVisible = isHistoryVisible();
     const active = isRewindActive() && historyVisible;
     if (active) ensureHudMounted();
-    if (!historyVisible && lingerPages.length > 0) {
-      lingerPages.length = 0;
+    if (!historyVisible) {
+      if (lingerPages.length > 0) lingerPages.length = 0;
+      if (eraPlumes.length > 0) eraPlumes.length = 0;
+      if (eraSparks.length > 0) eraSparks.length = 0;
     }
     if (!active) {
       introRemaining = 0;
@@ -3282,27 +3920,32 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const targetAlpha = active ? 1 : 0;
     rewindAlpha += (targetAlpha - rewindAlpha) * Math.min(1, dt * (active ? 4.2 : 2.5));
 
+    const currentEraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
+    const currentEraT = journeyTime % ERA_DURATION;
+    updateEraEmitters(dt, currentEraIdx, currentEraT, active && introRemaining <= 0.15);
+
     ctx.clearRect(0, 0, width, height);
 
-    if (rewindAlpha > 0.01) {
+    if (rewindAlpha > 0.01 || eraPlumes.length > 0 || eraSparks.length > 0) {
       // 1. Rotating antique Roman-numeral clockwork rings
-      for (const ring of clockRings) {
-        ring.angle += ring.spinSpeed * dt * (introRemaining > 0 ? 3.5 : 1);
-        drawRomanClockRing(ring, ring.alpha * rewindAlpha);
+      if (rewindAlpha > 0.01) {
+        for (const ring of clockRings) {
+          ring.angle += ring.spinSpeed * dt * (introRemaining > 0 ? 3.5 : 1);
+          drawRomanClockRing(ring, ring.alpha * rewindAlpha);
+        }
       }
 
-      // 2. Multi-Era Historical Journey silhouettes (after center rewind intro completes)
+      // 2. Multi-Era Historical Journey silhouettes + volumetric plumes & clash sparks
       if (active && introRemaining <= 0.15) {
-        const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
-        const eraT = journeyTime % ERA_DURATION;
-        const fadeIn = Math.min(1, eraT / 0.8);
-        const fadeOut = Math.min(1, (ERA_DURATION - eraT) / 0.8);
+        const fadeIn = Math.min(1, currentEraT / 0.8);
+        const fadeOut = Math.min(1, (ERA_DURATION - currentEraT) / 0.8);
         const eraAlpha = rewindAlpha * Math.min(fadeIn, fadeOut);
-        if (eraIdx === 0) drawEraSteamTrain(eraT, eraAlpha);
-        else if (eraIdx === 1) drawEraMedievalDuel(eraT, eraAlpha);
-        else if (eraIdx === 2) drawEraAncientEgypt(eraT, eraAlpha);
-        else drawEraPrehistoric(eraT, eraAlpha);
+        if (currentEraIdx === 0) drawEraSteamTrain(currentEraT, eraAlpha);
+        else if (currentEraIdx === 1) drawEraMedievalDuel(currentEraT, eraAlpha);
+        else if (currentEraIdx === 2) drawEraAncientEgypt(currentEraT, eraAlpha);
+        else drawEraPrehistoric(currentEraT, eraAlpha);
       }
+      drawEraPlumesAndSparks(Math.max(rewindAlpha, active ? 1 : 0.65));
 
       // 2. Ascending golden-sepia memory sparks
       for (const s of sparks) {
@@ -3433,6 +4076,8 @@ export function createHistoryRewindOverlay(): HTMLElement {
     if (
       active ||
       rewindAlpha > 0.015 ||
+      eraPlumes.length > 0 ||
+      eraSparks.length > 0 ||
       lingerPages.length > 0 ||
       Math.abs(boardAngle) > 0.04 ||
       Math.abs(boardVel) > 0.05
