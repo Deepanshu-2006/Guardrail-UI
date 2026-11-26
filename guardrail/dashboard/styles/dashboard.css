@@ -25132,14 +25132,16 @@ body.gd-kbd-open .gd-m-shell {
     padding: 6px 4px 0 !important;
   }
 
-  /* Broken, chipped weathered wooden silhouettes on select focal boards */
+  /* Broken, chipped weathered wooden silhouettes on select focal boards (with headroom above top rim for perched props) */
   .gd-overview-grid .gd-metric-card:nth-child(2) {
     clip-path: polygon(
-      0 0,
+      0 -80px,
+      calc(74% - 7px) -80px,
       calc(74% - 7px) 0,
       74% 5px,
       calc(74% + 6px) 0,
-      100% 0,
+      calc(74% + 6px) -80px,
+      100% -80px,
       100% 100%,
       calc(16% + 7px) 100%,
       16% calc(100% - 5px),
@@ -25160,11 +25162,13 @@ body.gd-kbd-open .gd-m-shell {
 
   #view-overview .gd-overview-col-secondary {
     clip-path: polygon(
-      0 0,
+      0 -80px,
+      calc(24% - 6px) -80px,
       calc(24% - 6px) 0,
       24% 4.5px,
       calc(24% + 6px) 0,
-      100% 0,
+      calc(24% + 6px) -80px,
+      100% -80px,
       100% calc(36% - 7px),
       calc(100% - 5px) 36%,
       100% calc(36% + 6px),
@@ -26244,7 +26248,7 @@ body.gd-kbd-open .gd-m-shell {
   .gd-prop-btn.gd-prop-mailbox {
     position: absolute !important;
     top: -33px;
-    right: 76px;
+    right: 108px;
     z-index: 6 !important;
   }
 
@@ -26339,35 +26343,60 @@ body.gd-kbd-open .gd-m-shell {
     transform: scale(1.26);
   }
 
-  /* 1.7 Hanging Brass Nightwatch Bell beneath GOOD NIGHT wooden sign */
+  /* 1.7 Hanging Japanese Edo-Glass Fūrin (Wind Chime) beneath wooden greeting sign */
+  .gd-prop-btn.gd-prop-board-furin,
   .gd-prop-btn.gd-prop-board-bell {
     position: absolute !important;
-    bottom: -24px;
-    right: 26px;
+    bottom: -76px;
+    right: 22px;
     z-index: 6 !important;
     overflow: visible;
   }
 
-  .gd-bell-wave {
+  .gd-prop-btn.gd-prop-board-furin:hover,
+  .gd-prop-btn.gd-prop-board-furin:active {
+    transform: none;
+  }
+
+  .gd-prop-board-furin .gd-prop-svg {
+    overflow: visible;
+  }
+
+  .gd-prop-board-furin .gd-furin-amber-glow {
+    opacity: 0;
+    transition: opacity 0.55s ease;
+  }
+
+  .gd-dashboard-app.gd-lantern-ambience-on .gd-prop-board-furin .gd-furin-amber-glow {
+    opacity: 0.65;
+  }
+
+  .gd-furin-wave {
     position: absolute;
     left: 50%;
-    top: 18px;
-    width: 24px;
-    height: 24px;
+    top: 21px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    border: 1.5px solid rgba(229, 186, 88, 0.8);
-    transform: translate(-50%, -50%) scale(0.4);
+    border: 1.4px solid rgba(176, 224, 226, 0.85);
+    box-shadow: 0 0 8px rgba(212, 245, 245, 0.45);
+    transform: translate(-50%, -50%) scale(0.45);
     opacity: 0;
     pointer-events: none;
   }
 
-  .gd-prop-board-bell.is-ringing .gd-bell-wave {
-    animation: gd-bell-ring-wave 0.72s ease-out forwards;
+  .gd-dashboard-app.gd-lantern-ambience-on .gd-furin-wave {
+    border-color: rgba(246, 206, 118, 0.85);
+    box-shadow: 0 0 8px rgba(246, 206, 118, 0.45);
   }
 
-  @keyframes gd-bell-ring-wave {
-    0%   { opacity: 0.9; transform: translate(-50%, -50%) scale(0.5); }
-    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.9); }
+  .gd-prop-board-furin.is-ringing .gd-furin-wave {
+    animation: gd-furin-ring-wave 0.88s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes gd-furin-ring-wave {
+    0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.5); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(2.1); }
   }
 
   /* 1.8 Brass Keyhook Rack atop 01 / Wards */
