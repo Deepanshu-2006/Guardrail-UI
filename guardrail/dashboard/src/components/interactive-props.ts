@@ -42,6 +42,7 @@ export function createHeaderLanternProp(): HTMLElement {
       <span class="gd-ember gd-ember-3"></span>
       <span class="gd-ember gd-ember-4"></span>
     </span>
+    <span class="gd-lantern-flight-chirp" aria-hidden="true">Chirp! ♪</span>
     <svg class="gd-prop-svg" width="88" height="142" viewBox="0 0 88 142" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="gd-lantern-lit-grad" cx="50%" cy="52%" r="60%">
@@ -179,45 +180,262 @@ export function createHeaderLanternProp(): HTMLElement {
   return lanternBtn;
 }
 
+let sharedBirdAudioCtx: AudioContext | null = null;
+
 /**
- * Physics-driven bounding flight controller for the lantern bird:
- * - Natural takeoff burst -> smooth wandering figure-8 soaring above the heading
- * - Alternating rapid wingbeat bursts and tucked-wing glides
- * - Smooth return-to-perch deceleration & flare when lantern is extinguished
+ * Synthesizes a soft, pleasant double/triple songbird warble via Web Audio API.
+ * Gracefully no-ops in headless/test environments or if AudioContext is blocked.
+ */
+function playBirdChirp(variant = 0): void {
+  try {
+    if (typeof window === 'undefined') return;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sharedBirdAudioCtx) {
+      sharedBirdAudioCtx = new AudioCtx();
+    }
+    if (sharedBirdAudioCtx.state === 'suspended') {
+      void sharedBirdAudioCtx.resume();
+    }
+    const now = sharedBirdAudioCtx.currentTime;
+    const master = sharedBirdAudioCtx.createGain();
+    master.gain.setValueAtTime(0.042, now);
+    master.connect(sharedBirdAudioCtx.destination);
+
+    const patterns = [
+      [
+        { s: 0, d: 0.065, f0: 3100, f1: 4350 },
+        { s: 0.085, d: 0.085, f0: 3850, f1: 2850 },
+      ],
+      [
+        { s: 0, d: 0.055, f0: 4300, f1: 3200 },
+        { s: 0.075, d: 0.09, f0: 3300, f1: 4750 },
+      ],
+      [
+        { s: 0, d: 0.05, f0: 3550, f1: 4150 },
+        { s: 0.065, d: 0.05, f0: 4100, f1: 4700 },
+        { s: 0.125, d: 0.08, f0: 4550, f1: 3250 },
+      ],
+    ];
+    const seq = patterns[Math.abs(variant) % patterns.length];
+
+    for (const note of seq) {
+      const osc = sharedBirdAudioCtx.createOscillator();
+      const gain = sharedBirdAudioCtx.createGain();
+      osc.type = 'sine';
+      const t0 = now + note.s;
+      const t1 = t0 + note.d;
+
+      osc.frequency.setValueAtTime(note.f0, t0);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(240, note.f1), t1);
+
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(0.038, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start(t0);
+      osc.stop(t1 + 0.012);
+    }
+  } catch {
+    // Ignore audio errors if blocked or unsupported
+  }
+}
+
+/**
+ * Physics-driven full-page flight controller for the lantern bird:
+ * - True curved-heading aerodynamic steering (no flat 2D card-flip squishing)
+ * - Alternating vigorous wingbeats, soaring glides & dihedral banked turns
+ * - Naturally lands on wooden UI frames across Overview, perches & chirps, then flies on
+ * - Smooth flare return-to-perch when lantern is extinguished
  */
 function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
   const birdEl = lanternBtn.querySelector('.gd-lantern-bird') as SVGGElement | null;
   const nearWing = lanternBtn.querySelector('.gd-bird-wing-near') as SVGGElement | null;
   const farWing = lanternBtn.querySelector('.gd-bird-wing-far') as SVGGElement | null;
   const tailEl = lanternBtn.querySelector('.gd-bird-tail') as SVGGElement | null;
+  const chirpEl = lanternBtn.querySelector('.gd-lantern-flight-chirp') as HTMLElement | null;
   if (!birdEl || typeof requestAnimationFrame !== 'function') return;
+
+  const CHIRP_PHRASES = [
+    '♪ Chirp!',
+    'Tweet-tweet! ♪',
+    '♪ Cheep-cheep!',
+    'Peep! ♪',
+    '♪♫',
+    'Sweet-sweet! ♪',
+    'All clear! ♪',
+  ];
+
+  const SKY_WAYPOINTS = [
+    { rx: 0.24, ry: 0.06, speed: 180, chirp: 'Tweet-tweet! ♪' },
+    { rx: 0.72, ry: 0.05, speed: 205, chirp: null },
+    { rx: 0.92, ry: 0.24, speed: 195, chirp: '♪ Chirp!' },
+    { rx: 0.56, ry: 0.22, speed: 200, chirp: null },
+    { rx: 0.16, ry: 0.28, speed: 185, chirp: 'Peep! ♪' },
+    { rx: 0.84, ry: 0.44, speed: 215, chirp: 'Hello friend! ♪' },
+    { rx: 0.44, ry: 0.58, speed: 200, chirp: null },
+    { rx: 0.22, ry: 0.74, speed: 185, chirp: '♫ Chirp!' },
+  ];
+
+  interface FrameSpotDef {
+    selector: string;
+    rx: number;
+    yOffset: number;
+    faceDir: 1 | -1;
+    perchPhrase: string;
+  }
+
+  const FRAME_SPOTS: FrameSpotDef[] = [
+    { selector: '#view-overview .gd-wood-board', rx: 0.22, yOffset: 2, faceDir: 1, perchPhrase: 'Cozy sign! ♪' },
+    { selector: '#view-overview .gd-metric-card-ward', rx: 0.78, yOffset: 1, faceDir: -1, perchPhrase: 'Watching! ♪' },
+    { selector: '#view-overview .gd-metric-card-approvals', rx: 0.28, yOffset: 1, faceDir: 1, perchPhrase: 'All clear! ♪' },
+    { selector: '#view-overview .gd-protection-status-card', rx: 0.84, yOffset: 1, faceDir: -1, perchPhrase: 'Tweet-tweet! ♪' },
+    { selector: '#view-overview .gd-overview-col-secondary', rx: 0.28, yOffset: 1, faceDir: 1, perchPhrase: '♪ Chirp-chirp!' },
+  ];
+
+  const normalizeAngle = (rad: number) => {
+    let a = rad;
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  };
 
   let x = 0;
   let y = 0;
   let vx = 0;
   let vy = 0;
-  let facing = 1;
+  let heading = -0.35;
+  let speed = 170;
+  let facing: 1 | -1 = 1;
+  let pitch = 0;
+  let turnBlend = 0;
   let flightClock = 0;
   let wingPhase = 0;
+  let waypointIdx = 0;
+  let legsBeforeLand = 2;
+  let frameSpotIdx = 0;
+  let activeFrameSpot: FrameSpotDef | null = null;
+  let perchedUntil = 0;
+  let hopSeed = 0;
+  let jitterSeed = 0.7;
+  let nextChirpAt = 0.6;
+  let chirpCounter = 0;
+  let chirpHideTimer: ReturnType<typeof setTimeout> | null = null;
   let lastTs = 0;
   let rafId: number | null = null;
   let swoopTarget: { x: number; y: number; until: number } | null = null;
 
-  const setWingPose = (flapAngle: number, scaleY: number, tailAngle: number) => {
+  const triggerChirp = (customPhrase?: string | null) => {
+    const phrase = customPhrase || CHIRP_PHRASES[chirpCounter % CHIRP_PHRASES.length];
+    playBirdChirp(chirpCounter);
+    chirpCounter += 1;
+    if (chirpEl) {
+      chirpEl.textContent = phrase;
+      chirpEl.style.left = `${(x + 34).toFixed(1)}px`;
+      chirpEl.style.top = `${(y + 5).toFixed(1)}px`;
+      chirpEl.classList.add('is-visible');
+      if (chirpHideTimer) clearTimeout(chirpHideTimer);
+      chirpHideTimer = setTimeout(() => {
+        chirpEl.classList.remove('is-visible');
+      }, 1500);
+    }
+  };
+
+  const getPageBounds = () => {
+    const container =
+      lanternBtn.closest('#view-overview') ||
+      lanternBtn.closest('.gd-main-content') ||
+      (typeof document !== 'undefined' ? document.body : null);
+    const lRect = lanternBtn.getBoundingClientRect();
+    const cRect = container
+      ? container.getBoundingClientRect()
+      : { left: lRect.left, right: window.innerWidth, top: 0, bottom: window.innerHeight, height: window.innerHeight };
+
+    const minX = Math.max(-lRect.left + cRect.left + 12, -24);
+    const maxX = Math.max(660, Math.min(1180, (cRect.right || window.innerWidth) - lRect.left - 62));
+    const minY = Math.max(-lRect.top + 18, -38);
+    const viewSpanH = Math.max(460, window.innerHeight - lRect.top - 58);
+    const maxY = Math.min(Math.max(460, (cRect.height || viewSpanH) - 100), viewSpanH);
+    return { minX, maxX, minY, maxY };
+  };
+
+  const lRectTopSafe = () => {
+    try {
+      return lanternBtn.getBoundingClientRect().top;
+    } catch {
+      return 40;
+    }
+  };
+
+  const getFrameSpotCoords = (spot: FrameSpotDef): { x: number; y: number } | null => {
+    if (typeof document === 'undefined') return null;
+    const el = document.querySelector(spot.selector) as HTMLElement | null;
+    if (!el) return null;
+    const fRect = el.getBoundingClientRect();
+    if (fRect.width < 40 || fRect.height < 20) return null;
+    const lRect = lanternBtn.getBoundingClientRect();
+    return {
+      x: fRect.left + fRect.width * spot.rx - (lRect.left + 34),
+      y: fRect.top + spot.yOffset - (lRect.top + 10),
+    };
+  };
+
+  const pickNextFrameSpot = (): FrameSpotDef | null => {
+    const lTop = lRectTopSafe();
+    const viewH = typeof window !== 'undefined' ? window.innerHeight : 800;
+    for (let i = 0; i < FRAME_SPOTS.length; i++) {
+      const idx = (frameSpotIdx + i) % FRAME_SPOTS.length;
+      const candidate = FRAME_SPOTS[idx];
+      const coords = getFrameSpotCoords(candidate);
+      if (coords) {
+        const viewY = coords.y + lTop + 10;
+        if (viewY > 32 && viewY < viewH - 42) {
+          frameSpotIdx = (idx + 1) % FRAME_SPOTS.length;
+          return candidate;
+        }
+      }
+    }
+    return null;
+  };
+
+  const setWingPose = (nearDeg: number, farDeg: number, scaleY: number, tailAngle: number) => {
     if (nearWing) {
-      nearWing.style.transform = `rotate(${flapAngle.toFixed(1)}deg) scaleY(${scaleY.toFixed(2)})`;
+      nearWing.style.transform = `rotate(${nearDeg.toFixed(1)}deg) scaleY(${scaleY.toFixed(2)})`;
     }
     if (farWing) {
-      farWing.style.transform = `rotate(${(flapAngle * 0.85 - 6).toFixed(1)}deg) scaleY(${(scaleY * 0.92).toFixed(2)})`;
+      farWing.style.transform = `rotate(${farDeg.toFixed(1)}deg) scaleY(${(scaleY * 0.94).toFixed(2)})`;
     }
     if (tailEl) {
       tailEl.style.transform = `rotate(${tailAngle.toFixed(1)}deg)`;
     }
   };
 
+  const syncChirpBubblePos = (extraY = 0) => {
+    if (chirpEl && chirpEl.classList.contains('is-visible')) {
+      chirpEl.style.left = `${(x + 34).toFixed(1)}px`;
+      chirpEl.style.top = `${(y + 5 + extraY).toFixed(1)}px`;
+    }
+  };
+
+  const launchFromCurrentSpot = (dirX = facing) => {
+    activeFrameSpot = null;
+    perchedUntil = 0;
+    facing = dirX >= 0 ? 1 : -1;
+    heading = facing >= 0 ? -0.68 : -(Math.PI - 0.68);
+    speed = 185;
+    vx = Math.cos(heading) * speed;
+    vy = Math.sin(heading) * speed;
+    birdEl.classList.add('is-flying');
+  };
+
   const step = (ts: number) => {
     if (typeof document !== 'undefined' && !document.contains(lanternBtn)) {
       rafId = null;
+      if (chirpHideTimer) clearTimeout(chirpHideTimer);
       return;
     }
 
@@ -228,87 +446,254 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     const distHome = Math.hypot(x, y);
 
     if (lit) {
+      // 1. Perched & resting happily on a wooden frame before flying onward
+      if (perchedUntil > 0 && activeFrameSpot && !swoopTarget) {
+        if (ts < perchedUntil) {
+          const coords = getFrameSpotCoords(activeFrameSpot);
+          if (coords) {
+            x = coords.x;
+            y = coords.y;
+          }
+          const perchAge = 3.2 - (perchedUntil - ts) / 1000;
+          // Playful tiny perch hop in the middle of the rest
+          const hopPulse =
+            perchAge > 1.1 && perchAge < 1.38
+              ? -Math.sin(((perchAge - 1.1) / 0.28) * Math.PI) * 5.5
+              : 0;
+          if (perchAge > 1.05 && hopSeed === 0) {
+            hopSeed = 1;
+            triggerChirp(activeFrameSpot.perchPhrase);
+          }
+          const idleBob = Math.sin(perchAge * 3.4) * 1.2;
+          birdEl.classList.remove('is-flying');
+          setWingPose(0, 0, 1, Math.sin(perchAge * 4.5) * 4);
+          facing = activeFrameSpot.faceDir;
+          birdEl.style.transform = `translate(${x.toFixed(2)}px, ${(y + hopPulse).toFixed(2)}px) scaleX(${facing}) rotate(${idleBob.toFixed(1)}deg)`;
+          syncChirpBubblePos(hopPulse);
+          rafId = requestAnimationFrame(step);
+          return;
+        }
+        // Take off from wooden frame into the sky!
+        const prevDir = activeFrameSpot.faceDir;
+        launchFromCurrentSpot(prevDir);
+        hopSeed = 0;
+        legsBeforeLand = 2 + Math.floor(Math.random() * 2);
+        nextChirpAt = flightClock + 2.6 + Math.random() * 1.8;
+      }
+
       birdEl.classList.add('is-flying');
       flightClock += dt;
 
-      // Swoop toward clicked Overview letter if active, otherwise soar across the sky
-      let tx = 135 + Math.sin(flightClock * 0.78) * 118 + Math.sin(flightClock * 0.34) * 44;
-      let ty = -44 + Math.sin(flightClock * 1.32) * 24 + Math.cos(flightClock * 0.62) * 14;
+      let tx: number;
+      let ty: number;
+      let targetSpeed: number;
+      let landingToFrame = false;
+
       if (swoopTarget && ts < swoopTarget.until) {
         tx = swoopTarget.x;
         ty = swoopTarget.y;
+        targetSpeed = 245;
+        activeFrameSpot = null;
       } else {
         swoopTarget = null;
+        if (activeFrameSpot) {
+          const frameCoords = getFrameSpotCoords(activeFrameSpot);
+          if (frameCoords) {
+            tx = frameCoords.x;
+            ty = frameCoords.y;
+            targetSpeed = 165;
+            landingToFrame = true;
+          } else {
+            activeFrameSpot = null;
+            tx = 200;
+            ty = 40;
+            targetSpeed = 185;
+          }
+        } else {
+          const bounds = getPageBounds();
+          const wp = SKY_WAYPOINTS[waypointIdx];
+          tx =
+            bounds.minX +
+            (bounds.maxX - bounds.minX) * wp.rx +
+            Math.sin(jitterSeed + waypointIdx * 1.9) * 26;
+          ty =
+            bounds.minY +
+            (bounds.maxY - bounds.minY) * wp.ry +
+            Math.cos(jitterSeed * 1.3 + waypointIdx * 2.1) * 18;
+          targetSpeed = wp.speed;
+        }
       }
 
-      const stiffness = swoopTarget ? 4.4 : 2.1;
-      const ax = (tx - x) * stiffness - vx * 1.45;
-      const ay = (ty - y) * (stiffness + 0.5) - vy * 1.65;
-      vx += ax * dt;
-      vy += ay * dt;
+      const dx = tx - x;
+      const dy = ty - y;
+      const dist = Math.hypot(dx, dy);
+
+      // Arriving onto wooden frame perch cleanly with flare!
+      if (landingToFrame && dist < 10) {
+        x = tx;
+        y = ty;
+        vx = 0;
+        vy = 0;
+        pitch = 0;
+        turnBlend = 0;
+        hopSeed = 0;
+        perchedUntil = ts + 2900 + Math.random() * 900;
+        facing = activeFrameSpot!.faceDir;
+        birdEl.classList.remove('is-flying');
+        setWingPose(0, 0, 1, 0);
+        birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(0deg)`;
+        syncChirpBubblePos();
+        rafId = requestAnimationFrame(step);
+        return;
+      }
+
+      if (!swoopTarget && !activeFrameSpot && dist < 62) {
+        const arrivedWp = SKY_WAYPOINTS[waypointIdx];
+        waypointIdx = (waypointIdx + 1) % SKY_WAYPOINTS.length;
+        if (waypointIdx === 0) jitterSeed += 1.4;
+        if (arrivedWp.chirp && flightClock >= nextChirpAt - 0.8) {
+          triggerChirp(arrivedWp.chirp);
+          nextChirpAt = flightClock + 3.2 + Math.random() * 2.2;
+        }
+        legsBeforeLand -= 1;
+        if (legsBeforeLand <= 0) {
+          activeFrameSpot = pickNextFrameSpot();
+          if (!activeFrameSpot) legsBeforeLand = 2;
+        }
+      }
+
+      if (flightClock >= nextChirpAt && !landingToFrame) {
+        triggerChirp();
+        nextChirpAt = flightClock + 3.5 + Math.random() * 2.2;
+      }
+
+      // Continuous curved angular steering (prevents midair hovering & 2D flip squishes)
+      const desiredHeading = Math.atan2(dy, dx);
+      const headingDiff = normalizeAngle(desiredHeading - heading);
+      const maxTurn = landingToFrame && dist < 130 ? 7.8 : swoopTarget ? 4.4 : 2.75;
+      const turnRate = Math.max(-maxTurn, Math.min(maxTurn, headingDiff * (landingToFrame ? 6.2 : 3.6)));
+      heading = normalizeAngle(heading + turnRate * dt);
+
+      // Speed adjusts naturally for climbs/dives and landing deceleration
+      const climbMod = 1 + Math.sin(heading) * 0.24;
+      const desiredAirspeed =
+        landingToFrame && dist < 110
+          ? Math.max(42, dist * 1.45)
+          : targetSpeed * climbMod;
+      speed += (desiredAirspeed - speed) * Math.min(1, dt * 3.8);
+
+      vx = Math.cos(heading) * speed;
+      vy = Math.sin(heading) * speed;
       x += vx * dt;
       y += vy * dt;
 
-      if (Math.abs(vx) > 6) {
-        facing = vx >= 0 ? 1 : -1;
-      }
-
-      // Bounding flight: 1.35s active flapping, 0.75s graceful glide
-      const cyclePos = flightClock % 2.1;
-      const isGliding = cyclePos > 1.35 && vy > -18;
-      if (isGliding) {
-        setWingPose(-14, 0.72, 4);
-      } else {
-        wingPhase += dt * 23;
-        const stroke = Math.sin(wingPhase);
-        // Asymmetric power downstroke / folded recovery upstroke
-        const flapDeg = stroke * 48 - 10;
-        const flapScale = 0.68 + stroke * 0.48;
-        setWingPose(flapDeg, flapScale, -stroke * 5);
-      }
-
-      const pitch = Math.max(-22, Math.min(22, (vy * 0.35) * facing));
-      birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(${pitch.toFixed(1)}deg)`;
-      rafId = requestAnimationFrame(step);
-      return;
-    }
-
-    // Returning to perch smoothly
-    if (distHome > 1.2 || Math.abs(vx) > 2 || Math.abs(vy) > 2) {
-      flightClock += dt;
-      const ax = -x * 3.8 - vx * 2.7;
-      const ay = -y * 4.2 - vy * 2.9;
-      vx += ax * dt;
-      vy += ay * dt;
-      x += vx * dt;
-      y += vy * dt;
-
-      if (Math.abs(vx) > 4) {
-        facing = vx >= 0 ? 1 : -1;
-      } else if (distHome < 18) {
+      // Facing uses hysteresis across vertical curves (±0.22) so no thin 2D card squish occurs!
+      const cosH = Math.cos(heading);
+      if (facing === 1 && cosH < -0.22) {
+        facing = -1;
+      } else if (facing === -1 && cosH > 0.22) {
         facing = 1;
       }
 
-      // Flare wings just before landing
-      wingPhase += dt * 25;
-      const stroke = Math.sin(wingPhase);
-      setWingPose(stroke * 38 - 16, 0.72 + stroke * 0.4, 8);
-      const pitch = Math.max(-18, Math.min(18, (vy * 0.25) * facing));
-      birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(${pitch.toFixed(1)}deg)`;
+      const bankStrength = Math.min(1, Math.abs(turnRate) / 2.2);
+      turnBlend += (bankStrength - turnBlend) * Math.min(1, dt * 8);
+
+      // Bounding flight vs banked wing-spread turn vs landing flare
+      const isFlaringToFrame = landingToFrame && dist < 85;
+      const cyclePos = flightClock % 2.25;
+      const isGliding = !isFlaringToFrame && cyclePos > 1.35 && vy > -25 && bankStrength < 0.55;
+
+      if (isFlaringToFrame) {
+        wingPhase += dt * 30;
+        const stroke = Math.sin(wingPhase);
+        setWingPose(stroke * 40 - 18, stroke * 36 - 24, 0.72 + stroke * 0.42, 10);
+      } else if (isGliding) {
+        setWingPose(-11, -18, 0.76, 3);
+      } else {
+        wingPhase += dt * (25 + bankStrength * 3);
+        const stroke = Math.sin(wingPhase);
+        // During sharp banked turns, open far & near wings in dihedral spread so turn looks 3D
+        const nearDeg = stroke * (46 - bankStrength * 14) - 9 - bankStrength * 10;
+        const farDeg = stroke * (38 - bankStrength * 12) - 16 - bankStrength * 16;
+        const flapScale = 0.66 + stroke * 0.46;
+        setWingPose(nearDeg, farDeg, flapScale, -stroke * 5 + bankStrength * 7);
+      }
+
+      // Align body rotation cleanly with curved heading along current facing
+      const horizSpeed = Math.max(24, Math.abs(vx));
+      const targetPitch = isFlaringToFrame
+        ? -18 * (1 - dist / 85)
+        : Math.max(-68, Math.min(68, Math.atan2(vy, horizSpeed) * (180 / Math.PI) * 0.85));
+      pitch += (targetPitch - pitch) * Math.min(1, dt * 11);
+
+      const subtlePerspective = 1 - turnBlend * 0.14;
+      birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${(facing * subtlePerspective).toFixed(3)}) rotate(${pitch.toFixed(1)}deg)`;
+      syncChirpBubblePos();
       rafId = requestAnimationFrame(step);
       return;
     }
 
-    // Landed on perch
+    // Extinguished: detach from any frame perch and fly gracefully home to lantern post
+    if (perchedUntil > 0 || activeFrameSpot) {
+      launchFromCurrentSpot(x > 0 ? -1 : 1);
+    }
+
+    if (distHome > 3.2 || (birdEl.classList.contains('is-flying') && distHome > 2.0)) {
+      flightClock += dt;
+      const desiredHeading = Math.atan2(-y, -x);
+      const headingDiff = normalizeAngle(desiredHeading - heading);
+      const turnRate = Math.max(-4.5, Math.min(4.5, headingDiff * 4.2));
+      heading = normalizeAngle(heading + turnRate * dt);
+
+      const approachSpeed = distHome > 95 ? 230 : Math.max(42, distHome * 2.1);
+      speed += (approachSpeed - speed) * Math.min(1, dt * 5);
+      vx = Math.cos(heading) * speed;
+      vy = Math.sin(heading) * speed;
+      x += vx * dt;
+      y += vy * dt;
+
+      const cosH = Math.cos(heading);
+      if (distHome < 26) {
+        facing = 1;
+      } else if (facing === 1 && cosH < -0.22) {
+        facing = -1;
+      } else if (facing === -1 && cosH > 0.22) {
+        facing = 1;
+      }
+
+      wingPhase += dt * (distHome < 75 ? 30 : 24);
+      const stroke = Math.sin(wingPhase);
+      setWingPose(stroke * 40 - 16, stroke * 34 - 20, 0.72 + stroke * 0.4, distHome < 75 ? 10 : 4);
+
+      const horizSpeed = Math.max(24, Math.abs(vx));
+      const flarePitch =
+        distHome < 68
+          ? -16 * (1 - distHome / 68)
+          : Math.max(-55, Math.min(55, Math.atan2(vy, horizSpeed) * (180 / Math.PI) * 0.75));
+      birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(${flarePitch.toFixed(1)}deg)`;
+      syncChirpBubblePos();
+      rafId = requestAnimationFrame(step);
+      return;
+    }
+
+    // Landed softly on lantern arm
     x = 0;
     y = 0;
     vx = 0;
     vy = 0;
+    heading = -0.35;
+    speed = 170;
     facing = 1;
+    pitch = 0;
+    turnBlend = 0;
     flightClock = 0;
+    waypointIdx = 0;
+    activeFrameSpot = null;
+    perchedUntil = 0;
     birdEl.classList.remove('is-flying');
     birdEl.style.transform = 'translate(0px, 0px) scaleX(1) rotate(0deg)';
-    setWingPose(0, 1, 0);
+    setWingPose(0, 0, 1, 0);
+    if (chirpEl) chirpEl.classList.remove('is-visible');
     rafId = null;
     lastTs = 0;
   };
@@ -326,9 +711,16 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
 
   lanternBtn.addEventListener('click', () => {
     if (lanternBtn.classList.contains('is-lit')) {
-      // Natural upward push-off impulse on takeoff
-      vy = -52;
-      vx = 38;
+      heading = -0.55;
+      speed = 195;
+      vx = Math.cos(heading) * speed;
+      vy = Math.sin(heading) * speed;
+      waypointIdx = 0;
+      legsBeforeLand = 2;
+      activeFrameSpot = null;
+      perchedUntil = 0;
+      nextChirpAt = flightClock + 2.8;
+      triggerChirp('Tweet-tweet! ♪');
     }
     ensureRunning();
   });
@@ -339,12 +731,15 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
       const detail = (ev as CustomEvent<{ clientX: number; clientY: number }>).detail;
       if (!detail) return;
       const rect = lanternBtn.getBoundingClientRect();
-      // Convert viewport coordinates to SVG-local offset relative to perch (34, 5)
+      if (perchedUntil > 0 || activeFrameSpot) {
+        launchFromCurrentSpot(detail.clientX - rect.left - 34 > x ? 1 : -1);
+      }
       swoopTarget = {
         x: detail.clientX - rect.left - 34,
         y: detail.clientY - rect.top - 14,
-        until: performance.now() + 900,
+        until: performance.now() + 1050,
       };
+      triggerChirp('♪ Chirp!');
       ensureRunning();
     };
     window.addEventListener('gd-lantern-bird-swoop', onSwoop);
