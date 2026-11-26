@@ -426,23 +426,78 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
 }
 
 /**
- * Creates the full-viewport ambient animated pixel backdrop (sunbeam/moonlight,
- * drifting pixel clouds, floating motes, and bottom pixel mountain/pine horizon).
+ * Creates the full-viewport ambient animated pixel backdrop:
+ * multi-plane parallax sky, distant peaks, a continuous 4-zone panoramic world
+ * (History watchtower -> Wards hearth village -> Settings windmill -> Queue lakeside sanctuary),
+ * foreground meadow silhouettes, drifting clouds, and floating motes.
  */
 export function createAmbientBackdrop(phase: SceneryPhase, extraClass: string = ''): HTMLElement {
   const layer = document.createElement('div');
   layer.className = `gd-m-ambient phase-${phase}${extraClass ? ` ${extraClass}` : ''}`;
   layer.setAttribute('aria-hidden', 'true');
 
+  const beamWrap = document.createElement('div');
+  beamWrap.className = 'gd-m-beam-wrap';
   const beam = document.createElement('div');
   beam.className = 'gd-m-beam';
-  layer.appendChild(beam);
+  beamWrap.appendChild(beam);
+  layer.appendChild(beamWrap);
+
+  // 1. Slow parallax sky layer (celestial body, stars/birds, distant high cloud wisps)
+  const sky = document.createElement('div');
+  sky.className = 'gd-m-bg-sky';
+  const isNight = phase === 'night';
+  const isEvening = phase === 'evening';
+  const celestialSvg = isNight
+    ? `
+      <!-- Crescent moon on the right/Queue sky + twinkling 4-pt pixel stars across panes -->
+      <g class="gd-px-bg-celestial" fill="currentColor">
+        <rect x="148" y="8" width="5" height="2" opacity="0.72"/>
+        <rect x="146" y="10" width="4" height="2" opacity="0.72"/>
+        <rect x="145" y="12" width="3" height="4" opacity="0.72"/>
+        <rect x="146" y="16" width="4" height="2" opacity="0.72"/>
+        <rect x="148" y="18" width="5" height="2" opacity="0.72"/>
+      </g>
+      <g class="gd-px-bg-twinkle-a" fill="currentColor">
+        <rect x="20" y="9" width="1" height="3"/><rect x="19" y="10" width="3" height="1"/>
+        <rect x="74" y="7" width="1" height="3"/><rect x="73" y="8" width="3" height="1"/>
+        <rect x="122" y="11" width="1" height="3"/><rect x="121" y="12" width="3" height="1"/>
+      </g>
+      <g class="gd-px-bg-twinkle-b" fill="currentColor">
+        <rect x="48" y="14" width="1" height="1"/>
+        <rect x="98" y="12" width="1" height="1"/>
+        <rect x="166" y="14" width="1" height="1"/>
+      </g>
+    `
+    : `
+      <!-- Subtle solar halo + high soaring pixel birds -->
+      <g class="gd-px-bg-celestial" fill="currentColor">
+        <rect x="${isEvening ? 136 : 144}" y="${isEvening ? 18 : 9}" width="8" height="2" opacity="0.28"/>
+        <rect x="${isEvening ? 134 : 142}" y="${isEvening ? 20 : 11}" width="12" height="5" opacity="0.34"/>
+        <rect x="${isEvening ? 136 : 144}" y="${isEvening ? 25 : 16}" width="8" height="2" opacity="0.24"/>
+      </g>
+      <g class="gd-px-bg-birds" fill="currentColor" opacity="0.45">
+        <rect x="34" y="14" width="1" height="1"/><rect x="35" y="15" width="1" height="1"/><rect x="36" y="14" width="1" height="1"/>
+        <rect x="40" y="12" width="1" height="1"/><rect x="41" y="13" width="1" height="1"/><rect x="42" y="12" width="1" height="1"/>
+        <rect x="108" y="15" width="1" height="1"/><rect x="109" y="16" width="1" height="1"/><rect x="110" y="15" width="1" height="1"/>
+        <rect x="114" y="13" width="1" height="1"/><rect x="115" y="14" width="1" height="1"/><rect x="116" y="13" width="1" height="1"/>
+      </g>
+    `;
+  sky.innerHTML = `<svg viewBox="0 0 180 42" preserveAspectRatio="xMidYMin slice" shape-rendering="crispEdges">
+    ${celestialSvg}
+    <g fill="currentColor" opacity="0.28">
+      <rect x="14" y="20" width="10" height="2"/><rect x="10" y="22" width="18" height="2"/>
+      <rect x="64" y="16" width="8" height="2"/><rect x="61" y="18" width="14" height="2"/>
+      <rect x="116" y="21" width="9" height="2"/><rect x="113" y="23" width="15" height="2"/>
+    </g>
+  </svg>`;
+  layer.appendChild(sky);
 
   const cloudSvg = `<svg viewBox="0 0 24 8" shape-rendering="crispEdges"><rect x="6" y="0" width="10" height="2" fill="currentColor"/><rect x="3" y="2" width="17" height="2" fill="currentColor"/><rect x="0" y="4" width="24" height="2" fill="currentColor"/><rect x="2" y="6" width="19" height="2" fill="currentColor" opacity="0.65"/></svg>`;
   [
-    { cls: 'c1', top: '16%', w: 88 },
-    { cls: 'c2', top: '49%', w: 68 },
-    { cls: 'c3', top: '76%', w: 96 },
+    { cls: 'c1', top: '16%', w: 92 },
+    { cls: 'c2', top: '48%', w: 72 },
+    { cls: 'c3', top: '74%', w: 98 },
   ].forEach((c) => {
     const cloud = document.createElement('div');
     cloud.className = `gd-m-bg-cloud ${c.cls}`;
@@ -452,6 +507,8 @@ export function createAmbientBackdrop(phase: SceneryPhase, extraClass: string = 
     layer.appendChild(cloud);
   });
 
+  const moteLayer = document.createElement('div');
+  moteLayer.className = 'gd-m-mote-layer';
   const motes = [
     { x: 8, y: 15, s: 6, dur: 10, del: -1, dx: 16, dy: -32 },
     { x: 86, y: 21, s: 7, dur: 12, del: -4, dx: -14, dy: -28 },
@@ -468,24 +525,133 @@ export function createAmbientBackdrop(phase: SceneryPhase, extraClass: string = 
     const el = document.createElement('span');
     el.className = `gd-m-mote ${idx % 2 === 0 ? 'alt' : ''}`;
     el.style.cssText = `left:${m.x}%;top:${m.y}%;width:${m.s}px;height:${m.s}px;--dur:${m.dur}s;--del:${m.del}s;--dx:${m.dx}px;--dy:${m.dy}px;`;
-    layer.appendChild(el);
+    moteLayer.appendChild(el);
   });
+  layer.appendChild(moteLayer);
+
+  // 2. Far mountain silhouette ridge (slower parallax depth behind the valley)
+  const far = document.createElement('div');
+  far.className = 'gd-m-bg-far';
+  far.innerHTML = `<svg viewBox="0 0 320 42" preserveAspectRatio="none" shape-rendering="crispEdges">
+    <path d="M0 30 H18 V24 H34 V18 H52 V22 H72 V27 H96 V20 H114 V14 H134 V19 H154 V25 H178 V18 H196 V12 H214 V17 H234 V24 H256 V19 H274 V14 H292 V21 H320 V42 H0 Z" fill="currentColor" opacity="0.48"/>
+    <path d="M10 34 H44 V31 H84 V28 H138 V32 H190 V27 H242 V31 H304 V34 H320 V42 H0 Z" fill="currentColor" opacity="0.28"/>
+  </svg>`;
+  layer.appendChild(far);
+
+  // 3. Mid valley continuous panoramic world (History -> Wards -> Settings -> Queue)
+  const tree = (x: number, y: number, h: number) => {
+    const trunk = `<rect x="${x}" y="${y}" width="1" height="2" fill="currentColor"/>`;
+    if (h >= 5) {
+      return `${trunk}<rect x="${x - 2}" y="${y - 2}" width="5" height="2" fill="currentColor"/><rect x="${x - 1}" y="${y - 4}" width="3" height="2" fill="currentColor"/><rect x="${x}" y="${y - 5}" width="1" height="1" fill="currentColor"/>`;
+    }
+    return `${trunk}<rect x="${x - 1}" y="${y - 2}" width="3" height="2" fill="currentColor"/><rect x="${x}" y="${y - 3}" width="1" height="1" fill="currentColor"/>`;
+  };
 
   const horizon = document.createElement('div');
   horizon.className = 'gd-m-bg-horizon';
-  horizon.innerHTML = `<svg viewBox="0 0 240 22" preserveAspectRatio="none" shape-rendering="crispEdges">
-    <path d="M0 14 H14 V11 H24 V8 H36 V11 H48 V13 H62 V9 H74 V6 H86 V10 H102 V12 H118 V7 H132 V10 H148 V13 H164 V8 H178 V5 H192 V9 H210 V12 H226 V8 H240 V22 H0 Z" fill="currentColor" opacity="0.42"/>
-    <path d="M0 17 H10 V15 H22 V17 H38 V14 H50 V16 H68 V13 H82 V15 H98 V17 H114 V14 H130 V16 H146 V13 H162 V15 H180 V17 H198 V14 H216 V16 H240 V22 H0 Z" fill="currentColor" opacity="0.72"/>
-    <rect x="11" y="10" width="1" height="5" fill="currentColor"/><rect x="9" y="11" width="5" height="2" fill="currentColor"/><rect x="10" y="9" width="3" height="2" fill="currentColor"/>
-    <rect x="44" y="12" width="1" height="4" fill="currentColor"/><rect x="42" y="13" width="5" height="2" fill="currentColor"/><rect x="43" y="11" width="3" height="2" fill="currentColor"/>
-    <rect x="77" y="9" width="1" height="5" fill="currentColor"/><rect x="75" y="10" width="5" height="2" fill="currentColor"/><rect x="76" y="8" width="3" height="2" fill="currentColor"/>
-    <rect x="87" y="11" width="1" height="4" fill="currentColor"/><rect x="85" y="12" width="5" height="2" fill="currentColor"/><rect x="86" y="10" width="3" height="2" fill="currentColor"/>
-    <rect x="122" y="9" width="1" height="5" fill="currentColor"/><rect x="120" y="10" width="5" height="2" fill="currentColor"/><rect x="121" y="8" width="3" height="2" fill="currentColor"/>
-    <rect x="155" y="11" width="1" height="4" fill="currentColor"/><rect x="153" y="12" width="5" height="2" fill="currentColor"/><rect x="154" y="10" width="3" height="2" fill="currentColor"/>
-    <rect x="184" y="8" width="1" height="6" fill="currentColor"/><rect x="182" y="9" width="5" height="2" fill="currentColor"/><rect x="183" y="7" width="3" height="2" fill="currentColor"/>
-    <rect x="218" y="10" width="1" height="5" fill="currentColor"/><rect x="216" y="11" width="5" height="2" fill="currentColor"/><rect x="217" y="9" width="3" height="2" fill="currentColor"/>
+  horizon.innerHTML = `<svg viewBox="0 0 360 36" preserveAspectRatio="none" shape-rendering="crispEdges">
+    <!-- Continuous rolling valley floor elevated clearly above the floating dock -->
+    <path d="M0 20 H22 V17 H42 V15 H72 V18 H96 V16 H126 V19 H162 V15 H192 V18 H234 V16 H264 V20 H316 V17 H342 V19 H360 V36 H0 Z" fill="currentColor" opacity="0.58"/>
+    <path d="M0 24 H266 V25 H324 V24 H360 V36 H0 Z" fill="currentColor" opacity="0.82"/>
+
+    <!-- ZONE 0 (History): Old Stone Watchtower, Bell Spire & Archive Bridge -->
+    <g class="gd-px-zone-history">
+      <rect x="28" y="9" width="8" height="11" fill="currentColor"/>
+      <rect x="27" y="7" width="10" height="2" fill="currentColor"/>
+      <rect x="29" y="5" width="6" height="2" fill="currentColor"/>
+      <rect x="31" y="3" width="2" height="2" fill="currentColor"/>
+      <rect x="36" y="13" width="11" height="7" fill="currentColor" opacity="0.9"/>
+      <rect x="35" y="12" width="13" height="1" fill="currentColor"/>
+      <rect x="31" y="10" width="2" height="2" class="gd-m-bg-accent" opacity="0.85"/>
+      <rect x="40" y="15" width="2" height="2" class="gd-m-bg-accent" opacity="0.65"/>
+      ${tree(14, 18, 5)}${tree(21, 17, 4)}${tree(53, 17, 5)}${tree(61, 18, 4)}${tree(72, 16, 5)}
+    </g>
+
+    <!-- ZONE 1 (Wards): Cozy Hearth Cottages + Chimney Smoke -->
+    <g class="gd-px-zone-wards">
+      <!-- Cottage A -->
+      <rect x="118" y="13" width="12" height="7" fill="currentColor"/>
+      <rect x="116" y="12" width="16" height="1" fill="currentColor"/>
+      <rect x="118" y="10" width="12" height="2" fill="currentColor"/>
+      <rect x="121" y="8" width="6" height="2" fill="currentColor"/>
+      <rect x="126" y="7" width="2" height="2" fill="currentColor"/>
+      <g class="gd-px-bg-smoke" fill="currentColor" opacity="0.45">
+        <rect x="126" y="4" width="2" height="2"/>
+        <rect x="128" y="1" width="2" height="2"/>
+      </g>
+      <!-- Cottage B -->
+      <rect x="136" y="14" width="10" height="6" fill="currentColor" opacity="0.92"/>
+      <rect x="135" y="13" width="12" height="1" fill="currentColor"/>
+      <rect x="137" y="11" width="8" height="2" fill="currentColor"/>
+      <!-- Warm glowing windows -->
+      <rect x="121" y="15" width="2" height="2" class="gd-m-bg-accent" opacity="0.92"/>
+      <rect x="126" y="15" width="2" height="2" class="gd-m-bg-accent" opacity="0.92"/>
+      <rect x="140" y="16" width="2" height="2" class="gd-m-bg-accent" opacity="0.88"/>
+      <!-- Garden fence -->
+      <rect x="108" y="18" width="8" height="1" fill="currentColor" opacity="0.75"/>
+      <rect x="148" y="18" width="10" height="1" fill="currentColor" opacity="0.75"/>
+      ${tree(102, 17, 5)}${tree(156, 16, 5)}${tree(166, 17, 4)}
+    </g>
+
+    <!-- ZONE 2 (Settings): Hilltop Windmill & Observatory Terrace -->
+    <g class="gd-px-zone-settings">
+      <rect x="200" y="9" width="6" height="11" fill="currentColor"/>
+      <rect x="201" y="7" width="4" height="2" fill="currentColor"/>
+      <rect x="202" y="8" width="2" height="2" class="gd-m-bg-accent" opacity="0.82"/>
+      <!-- Rotating pixel windmill sails -->
+      <g class="gd-px-windmill-blades" style="transform-origin: 203px 9px" fill="currentColor" opacity="0.88">
+        <rect x="202" y="2" width="2" height="6"/>
+        <rect x="202" y="10" width="2" height="6"/>
+        <rect x="196" y="8" width="6" height="2"/>
+        <rect x="204" y="8" width="6" height="2"/>
+      </g>
+      <!-- Observatory / Terrace Wall -->
+      <rect x="212" y="15" width="11" height="5" fill="currentColor" opacity="0.85"/>
+      <rect x="214" y="12" width="7" height="3" fill="currentColor" opacity="0.85"/>
+      <rect x="216" y="11" width="3" height="1" fill="currentColor"/>
+      ${tree(186, 17, 4)}${tree(193, 17, 5)}${tree(231, 16, 5)}${tree(242, 18, 4)}
+    </g>
+
+    <!-- ZONE 3 (Queue / Home): Peaceful Lakeside Pier, Bridge & Warm Signal Lantern -->
+    <g class="gd-px-zone-queue">
+      <!-- Calm water inlet visible above the dock -->
+      <rect x="268" y="21" width="54" height="4" class="gd-m-bg-water" opacity="0.62"/>
+      <g class="gd-px-water-shimmer" fill="#FAF6ED" opacity="0.44">
+        <rect x="278" y="22" width="7" height="1"/>
+        <rect x="294" y="23" width="9" height="1"/>
+        <rect x="309" y="22" width="6" height="1"/>
+      </g>
+      <!-- Arched footbridge over cove -->
+      <rect x="280" y="18" width="24" height="2" fill="currentColor"/>
+      <rect x="284" y="16" width="16" height="2" fill="currentColor"/>
+      <rect x="282" y="20" width="2" height="2" fill="currentColor"/>
+      <rect x="300" y="20" width="2" height="2" fill="currentColor"/>
+      <!-- Lantern post at pier -->
+      <rect x="273" y="12" width="1" height="8" fill="currentColor"/>
+      <rect x="273" y="12" width="3" height="1" fill="currentColor"/>
+      <rect x="275" y="13" width="2" height="2" class="gd-m-bg-accent gd-px-lantern-glow"/>
+      ${tree(258, 17, 5)}${tree(265, 18, 4)}${tree(320, 18, 5)}${tree(330, 17, 5)}${tree(342, 18, 4)}${tree(351, 16, 5)}
+    </g>
   </svg>`;
   layer.appendChild(horizon);
+
+  // 4. Foreground silhouette strip (fastest parallax plane near the bottom dock)
+  const fore = document.createElement('div');
+  fore.className = 'gd-m-bg-fore';
+  fore.innerHTML = `<svg viewBox="0 0 400 18" preserveAspectRatio="none" shape-rendering="crispEdges">
+    <path d="M0 13 H28 V11 H54 V14 H92 V11 H128 V13 H168 V10 H206 V13 H246 V11 H284 V14 H322 V10 H364 V13 H400 V18 H0 Z" fill="currentColor" opacity="0.88"/>
+    <rect x="18" y="6" width="2" height="7" fill="currentColor"/><rect x="15" y="8" width="8" height="2" fill="currentColor"/><rect x="17" y="5" width="4" height="3" fill="currentColor"/>
+    <rect x="96" y="7" width="2" height="6" fill="currentColor"/><rect x="93" y="9" width="8" height="2" fill="currentColor"/><rect x="95" y="6" width="4" height="3" fill="currentColor"/>
+    <rect x="174" y="5" width="2" height="7" fill="currentColor"/><rect x="171" y="7" width="8" height="2" fill="currentColor"/><rect x="173" y="4" width="4" height="3" fill="currentColor"/>
+    <rect x="256" y="6" width="2" height="6" fill="currentColor"/><rect x="253" y="8" width="8" height="2" fill="currentColor"/><rect x="255" y="5" width="4" height="3" fill="currentColor"/>
+    <rect x="336" y="5" width="2" height="7" fill="currentColor"/><rect x="333" y="7" width="8" height="2" fill="currentColor"/><rect x="335" y="4" width="4" height="3" fill="currentColor"/>
+    <!-- Subtle foreground meadow wildflower pixels -->
+    <rect x="44" y="12" width="1" height="1" class="gd-m-bg-accent" opacity="0.75"/>
+    <rect x="142" y="12" width="1" height="1" class="gd-m-bg-accent" opacity="0.75"/>
+    <rect x="226" y="12" width="1" height="1" class="gd-m-bg-accent" opacity="0.75"/>
+    <rect x="304" y="13" width="1" height="1" class="gd-m-bg-accent" opacity="0.75"/>
+  </svg>`;
+  layer.appendChild(fore);
 
   return layer;
 }

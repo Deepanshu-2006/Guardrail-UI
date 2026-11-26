@@ -18,10 +18,10 @@ export interface InteractiveSheetOptions {
 }
 
 export interface InteractiveSheetController {
-  close: (immediate?: boolean) => void;
+  close: (immediate?: boolean, durationMs?: number) => void;
 }
 
-const CLOSE_DURATION_MS = 280;
+const CLOSE_DURATION_MS = 460;
 
 export function setupInteractiveBottomSheet(
   options: InteractiveSheetOptions
@@ -48,7 +48,7 @@ export function setupInteractiveBottomSheet(
     overlay.remove();
   };
 
-  const close = (immediate: boolean = false) => {
+  const close = (immediate: boolean = false, durationMs: number = CLOSE_DURATION_MS) => {
     if (closed) return;
     if (canDismiss && !canDismiss()) return;
     closed = true;
@@ -65,14 +65,13 @@ export function setupInteractiveBottomSheet(
       return;
     }
 
+    const clampedDuration = Math.max(360, Math.min(520, Math.round(durationMs)));
     sheet.classList.remove('is-dragging', 'is-snapping-back');
     backdrop.classList.remove('is-dragging');
-    sheet.style.transition = '';
-    backdrop.style.transition = '';
-
-    // Clear inline drag transforms on next frame after adding .is-closing so CSS transitions
-    // smoothly from the user's release Y offset down to 100% off-screen.
     overlay.classList.add('is-closing');
+    sheet.style.transition = `transform ${clampedDuration}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+    backdrop.style.transition = `opacity ${Math.round(clampedDuration * 0.92)}ms ease-out`;
+
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(() => {
         sheet.style.transform = 'translate3d(0, 100%, 0)';
@@ -95,7 +94,7 @@ export function setupInteractiveBottomSheet(
       sheet.removeEventListener('transitionend', onEnd);
       finalizeRemove();
       onDismiss?.();
-    }, CLOSE_DURATION_MS + 40);
+    }, clampedDuration + 50);
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -185,7 +184,7 @@ export function setupInteractiveBottomSheet(
     }
 
     currentDragY = dy >= 0 ? dy : dy * 0.18;
-    sheet.style.transform = `translate3d(0, ${Math.round(currentDragY)}px, 0)`;
+    sheet.style.transform = `translate3d(0, ${currentDragY.toFixed(1)}px, 0)`;
 
     const sheetH = Math.max(240, (sheet as any).offsetHeight || 380);
     const fadeProgress = Math.min(1, Math.max(0, currentDragY) / (sheetH * 0.72));
@@ -210,14 +209,18 @@ export function setupInteractiveBottomSheet(
       (effectiveVel > 0.55 && currentDragY > 56);
 
     if (shouldDismiss) {
-      close(false);
+      const remainingFrac = Math.max(0.35, 1 - currentDragY / sheetH);
+      const glideDuration = Math.round(Math.max(380, Math.min(480, CLOSE_DURATION_MS * remainingFrac + 60)));
+      close(false, glideDuration);
     } else {
       sheet.classList.add('is-snapping-back');
+      backdrop.style.transition = 'opacity 360ms ease';
       sheet.style.transform = '';
       backdrop.style.opacity = '';
       setTimeout(() => {
         sheet.classList.remove('is-snapping-back');
-      }, 320);
+        backdrop.style.transition = '';
+      }, 420);
     }
   };
 
