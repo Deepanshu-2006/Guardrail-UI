@@ -201,6 +201,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
   let wingPhase = 0;
   let lastTs = 0;
   let rafId: number | null = null;
+  let swoopTarget: { x: number; y: number; until: number } | null = null;
 
   const setWingPose = (flapAngle: number, scaleY: number, tailAngle: number) => {
     if (nearWing) {
@@ -230,12 +231,19 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
       birdEl.classList.add('is-flying');
       flightClock += dt;
 
-      // Smooth organic soaring target across the upper workspace sky
-      const tx = 135 + Math.sin(flightClock * 0.78) * 118 + Math.sin(flightClock * 0.34) * 44;
-      const ty = -44 + Math.sin(flightClock * 1.32) * 24 + Math.cos(flightClock * 0.62) * 14;
+      // Swoop toward clicked Overview letter if active, otherwise soar across the sky
+      let tx = 135 + Math.sin(flightClock * 0.78) * 118 + Math.sin(flightClock * 0.34) * 44;
+      let ty = -44 + Math.sin(flightClock * 1.32) * 24 + Math.cos(flightClock * 0.62) * 14;
+      if (swoopTarget && ts < swoopTarget.until) {
+        tx = swoopTarget.x;
+        ty = swoopTarget.y;
+      } else {
+        swoopTarget = null;
+      }
 
-      const ax = (tx - x) * 2.1 - vx * 1.45;
-      const ay = (ty - y) * 2.6 - vy * 1.65;
+      const stiffness = swoopTarget ? 4.4 : 2.1;
+      const ax = (tx - x) * stiffness - vx * 1.45;
+      const ay = (ty - y) * (stiffness + 0.5) - vy * 1.65;
       vx += ax * dt;
       vy += ay * dt;
       x += vx * dt;
@@ -324,6 +332,23 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     }
     ensureRunning();
   });
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const onSwoop = (ev: Event) => {
+      if (!lanternBtn.classList.contains('is-lit') || !document.contains(lanternBtn)) return;
+      const detail = (ev as CustomEvent<{ clientX: number; clientY: number }>).detail;
+      if (!detail) return;
+      const rect = lanternBtn.getBoundingClientRect();
+      // Convert viewport coordinates to SVG-local offset relative to perch (34, 5)
+      swoopTarget = {
+        x: detail.clientX - rect.left - 34,
+        y: detail.clientY - rect.top - 14,
+        until: performance.now() + 900,
+      };
+      ensureRunning();
+    };
+    window.addEventListener('gd-lantern-bird-swoop', onSwoop);
+  }
 }
 
 /**
