@@ -571,6 +571,7 @@ export function createSidebarGardenCorner(): HTMLElement {
 
 let sharedHourglassAngle = 0;
 let sharedBulbASand = 0; // 0..1 fraction of sand in Bulb A (y=21..52); Bulb B holds (1 - sharedBulbASand)
+let sharedStormCalmingRemaining = 0; // seconds left in Option-2 dramatic wind-down after mid-storm flip
 
 /**
  * Shared spring-physics & 3D letter-flip interaction for animated page headings
@@ -580,7 +581,7 @@ export function attachInteractiveHeadingSprings(
   titleEl: HTMLElement,
   isActiveFn: () => boolean,
   onLetterClick?: (charRect: DOMRect) => void,
-  mode: 'thermal' | 'wind-banner' = 'thermal',
+  mode: 'thermal' | 'wind-banner' | 'tick' = 'thermal',
 ): void {
   const chars = Array.from(titleEl.querySelectorAll('.gd-char')) as HTMLElement[];
   if (!chars.length || typeof requestAnimationFrame !== 'function') return;
@@ -667,6 +668,13 @@ export function attachInteractiveHeadingSprings(
           targetX = loose * (14 + gustStrength * 14) + wave * loose * 4.5;
           targetY = -loose * (8 + gustStrength * 10) + wave * loose * (11 + gustStrength * 6);
           targetRot = loose * 6 + waveDeriv * loose * (13 + gustStrength * 8);
+        } else if (mode === 'tick') {
+          const beat = clock * 2.4;
+          const stepIdx = Math.floor(beat);
+          const frac = beat - stepIdx;
+          const snapped = stepIdx + Math.min(1, frac * 4.2);
+          targetY = Math.sin(snapped * 0.95 + i * 0.65) * 1.9 - 1.1;
+          targetRot = Math.cos(snapped * 1.15 + i * 0.85) * 1.5;
         } else {
           targetY = Math.sin(clock * 2.1 + i * 0.75) * 2.6 - 1.5;
           targetRot = Math.cos(clock * 1.5 + i * 0.9) * 1.8;
@@ -875,6 +883,7 @@ export function createPendingHourglassProp(): HTMLElement {
   }).join('');
 
   btn.innerHTML = `
+    <span class="gd-hourglass-note" aria-hidden="true">Flip for storm</span>
     <span class="gd-hourglass-aura" aria-hidden="true"></span>
     <span class="gd-hourglass-motes" aria-hidden="true">
       <span class="gd-hg-mote gd-hg-mote-1"></span>
@@ -986,6 +995,7 @@ export function createPendingHourglassProp(): HTMLElement {
   `;
 
   const frameEl = btn.querySelector('.gd-hourglass-frame') as SVGGElement | null;
+  const noteEl = btn.querySelector('.gd-hourglass-note') as HTMLElement | null;
   const topSandEl = btn.querySelector('.gd-hg-sand-top') as SVGPathElement | null;
   const topTexEl = btn.querySelector('.gd-hg-sand-top-tex') as SVGPathElement | null;
   const topRimEl = btn.querySelector('.gd-hg-sand-top-rim') as SVGPathElement | null;
@@ -1005,10 +1015,31 @@ export function createPendingHourglassProp(): HTMLElement {
   let grainClock = 0;
   let lastTs = 0;
   let rafId: number | null = null;
+  let lastStormActiveState = false;
 
-  const syncSectionClass = (flowing: boolean) => {
+  const updateNote = (flowing: boolean, flipping: boolean) => {
+    const label = sharedStormCalmingRemaining > 0
+      ? 'Calming storm...'
+      : flowing
+        ? 'Flip to calm'
+        : flipping
+          ? 'Flipping...'
+          : 'Flip for storm';
+    if (noteEl && noteEl.textContent !== label) {
+      noteEl.textContent = label;
+    }
+    btn.classList.toggle('is-flipping', flipping);
+    btn.title = flowing
+      ? sharedStormCalmingRemaining > 0
+        ? 'Calming sandstorm...'
+        : 'Click again to calm the sandstorm'
+      : 'Click to flip hourglass & summon sandstorm';
+  };
+
+  const syncSectionClass = (flowing: boolean, flipping = false) => {
     btn.classList.toggle('is-flowing', flowing);
     btn.setAttribute('aria-pressed', flowing ? 'true' : 'false');
+    updateNote(flowing, flipping);
     const viewEl = btn.closest('#view-pending');
     if (viewEl) {
       viewEl.classList.toggle('gd-pending-hourglass-on', flowing);
@@ -1149,10 +1180,11 @@ export function createPendingHourglassProp(): HTMLElement {
     const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
     lastTs = ts;
 
-    // Crisp, weighted brass trunnion pivot physics (settles cleanly without wild overshoot)
-    const angAccel = (targetAngle - angle) * 0.22;
-    angVel = (angVel + angAccel) * 0.75;
-    angle += angVel;
+    // Weighted dt-independent trunnion pivot physics (~0.24s turn before sand catches & pours)
+    const angAccel = (targetAngle - angle) * 145;
+    angVel += angAccel * dt;
+    angVel *= Math.exp(-dt * 14.5);
+    angle += angVel * dt;
     if (frameEl) {
       frameEl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
     }
@@ -1162,9 +1194,27 @@ export function createPendingHourglassProp(): HTMLElement {
     const flippedOdd = (Math.round(targetAngle / 180) % 2) !== 0;
     const upperSand = flippedOdd ? 1 - bulbASand : bulbASand;
 
-    // Start pouring immediately as the glass passes horizontal (< 105 deg from target)
-    const pouring = upperSand > 0.002 && absDiff < 105;
-    if (pouring) {
+    const calming = sharedStormCalmingRemaining > 0;
+    if (calming) {
+      sharedStormCalmingRemaining = Math.max(0, sharedStormCalmingRemaining - dt);
+      // Rapidly settle any remaining top sand into the resting bottom bulb during the farewell gust
+      if (upperSand > 0.001) {
+        const fastDrain = Math.max(dt * 1.9, upperSand * Math.min(1, dt * 5.2));
+        bulbASand = flippedOdd
+          ? Math.min(1, bulbASand + fastDrain)
+          : Math.max(0, bulbASand - fastDrain);
+        sharedBulbASand = bulbASand;
+      }
+      grainClock += dt * 1.35;
+    }
+
+    const activeUpper = flippedOdd ? 1 - bulbASand : bulbASand;
+    // Wait until the hourglass visibly turns past horizontal (~125 deg turned, absDiff < 55) so
+    // sand starts pouring first and triggers the sandstorm naturally rather than at t=0ms.
+    const normalPouring = !calming && activeUpper > 0.002 && absDiff < 55;
+    const stormActive = normalPouring || calming;
+    const prePourFlip = !calming && activeUpper > 0.002 && absDiff >= 55;
+    if (normalPouring) {
       const drain = dt / 22; // 22-second realistic pour
       bulbASand = flippedOdd
         ? Math.min(1, bulbASand + drain)
@@ -1173,18 +1223,28 @@ export function createPendingHourglassProp(): HTMLElement {
       grainClock += dt;
     }
 
-    renderSandGeometry(flippedOdd, pouring, angleDiff);
-    syncSectionClass(pouring);
+    if (stormActive && !lastStormActiveState && !calming) {
+      if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('gd-hourglass-flip'));
+      }
+    }
+    lastStormActiveState = stormActive;
 
-    const stillSpinning = absDiff > 0.2 || Math.abs(angVel) > 0.2;
-    if (stillSpinning || pouring) {
+    const showStream = normalPouring || (calming && activeUpper > 0.008 && absDiff < 55);
+    renderSandGeometry(flippedOdd, showStream, angleDiff);
+    syncSectionClass(stormActive, prePourFlip);
+
+    const stillSpinning = absDiff > 0.25 || Math.abs(angVel) > 0.6;
+    if (stillSpinning || stormActive || prePourFlip) {
       rafId = requestAnimationFrame(step);
     } else {
       angle = targetAngle;
       angVel = 0;
+      sharedStormCalmingRemaining = 0;
+      lastStormActiveState = false;
       if (frameEl) frameEl.style.transform = `rotate(${targetAngle}deg)`;
       renderSandGeometry(flippedOdd, false, 0);
-      syncSectionClass(false);
+      syncSectionClass(false, false);
       rafId = null;
       lastTs = 0;
     }
@@ -1199,32 +1259,49 @@ export function createPendingHourglassProp(): HTMLElement {
 
   const initOdd = (Math.round(targetAngle / 180) % 2) !== 0;
   const initUpper = initOdd ? 1 - bulbASand : bulbASand;
+  const initActive = sharedStormCalmingRemaining > 0 || initUpper > 0.01;
+  lastStormActiveState = initActive;
   if (frameEl) frameEl.style.transform = `rotate(${targetAngle}deg)`;
-  renderSandGeometry(initOdd, initUpper > 0.01, 0);
+  renderSandGeometry(initOdd, initUpper > 0.01 && sharedStormCalmingRemaining <= 0, 0);
   if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => syncSectionClass(initUpper > 0.01));
-    if (initUpper > 0.01) ensureRunning();
+    requestAnimationFrame(() => syncSectionClass(initActive, false));
+    if (initActive) ensureRunning();
   }
 
   btn.addEventListener('mouseenter', () => {
     if (Math.abs(targetAngle - angle) < 2) {
-      angVel += 1.25;
+      angVel += 65;
       ensureRunning();
     }
   });
 
   btn.addEventListener('click', () => {
-    // Flip 180° — sand stays in its current bulb, which is now physically on top!
+    const curOdd = (Math.round(targetAngle / 180) % 2) !== 0;
+    const curUpper = curOdd ? 1 - bulbASand : bulbASand;
+    const isCurrentlyPouring = sharedStormCalmingRemaining <= 0 && curUpper > 0.008;
+
     targetAngle += 180;
     sharedHourglassAngle = targetAngle;
     const nextOdd = (Math.round(targetAngle / 180) % 2) !== 0;
-    const nextUpper = nextOdd ? 1 - bulbASand : bulbASand;
-    if (nextUpper > 0.002) {
-      // Activate storm & heading immediately on click so there is zero delay
-      syncSectionClass(true);
+
+    if (isCurrentlyPouring) {
+      // Option 2: mid-storm click flips hourglass back, triggers a dramatic ~0.95s closing gust,
+      // drains sand into the lower bulb cleanly, and lets the lingering leaves float & settle.
+      sharedStormCalmingRemaining = 0.95;
+      lastStormActiveState = true;
+      syncSectionClass(true, false);
       if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-        window.dispatchEvent(new CustomEvent('gd-hourglass-flip'));
+        window.dispatchEvent(new CustomEvent('gd-hourglass-storm-calm'));
       }
+    } else {
+      // Start rotating the hourglass immediately; step() launches the storm right as sand pours
+      sharedStormCalmingRemaining = 0;
+      const nextUpper = nextOdd ? 1 - bulbASand : bulbASand;
+      if (nextUpper <= 0.12) {
+        bulbASand = nextOdd ? 0 : 1;
+        sharedBulbASand = bulbASand;
+      }
+      updateNote(false, true);
     }
     ensureRunning();
   });
@@ -1321,7 +1398,8 @@ export function createPendingSandstormOverlay(): HTMLElement {
   ];
   let width = 800;
   let height = 600;
-  let gust = 0.48;
+  let gust = 0.55;
+  let closingSurge = 0;
   let stormAlpha = 0;
   let clock = 0;
   let lastTs = 0;
@@ -1357,7 +1435,7 @@ export function createPendingSandstormOverlay(): HTMLElement {
     };
   });
 
-  const stormLeaves: StormLeaf[] = Array.from({ length: 12 }, (_, i) => {
+  const stormLeaves: StormLeaf[] = Array.from({ length: 14 }, (_, i) => {
     const tone = leafPalette[i % leafPalette.length];
     return {
       x: Math.random() * width,
@@ -1518,11 +1596,19 @@ export function createPendingSandstormOverlay(): HTMLElement {
     }
     wasStormActive = active;
 
+    if (closingSurge > 0) {
+      closingSurge = Math.max(0, closingSurge - dt);
+    }
+
     const targetAlpha = active ? 1 : 0;
     stormAlpha += (targetAlpha - stormAlpha) * Math.min(1, dt * (active ? 4.8 : 3.0));
-    // Periodic natural wind surges while active
-    const waveGust = active ? 0.46 + Math.max(0, Math.sin(clock * 1.35)) * 0.26 : 0.35;
-    gust += (waveGust - gust) * Math.min(1, dt * 1.8);
+    // Dramatic natural wind surges while active, plus an intensified farewell gust during Option-2 calm-down
+    const waveGust = active
+      ? closingSurge > 0
+        ? 1.32 + Math.sin(clock * 7.5) * 0.24
+        : 0.54 + Math.max(0, Math.sin(clock * 1.45)) * 0.34 + Math.max(0, Math.sin(clock * 3.1)) * 0.16
+      : 0.35;
+    gust += (waveGust - gust) * Math.min(1, dt * (closingSurge > 0 ? 4.2 : 2.1));
 
     ctx.clearRect(0, 0, width, height);
 
@@ -1735,7 +1821,14 @@ export function createPendingSandstormOverlay(): HTMLElement {
   };
 
   window.addEventListener('gd-hourglass-flip', () => {
-    gust = 1.25;
+    closingSurge = 0;
+    gust = 1.42;
+    ensureRunning();
+  });
+
+  window.addEventListener('gd-hourglass-storm-calm', () => {
+    closingSurge = 0.95;
+    gust = 1.62;
     ensureRunning();
   });
 
@@ -2068,4 +2161,757 @@ export function createPendingOwlProp(): HTMLElement {
   });
 
   return owlBtn;
+}
+
+let sharedWatchOpen = false;
+
+/**
+ * Engraved Brass Pocket Watch beside Decision History.
+ * - Hover rocks the fob chain gently; click pops open the hinged brass lid,
+ *   spins hands counter-clockwise, and activates Time Rewind / Memory Reverie.
+ */
+export function createHistoryPocketWatchProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `gd-prop-btn gd-prop-history-watch${sharedWatchOpen ? ' is-open' : ''}`;
+  btn.setAttribute('aria-label', 'Toggle archival pocket watch time rewind');
+  btn.setAttribute('aria-pressed', sharedWatchOpen ? 'true' : 'false');
+  btn.title = sharedWatchOpen ? 'Click to close watch & return to present' : 'Click to open pocket watch & rewind time';
+  btn.tabIndex = -1;
+
+  const tickMarks = Array.from({ length: 12 }, (_, i) => {
+    const rad = (i * 30 * Math.PI) / 180;
+    const isQuarter = i % 3 === 0;
+    const r1 = isQuarter ? 17.5 : 18.8;
+    const r2 = 21.2;
+    const x1 = (38 + Math.sin(rad) * r1).toFixed(2);
+    const y1 = (55 - Math.cos(rad) * r1).toFixed(2);
+    const x2 = (38 + Math.sin(rad) * r2).toFixed(2);
+    const y2 = (55 - Math.cos(rad) * r2).toFixed(2);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${isQuarter ? '#5A3B12' : '#8B6D3D'}" stroke-width="${isQuarter ? '1.5' : '0.9'}" stroke-linecap="round"/>`;
+  }).join('');
+
+  btn.innerHTML = `
+    <span class="gd-watch-note" aria-hidden="true">${sharedWatchOpen ? 'Return to present' : 'Rewind time'}</span>
+    <span class="gd-watch-aura" aria-hidden="true"></span>
+    <span class="gd-watch-motes" aria-hidden="true">
+      <span class="gd-watch-mote gd-watch-mote-1"></span>
+      <span class="gd-watch-mote gd-watch-mote-2"></span>
+      <span class="gd-watch-mote gd-watch-mote-3"></span>
+      <span class="gd-watch-mote gd-watch-mote-4"></span>
+    </span>
+    <svg class="gd-prop-svg" width="76" height="94" viewBox="0 0 76 94" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-watch-brass" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#F7DC88"/>
+          <stop offset="45%" stop-color="#C8933A"/>
+          <stop offset="100%" stop-color="#6F4B14"/>
+        </linearGradient>
+        <linearGradient id="gd-watch-lid-grad" x1="12%" y1="8%" x2="88%" y2="92%">
+          <stop offset="0%" stop-color="#F3D27A"/>
+          <stop offset="42%" stop-color="#CE9A41"/>
+          <stop offset="80%" stop-color="#A67424"/>
+          <stop offset="100%" stop-color="#744E15"/>
+        </linearGradient>
+        <radialGradient id="gd-watch-dial" cx="46%" cy="42%" r="60%">
+          <stop offset="0%" stop-color="#FFFDF5"/>
+          <stop offset="72%" stop-color="#F6ECD5"/>
+          <stop offset="100%" stop-color="#DFCFAF"/>
+        </radialGradient>
+      </defs>
+
+      <!-- Soft resting shadow -->
+      <ellipse cx="38" cy="87.5" rx="20" ry="3.2" fill="rgba(28, 20, 12, 0.2)"/>
+
+      <!-- Pivoting watch assembly (hangs from top fob bow) -->
+      <g class="gd-watch-swing" style="transform-origin: 38px 12px;">
+        <!-- Top Pendant Bow & Winding Crown -->
+        <circle cx="38" cy="14" r="6.5" stroke="url(#gd-watch-brass)" stroke-width="2.6" fill="none"/>
+        <rect x="34.5" y="19.5" width="7" height="5" rx="1.4" fill="url(#gd-watch-brass)" stroke="#4B320E" stroke-width="0.9"/>
+        <rect x="33" y="23.5" width="10" height="3.2" rx="1.2" fill="#E5BA58" stroke="#4B320E" stroke-width="0.8"/>
+
+        <!-- Outer Brass Watch Case -->
+        <circle cx="38" cy="55" r="28" fill="url(#gd-watch-brass)" stroke="#3E290C" stroke-width="1.4"/>
+        <circle cx="38" cy="55" r="24.5" fill="#4A3315"/>
+
+        <!-- Porcelain Dial Face -->
+        <circle cx="38" cy="55" r="23" fill="url(#gd-watch-dial)" stroke="#8B682C" stroke-width="0.9"/>
+        ${tickMarks}
+        <!-- Sub-seconds ring at 6 o'clock -->
+        <circle cx="38" cy="66" r="5.5" fill="rgba(224, 208, 178, 0.45)" stroke="#9A7B47" stroke-width="0.7"/>
+        <line x1="38" y1="66" x2="38" y2="62.2" stroke="#9C561B" stroke-width="0.85" stroke-linecap="round"/>
+
+        <!-- Clock Hands -->
+        <g class="gd-watch-hand-hour" style="transform-origin: 38px 55px;">
+          <path d="M38 57 L36.6 53 L38 41.5 L39.4 53 Z" fill="#2A2015"/>
+        </g>
+        <g class="gd-watch-hand-min" style="transform-origin: 38px 55px;">
+          <path d="M38 58 L37 53 L38 35.5 L39 53 Z" fill="#2A2015"/>
+        </g>
+        <g class="gd-watch-hand-sec" style="transform-origin: 38px 55px;">
+          <line x1="38" y1="60.5" x2="38" y2="34.5" stroke="#B65B1C" stroke-width="1.05" stroke-linecap="round"/>
+        </g>
+        <circle cx="38" cy="55" r="2.3" fill="#D49B3E" stroke="#3E290C" stroke-width="0.7"/>
+
+        <!-- Hinged Engraved Brass Lid (swings open around top hinge y=27) -->
+        <g class="gd-watch-lid" style="transform-origin: 38px 27px;">
+          <circle cx="38" cy="55" r="25.2" fill="url(#gd-watch-lid-grad)" stroke="#4A320F" stroke-width="1.2"/>
+          <circle cx="38" cy="55" r="20.2" fill="none" stroke="rgba(72, 46, 12, 0.45)" stroke-width="0.85" stroke-dasharray="2.5 2"/>
+          <!-- Sunburst compass crest on lid -->
+          <path d="M38 41 L40.5 52.5 L52 55 L40.5 57.5 L38 69 L35.5 57.5 L24 55 L35.5 52.5 Z" fill="rgba(255, 244, 198, 0.45)" stroke="rgba(78, 50, 12, 0.52)" stroke-width="0.8"/>
+          <circle cx="38" cy="55" r="3.4" fill="#F8DF94" stroke="#5A3B12" stroke-width="0.9"/>
+        </g>
+
+        <!-- Hinge knuckle -->
+        <rect x="34" y="25.5" width="8" height="3.2" rx="1.2" fill="#E8C266" stroke="#4B320E" stroke-width="0.75"/>
+      </g>
+    </svg>
+  `;
+
+  const swingEl = btn.querySelector('.gd-watch-swing') as SVGGElement | null;
+  const lidEl = btn.querySelector('.gd-watch-lid') as SVGGElement | null;
+  const hourEl = btn.querySelector('.gd-watch-hand-hour') as SVGGElement | null;
+  const minEl = btn.querySelector('.gd-watch-hand-min') as SVGGElement | null;
+  const secEl = btn.querySelector('.gd-watch-hand-sec') as SVGGElement | null;
+  const noteEl = btn.querySelector('.gd-watch-note') as HTMLElement | null;
+
+  const getCurrentAngles = () => {
+    const now = new Date();
+    const s = now.getSeconds() + now.getMilliseconds() / 1000;
+    const m = now.getMinutes() + s / 60;
+    const h = (now.getHours() % 12) + m / 60;
+    return { h: h * 30, m: m * 6, s: s * 6 };
+  };
+
+  const initialAngles = getCurrentAngles();
+  let hourDeg = initialAngles.h;
+  let minDeg = initialAngles.m;
+  let secDeg = initialAngles.s;
+  let lidOpen = sharedWatchOpen ? 1 : 0;
+  let lidVel = 0;
+  let swingDeg = 0;
+  let swingVel = 0;
+  let lastTs = 0;
+  let rafId: number | null = null;
+
+  const syncSectionClass = (open: boolean) => {
+    btn.classList.toggle('is-open', open);
+    btn.setAttribute('aria-pressed', open ? 'true' : 'false');
+    btn.title = open ? 'Click to close watch & return to present' : 'Click to open pocket watch & rewind time';
+    if (noteEl) {
+      noteEl.textContent = open ? 'Return to present' : 'Rewind time';
+    }
+    if (typeof document !== 'undefined') {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      const viewEl = btn.closest('#view-history');
+      if (appEl) {
+        const isHistoryMounted = Boolean(viewEl && document.contains(viewEl));
+        appEl.classList.toggle('gd-history-rewind-on', open && isHistoryMounted);
+      }
+    }
+  };
+
+  const applyTransforms = () => {
+    if (swingEl) {
+      swingEl.style.transform = `rotate(${swingDeg.toFixed(2)}deg)`;
+    }
+    if (lidEl) {
+      const scaleY = Math.max(0.08, 1 - lidOpen * 0.92);
+      const liftY = -lidOpen * 4.5;
+      lidEl.style.transform = `translateY(${liftY.toFixed(2)}px) scaleY(${scaleY.toFixed(3)})`;
+      lidEl.style.opacity = lidOpen > 0.88 ? `${Math.max(0.18, 1 - (lidOpen - 0.88) * 6).toFixed(2)}` : '1';
+    }
+    if (hourEl) hourEl.style.transform = `rotate(${hourDeg.toFixed(1)}deg)`;
+    if (minEl) minEl.style.transform = `rotate(${minDeg.toFixed(1)}deg)`;
+    if (secEl) secEl.style.transform = `rotate(${secDeg.toFixed(1)}deg)`;
+  };
+
+  const step = (ts: number) => {
+    if (typeof document !== 'undefined' && !document.contains(btn)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+
+    const targetLid = sharedWatchOpen ? 1 : 0;
+    lidVel += ((targetLid - lidOpen) * 145 - lidVel * 14) * dt;
+    lidOpen = Math.max(0, Math.min(1.06, lidOpen + lidVel * dt));
+
+    swingVel += (-swingDeg * 95 - swingVel * 7.2) * dt;
+    swingDeg += swingVel * dt;
+
+    if (sharedWatchOpen) {
+      // Smooth counter-clockwise rewind spin
+      secDeg -= 240 * dt;
+      minDeg -= 34 * dt;
+      hourDeg -= 4.2 * dt;
+    } else {
+      const target = getCurrentAngles();
+      const easeAngle = (cur: number, dest: number) => {
+        const diff = (((dest - cur) % 360) + 540) % 360 - 180;
+        return cur + diff * Math.min(1, dt * 8);
+      };
+      hourDeg = easeAngle(hourDeg, target.h);
+      minDeg = easeAngle(minDeg, target.m);
+      secDeg = easeAngle(secDeg, target.s);
+    }
+
+    applyTransforms();
+
+    const lidMoving = Math.abs(targetLid - lidOpen) > 0.005 || Math.abs(lidVel) > 0.01;
+    const swinging = Math.abs(swingDeg) > 0.08 || Math.abs(swingVel) > 0.2;
+    if (sharedWatchOpen || lidMoving || swinging) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      lidOpen = targetLid;
+      lidVel = 0;
+      swingDeg = 0;
+      swingVel = 0;
+      applyTransforms();
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  applyTransforms();
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => syncSectionClass(sharedWatchOpen));
+    if (sharedWatchOpen) ensureRunning();
+  }
+
+  btn.addEventListener('mouseenter', () => {
+    swingVel += 52;
+    ensureRunning();
+  });
+
+  btn.addEventListener('click', () => {
+    sharedWatchOpen = !sharedWatchOpen;
+    swingVel += sharedWatchOpen ? -78 : 78;
+    syncSectionClass(sharedWatchOpen);
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('gd-watch-toggle', { detail: { open: sharedWatchOpen } }));
+    }
+    ensureRunning();
+  });
+
+  return btn;
+}
+
+/**
+ * Full-screen Memory Reverie canvas overlay triggered when the Decision History
+ * brass pocket watch opens (.gd-history-rewind-on).
+ * Emerges from behind the sidebar and floats warm ascending memory sparks +
+ * counter-clockwise temporal dial wisps.
+ */
+export function createHistoryRewindOverlay(): HTMLElement {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'gd-history-rewind';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') {
+    return canvas;
+  }
+  const ctx = canvas.getContext?.('2d');
+  if (!ctx) return canvas;
+
+  interface MemorySpark {
+    x: number;
+    y: number;
+    vy: number;
+    driftAmp: number;
+    driftFreq: number;
+    phase: number;
+    radius: number;
+    alpha: number;
+    color: string;
+  }
+
+  interface RomanClockRing {
+    x: number;
+    y: number;
+    r: number;
+    angle: number;
+    spinSpeed: number;
+    alpha: number;
+  }
+
+  interface ArchivePage {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    w: number;
+    h: number;
+    rot: number;
+    rotSpeed: number;
+    tumble: number;
+    tumbleSpeed: number;
+    phase: number;
+    alpha: number;
+    hasWaxSeal: boolean;
+  }
+
+  interface LingerPage {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    w: number;
+    h: number;
+    rot: number;
+    tumble: number;
+    tumbleSpeed: number;
+    phase: number;
+    swayAmp: number;
+    swayFreq: number;
+    targetY: number;
+    restRot: number;
+    alpha: number;
+    hasWaxSeal: boolean;
+    settled: boolean;
+    settledAge: number;
+  }
+
+  const sparkColors = ['#FCE28B', '#E5AD44', '#C98328', '#FFF2BE', '#D69436'];
+  let width = 800;
+  let height = 600;
+  let rewindAlpha = 0;
+  let clock = 0;
+  let lastTs = 0;
+  let rafId: number | null = null;
+  let boardAngle = 0;
+  let boardVel = 0;
+  let wasRewindActive = false;
+
+  const resize = () => {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    width = Math.max(320, window.innerWidth);
+    height = Math.max(320, window.innerHeight);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  const sparks: MemorySpark[] = Array.from({ length: 65 }, (_, i) => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vy: -(20 + Math.random() * 42),
+    driftAmp: 10 + Math.random() * 20,
+    driftFreq: 0.9 + Math.random() * 1.3,
+    phase: Math.random() * Math.PI * 2,
+    radius: 1.2 + Math.random() * 2.2,
+    alpha: 0.36 + Math.random() * 0.48,
+    color: sparkColors[i % sparkColors.length],
+  }));
+
+  const clockRings: RomanClockRing[] = [
+    { x: width * 0.16, y: height * 0.28, r: 108, angle: 0, spinSpeed: -0.22, alpha: 0.12 },
+    { x: width * 0.56, y: height * 0.48, r: 164, angle: 1.1, spinSpeed: -0.14, alpha: 0.095 },
+    { x: width * 0.84, y: height * 0.24, r: 92, angle: 2.3, spinSpeed: -0.28, alpha: 0.11 },
+  ];
+
+  const archivePages: ArchivePage[] = Array.from({ length: 9 }, (_, i) => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vx: 38 + Math.random() * 48,
+    vy: -(16 + Math.random() * 26),
+    w: 15 + (i % 3) * 3.5,
+    h: 20 + (i % 3) * 4.5,
+    rot: (Math.random() - 0.5) * 0.8,
+    rotSpeed: (Math.random() - 0.5) * 1.4,
+    tumble: Math.random() * Math.PI * 2,
+    tumbleSpeed: 1.6 + Math.random() * 1.6,
+    phase: Math.random() * Math.PI * 2,
+    alpha: 0.72 + Math.random() * 0.2,
+    hasWaxSeal: i % 2 === 0,
+  }));
+
+  const lingerPages: LingerPage[] = [];
+
+  const drawRomanClockRing = (ring: RomanClockRing, alpha: number) => {
+    if (alpha <= 0.01) return;
+    ctx.save();
+    ctx.translate(ring.x, ring.y);
+    ctx.rotate(ring.angle);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#9E6822';
+    ctx.fillStyle = '#8C5818';
+
+    // Outer & inner concentric brass dial rings
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, ring.r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, ring.r * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 12 dial ticks + cardinal Roman numerals
+    const numerals = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
+    ctx.font = '600 12px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 12; i++) {
+      const a = (i * Math.PI) / 6 - Math.PI / 2;
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      ctx.beginPath();
+      ctx.moveTo(cos * ring.r * 0.94, sin * ring.r * 0.94);
+      ctx.lineTo(cos * ring.r, sin * ring.r);
+      ctx.stroke();
+
+      if (i % 3 === 0) {
+        ctx.save();
+        ctx.translate(cos * ring.r * 0.87, sin * ring.r * 0.87);
+        ctx.rotate(a + Math.PI / 2);
+        ctx.fillText(numerals[i], 0, 0);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  };
+
+  const drawArchivePage = (
+    p: Pick<ArchivePage, 'x' | 'y' | 'w' | 'h' | 'rot' | 'tumble' | 'hasWaxSeal'>,
+    alpha: number,
+    shadowRatio: number,
+  ) => {
+    if (alpha <= 0.01) return;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    const flat = Math.cos(p.tumble);
+    const scaleY = (flat >= 0 ? 1 : -1) * Math.max(0.32, Math.abs(flat));
+
+    if (shadowRatio > 0.02) {
+      ctx.save();
+      ctx.translate(2 * shadowRatio, 3 * shadowRatio);
+      ctx.rotate(p.rot);
+      ctx.scale(1, Math.abs(scaleY));
+      ctx.globalAlpha = alpha * 0.2 * shadowRatio;
+      ctx.fillStyle = '#38240E';
+      ctx.fillRect(-p.w * 0.5, -p.h * 0.5, p.w, p.h);
+      ctx.restore();
+    }
+
+    ctx.rotate(p.rot);
+    ctx.scale(1, scaleY);
+    ctx.globalAlpha = alpha;
+
+    // Aged parchment sheet with folded top-right dog-ear
+    const hw = p.w * 0.5;
+    const hh = p.h * 0.5;
+    const fold = Math.min(4.5, p.w * 0.28);
+    ctx.beginPath();
+    ctx.moveTo(-hw, -hh);
+    ctx.lineTo(hw - fold, -hh);
+    ctx.lineTo(hw, -hh + fold);
+    ctx.lineTo(hw, hh);
+    ctx.lineTo(-hw, hh);
+    ctx.closePath();
+    ctx.fillStyle = flat >= 0 ? '#F6E8C8' : '#E5D1A8';
+    ctx.fill();
+    ctx.lineWidth = 0.85;
+    ctx.strokeStyle = 'rgba(112, 74, 28, 0.55)';
+    ctx.stroke();
+
+    // Dog-ear crease
+    ctx.beginPath();
+    ctx.moveTo(hw - fold, -hh);
+    ctx.lineTo(hw - fold, -hh + fold);
+    ctx.lineTo(hw, -hh + fold);
+    ctx.stroke();
+
+    // Faint archival ink lines
+    ctx.beginPath();
+    ctx.moveTo(-hw + 3, -hh + 5);
+    ctx.lineTo(hw - fold - 2, -hh + 5);
+    ctx.moveTo(-hw + 3, -hh + 9);
+    ctx.lineTo(hw - 3, -hh + 9);
+    ctx.moveTo(-hw + 3, -hh + 13);
+    ctx.lineTo(hw - 5, -hh + 13);
+    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = 'rgba(92, 62, 28, 0.45)';
+    ctx.stroke();
+
+    // Tiny crimson archival wax seal dot
+    if (p.hasWaxSeal) {
+      ctx.fillStyle = '#9E3224';
+      ctx.beginPath();
+      ctx.arc(hw - 4.5, hh - 4.5, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  };
+
+  const spawnLingerPages = () => {
+    lingerPages.length = 0;
+    const minX = Math.min(340, width * 0.35);
+    const maxX = Math.max(minX + 80, width - 140);
+    const candidates = archivePages.filter(
+      (p) => p.x >= minX && p.x <= maxX && p.y >= height * 0.14 && p.y <= height * 0.65,
+    );
+
+    for (const idx of [0, 1]) {
+      const src = candidates[idx];
+      lingerPages.push({
+        x: src ? src.x : width * (0.4 + idx * 0.24),
+        y: src ? src.y : height * (0.24 + idx * 0.1),
+        vx: 26 + Math.random() * 22,
+        vy: 30 + Math.random() * 14,
+        w: src ? src.w : 16 + idx * 2,
+        h: src ? src.h : 21 + idx * 3,
+        rot: src ? src.rot : (idx === 0 ? -0.2 : 0.22),
+        tumble: src ? src.tumble : 0,
+        tumbleSpeed: 1.5 + Math.random() * 0.8,
+        phase: idx * 2.3 + Math.random(),
+        swayAmp: 34 + Math.random() * 18,
+        swayFreq: 1.45 + Math.random() * 0.4,
+        targetY: Math.max(120, height - (16 + idx * 8 + Math.random() * 6)),
+        restRot: (idx === 0 ? -0.15 : 0.22) + (Math.random() - 0.5) * 0.18,
+        alpha: 0.88,
+        hasWaxSeal: idx === 0,
+        settled: false,
+        settledAge: 0,
+      });
+    }
+  };
+
+  const triggerHistoryCardsRewind = () => {
+    const cards = Array.from(document.querySelectorAll('#view-history .gd-history-card')) as HTMLElement[];
+    cards.forEach((card, idx) => {
+      card.classList.remove('is-rewind-pulse');
+      setTimeout(() => {
+        if (!document.contains(card)) return;
+        card.classList.add('is-rewind-pulse');
+        setTimeout(() => card.classList.remove('is-rewind-pulse'), 720);
+      }, idx * 95);
+    });
+  };
+
+  const isRewindActive = () =>
+    Boolean(document.querySelector('.gd-dashboard-app.gd-history-rewind-on'));
+
+  const isHistoryVisible = () =>
+    Boolean(document.querySelector('#view-history.active'));
+
+  const step = (ts: number) => {
+    if (!document.contains(canvas)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+    clock += dt;
+
+    const historyVisible = isHistoryVisible();
+    const active = isRewindActive() && historyVisible;
+    if (!historyVisible && lingerPages.length > 0) {
+      lingerPages.length = 0;
+    }
+    if (wasRewindActive && !active && historyVisible) {
+      spawnLingerPages();
+    }
+    wasRewindActive = active;
+
+    const targetAlpha = active ? 1 : 0;
+    rewindAlpha += (targetAlpha - rewindAlpha) * Math.min(1, dt * (active ? 4.2 : 2.5));
+
+    ctx.clearRect(0, 0, width, height);
+
+    if (rewindAlpha > 0.01) {
+      // 1. Rotating antique Roman-numeral clockwork rings
+      for (const ring of clockRings) {
+        ring.angle += ring.spinSpeed * dt;
+        drawRomanClockRing(ring, ring.alpha * rewindAlpha);
+      }
+
+      // 2. Ascending golden-sepia memory sparks
+      for (const s of sparks) {
+        const speedScale = active ? 1 : 0.45;
+        s.y += s.vy * speedScale * dt;
+        const drawX = s.x + Math.sin(clock * s.driftFreq + s.phase) * s.driftAmp;
+
+        if (s.y < -18) {
+          s.y = height + 18;
+          s.x = Math.random() * width;
+        }
+
+        const twinkle = 0.65 + 0.35 * Math.sin(clock * 3.1 + s.phase);
+        const alpha = s.alpha * twinkle * rewindAlpha;
+        if (alpha <= 0.01) continue;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(drawX, s.y, s.radius * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(drawX, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 3. Fluttering vintage archival parchment pages
+      for (const p of archivePages) {
+        p.x += (p.vx + Math.sin(clock * 1.4 + p.phase) * 18) * dt;
+        p.y += (p.vy + Math.cos(clock * 1.8 + p.phase) * 14) * dt;
+        p.rot += p.rotSpeed * dt;
+        p.tumble += p.tumbleSpeed * dt;
+
+        if (p.x > width + 36) {
+          p.x = -32;
+          p.y = Math.random() * height;
+        }
+        if (p.y < -36) {
+          p.y = height + 30;
+          p.x = Math.random() * width;
+        }
+
+        drawArchivePage(p, p.alpha * rewindAlpha, 0);
+      }
+    }
+
+    // 4. Lingering parchment pages floating down & settling at the bottom when returning to present
+    for (let i = lingerPages.length - 1; i >= 0; i--) {
+      const l = lingerPages[i];
+      if (active) {
+        l.settled = false;
+        l.vy -= 120 * dt;
+        l.vx += 95 * dt;
+        l.x += l.vx * dt;
+        l.y += l.vy * dt;
+        l.rot += 2.2 * dt;
+        l.tumble += 3.0 * dt;
+        drawArchivePage(l, l.alpha, 0);
+        if (l.y < -40 || l.x > width + 40) {
+          lingerPages.splice(i, 1);
+        }
+        continue;
+      }
+
+      if (!l.settled) {
+        l.vx *= Math.exp(-dt * 1.6);
+        const swayAngle = clock * l.swayFreq + l.phase;
+        l.x += (l.vx + Math.cos(swayAngle) * l.swayAmp) * dt;
+        const minX = Math.min(300, width * 0.25);
+        if (l.x > width - 36) l.x = width - 36;
+        if (l.x < minX) l.x = minX;
+
+        const fallRate = l.vy * (0.72 + 0.42 * Math.abs(Math.sin(swayAngle)));
+        l.y += fallRate * dt;
+
+        const dist = Math.max(0, l.targetY - l.y);
+        const nearGround = Math.max(0, 1 - dist / 65);
+        l.rot += (Math.cos(swayAngle) * 0.36 * (1 - nearGround) + l.restRot * nearGround - l.rot) * Math.min(1, dt * 6);
+        if (nearGround > 0.65) {
+          const flatTumble = Math.round(l.tumble / (Math.PI * 2)) * Math.PI * 2;
+          l.tumble += (flatTumble - l.tumble) * Math.min(1, dt * 7);
+        } else {
+          l.tumble += l.tumbleSpeed * (1 - nearGround * 0.7) * dt;
+        }
+
+        if (l.y >= l.targetY) {
+          l.y = l.targetY;
+          l.settled = true;
+          l.settledAge = 0;
+          l.rot = l.restRot;
+          l.tumble = Math.round(l.tumble / (Math.PI * 2)) * Math.PI * 2;
+        }
+        drawArchivePage(l, l.alpha, Math.max(0, 1 - dist / 80));
+      } else {
+        l.targetY = Math.min(l.targetY, height - 14);
+        l.y = l.targetY;
+        l.settledAge += dt;
+        const fade = l.settledAge <= 9 ? 1 : Math.max(0, 1 - (l.settledAge - 9) / 2.5);
+        drawArchivePage(l, l.alpha * fade, fade);
+        if (l.settledAge >= 11.5) {
+          lingerPages.splice(i, 1);
+        }
+      }
+    }
+
+    canvas.classList.toggle('is-pages-lingering', lingerPages.length > 0 && historyVisible);
+
+    // Gentle nostalgic grandfather-clock sway on Decision History's hanging wooden greeting board
+    const boardEl = document.querySelector('#view-history .gd-overview-greeting-card .gd-wood-board') as HTMLElement | null;
+    if (boardEl) {
+      const targetSwing = active ? Math.sin(clock * 1.25) * 1.8 : 0;
+      boardVel += ((targetSwing - boardAngle) * 20 - boardVel * 3.6) * dt;
+      boardAngle += boardVel * dt;
+      if (active || Math.abs(boardAngle) > 0.03 || Math.abs(boardVel) > 0.04) {
+        boardEl.style.transformOrigin = '50% -26px';
+        boardEl.style.transform = `rotate(${boardAngle.toFixed(2)}deg)`;
+      } else {
+        boardAngle = 0;
+        boardVel = 0;
+        boardEl.style.transform = '';
+      }
+    }
+
+    if (
+      active ||
+      rewindAlpha > 0.015 ||
+      lingerPages.length > 0 ||
+      Math.abs(boardAngle) > 0.04 ||
+      Math.abs(boardVel) > 0.05
+    ) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      ctx.clearRect(0, 0, width, height);
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  window.addEventListener('gd-watch-toggle', (ev: Event) => {
+    const custom = ev as CustomEvent<{ open?: boolean }>;
+    if (custom?.detail?.open) {
+      triggerHistoryCardsRewind();
+    }
+    ensureRunning();
+  });
+
+  if (typeof MutationObserver === 'function') {
+    requestAnimationFrame(() => {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (!appEl) return;
+      const obs = new MutationObserver(() => {
+        if (!document.contains(canvas)) {
+          obs.disconnect();
+          return;
+        }
+        if (isRewindActive()) ensureRunning();
+      });
+      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
+      if (isRewindActive()) ensureRunning();
+    });
+  }
+
+  return canvas;
 }

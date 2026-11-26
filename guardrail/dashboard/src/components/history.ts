@@ -30,6 +30,7 @@ import { ApprovalRequest, ApprovalStatus, RequestFilters, ViewStatus } from '../
 import { formatTimestamp, getRiskLevelExplanation } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { populateWardAvatar, setAnimatedHeading } from './icons.js';
+import { attachInteractiveHeadingSprings, createHistoryPocketWatchProp } from './interactive-props.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
 
 export interface DecisionHistoryProps {
@@ -639,6 +640,14 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
   title.id = 'history-title';
   title.className = 'gd-section-title';
   setAnimatedHeading(title, 'Decision History');
+  attachInteractiveHeadingSprings(
+    title,
+    () =>
+      typeof document !== 'undefined' &&
+      Boolean(document.querySelector('.gd-dashboard-app.gd-history-rewind-on')),
+    undefined,
+    'tick',
+  );
   titleRow.appendChild(title);
 
   const subtitle = document.createElement('p');
@@ -648,6 +657,7 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   titleGroup.appendChild(titleRow);
   titleGroup.appendChild(subtitle);
+  header.appendChild(createHistoryPocketWatchProp());
   header.appendChild(titleGroup);
 
   // Header Actions (Count indicator, Sync time & Refresh button)
