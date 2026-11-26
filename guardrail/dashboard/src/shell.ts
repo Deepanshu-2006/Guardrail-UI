@@ -28,7 +28,7 @@ import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview, formatWardDisplayName } from './components/overview.js';
-import { createAmbientBackdrop, getRealTimeScenery } from './components/pixel-scenery.js';
+import { createAmbientBackdrop, getRealTimeScenery, markGreetingWidgetSettled } from './components/pixel-scenery.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
 import { filterRequests } from './components/filters.js';
@@ -1830,6 +1830,7 @@ export class DashboardShell {
 
     if (this.state.activeView === view) return;
 
+    markGreetingWidgetSettled();
     this.state.activeView = view;
     this.startViewEntrance(view);
     if (updateHash && typeof window !== 'undefined') {

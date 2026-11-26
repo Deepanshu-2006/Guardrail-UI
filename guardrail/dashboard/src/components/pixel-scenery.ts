@@ -1156,6 +1156,22 @@ function attachWoodBoardSpringPhysics(
   });
 }
 
+let greetingWidgetIntroSettled = false;
+let greetingWidgetIntroTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Marks the desktop hanging wooden greeting board intro animation as completed
+ * so switching tabs or refreshing views keeps the board steady instead of
+ * replaying its drop/swing entrance.
+ */
+export function markGreetingWidgetSettled(): void {
+  greetingWidgetIntroSettled = true;
+  if (greetingWidgetIntroTimer !== null) {
+    clearTimeout(greetingWidgetIntroTimer);
+    greetingWidgetIntroTimer = null;
+  }
+}
+
 /**
  * Creates the weathered, slightly broken hanging wooden-board pixel scenery +
  * time + greeting element displayed on the right side of desktop page headers.
@@ -1164,8 +1180,15 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   const scenery = getRealTimeScenery(now);
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  if (!greetingWidgetIntroSettled && greetingWidgetIntroTimer === null && typeof window !== 'undefined') {
+    greetingWidgetIntroTimer = setTimeout(() => {
+      greetingWidgetIntroSettled = true;
+      greetingWidgetIntroTimer = null;
+    }, 2000);
+  }
+
   const greetingCard = document.createElement('div');
-  greetingCard.className = `gd-overview-greeting-card phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
+  greetingCard.className = `gd-overview-greeting-card phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}${greetingWidgetIntroSettled ? ' is-settled' : ''}`;
 
   const swingWrap = document.createElement('div');
   swingWrap.className = 'gd-wood-swing';

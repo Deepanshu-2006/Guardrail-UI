@@ -139,7 +139,7 @@ export function createCustomSelect(
   onChange: (val: string) => void
 ): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.className = 'gd-select-wrap';
+  wrap.className = `gd-select-wrap${currentValue && currentValue !== 'ALL' ? ' has-active-filter' : ''}`;
 
   // Synchronized native select (for tests and accessibility)
   selectEl.style.position = 'absolute';
@@ -234,6 +234,7 @@ export function createCustomSelect(
       optEl.setAttribute('aria-selected', 'true');
       valueText.textContent = item.label;
       selectEl.value = item.value;
+      wrap.classList.toggle('has-active-filter', item.value !== 'ALL');
       closeDropdown();
       onChange(item.value);
     });
