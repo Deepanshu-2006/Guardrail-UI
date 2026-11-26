@@ -25191,14 +25191,30 @@ body.gd-kbd-open .gd-m-shell {
   }
 
   #view-history .gd-history-layout .gd-detail-pane,
-  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane,
-  #view-settings #gd-connected-users-card {
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane {
     clip-path: polygon(
       0 0,
       calc(82% - 7px) 0,
       82% 5px,
       calc(82% + 6px) 0,
       100% 0,
+      100% 100%,
+      calc(22% + 7px) 100%,
+      22% calc(100% - 5px),
+      calc(22% - 6px) 100%,
+      0 100%
+    );
+  }
+
+  #view-settings #gd-connected-users-card {
+    clip-path: polygon(
+      0 -80px,
+      calc(82% - 7px) -80px,
+      calc(82% - 7px) 0,
+      82% 5px,
+      calc(82% + 6px) 0,
+      calc(82% + 6px) -80px,
+      100% -80px,
       100% 100%,
       calc(22% + 7px) 100%,
       22% calc(100% - 5px),
@@ -27196,6 +27212,147 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-prop-settings-clockwork.is-open .gd-clockwork-aura {
     opacity: 1;
+  }
+
+  /* 5.1 Settings Perched Wind-Up Card Props (Wax Seal, Linked Silk Ribbon, Forged Padlock, Service Bell) */
+  #view-settings #gd-card-identity,
+  #view-settings #gd-connected-users-card,
+  #view-settings #gd-card-ward-policy,
+  #view-settings #gd-card-invariants,
+  #view-settings #gd-card-push-notifications {
+    position: relative;
+    overflow: visible !important;
+  }
+
+  .gd-prop-btn.gd-prop-settings-seal {
+    position: absolute !important;
+    top: -34px;
+    right: 224px;
+    z-index: 6 !important;
+    overflow: visible;
+  }
+
+  .gd-prop-btn.gd-prop-settings-ribbon {
+    position: absolute !important;
+    top: -21px;
+    right: 124px;
+    z-index: 6 !important;
+    overflow: visible;
+  }
+
+  .gd-prop-btn.gd-prop-settings-padlock {
+    position: absolute !important;
+    top: -34px;
+    right: 224px;
+    z-index: 6 !important;
+    overflow: visible;
+  }
+
+  .gd-prop-btn.gd-prop-settings-bell {
+    position: absolute !important;
+    top: -31px;
+    right: 224px;
+    z-index: 6 !important;
+    overflow: visible;
+  }
+
+  .gd-prop-settings-seal .gd-seal-stamp {
+    transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .gd-prop-settings-seal:hover .gd-seal-stamp {
+    transform: translateY(-2px) rotate(-6deg);
+  }
+
+  .gd-prop-settings-seal.is-waking .gd-seal-stamp {
+    animation: gd-seal-press 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes gd-seal-press {
+    0%   { transform: translateY(0) rotate(0deg); }
+    24%  { transform: translateY(-5px) rotate(-8deg); }
+    46%  { transform: translate(-12px, 8px) rotate(0deg); }
+    64%  { transform: translate(-12px, 8px) rotate(0deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+  }
+
+  .gd-prop-settings-padlock .gd-padlock-shackle {
+    transition: transform 0.18s ease;
+  }
+
+  .gd-prop-settings-padlock:hover .gd-padlock-shackle {
+    transform: translateY(-2px);
+  }
+
+  .gd-prop-settings-padlock.is-waking .gd-padlock-shackle {
+    animation: gd-padlock-snap 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .gd-prop-settings-padlock.is-waking .gd-padlock-body {
+    animation: gd-padlock-body-kick 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes gd-padlock-snap {
+    0%   { transform: translateY(0); }
+    32%  { transform: translateY(-4.5px); }
+    52%  { transform: translateY(1px); }
+    72%  { transform: translateY(-1px); }
+    100% { transform: translateY(0); }
+  }
+
+  @keyframes gd-padlock-body-kick {
+    0%, 42% { transform: translateY(0); }
+    56%     { transform: translateY(2.2px); }
+    76%     { transform: translateY(-0.8px); }
+    100%    { transform: translateY(0); }
+  }
+
+  .gd-prop-settings-bell.is-waking .gd-deskbell-plunger {
+    animation: gd-deskbell-tap 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .gd-prop-settings-bell.is-waking .gd-deskbell-dome {
+    animation: gd-deskbell-shiver 0.72s ease-out forwards;
+  }
+
+  .gd-settings-bell-wave {
+    position: absolute;
+    left: 23px;
+    top: 18px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.4px solid rgba(212, 162, 64, 0.86);
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .gd-settings-bell-wave.is-ringing {
+    animation: gd-furin-ring-wave 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes gd-deskbell-tap {
+    0%   { transform: translateY(0); }
+    28%  { transform: translateY(4px); }
+    62%  { transform: translateY(-0.6px); }
+    100% { transform: translateY(0); }
+  }
+
+  @keyframes gd-deskbell-shiver {
+    0%   { transform: rotate(0deg); }
+    18%  { transform: rotate(-3.5deg); }
+    36%  { transform: rotate(3.2deg); }
+    54%  { transform: rotate(-2.2deg); }
+    72%  { transform: rotate(1.4deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  #view-settings .gd-card.is-wind-waking {
+    box-shadow:
+      0 12px 26px -6px rgba(154, 108, 28, 0.28),
+      0 0 0 1.5px rgba(212, 164, 68, 0.56) !important;
+    transition: box-shadow 0.25s ease;
   }
 }
 

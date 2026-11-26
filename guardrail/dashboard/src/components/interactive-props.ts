@@ -7695,7 +7695,7 @@ export function createSettingsClockworkProp(): HTMLElement {
     }).join('');
 
   btn.innerHTML = `
-    <span class="gd-clockwork-note" aria-hidden="true">${sharedWorkshopOpen ? 'Close controls' : 'Calibrate'}</span>
+    <span class="gd-clockwork-note" aria-hidden="true">${sharedWorkshopOpen ? 'Release' : 'Wind desk'}</span>
     <span class="gd-clockwork-aura" aria-hidden="true"></span>
     <svg class="gd-prop-svg" width="76" height="92" viewBox="0 0 76 92" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -7790,9 +7790,9 @@ export function createSettingsClockworkProp(): HTMLElement {
       else btn.classList.remove('is-open');
     }
     btn.setAttribute('aria-pressed', open ? 'true' : 'false');
-    btn.title = open ? 'Click to close calibration controls' : 'Click to open portal calibration controls';
+    btn.title = open ? 'Click to release wound mechanism' : 'Click to wind up & wake all Settings cards';
     if (noteEl) {
-      noteEl.textContent = open ? 'Close controls' : 'Calibrate';
+      noteEl.textContent = open ? 'Release' : 'Wind desk';
     }
     if (typeof document !== 'undefined') {
       const appEl = document.querySelector('.gd-dashboard-app');
@@ -7864,11 +7864,14 @@ export function createSettingsClockworkProp(): HTMLElement {
 
   btn.addEventListener('click', () => {
     sharedWorkshopOpen = !sharedWorkshopOpen;
-    gearVel += sharedWorkshopOpen ? 135 : -85;
+    gearVel += sharedWorkshopOpen ? 165 : -85;
     playClockworkMechanismSound(sharedWorkshopOpen);
     syncWorkshopClass(sharedWorkshopOpen);
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
       window.dispatchEvent(new CustomEvent('gd-workshop-toggle', { detail: { open: sharedWorkshopOpen } }));
+      if (sharedWorkshopOpen) {
+        window.dispatchEvent(new CustomEvent('gd-settings-wind-cascade', { detail: { engaged: true } }));
+      }
     }
     ensureRunning();
   });
@@ -7888,6 +7891,447 @@ export function createSettingsClockworkProp(): HTMLElement {
     };
     window.addEventListener('gd-workshop-toggle', onSync);
   }
+
+  return btn;
+}
+
+interface QuickToneStep {
+  delay: number;
+  freq: number;
+  endFreq?: number;
+  dur: number;
+  peak: number;
+  type?: OscillatorType;
+}
+
+function playQuickTones(steps: readonly QuickToneStep[]): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx) return;
+
+    const trigger = () => {
+      if (ctx.state !== 'running') return;
+      const now = ctx.currentTime;
+      for (const s of steps) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = s.type ?? 'sine';
+        osc.frequency.setValueAtTime(s.freq, now + s.delay);
+        if (s.endFreq) {
+          osc.frequency.exponentialRampToValueAtTime(Math.max(40, s.endFreq), now + s.delay + s.dur);
+        }
+        gain.gain.setValueAtTime(0.0001, now + s.delay);
+        gain.gain.linearRampToValueAtTime(s.peak, now + s.delay + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + s.delay + s.dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + s.delay);
+        osc.stop(now + s.delay + s.dur + 0.02);
+      }
+    };
+
+    if (ctx.state === 'running') {
+      trigger();
+    } else if (ctx.state === 'suspended') {
+      void ctx.resume().then(trigger).catch(() => {});
+    }
+  } catch {
+    // Ignore audio errors safely
+  }
+}
+
+function pulseCardWake(propEl: HTMLElement, durationMs = 760): void {
+  const cardEl = typeof propEl.closest === 'function' ? (propEl.closest('.gd-card') as HTMLElement | null) : null;
+  if (!cardEl?.classList) return;
+  cardEl.classList.remove('is-wind-waking');
+  void cardEl.offsetWidth;
+  cardEl.classList.add('is-wind-waking');
+  setTimeout(() => {
+    cardEl.classList.remove('is-wind-waking');
+  }, durationMs);
+}
+
+function attachSettingsCascadeListener(
+  btn: HTMLElement,
+  delayMs: number,
+  onActuate: (withAudio: boolean) => void,
+): void {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+  const onCascade = () => {
+    if (typeof document !== 'undefined' && !document.contains(btn)) {
+      window.removeEventListener('gd-settings-wind-cascade', onCascade);
+      return;
+    }
+    setTimeout(() => {
+      if (typeof document !== 'undefined' && !document.contains(btn)) return;
+      onActuate(true);
+    }, delayMs);
+  };
+  window.addEventListener('gd-settings-wind-cascade', onCascade);
+}
+
+/**
+ * Prop 1 (Card: Reviewer Identity & Authorization):
+ * Turned walnut & brass signet stamp perched beside an embossed crimson wax seal.
+ * Clicking (or clockwork cascade beat #1) presses the stamp onto the seal with a crisp thud.
+ */
+export function createSettingsWaxSealProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gd-prop-btn gd-prop-settings-seal';
+  btn.setAttribute('aria-label', 'Press brass signet wax seal');
+  btn.title = 'Click to press brass signet seal';
+  btn.tabIndex = -1;
+
+  btn.innerHTML = `
+    <svg class="gd-prop-svg" width="54" height="44" viewBox="0 0 54 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="gd-seal-wax" cx="38%" cy="34%" r="68%">
+          <stop offset="0%" stop-color="#D44438"/>
+          <stop offset="55%" stop-color="#9A2018"/>
+          <stop offset="100%" stop-color="#5E100B"/>
+        </radialGradient>
+        <linearGradient id="gd-seal-brass" x1="15%" y1="5%" x2="85%" y2="95%">
+          <stop offset="0%" stop-color="#FFF0AC"/>
+          <stop offset="45%" stop-color="#DCA647"/>
+          <stop offset="100%" stop-color="#764F14"/>
+        </linearGradient>
+        <linearGradient id="gd-seal-walnut" x1="15%" y1="10%" x2="85%" y2="90%">
+          <stop offset="0%" stop-color="#7B4C28"/>
+          <stop offset="50%" stop-color="#4A2A14"/>
+          <stop offset="100%" stop-color="#281508"/>
+        </linearGradient>
+      </defs>
+      <!-- Rest shadow along timber top -->
+      <ellipse cx="26" cy="40.5" rx="19" ry="2.4" fill="rgba(26, 18, 10, 0.24)"/>
+      <!-- Organic poured crimson sealing-wax medallion -->
+      <path d="M10 34 C9.5 29.5, 13.5 27, 19.5 26.5 C26.5 26, 33 27.2, 36.5 30.8 C38.5 33, 37.5 37.8, 33 39.2 C28 40.8, 17 40.5, 12.2 38.2 C9.8 37, 10.2 35.4, 10 34 Z" fill="url(#gd-seal-wax)" stroke="#470A06" stroke-width="0.9"/>
+      <ellipse cx="23.5" cy="33" rx="9.2" ry="4.4" fill="none" stroke="rgba(255, 198, 178, 0.34)" stroke-width="0.8"/>
+      <!-- Embossed Guardrail shield keyhole crest -->
+      <path d="M23.5 30.4 L26.2 31.6 L25.6 34.4 L23.5 35.6 L21.4 34.4 L20.8 31.6 Z" fill="#B52E24" stroke="rgba(255, 224, 196, 0.45)" stroke-width="0.65"/>
+
+      <!-- Articulated Signet Stamp (hovering at slight angle, snaps down onto wax) -->
+      <g class="gd-seal-stamp" style="transform-origin: 36px 26px;">
+        <!-- Turned walnut handle -->
+        <path d="M32 13 C31 8, 33 4.5, 36 4.5 C39 4.5, 41 8, 40 13 L38.2 21 L33.8 21 Z" fill="url(#gd-seal-walnut)" stroke="#231207" stroke-width="0.85"/>
+        <ellipse cx="34.6" cy="9.5" rx="1.1" ry="3.2" fill="rgba(255, 222, 188, 0.24)"/>
+        <!-- Brass ferrule collar & engraved die base -->
+        <rect x="31.5" y="20.5" width="9" height="3.2" rx="1" fill="url(#gd-seal-brass)" stroke="#4A300B" stroke-width="0.7"/>
+        <ellipse cx="36" cy="25.5" rx="8.4" ry="3.2" fill="url(#gd-seal-brass)" stroke="#4A300B" stroke-width="0.8"/>
+      </g>
+    </svg>
+  `;
+
+  let stampTimer: number | null = null;
+  const actuate = (withAudio: boolean) => {
+    if (btn.classList) {
+      btn.classList.remove('is-waking');
+      void btn.offsetWidth;
+      btn.classList.add('is-waking');
+    }
+    pulseCardWake(btn);
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0.05, freq: 145, endFreq: 56, dur: 0.14, peak: 0.04, type: 'triangle' },
+        { delay: 0.06, freq: 1580, endFreq: 1220, dur: 0.09, peak: 0.015 },
+      ]);
+    }
+    if (stampTimer !== null) clearTimeout(stampTimer);
+    stampTimer = window.setTimeout(() => {
+      btn.classList?.remove('is-waking');
+    }, 640);
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    actuate(true);
+  });
+  attachSettingsCascadeListener(btn, 140, actuate);
+
+  return btn;
+}
+
+/**
+ * Prop 2 (Card: Connected Users & Trusted Contacts):
+ * Twin forged brass link rings & dual forest-olive woven silk bookmark ribbons.
+ * Clicking (or cascade beat #2) swings both silk ribbon tails with damped pendulum physics.
+ */
+export function createSettingsRibbonClaspProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gd-prop-btn gd-prop-settings-ribbon';
+  btn.setAttribute('aria-label', 'Sway linked contact silk ribbons');
+  btn.title = 'Click to sway linked brass clasp & silk ribbon';
+  btn.tabIndex = -1;
+
+  btn.innerHTML = `
+    <svg class="gd-prop-svg" width="52" height="44" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-rib-brass" x1="10%" y1="10%" x2="90%" y2="90%">
+          <stop offset="0%" stop-color="#FFF0AD"/>
+          <stop offset="48%" stop-color="#DDA647"/>
+          <stop offset="100%" stop-color="#6F4912"/>
+        </linearGradient>
+        <linearGradient id="gd-rib-olive" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#6D8F4B"/>
+          <stop offset="55%" stop-color="#455E2E"/>
+          <stop offset="100%" stop-color="#273619"/>
+        </linearGradient>
+        <linearGradient id="gd-rib-crimson" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#B84B3C"/>
+          <stop offset="60%" stop-color="#872B1F"/>
+          <stop offset="100%" stop-color="#56160E"/>
+        </linearGradient>
+      </defs>
+      <!-- Braided silk ribbon tails draping smoothly down over frame edge -->
+      <g class="gd-ribbon-tail-left" style="transform-origin: 21px 18px;">
+        <path d="M17.5 17 L23.5 17 L22.8 40.5 L20.4 37.5 L17.8 40.5 Z" fill="url(#gd-rib-olive)" stroke="#1E2814" stroke-width="0.75" stroke-linejoin="round"/>
+        <line x1="20.4" y1="18.5" x2="20.4" y2="35.5" stroke="rgba(236, 224, 192, 0.36)" stroke-width="0.65" stroke-dasharray="1.5 1.5"/>
+      </g>
+      <g class="gd-ribbon-tail-right" style="transform-origin: 30px 18px;">
+        <path d="M27 17 L33 17 L33.6 37.5 L30.8 34.8 L27.6 38 Z" fill="url(#gd-rib-crimson)" stroke="#3D120C" stroke-width="0.75" stroke-linejoin="round"/>
+      </g>
+
+      <!-- Twin interlocking brass link rings anchored on timber ledge -->
+      <ellipse cx="21" cy="14" rx="7.2" ry="5.5" stroke="#452D0A" stroke-width="3.2" fill="none"/>
+      <ellipse cx="21" cy="14" rx="7.2" ry="5.5" stroke="url(#gd-rib-brass)" stroke-width="1.9" fill="none"/>
+      <ellipse cx="31" cy="14" rx="7.2" ry="5.5" stroke="#452D0A" stroke-width="3.2" fill="none"/>
+      <ellipse cx="31" cy="14" rx="7.2" ry="5.5" stroke="url(#gd-rib-brass)" stroke-width="1.9" fill="none"/>
+      <!-- Center stitched leather-brass binder bridge -->
+      <rect x="22.8" y="11" width="6.4" height="6" rx="1.4" fill="url(#gd-rib-brass)" stroke="#452D0A" stroke-width="0.8"/>
+    </svg>
+  `;
+
+  const tailL = btn.querySelector('.gd-ribbon-tail-left') as SVGGElement | null;
+  const tailR = btn.querySelector('.gd-ribbon-tail-right') as SVGGElement | null;
+  let angL = 0;
+  let velL = 0;
+  let angR = 0;
+  let velR = 0;
+  let lastTs = 0;
+  let rafId: number | null = null;
+
+  const step = (ts: number) => {
+    if (typeof document !== 'undefined' && !document.contains(btn)) {
+      rafId = null;
+      return;
+    }
+    const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+    velL = (velL + (-38 * angL) * dt) * Math.pow(0.14, dt);
+    angL += velL * dt;
+    velR = (velR + (-44 * angR + (angL - angR) * 8) * dt) * Math.pow(0.16, dt);
+    angR += velR * dt;
+
+    if (tailL) tailL.style.transform = `rotate(${angL.toFixed(2)}deg)`;
+    if (tailR) tailR.style.transform = `rotate(${angR.toFixed(2)}deg)`;
+
+    if (Math.abs(angL) > 0.1 || Math.abs(velL) > 0.25 || Math.abs(angR) > 0.1 || Math.abs(velR) > 0.25) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      angL = 0;
+      angR = 0;
+      if (tailL) tailL.style.transform = '';
+      if (tailR) tailR.style.transform = '';
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const actuate = (withAudio: boolean) => {
+    velL += 145;
+    velR -= 115;
+    pulseCardWake(btn);
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0, freq: 2480, endFreq: 2340, dur: 0.11, peak: 0.018 },
+        { delay: 0.045, freq: 3320, endFreq: 3120, dur: 0.09, peak: 0.012 },
+      ]);
+    }
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  btn.addEventListener('mouseenter', () => {
+    velL += 55;
+    velR -= 42;
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  });
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    actuate(true);
+  });
+  attachSettingsCascadeListener(btn, 360, actuate);
+
+  return btn;
+}
+
+/**
+ * Prop 3 (Card: Ward Protection Policy / Safety Invariants):
+ * Forged steel shackle & chamfered antique brass security padlock.
+ * Clicking (or cascade beat #3) snaps the steel shackle firmly with an iron tumbler clack.
+ */
+export function createSettingsPadlockProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gd-prop-btn gd-prop-settings-padlock';
+  btn.setAttribute('aria-label', 'Inspect forged brass policy padlock');
+  btn.title = 'Click to snap forged brass lock shackle';
+  btn.tabIndex = -1;
+
+  btn.innerHTML = `
+    <svg class="gd-prop-svg" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-lock-brass" x1="12%" y1="6%" x2="88%" y2="94%">
+          <stop offset="0%" stop-color="#FFF0AF"/>
+          <stop offset="35%" stop-color="#D9A344"/>
+          <stop offset="80%" stop-color="#8C5D17"/>
+          <stop offset="100%" stop-color="#4A2E09"/>
+        </linearGradient>
+        <linearGradient id="gd-lock-steel" x1="10%" y1="0%" x2="90%" y2="100%">
+          <stop offset="0%" stop-color="#DCE4EC"/>
+          <stop offset="50%" stop-color="#7B8C9C"/>
+          <stop offset="100%" stop-color="#374452"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="22" cy="40.5" rx="13" ry="2.2" fill="rgba(26, 18, 10, 0.22)"/>
+      <!-- Hardened Steel Shackle -->
+      <g class="gd-padlock-shackle">
+        <path d="M14.5 21 V13.5 C14.5 8.5, 29.5 8.5, 29.5 13.5 V21" stroke="#242E38" stroke-width="4.4" stroke-linecap="round" fill="none"/>
+        <path d="M14.5 21 V13.5 C14.5 8.5, 29.5 8.5, 29.5 13.5 V21" stroke="url(#gd-lock-steel)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+      </g>
+      <!-- Chamfered Solid Brass Lock Body & Keyhole -->
+      <g class="gd-padlock-body">
+        <path d="M10.5 20.5 L33.5 20.5 L32 37.5 C31.8 39, 30.8 39.5, 29.2 39.5 L14.8 39.5 C13.2 39.5, 12.2 39, 12 37.5 Z" fill="url(#gd-lock-brass)" stroke="#3D2608" stroke-width="1"/>
+        <line x1="12.5" y1="22.2" x2="31.5" y2="22.2" stroke="rgba(255, 245, 200, 0.45)" stroke-width="0.75"/>
+        <circle cx="14.5" cy="36.2" r="1.05" fill="#52350B"/>
+        <circle cx="29.5" cy="36.2" r="1.05" fill="#52350B"/>
+        <!-- Forged keyhole & escutcheon plate -->
+        <ellipse cx="22" cy="30" rx="4.2" ry="5" fill="#7D5214" stroke="#452B08" stroke-width="0.7"/>
+        <circle cx="22" cy="28.4" r="1.6" fill="#1E1408"/>
+        <path d="M21 29.2 L20.5 33.2 L23.5 33.2 L23 29.2 Z" fill="#1E1408"/>
+      </g>
+    </svg>
+  `;
+
+  let lockTimer: number | null = null;
+  const actuate = (withAudio: boolean) => {
+    if (btn.classList) {
+      btn.classList.remove('is-waking');
+      void btn.offsetWidth;
+      btn.classList.add('is-waking');
+    }
+    pulseCardWake(btn);
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0, freq: 1180, endFreq: 860, dur: 0.05, peak: 0.024, type: 'triangle' },
+        { delay: 0.16, freq: 2320, endFreq: 1620, dur: 0.085, peak: 0.032, type: 'triangle' },
+      ]);
+    }
+    if (lockTimer !== null) clearTimeout(lockTimer);
+    lockTimer = window.setTimeout(() => {
+      btn.classList?.remove('is-waking');
+    }, 640);
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    actuate(true);
+  });
+  attachSettingsCascadeListener(btn, 580, actuate);
+
+  return btn;
+}
+
+/**
+ * Prop 4 (Card: Device Push Notifications & Lock-Screen Alerts):
+ * Antique brass hotel/dispatch desk bell on a turned mahogany base.
+ * Clicking (or cascade beat #4) presses the plunger, rings a two-note brass ping,
+ * and sends a subtle concentric sound ripple outward.
+ */
+export function createSettingsServiceBellProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gd-prop-btn gd-prop-settings-bell';
+  btn.setAttribute('aria-label', 'Ring brass notification service bell');
+  btn.title = 'Click to ring brass alert service bell';
+  btn.tabIndex = -1;
+
+  btn.innerHTML = `
+    <span class="gd-settings-bell-wave" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="46" height="40" viewBox="0 0 46 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="gd-deskbell-dome" cx="36%" cy="30%" r="68%">
+          <stop offset="0%" stop-color="#FFF5C8"/>
+          <stop offset="42%" stop-color="#E2AE4B"/>
+          <stop offset="82%" stop-color="#9A681A"/>
+          <stop offset="100%" stop-color="#53350B"/>
+        </radialGradient>
+        <linearGradient id="gd-deskbell-wood" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#331B0B"/>
+          <stop offset="35%" stop-color="#6A3B1B"/>
+          <stop offset="75%" stop-color="#4A2710"/>
+          <stop offset="100%" stop-color="#291407"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="23" cy="36.8" rx="17" ry="2.2" fill="rgba(26, 18, 10, 0.24)"/>
+      <!-- Turned mahogany base plinth -->
+      <rect x="7" y="30" width="32" height="5.4" rx="2.2" fill="url(#gd-deskbell-wood)" stroke="#1E0E04" stroke-width="0.85"/>
+      <line x1="9" y1="31.3" x2="37" y2="31.3" stroke="rgba(242, 200, 148, 0.25)" stroke-width="0.65"/>
+
+      <!-- Finial Plunger Rod & Cap -->
+      <g class="gd-deskbell-plunger">
+        <rect x="21.8" y="8.2" width="2.4" height="5.5" fill="#9A7230" stroke="#452D09" stroke-width="0.6"/>
+        <ellipse cx="23" cy="8.2" rx="4.2" ry="2.0" fill="#FFE79E" stroke="#4A300B" stroke-width="0.75"/>
+      </g>
+
+      <!-- Polished Brass Dome -->
+      <g class="gd-deskbell-dome" style="transform-origin: 23px 30px;">
+        <path d="M10.2 30 C10.2 19, 15.8 13, 23 13 C30.2 13, 35.8 19, 35.8 30 Z" fill="url(#gd-deskbell-dome)" stroke="#472E0A" stroke-width="0.95"/>
+        <path d="M15.2 25.5 C15.2 20, 17.8 16.2, 21 15.2" stroke="rgba(255, 255, 255, 0.72)" stroke-width="1.45" stroke-linecap="round" fill="none"/>
+        <rect x="9.2" y="28.6" width="27.6" height="2" rx="1" fill="#F0CA74" stroke="#472E0A" stroke-width="0.65"/>
+      </g>
+    </svg>
+  `;
+
+  const waveEl = btn.querySelector('.gd-settings-bell-wave') as HTMLElement | null;
+  let bellTimer: number | null = null;
+  const actuate = (withAudio: boolean) => {
+    if (btn.classList) {
+      btn.classList.remove('is-waking');
+      void btn.offsetWidth;
+      btn.classList.add('is-waking');
+    }
+    if (waveEl?.classList) {
+      waveEl.classList.remove('is-ringing');
+      void waveEl.offsetWidth;
+      waveEl.classList.add('is-ringing');
+    }
+    pulseCardWake(btn);
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0.03, freq: 1975.53, dur: 0.75, peak: 0.034 },
+        { delay: 0.03, freq: 3968.0, dur: 0.35, peak: 0.011 },
+        { delay: 0.14, freq: 2637.02, dur: 0.9, peak: 0.026 },
+      ]);
+    }
+    if (bellTimer !== null) clearTimeout(bellTimer);
+    bellTimer = window.setTimeout(() => {
+      btn.classList?.remove('is-waking');
+      waveEl?.classList?.remove('is-ringing');
+    }, 900);
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    actuate(true);
+  });
+  attachSettingsCascadeListener(btn, 800, actuate);
 
   return btn;
 }

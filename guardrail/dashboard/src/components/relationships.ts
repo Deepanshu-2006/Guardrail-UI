@@ -21,6 +21,7 @@ import {
 } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
 import { setAnimatedHeading } from './icons.js';
+import { createSettingsRibbonClaspProp } from './interactive-props.js';
 
 export interface RelationshipsProps {
   profile: TrustedContactProfile | null;
@@ -133,6 +134,7 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   usersHeader.appendChild(usersTitle);
   usersHeader.appendChild(usersBadge);
   usersCard.appendChild(usersHeader);
+  usersCard.appendChild(createSettingsRibbonClaspProp());
 
   // Status handling for connected users
   if (props.connectedUsersStatus === 'loading' && totalConnectedCount === 0) {

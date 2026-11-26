@@ -18,7 +18,13 @@ import { renderRelationshipManagementSection } from './relationships.js';
 import { setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { formatWardDisplayName } from './overview.js';
-import { attachInteractiveHeadingSprings, createSettingsClockworkProp } from './interactive-props.js';
+import {
+  attachInteractiveHeadingSprings,
+  createSettingsClockworkProp,
+  createSettingsPadlockProp,
+  createSettingsServiceBellProp,
+  createSettingsWaxSealProp,
+} from './interactive-props.js';
 import { PwaInstallManager } from './pwa-install-banner.js';
 
 export interface SettingsProps {
@@ -213,6 +219,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   );
 
   identityCard.appendChild(idGrid);
+  identityCard.appendChild(createSettingsWaxSealProp());
   section.appendChild(identityCard);
 
   // Card 2: Trusted Contacts & Connected Users Lifecycle Management
@@ -401,6 +408,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
     notice.textContent =
       'Ward Sovereignty Notice: Protection policies, thresholds, and exempt domains are configured exclusively by the protected user through their browser extension. Trusted contacts hold zero authority to alter or weaken ward policies. Private allowlists are strictly redacted.';
     policyCard.appendChild(notice);
+    policyCard.appendChild(createSettingsPadlockProp());
 
     section.appendChild(policyCard);
 
@@ -555,6 +563,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   pushHeader.appendChild(pushTitle);
   pushHeader.appendChild(pushBadge);
   pushCard.appendChild(pushHeader);
+  pushCard.appendChild(createSettingsServiceBellProp());
 
   const pushDesc = document.createElement('p');
   pushDesc.className = 'gd-settings-desc';
@@ -823,6 +832,9 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   addInvariantPill('Ward Policy Authority Separation');
 
   invariantsCard.appendChild(invList);
+  if (!props.profile?.assignedWardId) {
+    invariantsCard.appendChild(createSettingsPadlockProp());
+  }
   section.appendChild(invariantsCard);
 
   // Card 4: Session Management (Minimal)
