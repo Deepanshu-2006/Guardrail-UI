@@ -2179,16 +2179,20 @@ export function createHistoryPocketWatchProp(): HTMLElement {
   btn.title = sharedWatchOpen ? 'Click to close watch & return to present' : 'Click to open pocket watch & rewind time';
   btn.tabIndex = -1;
 
-  const tickMarks = Array.from({ length: 12 }, (_, i) => {
-    const rad = (i * 30 * Math.PI) / 180;
-    const isQuarter = i % 3 === 0;
-    const r1 = isQuarter ? 17.5 : 18.8;
-    const r2 = 21.2;
+  const tickMarks = Array.from({ length: 60 }, (_, i) => {
+    const rad = (i * 6 * Math.PI) / 180;
+    const isHour = i % 5 === 0;
+    const isQuarter = i % 15 === 0;
+    const r1 = isQuarter ? 17.6 : isHour ? 18.6 : 20.1;
+    const r2 = 21.4;
     const x1 = (38 + Math.sin(rad) * r1).toFixed(2);
     const y1 = (55 - Math.cos(rad) * r1).toFixed(2);
     const x2 = (38 + Math.sin(rad) * r2).toFixed(2);
     const y2 = (55 - Math.cos(rad) * r2).toFixed(2);
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${isQuarter ? '#5A3B12' : '#8B6D3D'}" stroke-width="${isQuarter ? '1.5' : '0.9'}" stroke-linecap="round"/>`;
+    if (!isHour) {
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(96, 68, 28, 0.45)" stroke-width="0.45"/>`;
+    }
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${isQuarter ? '#432B0B' : '#745322'}" stroke-width="${isQuarter ? '1.25' : '0.8'}" stroke-linecap="round"/>`;
   }).join('');
 
   btn.innerHTML = `
@@ -2202,68 +2206,110 @@ export function createHistoryPocketWatchProp(): HTMLElement {
     </span>
     <svg class="gd-prop-svg" width="76" height="94" viewBox="0 0 76 94" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="gd-watch-brass" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#F7DC88"/>
-          <stop offset="45%" stop-color="#C8933A"/>
-          <stop offset="100%" stop-color="#6F4B14"/>
+        <linearGradient id="gd-watch-brass" x1="10%" y1="6%" x2="90%" y2="94%">
+          <stop offset="0%" stop-color="#FFF0AD"/>
+          <stop offset="28%" stop-color="#E0AC4B"/>
+          <stop offset="68%" stop-color="#9E6C1D"/>
+          <stop offset="100%" stop-color="#53350B"/>
         </linearGradient>
-        <linearGradient id="gd-watch-lid-grad" x1="12%" y1="8%" x2="88%" y2="92%">
-          <stop offset="0%" stop-color="#F3D27A"/>
-          <stop offset="42%" stop-color="#CE9A41"/>
-          <stop offset="80%" stop-color="#A67424"/>
-          <stop offset="100%" stop-color="#744E15"/>
+        <linearGradient id="gd-watch-bezel-inner" x1="15%" y1="90%" x2="85%" y2="10%">
+          <stop offset="0%" stop-color="#F2CC74"/>
+          <stop offset="50%" stop-color="#8A5E19"/>
+          <stop offset="100%" stop-color="#4A300A"/>
         </linearGradient>
-        <radialGradient id="gd-watch-dial" cx="46%" cy="42%" r="60%">
-          <stop offset="0%" stop-color="#FFFDF5"/>
-          <stop offset="72%" stop-color="#F6ECD5"/>
-          <stop offset="100%" stop-color="#DFCFAF"/>
+        <radialGradient id="gd-watch-lid-grad" cx="38%" cy="32%" r="72%">
+          <stop offset="0%" stop-color="#FFEBA6"/>
+          <stop offset="32%" stop-color="#DBA444"/>
+          <stop offset="72%" stop-color="#9A691B"/>
+          <stop offset="100%" stop-color="#593A0C"/>
         </radialGradient>
+        <radialGradient id="gd-watch-dial" cx="44%" cy="38%" r="64%">
+          <stop offset="0%" stop-color="#FFFDF7"/>
+          <stop offset="68%" stop-color="#F7EEDB"/>
+          <stop offset="100%" stop-color="#DECBA8"/>
+        </radialGradient>
+        <linearGradient id="gd-watch-glass" x1="10%" y1="5%" x2="82%" y2="75%">
+          <stop offset="0%" stop-color="rgba(255, 255, 255, 0.34)"/>
+          <stop offset="45%" stop-color="rgba(255, 255, 255, 0.06)"/>
+          <stop offset="100%" stop-color="rgba(255, 255, 255, 0)"/>
+        </linearGradient>
       </defs>
 
-      <!-- Soft resting shadow -->
-      <ellipse cx="38" cy="87.5" rx="20" ry="3.2" fill="rgba(28, 20, 12, 0.2)"/>
+      <!-- Soft resting ground shadow -->
+      <ellipse cx="38" cy="87.5" rx="19" ry="2.8" fill="rgba(28, 20, 12, 0.16)"/>
 
       <!-- Pivoting watch assembly (hangs from top fob bow) -->
       <g class="gd-watch-swing" style="transform-origin: 38px 12px;">
-        <!-- Top Pendant Bow & Winding Crown -->
-        <circle cx="38" cy="14" r="6.5" stroke="url(#gd-watch-brass)" stroke-width="2.6" fill="none"/>
-        <rect x="34.5" y="19.5" width="7" height="5" rx="1.4" fill="url(#gd-watch-brass)" stroke="#4B320E" stroke-width="0.9"/>
-        <rect x="33" y="23.5" width="10" height="3.2" rx="1.2" fill="#E5BA58" stroke="#4B320E" stroke-width="0.8"/>
+        <!-- Antique Fob Bow Ring with inner metallic bevel -->
+        <ellipse cx="38" cy="13.2" rx="7.2" ry="6.2" stroke="#4D320C" stroke-width="3.2" fill="none"/>
+        <ellipse cx="38" cy="13.2" rx="7.2" ry="6.2" stroke="url(#gd-watch-brass)" stroke-width="2.2" fill="none"/>
 
-        <!-- Outer Brass Watch Case -->
-        <circle cx="38" cy="55" r="28" fill="url(#gd-watch-brass)" stroke="#3E290C" stroke-width="1.4"/>
-        <circle cx="38" cy="55" r="24.5" fill="#4A3315"/>
+        <!-- Pedestal Stem & Fluted Onion Winding Crown -->
+        <rect x="35.2" y="21.5" width="5.6" height="6" rx="0.8" fill="url(#gd-watch-brass)" stroke="#4A300B" stroke-width="0.8"/>
+        <rect x="33" y="18.2" width="10" height="4.2" rx="1.8" fill="url(#gd-watch-brass)" stroke="#4A300B" stroke-width="0.85"/>
+        <line x1="35.5" y1="18.6" x2="35.5" y2="22" stroke="rgba(68, 42, 10, 0.65)" stroke-width="0.7"/>
+        <line x1="38" y1="18.4" x2="38" y2="22.2" stroke="rgba(255, 244, 198, 0.6)" stroke-width="0.7"/>
+        <line x1="40.5" y1="18.6" x2="40.5" y2="22" stroke="rgba(68, 42, 10, 0.65)" stroke-width="0.7"/>
+        <!-- Crown collar guard -->
+        <rect x="32.2" y="24.2" width="11.6" height="2.6" rx="1.1" fill="#F0CA72" stroke="#4A300B" stroke-width="0.75"/>
 
-        <!-- Porcelain Dial Face -->
-        <circle cx="38" cy="55" r="23" fill="url(#gd-watch-dial)" stroke="#8B682C" stroke-width="0.9"/>
+        <!-- Side Hinged Barrel (9 o'clock) & Opening Clasp Lip (3 o'clock) -->
+        <rect x="8.2" y="51.2" width="2.8" height="7.6" rx="1.1" fill="url(#gd-watch-brass)" stroke="#432A09" stroke-width="0.75"/>
+        <rect x="65.2" y="53" width="2.2" height="4" rx="0.9" fill="#E8BE5E" stroke="#432A09" stroke-width="0.7"/>
+
+        <!-- Stepped Multi-Bevel Outer Brass Case -->
+        <circle cx="38" cy="55" r="28" fill="url(#gd-watch-brass)" stroke="#3E280B" stroke-width="1.25"/>
+        <circle cx="38" cy="55" r="26.1" fill="none" stroke="rgba(255, 243, 192, 0.55)" stroke-width="0.75"/>
+        <circle cx="38" cy="55" r="25.2" fill="url(#gd-watch-bezel-inner)"/>
+
+        <!-- Enamel Dial Face with Railway Track & Roman Cardinal Numerals -->
+        <circle cx="38" cy="55" r="23.2" fill="url(#gd-watch-dial)" stroke="#6E4E1B" stroke-width="0.8"/>
+        <circle cx="38" cy="55" r="21.5" fill="none" stroke="rgba(120, 88, 38, 0.35)" stroke-width="0.5"/>
+        <circle cx="38" cy="55" r="17.8" fill="none" stroke="rgba(120, 88, 38, 0.25)" stroke-width="0.45"/>
         ${tickMarks}
-        <!-- Sub-seconds ring at 6 o'clock -->
-        <circle cx="38" cy="66" r="5.5" fill="rgba(224, 208, 178, 0.45)" stroke="#9A7B47" stroke-width="0.7"/>
-        <line x1="38" y1="66" x2="38" y2="62.2" stroke="#9C561B" stroke-width="0.85" stroke-linecap="round"/>
+        <text x="38" y="40.8" text-anchor="middle" font-family="Georgia, serif" font-size="4.4" font-weight="700" fill="#2E200E">XII</text>
+        <text x="53.5" y="56.5" text-anchor="middle" font-family="Georgia, serif" font-size="4.2" font-weight="700" fill="#2E200E">III</text>
+        <text x="22.5" y="56.5" text-anchor="middle" font-family="Georgia, serif" font-size="4.2" font-weight="700" fill="#2E200E">IX</text>
 
-        <!-- Clock Hands -->
+        <!-- Sub-seconds guilloché dial at 6 o'clock -->
+        <circle cx="38" cy="66.2" r="5.2" fill="rgba(222, 206, 174, 0.42)" stroke="#8B682C" stroke-width="0.65"/>
+        <line x1="38" y1="61.2" x2="38" y2="62.3" stroke="#5A3B12" stroke-width="0.55"/>
+        <line x1="38" y1="70.1" x2="38" y2="71.2" stroke="#5A3B12" stroke-width="0.55"/>
+        <line x1="33" y1="66.2" x2="34.1" y2="66.2" stroke="#5A3B12" stroke-width="0.55"/>
+        <line x1="41.9" y1="66.2" x2="43" y2="66.2" stroke="#5A3B12" stroke-width="0.55"/>
+        <line x1="38" y1="66.2" x2="38" y2="62.4" stroke="#9C4E18" stroke-width="0.75" stroke-linecap="round"/>
+        <circle cx="38" cy="66.2" r="0.8" fill="#5A3B12"/>
+
+        <!-- Breguet Pierced Blued-Steel Clock Hands -->
         <g class="gd-watch-hand-hour" style="transform-origin: 38px 55px;">
-          <path d="M38 57 L36.6 53 L38 41.5 L39.4 53 Z" fill="#2A2015"/>
+          <path d="M38 57.5 L37.1 53.5 L37.6 46.8 L38 41.2 L38.4 46.8 L38.9 53.5 Z" fill="#1F252E"/>
+          <circle cx="38" cy="45.2" r="1.45" fill="#F9F1DF" stroke="#1F252E" stroke-width="0.8"/>
         </g>
         <g class="gd-watch-hand-min" style="transform-origin: 38px 55px;">
-          <path d="M38 58 L37 53 L38 35.5 L39 53 Z" fill="#2A2015"/>
+          <path d="M38 58 L37.3 53.5 L37.7 41.5 L38 35 L38.3 41.5 L38.7 53.5 Z" fill="#1F252E"/>
+          <circle cx="38" cy="39.5" r="1.25" fill="#F9F1DF" stroke="#1F252E" stroke-width="0.75"/>
         </g>
         <g class="gd-watch-hand-sec" style="transform-origin: 38px 55px;">
-          <line x1="38" y1="60.5" x2="38" y2="34.5" stroke="#B65B1C" stroke-width="1.05" stroke-linecap="round"/>
+          <line x1="38" y1="60.5" x2="38" y2="34.2" stroke="#A84C14" stroke-width="0.85" stroke-linecap="round"/>
+          <circle cx="38" cy="59.4" r="1.1" fill="#A84C14"/>
         </g>
-        <circle cx="38" cy="55" r="2.3" fill="#D49B3E" stroke="#3E290C" stroke-width="0.7"/>
+        <circle cx="38" cy="55" r="2.1" fill="url(#gd-watch-brass)" stroke="#3E280B" stroke-width="0.65"/>
 
-        <!-- Hinged Engraved Brass Lid (swings open around top hinge y=27) -->
-        <g class="gd-watch-lid" style="transform-origin: 38px 27px;">
-          <circle cx="38" cy="55" r="25.2" fill="url(#gd-watch-lid-grad)" stroke="#4A320F" stroke-width="1.2"/>
-          <circle cx="38" cy="55" r="20.2" fill="none" stroke="rgba(72, 46, 12, 0.45)" stroke-width="0.85" stroke-dasharray="2.5 2"/>
-          <!-- Sunburst compass crest on lid -->
-          <path d="M38 41 L40.5 52.5 L52 55 L40.5 57.5 L38 69 L35.5 57.5 L24 55 L35.5 52.5 Z" fill="rgba(255, 244, 198, 0.45)" stroke="rgba(78, 50, 12, 0.52)" stroke-width="0.8"/>
-          <circle cx="38" cy="55" r="3.4" fill="#F8DF94" stroke="#5A3B12" stroke-width="0.9"/>
+        <!-- Curved Sapphire Crystal Glint -->
+        <path d="M18 44 A22 22 0 0 1 56 41 Q41 51 18 44 Z" fill="url(#gd-watch-glass)" pointer-events="none"/>
+
+        <!-- Hinged Guilloché Engraved Hunter Cover Lid (swings open from left barrel hinge) -->
+        <g class="gd-watch-lid" style="transform-origin: 11px 55px;">
+          <circle cx="38" cy="55" r="25.5" fill="url(#gd-watch-lid-grad)" stroke="#432A09" stroke-width="1.15"/>
+          <circle cx="38" cy="55" r="23.4" fill="none" stroke="rgba(255, 240, 184, 0.45)" stroke-width="0.7"/>
+          <circle cx="38" cy="55" r="20.6" fill="none" stroke="rgba(68, 42, 10, 0.52)" stroke-width="0.8" stroke-dasharray="1.6 1.8"/>
+          <circle cx="38" cy="55" r="15.8" fill="none" stroke="rgba(68, 42, 10, 0.35)" stroke-width="0.65"/>
+          <!-- Engraved 8-point mariner star & recessed center cartouche -->
+          <path d="M38 40.5 L40 53 L52.5 55 L40 57 L38 69.5 L36 57 L23.5 55 L36 53 Z" fill="rgba(255, 245, 202, 0.48)" stroke="rgba(72, 46, 12, 0.58)" stroke-width="0.7"/>
+          <path d="M28.5 45.5 L36.8 53.8 L47.5 45.5 L39.2 55 L47.5 64.5 L38 56.2 L28.5 64.5 L36.8 55 Z" fill="rgba(255, 238, 178, 0.25)" stroke="rgba(72, 46, 12, 0.4)" stroke-width="0.55"/>
+          <circle cx="38" cy="55" r="5.6" fill="url(#gd-watch-lid-grad)" stroke="#54360E" stroke-width="0.8"/>
+          <circle cx="38" cy="55" r="2.6" fill="#FFF2B8" stroke="#6E4916" stroke-width="0.7"/>
         </g>
-
-        <!-- Hinge knuckle -->
-        <rect x="34" y="25.5" width="8" height="3.2" rx="1.2" fill="#E8C266" stroke="#4B320E" stroke-width="0.75"/>
       </g>
     </svg>
   `;
@@ -2316,10 +2362,11 @@ export function createHistoryPocketWatchProp(): HTMLElement {
       swingEl.style.transform = `rotate(${swingDeg.toFixed(2)}deg)`;
     }
     if (lidEl) {
-      const scaleY = Math.max(0.08, 1 - lidOpen * 0.92);
-      const liftY = -lidOpen * 4.5;
-      lidEl.style.transform = `translateY(${liftY.toFixed(2)}px) scaleY(${scaleY.toFixed(3)})`;
-      lidEl.style.opacity = lidOpen > 0.88 ? `${Math.max(0.18, 1 - (lidOpen - 0.88) * 6).toFixed(2)}` : '1';
+      const openFrac = Math.max(0, Math.min(1, lidOpen));
+      const scaleX = Math.max(0.06, 1 - openFrac * 0.94);
+      const liftX = -openFrac * 3.5;
+      lidEl.style.transform = `translateX(${liftX.toFixed(2)}px) scaleX(${scaleX.toFixed(3)})`;
+      lidEl.style.opacity = openFrac >= 0.72 ? '0' : `${Math.max(0, 1 - openFrac * 1.38).toFixed(2)}`;
     }
     if (hourEl) hourEl.style.transform = `rotate(${hourDeg.toFixed(1)}deg)`;
     if (minEl) minEl.style.transform = `rotate(${minDeg.toFixed(1)}deg)`;
@@ -2497,10 +2544,26 @@ export function createHistoryRewindOverlay(): HTMLElement {
   const INTRO_DURATION = 1.65;
   const ERA_DURATION = 8.0;
   const ERAS = [
-    { year: '1885 AD', label: '1885 AD · Steam Locomotive' },
-    { year: '1420 AD', label: '1420 AD · Medieval Knights Duel' },
-    { year: '2500 BC', label: '2500 BC · Ancient Egypt' },
-    { year: '66M BC', label: '66M BC · Cretaceous Extinction' },
+    {
+      year: '1885 AD',
+      title: 'Steam Locomotive',
+      desc: 'Iron rails & steam',
+    },
+    {
+      year: '1420 AD',
+      title: 'Medieval Knights',
+      desc: 'Steel & chivalry',
+    },
+    {
+      year: '2500 BC',
+      title: 'Ancient Egypt',
+      desc: 'Pharaohs & chariots',
+    },
+    {
+      year: '66M BC',
+      title: 'Cretaceous Era',
+      desc: 'Titans & calderas',
+    },
   ] as const;
 
   interface PlumeParticle {
@@ -2562,37 +2625,54 @@ export function createHistoryRewindOverlay(): HTMLElement {
     );
   }
 
+  const dialTicksSvg = Array.from({ length: 12 }, (_, idx) => {
+    const a = (idx * Math.PI * 2) / 12;
+    const isCardinal = idx % 3 === 0;
+    const r1 = isCardinal ? 91 : 94;
+    const r2 = 98;
+    const x1 = (104 + Math.cos(a) * r1).toFixed(1);
+    const y1 = (104 + Math.sin(a) * r1).toFixed(1);
+    const x2 = (104 + Math.cos(a) * r2).toFixed(1);
+    const y2 = (104 + Math.sin(a) * r2).toFixed(1);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8B6A2B" stroke-width="${isCardinal ? '1.35' : '0.9'}" stroke-linecap="round" opacity="${isCardinal ? '0.68' : '0.36'}"/>`;
+  }).join('');
+
+  const PROGRESS_CIRCUMFERENCE = 2 * Math.PI * 86;
+
   const hudEl = document.createElement('div');
   hudEl.className = 'gd-rewind-center-hud';
   hudEl.setAttribute('aria-hidden', 'true');
   hudEl.innerHTML = `
     <div class="gd-rewind-medallion">
-      <svg class="gd-rewind-ring-svg" width="118" height="118" viewBox="0 0 118 118" fill="none">
-        <circle cx="59" cy="59" r="54" stroke="#E5BA58" stroke-width="1.5" stroke-dasharray="6 5" opacity="0.72"/>
-        <circle cx="59" cy="59" r="46" stroke="#F7DC88" stroke-width="1" opacity="0.45"/>
+      <svg class="gd-rewind-ring-outer" width="208" height="208" viewBox="0 0 208 208" fill="none">
+        <circle cx="104" cy="104" r="98" stroke="#8B6A2B" stroke-width="0.9" stroke-dasharray="3 6" opacity="0.48"/>
+        ${dialTicksSvg}
+      </svg>
+      <svg class="gd-rewind-ring-svg" width="208" height="208" viewBox="0 0 208 208" fill="none">
+        <circle cx="104" cy="104" r="86" stroke="rgba(139, 106, 43, 0.14)" stroke-width="1.2"/>
+        <circle class="gd-rewind-progress-arc" cx="104" cy="104" r="86" stroke="#9C752C" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="${PROGRESS_CIRCUMFERENCE.toFixed(2)}" stroke-dashoffset="${PROGRESS_CIRCUMFERENCE.toFixed(2)}" opacity="0.72"/>
       </svg>
       <div class="gd-rewind-core">
-        <svg class="gd-rewind-arrows" width="38" height="24" viewBox="0 0 38 24" fill="none">
-          <path d="M18 4L6 12L18 20V4Z" fill="#FCE28B" stroke="#6E4A14" stroke-width="1.2" stroke-linejoin="round"/>
-          <path d="M32 4L20 12L32 20V4Z" fill="#FCE28B" stroke="#6E4A14" stroke-width="1.2" stroke-linejoin="round"/>
+        <svg class="gd-rewind-arrows" width="20" height="12" viewBox="0 0 38 24" fill="none">
+          <path d="M18 4L6 12L18 20V4Z" fill="#8B6A2B" opacity="0.78"/>
+          <path d="M32 4L20 12L32 20V4Z" fill="#8B6A2B" opacity="0.78"/>
         </svg>
-        <span class="gd-rewind-year">2026</span>
-        <span class="gd-rewind-caption">REWINDING TIME</span>
+        <span class="gd-rewind-year">2026 AD</span>
+        <span class="gd-rewind-divider"></span>
+        <span class="gd-rewind-era-name">Rewinding</span>
+        <span class="gd-rewind-caption">Back through time</span>
       </div>
     </div>
   `;
   const hudYearEl = hudEl.querySelector('.gd-rewind-year') as HTMLElement | null;
-
-  const eraBadgeEl = document.createElement('div');
-  eraBadgeEl.className = 'gd-rewind-era-badge';
-  eraBadgeEl.setAttribute('aria-hidden', 'true');
-  eraBadgeEl.textContent = ERAS[0].label;
+  const hudTitleEl = hudEl.querySelector('.gd-rewind-era-name') as HTMLElement | null;
+  const hudDescEl = hudEl.querySelector('.gd-rewind-caption') as HTMLElement | null;
+  const hudProgressEl = hudEl.querySelector('.gd-rewind-progress-arc') as SVGCircleElement | null;
 
   const ensureHudMounted = () => {
     const parent = canvas.parentElement;
     if (!parent) return;
     if (!parent.contains(hudEl)) parent.appendChild(hudEl);
-    if (!parent.contains(eraBadgeEl)) parent.appendChild(eraBadgeEl);
   };
 
   const resize = () => {
@@ -5119,31 +5199,45 @@ export function createHistoryRewindOverlay(): HTMLElement {
     }
     if (!active) {
       introRemaining = 0;
-      hudEl.classList.remove('is-visible');
-      eraBadgeEl.classList.remove('is-visible');
+      hudEl.classList.remove('is-visible', 'is-rewinding');
     } else if (introRemaining > 0) {
       introRemaining = Math.max(0, introRemaining - dt);
       const introProgress = 1 - introRemaining / INTRO_DURATION;
       const yearNum = Math.round(2026 - introProgress * (2026 - 1885));
-      if (hudYearEl) hudYearEl.textContent = `${yearNum} AD`;
-      hudEl.classList.toggle('is-visible', introRemaining > 0.05);
-      eraBadgeEl.classList.remove('is-visible');
+      if (hudYearEl && hudYearEl.textContent !== `${yearNum} AD`) {
+        hudYearEl.textContent = `${yearNum} AD`;
+      }
+      if (hudTitleEl && hudTitleEl.textContent !== 'Rewinding') {
+        hudTitleEl.textContent = 'Rewinding';
+      }
+      if (hudDescEl && hudDescEl.textContent !== 'Back through time') {
+        hudDescEl.textContent = 'Back through time';
+      }
+      if (hudProgressEl) {
+        hudProgressEl.style.strokeDashoffset = (PROGRESS_CIRCUMFERENCE * (1 - introProgress)).toFixed(2);
+      }
+      hudEl.classList.add('is-visible', 'is-rewinding');
     } else {
       journeyTime += dt;
-      hudEl.classList.remove('is-visible');
-      eraBadgeEl.classList.add('is-visible');
+      hudEl.classList.add('is-visible');
       const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
       const eraT = journeyTime % ERA_DURATION;
-      const TRANSITION_DUR = 1.4;
+      const TRANSITION_DUR = 2.0;
       const inTransition = journeyTime >= ERA_DURATION && eraT < TRANSITION_DUR;
+      const eraProgress = Math.min(1, eraT / ERA_DURATION);
 
-      eraBadgeEl.classList.toggle('is-transitioning', inTransition);
-      if (inTransition && eraT / TRANSITION_DUR < 0.84) {
+      hudEl.classList.toggle('is-rewinding', inTransition);
+      if (hudProgressEl) {
+        hudProgressEl.style.strokeDashoffset = (PROGRESS_CIRCUMFERENCE * (1 - eraProgress)).toFixed(2);
+      }
+
+      const era = ERAS[eraIdx];
+      if (inTransition && eraT / TRANSITION_DUR < 0.86) {
         const prevIdx = (eraIdx + ERAS.length - 1) % ERAS.length;
         const years = [1885, 1420, -2500, -66000000];
         const y0 = years[prevIdx];
         const y1 = years[eraIdx];
-        const u = eraT / (TRANSITION_DUR * 0.84);
+        const u = eraT / (TRANSITION_DUR * 0.86);
         const eased = u * u * (3 - 2 * u);
         const interp =
           Math.abs(y1 - y0) > 100000
@@ -5159,12 +5253,14 @@ export function createHistoryRewindOverlay(): HTMLElement {
         else if (Math.abs(interp) >= 10000) yearText = `${Math.round(Math.abs(interp) / 1000)}K BC`;
         else yearText = `${Math.max(1, Math.abs(interp))} BC`;
 
-        const nextLabel = `◂ ${yearText} · Shifting to ${ERAS[eraIdx].year}`;
-        if (eraBadgeEl.textContent !== nextLabel) {
-          eraBadgeEl.textContent = nextLabel;
-        }
-      } else if (eraBadgeEl.textContent !== ERAS[eraIdx].label) {
-        eraBadgeEl.textContent = ERAS[eraIdx].label;
+        if (hudYearEl && hudYearEl.textContent !== yearText) hudYearEl.textContent = yearText;
+        if (hudTitleEl && hudTitleEl.textContent !== era.title) hudTitleEl.textContent = era.title;
+        const shiftDesc = `Shifting from ${ERAS[prevIdx].year}`;
+        if (hudDescEl && hudDescEl.textContent !== shiftDesc) hudDescEl.textContent = shiftDesc;
+      } else {
+        if (hudYearEl && hudYearEl.textContent !== era.year) hudYearEl.textContent = era.year;
+        if (hudTitleEl && hudTitleEl.textContent !== era.title) hudTitleEl.textContent = era.title;
+        if (hudDescEl && hudDescEl.textContent !== era.desc) hudDescEl.textContent = era.desc;
       }
     }
     if (wasRewindActive && !active && historyVisible) {
@@ -5181,7 +5277,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
     ctx.clearRect(0, 0, width, height);
 
-    const TRANSITION_DUR = 1.4;
+    const TRANSITION_DUR = 2.0;
     const isSwitchingEra =
       active && introRemaining <= 0.15 && journeyTime >= ERA_DURATION && currentEraT < TRANSITION_DUR;
     const transitionNorm = isSwitchingEra ? currentEraT / TRANSITION_DUR : 0;
@@ -5190,14 +5286,14 @@ export function createHistoryRewindOverlay(): HTMLElement {
     if (rewindAlpha > 0.01 || eraPlumes.length > 0 || eraSparks.length > 0) {
       // 1. Rotating antique Roman-numeral clockwork rings (accelerate during epoch transitions)
       if (rewindAlpha > 0.01) {
-        const ringSpinMult = introRemaining > 0 ? 3.5 : 1 + transitionPulse * 3.6;
+        const ringSpinMult = introRemaining > 0 ? 3.5 : 1 + transitionPulse * 3.2;
         for (const ring of clockRings) {
           ring.angle += ring.spinSpeed * dt * ringSpinMult;
           drawRomanClockRing(ring, ring.alpha * rewindAlpha);
         }
       }
 
-      // 2. Multi-Era Historical Journey silhouettes + seamless crossfade transitions
+      // 2. Unified Continuous Multi-Era Cross-Dissolve (no distracting shimmer bar)
       const drawEraByIndex = (idx: number, t: number, a: number) => {
         if (a <= 0.01) return;
         if (idx === 0) drawEraSteamTrain(t, a);
@@ -5208,34 +5304,32 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
       if (active && introRemaining <= 0.15) {
         if (journeyTime < ERA_DURATION) {
-          const firstFadeIn = Math.min(1, currentEraT / 0.85);
+          const firstFadeIn = Math.min(1, currentEraT / 0.9);
           drawEraByIndex(currentEraIdx, currentEraT, rewindAlpha * firstFadeIn);
         } else if (currentEraT < TRANSITION_DUR) {
           const prevIdx = (currentEraIdx + ERAS.length - 1) % ERAS.length;
+          // Smooth S-curve equal-luminance cross-dissolve + gentle continuous world drift
           const ease = transitionNorm * transitionNorm * (3 - 2 * transitionNorm);
-          const outAlpha = rewindAlpha * Math.pow(1 - ease, 1.25);
-          const inAlpha = rewindAlpha * Math.pow(ease, 1.1);
+          const outAlpha = rewindAlpha * Math.pow(1 - ease, 0.85);
+          const inAlpha = rewindAlpha * Math.pow(ease, 0.85);
 
+          // Shared grounding sepia wash so bottom terrain merges seamlessly as one scene
+          const horizonMist = ctx.createLinearGradient(0, height - 85, 0, height);
+          horizonMist.addColorStop(0, 'rgba(222, 206, 174, 0)');
+          horizonMist.addColorStop(0.75, `rgba(116, 90, 52, ${(transitionPulse * 0.16 * rewindAlpha).toFixed(3)})`);
+          horizonMist.addColorStop(1, `rgba(48, 34, 18, ${(transitionPulse * 0.28 * rewindAlpha).toFixed(3)})`);
+          ctx.fillStyle = horizonMist;
+          ctx.fillRect(0, height - 85, width, 85);
+
+          ctx.save();
+          ctx.translate(-ease * 14, 0);
           drawEraByIndex(prevIdx, ERA_DURATION + currentEraT, outAlpha);
+          ctx.restore();
+
+          ctx.save();
+          ctx.translate((1 - ease) * 14, 0);
           drawEraByIndex(currentEraIdx, currentEraT, inAlpha);
-
-          // Sweeping golden chrono-wave & horizon seam across the era boundary
-          if (transitionPulse > 0.02) {
-            const sweepX = width * (1.12 - transitionNorm * 1.28);
-            const bandGrad = ctx.createLinearGradient(sweepX - 150, 0, sweepX + 150, 0);
-            bandGrad.addColorStop(0, 'rgba(229, 186, 88, 0)');
-            bandGrad.addColorStop(0.5, `rgba(246, 214, 134, ${(transitionPulse * 0.24 * rewindAlpha).toFixed(3)})`);
-            bandGrad.addColorStop(1, 'rgba(229, 186, 88, 0)');
-            ctx.fillStyle = bandGrad;
-            ctx.fillRect(0, height - 165, width, 165);
-
-            ctx.strokeStyle = `rgba(255, 232, 162, ${(transitionPulse * 0.45 * rewindAlpha).toFixed(3)})`;
-            ctx.lineWidth = 1.6;
-            ctx.beginPath();
-            ctx.moveTo(sweepX - 120, height - 18);
-            ctx.lineTo(sweepX + 120, height - 18);
-            ctx.stroke();
-          }
+          ctx.restore();
         } else {
           drawEraByIndex(currentEraIdx, currentEraT, rewindAlpha);
         }
