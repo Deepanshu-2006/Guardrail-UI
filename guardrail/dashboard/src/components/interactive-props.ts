@@ -4302,6 +4302,23 @@ export function createHistoryPocketWatchProp(): HTMLElement {
     ensureRunning();
   });
 
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const onWatchSync = (ev: Event) => {
+      if (typeof document !== 'undefined' && !document.contains(btn)) {
+        window.removeEventListener('gd-watch-toggle', onWatchSync);
+        return;
+      }
+      const nextOpen = (ev as CustomEvent<{ open?: boolean }>).detail?.open;
+      if (typeof nextOpen === 'boolean' && nextOpen !== sharedWatchOpen) {
+        sharedWatchOpen = nextOpen;
+        swingVel += sharedWatchOpen ? -78 : 78;
+        syncSectionClass(sharedWatchOpen);
+        ensureRunning();
+      }
+    };
+    window.addEventListener('gd-watch-toggle', onWatchSync);
+  }
+
   return btn;
 }
 
@@ -4393,8 +4410,9 @@ export function createHistoryRewindOverlay(): HTMLElement {
   let boardVel = 0;
   let wasRewindActive = false;
 
-  const INTRO_DURATION = 1.65;
-  const ERA_DURATION = 8.0;
+  const INTRO_DURATION = 1.2;
+  const ERA_DURATION = 5.0;
+  const TRANSITION_DUR = 1.3;
   const ERAS = [
     {
       year: '1885 AD',
@@ -7233,13 +7251,14 @@ export function createHistoryRewindOverlay(): HTMLElement {
     clock += dt;
 
     const historyVisible = isHistoryVisible();
-    const active = isRewindActive() && historyVisible;
+    let active = isRewindActive() && historyVisible;
     if (active) ensureHudMounted();
     if (!historyVisible) {
       if (lingerPages.length > 0) lingerPages.length = 0;
       if (eraPlumes.length > 0) eraPlumes.length = 0;
       if (eraSparks.length > 0) eraSparks.length = 0;
     }
+    const TOTAL_CYCLE_DURATION = ERAS.length * ERA_DURATION;
     if (!active) {
       introRemaining = 0;
       hudEl.classList.remove('is-visible', 'is-rewinding');
@@ -7262,48 +7281,58 @@ export function createHistoryRewindOverlay(): HTMLElement {
       hudEl.classList.add('is-visible', 'is-rewinding');
     } else {
       journeyTime += dt;
-      hudEl.classList.add('is-visible');
-      const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
-      const eraT = journeyTime % ERA_DURATION;
-      const TRANSITION_DUR = 2.0;
-      const inTransition = journeyTime >= ERA_DURATION && eraT < TRANSITION_DUR;
-      const eraProgress = Math.min(1, eraT / ERA_DURATION);
-
-      hudEl.classList.toggle('is-rewinding', inTransition);
-      if (hudProgressEl) {
-        hudProgressEl.style.strokeDashoffset = (PROGRESS_CIRCUMFERENCE * (1 - eraProgress)).toFixed(2);
-      }
-
-      const era = ERAS[eraIdx];
-      if (inTransition && eraT / TRANSITION_DUR < 0.86) {
-        const prevIdx = (eraIdx + ERAS.length - 1) % ERAS.length;
-        const years = [1885, 1420, -2500, -66000000];
-        const y0 = years[prevIdx];
-        const y1 = years[eraIdx];
-        const u = eraT / (TRANSITION_DUR * 0.86);
-        const eased = u * u * (3 - 2 * u);
-        const interp =
-          Math.abs(y1 - y0) > 100000
-            ? Math.round(
-                y0 +
-                  (y1 - y0) *
-                    (y1 < y0 ? Math.pow(eased, 2.2) : 1 - Math.pow(1 - eased, 2.2))
-              )
-            : Math.round(y0 + (y1 - y0) * eased);
-        let yearText: string;
-        if (interp > 0) yearText = `${interp} AD`;
-        else if (Math.abs(interp) >= 1000000) yearText = `${Math.max(1, Math.round(Math.abs(interp) / 1000000))}M BC`;
-        else if (Math.abs(interp) >= 10000) yearText = `${Math.round(Math.abs(interp) / 1000)}K BC`;
-        else yearText = `${Math.max(1, Math.abs(interp))} BC`;
-
-        if (hudYearEl && hudYearEl.textContent !== yearText) hudYearEl.textContent = yearText;
-        if (hudTitleEl && hudTitleEl.textContent !== era.title) hudTitleEl.textContent = era.title;
-        const shiftDesc = `Shifting from ${ERAS[prevIdx].year}`;
-        if (hudDescEl && hudDescEl.textContent !== shiftDesc) hudDescEl.textContent = shiftDesc;
+      if (journeyTime >= TOTAL_CYCLE_DURATION) {
+        // One full cycle through all eras complete — automatically close watch & return to present
+        journeyTime = TOTAL_CYCLE_DURATION;
+        active = false;
+        introRemaining = 0;
+        hudEl.classList.remove('is-visible', 'is-rewinding');
+        if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+          window.dispatchEvent(new CustomEvent('gd-watch-toggle', { detail: { open: false } }));
+        }
       } else {
-        if (hudYearEl && hudYearEl.textContent !== era.year) hudYearEl.textContent = era.year;
-        if (hudTitleEl && hudTitleEl.textContent !== era.title) hudTitleEl.textContent = era.title;
-        if (hudDescEl && hudDescEl.textContent !== era.desc) hudDescEl.textContent = era.desc;
+        hudEl.classList.add('is-visible');
+        const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
+        const eraT = journeyTime % ERA_DURATION;
+        const inTransition = journeyTime >= ERA_DURATION && eraT < TRANSITION_DUR;
+        const eraProgress = Math.min(1, eraT / ERA_DURATION);
+
+        hudEl.classList.toggle('is-rewinding', inTransition);
+        if (hudProgressEl) {
+          hudProgressEl.style.strokeDashoffset = (PROGRESS_CIRCUMFERENCE * (1 - eraProgress)).toFixed(2);
+        }
+
+        const era = ERAS[eraIdx];
+        if (inTransition && eraT / TRANSITION_DUR < 0.86) {
+          const prevIdx = (eraIdx + ERAS.length - 1) % ERAS.length;
+          const years = [1885, 1420, -2500, -66000000];
+          const y0 = years[prevIdx];
+          const y1 = years[eraIdx];
+          const u = eraT / (TRANSITION_DUR * 0.86);
+          const eased = u * u * (3 - 2 * u);
+          const interp =
+            Math.abs(y1 - y0) > 100000
+              ? Math.round(
+                  y0 +
+                    (y1 - y0) *
+                      (y1 < y0 ? Math.pow(eased, 2.2) : 1 - Math.pow(1 - eased, 2.2))
+                )
+              : Math.round(y0 + (y1 - y0) * eased);
+          let yearText: string;
+          if (interp > 0) yearText = `${interp} AD`;
+          else if (Math.abs(interp) >= 1000000) yearText = `${Math.max(1, Math.round(Math.abs(interp) / 1000000))}M BC`;
+          else if (Math.abs(interp) >= 10000) yearText = `${Math.round(Math.abs(interp) / 1000)}K BC`;
+          else yearText = `${Math.max(1, Math.abs(interp))} BC`;
+
+          if (hudYearEl && hudYearEl.textContent !== yearText) hudYearEl.textContent = yearText;
+          if (hudTitleEl && hudTitleEl.textContent !== era.title) hudTitleEl.textContent = era.title;
+          const shiftDesc = `Shifting from ${ERAS[prevIdx].year}`;
+          if (hudDescEl && hudDescEl.textContent !== shiftDesc) hudDescEl.textContent = shiftDesc;
+        } else {
+          if (hudYearEl && hudYearEl.textContent !== era.year) hudYearEl.textContent = era.year;
+          if (hudTitleEl && hudTitleEl.textContent !== era.title) hudTitleEl.textContent = era.title;
+          if (hudDescEl && hudDescEl.textContent !== era.desc) hudDescEl.textContent = era.desc;
+        }
       }
     }
     if (wasRewindActive && !active && historyVisible) {
@@ -7314,13 +7343,13 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const targetAlpha = active ? 1 : 0;
     rewindAlpha += (targetAlpha - rewindAlpha) * Math.min(1, dt * (active ? 4.2 : 2.5));
 
-    const currentEraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
-    const currentEraT = journeyTime % ERA_DURATION;
+    const effectiveJourneyTime = Math.min(journeyTime, TOTAL_CYCLE_DURATION - 0.001);
+    const currentEraIdx = Math.floor(effectiveJourneyTime / ERA_DURATION) % ERAS.length;
+    const currentEraT = effectiveJourneyTime % ERA_DURATION;
     updateEraEmitters(dt, currentEraIdx, currentEraT, active && introRemaining <= 0.15);
 
     ctx.clearRect(0, 0, width, height);
 
-    const TRANSITION_DUR = 2.0;
     const isSwitchingEra =
       active && introRemaining <= 0.15 && journeyTime >= ERA_DURATION && currentEraT < TRANSITION_DUR;
     const transitionNorm = isSwitchingEra ? currentEraT / TRANSITION_DUR : 0;
@@ -7538,8 +7567,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
       triggerHistoryCardsRewind();
     } else {
       introRemaining = 0;
-      hudEl.classList.remove('is-visible');
-      eraBadgeEl.classList.remove('is-visible');
+      hudEl.classList.remove('is-visible', 'is-rewinding');
     }
     ensureRunning();
   });
@@ -7557,6 +7585,550 @@ export function createHistoryRewindOverlay(): HTMLElement {
       });
       obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
       if (isRewindActive()) ensureRunning();
+    });
+  }
+
+  return canvas;
+}
+
+/**
+ * Synthesizes crisp mechanical brass clockwork escapement & ratchet clicks.
+ */
+function playClockworkMechanismSound(isEngage: boolean): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx) return;
+
+    const triggerTicks = () => {
+      if (ctx.state !== 'running') return;
+      const now = ctx.currentTime;
+      const steps = isEngage
+        ? [
+            { delay: 0, freq: 1920, dur: 0.045, peak: 0.028 },
+            { delay: 0.045, freq: 2480, dur: 0.045, peak: 0.026 },
+            { delay: 0.09, freq: 3120, dur: 0.065, peak: 0.024 },
+            { delay: 0.145, freq: 1480, dur: 0.18, peak: 0.018 },
+          ]
+        : [
+            { delay: 0, freq: 2240, dur: 0.045, peak: 0.024 },
+            { delay: 0.055, freq: 1420, dur: 0.09, peak: 0.02 },
+          ];
+
+      for (const s of steps) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = s.dur > 0.12 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(s.freq, now + s.delay);
+        osc.frequency.exponentialRampToValueAtTime(s.freq * 0.86, now + s.delay + s.dur);
+        gain.gain.setValueAtTime(0.0001, now + s.delay);
+        gain.gain.linearRampToValueAtTime(s.peak, now + s.delay + 0.0025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + s.delay + s.dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + s.delay);
+        osc.stop(now + s.delay + s.dur + 0.015);
+      }
+    };
+
+    if (ctx.state === 'running') {
+      triggerTicks();
+    } else if (ctx.state === 'suspended') {
+      void ctx.resume().then(triggerTicks).catch(() => {});
+    }
+  } catch {
+    // Ignore audio errors cleanly
+  }
+}
+
+let sharedWorkshopOpen = false;
+
+/**
+ * Generates an SVG spur gear path centered at (cx, cy) with involute-style teeth
+ * and pierced interior watchmaker spokes.
+ */
+function buildHorologicalGearPath(
+  cx: number,
+  cy: number,
+  rOuter: number,
+  rRoot: number,
+  teeth: number,
+): string {
+  const step = (Math.PI * 2) / teeth;
+  const parts: string[] = [];
+  for (let i = 0; i < teeth; i += 1) {
+    const a0 = i * step;
+    const a1 = a0 + step * 0.22;
+    const a2 = a0 + step * 0.34;
+    const a3 = a0 + step * 0.66;
+    const a4 = a0 + step * 0.78;
+    const p = (r: number, a: number) => `${(cx + Math.cos(a) * r).toFixed(2)} ${(cy + Math.sin(a) * r).toFixed(2)}`;
+    parts.push(`${i === 0 ? 'M' : 'L'}${p(rRoot, a0)} L${p(rRoot, a1)} L${p(rOuter, a2)} L${p(rOuter, a3)} L${p(rRoot, a4)}`);
+  }
+  return `${parts.join(' ')} Z`;
+}
+
+/**
+ * Meshed Brass Clockwork Escapement beside the Settings heading.
+ * - Hover gives the geared wheels crisp horological torque.
+ * - Click toggles Blueprint Drafting Mode (.gd-settings-blueprint-on) with meshed
+ *   opposing gear ratios and ticking anchor escapement motion.
+ */
+export function createSettingsClockworkProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `gd-prop-btn gd-prop-settings-clockwork${sharedWorkshopOpen ? ' is-open' : ''}`;
+  btn.setAttribute('aria-label', 'Toggle Settings Blueprint Drafting Mode');
+  btn.setAttribute('aria-pressed', sharedWorkshopOpen ? 'true' : 'false');
+  btn.title = sharedWorkshopOpen
+    ? 'Click to exit Blueprint Drafting Mode'
+    : 'Click to engage Clockwork Blueprint Drafting Mode';
+  btn.tabIndex = -1;
+
+  const mainGearPath = buildHorologicalGearPath(35, 55, 17.5, 14.1, 14);
+  const pinionGearPath = buildHorologicalGearPath(54.5, 40.5, 10.6, 8.1, 10);
+  const crownGearPath = buildHorologicalGearPath(19.5, 36.5, 9.6, 7.3, 9);
+
+  const buildSpokes = (cx: number, cy: number, rIn: number, rOut: number, count: number) =>
+    Array.from({ length: count }, (_, idx) => {
+      const a = (idx * Math.PI * 2) / count;
+      return `<line x1="${(cx + Math.cos(a) * rIn).toFixed(2)}" y1="${(cy + Math.sin(a) * rIn).toFixed(2)}" x2="${(cx + Math.cos(a) * rOut).toFixed(2)}" y2="${(cy + Math.sin(a) * rOut).toFixed(2)}" stroke="#6A4712" stroke-width="1.5" stroke-linecap="round"/>`;
+    }).join('');
+
+  btn.innerHTML = `
+    <span class="gd-clockwork-note" aria-hidden="true">${sharedWorkshopOpen ? 'Exit blueprint' : 'Drafting mode'}</span>
+    <span class="gd-clockwork-aura" aria-hidden="true"></span>
+    <span class="gd-clockwork-motes" aria-hidden="true">
+      <span class="gd-clockwork-mote gd-clockwork-mote-1"></span>
+      <span class="gd-clockwork-mote gd-clockwork-mote-2"></span>
+      <span class="gd-clockwork-mote gd-clockwork-mote-3"></span>
+    </span>
+    <svg class="gd-prop-svg" width="76" height="92" viewBox="0 0 76 92" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-cw-brass" x1="8%" y1="6%" x2="92%" y2="94%">
+          <stop offset="0%" stop-color="#FFF0AD"/>
+          <stop offset="32%" stop-color="#DFAB4B"/>
+          <stop offset="72%" stop-color="#9A681B"/>
+          <stop offset="100%" stop-color="#53350B"/>
+        </linearGradient>
+        <linearGradient id="gd-cw-steel" x1="10%" y1="10%" x2="90%" y2="90%">
+          <stop offset="0%" stop-color="#8CB2D4"/>
+          <stop offset="45%" stop-color="#456A8F"/>
+          <stop offset="100%" stop-color="#22374D"/>
+        </linearGradient>
+        <linearGradient id="gd-cw-copper" x1="15%" y1="10%" x2="85%" y2="90%">
+          <stop offset="0%" stop-color="#F6CE8F"/>
+          <stop offset="50%" stop-color="#BA7A3B"/>
+          <stop offset="100%" stop-color="#6B3D14"/>
+        </linearGradient>
+        <radialGradient id="gd-cw-plate" cx="44%" cy="38%" r="68%">
+          <stop offset="0%" stop-color="#4A3923"/>
+          <stop offset="68%" stop-color="#2E2214"/>
+          <stop offset="100%" stop-color="#19120A"/>
+        </radialGradient>
+      </defs>
+
+      <!-- Resting floor shadow -->
+      <ellipse cx="38" cy="86" rx="22" ry="2.8" fill="rgba(26, 20, 12, 0.16)"/>
+
+      <!-- Top watchmaker suspension ring -->
+      <circle cx="38" cy="11" r="5.5" stroke="#4D320C" stroke-width="2.6" fill="none"/>
+      <circle cx="38" cy="11" r="5.5" stroke="url(#gd-cw-brass)" stroke-width="1.6" fill="none"/>
+      <rect x="35.2" y="15.5" width="5.6" height="4.8" rx="1" fill="url(#gd-cw-brass)" stroke="#4A300B" stroke-width="0.75"/>
+
+      <!-- Forged dark-bronze horological frame plate & brass corner rivets -->
+      <path d="M13 30 C13 21.5, 22 18.5, 38 18.5 C54 18.5, 63 21.5, 63 30 L64 62 C64 73.5, 53 80, 38 80 C23 80, 12 73.5, 12 62 Z" fill="url(#gd-cw-plate)" stroke="url(#gd-cw-brass)" stroke-width="1.4"/>
+      <path d="M16 32 C16 24.5, 24 21.5, 38 21.5 C52 21.5, 60 24.5, 60 32 L60.5 60.5 C60.5 70, 51 76.5, 38 76.5 C25 76.5, 15.5 70, 15.5 60.5 Z" fill="none" stroke="rgba(242, 204, 118, 0.28)" stroke-width="0.75"/>
+      <circle cx="20" cy="25.5" r="1.4" fill="#DFAB4B"/>
+      <circle cx="56" cy="25.5" r="1.4" fill="#DFAB4B"/>
+      <circle cx="19" cy="70.5" r="1.4" fill="#DFAB4B"/>
+      <circle cx="57" cy="70.5" r="1.4" fill="#DFAB4B"/>
+
+      <!-- Gear 3: Burnished Copper-Brass Winding Crown Wheel (9T, ratio +1.556x) -->
+      <g class="gd-cw-gear-crown" style="transform-origin: 19.5px 36.5px;">
+        <path d="${crownGearPath}" fill="url(#gd-cw-copper)" stroke="#47270A" stroke-width="0.75" stroke-linejoin="round"/>
+        <circle cx="19.5" cy="36.5" r="5.2" fill="#2A1E12" stroke="#D9A35E" stroke-width="0.7"/>
+        ${buildSpokes(19.5, 36.5, 1.5, 5.2, 4)}
+        <circle cx="19.5" cy="36.5" r="1.8" fill="#F2D084" stroke="#47270A" stroke-width="0.6"/>
+      </g>
+
+      <!-- Gear 2: Heat-Blued Steel Escape Pinion (10T, ratio -1.4x) -->
+      <g class="gd-cw-gear-pinion" style="transform-origin: 54.5px 40.5px;">
+        <path d="${pinionGearPath}" fill="url(#gd-cw-steel)" stroke="#162434" stroke-width="0.75" stroke-linejoin="round"/>
+        <circle cx="54.5" cy="40.5" r="5.9" fill="#1F2B38" stroke="#7EA4C8" stroke-width="0.7"/>
+        ${buildSpokes(54.5, 40.5, 1.8, 5.9, 4)}
+        <circle cx="54.5" cy="40.5" r="2.1" fill="#F2CE74" stroke="#452E0B" stroke-width="0.65"/>
+        <circle cx="54.5" cy="40.5" r="0.9" fill="#9E2424"/>
+      </g>
+
+      <!-- Gear 1: Main Great Brass Escape Wheel (14T, ratio 1.0x) -->
+      <g class="gd-cw-gear-main" style="transform-origin: 35px 55px;">
+        <path d="${mainGearPath}" fill="url(#gd-cw-brass)" stroke="#452D09" stroke-width="0.85" stroke-linejoin="round"/>
+        <circle cx="35" cy="55" r="11.2" fill="#22190F" stroke="rgba(255, 240, 176, 0.55)" stroke-width="0.8"/>
+        ${buildSpokes(35, 55, 3.2, 11.2, 5)}
+        <circle cx="35" cy="55" r="3.8" fill="url(#gd-cw-brass)" stroke="#452D09" stroke-width="0.75"/>
+        <circle cx="35" cy="55" r="1.65" fill="#A82424" stroke="#FFF2BA" stroke-width="0.45"/>
+      </g>
+
+      <!-- Pivoting Steel Anchor Escapement Lever -->
+      <g class="gd-cw-anchor" style="transform-origin: 38px 27px;">
+        <path d="M29 36 L36.4 26.2 L39.6 26.2 L47 36 L44.5 37.8 L38 29.5 L31.5 37.8 Z" fill="url(#gd-cw-steel)" stroke="#14202C" stroke-width="0.75" stroke-linejoin="round"/>
+        <circle cx="38" cy="27" r="2.2" fill="#F3D27E" stroke="#472E0A" stroke-width="0.65"/>
+      </g>
+    </svg>
+  `;
+
+  const mainGearEl = btn.querySelector('.gd-cw-gear-main') as SVGGElement | null;
+  const pinionGearEl = btn.querySelector('.gd-cw-gear-pinion') as SVGGElement | null;
+  const crownGearEl = btn.querySelector('.gd-cw-gear-crown') as SVGGElement | null;
+  const anchorEl = btn.querySelector('.gd-cw-anchor') as SVGGElement | null;
+  const noteEl = btn.querySelector('.gd-clockwork-note') as HTMLElement | null;
+
+  let mainAngle = 0;
+  let gearVel = 0;
+  let anchorPhase = 0;
+  let lastTs = 0;
+  let rafId: number | null = null;
+
+  const syncBlueprintClass = (open: boolean) => {
+    btn.classList.toggle('is-open', open);
+    btn.setAttribute('aria-pressed', open ? 'true' : 'false');
+    btn.title = open ? 'Click to exit Blueprint Drafting Mode' : 'Click to engage Clockwork Blueprint Drafting Mode';
+    if (noteEl) {
+      noteEl.textContent = open ? 'Exit blueprint' : 'Drafting mode';
+    }
+    if (typeof document !== 'undefined') {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      const viewEl = btn.closest('#view-settings');
+      if (appEl) {
+        const isSettingsMounted = Boolean(viewEl && document.contains(viewEl));
+        appEl.classList.toggle('gd-settings-blueprint-on', open && isSettingsMounted);
+      }
+    }
+  };
+
+  const applyTransforms = (anchorDeg = 0) => {
+    if (mainGearEl) mainGearEl.style.transform = `rotate(${mainAngle.toFixed(2)}deg)`;
+    if (pinionGearEl) pinionGearEl.style.transform = `rotate(${(-mainAngle * 1.4).toFixed(2)}deg)`;
+    if (crownGearEl) crownGearEl.style.transform = `rotate(${(mainAngle * 1.556).toFixed(2)}deg)`;
+    if (anchorEl) anchorEl.style.transform = `rotate(${anchorDeg.toFixed(2)}deg)`;
+  };
+
+  const step = (ts: number) => {
+    if (typeof document !== 'undefined' && !document.contains(btn)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+
+    const targetCruise = sharedWorkshopOpen ? 34 : 0;
+    gearVel += (targetCruise - gearVel) * Math.min(1, dt * (sharedWorkshopOpen ? 3.8 : 2.8));
+    mainAngle = (mainAngle + gearVel * dt) % 3600;
+
+    let anchorDeg = 0;
+    if (sharedWorkshopOpen || Math.abs(gearVel) > 1.5) {
+      anchorPhase += dt * (sharedWorkshopOpen ? 10.5 : 8.5);
+      const energy = sharedWorkshopOpen ? 1 : Math.min(1, Math.abs(gearVel) / 60);
+      anchorDeg = Math.sin(anchorPhase) * 8.5 * energy;
+    }
+
+    applyTransforms(anchorDeg);
+
+    if (sharedWorkshopOpen || Math.abs(gearVel) > 0.45) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      gearVel = 0;
+      applyTransforms(0);
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  applyTransforms(0);
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => syncBlueprintClass(sharedWorkshopOpen));
+    if (sharedWorkshopOpen) ensureRunning();
+  }
+
+  btn.addEventListener('mouseenter', () => {
+    gearVel += 72;
+    ensureRunning();
+  });
+
+  btn.addEventListener('click', () => {
+    sharedWorkshopOpen = !sharedWorkshopOpen;
+    gearVel += sharedWorkshopOpen ? 135 : -85;
+    playClockworkMechanismSound(sharedWorkshopOpen);
+    syncBlueprintClass(sharedWorkshopOpen);
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('gd-workshop-toggle', { detail: { open: sharedWorkshopOpen } }));
+    }
+    ensureRunning();
+  });
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const onSync = (ev: Event) => {
+      if (typeof document !== 'undefined' && !document.contains(btn)) {
+        window.removeEventListener('gd-workshop-toggle', onSync);
+        return;
+      }
+      const nextOpen = (ev as CustomEvent<{ open?: boolean }>).detail?.open;
+      if (typeof nextOpen === 'boolean' && nextOpen !== sharedWorkshopOpen) {
+        sharedWorkshopOpen = nextOpen;
+        syncBlueprintClass(sharedWorkshopOpen);
+        ensureRunning();
+      }
+    };
+    window.addEventListener('gd-workshop-toggle', onSync);
+  }
+
+  return btn;
+}
+
+/**
+ * Full-screen Horological Blueprint Drafting Mode overlay triggered when the Settings
+ * Clockwork Escapement engages (.gd-settings-blueprint-on).
+ * Draws architectural grid ticks, rotating brass/indigo compass schematics,
+ * live vernier pointer crosshairs, and ascending golden drafting motes behind Settings cards.
+ */
+export function createSettingsBlueprintOverlay(): HTMLElement {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'gd-settings-blueprint';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') {
+    return canvas;
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  const isBlueprintActive = () =>
+    Boolean(document.querySelector('.gd-dashboard-app.gd-settings-blueprint-on'));
+  const isSettingsVisible = () => {
+    const view = document.getElementById('view-settings');
+    return Boolean(view && view.classList.contains('active') && document.contains(view));
+  };
+
+  let width = 800;
+  let height = 600;
+  let overlayAlpha = 0;
+  let clock = 0;
+  let lastTs = 0;
+  let rafId: number | null = null;
+  let pointerX = -999;
+  let pointerY = -999;
+
+  const resize = () => {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    width = Math.max(320, window.innerWidth);
+    height = Math.max(320, window.innerHeight);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener(
+    'mousemove',
+    (e: MouseEvent) => {
+      if (!document.contains(canvas)) return;
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+    },
+    { passive: true },
+  );
+
+  const motes = Array.from({ length: 42 }, (_, i) => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vy: -(10 + Math.random() * 18),
+    driftAmp: 8 + Math.random() * 14,
+    phase: Math.random() * Math.PI * 2,
+    r: 1.0 + Math.random() * 1.6,
+    alpha: 0.25 + Math.random() * 0.4,
+    isIndigo: i % 3 === 0,
+  }));
+
+  const drawSchematicCompass = (cx: number, cy: number, radius: number, angle: number, a: number) => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.globalAlpha = a;
+
+    // Outer calibrated compass ring + minor/major degree ticks
+    ctx.strokeStyle = 'rgba(46, 74, 102, 0.52)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = 'rgba(138, 104, 46, 0.46)';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.82, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = 'rgba(46, 74, 102, 0.48)';
+    for (let i = 0; i < 36; i += 1) {
+      const ang = (i * Math.PI * 2) / 36;
+      const isMajor = i % 3 === 0;
+      const rIn = radius * (isMajor ? 0.90 : 0.95);
+      ctx.lineWidth = isMajor ? 1.15 : 0.7;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(ang) * rIn, Math.sin(ang) * rIn);
+      ctx.lineTo(Math.cos(ang) * radius, Math.sin(ang) * radius);
+      ctx.stroke();
+    }
+
+    // Precision drafting crosshair axes & tangent diagonal arcs
+    ctx.strokeStyle = 'rgba(138, 104, 46, 0.34)';
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 1.12, 0);
+    ctx.lineTo(radius * 1.12, 0);
+    ctx.moveTo(0, -radius * 1.12);
+    ctx.lineTo(0, radius * 1.12);
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
+  const step = (ts: number) => {
+    if (!document.contains(canvas)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.04, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+    clock += dt;
+
+    const active = isBlueprintActive() && isSettingsVisible();
+    const targetAlpha = active ? 1 : 0;
+    overlayAlpha += (targetAlpha - overlayAlpha) * Math.min(1, dt * (active ? 4.4 : 3.0));
+
+    ctx.clearRect(0, 0, width, height);
+
+    if (overlayAlpha > 0.01) {
+      // 1. Subtle architectural blueprint grid aligned behind cards
+      const gridStartX = 240;
+      const minorStep = 28;
+      const majorStep = minorStep * 4;
+
+      ctx.save();
+      ctx.globalAlpha = overlayAlpha;
+      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = 'rgba(48, 76, 102, 0.055)';
+      ctx.beginPath();
+      for (let x = gridStartX; x < width; x += minorStep) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+      }
+      for (let y = 0; y < height; y += minorStep) {
+        ctx.moveTo(gridStartX, y);
+        ctx.lineTo(width, y);
+      }
+      ctx.stroke();
+
+      ctx.lineWidth = 0.95;
+      ctx.strokeStyle = 'rgba(138, 104, 46, 0.095)';
+      ctx.beginPath();
+      for (let x = gridStartX; x < width; x += majorStep) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+      }
+      for (let y = 0; y < height; y += majorStep) {
+        ctx.moveTo(gridStartX, y);
+        ctx.lineTo(width, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // 2. Meshed architectural compass schematics rotating quietly in parchment sky
+      drawSchematicCompass(width * 0.36, height * 0.34, 128, clock * 0.14, overlayAlpha * 0.24);
+      drawSchematicCompass(width * 0.78, height * 0.68, 162, -clock * 0.1, overlayAlpha * 0.2);
+      drawSchematicCompass(width * 0.86, height * 0.24, 86, clock * 0.22, overlayAlpha * 0.22);
+
+      // 3. Subtle vernier caliper crosshair tracking cursor across workshop parchment
+      if (pointerX > 250 && pointerY > 0 && pointerX < width && pointerY < height) {
+        ctx.save();
+        ctx.globalAlpha = overlayAlpha * 0.22;
+        ctx.strokeStyle = 'rgba(48, 76, 102, 0.55)';
+        ctx.lineWidth = 0.75;
+        ctx.setLineDash([3, 6]);
+        ctx.beginPath();
+        ctx.moveTo(pointerX - 42, pointerY);
+        ctx.lineTo(pointerX + 42, pointerY);
+        ctx.moveTo(pointerX, pointerY - 42);
+        ctx.lineTo(pointerX, pointerY + 42);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(154, 114, 44, 0.65)';
+        ctx.beginPath();
+        ctx.arc(pointerX, pointerY, 14, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Ascending fine gold & blueprint-indigo motes
+      for (const m of motes) {
+        m.y += m.vy * dt;
+        const mx = m.x + Math.sin(clock * 1.15 + m.phase) * m.driftAmp;
+        if (m.y < -14) {
+          m.y = height + 14;
+          m.x = 240 + Math.random() * Math.max(200, width - 240);
+        }
+        const a = m.alpha * (0.65 + 0.35 * Math.sin(clock * 2.6 + m.phase)) * overlayAlpha;
+        if (a <= 0.01) continue;
+        ctx.fillStyle = m.isIndigo
+          ? `rgba(56, 92, 124, ${a.toFixed(2)})`
+          : `rgba(218, 168, 74, ${a.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(mx, m.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    if (active || overlayAlpha > 0.015) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      ctx.clearRect(0, 0, width, height);
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  window.addEventListener('gd-workshop-toggle', () => ensureRunning());
+
+  if (typeof MutationObserver === 'function') {
+    requestAnimationFrame(() => {
+      const appEl = document.querySelector('.gd-dashboard-app');
+      if (!appEl) return;
+      const obs = new MutationObserver(() => {
+        if (!document.contains(canvas)) {
+          obs.disconnect();
+          return;
+        }
+        if (isBlueprintActive()) ensureRunning();
+      });
+      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
+      if (isBlueprintActive()) ensureRunning();
     });
   }
 

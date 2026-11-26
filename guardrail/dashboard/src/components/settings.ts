@@ -18,6 +18,7 @@ import { renderRelationshipManagementSection } from './relationships.js';
 import { setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { formatWardDisplayName } from './overview.js';
+import { attachInteractiveHeadingSprings, createSettingsClockworkProp } from './interactive-props.js';
 import { PwaInstallManager } from './pwa-install-banner.js';
 
 export interface SettingsProps {
@@ -76,7 +77,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   // Header
   const header = document.createElement('header');
-  header.className = 'gd-section-header gd-overview-header-split';
+  header.className = 'gd-section-header gd-settings-header gd-overview-header-split';
 
   const titleGroup = document.createElement('div');
   titleGroup.className = 'gd-section-title-group';
@@ -85,6 +86,14 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   title.id = 'settings-title';
   title.className = 'gd-section-title';
   setAnimatedHeading(title, 'Settings');
+  attachInteractiveHeadingSprings(
+    title,
+    () =>
+      typeof document !== 'undefined' &&
+      Boolean(document.querySelector('.gd-dashboard-app.gd-settings-blueprint-on')),
+    undefined,
+    'tick',
+  );
 
   const subtitle = document.createElement('p');
   subtitle.className = 'gd-section-subtitle';
@@ -93,6 +102,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
+  header.appendChild(createSettingsClockworkProp());
   header.appendChild(titleGroup);
   header.appendChild(createMergedGreetingWidget());
   section.appendChild(header);
