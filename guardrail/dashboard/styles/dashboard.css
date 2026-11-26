@@ -24465,7 +24465,11 @@ body.gd-kbd-open .gd-m-shell {
   #view-history .gd-history-layout .gd-list-pane,
   #view-history .gd-history-layout .gd-detail-pane,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane,
-  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane {
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane,
+  #view-settings #gd-card-identity,
+  #view-settings #gd-card-push-notifications,
+  #view-settings #gd-connected-users-card,
+  #view-settings #gd-invitations-card {
     position: relative !important;
     margin: 0 !important;
     box-sizing: border-box !important;
@@ -24579,7 +24583,13 @@ body.gd-kbd-open .gd-m-shell {
   #view-history .gd-history-layout .gd-list-pane::before,
   #view-history .gd-history-layout .gd-detail-pane::before,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane::before,
-  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane::before {
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane::before,
+  #view-settings #gd-card-identity::before,
+  #view-settings #gd-card-push-notifications::before,
+  #view-settings #gd-connected-users-card::before,
+  #view-settings #gd-invitations-card::before,
+  .gd-wards-modal-card::before,
+  .gd-auth-modal-card::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -24589,12 +24599,12 @@ body.gd-kbd-open .gd-m-shell {
     border-radius: 3.5px;
     pointer-events: none;
     background:
-      radial-gradient(circle at 3.25px 3.25px, #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
-      radial-gradient(circle at calc(100% - 3.25px) 3.25px, #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
-      radial-gradient(circle at 3.25px calc(100% - 3.25px), #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
-      radial-gradient(circle at calc(100% - 3.25px) calc(100% - 3.25px), #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 150' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 150 L7 143 M320 150 L313 143' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M14 3 Q110 2 210 4 T308 3 M14 146 Q120 148 230 145 T306 147' stroke='%234E3824' stroke-width='0.9' fill='none' opacity='0.34'/%3E%3Cpath d='M3 20 Q4 75 2.5 128 M317 22 Q315.5 80 317.5 128' stroke='%234E3824' stroke-width='0.8' fill='none' opacity='0.3'/%3E%3Cpath d='M242 0 L239 5 L241 7' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.62'/%3E%3Cpath d='M54 150 L57 145 L55 143' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
-      linear-gradient(180deg, #A78A68 0%, #8E7253 52%, #765B3F 100%);
+      radial-gradient(circle at 3.25px 3.25px, var(--gd-nail-core, #2F2B26) 0 1.25px, var(--gd-nail-rim, rgba(235, 210, 172, 0.35)) 1.55px, transparent 2px),
+      radial-gradient(circle at calc(100% - 3.25px) 3.25px, var(--gd-nail-core, #2F2B26) 0 1.25px, var(--gd-nail-rim, rgba(235, 210, 172, 0.35)) 1.55px, transparent 2px),
+      radial-gradient(circle at 3.25px calc(100% - 3.25px), var(--gd-nail-core, #2F2B26) 0 1.25px, var(--gd-nail-rim, rgba(235, 210, 172, 0.35)) 1.55px, transparent 2px),
+      radial-gradient(circle at calc(100% - 3.25px) calc(100% - 3.25px), var(--gd-nail-core, #2F2B26) 0 1.25px, var(--gd-nail-rim, rgba(235, 210, 172, 0.35)) 1.55px, transparent 2px),
+      var(--gd-wood-grain, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 150' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 150 L7 143 M320 150 L313 143' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M14 3 Q110 2 210 4 T308 3 M14 146 Q120 148 230 145 T306 147' stroke='%234E3824' stroke-width='0.9' fill='none' opacity='0.34'/%3E%3Cpath d='M3 20 Q4 75 2.5 128 M317 22 Q315.5 80 317.5 128' stroke='%234E3824' stroke-width='0.8' fill='none' opacity='0.3'/%3E%3Cpath d='M242 0 L239 5 L241 7' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.62'/%3E%3Cpath d='M54 150 L57 145 L55 143' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.62'/%3E%3C/svg%3E")) center / 100% 100% no-repeat,
+      linear-gradient(180deg, var(--gd-wood-top, #A78A68) 0%, var(--gd-wood-mid, #8E7253) 52%, var(--gd-wood-bot, #765B3F) 100%);
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -24612,7 +24622,13 @@ body.gd-kbd-open .gd-m-shell {
   #view-history .gd-history-layout .gd-list-pane::after,
   #view-history .gd-history-layout .gd-detail-pane::after,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane::after,
-  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane::after {
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane::after,
+  #view-settings #gd-card-identity::after,
+  #view-settings #gd-card-push-notifications::after,
+  #view-settings #gd-connected-users-card::after,
+  #view-settings #gd-invitations-card::after,
+  .gd-wards-modal-card::after,
+  .gd-auth-modal-card::after {
     content: '';
     position: absolute;
     inset: 6.5px;
@@ -24631,9 +24647,85 @@ body.gd-kbd-open .gd-m-shell {
   #view-history .gd-history-layout .gd-list-pane > *,
   #view-history .gd-history-layout .gd-detail-pane > *,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane > *,
-  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane > * {
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane > *,
+  #view-settings #gd-card-identity > *,
+  #view-settings #gd-card-push-notifications > *,
+  #view-settings #gd-connected-users-card > *,
+  #view-settings #gd-invitations-card > *,
+  .gd-wards-modal-card > *,
+  .gd-auth-modal-card > * {
     position: relative;
     z-index: 1;
+  }
+
+  /* Weathered wooden plank frames + frosted cream interior on desktop popups */
+  .gd-wards-modal-card,
+  .gd-auth-modal-card {
+    border-radius: 6px !important;
+    border: 1.5px solid #362617 !important;
+    border-bottom-width: 3px !important;
+    background: rgba(242, 236, 222, 0.9) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    backdrop-filter: blur(18px) !important;
+    box-shadow:
+      0 32px 72px -12px rgba(20, 15, 9, 0.56),
+      0 8px 20px rgba(20, 15, 9, 0.24) !important;
+  }
+
+  .gd-auth-modal-card {
+    padding: 38px 30px 32px !important;
+  }
+
+  .gd-auth-modal-close-btn {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+    z-index: 4 !important;
+  }
+
+  #view-settings #gd-card-identity,
+  #view-settings #gd-card-push-notifications,
+  #view-settings #gd-connected-users-card,
+  #view-settings #gd-invitations-card {
+    padding: 26px 30px !important;
+    margin-bottom: 36px !important;
+  }
+
+  #view-settings #gd-invitations-card {
+    overflow: visible !important;
+    z-index: 6;
+  }
+
+  #view-settings #gd-connected-users-card .gd-relationship-item {
+    border-bottom: 1px dashed rgba(92, 66, 40, 0.22) !important;
+  }
+
+  #view-settings #gd-connected-users-card .gd-relationship-item:last-child {
+    border-bottom: none !important;
+  }
+
+  #view-settings #gd-card-identity .gd-settings-card-header,
+  #view-settings #gd-card-push-notifications .gd-settings-card-header,
+  #view-settings #gd-connected-users-card .gd-settings-card-header,
+  #view-settings #gd-invitations-card .gd-settings-card-header {
+    margin-bottom: 18px !important;
+  }
+
+  #view-settings #gd-card-identity .gd-settings-grid {
+    margin-bottom: 0 !important;
+  }
+
+  #view-settings #gd-card-push-notifications .gd-settings-grid {
+    margin-bottom: 18px !important;
+  }
+
+  #view-settings.gd-view-initial-enter #gd-card-identity {
+    animation: gd-wood-frame-build 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both !important;
+  }
+
+  #view-settings.gd-view-initial-enter #gd-card-identity::before,
+  #view-settings.gd-view-initial-enter #gd-card-identity::after {
+    animation: gd-wood-rim-draw 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both !important;
   }
 
   #view-history .gd-history-layout,
@@ -24955,35 +25047,73 @@ body.gd-kbd-open .gd-m-shell {
     color: #5E6B53 !important;
   }
 
-  #view-history .gd-select-menu,
-  #view-pending .gd-select-menu {
+  .gd-select-menu {
     top: calc(100% + 6px) !important;
     min-width: 100% !important;
-    background: rgba(31, 40, 27, 0.96) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    backdrop-filter: blur(16px) !important;
-    border: 1px solid rgba(217, 164, 78, 0.22) !important;
-    border-radius: 12px !important;
-    padding: 5px !important;
+    background: rgba(31, 40, 27, 0.94) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    backdrop-filter: blur(14px) !important;
+    border: 1.5px solid #362617 !important;
+    border-bottom-width: 3px !important;
+    border-radius: 5px !important;
+    padding: 10px !important;
     box-shadow:
-      0 14px 32px rgba(22, 29, 19, 0.28),
-      inset 0 1px 0 rgba(255, 244, 214, 0.08) !important;
+      0 14px 30px -4px rgba(24, 18, 10, 0.36),
+      0 4px 10px rgba(24, 18, 10, 0.18) !important;
   }
 
-  #view-history .gd-select-option,
-  #view-pending .gd-select-option {
-    border-radius: 8px;
-    padding: 8px 11px;
+  .gd-select-menu::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 5px;
+    box-sizing: border-box;
+    z-index: 2;
+    border-radius: 3.5px;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 2.5px 2.5px, #C99A49 0 1.05px, rgba(54, 38, 23, 0.72) 1.35px, transparent 1.8px),
+      radial-gradient(circle at calc(100% - 2.5px) 2.5px, #C99A49 0 1.05px, rgba(54, 38, 23, 0.72) 1.35px, transparent 1.8px),
+      radial-gradient(circle at 2.5px calc(100% - 2.5px), #C99A49 0 1.05px, rgba(54, 38, 23, 0.72) 1.35px, transparent 1.8px),
+      radial-gradient(circle at calc(100% - 2.5px) calc(100% - 2.5px), #C99A49 0 1.05px, rgba(54, 38, 23, 0.72) 1.35px, transparent 1.8px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L5 5 M180 0 L175 5 M0 180 L5 175 M180 180 L175 175' stroke='%232D2014' stroke-width='1.2' opacity='0.65'/%3E%3Cpath d='M12 2.5 Q90 3.5 168 2 M12 177.5 Q90 176.5 168 178' stroke='%233E2C1B' stroke-width='0.85' fill='none' opacity='0.42'/%3E%3Cpath d='M2.5 18 Q3.5 90 2 162 M177.5 18 Q176.5 90 178 162' stroke='%233E2C1B' stroke-width='0.8' fill='none' opacity='0.36'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+      linear-gradient(180deg, #8E7052 0%, #72573C 52%, #5B422B 100%);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
   }
 
-  #view-history .gd-select-option:hover,
-  #view-pending .gd-select-option:hover {
+  .gd-select-menu::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    z-index: 2;
+    border-radius: 2px;
+    border: 1px solid rgba(48, 33, 19, 0.65);
+    box-shadow:
+      inset 0 1px 3px rgba(18, 12, 6, 0.28),
+      0 1px 0 rgba(212, 185, 149, 0.25);
+    pointer-events: none;
+  }
+
+  .gd-select-option {
+    position: relative;
+    z-index: 1;
+    border-radius: 4px;
+    padding: 7px 10px;
+  }
+
+  .gd-select-option:hover {
     background-color: rgba(217, 164, 78, 0.14) !important;
     color: #FAF4E6 !important;
   }
 
-  #view-history .gd-select-option.selected,
-  #view-pending .gd-select-option.selected {
+  .gd-select-option.selected {
     background-color: rgba(217, 164, 78, 0.22) !important;
     color: #FAF4E6 !important;
   }
@@ -24993,5 +25123,134 @@ body.gd-kbd-open .gd-m-shell {
     flex: 1 0 100% !important;
     margin-top: 2px !important;
     padding: 6px 4px 0 !important;
+  }
+
+  /* Distinct wood species, corner hardware & grain personalities per frame */
+  .gd-overview-grid .gd-metric-card:nth-child(1) {
+    --gd-wood-top: #B1936E;
+    --gd-wood-mid: #967855;
+    --gd-wood-bot: #7B5E3F;
+    --gd-nail-core: #C99A49;
+    --gd-nail-rim: rgba(54, 38, 23, 0.72);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 150' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 150 L7 143 M320 150 L313 143' stroke='%233B2A1A' stroke-width='1.3' opacity='0.58'/%3E%3Cpath d='M16 2.5 Q95 4 195 2 T304 3.5 M16 147 Q130 145 240 147.5 T306 146' stroke='%23594028' stroke-width='0.9' fill='none' opacity='0.36'/%3E%3Cpath d='M258 0 L254 5 L256 7' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  .gd-overview-grid .gd-metric-card:nth-child(2) {
+    --gd-wood-top: #AE987E;
+    --gd-wood-mid: #947D63;
+    --gd-wood-bot: #7A634A;
+    --gd-nail-core: #272420;
+    --gd-nail-rim: rgba(242, 224, 194, 0.4);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 150' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 150 L7 143 M320 150 L313 143' stroke='%233D3124' stroke-width='1.2' opacity='0.55'/%3E%3Cpath d='M18 3.5 Q120 1.5 210 4.5 T304 2.5 M18 146 Q105 148 190 145.5 T304 147' stroke='%23564533' stroke-width='0.85' fill='none' opacity='0.32'/%3E%3Cpath d='M3 22 Q4.5 75 2 128 M317 20 Q315.5 75 318 128' stroke='%23564533' stroke-width='0.8' fill='none' opacity='0.28'/%3E%3Cpath d='M262 150 L265 145 L263 143' stroke='%23292017' stroke-width='1.2' fill='none' opacity='0.58'/%3E%3C/svg%3E");
+  }
+
+  .gd-overview-grid .gd-metric-card:nth-child(3) {
+    --gd-wood-top: #967959;
+    --gd-wood-mid: #7D6043;
+    --gd-wood-bot: #64492F;
+    --gd-nail-core: #B58749;
+    --gd-nail-rim: rgba(34, 24, 14, 0.78);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 150' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 150 L7 143 M320 150 L313 143' stroke='%23281B0F' stroke-width='1.35' opacity='0.68'/%3E%3Cpath d='M14 2.5 L306 2.5 M14 147.5 L306 147.5' stroke='%233A2716' stroke-width='0.95' fill='none' opacity='0.4'/%3E%3Cpath d='M68 0 L71 5 L69 7' stroke='%231E140B' stroke-width='1.2' fill='none' opacity='0.64'/%3E%3C/svg%3E");
+  }
+
+  #view-overview .gd-recent-activity-list {
+    --gd-wood-top: #A98B68;
+    --gd-wood-mid: #8F7251;
+    --gd-wood-bot: #75593B;
+    --gd-nail-core: #2B2621;
+    --gd-nail-rim: rgba(235, 210, 172, 0.36);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 260' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 260 L7 253 M420 260 L413 253' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M16 2.5 Q140 1.5 270 3.5 T404 2.5 M16 257.5 Q160 259 290 256.5 T404 257.5' stroke='%234E3824' stroke-width='0.9' fill='none' opacity='0.36'/%3E%3Cpath d='M118 260 L121 255 L119 253 M310 0 L307 4.5' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.58'/%3E%3C/svg%3E");
+  }
+
+  #view-overview .gd-overview-col-secondary {
+    --gd-wood-top: #A48361;
+    --gd-wood-mid: #8B6C4C;
+    --gd-wood-bot: #715437;
+    --gd-nail-core: #C79647;
+    --gd-nail-rim: rgba(48, 33, 19, 0.72);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 420' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 420 L7 413 M320 420 L313 413' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M2.5 22 Q4 140 2 260 T3 398 M317.5 24 Q316 160 318 280 T317 396' stroke='%234E3824' stroke-width='0.95' fill='none' opacity='0.38'/%3E%3Cpath d='M0 142 L5 145 L7 143 M320 278 L315 275 L313 277' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  #view-history .gd-history-layout .gd-list-pane,
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane {
+    --gd-wood-top: #A28260;
+    --gd-wood-mid: #886949;
+    --gd-wood-bot: #6E5135;
+    --gd-nail-core: #2D2823;
+    --gd-nail-rim: rgba(235, 210, 172, 0.35);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 360' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 360 L7 353 M320 360 L313 353' stroke='%23352415' stroke-width='1.3' opacity='0.62'/%3E%3Cpath d='M2.5 18 Q4 120 2 230 T3 340 M317.5 20 Q315.5 130 318 240 T317 340' stroke='%234B3420' stroke-width='0.9' fill='none' opacity='0.36'/%3E%3Cpath d='M162 0 L159 5 L161 7' stroke='%23281B0F' stroke-width='1.2' fill='none' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  #view-history .gd-history-layout .gd-detail-pane,
+  #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane {
+    --gd-wood-top: #AE916F;
+    --gd-wood-mid: #957857;
+    --gd-wood-bot: #7B5F41;
+    --gd-nail-core: #C79647;
+    --gd-nail-rim: rgba(54, 38, 23, 0.72);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 320' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 320 L7 313 M420 320 L413 313' stroke='%233B2A1A' stroke-width='1.3' opacity='0.58'/%3E%3Cpath d='M18 3 Q150 2 280 4 T404 3 M18 317 Q140 318.5 270 316.5 T404 317' stroke='%23563E26' stroke-width='0.85' fill='none' opacity='0.34'/%3E%3Cpath d='M338 320 L341 315 L339 313' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.56'/%3E%3C/svg%3E");
+  }
+
+  #view-settings #gd-card-identity {
+    --gd-wood-top: #9B7E5E;
+    --gd-wood-mid: #826648;
+    --gd-wood-bot: #694F34;
+    --gd-nail-core: #C99A49;
+    --gd-nail-rim: rgba(42, 29, 17, 0.75);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 140' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 140 L7 133 M420 140 L413 133' stroke='%232F2012' stroke-width='1.3' opacity='0.64'/%3E%3Cpath d='M16 2.5 L404 2.5 M16 137.5 L404 137.5' stroke='%23442F1C' stroke-width='0.9' fill='none' opacity='0.38'/%3E%3C/svg%3E");
+  }
+
+  #view-settings #gd-connected-users-card {
+    --gd-wood-top: #AD8F6B;
+    --gd-wood-mid: #947654;
+    --gd-wood-bot: #7A5E3E;
+    --gd-nail-core: #2F2B26;
+    --gd-nail-rim: rgba(235, 210, 172, 0.38);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 220 L7 213 M420 220 L413 213' stroke='%233B2A1A' stroke-width='1.3' opacity='0.58'/%3E%3Cpath d='M18 3 Q150 4.5 290 2 T404 3.5 M420 92 L415 95 L413 93' stroke='%23523B24' stroke-width='1' fill='none' opacity='0.44'/%3E%3C/svg%3E");
+  }
+
+  #view-settings #gd-invitations-card {
+    --gd-wood-top: #AE8A64;
+    --gd-wood-mid: #94714D;
+    --gd-wood-bot: #795838;
+    --gd-nail-core: #C79647;
+    --gd-nail-rim: rgba(54, 38, 23, 0.72);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 220' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 220 L7 213 M420 220 L413 213' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M16 217 Q140 218.5 280 216 T404 217 M84 220 L87 215 L85 213' stroke='%234E3824' stroke-width='1' fill='none' opacity='0.46'/%3E%3C/svg%3E");
+  }
+
+  #view-settings #gd-card-push-notifications {
+    --gd-wood-top: #9D8467;
+    --gd-wood-mid: #846B4F;
+    --gd-wood-bot: #6B543B;
+    --gd-nail-core: #272420;
+    --gd-nail-rim: rgba(235, 210, 172, 0.35);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 180' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M420 0 L413 7 M0 180 L7 173 M420 180 L413 173' stroke='%23352617' stroke-width='1.3' opacity='0.62'/%3E%3Cpath d='M140 0 L137 5 L139 7 M295 0 L292 4.5' stroke='%23291E13' stroke-width='1.2' fill='none' opacity='0.58'/%3E%3C/svg%3E");
+  }
+
+  .gd-wards-modal-card:not(.gd-pending-modal-card) {
+    --gd-wood-top: #AD8F6B;
+    --gd-wood-mid: #947654;
+    --gd-wood-bot: #7A5E3E;
+    --gd-nail-core: #C99A49;
+    --gd-nail-rim: rgba(54, 38, 23, 0.72);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 280' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M360 0 L353 7 M0 280 L7 273 M360 280 L353 273' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M16 3 Q140 2 260 4 T344 3 M292 0 L289 5 L291 7' stroke='%234E3824' stroke-width='0.95' fill='none' opacity='0.44'/%3E%3C/svg%3E");
+  }
+
+  .gd-pending-modal-card {
+    --gd-wood-top: #967959;
+    --gd-wood-mid: #7D6043;
+    --gd-wood-bot: #64492F;
+    --gd-nail-core: #272420;
+    --gd-nail-rim: rgba(235, 210, 172, 0.36);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 280' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M360 0 L353 7 M0 280 L7 273 M360 280 L353 273' stroke='%232A1E12' stroke-width='1.3' opacity='0.64'/%3E%3Cpath d='M0 86 L5 89 L7 87 M360 198 L355 195 L353 197' stroke='%2323180E' stroke-width='1.2' fill='none' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  .gd-auth-modal-card {
+    --gd-wood-top: #AE916F;
+    --gd-wood-mid: #957857;
+    --gd-wood-bot: #7B5F41;
+    --gd-nail-core: #C79647;
+    --gd-nail-rim: rgba(54, 38, 23, 0.72);
+    --gd-wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 280' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M260 0 L253 7 M0 280 L7 273 M260 280 L253 273' stroke='%233B2A1A' stroke-width='1.3' opacity='0.58'/%3E%3Cpath d='M16 2.5 L244 2.5 M16 277.5 L244 277.5' stroke='%23563E26' stroke-width='0.85' fill='none' opacity='0.36'/%3E%3C/svg%3E");
   }
 }
