@@ -23,7 +23,7 @@ import {
   createApprovalsMailboxProp,
   createHeaderLanternProp,
   createPottedPlantProp,
-  createWardSpyglassProp,
+  createWardKeyRackProp,
   createWoodBoardBellProp,
 } from './interactive-props.js';
 import { showConnectWardModal } from './connect-modal.js';
@@ -380,7 +380,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValueRow);
   wardCard.appendChild(wardDesc);
-  wardCard.appendChild(createWardSpyglassProp(wardsList.map((w) => w.name)));
+  wardCard.appendChild(createWardKeyRackProp(wardsList.map((w) => w.name)));
   grid.appendChild(wardCard);
 
   // Metric 2: Pending Actions (Interactive — opens Pending Approvals popup)

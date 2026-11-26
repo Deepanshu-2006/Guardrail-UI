@@ -1274,9 +1274,9 @@ export function createWoodBoardBellProp(): HTMLElement {
 }
 
 /**
- * Synthesizes a subtle brass telescope click when telescoping the spyglass.
+ * Synthesizes a warm, delicate metallic key-ring clink using Web Audio.
  */
-function playSpyglassClick(): void {
+function playBrassKeysClink(): void {
   try {
     if (typeof window === 'undefined') return;
     const AudioCtx =
@@ -1286,230 +1286,301 @@ function playSpyglassClick(): void {
     if (!sharedBirdAudioCtx) sharedBirdAudioCtx = new AudioCtx();
     if (sharedBirdAudioCtx.state === 'suspended') void sharedBirdAudioCtx.resume();
     const now = sharedBirdAudioCtx.currentTime;
-    const osc = sharedBirdAudioCtx.createOscillator();
-    const gain = sharedBirdAudioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(620, now);
-    osc.frequency.exponentialRampToValueAtTime(190, now + 0.055);
-    gain.gain.setValueAtTime(0.032, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-    osc.connect(gain);
-    gain.connect(sharedBirdAudioCtx.destination);
-    osc.start(now);
-    osc.stop(now + 0.065);
+
+    // Two gentle overlapping high metallic key clinks
+    const hits = [
+      { delay: 0, freq: 2180, dur: 0.14, peak: 0.022 },
+      { delay: 0.032, freq: 3120, dur: 0.11, peak: 0.016 },
+      { delay: 0.095, freq: 2640, dur: 0.12, peak: 0.012 },
+    ];
+    hits.forEach(({ delay, freq, dur, peak }) => {
+      if (!sharedBirdAudioCtx) return;
+      const osc = sharedBirdAudioCtx.createOscillator();
+      const gain = sharedBirdAudioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + delay);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.94, now + delay + dur);
+      gain.gain.setValueAtTime(0.0001, now + delay);
+      gain.gain.linearRampToValueAtTime(peak, now + delay + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
+      osc.connect(gain);
+      gain.connect(sharedBirdAudioCtx.destination);
+      osc.start(now + delay);
+      osc.stop(now + delay + dur + 0.01);
+    });
   } catch {
     // Ignore audio errors cleanly
   }
 }
 
 /**
- * Brass Spyglass & Loupe resting on top of the 01 / Wards frame.
- * Catches warm golden glints when lantern is lit; clicking extends & aims
- * the barrel down onto the card, spotlights the ward names, and cycles
- * through each connected ward in a brass viewfinder readout.
+ * Miniature Carved Oak & Brass Keyhook Rack perched atop the 01 / Wards frame.
+ * Holds an antique brass skeleton key per connected ward (up to 4 visible keys).
+ * Hovering gently rustles the keys; clicking swings & clinks a key like a pendulum,
+ * shows a tiny warm parchment key tag, and highlights that ward's name inside the card.
  */
-export function createWardSpyglassProp(wardNames: string[] = []): HTMLElement {
-  const spyBtn = document.createElement('button');
-  spyBtn.type = 'button';
-  spyBtn.className = 'gd-prop-btn gd-prop-ward-spyglass';
-  spyBtn.setAttribute('aria-label', 'Inspect connected wards with brass spyglass');
-  spyBtn.title = 'Click to scout each connected ward';
-  spyBtn.tabIndex = -1;
-  spyBtn.innerHTML = `
-    <span class="gd-spyglass-viewfinder" aria-hidden="true"></span>
-    <svg class="gd-prop-svg gd-spyglass-svg" width="88" height="44" viewBox="0 0 88 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+export function createWardKeyRackProp(wardNames: string[] = []): HTMLElement {
+  const rackBtn = document.createElement('button');
+  rackBtn.type = 'button';
+  rackBtn.className = 'gd-prop-btn gd-prop-ward-keyrack';
+  rackBtn.setAttribute(
+    'aria-label',
+    wardNames.length > 0
+      ? `Inspect hanging brass ward keys (${wardNames.length} connected)`
+      : 'Inspect brass ward key rack'
+  );
+  rackBtn.title = wardNames.length > 0 ? 'Click a key to cycle connected wards' : 'Waiting for first ward key';
+  rackBtn.tabIndex = -1;
+
+  const visibleCount = wardNames.length > 0 ? Math.min(4, wardNames.length) : 1;
+  const xLayoutMap: Record<number, number[]> = {
+    1: [47],
+    2: [36, 58],
+    3: [29, 47, 65],
+    4: [24, 39.5, 54.5, 70],
+  };
+  const keyPositions = xLayoutMap[visibleCount] ?? [47];
+  const isEmptyRack = wardNames.length === 0;
+
+  const buildBowPath = (cx: number, variant: number): string => {
+    switch (variant % 4) {
+      case 0:
+        // Classic quatrefoil/trefoil bow
+        return `
+          <circle cx="${cx}" cy="16.4" r="3.4" fill="none" stroke="url(#gd-kr-brass-${variant % 3})" stroke-width="1.75"/>
+          <circle cx="${cx - 1.8}" cy="16.4" r="1.4" fill="none" stroke="#442B08" stroke-width="0.55" opacity="0.55"/>
+          <circle cx="${cx + 1.8}" cy="16.4" r="1.4" fill="none" stroke="#442B08" stroke-width="0.55" opacity="0.55"/>
+          <circle cx="${cx}" cy="16.4" r="3.4" fill="none" stroke="#362006" stroke-width="0.65"/>
+        `;
+      case 1:
+        // Oval filigree bow
+        return `
+          <ellipse cx="${cx}" cy="16.5" rx="3.1" ry="3.9" fill="none" stroke="url(#gd-kr-brass-${variant % 3})" stroke-width="1.8"/>
+          <ellipse cx="${cx}" cy="16.5" rx="3.1" ry="3.9" fill="none" stroke="#362006" stroke-width="0.65"/>
+        `;
+      case 2:
+        // Diamond ornate bow
+        return `
+          <path d="M${cx} 12.6 L${cx + 3.5} 16.5 L${cx} 20.3 L${cx - 3.5} 16.5 Z" fill="none" stroke="url(#gd-kr-brass-${variant % 3})" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M${cx} 12.6 L${cx + 3.5} 16.5 L${cx} 20.3 L${cx - 3.5} 16.5 Z" fill="none" stroke="#362006" stroke-width="0.65" stroke-linejoin="round"/>
+        `;
+      default:
+        // Heart-scroll bow
+        return `
+          <path d="M${cx} 19.8 C${cx - 4.2} 17.6, ${cx - 4} 13.3, ${cx - 1.3} 13.3 C${cx - 0.3} 13.3, ${cx} 14.3, ${cx} 14.3 C${cx} 14.3, ${cx + 0.3} 13.3, ${cx + 1.3} 13.3 C${cx + 4} 13.3, ${cx + 4.2} 17.6, ${cx} 19.8 Z" fill="none" stroke="url(#gd-kr-brass-0)" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="M${cx} 19.8 C${cx - 4.2} 17.6, ${cx - 4} 13.3, ${cx - 1.3} 13.3 C${cx - 0.3} 13.3, ${cx} 14.3, ${cx} 14.3 C${cx} 14.3, ${cx + 0.3} 13.3, ${cx + 1.3} 13.3 C${cx + 4} 13.3, ${cx + 4.2} 17.6, ${cx} 19.8 Z" fill="none" stroke="#362006" stroke-width="0.6" stroke-linejoin="round"/>
+        `;
+    }
+  };
+
+  const buildBitPath = (cx: number, variant: number, shaftEndY: number): string => {
+    switch (variant % 4) {
+      case 0:
+        return `M${cx + 0.8} ${shaftEndY - 4.5} H${cx + 4.3} V${shaftEndY - 2.6} H${cx + 2.4} V${shaftEndY - 1.5} H${cx + 4.3} V${shaftEndY} H${cx + 0.8} Z`;
+      case 1:
+        return `M${cx + 0.8} ${shaftEndY - 4.2} H${cx + 4.4} V${shaftEndY - 0.3} H${cx + 2.8} V${shaftEndY - 2.1} H${cx + 1.8} V${shaftEndY - 0.3} H${cx + 0.8} Z`;
+      case 2:
+        return `M${cx + 0.8} ${shaftEndY - 4.8} H${cx + 3.9} V${shaftEndY - 3.1} H${cx + 2.5} V${shaftEndY - 1.9} H${cx + 4.2} V${shaftEndY - 0.2} H${cx + 0.8} Z`;
+      default:
+        return `M${cx + 0.8} ${shaftEndY - 4.4} H${cx + 4.1} V${shaftEndY - 2.2} H${cx + 2.9} V${shaftEndY - 0.2} H${cx + 0.8} Z`;
+    }
+  };
+
+  const hooksAndKeysSvg = keyPositions
+    .map((cx, i) => {
+      const gradId = isEmptyRack ? 'gd-kr-pewter' : `gd-kr-brass-${i % 3}`;
+      const strokeOutline = isEmptyRack ? '#3A3A3A' : '#3B2507';
+      const shaftLen = i % 2 === 0 ? 31.5 : 33;
+      return `
+        <!-- Fixed brass J-hook on mahogany rail -->
+        <circle cx="${cx}" cy="9.2" r="1.25" fill="#E8BA54" stroke="#3B2507" stroke-width="0.55"/>
+        <path d="M${cx} 9.8 V12.3 C${cx} 13.7, ${cx + 1.6} 13.7, ${cx + 1.7} 12.1" fill="none" stroke="#C9922F" stroke-width="1.35" stroke-linecap="round"/>
+
+        <!-- Swinging Ward Key ${i + 1} -->
+        <g class="gd-ward-key${isEmptyRack ? ' is-empty' : ''}" data-key-idx="${i}" style="transform-origin: ${cx}px 12.6px;">
+          <!-- Split ring resting over hook -->
+          <circle cx="${cx}" cy="12.7" r="1.85" fill="none" stroke="url(#${gradId})" stroke-width="1.05"/>
+          <circle cx="${cx}" cy="12.7" r="1.85" fill="none" stroke="${strokeOutline}" stroke-width="0.4"/>
+          ${buildBowPath(cx, i)}
+          <!-- Collar + turned shank -->
+          <rect x="${cx - 1.5}" y="19.6" width="3" height="1.5" rx="0.6" fill="url(#${gradId})" stroke="${strokeOutline}" stroke-width="0.55"/>
+          <rect x="${cx - 0.9}" y="21.1" width="1.8" height="${(shaftLen - 21.1).toFixed(1)}" rx="0.8" fill="url(#${gradId})" stroke="${strokeOutline}" stroke-width="0.6"/>
+          <!-- Notched key bit -->
+          <path d="${buildBitPath(cx, i, shaftLen)}" fill="url(#${gradId})" stroke="${strokeOutline}" stroke-width="0.6" stroke-linejoin="round"/>
+          <!-- Warm brass catch-glint -->
+          <line class="gd-key-glint" x1="${cx - 0.25}" y1="22" x2="${cx - 0.25}" y2="${(shaftLen - 2.5).toFixed(1)}" stroke="#FFF7CE" stroke-width="0.65" stroke-linecap="round"/>
+        </g>
+      `;
+    })
+    .join('');
+
+  rackBtn.innerHTML = `
+    <span class="gd-keyrack-tag" aria-hidden="true">
+      <span class="gd-keyrack-tag-hole"></span>
+      <span class="gd-keyrack-tag-text"></span>
+    </span>
+    <svg class="gd-prop-svg gd-keyrack-svg" width="94" height="39" viewBox="0 0 94 39" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="gd-spy-brass" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#FFF2B4"/>
-          <stop offset="28%" stop-color="#E2AE4B"/>
-          <stop offset="68%" stop-color="#9A691B"/>
-          <stop offset="100%" stop-color="#4A2F08"/>
+        <linearGradient id="gd-kr-wood" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#8A603B"/>
+          <stop offset="45%" stop-color="#614023"/>
+          <stop offset="100%" stop-color="#36200D"/>
         </linearGradient>
-        <linearGradient id="gd-spy-leather" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#8C623D"/>
-          <stop offset="32%" stop-color="#694528"/>
-          <stop offset="80%" stop-color="#422915"/>
-          <stop offset="100%" stop-color="#28170A"/>
+        <linearGradient id="gd-kr-brass-0" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FFF2AE"/>
+          <stop offset="38%" stop-color="#E1AA43"/>
+          <stop offset="82%" stop-color="#9A6616"/>
+          <stop offset="100%" stop-color="#593809"/>
         </linearGradient>
-        <linearGradient id="gd-spy-bronze" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#D6A24C"/>
-          <stop offset="55%" stop-color="#785119"/>
-          <stop offset="100%" stop-color="#362208"/>
+        <linearGradient id="gd-kr-brass-1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FFE69A"/>
+          <stop offset="42%" stop-color="#CF912E"/>
+          <stop offset="85%" stop-color="#875412"/>
+          <stop offset="100%" stop-color="#4D2E07"/>
         </linearGradient>
-        <radialGradient id="gd-spy-glass" cx="38%" cy="35%" r="68%">
-          <stop offset="0%" stop-color="#FFF9DC"/>
-          <stop offset="45%" stop-color="#E8D8B0"/>
-          <stop offset="82%" stop-color="#7B98A6"/>
-          <stop offset="100%" stop-color="#2C3E4A"/>
-        </radialGradient>
-        <linearGradient id="gd-spy-beam-grad" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stop-color="rgba(222, 146, 28, 0.72)"/>
-          <stop offset="30%" stop-color="rgba(246, 184, 52, 0.42)"/>
-          <stop offset="72%" stop-color="rgba(246, 184, 52, 0.14)"/>
-          <stop offset="100%" stop-color="rgba(246, 184, 52, 0)"/>
+        <linearGradient id="gd-kr-brass-2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FCE7B4"/>
+          <stop offset="40%" stop-color="#D7993C"/>
+          <stop offset="84%" stop-color="#8F5D18"/>
+          <stop offset="100%" stop-color="#52320A"/>
         </linearGradient>
-        <filter id="gd-spy-beam-blur" x="-10%" y="-30%" width="130%" height="160%">
-          <feGaussianBlur stdDeviation="2.6"/>
-        </filter>
+        <linearGradient id="gd-kr-pewter" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#D2D0CA"/>
+          <stop offset="50%" stop-color="#9A968E"/>
+          <stop offset="100%" stop-color="#5B5852"/>
+        </linearGradient>
       </defs>
 
-      <!-- Subtle resting shadow on wooden card rim -->
-      <ellipse cx="36" cy="40.5" rx="20" ry="2.2" fill="rgba(26, 18, 10, 0.22)"/>
+      <!-- Resting contact shadow along top card frame -->
+      <ellipse cx="47" cy="36.8" rx="37" ry="1.8" fill="rgba(26, 18, 10, 0.22)"/>
 
-      <!-- Mahogany & Cast-Bronze Tripod Yoke Stand -->
-      <path d="M32 23 L21 39.5" stroke="#362211" stroke-width="3.6" stroke-linecap="round"/>
-      <path d="M32 23 L21 39.5" stroke="#7A5230" stroke-width="2" stroke-linecap="round"/>
-      <path d="M40 23 L51 39.5" stroke="#362211" stroke-width="3.6" stroke-linecap="round"/>
-      <path d="M40 23 L51 39.5" stroke="#7A5230" stroke-width="2" stroke-linecap="round"/>
-      <path d="M36 24 L36 38.5" stroke="#2D1D0E" stroke-width="2.6" stroke-linecap="round"/>
-      <rect x="18.8" y="38.2" width="4.4" height="2.6" rx="1" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.7"/>
-      <rect x="34" y="37.5" width="4" height="2.4" rx="0.9" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.7"/>
-      <rect x="48.8" y="38.2" width="4.4" height="2.6" rx="1" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.7"/>
-      <line x1="25" y1="33" x2="47" y2="33" stroke="#9A6A1E" stroke-width="1.3"/>
-      <rect x="33.5" y="21" width="5" height="6" rx="1.2" fill="url(#gd-spy-bronze)" stroke="#2F1E08" stroke-width="0.8"/>
+      <!-- Carved oak rack uprights & brass feet resting on card border -->
+      <rect x="11.5" y="7" width="4.2" height="28.5" rx="1.2" fill="url(#gd-kr-wood)" stroke="#291709" stroke-width="1"/>
+      <rect x="78.3" y="7" width="4.2" height="28.5" rx="1.2" fill="url(#gd-kr-wood)" stroke="#291709" stroke-width="1"/>
+      <rect x="10.2" y="34.2" width="6.8" height="2.4" rx="1" fill="url(#gd-kr-brass-0)" stroke="#3B2507" stroke-width="0.75"/>
+      <rect x="77" y="34.2" width="6.8" height="2.4" rx="1" fill="url(#gd-kr-brass-0)" stroke="#3B2507" stroke-width="0.75"/>
 
-      <!-- Articulated Multi-Stage Brass Telescope Barrel (pivots smoothly toward locked ward) -->
-      <g class="gd-spyglass-barrel" style="transform-origin: 36px 19px;">
-        <rect x="4" y="15.5" width="4.5" height="7" rx="1.6" fill="#2A1D12" stroke="#181008" stroke-width="0.9"/>
-        <rect x="8" y="14.5" width="6" height="9" rx="1" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.9"/>
-        <line x1="10" y1="15" x2="10" y2="23" stroke="rgba(62, 38, 8, 0.55)" stroke-width="0.8"/>
-        <line x1="12" y1="15" x2="12" y2="23" stroke="rgba(62, 38, 8, 0.55)" stroke-width="0.8"/>
-        <path d="M14 14 L20 12.2 L20 25.8 L14 24 Z" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.9"/>
-        <rect x="20" y="12" width="26" height="14" rx="1.2" fill="url(#gd-spy-leather)" stroke="#2B190B" stroke-width="1"/>
-        <rect x="19.5" y="11.6" width="3.5" height="14.8" rx="0.8" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.8"/>
-        <rect x="43" y="11.6" width="3.8" height="14.8" rx="0.8" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.8"/>
-        <line class="gd-spyglass-glint" x1="24" y1="13.8" x2="42" y2="13.8" stroke="rgba(255, 240, 192, 0.52)" stroke-width="1.1" stroke-linecap="round"/>
-        <rect x="33.2" y="11" width="5.6" height="16" rx="1.2" fill="url(#gd-spy-bronze)" stroke="#2E1C07" stroke-width="0.85"/>
-        <circle cx="36" cy="19" r="2.2" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.75"/>
-        <rect x="46.8" y="13.5" width="12" height="11" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.9"/>
-        <rect x="57.2" y="13" width="2.4" height="12" rx="0.7" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.75"/>
+      <!-- Main mahogany key rail & subtle brass scroll plaque -->
+      <rect x="9.5" y="4.5" width="75" height="6.2" rx="2" fill="url(#gd-kr-wood)" stroke="#291709" stroke-width="1.1"/>
+      <line x1="12.5" y1="6.1" x2="81.5" y2="6.1" stroke="rgba(255, 228, 178, 0.34)" stroke-width="0.8" stroke-linecap="round"/>
+      <rect x="36" y="1.8" width="22" height="4.2" rx="1.5" fill="url(#gd-kr-brass-0)" stroke="#3B2507" stroke-width="0.8"/>
+      <circle cx="13.6" cy="7.6" r="1" fill="#E8BA54"/>
+      <circle cx="80.4" cy="7.6" r="1" fill="#E8BA54"/>
 
-        <!-- Extending Second & Third Drawtubes + Locked Sightline + Feathered Optical Cone -->
-        <g class="gd-spyglass-extend">
-          <path class="gd-spyglass-beam-cone" d="M77 14 L238 -18 L238 56 L77 24 Z" fill="url(#gd-spy-beam-grad)" filter="url(#gd-spy-beam-blur)"/>
-          <line class="gd-spyglass-sightline" x1="77" y1="19" x2="215" y2="19" stroke="rgba(166, 108, 22, 0.55)" stroke-width="0.9" stroke-dasharray="3 3"/>
-          <circle class="gd-spyglass-mote gd-spy-mote-1" cx="116" cy="17" r="1.5" fill="#FFE68C"/>
-          <circle class="gd-spyglass-mote gd-spy-mote-2" cx="146" cy="23" r="1.2" fill="#E8A938"/>
-          <circle class="gd-spyglass-mote gd-spy-mote-3" cx="174" cy="15" r="1.4" fill="#FFF3BD"/>
-          <rect x="59.6" y="14.8" width="9" height="8.4" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.85"/>
-          <path d="M68.6 14 L76.5 12.6 L76.5 25.4 L68.6 24 Z" fill="url(#gd-spy-brass)" stroke="#3B2507" stroke-width="0.95"/>
-          <ellipse cx="76.5" cy="19" rx="2.4" ry="5.6" fill="url(#gd-spy-glass)" stroke="#3B2507" stroke-width="0.85"/>
-          <path d="M75.7 15.2 A1.5 3.6 0 0 1 77 18" stroke="#FFFFFF" stroke-width="0.9" stroke-linecap="round" opacity="0.85"/>
-        </g>
-      </g>
+      <!-- Hanging brass hooks & ward keys -->
+      ${hooksAndKeysSvg}
     </svg>
   `;
 
-  const barrelEl = spyBtn.querySelector('.gd-spyglass-barrel') as SVGGElement | null;
-  const viewfinderEl = spyBtn.querySelector('.gd-spyglass-viewfinder') as HTMLElement | null;
-  let wardIdx = 0;
-  let inspectTimer: ReturnType<typeof setTimeout> | null = null;
-  let reticleEl: HTMLElement | null = null;
+  const keyEls = Array.from(rackBtn.querySelectorAll('.gd-ward-key')) as SVGGElement[];
+  const tagEl = rackBtn.querySelector('.gd-keyrack-tag') as HTMLElement | null;
+  const tagTextEl = rackBtn.querySelector('.gd-keyrack-tag-text') as HTMLElement | null;
 
-  const ensureReticle = (cardEl: Element | null): HTMLElement | null => {
-    if (!cardEl || typeof document === 'undefined') return null;
-    if (reticleEl && cardEl.contains(reticleEl)) return reticleEl;
-    const existing = cardEl.querySelector('.gd-ward-reticle') as HTMLElement | null;
-    if (existing) {
-      reticleEl = existing;
-      return existing;
+  // Per-key damped pendulum angles & angular velocities
+  const angles = keyEls.map(() => 0);
+  const vels = keyEls.map(() => 0);
+  let swingRaf: number | null = null;
+  let activeWardIdx = -1;
+  let clearTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const stepKeys = () => {
+    if (typeof document !== 'undefined' && !document.contains(rackBtn)) {
+      swingRaf = null;
+      return;
     }
-    const r = document.createElement('div');
-    r.className = 'gd-ward-reticle';
-    r.setAttribute('aria-hidden', 'true');
-    r.innerHTML = `
-      <svg width="46" height="46" viewBox="0 0 46 46" fill="none">
-        <circle cx="23" cy="23" r="18" stroke="#9C6A1D" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.82"/>
-        <circle cx="23" cy="23" r="12" stroke="#D99B34" stroke-width="0.9" opacity="0.65"/>
-        <line x1="23" y1="2" x2="23" y2="9" stroke="#8C5812" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="23" y1="37" x2="23" y2="44" stroke="#8C5812" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="2" y1="23" x2="9" y2="23" stroke="#8C5812" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="37" y1="23" x2="44" y2="23" stroke="#8C5812" stroke-width="1.3" stroke-linecap="round"/>
-      </svg>
-    `;
-    cardEl.appendChild(r);
-    reticleEl = r;
-    return r;
+    let moving = false;
+    for (let i = 0; i < keyEls.length; i += 1) {
+      vels[i] = (vels[i] - 0.14 * angles[i]) * 0.91;
+      angles[i] += vels[i];
+      if (Math.abs(angles[i]) > 0.08 || Math.abs(vels[i]) > 0.08) {
+        moving = true;
+        keyEls[i].style.transform = `rotate(${angles[i].toFixed(2)}deg)`;
+      } else {
+        angles[i] = 0;
+        vels[i] = 0;
+        keyEls[i].style.transform = '';
+      }
+    }
+    if (moving && typeof requestAnimationFrame === 'function') {
+      swingRaf = requestAnimationFrame(stepKeys);
+    } else {
+      swingRaf = null;
+    }
   };
 
-  spyBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    playSpyglassClick();
-    const cardEl = spyBtn.closest('.gd-metric-card-ward') as HTMLElement | null;
-    const nameEls = cardEl ? Array.from(cardEl.querySelectorAll('.gd-ward-inline-name')) as HTMLElement[] : [];
+  const kickKeys = (primaryIdx: number, impulse = 3.2) => {
+    for (let i = 0; i < keyEls.length; i += 1) {
+      const dist = Math.abs(i - primaryIdx);
+      const dir = i <= primaryIdx ? 1 : -1;
+      if (dist === 0) {
+        vels[i] += impulse * (Math.random() > 0.3 ? 1 : -1);
+      } else if (dist === 1) {
+        vels[i] += dir * impulse * 0.42;
+      } else {
+        vels[i] += dir * impulse * 0.18;
+      }
+    }
+    if (swingRaf === null && typeof requestAnimationFrame === 'function') {
+      swingRaf = requestAnimationFrame(stepKeys);
+    }
+  };
 
-    nameEls.forEach((el) => el.classList.remove('is-scouted'));
-    cardEl?.classList.add('is-spyglass-lit');
-    spyBtn.classList.add('is-inspecting');
+  rackBtn.addEventListener('mouseenter', () => {
+    kickKeys(Math.floor(keyEls.length / 2), 1.45);
+  });
+
+  rackBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    playBrassKeysClink();
+
+    const cardEl = rackBtn.closest('.gd-metric-card-ward') as HTMLElement | null;
+    const nameEls = cardEl ? (Array.from(cardEl.querySelectorAll('.gd-ward-inline-name')) as HTMLElement[]) : [];
+    nameEls.forEach((el) => el.classList.remove('is-key-lit'));
+    keyEls.forEach((k) => k.classList.remove('is-active'));
 
     const total = Math.max(wardNames.length, nameEls.length);
-    let idx = 0;
-    let targetEl: HTMLElement | null = null;
-    if (total > 0) {
-      idx = wardIdx % total;
-      wardIdx += 1;
-      targetEl = nameEls[idx] ?? null;
-      if (targetEl) targetEl.classList.add('is-scouted');
-    }
+    const clickedKeyGroup = (e.target as Element | null)?.closest('.gd-ward-key') as SVGGElement | null;
+    const clickedSlotAttr = clickedKeyGroup?.getAttribute('data-key-idx');
+    const clickedSlot = clickedSlotAttr !== null && clickedSlotAttr !== undefined ? Number(clickedSlotAttr) : -1;
 
-    // Compute exact geometric angle from telescope trunnion pivot directly onto locked ward target
-    if (cardEl && barrelEl) {
-      const sRect = spyBtn.getBoundingClientRect();
-      const cRect = cardEl.getBoundingClientRect();
-      const tRect = targetEl
-        ? targetEl.getBoundingClientRect()
-        : {
-            left: cRect.left + cRect.width * 0.35,
-            top: cRect.top + cRect.height * 0.62,
-            width: 60,
-            height: 16,
-          };
-
-      // Note: .gd-spyglass-svg is mirrored (scaleX(-1)), so trunnion (36, 19) is at left + (88 - 36)
-      const pivotScreenX = sRect.left + 52;
-      const pivotScreenY = sRect.top + 19;
-      const targetCenterX = tRect.left + tRect.width * 0.5;
-      const targetCenterY = tRect.top + tRect.height * 0.5;
-
-      const dxLeft = Math.max(24, pivotScreenX - targetCenterX);
-      const dyDown = Math.max(18, targetCenterY - pivotScreenY);
-      const aimDeg = Math.max(14, Math.min(58, (Math.atan2(dyDown, dxLeft) * 180) / Math.PI));
-      barrelEl.style.transform = `rotate(${aimDeg.toFixed(1)}deg)`;
-
-      // Position & snap brass optical crosshair reticle right onto the scouted ward name
-      const rEl = ensureReticle(cardEl);
-      if (rEl) {
-        const localX = targetCenterX - cRect.left;
-        const localY = targetCenterY - cRect.top;
-        rEl.style.left = `${localX.toFixed(1)}px`;
-        rEl.style.top = `${localY.toFixed(1)}px`;
-        rEl.classList.remove('is-locking');
-        void rEl.offsetWidth;
-        rEl.classList.add('is-visible', 'is-locking');
+    if (total === 0) {
+      kickKeys(0, 2.8);
+      if (tagEl && tagTextEl) {
+        tagTextEl.textContent = 'No wards linked yet';
+        tagEl.classList.add('is-visible');
       }
-    }
-
-    if (viewfinderEl) {
-      if (total === 0) {
-        viewfinderEl.textContent = '0 Wards · Awaiting invite';
+    } else {
+      if (clickedSlot >= 0 && clickedSlot < total && clickedSlot !== activeWardIdx) {
+        activeWardIdx = clickedSlot;
       } else {
-        const labelName = wardNames[idx] || targetEl?.textContent?.trim() || 'Ward';
-        viewfinderEl.textContent = `Ward ${idx + 1}/${total} · ${labelName}`;
+        activeWardIdx = (activeWardIdx + 1) % total;
       }
-      viewfinderEl.classList.add('is-visible');
+
+      const keySlot = Math.min(keyEls.length - 1, activeWardIdx % Math.max(1, keyEls.length));
+      keyEls[keySlot]?.classList.add('is-active');
+      kickKeys(keySlot, 3.6);
+
+      const targetNameEl = nameEls[activeWardIdx] ?? null;
+      if (targetNameEl) {
+        targetNameEl.classList.add('is-key-lit');
+      }
+
+      const wardLabel = wardNames[activeWardIdx] || targetNameEl?.textContent?.trim() || `Ward ${activeWardIdx + 1}`;
+      if (tagEl && tagTextEl) {
+        tagTextEl.textContent = total > 1 ? `${wardLabel} · ${activeWardIdx + 1}/${total}` : wardLabel;
+        tagEl.classList.add('is-visible');
+      }
     }
 
-    if (inspectTimer) clearTimeout(inspectTimer);
-    inspectTimer = setTimeout(() => {
-      spyBtn.classList.remove('is-inspecting');
-      if (barrelEl) barrelEl.style.transform = '';
-      cardEl?.classList.remove('is-spyglass-lit');
-      nameEls.forEach((el) => el.classList.remove('is-scouted'));
-      reticleEl?.classList.remove('is-visible', 'is-locking');
-      viewfinderEl?.classList.remove('is-visible');
-    }, 3400);
+    if (clearTimer) clearTimeout(clearTimer);
+    clearTimer = setTimeout(() => {
+      keyEls.forEach((k) => k.classList.remove('is-active'));
+      nameEls.forEach((el) => el.classList.remove('is-key-lit'));
+      tagEl?.classList.remove('is-visible');
+    }, 2800);
   });
-  return spyBtn;
+
+  return rackBtn;
 }
 
 /**
