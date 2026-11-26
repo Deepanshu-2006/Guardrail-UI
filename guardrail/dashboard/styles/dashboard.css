@@ -8070,17 +8070,39 @@ textarea:focus-visible,
   bottom: 6px;
   left: 0;
   width: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(237, 230, 214, 0.22) 0%, rgba(196, 212, 182, 0.14) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background-color: rgba(246, 191, 88, 0.14);
+  background-image: repeating-conic-gradient(
+    rgba(246, 191, 88, 0.10) 0% 25%,
+    rgba(237, 230, 214, 0.03) 0% 50%
+  );
+  background-size: 6px 6px;
+  border: 1.5px solid rgba(246, 191, 88, 0.58);
+  box-shadow:
+    3px 3px 0 rgba(10, 15, 11, 0.72),
+    inset 0 0 10px rgba(246, 191, 88, 0.14);
   pointer-events: none;
   z-index: 0;
   opacity: 0;
   transition:
-    transform 420ms cubic-bezier(0.34, 1.35, 0.64, 1),
-    width 420ms cubic-bezier(0.34, 1.35, 0.64, 1),
-    opacity 200ms ease;
+    transform 400ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    width 400ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    opacity 180ms ease;
   will-change: transform, width;
+}
+
+.gd-m-dock-glider::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translateX(-50%);
+  background: #F6BF58;
+  box-shadow:
+    -6px 0 0 rgba(246, 191, 88, 0.45),
+    6px 0 0 rgba(246, 191, 88, 0.45);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-glider {
@@ -8094,11 +8116,16 @@ textarea:focus-visible,
 }
 
 .gd-m-dock-btn .gd-m-dock-icon {
-  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1), color 220ms ease;
 }
 
 .gd-m-dock-btn.active .gd-m-dock-icon {
+  color: #F6BF58;
   transform: translateY(-2px) scale(1.14);
+}
+
+.gd-m-dock-btn.active .gd-m-dock-label {
+  color: #FAF6ED;
 }
 
 .gd-m-dock-circle {
@@ -8110,8 +8137,12 @@ textarea:focus-visible,
 }
 
 .gd-m-dock-circle.active {
+  color: #F6BF58;
   transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.3), 0 12px 28px rgba(15, 21, 13, 0.32);
+  box-shadow:
+    0 0 0 2px #F6BF58,
+    0 0 0 5px rgba(246, 191, 88, 0.22),
+    0 12px 28px rgba(15, 21, 13, 0.36);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
@@ -15068,17 +15099,39 @@ article.gd-card-collapsed,
   bottom: 6px;
   left: 0;
   width: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(237, 230, 214, 0.22) 0%, rgba(196, 212, 182, 0.14) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background-color: rgba(246, 191, 88, 0.14);
+  background-image: repeating-conic-gradient(
+    rgba(246, 191, 88, 0.10) 0% 25%,
+    rgba(237, 230, 214, 0.03) 0% 50%
+  );
+  background-size: 6px 6px;
+  border: 1.5px solid rgba(246, 191, 88, 0.58);
+  box-shadow:
+    3px 3px 0 rgba(10, 15, 11, 0.72),
+    inset 0 0 10px rgba(246, 191, 88, 0.14);
   pointer-events: none;
   z-index: 0;
   opacity: 0;
   transition:
-    transform 420ms cubic-bezier(0.34, 1.35, 0.64, 1),
-    width 420ms cubic-bezier(0.34, 1.35, 0.64, 1),
-    opacity 200ms ease;
+    transform 400ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    width 400ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    opacity 180ms ease;
   will-change: transform, width;
+}
+
+.gd-m-dock-glider::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translateX(-50%);
+  background: #F6BF58;
+  box-shadow:
+    -6px 0 0 rgba(246, 191, 88, 0.45),
+    6px 0 0 rgba(246, 191, 88, 0.45);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-glider {
@@ -15092,11 +15145,16 @@ article.gd-card-collapsed,
 }
 
 .gd-m-dock-btn .gd-m-dock-icon {
-  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1), color 220ms ease;
 }
 
 .gd-m-dock-btn.active .gd-m-dock-icon {
+  color: #F6BF58;
   transform: translateY(-2px) scale(1.14);
+}
+
+.gd-m-dock-btn.active .gd-m-dock-label {
+  color: #FAF6ED;
 }
 
 .gd-m-dock-circle {
@@ -15108,8 +15166,12 @@ article.gd-card-collapsed,
 }
 
 .gd-m-dock-circle.active {
+  color: #F6BF58;
   transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.3), 0 12px 28px rgba(15, 21, 13, 0.32);
+  box-shadow:
+    0 0 0 2px #F6BF58,
+    0 0 0 5px rgba(246, 191, 88, 0.22),
+    0 12px 28px rgba(15, 21, 13, 0.36);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
@@ -21569,17 +21631,39 @@ article.gd-card-collapsed,
   bottom: 6px;
   left: 0;
   width: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(237, 230, 214, 0.22) 0%, rgba(196, 212, 182, 0.14) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 2px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background-color: rgba(246, 191, 88, 0.14);
+  background-image: repeating-conic-gradient(
+    rgba(246, 191, 88, 0.10) 0% 25%,
+    rgba(237, 230, 214, 0.03) 0% 50%
+  );
+  background-size: 6px 6px;
+  border: 1.5px solid rgba(246, 191, 88, 0.58);
+  box-shadow:
+    3px 3px 0 rgba(10, 15, 11, 0.72),
+    inset 0 0 10px rgba(246, 191, 88, 0.14);
   pointer-events: none;
   z-index: 0;
   opacity: 0;
   transition:
-    transform 420ms cubic-bezier(0.34, 1.35, 0.64, 1),
-    width 420ms cubic-bezier(0.34, 1.35, 0.64, 1),
-    opacity 200ms ease;
+    transform 400ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    width 400ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    opacity 180ms ease;
   will-change: transform, width;
+}
+
+.gd-m-dock-glider::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translateX(-50%);
+  background: #F6BF58;
+  box-shadow:
+    -6px 0 0 rgba(246, 191, 88, 0.45),
+    6px 0 0 rgba(246, 191, 88, 0.45);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-glider {
@@ -21593,11 +21677,16 @@ article.gd-card-collapsed,
 }
 
 .gd-m-dock-btn .gd-m-dock-icon {
-  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 340ms cubic-bezier(0.34, 1.56, 0.64, 1), color 220ms ease;
 }
 
 .gd-m-dock-btn.active .gd-m-dock-icon {
+  color: #F6BF58;
   transform: translateY(-2px) scale(1.14);
+}
+
+.gd-m-dock-btn.active .gd-m-dock-label {
+  color: #FAF6ED;
 }
 
 .gd-m-dock-circle {
@@ -21609,8 +21698,12 @@ article.gd-card-collapsed,
 }
 
 .gd-m-dock-circle.active {
+  color: #F6BF58;
   transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 0 0 3px rgba(237, 230, 214, 0.3), 0 12px 28px rgba(15, 21, 13, 0.32);
+  box-shadow:
+    0 0 0 2px #F6BF58,
+    0 0 0 5px rgba(246, 191, 88, 0.22),
+    0 12px 28px rgba(15, 21, 13, 0.36);
 }
 
 .gd-m-pill-dock.has-glider .gd-m-dock-btn.active {
