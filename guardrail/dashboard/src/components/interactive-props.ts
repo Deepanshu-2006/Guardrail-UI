@@ -7968,6 +7968,9 @@ function attachSettingsCascadeListener(
     }, delayMs);
   };
   window.addEventListener('gd-settings-wind-cascade', onCascade);
+  btn.addEventListener('gd-prop-trigger', () => {
+    onActuate(true);
+  });
 }
 
 /**
@@ -8370,7 +8373,25 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
   let rafId: number | null = null;
   let pointerX = -999;
   let pointerY = -999;
+  let lastScrollTop = -1;
+  let scrollEnergy = 0;
+  let smoothWeightDocY: number | null = null;
+  let prevWeightDocY: number | null = null;
+  let gongStrikePulse = 0;
+  let bottomStrike = 0;
+  let cradlePress = 0;
+  let bottomGongTriggered = false;
   const cardPhases = new WeakMap<HTMLElement, number>();
+  const lastPropRingMs = new WeakMap<HTMLElement, number>();
+  const brassMotes: Array<{
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    maxLife: number;
+    size: number;
+  }> = [];
 
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -8653,6 +8674,44 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.restore();
   };
 
+  const drawWeightCradleStop = (x: number, y: number, pressAmount: number, alpha: number) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const depress = pressAmount * 4.5;
+    const seatY = y + depress;
+
+    // Coiled brass damper spring between fixed lower bracket and movable Y-cradle
+    const baseY = y + 11;
+    ctx.strokeStyle = '#9D7122';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    const coils = 3;
+    for (let i = 0; i <= coils * 2; i += 1) {
+      const t = i / (coils * 2);
+      const sx = x + (i === 0 || i === coils * 2 ? 0 : i % 2 === 1 ? -3.4 : 3.4);
+      const sy = seatY + 2 + t * Math.max(3, baseY - (seatY + 2));
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+
+    // Fixed dark bronze lower bracket mount
+    ctx.fillStyle = '#4B320B';
+    ctx.fillRect(x - 6, baseY, 12, 2.8);
+
+    // Forked brass catch saddle receiving the descending weight
+    ctx.strokeStyle = pressAmount > 0.35 ? '#F2C65C' : '#B5832C';
+    ctx.lineWidth = 1.75;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 6.5, seatY - 3.5);
+    ctx.quadraticCurveTo(x - 5.5, seatY + 2, x, seatY + 2);
+    ctx.quadraticCurveTo(x + 5.5, seatY + 2, x + 6.5, seatY - 3.5);
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
   const drawPendulumBeatScale = (px: number, py: number, len: number, alpha: number) => {
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -8705,24 +8764,53 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     if (!settingsVisible) {
       deploy = 0;
       windSurge = 0;
+      scrollEnergy = 0;
+      lastScrollTop = -1;
+      smoothWeightDocY = null;
+      prevWeightDocY = null;
+      gongStrikePulse = 0;
+      bottomStrike = 0;
+      cradlePress = 0;
+      bottomGongTriggered = false;
+      brassMotes.length = 0;
       ctx.clearRect(0, 0, width, height);
       rafId = null;
       lastTs = 0;
       return;
     }
 
+    const viewEl = document.getElementById('view-settings');
+    const scrollContainer = (viewEl?.closest('.gd-content-body') ??
+      viewEl?.closest('.gd-main-workspace')) as HTMLElement | null;
+    const curScrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+    if (lastScrollTop >= 0) {
+      const sDiff = Math.abs(curScrollTop - lastScrollTop);
+      if (sDiff > 0.5) {
+        scrollEnergy = Math.min(1.6, scrollEnergy + sDiff * 0.022);
+      }
+    }
+    lastScrollTop = curScrollTop;
+    scrollEnergy = Math.max(0, scrollEnergy - dt * 2.8);
+    gongStrikePulse = Math.max(0, gongStrikePulse - dt * 0.65);
+    bottomStrike = Math.max(0, bottomStrike - dt * 0.42);
+
     const targetDeploy = active ? 1 : 0;
     deploy += (targetDeploy - deploy) * Math.min(1, dt * (active ? 5.2 : 4.2));
     windSurge = Math.max(0, windSurge - dt * 0.9);
-    gearAngle = (gearAngle + dt * (18 + deploy * 22 + windSurge * 125)) % 3600;
+    gearAngle = (gearAngle + dt * (18 + deploy * 22 + windSurge * 125 + scrollEnergy * 115 + bottomStrike * 65)) % 3600;
+
+    if (!active && deploy <= 0.015) {
+      smoothWeightDocY = null;
+      prevWeightDocY = null;
+      cradlePress = 0;
+      bottomGongTriggered = false;
+      brassMotes.length = 0;
+    }
 
     ctx.clearRect(0, 0, width, height);
 
     if (deploy > 0.015) {
       const ease = 1 - Math.pow(1 - deploy, 3);
-      const viewEl = document.getElementById('view-settings');
-      const scrollContainer = (viewEl?.closest('.gd-content-body') ??
-        viewEl?.closest('.gd-main-workspace')) as HTMLElement | null;
       const scRect = scrollContainer ? scrollContainer.getBoundingClientRect() : null;
       const clipLeft = scRect ? Math.max(0, scRect.left) : 240;
       const clipTop = scRect ? Math.max(0, scRect.top) : 0;
@@ -8750,27 +8838,136 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
         const rightRailX = Math.min(clipRight - 10, firstCard.right + 15);
         const slideOut = 1 - ease;
 
-        // 1. Articulated Brass Pull-Chains, Pulley Sheaves & Opposing Counterweight Cylinders (document-locked)
-        const topRailY = firstCard.top + 22;
+        // 1. Articulated Brass Pull-Chains & Scroll-Synchronized Counterweights (top gears -> bottom base)
+        const topRailY = firstCard.top + 27;
         const botRailY = lastCard.bottom - 22;
 
         if (botRailY > topRailY + 24) {
-          const travelSpan = Math.min(92, Math.max(20, (botRailY - topRailY) * 0.28));
-          const drift = Math.sin(clock * 0.42) * travelSpan * 0.5;
-          drawPulleyAndChain(leftRailX, topRailY, botRailY, clipTop, clipBot, drift, ease * 0.78);
-          drawPulleyAndChain(rightRailX, topRailY, botRailY, clipTop, clipBot, -drift, ease * 0.78);
+          const maxScroll = scrollContainer
+            ? Math.max(1, scrollContainer.scrollHeight - scrollContainer.clientHeight)
+            : 1;
+          const scrollRatio = Math.min(1, Math.max(0, curScrollTop / maxScroll));
 
-          const leftWeightY = firstCard.top + 145 + drift;
-          const rightWeightY = firstCard.top + Math.max(240, firstCard.height + 70) - drift;
+          const minWeightY = topRailY + 76;
+          const maxWeightY = Math.max(minWeightY + 12, botRailY - 46);
+          const minWeightDocY = minWeightY + curScrollTop;
+          const maxWeightDocY = maxWeightY + curScrollTop;
+
+          // Rest toward lower viewport & ride smoothly down all the way to the bottom rail as user scrolls
+          const visFraction = 0.68 + scrollRatio * 0.24;
+          const rawTargetVisY = clipTop + (clipBot - clipTop) * visFraction;
+          const targetWeightVisY = Math.min(maxWeightY, Math.max(minWeightY, rawTargetVisY));
+          const targetWeightDocY = targetWeightVisY + curScrollTop;
+
+          if (smoothWeightDocY === null) {
+            smoothWeightDocY = minWeightDocY;
+            prevWeightDocY = smoothWeightDocY;
+          } else {
+            smoothWeightDocY += (targetWeightDocY - smoothWeightDocY) * Math.min(1, dt * 8.2);
+          }
+          smoothWeightDocY = Math.min(maxWeightDocY, Math.max(minWeightDocY, smoothWeightDocY));
+
+          const chainPhase = (smoothWeightDocY - (topRailY + curScrollTop)) * 0.55;
+          drawPulleyAndChain(leftRailX, topRailY, botRailY, clipTop, clipBot, chainPhase, ease * 0.78);
+          drawPulleyAndChain(rightRailX, topRailY, botRailY, clipTop, clipBot, chainPhase, ease * 0.78);
+
+          const sway = Math.sin(clock * 1.35) * (3.5 + scrollEnergy * 2.5);
+          const baseWeightVisY = smoothWeightDocY - curScrollTop;
+          const leftWeightY = Math.min(maxWeightY, Math.max(minWeightY, baseWeightVisY + sway));
+          const rightWeightY = Math.min(maxWeightY, Math.max(minWeightY, baseWeightVisY - sway));
+
+          const seatedAtBottom = active && scrollRatio >= 0.94 && Math.abs(baseWeightVisY - maxWeightY) < 12;
+          cradlePress += ((seatedAtBottom ? 1 : 0) - cradlePress) * Math.min(1, dt * 11);
+          const pressPush = cradlePress * 4.5;
+
+          // Machined spring-damper catch cradles waiting at the bottom of both rails
+          if (botRailY - 12 > clipTop && botRailY - 22 < clipBot) {
+            drawWeightCradleStop(leftRailX, maxWeightY + 31, cradlePress, ease * 0.88);
+            drawWeightCradleStop(rightRailX, maxWeightY + 31, cradlePress, ease * 0.88);
+          }
+
           if (leftWeightY + 34 > clipTop && leftWeightY - 8 < clipBot) {
-            drawCounterweight(leftRailX, leftWeightY, 9.5, 29, ease * 0.88);
+            drawCounterweight(leftRailX, leftWeightY + pressPush, 9.5, 29, ease * 0.9);
           }
           if (rightWeightY + 34 > clipTop && rightWeightY - 8 < clipBot) {
-            drawCounterweight(rightRailX, rightWeightY, 9.5, 29, ease * 0.88);
+            drawCounterweight(rightRailX, rightWeightY + pressPush, 9.5, 29, ease * 0.9);
           }
+
+          // Ring any item perched on a wooden board when the descending/ascending weight crosses its card ledge
+          if (active && prevWeightDocY !== null && Math.abs(smoothWeightDocY - prevWeightDocY) > 0.6) {
+            const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+            const segMin = Math.min(prevWeightDocY, smoothWeightDocY);
+            const segMax = Math.max(prevWeightDocY, smoothWeightDocY);
+
+            allCards.forEach(({ el, r }) => {
+              const propBtn = el.querySelector('.gd-prop-btn') as HTMLElement | null;
+              if (!propBtn) return;
+              const triggerDocY = r.top + curScrollTop + 26;
+              if (triggerDocY >= segMin && triggerDocY <= segMax) {
+                const lastRing = lastPropRingMs.get(propBtn) ?? 0;
+                if (nowMs - lastRing > 720) {
+                  lastPropRingMs.set(propBtn, nowMs);
+                  if (typeof CustomEvent === 'function') {
+                    propBtn.dispatchEvent(new CustomEvent('gd-prop-trigger'));
+                  }
+                }
+              }
+            });
+          }
+
+          if (seatedAtBottom) {
+            if (!bottomGongTriggered) {
+              bottomGongTriggered = true;
+              gongStrikePulse = 1;
+              bottomStrike = 1;
+
+              // Warm Westminster 4-note Grandfather Clock chime cadence when both weights seat at bottom
+              playQuickTones([
+                { delay: 0.0, freq: 329.63, dur: 0.72, peak: 0.022 },
+                { delay: 0.0, freq: 659.25, dur: 0.36, peak: 0.008 },
+                { delay: 0.24, freq: 293.66, dur: 0.72, peak: 0.02 },
+                { delay: 0.48, freq: 261.63, dur: 0.78, peak: 0.022 },
+                { delay: 0.72, freq: 196.0, dur: 1.35, peak: 0.026 },
+                { delay: 0.72, freq: 392.0, dur: 0.85, peak: 0.009 },
+              ]);
+
+              // Spawn subtle warm antique brass/dust flecks rising from both weight seats
+              const spawnCoords = [
+                { x: leftRailX, y: maxWeightY + 28 },
+                { x: rightRailX, y: maxWeightY + 28 },
+              ];
+              for (const pt of spawnCoords) {
+                for (let m = 0; m < 6; m += 1) {
+                  brassMotes.push({
+                    x: pt.x + (Math.random() - 0.5) * 14,
+                    y: pt.y + (Math.random() - 0.5) * 8,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: -(18 + Math.random() * 26),
+                    life: 0,
+                    maxLife: 1.1 + Math.random() * 0.9,
+                    size: 1.1 + Math.random() * 1.4,
+                  });
+                }
+              }
+
+              // Briefly illuminate the bottom oak frame with a calm resonant gold cabinet pulse
+              if (lastEntry.el?.classList) {
+                lastEntry.el.classList.remove('is-bottom-chime-pulse');
+                void lastEntry.el.offsetWidth;
+                lastEntry.el.classList.add('is-bottom-chime-pulse');
+                setTimeout(() => {
+                  lastEntry.el.classList?.remove('is-bottom-chime-pulse');
+                }, 1500);
+              }
+            }
+          } else if (scrollRatio < 0.85) {
+            bottomGongTriggered = false;
+          }
+
+          prevWeightDocY = smoothWeightDocY;
         }
 
-        // 2. TOP ONLY: Crown Clockwork Gear Train tucked behind the top card corners (zero gear spam down the page)
+        // 2. TOP ONLY: Crown Clockwork Gear Train tucked strictly behind the TOP corners of the first card
         if (firstCard.bottom >= clipTop - 70 && firstCard.top <= clipBot + 70) {
           const topHovered =
             pointerX >= firstCard.left &&
@@ -8819,9 +9016,9 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           ctx.stroke();
           ctx.restore();
 
-          // Top-left secondary escapement wheel peeking symmetrically behind top card
-          const leftGx = firstCard.left - 11 + slideOut * 22;
-          const leftGy = firstCard.bottom - 26;
+          // Top-left secondary escapement wheel strictly at TOP-LEFT corner (never bottom-left)
+          const leftGx = firstCard.left - 8 + slideOut * 22;
+          const leftGy = firstCard.top + 27;
           drawMetallicGear(leftGx, leftGy, medBronzePath, 21.5, 14.2, 5, subRad, false, ease * 0.86);
         }
 
@@ -8831,18 +9028,38 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           lastEntry.el.classList.contains('is-revealed');
 
         if (lastRevealed && lastCard.bottom >= clipTop - 95 && lastCard.top <= clipBot + 95) {
-          // Bottom-left: Cathedral brass chime gong spiral + copper striker hammer (clear of transparent card text)
+          // Bottom-left: Cathedral brass chime gong spiral + copper striker hammer + expanding sound waves on touchdown
           const gongX = leftRailX - 2 + slideOut * 22;
           const gongY = lastCard.bottom - 22;
+          const strikeEnergy = Math.max(windSurge, gongStrikePulse);
           const hammerPulse = Math.max(0, Math.sin(clock * Math.PI * 0.85) > 0.92 ? 1 : 0);
-          const hammerSwing = windSurge > 0.15 ? Math.sin(clock * 14) * windSurge : hammerPulse * 0.8;
-          drawChimeGongAndHammer(gongX, gongY, hammerSwing, windSurge, ease * 0.88);
+          const hammerSwing =
+            strikeEnergy > 0.15 ? Math.sin(clock * 16) * strikeEnergy : hammerPulse * 0.8;
 
-          // Bottom-right: Beat degree scale + 3-rod Harrison gridiron pendulum & lenticular bob
+          if (bottomStrike > 0.03) {
+            for (let w = 0; w < 3; w += 1) {
+              const p = (1 - bottomStrike + w * 0.24) % 1;
+              const ringAlpha = (1 - p) * bottomStrike * 0.45 * ease;
+              if (ringAlpha > 0.01) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(214, 162, 56, ${ringAlpha.toFixed(3)})`;
+                ctx.lineWidth = 1.3;
+                ctx.beginPath();
+                ctx.arc(gongX, gongY, 18 + p * 34, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          }
+
+          drawChimeGongAndHammer(gongX, gongY, hammerSwing, strikeEnergy, ease * 0.88);
+
+          // Bottom-right: Beat degree scale + 3-rod Harrison gridiron pendulum & lenticular bob (amplified sweep on touchdown)
           const pendPivotX = rightRailX + 1 - slideOut * 22;
           const pendPivotY = lastCard.top + 8;
           const pendLen = Math.min(78, Math.max(54, lastCard.height * 0.68));
-          const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * 11.5 * ease;
+          const pendAmp = 11.5 + bottomStrike * 8.5;
+          const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * pendAmp * ease;
           const pendRad = (pendSwingDeg * Math.PI) / 180;
 
           drawPendulumBeatScale(pendPivotX, pendPivotY, pendLen, ease * 0.78);
@@ -8900,6 +9117,27 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
 
           ctx.fillStyle = '#B8842E';
           ctx.fillRect(-2.4, pendLen + 12.8, 4.8, 3.2);
+          ctx.restore();
+        }
+
+        // 4. Warm brass dust flecks released gently when both weights seat into bottom cradles
+        for (let i = brassMotes.length - 1; i >= 0; i -= 1) {
+          const m = brassMotes[i];
+          m.life += dt;
+          if (m.life >= m.maxLife) {
+            brassMotes.splice(i, 1);
+            continue;
+          }
+          m.x += m.vx * dt;
+          m.y += m.vy * dt;
+          m.vy *= Math.pow(0.45, dt);
+          const fade = Math.sin((m.life / m.maxLife) * Math.PI);
+          ctx.save();
+          ctx.globalAlpha = fade * ease * 0.72;
+          ctx.fillStyle = '#EBC05A';
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.size, 0, Math.PI * 2);
+          ctx.fill();
           ctx.restore();
         }
 

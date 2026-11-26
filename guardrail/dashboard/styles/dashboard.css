@@ -24470,10 +24470,10 @@ body.gd-kbd-open .gd-m-shell {
   #view-history .gd-history-layout .gd-detail-pane,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane,
-  #view-settings #gd-card-identity,
-  #view-settings #gd-card-push-notifications,
-  #view-settings #gd-connected-users-card,
-  #view-settings #gd-invitations-card {
+  #view-settings .gd-card,
+  #view-settings .gd-settings-card,
+  #view-settings .gd-settings-card:last-child,
+  #view-settings .gd-session-card {
     position: relative !important;
     margin: 0 !important;
     box-sizing: border-box !important;
@@ -24589,10 +24589,7 @@ body.gd-kbd-open .gd-m-shell {
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane::before,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane::before,
   #view-pending .gd-empty-state::before,
-  #view-settings #gd-card-identity::before,
-  #view-settings #gd-card-push-notifications::before,
-  #view-settings #gd-connected-users-card::before,
-  #view-settings #gd-invitations-card::before,
+  #view-settings .gd-card::before,
   .gd-wards-modal-card::before,
   .gd-auth-modal-card::before {
     content: '';
@@ -24629,10 +24626,7 @@ body.gd-kbd-open .gd-m-shell {
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane::after,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane::after,
   #view-pending .gd-empty-state::after,
-  #view-settings #gd-card-identity::after,
-  #view-settings #gd-card-push-notifications::after,
-  #view-settings #gd-connected-users-card::after,
-  #view-settings #gd-invitations-card::after,
+  #view-settings .gd-card::after,
   .gd-wards-modal-card::after,
   .gd-auth-modal-card::after {
     content: '';
@@ -24655,10 +24649,7 @@ body.gd-kbd-open .gd-m-shell {
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-list-pane > *,
   #view-pending .gd-approvals-layout:not(.gd-approvals-layout-empty) .gd-detail-pane > *,
   #view-pending .gd-empty-state > *,
-  #view-settings #gd-card-identity > *,
-  #view-settings #gd-card-push-notifications > *,
-  #view-settings #gd-connected-users-card > *,
-  #view-settings #gd-invitations-card > *,
+  #view-settings .gd-card > *,
   .gd-wards-modal-card > *,
   .gd-auth-modal-card > * {
     position: relative;
@@ -24690,12 +24681,17 @@ body.gd-kbd-open .gd-m-shell {
     z-index: 4 !important;
   }
 
-  #view-settings #gd-card-identity,
-  #view-settings #gd-card-push-notifications,
-  #view-settings #gd-connected-users-card,
-  #view-settings #gd-invitations-card {
+  #view-settings .gd-card,
+  #view-settings .gd-settings-card,
+  #view-settings .gd-settings-card:last-child,
+  #view-settings .gd-session-card {
     padding: 26px 30px !important;
     margin-bottom: 36px !important;
+  }
+
+  #view-settings .gd-session-card,
+  #view-settings .gd-card.gd-session-card:last-child {
+    margin-bottom: 18px !important;
   }
 
   #view-settings #gd-invitations-card {
@@ -24711,11 +24707,17 @@ body.gd-kbd-open .gd-m-shell {
     border-bottom: none !important;
   }
 
-  #view-settings #gd-card-identity .gd-settings-card-header,
-  #view-settings #gd-card-push-notifications .gd-settings-card-header,
-  #view-settings #gd-connected-users-card .gd-settings-card-header,
-  #view-settings #gd-invitations-card .gd-settings-card-header {
+  #view-settings .gd-card .gd-settings-card-header,
+  #view-settings #gd-card-invariants > .gd-section-title,
+  #view-settings #gd-card-session > .gd-section-title {
     margin-bottom: 18px !important;
+  }
+
+  #view-settings .gd-card .gd-settings-notice,
+  #view-settings #gd-card-backend .gd-settings-action-row,
+  #view-settings #gd-card-session .gd-settings-action-row,
+  #view-settings #gd-card-invariants .gd-settings-invariants-chips {
+    margin-bottom: 0 !important;
   }
 
   #view-settings #gd-card-identity .gd-settings-grid {
@@ -27374,6 +27376,14 @@ body.gd-kbd-open .gd-m-shell {
       0 12px 26px -6px rgba(154, 108, 28, 0.28),
       0 0 0 1.5px rgba(212, 164, 68, 0.56) !important;
     transition: box-shadow 0.25s ease;
+  }
+
+  #view-settings .gd-card.is-bottom-chime-pulse {
+    box-shadow:
+      0 14px 32px -6px rgba(168, 122, 34, 0.34),
+      0 0 0 1.5px rgba(224, 178, 72, 0.68),
+      inset 0 0 18px rgba(236, 194, 96, 0.14) !important;
+    transition: box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
