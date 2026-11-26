@@ -17,6 +17,7 @@
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
+import { createHeaderLanternProp, createPerchedBirdProp, createPottedPlantProp } from './interactive-props.js';
 import { showConnectWardModal } from './connect-modal.js';
 import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
@@ -108,6 +109,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   const greetingCard = createMergedGreetingWidget();
 
   header.appendChild(titleGroup);
+  header.appendChild(createHeaderLanternProp());
   header.appendChild(greetingCard);
   section.appendChild(header);
 
@@ -498,6 +500,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   statusCard.appendChild(statusHeader);
   statusCard.appendChild(statusValueRow);
   statusCard.appendChild(statusDesc);
+  statusCard.appendChild(createPerchedBirdProp());
   grid.appendChild(statusCard);
 
   section.appendChild(grid);
@@ -1215,6 +1218,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       listContainer.appendChild(viewAllBtn);
     }
 
+    listContainer.appendChild(createPottedPlantProp());
     activitySection.appendChild(listContainer);
   }
 

@@ -17,6 +17,7 @@ import {
 import { renderRelationshipManagementSection } from './relationships.js';
 import { setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
+import { createHeaderLanternProp } from './interactive-props.js';
 import { formatWardDisplayName } from './overview.js';
 import { PwaInstallManager } from './pwa-install-banner.js';
 
@@ -94,6 +95,7 @@ export function renderSettings(props: SettingsProps): HTMLElement {
   titleGroup.appendChild(title);
   titleGroup.appendChild(subtitle);
   header.appendChild(titleGroup);
+  header.appendChild(createHeaderLanternProp());
   header.appendChild(createMergedGreetingWidget());
   section.appendChild(header);
 
