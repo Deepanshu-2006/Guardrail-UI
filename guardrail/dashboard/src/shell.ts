@@ -802,6 +802,7 @@ export class DashboardShell {
             }
             for (const ch of Array.from(freshMain.children)) {
               if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== freshGreeting) {
+                (ch as HTMLElement).classList?.add('gd-m-boot-reveal');
                 existingMain.appendChild(ch);
               }
             }
@@ -817,6 +818,9 @@ export class DashboardShell {
           }
         }
       } else {
+        mobileView.classList.add('is-initial-open');
+        const initialMain = mobileView.querySelector('.gd-m-main');
+        initialMain?.classList.add('is-tab-entering', 'is-tab-entering-right');
         while (this.rootContainer.firstChild) {
           this.rootContainer.removeChild(this.rootContainer.firstChild);
         }

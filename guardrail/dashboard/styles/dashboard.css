@@ -23101,86 +23101,64 @@ article.gd-card-collapsed,
 @keyframes gd-m-tab-enter-right {
   0% {
     opacity: 0;
-    transform: perspective(900px) translate3d(38px, 6px, -24px) rotateY(-4deg) scale(0.96);
+    transform: translate3d(28px, 0, 0);
   }
   100% {
     opacity: 1;
-    transform: perspective(900px) translate3d(0, 0, 0) rotateY(0deg) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes gd-m-tab-enter-left {
   0% {
     opacity: 0;
-    transform: perspective(900px) translate3d(-38px, 6px, -24px) rotateY(4deg) scale(0.96);
+    transform: translate3d(-28px, 0, 0);
   }
   100% {
     opacity: 1;
-    transform: perspective(900px) translate3d(0, 0, 0) rotateY(0deg) scale(1);
-  }
-}
-
-@keyframes gd-m-header-wipe {
-  0% {
-    opacity: 0;
-    clip-path: inset(0 100% 0 0);
-    transform: translate3d(-10px, 0, 0);
-    filter: blur(4px);
-  }
-  100% {
-    opacity: 1;
-    clip-path: inset(0 0% 0 0);
     transform: translate3d(0, 0, 0);
-    filter: blur(0px);
   }
 }
 
 @keyframes gd-m-child-rise {
   0% {
     opacity: 0;
-    transform: translate3d(0, 22px, 0) scale(0.94);
-    filter: blur(3px);
-  }
-  68% {
-    opacity: 1;
-    transform: translate3d(0, -2px, 0) scale(1.008);
-    filter: blur(0px);
+    transform: translate3d(0, 22px, 0);
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0px);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes gd-m-list-deal {
   0% {
     opacity: 0;
-    transform: translate3d(14px, 10px, 0) scale(0.96);
+    transform: translate3d(0, 16px, 0);
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .gd-m-main.is-tab-entering.is-tab-entering-right {
-  animation: gd-m-tab-enter-right 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gd-m-tab-enter-right 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .gd-m-main.is-tab-entering.is-tab-entering-left {
-  animation: gd-m-tab-enter-left 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gd-m-tab-enter-left 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .gd-m-main.is-tab-entering > *:nth-child(2):not(.gd-m-greeting) {
-  animation: gd-m-header-wipe 380ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+  animation: gd-m-child-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 
 /* PWA Greeting Card: Character-by-character typewriter/reveal animation */
 @keyframes gd-m-char-reveal {
   0% {
     opacity: 0;
-    transform: translate3d(0, 6px, 0);
+    transform: translate3d(0, 8px, 0);
   }
   100% {
     opacity: 1;
@@ -23189,7 +23167,7 @@ article.gd-card-collapsed,
 }
 
 .gd-m-greeting.gd-m-scenery {
-  animation: gd-greeting-card-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gd-greeting-card-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
 }
 
 .gd-m-greeting.gd-m-scenery .gd-char {
@@ -23198,15 +23176,15 @@ article.gd-card-collapsed,
 }
 
 .gd-m-greeting.gd-m-scenery .gd-m-scenery-time .gd-char {
-  animation: gd-m-char-reveal 260ms cubic-bezier(0.22, 1, 0.36, 1) calc(80ms + var(--char-idx, 0) * 28ms) both;
+  animation: gd-m-char-reveal 320ms cubic-bezier(0.22, 1, 0.36, 1) calc(520ms + var(--char-idx, 0) * 32ms) both;
 }
 
 .gd-m-greeting.gd-m-scenery .gd-m-greet-title .gd-char {
-  animation: gd-m-char-reveal 300ms cubic-bezier(0.22, 1, 0.36, 1) calc(160ms + var(--char-idx, 0) * 32ms) both;
+  animation: gd-m-char-reveal 360ms cubic-bezier(0.22, 1, 0.36, 1) calc(660ms + var(--char-idx, 0) * 36ms) both;
 }
 
 .gd-m-greeting.gd-m-scenery .gd-m-greet-sub .gd-char {
-  animation: gd-m-char-reveal 260ms cubic-bezier(0.22, 1, 0.36, 1) calc(340ms + var(--char-idx, 0) * 14ms) both;
+  animation: gd-m-char-reveal 300ms cubic-bezier(0.22, 1, 0.36, 1) calc(920ms + var(--char-idx, 0) * 14ms) both;
 }
 
 .gd-m-shell.is-ambient-update .gd-m-greeting.gd-m-scenery .gd-char {
@@ -23216,45 +23194,111 @@ article.gd-card-collapsed,
 }
 
 .gd-m-main.is-tab-entering > *:nth-child(3) {
-  animation: gd-m-child-rise 440ms cubic-bezier(0.22, 1, 0.36, 1) 95ms both;
+  animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 280ms both;
 }
 
 .gd-m-main.is-tab-entering > *:nth-child(4) {
-  animation: gd-m-child-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
+  animation: gd-m-child-rise 580ms cubic-bezier(0.22, 1, 0.36, 1) 460ms both;
 }
 
 .gd-m-main.is-tab-entering > *:nth-child(n+5) {
-  animation: gd-m-child-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) 205ms both;
+  animation: gd-m-child-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) 620ms both;
 }
 
 .gd-m-main.is-tab-entering .gd-m-queue-list > *:nth-child(1),
 .gd-m-main.is-tab-entering .gd-m-history-results > *:nth-child(1),
 .gd-m-main.is-tab-entering .gd-m-wards-list > *:nth-child(1) {
-  animation: gd-m-list-deal 320ms cubic-bezier(0.22, 1, 0.36, 1) 130ms both;
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
 }
 
 .gd-m-main.is-tab-entering .gd-m-queue-list > *:nth-child(2),
 .gd-m-main.is-tab-entering .gd-m-history-results > *:nth-child(2),
 .gd-m-main.is-tab-entering .gd-m-wards-list > *:nth-child(2) {
-  animation: gd-m-list-deal 320ms cubic-bezier(0.22, 1, 0.36, 1) 170ms both;
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 500ms both;
 }
 
 .gd-m-main.is-tab-entering .gd-m-queue-list > *:nth-child(3),
 .gd-m-main.is-tab-entering .gd-m-history-results > *:nth-child(3),
 .gd-m-main.is-tab-entering .gd-m-wards-list > *:nth-child(3) {
-  animation: gd-m-list-deal 320ms cubic-bezier(0.22, 1, 0.36, 1) 210ms both;
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 640ms both;
 }
 
 .gd-m-main.is-tab-entering .gd-m-queue-list > *:nth-child(4),
 .gd-m-main.is-tab-entering .gd-m-history-results > *:nth-child(4),
 .gd-m-main.is-tab-entering .gd-m-wards-list > *:nth-child(4) {
-  animation: gd-m-list-deal 320ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 780ms both;
 }
 
 .gd-m-main.is-tab-entering .gd-m-queue-list > *:nth-child(n+5),
 .gd-m-main.is-tab-entering .gd-m-history-results > *:nth-child(n+5),
 .gd-m-main.is-tab-entering .gd-m-wards-list > *:nth-child(n+5) {
-  animation: gd-m-list-deal 320ms cubic-bezier(0.22, 1, 0.36, 1) 290ms both;
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 900ms both;
+}
+
+/* Initial PWA open: animate top bar, dock, and async-hydrated content cards */
+@keyframes gd-m-topbar-open {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -24px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes gd-m-dock-open {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 36px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.gd-m-shell.is-initial-open .gd-m-topbar {
+  animation: gd-m-topbar-open 520ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
+}
+
+.gd-m-shell.is-initial-open .gd-m-dock-wrap {
+  animation: gd-m-dock-open 560ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+}
+
+.gd-m-shell.is-initial-open .gd-m-main > *:nth-child(3) {
+  animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 760ms both;
+}
+
+.gd-m-shell.is-initial-open .gd-m-main > *:nth-child(4) {
+  animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 940ms both;
+}
+
+.gd-m-boot-reveal {
+  animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 760ms both;
+}
+
+.gd-m-boot-reveal + .gd-m-boot-reveal {
+  animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 940ms both;
+}
+
+.gd-m-boot-reveal + .gd-m-boot-reveal + .gd-m-boot-reveal {
+  animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 1100ms both;
+}
+
+.gd-m-boot-reveal .gd-m-queue-list > *:nth-child(1),
+.gd-m-boot-reveal.gd-m-queue-list > *:nth-child(1) {
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 860ms both;
+}
+
+.gd-m-boot-reveal .gd-m-queue-list > *:nth-child(2),
+.gd-m-boot-reveal.gd-m-queue-list > *:nth-child(2) {
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 1000ms both;
+}
+
+.gd-m-boot-reveal .gd-m-queue-list > *:nth-child(n+3),
+.gd-m-boot-reveal.gd-m-queue-list > *:nth-child(n+3) {
+  animation: gd-m-list-deal 480ms cubic-bezier(0.22, 1, 0.36, 1) 1140ms both;
 }
 
 /* Prevent greeting card from re-animating on background polls or filter taps */
@@ -23299,6 +23343,10 @@ article.gd-card-collapsed,
   .gd-m-main.is-tab-entering .gd-m-queue-list > *,
   .gd-m-main.is-tab-entering .gd-m-history-results > *,
   .gd-m-main.is-tab-entering .gd-m-wards-list > *,
+  .gd-m-shell.is-initial-open .gd-m-topbar,
+  .gd-m-shell.is-initial-open .gd-m-dock-wrap,
+  .gd-m-boot-reveal,
+  .gd-m-boot-reveal .gd-m-queue-list > *,
   .gd-m-greeting.gd-m-scenery .gd-char,
   .gd-m-history-sheet-overlay,
   .gd-mobile-action-sheet-backdrop,
