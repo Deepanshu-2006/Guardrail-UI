@@ -2812,13 +2812,13 @@ export function createHistoryRewindOverlay(): HTMLElement {
       } else {
         const g = ctx.createRadialGradient(p.x - p.r * 0.2, p.y - p.r * 0.2, p.r * 0.12, p.x, p.y, p.r);
         if (p.tone === 'steam') {
-          g.addColorStop(0, `rgba(255, 250, 236, ${(a * 0.72).toFixed(2)})`);
-          g.addColorStop(0.65, `rgba(228, 212, 182, ${(a * 0.36).toFixed(2)})`);
-          g.addColorStop(1, 'rgba(228, 212, 182, 0)');
+          g.addColorStop(0, `rgba(255, 252, 242, ${(a * 0.62).toFixed(2)})`);
+          g.addColorStop(0.5, `rgba(235, 222, 198, ${(a * 0.34).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(235, 222, 198, 0)');
         } else if (p.tone === 'soot') {
-          g.addColorStop(0, `rgba(74, 54, 34, ${(a * 0.56).toFixed(2)})`);
-          g.addColorStop(0.65, `rgba(118, 90, 56, ${(a * 0.24).toFixed(2)})`);
-          g.addColorStop(1, 'rgba(118, 90, 56, 0)');
+          g.addColorStop(0, `rgba(82, 62, 42, ${(a * 0.38).toFixed(2)})`);
+          g.addColorStop(0.5, `rgba(128, 102, 70, ${(a * 0.2).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(128, 102, 70, 0)');
         } else if (p.tone === 'ash') {
           g.addColorStop(0, `rgba(54, 32, 18, ${(a * 0.68).toFixed(2)})`);
           g.addColorStop(0.55, `rgba(148, 72, 24, ${(a * 0.32).toFixed(2)})`);
@@ -2862,6 +2862,11 @@ export function createHistoryRewindOverlay(): HTMLElement {
       }
       if (p.tone === 'ember') {
         p.vy += 175 * dt;
+      } else if (p.tone === 'steam' || p.tone === 'soot') {
+        p.vx += (-96 - p.vx) * Math.min(1, dt * 1.45);
+        p.vy *= Math.max(0, 1 - dt * 1.35);
+        p.vy -= 4.5 * dt;
+        p.r += p.grow * dt;
       } else {
         p.vx += (-18 - p.vx) * Math.min(1, dt * 1.4);
         p.r += p.grow * dt;
@@ -2887,36 +2892,66 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const groundY = height - 10;
 
     if (eraIdx === 0) {
-      const progress = (eraT % ERA_DURATION) / ERA_DURATION;
-      const trainX = -220 + progress * (width + 640);
-      const wheelAngle = clock * 8.2;
-      const chugBurst = 0.5 + 0.5 * Math.sin(wheelAngle * 2);
+      const groundTrackTop = groundY - 9;
+      const progress = eraT / ERA_DURATION;
+      const trainX = -260 + progress * (width + 780);
+      const wheelAngle = clock * 8.4;
+      const chugBurst = Math.pow(0.5 + 0.5 * Math.sin(wheelAngle * 2), 1.4);
       steamEmitAcc += dt;
-      while (steamEmitAcc >= 0.045) {
-        steamEmitAcc -= 0.045;
-        // Stack exhaust (churning coal smoke + hot white steam mixing upward)
+      while (steamEmitAcc >= 0.022) {
+        steamEmitAcc -= 0.022;
+        const stackX = trainX + 94;
+        const stackY = groundTrackTop - 72;
+        // Dense continuous curling slipstream exhaust hugging boiler & coach roofs
         eraPlumes.push({
-          x: trainX + 106 + (Math.random() - 0.5) * 4,
-          y: groundY - 76,
-          vx: -28 - Math.random() * 24,
-          vy: -76 - chugBurst * 62 - Math.random() * 25,
-          r: 6 + chugBurst * 4,
-          grow: 17 + Math.random() * 12,
+          x: stackX + (Math.random() - 0.5) * 3.5,
+          y: stackY + (Math.random() - 0.5) * 2,
+          vx: -94 - Math.random() * 48,
+          vy: -24 - chugBurst * 26 - Math.random() * 14,
+          r: 5.2 + chugBurst * 3.8,
+          grow: 11 + Math.random() * 7,
           age: 0,
-          maxAge: 2.1 + Math.random() * 0.9,
-          tone: Math.random() < 0.45 ? 'soot' : 'steam',
+          maxAge: 1.25 + Math.random() * 0.45,
+          tone: Math.random() < 0.34 ? 'soot' : 'steam',
         });
-        // Cylinder drain-cock high-pressure white steam jetting from lower pistons
-        if (chugBurst > 0.62) {
+        if (chugBurst > 0.45 || Math.random() < 0.45) {
           eraPlumes.push({
-            x: trainX + 94,
-            y: groundY - 14,
-            vx: -72 - Math.random() * 38,
-            vy: -14 - Math.random() * 18,
-            r: 4 + Math.random() * 3,
-            grow: 18,
+            x: stackX - 4 + (Math.random() - 0.5) * 4,
+            y: stackY - 2,
+            vx: -112 - Math.random() * 42,
+            vy: -16 - chugBurst * 16 - Math.random() * 10,
+            r: 4.5 + Math.random() * 3.2,
+            grow: 12 + Math.random() * 6,
             age: 0,
-            maxAge: 0.95 + Math.random() * 0.4,
+            maxAge: 1.05 + Math.random() * 0.4,
+            tone: 'steam',
+          });
+        }
+        // Subtle safety-valve wisp atop steam dome
+        if (Math.random() < 0.18) {
+          eraPlumes.push({
+            x: trainX + 46,
+            y: groundTrackTop - 65,
+            vx: -88 - Math.random() * 30,
+            vy: -12 - Math.random() * 10,
+            r: 2.6 + Math.random() * 1.6,
+            grow: 7.5,
+            age: 0,
+            maxAge: 0.65 + Math.random() * 0.25,
+            tone: 'steam',
+          });
+        }
+        // Cylinder drain-cock high-pressure white steam jetting low across the rails
+        if (chugBurst > 0.52) {
+          eraPlumes.push({
+            x: trainX + 86,
+            y: groundTrackTop - 9,
+            vx: -125 - Math.random() * 45,
+            vy: -6 + Math.random() * 9,
+            r: 3.4 + Math.random() * 2.4,
+            grow: 13.5,
+            age: 0,
+            maxAge: 0.68 + Math.random() * 0.26,
             tone: 'steam',
           });
         }
@@ -3018,233 +3053,709 @@ export function createHistoryRewindOverlay(): HTMLElement {
   const drawEraSteamTrain = (eraT: number, alpha: number) => {
     if (alpha <= 0.01) return;
     const groundY = height - 10;
-    const progress = (eraT % ERA_DURATION) / ERA_DURATION;
-    const trainX = -220 + progress * (width + 640);
+    const railY = groundY - 9;
+    const progress = eraT / ERA_DURATION;
+    const trainX = -260 + progress * (width + 780);
+    const wheelAngle = clock * 8.4;
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Ballast roadbed embankment, crosstie sleepers & gleaming steel rail
-    const railGrad = ctx.createLinearGradient(0, groundY - 2, 0, height);
-    railGrad.addColorStop(0, '#362310');
-    railGrad.addColorStop(1, '#1E1308');
-    ctx.fillStyle = railGrad;
-    ctx.fillRect(0, groundY, width, height - groundY);
+    // 1. Atmospheric Industrial Horizon (factory smokestacks, brick water tower, windmill & telegraph poles)
+    ctx.fillStyle = 'rgba(130, 105, 70, 0.14)';
+    ctx.fillRect(width * 0.18, railY - 28, 42, 24);
+    ctx.fillRect(width * 0.24, railY - 40, 26, 36);
+    ctx.fillRect(width * 0.27, railY - 64, 7, 60);
+    ctx.fillRect(width * 0.31, railY - 56, 6, 52);
+    // Water tower on trestle stilts
+    ctx.strokeStyle = 'rgba(120, 95, 62, 0.22)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.72, railY - 4);
+    ctx.lineTo(width * 0.72 + 5, railY - 28);
+    ctx.moveTo(width * 0.72 + 22, railY - 4);
+    ctx.lineTo(width * 0.72 + 17, railY - 28);
+    ctx.stroke();
+    ctx.fillRect(width * 0.72 + 2, railY - 46, 18, 18);
+    ctx.beginPath();
+    ctx.moveTo(width * 0.72, railY - 46);
+    ctx.lineTo(width * 0.72 + 11, railY - 54);
+    ctx.lineTo(width * 0.72 + 22, railY - 46);
+    ctx.fill();
 
-    ctx.fillStyle = '#4B3319';
-    for (let sx = 0; sx < width; sx += 16) {
-      ctx.fillRect(sx, groundY - 2, 9, 3);
-    }
-    ctx.fillStyle = '#B89A68';
-    ctx.fillRect(0, groundY - 4, width, 2);
-
-    // Background misty hills & wooden telegraph poles
-    for (let px = 60; px < width; px += 210) {
-      ctx.fillStyle = 'rgba(66, 44, 22, 0.35)';
-      ctx.fillRect(px, groundY - 78, 3, 74);
-      ctx.fillRect(px - 10, groundY - 68, 22, 2.5);
+    // Spinning wooden windmill silhouette
+    const wmX = width * 0.44;
+    const wmY = railY - 56;
+    ctx.beginPath();
+    ctx.moveTo(wmX - 10, railY - 4);
+    ctx.lineTo(wmX - 3, wmY);
+    ctx.lineTo(wmX + 3, wmY);
+    ctx.lineTo(wmX + 10, railY - 4);
+    ctx.fill();
+    ctx.save();
+    ctx.translate(wmX, wmY);
+    ctx.rotate(clock * 0.65);
+    ctx.strokeStyle = 'rgba(130, 105, 70, 0.22)';
+    ctx.lineWidth = 2.4;
+    for (let b = 0; b < 4; b++) {
+      ctx.rotate(Math.PI / 2);
       ctx.beginPath();
-      ctx.moveTo(px, groundY - 67);
-      ctx.quadraticCurveTo(px + 105, groundY - 54, px + 210, groundY - 67);
-      ctx.strokeStyle = 'rgba(66, 44, 22, 0.25)';
-      ctx.lineWidth = 0.9;
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -24);
       ctx.stroke();
     }
+    ctx.restore();
 
-    // 2 Detailed Pullman Passenger Coaches
-    const drawCoach = (cx: number) => {
-      const bodyGrad = ctx.createLinearGradient(cx, groundY - 56, cx, groundY - 12);
-      bodyGrad.addColorStop(0, '#462E18');
-      bodyGrad.addColorStop(1, '#26170A');
-      ctx.fillStyle = bodyGrad;
-      ctx.fillRect(cx, groundY - 52, 128, 36);
-      // Clerestory arched roof + vents
-      ctx.fillRect(cx - 3, groundY - 56, 134, 5);
-      ctx.fillStyle = '#2E1E0E';
-      ctx.fillRect(cx + 12, groundY - 61, 104, 5);
-      // Arched brass-framed warm lit windows
-      for (let w = 0; w < 5; w++) {
-        const wx = cx + 12 + w * 23;
-        ctx.fillStyle = 'rgba(255, 212, 118, 0.72)';
+    // Telegraph poles + sagged catenary copper lines
+    ctx.strokeStyle = 'rgba(94, 72, 44, 0.26)';
+    ctx.lineWidth = 1.4;
+    const poleStep = 148;
+    for (let px = 40; px < width + poleStep; px += poleStep) {
+      ctx.beginPath();
+      ctx.moveTo(px, railY - 4);
+      ctx.lineTo(px, railY - 54);
+      ctx.moveTo(px - 8, railY - 48);
+      ctx.lineTo(px + 8, railY - 48);
+      ctx.stroke();
+      if (px + poleStep < width + poleStep) {
         ctx.beginPath();
-        ctx.roundRect(wx, groundY - 44, 15, 16, [5, 5, 1, 1]);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(182, 136, 62, 0.65)';
-        ctx.lineWidth = 0.8;
+        ctx.moveTo(px - 6, railY - 48);
+        ctx.quadraticCurveTo(px + poleStep * 0.5, railY - 38, px + poleStep - 6, railY - 48);
+        ctx.moveTo(px + 6, railY - 48);
+        ctx.quadraticCurveTo(px + poleStep * 0.5, railY - 37, px + poleStep + 6, railY - 48);
         ctx.stroke();
       }
-      // Chassis frame & twin bogies
-      ctx.fillStyle = '#1D1208';
-      ctx.fillRect(cx - 2, groundY - 16, 132, 4);
-      for (const bx of [cx + 22, cx + 106]) {
-        ctx.fillRect(bx - 16, groundY - 14, 32, 4);
-        for (const wx of [bx - 10, bx + 10]) {
+    }
+
+    // 2. Realistic Multi-Layer Crushed Ballast Roadbed, Oak Sleepers & Steel I-Beam Rail
+    const earthGrad = ctx.createLinearGradient(0, railY + 3, 0, height);
+    earthGrad.addColorStop(0, '#786246');
+    earthGrad.addColorStop(0.28, '#59452E');
+    earthGrad.addColorStop(1, '#312316');
+    ctx.fillStyle = earthGrad;
+    ctx.fillRect(0, railY + 3, width, height - (railY + 3));
+
+    // Crushed granite/limestone shoulder highlight along ballast crown
+    const ballastGrad = ctx.createLinearGradient(0, railY + 1, 0, railY + 8);
+    ballastGrad.addColorStop(0, 'rgba(176, 152, 118, 0.65)');
+    ballastGrad.addColorStop(1, 'rgba(92, 72, 48, 0.85)');
+    ctx.fillStyle = ballastGrad;
+    ctx.fillRect(0, railY + 2, width, 6);
+
+    // Deterministic angular ballast gravel aggregate texture
+    for (let gx = 4; gx < width; gx += 7) {
+      const h1 = ((gx * 37) % 11) / 11;
+      const h2 = ((gx * 53) % 7) / 7;
+      ctx.fillStyle = h1 > 0.5 ? 'rgba(208, 186, 152, 0.45)' : 'rgba(42, 31, 19, 0.52)';
+      ctx.fillRect(gx + h2 * 3, railY + 3.5 + h1 * 8.5, 2.6, 1.8);
+    }
+
+    // Creosoted oak crosstie sleepers with recessed depth & iron tie plates
+    for (let sx = 6; sx < width; sx += 19) {
+      ctx.fillStyle = 'rgba(22, 15, 9, 0.72)';
+      ctx.fillRect(sx - 0.5, railY + 3.8, 11.5, 3.2);
+      ctx.fillStyle = '#4B331C';
+      ctx.fillRect(sx, railY + 1.8, 10.5, 4.2);
+      ctx.fillStyle = 'rgba(138, 104, 68, 0.55)';
+      ctx.fillRect(sx + 0.5, railY + 1.8, 9.5, 1.1);
+      ctx.fillStyle = '#221A12';
+      ctx.fillRect(sx + 2.2, railY + 0.8, 6.2, 1.4);
+      ctx.fillRect(sx + 3, railY, 1.2, 1.2);
+      ctx.fillRect(sx + 6.4, railY, 1.2, 1.2);
+    }
+
+    // Steel I-beam rail: base flange, shadowed web, and gleaming burnished railhead
+    ctx.fillStyle = '#2B2016';
+    ctx.fillRect(0, railY + 1.4, width, 1.3);
+    ctx.fillStyle = '#463726';
+    ctx.fillRect(0, railY + 0.5, width, 1.0);
+    const railTopGrad = ctx.createLinearGradient(0, railY - 0.8, 0, railY + 0.6);
+    railTopGrad.addColorStop(0, '#EFE0BE');
+    railTopGrad.addColorStop(1, '#9A8158');
+    ctx.fillStyle = railTopGrad;
+    ctx.fillRect(0, railY - 0.7, width, 1.4);
+
+    // Rail fishplate joint bars every 114px
+    ctx.fillStyle = '#332517';
+    for (let jx = 52; jx < width; jx += 114) {
+      ctx.fillRect(jx, railY - 0.2, 9, 2.2);
+    }
+
+    // Helper: Flanged spoked wheel with cast rim, optional crescent counterweight & crankpin
+    const drawSpokedWheel = (
+      wx: number,
+      radius: number,
+      spokes: number,
+      isDriver: boolean
+    ) => {
+      const wy = railY - radius;
+      ctx.save();
+      ctx.translate(wx, wy);
+
+      // Rail contact shadow
+      ctx.fillStyle = 'rgba(18, 12, 7, 0.65)';
+      ctx.beginPath();
+      ctx.ellipse(0, radius, radius * 0.75, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rear steel flange & rolled tire ring
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 1.0, 0, Math.PI * 2);
+      ctx.fillStyle = '#4F3E2A';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#23190F';
+      ctx.fill();
+
+      // Polished tread rim
+      ctx.strokeStyle = isDriver ? '#C9B186' : '#A9916B';
+      ctx.lineWidth = isDriver ? 1.7 : 1.1;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Open inner wheel cavity so ballast/rods show behind spokes
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 2.6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(34, 24, 15, 0.55)';
+      ctx.fill();
+
+      // Rotating spokes + counterweight + crankpin boss
+      ctx.save();
+      ctx.rotate(wheelAngle);
+      ctx.strokeStyle = '#735A3B';
+      ctx.lineWidth = isDriver ? 1.35 : 0.95;
+      for (let s = 0; s < spokes; s++) {
+        const ang = (s * Math.PI * 2) / spokes;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * 2.4, Math.sin(ang) * 2.4);
+        ctx.lineTo(Math.cos(ang) * (radius - 2.6), Math.sin(ang) * (radius - 2.6));
+        ctx.stroke();
+      }
+      if (isDriver) {
+        // Heavy cast-iron crescent counterweight opposite the crankpin
+        ctx.fillStyle = '#2B1F13';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius - 2.6, Math.PI - 0.72, Math.PI + 0.72);
+        ctx.lineTo(Math.cos(Math.PI + 0.72) * (radius * 0.48), Math.sin(Math.PI + 0.72) * (radius * 0.48));
+        ctx.arc(0, 0, radius * 0.48, Math.PI + 0.72, Math.PI - 0.72, true);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#6A5337';
+        ctx.lineWidth = 0.7;
+        ctx.stroke();
+
+        // Crankpin boss
+        ctx.fillStyle = '#C8A567';
+        ctx.beginPath();
+        ctx.arc(radius * 0.54, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Brass/iron central axle hub
+      ctx.fillStyle = isDriver ? '#B69459' : '#6F583B';
+      ctx.beginPath();
+      ctx.arc(0, 0, isDriver ? 3.4 : 2.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1E150C';
+      ctx.beginPath();
+      ctx.arc(0, 0, isDriver ? 1.4 : 0.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    // Helper: 4-wheel Arch-Bar Bogie Truck (leaf springs, side frame beam & journal boxes)
+    const drawBogieTruck = (centerX: number) => {
+      const wheelR = 6.2;
+      const ax1 = centerX - 11;
+      const ax2 = centerX + 11;
+      drawSpokedWheel(ax1, wheelR, 8, false);
+      drawSpokedWheel(ax2, wheelR, 8, false);
+      const axleY = railY - wheelR;
+
+      ctx.fillStyle = '#2B2014';
+      ctx.beginPath();
+      ctx.moveTo(ax1 - 4, axleY - 1.8);
+      ctx.lineTo(ax2 + 4, axleY - 1.8);
+      ctx.lineTo(ax2 + 2, axleY + 1.8);
+      ctx.lineTo(ax1 - 2, axleY + 1.8);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#4A3823';
+      ctx.fillRect(centerX - 6, axleY - 4.2, 12, 4);
+      ctx.strokeStyle = '#8F714A';
+      ctx.lineWidth = 0.7;
+      ctx.strokeRect(centerX - 6, axleY - 4.2, 12, 4);
+
+      ctx.fillStyle = '#3B2C1B';
+      ctx.fillRect(ax1 - 2.6, axleY - 2.6, 5.2, 5.2);
+      ctx.fillRect(ax2 - 2.6, axleY - 2.6, 5.2, 5.2);
+    };
+
+    // Helper: Authentic Victorian Pullman Passenger Coach (clerestory roof, vestibuled steps, under-truss, lit curtains)
+    const drawPullmanCoach = (cx: number, hasAccordionFront: boolean) => {
+      const coachW = 144;
+      const sillY = railY - 17;
+      const roofY = railY - 56;
+      const bodyH = sillY - roofY;
+
+      // Queen-post underframe truss rods & Westinghouse air-brake tank
+      ctx.strokeStyle = 'rgba(40, 29, 18, 0.9)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(cx + 12, sillY + 3.5);
+      ctx.lineTo(cx + 50, railY - 8);
+      ctx.lineTo(cx + 94, railY - 8);
+      ctx.lineTo(cx + coachW - 12, sillY + 3.5);
+      ctx.moveTo(cx + 50, sillY + 3);
+      ctx.lineTo(cx + 50, railY - 8);
+      ctx.moveTo(cx + 94, sillY + 3);
+      ctx.lineTo(cx + 94, railY - 8);
+      ctx.stroke();
+
+      ctx.fillStyle = '#251B11';
+      ctx.fillRect(cx + 60, sillY + 3, 24, 6);
+      ctx.strokeStyle = '#6B5233';
+      ctx.lineWidth = 0.7;
+      ctx.strokeRect(cx + 60, sillY + 3, 24, 6);
+
+      drawBogieTruck(cx + 28);
+      drawBogieTruck(cx + coachW - 28);
+
+      // Recessed end vestibule boarding steps
+      for (const sx of [cx + 2, cx + coachW - 10]) {
+        ctx.fillStyle = '#2B1E12';
+        ctx.fillRect(sx, sillY + 2, 8, 2.2);
+        ctx.fillRect(sx + 1, sillY + 5, 6.5, 2.2);
+        ctx.fillRect(sx + 2, sillY + 8, 5, 2);
+      }
+
+      // Steel underframe channel beam
+      ctx.fillStyle = '#1E150C';
+      ctx.fillRect(cx + 1, sillY, coachW - 2, 4.2);
+
+      // Mahogany Pullman body inside vestibules
+      const bodyX = cx + 10;
+      const bodyW = coachW - 20;
+      const bodyGrad = ctx.createLinearGradient(0, roofY + 5, 0, sillY);
+      bodyGrad.addColorStop(0, '#442D19');
+      bodyGrad.addColorStop(0.55, '#342111');
+      bodyGrad.addColorStop(1, '#21140A');
+      ctx.fillStyle = bodyGrad;
+      ctx.fillRect(bodyX, roofY + 6, bodyW, bodyH - 6);
+
+      // Subtle vertical tongue-and-groove timber paneling lines
+      ctx.strokeStyle = 'rgba(20, 12, 6, 0.32)';
+      ctx.lineWidth = 0.6;
+      for (let px = bodyX + 4; px < bodyX + bodyW; px += 4) {
+        ctx.beginPath();
+        ctx.moveTo(px, roofY + 24);
+        ctx.lineTo(px, sillY - 1);
+        ctx.stroke();
+      }
+
+      // Gold-leaf Pullman belt rail & eaves pinstriping
+      ctx.fillStyle = 'rgba(209, 171, 98, 0.55)';
+      ctx.fillRect(bodyX, sillY - 10, bodyW, 1.1);
+      ctx.fillRect(bodyX, roofY + 8, bodyW, 1.0);
+
+      // Vestibule end platforms, wrought-iron gates & brass grab stanchions
+      for (const vx of [cx + 2, cx + coachW - 10]) {
+        ctx.fillStyle = 'rgba(34, 24, 15, 0.85)';
+        ctx.fillRect(vx, roofY + 8, 8, bodyH - 8);
+        ctx.strokeStyle = '#9C7B4C';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(vx + 2, sillY);
+        ctx.lineTo(vx + 2, roofY + 9);
+        ctx.moveTo(vx + 6, sillY);
+        ctx.lineTo(vx + 6, roofY + 9);
+        ctx.moveTo(vx + 1, sillY - 9);
+        ctx.lineTo(vx + 7, sillY - 9);
+        ctx.stroke();
+      }
+
+      // 6 Arched Victorian Passenger Windows with warm gaslamp glow, muntins & velvet curtains
+      const winCount = 6;
+      const winPad = 8;
+      const winGap = (bodyW - winPad * 2) / winCount;
+      for (let w = 0; w < winCount; w++) {
+        const wx = bodyX + winPad + w * winGap;
+        const wy = roofY + 12;
+        const ww = winGap - 5.5;
+        const wh = 13.5;
+
+        ctx.fillStyle = '#1D1209';
+        ctx.beginPath();
+        ctx.roundRect(wx - 1, wy - 1, ww + 2, wh + 2, [4, 4, 1, 1]);
+        ctx.fill();
+
+        const glowGrad = ctx.createRadialGradient(
+          wx + ww * 0.5,
+          wy + wh * 0.35,
+          1,
+          wx + ww * 0.5,
+          wy + wh * 0.5,
+          ww * 0.9
+        );
+        glowGrad.addColorStop(0, 'rgba(255, 232, 168, 0.92)');
+        glowGrad.addColorStop(0.65, 'rgba(232, 178, 88, 0.62)');
+        glowGrad.addColorStop(1, 'rgba(138, 92, 38, 0.38)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.roundRect(wx, wy, ww, wh, [3, 3, 0.5, 0.5]);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(66, 36, 18, 0.72)';
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.lineTo(wx + 3.2, wy);
+        ctx.quadraticCurveTo(wx + 2.4, wy + wh * 0.55, wx + 0.6, wy + wh);
+        ctx.lineTo(wx, wy + wh);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(wx + ww, wy);
+        ctx.lineTo(wx + ww - 3.2, wy);
+        ctx.quadraticCurveTo(wx + ww - 2.4, wy + wh * 0.55, wx + ww - 0.6, wy + wh);
+        ctx.lineTo(wx + ww, wy + wh);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#2A1B0E';
+        ctx.fillRect(wx, wy + 4, ww, 1.0);
+      }
+
+      // Outer Arched Coach Roof + Overhang Eaves
+      ctx.fillStyle = '#271A0E';
+      ctx.beginPath();
+      ctx.moveTo(cx - 1, roofY + 8);
+      ctx.quadraticCurveTo(cx + coachW * 0.5, roofY + 2.5, cx + coachW + 1, roofY + 8);
+      ctx.lineTo(cx + coachW + 1, roofY + 10.5);
+      ctx.lineTo(cx - 1, roofY + 10.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Raised Clerestory Monitor Deck with glowing transom slits & brass roof vents
+      const clX = bodyX + 6;
+      const clW = bodyW - 12;
+      ctx.fillStyle = '#1E140B';
+      ctx.beginPath();
+      ctx.roundRect(clX, roofY - 1, clW, 6.5, 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(250, 214, 134, 0.5)';
+      for (let tx = clX + 6; tx < clX + clW - 6; tx += 12) {
+        ctx.fillRect(tx, roofY + 2, 7, 1.8);
+      }
+      ctx.fillStyle = '#5C452B';
+      ctx.fillRect(clX + 24, roofY - 3, 5, 2.2);
+      ctx.fillRect(clX + clW - 29, roofY - 3, 5, 2.2);
+
+      // Accordion Canvas Gangway Diaphragm & Knuckle Coupler connecting forward
+      if (hasAccordionFront) {
+        const gx = cx + coachW;
+        ctx.fillStyle = '#1E150C';
+        ctx.fillRect(gx, roofY + 11, 10, bodyH - 11);
+        ctx.strokeStyle = 'rgba(130, 102, 68, 0.55)';
+        ctx.lineWidth = 0.8;
+        for (let f = 2; f <= 8; f += 2.5) {
           ctx.beginPath();
-          ctx.arc(wx, groundY - 8, 5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(gx + f, roofY + 11);
+          ctx.lineTo(gx + f, sillY);
+          ctx.stroke();
         }
+        ctx.fillStyle = '#1B130B';
+        ctx.fillRect(gx - 2, sillY + 0.5, 14, 3);
       }
     };
-    drawCoach(trainX - 344);
-    drawCoach(trainX - 204);
 
-    // Coal Tender heaped with textured coal chunks
-    ctx.fillStyle = '#27190C';
-    ctx.fillRect(trainX - 66, groundY - 48, 60, 32);
-    ctx.fillRect(trainX - 69, groundY - 50, 64, 3);
-    ctx.fillStyle = '#181007';
+    // 3. Draw Twin Passenger Coaches
+    drawPullmanCoach(trainX - 404, true);
+    drawPullmanCoach(trainX - 250, true);
+
+    // 4. Draw Riveted Coal Tender (with bogie trucks, water dome & glittering anthracite heap)
+    const tenderX = trainX - 96;
+    const tenderW = 84;
+    const tenderSillY = railY - 16;
+    const tenderTopY = railY - 44;
+
+    drawBogieTruck(tenderX + 18);
+    drawBogieTruck(tenderX + tenderW - 18);
+
+    ctx.fillStyle = '#1A120A';
+    ctx.fillRect(tenderX + tenderW - 2, tenderSillY + 0.5, 16, 3.2);
+
+    ctx.fillStyle = '#1F150C';
+    ctx.fillRect(tenderX, tenderSillY, tenderW, 4);
+
+    // Jagged heaped anthracite coal pile
+    ctx.fillStyle = '#18120B';
     ctx.beginPath();
-    ctx.moveTo(trainX - 62, groundY - 48);
-    ctx.lineTo(trainX - 50, groundY - 58);
-    ctx.lineTo(trainX - 36, groundY - 55);
-    ctx.lineTo(trainX - 24, groundY - 60);
-    ctx.lineTo(trainX - 10, groundY - 48);
+    ctx.moveTo(tenderX + 8, tenderTopY + 1);
+    ctx.lineTo(tenderX + 19, tenderTopY - 8);
+    ctx.lineTo(tenderX + 31, tenderTopY - 6);
+    ctx.lineTo(tenderX + 43, tenderTopY - 10);
+    ctx.lineTo(tenderX + 57, tenderTopY - 5);
+    ctx.lineTo(tenderX + 70, tenderTopY - 3);
+    ctx.lineTo(tenderX + 78, tenderTopY + 1);
     ctx.closePath();
     ctx.fill();
-    for (const wx of [trainX - 50, trainX - 22]) {
-      ctx.beginPath();
-      ctx.arc(wx, groundY - 9, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.fillStyle = 'rgba(176, 146, 102, 0.42)';
+    ctx.fillRect(tenderX + 22, tenderTopY - 6, 3, 2);
+    ctx.fillRect(tenderX + 40, tenderTopY - 8, 4, 2);
+    ctx.fillRect(tenderX + 54, tenderTopY - 4, 3, 2);
 
-    // Heavy Cast-Iron 4-6-0 Steam Locomotive Body
-    const ironGrad = ctx.createLinearGradient(trainX, groundY - 70, trainX, groundY - 15);
-    ironGrad.addColorStop(0, '#3D2E1E');
-    ironGrad.addColorStop(0.4, '#24180D');
-    ironGrad.addColorStop(1, '#160E06');
-    ctx.fillStyle = ironGrad;
-
-    // Engineer cab + sloped roof + glowing firebox/window
-    ctx.fillRect(trainX, groundY - 66, 38, 48);
+    const tenderGrad = ctx.createLinearGradient(0, tenderTopY, 0, tenderSillY);
+    tenderGrad.addColorStop(0, '#3D2B19');
+    tenderGrad.addColorStop(1, '#1E140B');
+    ctx.fillStyle = tenderGrad;
+    ctx.fillRect(tenderX + 2, tenderTopY, tenderW - 4, tenderSillY - tenderTopY);
+    ctx.fillStyle = '#291C10';
+    ctx.fillRect(tenderX, tenderTopY - 1.5, tenderW, 3);
+    ctx.fillStyle = 'rgba(209, 171, 98, 0.52)';
+    ctx.fillRect(tenderX + 4, tenderTopY + 7, tenderW - 8, 1.1);
+    ctx.fillRect(tenderX + 4, tenderSillY - 4, tenderW - 8, 1.0);
+    ctx.fillStyle = '#A88246';
+    ctx.fillRect(tenderX + 6, tenderTopY - 4.5, 8, 3.2);
+    ctx.fillStyle = 'rgba(255, 198, 92, 0.85)';
     ctx.beginPath();
-    ctx.moveTo(trainX - 5, groundY - 66);
-    ctx.quadraticCurveTo(trainX + 19, groundY - 72, trainX + 42, groundY - 66);
-    ctx.lineTo(trainX + 42, groundY - 63);
-    ctx.lineTo(trainX - 5, groundY - 63);
+    ctx.arc(tenderX, tenderTopY + 4, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Realistic 1885 4-6-0 Steam Locomotive
+    const driveXs = [trainX + 14, trainX + 45, trainX + 76];
+    const driverR = 14.5;
+    const driveCY = railY - driverR;
+
+    drawSpokedWheel(trainX + 95, 6.8, 8, false);
+    drawSpokedWheel(trainX + 111, 6.8, 8, false);
+
+    // Cowcatcher wedge + diagonal iron bars
+    ctx.fillStyle = '#23180E';
+    ctx.beginPath();
+    ctx.moveTo(trainX + 104, railY - 13);
+    ctx.lineTo(trainX + 131, railY - 2);
+    ctx.lineTo(trainX + 104, railY - 2);
     ctx.closePath();
     ctx.fill();
-    const fireGlow = ctx.createRadialGradient(trainX + 20, groundY - 48, 2, trainX + 20, groundY - 48, 16);
-    fireGlow.addColorStop(0, 'rgba(255, 224, 128, 0.92)');
-    fireGlow.addColorStop(1, 'rgba(220, 118, 28, 0.2)');
-    ctx.fillStyle = fireGlow;
-    ctx.beginPath();
-    ctx.roundRect(trainX + 12, groundY - 58, 16, 15, [6, 6, 1, 1]);
-    ctx.fill();
-
-    // Long Tapered Boiler + Riveted Bands + Brass Steam/Sand Domes
-    ctx.fillStyle = ironGrad;
-    ctx.fillRect(trainX + 38, groundY - 52, 82, 31);
-    ctx.beginPath();
-    ctx.ellipse(trainX + 120, groundY - 36.5, 4, 15.5, 0, -Math.PI / 2, Math.PI / 2);
-    ctx.fill();
-    // Metallic boiler bands
-    ctx.strokeStyle = 'rgba(206, 160, 82, 0.45)';
-    ctx.lineWidth = 1.2;
-    for (const bx of [trainX + 54, trainX + 74, trainX + 94]) {
+    ctx.strokeStyle = '#755A38';
+    ctx.lineWidth = 1.0;
+    for (let s = 0; s < 5; s++) {
       ctx.beginPath();
-      ctx.moveTo(bx, groundY - 52);
-      ctx.lineTo(bx, groundY - 21);
+      ctx.moveTo(trainX + 106, railY - 12 + s * 2.1);
+      ctx.lineTo(trainX + 129 - s * 4.5, railY - 2.2);
       ctx.stroke();
     }
-    // Sand dome + brass steam dome + bell
-    ctx.fillStyle = '#B8842E';
-    ctx.beginPath();
-    ctx.arc(trainX + 58, groundY - 52, 8.5, Math.PI, 0);
-    ctx.fill();
-    ctx.fillStyle = '#2B1D0F';
-    ctx.beginPath();
-    ctx.arc(trainX + 82, groundY - 52, 7.5, Math.PI, 0);
-    ctx.fill();
-    // Flared Chimney Smokestack
+
+    // Engineer's Cab (tapered Victorian arch window + glowing coal firebox inside)
+    const cabX = trainX - 9;
+    const cabW = 30;
+    const cabTopY = railY - 68;
+    const cabSillY = railY - 18;
+    ctx.fillStyle = '#2D1E11';
+    ctx.fillRect(cabX, cabTopY + 4, cabW, cabSillY - (cabTopY + 4));
     ctx.fillStyle = '#1D130A';
     ctx.beginPath();
-    ctx.moveTo(trainX + 101, groundY - 52);
-    ctx.lineTo(trainX + 98, groundY - 76);
-    ctx.lineTo(trainX + 114, groundY - 76);
-    ctx.lineTo(trainX + 111, groundY - 52);
+    ctx.moveTo(cabX - 4, cabTopY + 5);
+    ctx.quadraticCurveTo(cabX + cabW * 0.5, cabTopY, cabX + cabW + 3, cabTopY + 5);
+    ctx.lineTo(cabX + cabW + 3, cabTopY + 8);
+    ctx.lineTo(cabX - 4, cabTopY + 8);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#C9963A';
-    ctx.fillRect(trainX + 96.5, groundY - 78, 19, 3);
 
-    // Kerosene Brass Headlamp + Dusty Volumetric Cone
-    ctx.fillStyle = '#FFF4C8';
-    ctx.fillRect(trainX + 120, groundY - 55, 6, 7);
-    const beamGrad = ctx.createLinearGradient(trainX + 126, groundY - 51, trainX + 320, groundY - 40);
-    beamGrad.addColorStop(0, 'rgba(255, 232, 152, 0.34)');
-    beamGrad.addColorStop(1, 'rgba(255, 232, 152, 0)');
+    const cabWinGrad = ctx.createRadialGradient(cabX + 16, cabTopY + 20, 1, cabX + 16, cabTopY + 20, 16);
+    cabWinGrad.addColorStop(0, 'rgba(255, 198, 92, 0.94)');
+    cabWinGrad.addColorStop(0.55, 'rgba(226, 118, 36, 0.72)');
+    cabWinGrad.addColorStop(1, 'rgba(72, 34, 14, 0.65)');
+    ctx.fillStyle = cabWinGrad;
+    ctx.beginPath();
+    ctx.roundRect(cabX + 5, cabTopY + 11, 18, 16, [5, 5, 1, 1]);
+    ctx.fill();
+    ctx.fillStyle = '#24170C';
+    ctx.fillRect(cabX + 13.5, cabTopY + 11, 1.5, 16);
+    ctx.beginPath();
+    ctx.arc(cabX + 10, cabTopY + 19, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(cabX + 7, cabTopY + 21, 6, 6);
+
+    // Cylindrical Horizontal Boiler Barrel & Riveted Smokebox
+    const boilerY = railY - 55;
+    const boilerH = 26;
+    const boilerGrad = ctx.createLinearGradient(0, boilerY, 0, boilerY + boilerH);
+    boilerGrad.addColorStop(0, '#4E3923');
+    boilerGrad.addColorStop(0.28, '#362616');
+    boilerGrad.addColorStop(1, '#1C130A');
+    ctx.fillStyle = boilerGrad;
+    ctx.fillRect(trainX + 20, boilerY, 64, boilerH);
+
+    ctx.fillStyle = '#A88246';
+    for (const bx of [trainX + 34, trainX + 51, trainX + 68, trainX + 83]) {
+      ctx.fillRect(bx, boilerY, 1.4, boilerH);
+    }
+
+    const sbGrad = ctx.createLinearGradient(0, boilerY - 0.5, 0, boilerY + boilerH + 1);
+    sbGrad.addColorStop(0, '#302214');
+    sbGrad.addColorStop(0.4, '#22180D');
+    sbGrad.addColorStop(1, '#150E07');
+    ctx.fillStyle = sbGrad;
+    ctx.fillRect(trainX + 83, boilerY - 0.5, 25, boilerH + 1);
+    ctx.beginPath();
+    ctx.moveTo(trainX + 108, boilerY + 1);
+    ctx.quadraticCurveTo(trainX + 113, boilerY + boilerH * 0.5, trainX + 108, boilerY + boilerH - 1);
+    ctx.closePath();
+    ctx.fillStyle = '#2B1F13';
+    ctx.fill();
+
+    ctx.fillStyle = '#261A0E';
+    ctx.fillRect(trainX - 6, boilerY + boilerH - 2, 118, 3.2);
+    ctx.strokeStyle = '#C9A462';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(trainX + 21, boilerY + 9);
+    ctx.lineTo(trainX + 105, boilerY + 9);
+    ctx.stroke();
+
+    // Brass-crowned Steam Dome & Sand Dome
+    const drawDome = (dx: number, w: number, h: number, crown: boolean) => {
+      const dg = ctx.createLinearGradient(dx - w * 0.5, 0, dx + w * 0.5, 0);
+      dg.addColorStop(0, '#2A1D10');
+      dg.addColorStop(0.45, '#594228');
+      dg.addColorStop(1, '#1B1209');
+      ctx.fillStyle = dg;
+      ctx.beginPath();
+      ctx.roundRect(dx - w * 0.5, boilerY - h, w, h + 1, [w * 0.45, w * 0.45, 0, 0]);
+      ctx.fill();
+      if (crown) {
+        ctx.fillStyle = '#D1A960';
+        ctx.fillRect(dx - 2.5, boilerY - h - 2.5, 5, 2.5);
+        ctx.fillRect(dx + 1, boilerY - h - 3.5, 1.8, 3.5);
+      }
+    };
+    drawDome(trainX + 46, 13, 10.5, true);
+    drawDome(trainX + 66, 11.5, 9, false);
+    ctx.strokeStyle = 'rgba(72, 54, 34, 0.85)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(trainX + 64, boilerY + boilerH - 2);
+    ctx.quadraticCurveTo(trainX + 66, railY - 22, trainX + 71, railY - 10);
+    ctx.stroke();
+
+    // Flared Victorian Diamond Smokestack (exact center trainX + 94, crown top railY - 72)
+    const stackX = trainX + 94;
+    const stackTopY = railY - 72;
+    ctx.fillStyle = '#24190E';
+    ctx.beginPath();
+    ctx.moveTo(stackX - 4.2, boilerY);
+    ctx.lineTo(stackX - 3.5, stackTopY + 7);
+    ctx.lineTo(stackX - 7.5, stackTopY + 3);
+    ctx.lineTo(stackX + 7.5, stackTopY + 3);
+    ctx.lineTo(stackX + 3.5, stackTopY + 7);
+    ctx.lineTo(stackX + 4.2, boilerY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#C9A25B';
+    ctx.beginPath();
+    ctx.roundRect(stackX - 7.8, stackTopY, 15.6, 3.4, 1.2);
+    ctx.fill();
+
+    // Bracket-mounted Victorian Brass Headlamp + Forward Light Beam Cone
+    const lampX = trainX + 109;
+    const lampY = boilerY - 3;
+    const beamGrad = ctx.createRadialGradient(lampX + 4, lampY - 2, 1, lampX + 95, lampY + 6, 115);
+    beamGrad.addColorStop(0, 'rgba(255, 224, 132, 0.34)');
+    beamGrad.addColorStop(0.5, 'rgba(255, 206, 98, 0.11)');
+    beamGrad.addColorStop(1, 'rgba(255, 200, 86, 0)');
     ctx.fillStyle = beamGrad;
     ctx.beginPath();
-    ctx.moveTo(trainX + 126, groundY - 54);
-    ctx.lineTo(trainX + 320, groundY - 82);
-    ctx.lineTo(trainX + 320, groundY - 12);
-    ctx.lineTo(trainX + 126, groundY - 49);
+    ctx.moveTo(lampX + 3, lampY - 4);
+    ctx.lineTo(lampX + 125, lampY - 20);
+    ctx.lineTo(lampX + 125, lampY + 26);
+    ctx.lineTo(lampX + 3, lampY + 3);
     ctx.closePath();
     ctx.fill();
+    ctx.fillStyle = '#A68042';
+    ctx.fillRect(lampX - 5, lampY - 6, 8, 8);
+    ctx.fillStyle = '#FFF0B3';
+    ctx.fillRect(lampX + 2.5, lampY - 5, 2.2, 6);
 
-    // Slatted Iron Cowcatcher Pilot
-    ctx.fillStyle = '#1E140B';
+    // Three Large Flanged 12-Spoke Driving Wheels with Crescent Counterweights
+    for (const wx of driveXs) {
+      drawSpokedWheel(wx, driverR, 12, true);
+    }
+
+    // Riveted Steam Cylinder Saddle & Drain Cock Petcocks
+    const cylX = trainX + 82;
+    const cylY = railY - 22;
+    ctx.fillStyle = '#2B1F13';
     ctx.beginPath();
-    ctx.moveTo(trainX + 118, groundY - 22);
-    ctx.lineTo(trainX + 144, groundY - 5);
-    ctx.lineTo(trainX + 118, groundY - 5);
-    ctx.closePath();
+    ctx.roundRect(cylX, cylY, 21, 13, 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(182, 146, 94, 0.35)';
-    ctx.lineWidth = 1;
-    for (let k = 1; k <= 3; k++) {
-      ctx.beginPath();
-      ctx.moveTo(trainX + 118, groundY - 22 + k * 4);
-      ctx.lineTo(trainX + 122 + k * 5.5, groundY - 5);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = '#9C7B4C';
+    ctx.lineWidth = 0.85;
+    ctx.strokeRect(cylX, cylY, 21, 13);
+    ctx.fillStyle = '#B89352';
+    ctx.fillRect(cylX - 1.5, cylY + 2, 2, 9);
+    ctx.fillRect(cylX + 20.5, cylY + 2, 2, 9);
+    ctx.fillRect(cylX + 4, railY - 9.5, 3, 2.5);
 
-    // Running board & steam piston cylinder chest
-    ctx.fillStyle = '#332415';
-    ctx.fillRect(trainX + 36, groundY - 22, 86, 3.5);
-    ctx.fillStyle = '#24180D';
-    ctx.fillRect(trainX + 86, groundY - 22, 22, 13);
+    // Kinematic Piston Rod, Sliding Crosshead, Main Connecting Rod & 3-Axle Coupling Rod
+    const crankRadius = driverR * 0.54;
+    const crankDX = Math.cos(wheelAngle) * crankRadius;
+    const crankDY = Math.sin(wheelAngle) * crankRadius;
+    const crossheadX = cylX - 15 + crankDX * 0.72;
+    const crossheadY = cylY + 6.5;
 
-    // Leading pilot wheels + 3 massive spoked driving wheels + animated connecting rods
-    const wheelAngle = clock * 8.2;
-    for (const wx of [trainX + 104, trainX + 118]) {
-      ctx.strokeStyle = '#241709';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.arc(wx, groundY - 9, 5.5, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    const driveWheels = [trainX + 20, trainX + 50, trainX + 80];
-    for (const wx of driveWheels) {
-      ctx.strokeStyle = '#1C1208';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(wx, groundY - 14, 11.5, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.lineWidth = 1.1;
-      for (let sp = 0; sp < 6; sp++) {
-        const a = wheelAngle + (sp * Math.PI) / 3;
-        ctx.beginPath();
-        ctx.moveTo(wx - Math.cos(a) * 11, groundY - 14 - Math.sin(a) * 11);
-        ctx.lineTo(wx + Math.cos(a) * 11, groundY - 14 + Math.sin(a) * 11);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#C9963A';
-      ctx.beginPath();
-      ctx.arc(wx, groundY - 14, 2.8, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.strokeStyle = '#6E5537';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cylX, crossheadY - 2.6);
+    ctx.lineTo(cylX - 24, crossheadY - 2.6);
+    ctx.moveTo(cylX, crossheadY + 2.6);
+    ctx.lineTo(cylX - 24, crossheadY + 2.6);
+    ctx.stroke();
 
-    // Coupling & Main Drive Piston Rod
-    const rodDx = Math.cos(wheelAngle) * 6;
-    const rodDy = Math.sin(wheelAngle) * 6;
-    ctx.strokeStyle = '#D19D42';
+    ctx.strokeStyle = '#D5BC8B';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cylX, crossheadY);
+    ctx.lineTo(crossheadX, crossheadY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#B9975B';
+    ctx.fillRect(crossheadX - 3, crossheadY - 3, 6, 6);
+
+    ctx.strokeStyle = '#E0C792';
     ctx.lineWidth = 2.6;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(driveWheels[0] + rodDx, groundY - 14 + rodDy);
-    ctx.lineTo(driveWheels[2] + rodDx, groundY - 14 + rodDy);
-    ctx.lineTo(trainX + 94 + Math.cos(wheelAngle) * 5, groundY - 15.5);
+    ctx.moveTo(driveXs[0] + crankDX, driveCY + crankDY);
+    ctx.lineTo(driveXs[2] + crankDX, driveCY + crankDY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#F2DCAB';
+    ctx.lineWidth = 2.9;
+    ctx.beginPath();
+    ctx.moveTo(crossheadX, crossheadY);
+    ctx.lineTo(driveXs[1] + crankDX, driveCY + crankDY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFF0C2';
+    for (const wx of driveXs) {
+      ctx.beginPath();
+      ctx.arc(wx + crankDX, driveCY + crankDY, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(182, 148, 92, 0.75)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(cylX - 10, cylY + 1);
+    ctx.lineTo(driveXs[1] + crankDX * 0.65, driveCY + crankDY * 0.65 - 4);
     ctx.stroke();
 
     ctx.restore();
@@ -3806,7 +4317,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
     ctx.stroke();
 
     // 5. Grand Scale Paired Thoroughbred War Stallions + Bronze Pharaoh Chariot (reverted to previous horses/chariot while keeping new desert ground)
-    const progress = (eraT % ERA_DURATION) / ERA_DURATION;
+    const progress = eraT / ERA_DURATION;
     const cx = width + 180 - progress * (width + 460);
     const gallop = clock * 10.5;
 
@@ -4042,7 +4553,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
     const vx = width * 0.89;
     const stride = clock * 2.9;
-    const txBase = width * 0.53 + ((eraT % ERA_DURATION) / ERA_DURATION) * (width * 0.08);
+    const txBase = width * 0.53 + (eraT / ERA_DURATION) * (width * 0.08);
     const triX = txBase + 225;
 
     // Interactive proximity reactions (cursor near T-Rex, Triceratops, or Volcano)
@@ -4622,7 +5133,37 @@ export function createHistoryRewindOverlay(): HTMLElement {
       hudEl.classList.remove('is-visible');
       eraBadgeEl.classList.add('is-visible');
       const eraIdx = Math.floor(journeyTime / ERA_DURATION) % ERAS.length;
-      if (eraBadgeEl.textContent !== ERAS[eraIdx].label) {
+      const eraT = journeyTime % ERA_DURATION;
+      const TRANSITION_DUR = 1.4;
+      const inTransition = journeyTime >= ERA_DURATION && eraT < TRANSITION_DUR;
+
+      eraBadgeEl.classList.toggle('is-transitioning', inTransition);
+      if (inTransition && eraT / TRANSITION_DUR < 0.84) {
+        const prevIdx = (eraIdx + ERAS.length - 1) % ERAS.length;
+        const years = [1885, 1420, -2500, -66000000];
+        const y0 = years[prevIdx];
+        const y1 = years[eraIdx];
+        const u = eraT / (TRANSITION_DUR * 0.84);
+        const eased = u * u * (3 - 2 * u);
+        const interp =
+          Math.abs(y1 - y0) > 100000
+            ? Math.round(
+                y0 +
+                  (y1 - y0) *
+                    (y1 < y0 ? Math.pow(eased, 2.2) : 1 - Math.pow(1 - eased, 2.2))
+              )
+            : Math.round(y0 + (y1 - y0) * eased);
+        let yearText: string;
+        if (interp > 0) yearText = `${interp} AD`;
+        else if (Math.abs(interp) >= 1000000) yearText = `${Math.max(1, Math.round(Math.abs(interp) / 1000000))}M BC`;
+        else if (Math.abs(interp) >= 10000) yearText = `${Math.round(Math.abs(interp) / 1000)}K BC`;
+        else yearText = `${Math.max(1, Math.abs(interp))} BC`;
+
+        const nextLabel = `◂ ${yearText} · Shifting to ${ERAS[eraIdx].year}`;
+        if (eraBadgeEl.textContent !== nextLabel) {
+          eraBadgeEl.textContent = nextLabel;
+        }
+      } else if (eraBadgeEl.textContent !== ERAS[eraIdx].label) {
         eraBadgeEl.textContent = ERAS[eraIdx].label;
       }
     }
@@ -4640,24 +5181,64 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
     ctx.clearRect(0, 0, width, height);
 
+    const TRANSITION_DUR = 1.4;
+    const isSwitchingEra =
+      active && introRemaining <= 0.15 && journeyTime >= ERA_DURATION && currentEraT < TRANSITION_DUR;
+    const transitionNorm = isSwitchingEra ? currentEraT / TRANSITION_DUR : 0;
+    const transitionPulse = isSwitchingEra ? Math.sin(transitionNorm * Math.PI) : 0;
+
     if (rewindAlpha > 0.01 || eraPlumes.length > 0 || eraSparks.length > 0) {
-      // 1. Rotating antique Roman-numeral clockwork rings
+      // 1. Rotating antique Roman-numeral clockwork rings (accelerate during epoch transitions)
       if (rewindAlpha > 0.01) {
+        const ringSpinMult = introRemaining > 0 ? 3.5 : 1 + transitionPulse * 3.6;
         for (const ring of clockRings) {
-          ring.angle += ring.spinSpeed * dt * (introRemaining > 0 ? 3.5 : 1);
+          ring.angle += ring.spinSpeed * dt * ringSpinMult;
           drawRomanClockRing(ring, ring.alpha * rewindAlpha);
         }
       }
 
-      // 2. Multi-Era Historical Journey silhouettes + volumetric plumes & clash sparks
+      // 2. Multi-Era Historical Journey silhouettes + seamless crossfade transitions
+      const drawEraByIndex = (idx: number, t: number, a: number) => {
+        if (a <= 0.01) return;
+        if (idx === 0) drawEraSteamTrain(t, a);
+        else if (idx === 1) drawEraMedievalDuel(t, a);
+        else if (idx === 2) drawEraAncientEgypt(t, a);
+        else drawEraPrehistoric(t, a);
+      };
+
       if (active && introRemaining <= 0.15) {
-        const fadeIn = Math.min(1, currentEraT / 0.8);
-        const fadeOut = Math.min(1, (ERA_DURATION - currentEraT) / 0.8);
-        const eraAlpha = rewindAlpha * Math.min(fadeIn, fadeOut);
-        if (currentEraIdx === 0) drawEraSteamTrain(currentEraT, eraAlpha);
-        else if (currentEraIdx === 1) drawEraMedievalDuel(currentEraT, eraAlpha);
-        else if (currentEraIdx === 2) drawEraAncientEgypt(currentEraT, eraAlpha);
-        else drawEraPrehistoric(currentEraT, eraAlpha);
+        if (journeyTime < ERA_DURATION) {
+          const firstFadeIn = Math.min(1, currentEraT / 0.85);
+          drawEraByIndex(currentEraIdx, currentEraT, rewindAlpha * firstFadeIn);
+        } else if (currentEraT < TRANSITION_DUR) {
+          const prevIdx = (currentEraIdx + ERAS.length - 1) % ERAS.length;
+          const ease = transitionNorm * transitionNorm * (3 - 2 * transitionNorm);
+          const outAlpha = rewindAlpha * Math.pow(1 - ease, 1.25);
+          const inAlpha = rewindAlpha * Math.pow(ease, 1.1);
+
+          drawEraByIndex(prevIdx, ERA_DURATION + currentEraT, outAlpha);
+          drawEraByIndex(currentEraIdx, currentEraT, inAlpha);
+
+          // Sweeping golden chrono-wave & horizon seam across the era boundary
+          if (transitionPulse > 0.02) {
+            const sweepX = width * (1.12 - transitionNorm * 1.28);
+            const bandGrad = ctx.createLinearGradient(sweepX - 150, 0, sweepX + 150, 0);
+            bandGrad.addColorStop(0, 'rgba(229, 186, 88, 0)');
+            bandGrad.addColorStop(0.5, `rgba(246, 214, 134, ${(transitionPulse * 0.24 * rewindAlpha).toFixed(3)})`);
+            bandGrad.addColorStop(1, 'rgba(229, 186, 88, 0)');
+            ctx.fillStyle = bandGrad;
+            ctx.fillRect(0, height - 165, width, 165);
+
+            ctx.strokeStyle = `rgba(255, 232, 162, ${(transitionPulse * 0.45 * rewindAlpha).toFixed(3)})`;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(sweepX - 120, height - 18);
+            ctx.lineTo(sweepX + 120, height - 18);
+            ctx.stroke();
+          }
+        } else {
+          drawEraByIndex(currentEraIdx, currentEraT, rewindAlpha);
+        }
       }
       drawEraPlumesAndSparks(Math.max(rewindAlpha, active ? 1 : 0.65));
 
