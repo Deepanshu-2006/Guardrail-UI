@@ -25291,9 +25291,14 @@ body.gd-kbd-open .gd-m-shell {
   }
 
   /* Pending Approvals Hourglass & Watchful Barn Owl */
+  #view-pending .gd-section-header.gd-overview-header-split {
+    gap: 14px;
+    flex-wrap: nowrap;
+  }
+
   .gd-prop-pending-hourglass {
     flex-shrink: 0;
-    margin-right: 6px;
+    margin-right: 0;
     align-self: center;
   }
 
@@ -25312,6 +25317,40 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-prop-pending-hourglass.is-flowing .gd-hourglass-aura {
     opacity: 1;
+  }
+
+  .gd-hourglass-motes {
+    position: absolute;
+    inset: -12px -18px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+
+  .gd-prop-pending-hourglass.is-flowing .gd-hourglass-motes {
+    opacity: 1;
+  }
+
+  .gd-hg-mote {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #FFE588;
+    box-shadow: 0 0 6px rgba(246, 194, 84, 0.85);
+    animation: gd-hg-mote-float 3.4s ease-in-out infinite;
+  }
+
+  .gd-hg-mote-1 { left: 12%; top: 24%; animation-delay: 0s; }
+  .gd-hg-mote-2 { left: 82%; top: 18%; animation-delay: -0.9s; }
+  .gd-hg-mote-3 { left: 22%; top: 72%; animation-delay: -1.6s; }
+  .gd-hg-mote-4 { left: 86%; top: 68%; animation-delay: -2.3s; }
+  .gd-hg-mote-5 { left: 48%; top: 8%; animation-delay: -1.1s; }
+
+  @keyframes gd-hg-mote-float {
+    0%   { transform: translate(0, 0) scale(0.7); opacity: 0.25; }
+    50%  { transform: translate(4px, -10px) scale(1.15); opacity: 0.9; }
+    100% { transform: translate(-2px, -18px) scale(0.5); opacity: 0; }
   }
 
   .gd-prop-pending-hourglass .gd-hourglass-stream {
@@ -25349,16 +25388,18 @@ body.gd-kbd-open .gd-m-shell {
       3px 2px 5px rgba(34, 24, 12, 0.16);
   }
 
+  #view-pending .gd-approvals-layout,
+  #view-pending .gd-list-pane,
   #view-pending .gd-empty-state,
   #view-pending .gd-detail-pane {
     position: relative;
-    overflow: visible;
+    overflow: visible !important;
   }
 
   .gd-prop-btn.gd-prop-pending-owl {
     position: absolute !important;
-    top: -60px;
-    right: 22px;
+    top: -65px;
+    right: 24px;
     z-index: 8 !important;
     overflow: visible;
   }

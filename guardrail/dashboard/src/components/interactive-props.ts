@@ -569,7 +569,8 @@ export function createSidebarGardenCorner(): HTMLElement {
   return shelf;
 }
 
-let sharedHourglassFlowing = false;
+let sharedHourglassAngle = 0;
+let sharedBulbASand = 0; // 0..1 fraction of sand in Bulb A (y=21..52); Bulb B holds (1 - sharedBulbASand)
 
 /**
  * Shared spring-physics & 3D letter-flip interaction for animated page headings
@@ -803,102 +804,370 @@ export function attachInteractiveHeadingSprings(
 }
 
 /**
- * Articulated Brass & Oak Sand Hourglass placed beside the Pending Approvals heading.
- * Clicking flips it 180° with spring overshoot, starts flowing golden sand,
- * and awakens the Pending Approvals heading characters.
+ * Realistic Gimbal-Mounted Brass & Walnut Sand Hourglass beside Pending Approvals.
+ * - Stationary oak & brass cradle stand with trunnion pins; ONLY the inner glass
+ *   and brass frame pivots 180° inside the cradle with weighted inertia.
+ * - Real gravity-aware sand simulation:
+ *   - Top bulb drains as an angle-of-repose V-funnel crater.
+ *   - Fine tapered golden stream + 22 micro-grains accelerate under gravity and
+ *     disperse at the lower cone apex.
+ *   - Lower bulb builds a realistic conical mound; mid-pour flips swap remaining
+ *     volumes naturally.
  */
 export function createPendingHourglassProp(): HTMLElement {
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = `gd-prop-btn gd-prop-pending-hourglass${sharedHourglassFlowing ? ' is-flowing' : ''}`;
+  btn.className = `gd-prop-btn gd-prop-pending-hourglass`;
   btn.setAttribute('aria-label', 'Flip decision hourglass');
-  btn.setAttribute('aria-pressed', sharedHourglassFlowing ? 'true' : 'false');
-  btn.title = sharedHourglassFlowing ? 'Click to pause hourglass' : 'Click to flip hourglass';
+  btn.setAttribute('aria-pressed', 'false');
+  btn.title = 'Click to flip hourglass';
   btn.tabIndex = -1;
+
+  const grainMarkup = Array.from({ length: 28 }, (_, i) => {
+    const colors = ['#FFF6C8', '#F6C95E', '#D99934', '#FFE999'];
+    const r = (0.45 + (i % 3) * 0.16).toFixed(2);
+    return `<circle class="gd-hg-grain" cx="38" cy="52" r="${r}" fill="${colors[i % colors.length]}" opacity="0"/>`;
+  }).join('');
+
+  const avalancheMarkup = Array.from({ length: 10 }, (_, i) => {
+    const colors = ['#FFF2B8', '#E5B148', '#FFE388'];
+    return `<circle class="gd-hg-avalanche" cx="38" cy="80" r="0.55" fill="${colors[i % colors.length]}" opacity="0"/>`;
+  }).join('');
 
   btn.innerHTML = `
     <span class="gd-hourglass-aura" aria-hidden="true"></span>
-    <svg class="gd-prop-svg" width="64" height="96" viewBox="0 0 64 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g class="gd-hourglass-frame" style="transform-origin: 32px 48px;">
-        <!-- Turned Oak Top & Bottom Caps -->
-        <rect x="11" y="10" width="42" height="7.5" rx="2" fill="#765B3F" stroke="#362617" stroke-width="1.5"/>
-        <rect x="14" y="17.5" width="36" height="3.5" rx="1" fill="#A78A68" stroke="#362617" stroke-width="1.1"/>
-        <rect x="11" y="78.5" width="42" height="7.5" rx="2" fill="#765B3F" stroke="#362617" stroke-width="1.5"/>
-        <rect x="14" y="75" width="36" height="3.5" rx="1" fill="#A78A68" stroke="#362617" stroke-width="1.1"/>
+    <span class="gd-hourglass-motes" aria-hidden="true">
+      <span class="gd-hg-mote gd-hg-mote-1"></span>
+      <span class="gd-hg-mote gd-hg-mote-2"></span>
+      <span class="gd-hg-mote gd-hg-mote-3"></span>
+      <span class="gd-hg-mote gd-hg-mote-4"></span>
+      <span class="gd-hg-mote gd-hg-mote-5"></span>
+    </span>
+    <svg class="gd-prop-svg" width="76" height="108" viewBox="0 0 76 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-hg-wood" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#4A331F"/>
+          <stop offset="28%" stop-color="#876645"/>
+          <stop offset="65%" stop-color="#6B4E33"/>
+          <stop offset="100%" stop-color="#3E2A18"/>
+        </linearGradient>
+        <linearGradient id="gd-hg-brass" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#7D581D"/>
+          <stop offset="35%" stop-color="#F2D47E"/>
+          <stop offset="68%" stop-color="#C7943B"/>
+          <stop offset="100%" stop-color="#6F4C16"/>
+        </linearGradient>
+        <linearGradient id="gd-hg-glass" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.46)"/>
+          <stop offset="25%" stop-color="rgba(248,244,234,0.12)"/>
+          <stop offset="78%" stop-color="rgba(212,224,216,0.22)"/>
+          <stop offset="100%" stop-color="rgba(255,255,255,0.52)"/>
+        </linearGradient>
+        <linearGradient id="gd-hg-sand" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FCE28B"/>
+          <stop offset="48%" stop-color="#E5B148"/>
+          <stop offset="100%" stop-color="#B97B22"/>
+        </linearGradient>
+        <pattern id="gd-hg-sand-texture" width="5" height="5" patternUnits="userSpaceOnUse">
+          <circle cx="1.2" cy="1.3" r="0.55" fill="#FFF3BD" opacity="0.48"/>
+          <circle cx="3.8" cy="2.1" r="0.5" fill="#9E6214" opacity="0.34"/>
+          <circle cx="2.4" cy="4.1" r="0.5" fill="#FFE07D" opacity="0.4"/>
+          <circle cx="4.3" cy="4.4" r="0.4" fill="#8C5410" opacity="0.28"/>
+        </pattern>
+        <linearGradient id="gd-hg-stream-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#FFF5C4" stop-opacity="0.98"/>
+          <stop offset="55%" stop-color="#F2C052" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#D99830" stop-opacity="0.65"/>
+        </linearGradient>
+        <clipPath id="gd-hg-bulb-top">
+          <path d="M25 21 C25 38, 34 45.5, 36.6 52 L39.4 52 C42 45.5, 51 38, 51 21 Z"/>
+        </clipPath>
+        <clipPath id="gd-hg-bulb-bottom">
+          <path d="M36.6 52 C34 58.5, 25 66, 25 83 L51 83 C51 66, 42 58.5, 39.4 52 Z"/>
+        </clipPath>
+      </defs>
 
-        <!-- Brass Pillars & Finials -->
-        <line x1="16.5" y1="21" x2="16.5" y2="75" stroke="#C99A49" stroke-width="2.6"/>
-        <line x1="47.5" y1="21" x2="47.5" y2="75" stroke="#C99A49" stroke-width="2.6"/>
-        <circle cx="16.5" cy="21" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
-        <circle cx="47.5" cy="21" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
-        <circle cx="16.5" cy="75" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
-        <circle cx="47.5" cy="75" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
+      <!-- Stationary Desk Cradle Stand (stays planted while inner hourglass pivots) -->
+      <ellipse cx="38" cy="100" rx="24" ry="3.2" fill="rgba(28, 20, 12, 0.22)"/>
+      <rect x="14" y="92" width="48" height="7" rx="2.5" fill="url(#gd-hg-wood)" stroke="#2A1C10" stroke-width="1.3"/>
+      <rect x="19" y="89.5" width="38" height="2.8" rx="1" fill="url(#gd-hg-brass)" stroke="#4F3714" stroke-width="0.8"/>
+      <!-- Cradle Uprights & Trunnion Pivot Pins -->
+      <path d="M18 90 C14 78, 13 62, 16 52" fill="none" stroke="url(#gd-hg-brass)" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M58 90 C62 78, 63 62, 60 52" fill="none" stroke="url(#gd-hg-brass)" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="16.2" cy="52" r="2.6" fill="#E8C266" stroke="#4F3714" stroke-width="0.9"/>
+      <circle cx="59.8" cy="52" r="2.6" fill="#E8C266" stroke="#4F3714" stroke-width="0.9"/>
+
+      <!-- Pivoting Inner Brass & Glass Assembly (rotates around trunnion center 38,52) -->
+      <g class="gd-hourglass-frame" style="transform-origin: 38px 52px;">
+        <!-- Turned Walnut Top & Bottom End Plates -->
+        <rect x="17" y="10" width="42" height="6.5" rx="2" fill="url(#gd-hg-wood)" stroke="#2E1F12" stroke-width="1.25"/>
+        <rect x="19.5" y="16.5" width="37" height="3.2" rx="1" fill="url(#gd-hg-brass)" stroke="#4F3714" stroke-width="0.9"/>
+        <rect x="17" y="87.5" width="42" height="6.5" rx="2" fill="url(#gd-hg-wood)" stroke="#2E1F12" stroke-width="1.25"/>
+        <rect x="19.5" y="84.3" width="37" height="3.2" rx="1" fill="url(#gd-hg-brass)" stroke="#4F3714" stroke-width="0.9"/>
+
+        <!-- Inner Brass Rods + Central Trunnion Band -->
+        <rect x="20.5" y="19.7" width="2.4" height="64.6" rx="1" fill="url(#gd-hg-brass)" stroke="#5A3F18" stroke-width="0.6"/>
+        <rect x="53.1" y="19.7" width="2.4" height="64.6" rx="1" fill="url(#gd-hg-brass)" stroke="#5A3F18" stroke-width="0.6"/>
+        <line x1="16.5" y1="52" x2="21" y2="52" stroke="#C7943B" stroke-width="2"/>
+        <line x1="55" y1="52" x2="59.5" y2="52" stroke="#C7943B" stroke-width="2"/>
 
         <!-- Twin Glass Bulbs -->
-        <path d="M21 21 C21 37, 29 43.5, 30.5 48 C29 52.5, 21 59, 21 75 L43 75 C43 59, 35 52.5, 33.5 48 C35 43.5, 43 37, 43 21 Z" fill="rgba(248, 244, 232, 0.45)" stroke="#3B3228" stroke-width="1.4"/>
+        <path d="M25 21 C25 38, 34 45.5, 36.6 52 C34 58.5, 25 66, 25 83 L51 83 C51 66, 42 58.5, 39.4 52 C42 45.5, 51 38, 51 21 Z" fill="url(#gd-hg-glass)" stroke="#383028" stroke-width="1.25"/>
 
-        <!-- Upper & Lower Golden Sand Mounds -->
-        <path class="gd-hourglass-sand-top" d="M23.5 31 Q32 34.5 40.5 31 C39.5 39, 34.5 44, 32 47 C29.5 44, 24.5 39, 23.5 31 Z" fill="#E6B856"/>
-        <path class="gd-hourglass-sand-bottom" d="M22.5 74 C24 67.5, 28.5 63.5, 32 63.5 C35.5 63.5, 40 67.5, 41.5 74 Z" fill="#D99B38"/>
+        <!-- Gravity-Leveled Granular Sand in Top & Bottom Bulbs -->
+        <g clip-path="url(#gd-hg-bulb-top)">
+          <path class="gd-hg-sand-top" d="M23 52 L53 52 L53 52 L23 52 Z" fill="url(#gd-hg-sand)"/>
+          <path class="gd-hg-sand-top-tex" d="" fill="url(#gd-hg-sand-texture)"/>
+          <path class="gd-hg-sand-top-rim" d="" fill="rgba(255, 245, 198, 0.5)"/>
+        </g>
+        <g clip-path="url(#gd-hg-bulb-bottom)">
+          <path class="gd-hg-sand-bottom" d="M23 83 L53 83 L53 83 L23 83 Z" fill="url(#gd-hg-sand)"/>
+          <path class="gd-hg-sand-bottom-tex" d="" fill="url(#gd-hg-sand-texture)"/>
+          <path class="gd-hg-sand-bottom-rim" d="" fill="rgba(255, 245, 198, 0.44)"/>
+        </g>
 
-        <!-- Falling Sand Stream (active when flowing) -->
-        <line class="gd-hourglass-stream" x1="32" y1="48" x2="32" y2="65" stroke="#F6CA5E" stroke-width="1.6" stroke-dasharray="2.5 2.5"/>
+        <!-- Fine Tapered Sand Stream + 28 Accelerating Grains + Cone Avalanche -->
+        <g class="gd-hg-stream-group" opacity="0">
+          <path class="gd-hg-stream-line" d="M37.4 52 L38.6 52 L38.2 82 L37.8 82 Z" fill="url(#gd-hg-stream-grad)"/>
+          <circle class="gd-hg-impact-glow" cx="38" cy="70" r="2.2" fill="#FFF3B8" opacity="0.65"/>
+          ${grainMarkup}
+          ${avalancheMarkup}
+        </g>
 
-        <!-- Glass Specular Highlight -->
-        <path d="M24 24 C24 34, 28 39, 30 43" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
-        <path d="M24 71 C24 63, 27 57, 29.5 53" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+        <!-- Brass Waist Collar -->
+        <rect x="33.5" y="50.3" width="9" height="3.4" rx="1.4" fill="url(#gd-hg-brass)" stroke="#4F3714" stroke-width="0.7"/>
+
+        <!-- Crisp Curved Glass Reflections -->
+        <path d="M27.5 24 C27.5 35, 32 41, 34.4 46" stroke="#FFFFFF" stroke-width="1.35" stroke-linecap="round" opacity="0.68"/>
+        <path d="M27.5 80 C27.5 70, 31.5 63, 34 58" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+        <path d="M48 26 C48 34, 45 39, 43 43" stroke="#FFFFFF" stroke-width="0.85" stroke-linecap="round" opacity="0.32"/>
       </g>
     </svg>
   `;
 
   const frameEl = btn.querySelector('.gd-hourglass-frame') as SVGGElement | null;
-  let targetAngle = sharedHourglassFlowing ? 180 : 0;
-  let angle = targetAngle;
-  let vel = 0;
+  const topSandEl = btn.querySelector('.gd-hg-sand-top') as SVGPathElement | null;
+  const topTexEl = btn.querySelector('.gd-hg-sand-top-tex') as SVGPathElement | null;
+  const topRimEl = btn.querySelector('.gd-hg-sand-top-rim') as SVGPathElement | null;
+  const bottomSandEl = btn.querySelector('.gd-hg-sand-bottom') as SVGPathElement | null;
+  const bottomTexEl = btn.querySelector('.gd-hg-sand-bottom-tex') as SVGPathElement | null;
+  const bottomRimEl = btn.querySelector('.gd-hg-sand-bottom-rim') as SVGPathElement | null;
+  const streamGroupEl = btn.querySelector('.gd-hg-stream-group') as SVGGElement | null;
+  const streamLineEl = btn.querySelector('.gd-hg-stream-line') as SVGPathElement | null;
+  const impactGlowEl = btn.querySelector('.gd-hg-impact-glow') as SVGCircleElement | null;
+  const grainEls = Array.from(btn.querySelectorAll('.gd-hg-grain')) as SVGCircleElement[];
+  const avalancheEls = Array.from(btn.querySelectorAll('.gd-hg-avalanche')) as SVGCircleElement[];
+
+  let targetAngle = sharedHourglassAngle;
+  let angle = sharedHourglassAngle;
+  let angVel = 0;
+  let bulbASand = sharedBulbASand; // 0..1 in Bulb A (top in SVG), (1 - bulbASand) in Bulb B (bottom in SVG)
+  let grainClock = 0;
+  let lastTs = 0;
   let rafId: number | null = null;
 
-  const syncSectionClass = () => {
+  const syncSectionClass = (flowing: boolean) => {
+    btn.classList.toggle('is-flowing', flowing);
+    btn.setAttribute('aria-pressed', flowing ? 'true' : 'false');
     const viewEl = btn.closest('#view-pending');
     if (viewEl) {
-      viewEl.classList.toggle('gd-pending-hourglass-on', sharedHourglassFlowing);
+      viewEl.classList.toggle('gd-pending-hourglass-on', flowing);
     }
   };
 
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(syncSectionClass);
-  }
+  const renderSandGeometry = (flippedOdd: boolean, pouring: boolean, tiltDeg: number) => {
+    const bulbBSand = 1 - bulbASand;
+    // Gravity-surface slosh during rotation
+    const slosh = Math.max(-7, Math.min(7, Math.sin((tiltDeg * Math.PI) / 180) * 11));
 
-  const stepSpin = () => {
+    // Bulb A (SVG y=21..52): physically DOWN when flippedOdd, physically UP when !flippedOdd
+    if (topSandEl && topTexEl && topRimEl) {
+      if (flippedOdd) {
+        const h = Math.max(0, bulbASand * 25.5);
+        const yEdge = 21 + h;
+        const apex = Math.min(51.5, yEdge + 6.5 * Math.sin(bulbASand * Math.PI));
+        const d = `M22 21 L54 21 L54 ${(yEdge + slosh).toFixed(1)} Q38 ${apex.toFixed(1)} 22 ${(yEdge - slosh).toFixed(1)} Z`;
+        topSandEl.setAttribute('d', d);
+        topTexEl.setAttribute('d', d);
+        topRimEl.setAttribute(
+          'd',
+          bulbASand > 0.03
+            ? `M22 ${(yEdge - slosh).toFixed(1)} Q38 ${apex.toFixed(1)} 54 ${(yEdge + slosh).toFixed(1)} L54 ${(yEdge + slosh - 1.6).toFixed(1)} Q38 ${(apex - 1.6).toFixed(1)} 22 ${(yEdge - slosh - 1.6).toFixed(1)} Z`
+            : '',
+        );
+      } else {
+        const h = Math.max(0, bulbASand * 26.5);
+        const yEdge = 52 - h;
+        const funnel = Math.min(52, yEdge + (pouring ? 6.8 : 1.0));
+        const d = `M22 ${(yEdge - slosh).toFixed(1)} L38 ${funnel.toFixed(1)} L54 ${(yEdge + slosh).toFixed(1)} L54 52 L22 52 Z`;
+        topSandEl.setAttribute('d', d);
+        topTexEl.setAttribute('d', d);
+        topRimEl.setAttribute(
+          'd',
+          bulbASand > 0.03
+            ? `M22 ${(yEdge - slosh).toFixed(1)} L38 ${funnel.toFixed(1)} L54 ${(yEdge + slosh).toFixed(1)} L54 ${(yEdge + slosh + 1.5).toFixed(1)} L38 ${(funnel + 1.5).toFixed(1)} L22 ${(yEdge - slosh + 1.5).toFixed(1)} Z`
+            : '',
+        );
+      }
+    }
+
+    // Bulb B (SVG y=52..83): physically UP when flippedOdd, physically DOWN when !flippedOdd
+    if (bottomSandEl && bottomTexEl && bottomRimEl) {
+      if (flippedOdd) {
+        const h = Math.max(0, bulbBSand * 26.5);
+        const yEdge = 52 + h;
+        const funnel = Math.max(52, yEdge - (pouring ? 6.8 : 1.0));
+        const d = `M22 52 L54 52 L54 ${(yEdge + slosh).toFixed(1)} L38 ${funnel.toFixed(1)} L22 ${(yEdge - slosh).toFixed(1)} Z`;
+        bottomSandEl.setAttribute('d', d);
+        bottomTexEl.setAttribute('d', d);
+        bottomRimEl.setAttribute(
+          'd',
+          bulbBSand > 0.03
+            ? `M22 ${(yEdge - slosh).toFixed(1)} L38 ${funnel.toFixed(1)} L54 ${(yEdge + slosh).toFixed(1)} L54 ${(yEdge + slosh - 1.5).toFixed(1)} L38 ${(funnel - 1.5).toFixed(1)} L22 ${(yEdge - slosh - 1.5).toFixed(1)} Z`
+            : '',
+        );
+      } else {
+        const h = Math.max(0, bulbBSand * 25.5);
+        const yEdge = 83 - h;
+        const apex = Math.max(52.5, yEdge - 6.5 * Math.sin(bulbBSand * Math.PI));
+        const d = `M22 ${(yEdge - slosh).toFixed(1)} Q38 ${apex.toFixed(1)} 54 ${(yEdge + slosh).toFixed(1)} L54 83 L22 83 Z`;
+        bottomSandEl.setAttribute('d', d);
+        bottomTexEl.setAttribute('d', d);
+        bottomRimEl.setAttribute(
+          'd',
+          bulbBSand > 0.03
+            ? `M22 ${(yEdge - slosh).toFixed(1)} Q38 ${apex.toFixed(1)} 54 ${(yEdge + slosh).toFixed(1)} L54 ${(yEdge + slosh + 1.6).toFixed(1)} Q38 ${(apex + 1.6).toFixed(1)} 22 ${(yEdge - slosh + 1.6).toFixed(1)} Z`
+            : '',
+        );
+      }
+    }
+
+    if (streamGroupEl && streamLineEl) {
+      streamGroupEl.setAttribute('opacity', pouring ? '1' : '0');
+      if (pouring) {
+        const pileApexY = flippedOdd
+          ? Math.min(51.5, 21 + Math.max(0, bulbASand * 25.5) + 6.5 * Math.sin(bulbASand * Math.PI))
+          : Math.max(52.5, 83 - Math.max(0, bulbBSand * 25.5) - 6.5 * Math.sin(bulbBSand * Math.PI));
+        const dir = flippedOdd ? -1 : 1;
+        const yStart = 52;
+        const yEnd = pileApexY;
+        const flutter = Math.sin(grainClock * 26) * 0.28;
+        streamLineEl.setAttribute(
+          'd',
+          `M37.1 ${yStart} L38.9 ${yStart} L${(38.45 + flutter).toFixed(2)} ${yEnd.toFixed(1)} L${(37.55 + flutter).toFixed(2)} ${yEnd.toFixed(1)} Z`,
+        );
+
+        if (impactGlowEl) {
+          impactGlowEl.setAttribute('cy', yEnd.toFixed(1));
+          impactGlowEl.setAttribute('r', (1.9 + Math.sin(grainClock * 19) * 0.45).toFixed(2));
+        }
+
+        const totalSpan = Math.abs(yEnd - yStart);
+        grainEls.forEach((g, idx) => {
+          const p = (grainClock * 1.55 + idx / grainEls.length) % 1;
+          const fallDist = totalSpan * (0.2 * p + 0.8 * p * p);
+          const gy = yStart + dir * fallDist;
+          const splash = p > 0.8 ? ((idx % 2 === 0 ? 1 : -1) * (p - 0.8) * 18) : 0;
+          const gx = 38 + Math.sin(p * 18 + idx * 2.1) * 0.85 + splash;
+          const alpha = p > 0.9 ? (1 - p) * 10 : 0.9;
+          g.setAttribute('cx', gx.toFixed(2));
+          g.setAttribute('cy', gy.toFixed(2));
+          g.setAttribute('opacity', Math.max(0, alpha).toFixed(2));
+        });
+
+        // Avalanche grains sliding down both sides of the lower cone after impact
+        avalancheEls.forEach((av, idx) => {
+          const p = (grainClock * 1.2 + idx / avalancheEls.length) % 1;
+          const side = idx % 2 === 0 ? 1 : -1;
+          const slideX = 38 + side * (1.2 + p * 10.5);
+          const slideY = yEnd - dir * (p * 5.2) + Math.sin(p * 14 + idx) * 0.35;
+          const alpha = (1 - p) * 0.85;
+          av.setAttribute('cx', slideX.toFixed(2));
+          av.setAttribute('cy', slideY.toFixed(2));
+          av.setAttribute('opacity', Math.max(0, alpha).toFixed(2));
+        });
+      }
+    }
+  };
+
+  const step = (ts: number) => {
     if (typeof document !== 'undefined' && !document.contains(btn)) {
       rafId = null;
       return;
     }
-    const accel = (targetAngle - angle) * 0.14;
-    vel = (vel + accel) * 0.82;
-    angle += vel;
+
+    const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+
+    // Weighted brass trunnion pivot physics
+    const angAccel = (targetAngle - angle) * 0.11;
+    angVel = (angVel + angAccel) * 0.84;
+    angle += angVel;
     if (frameEl) {
       frameEl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
     }
-    if (Math.abs(targetAngle - angle) > 0.25 || Math.abs(vel) > 0.25) {
-      rafId = requestAnimationFrame(stepSpin);
+
+    const angleDiff = targetAngle - angle;
+    const absDiff = Math.abs(angleDiff);
+    const flippedOdd = (Math.round(targetAngle / 180) % 2) !== 0;
+    const upperSand = flippedOdd ? 1 - bulbASand : bulbASand;
+
+    // Sand pours from whichever bulb is physically UP into the empty/lower bulb
+    const pouring = upperSand > 0.002 && absDiff < 38;
+    if (pouring) {
+      const drain = dt / 16;
+      bulbASand = flippedOdd
+        ? Math.min(1, bulbASand + drain)
+        : Math.max(0, bulbASand - drain);
+      sharedBulbASand = bulbASand;
+      grainClock += dt;
+    }
+
+    renderSandGeometry(flippedOdd, pouring, angleDiff);
+    syncSectionClass(pouring);
+
+    const stillSpinning = absDiff > 0.2 || Math.abs(angVel) > 0.2;
+    if (stillSpinning || pouring) {
+      rafId = requestAnimationFrame(step);
     } else {
       angle = targetAngle;
-      vel = 0;
+      angVel = 0;
       if (frameEl) frameEl.style.transform = `rotate(${targetAngle}deg)`;
+      renderSandGeometry(flippedOdd, false, 0);
+      syncSectionClass(false);
       rafId = null;
+      lastTs = 0;
     }
   };
 
-  btn.addEventListener('click', () => {
-    sharedHourglassFlowing = !sharedHourglassFlowing;
-    targetAngle += 180;
-    btn.classList.toggle('is-flowing', sharedHourglassFlowing);
-    btn.setAttribute('aria-pressed', sharedHourglassFlowing ? 'true' : 'false');
-    btn.title = sharedHourglassFlowing ? 'Click to pause hourglass' : 'Click to flip hourglass';
-    syncSectionClass();
+  const ensureRunning = () => {
     if (rafId === null && typeof requestAnimationFrame === 'function') {
-      rafId = requestAnimationFrame(stepSpin);
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
     }
+  };
+
+  const initOdd = (Math.round(targetAngle / 180) % 2) !== 0;
+  const initUpper = initOdd ? 1 - bulbASand : bulbASand;
+  if (frameEl) frameEl.style.transform = `rotate(${targetAngle}deg)`;
+  renderSandGeometry(initOdd, initUpper > 0.01, 0);
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => syncSectionClass(initUpper > 0.01));
+    if (initUpper > 0.01) ensureRunning();
+  }
+
+  btn.addEventListener('mouseenter', () => {
+    if (Math.abs(targetAngle - angle) < 2) {
+      angVel += 1.25;
+      ensureRunning();
+    }
+  });
+
+  btn.addEventListener('click', () => {
+    // Flip 180° — sand stays in its current bulb, which is now physically on top!
+    targetAngle += 180;
+    sharedHourglassAngle = targetAngle;
+    ensureRunning();
   });
 
   return btn;
