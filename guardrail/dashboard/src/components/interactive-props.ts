@@ -1274,22 +1274,54 @@ export function createWoodBoardBellProp(): HTMLElement {
 }
 
 /**
- * Brass Spyglass & Loupe resting on top of the 01 / Wards frame.
- * Catches warm golden glints when lantern is lit; clicking triggers inspect shimmer.
+ * Synthesizes a subtle brass telescope click when telescoping the spyglass.
  */
-export function createWardSpyglassProp(): HTMLElement {
+function playSpyglassClick(): void {
+  try {
+    if (typeof window === 'undefined') return;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sharedBirdAudioCtx) sharedBirdAudioCtx = new AudioCtx();
+    if (sharedBirdAudioCtx.state === 'suspended') void sharedBirdAudioCtx.resume();
+    const now = sharedBirdAudioCtx.currentTime;
+    const osc = sharedBirdAudioCtx.createOscillator();
+    const gain = sharedBirdAudioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(620, now);
+    osc.frequency.exponentialRampToValueAtTime(190, now + 0.055);
+    gain.gain.setValueAtTime(0.032, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+    osc.connect(gain);
+    gain.connect(sharedBirdAudioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.065);
+  } catch {
+    // Ignore audio errors cleanly
+  }
+}
+
+/**
+ * Brass Spyglass & Loupe resting on top of the 01 / Wards frame.
+ * Catches warm golden glints when lantern is lit; clicking extends & aims
+ * the barrel down onto the card, spotlights the ward names, and cycles
+ * through each connected ward in a brass viewfinder readout.
+ */
+export function createWardSpyglassProp(wardNames: string[] = []): HTMLElement {
   const spyBtn = document.createElement('button');
   spyBtn.type = 'button';
   spyBtn.className = 'gd-prop-btn gd-prop-ward-spyglass';
-  spyBtn.setAttribute('aria-label', 'Inspect wards with brass spyglass');
-  spyBtn.title = 'Click to telescope brass spyglass';
+  spyBtn.setAttribute('aria-label', 'Inspect connected wards with brass spyglass');
+  spyBtn.title = 'Click to scout each connected ward';
   spyBtn.tabIndex = -1;
   spyBtn.innerHTML = `
+    <span class="gd-spyglass-viewfinder" aria-hidden="true"></span>
     <span class="gd-spyglass-beam" aria-hidden="true"></span>
     <svg class="gd-prop-svg" width="54" height="24" viewBox="0 0 54 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <!-- Timber cradle brackets -->
       <path d="M13 17 L11 22 M33 17 L35 22" stroke="#4D351E" stroke-width="2" stroke-linecap="round"/>
-      <g class="gd-spyglass-barrel">
+      <g class="gd-spyglass-barrel" style="transform-origin: 23px 12px;">
         <!-- Leather grip sleeve + primary brass tube -->
         <rect x="6" y="8" width="18" height="8" rx="1.5" fill="#6D4B2B" stroke="#2D1E10" stroke-width="1.2"/>
         <rect x="24" y="9" width="13" height="6" rx="1" fill="#C9963A" stroke="#3E280B" stroke-width="1.1"/>
@@ -1303,12 +1335,39 @@ export function createWardSpyglassProp(): HTMLElement {
       </g>
     </svg>
   `;
+
+  const viewfinderEl = spyBtn.querySelector('.gd-spyglass-viewfinder') as HTMLElement | null;
+  let wardIdx = 0;
+  let inspectTimer: ReturnType<typeof setTimeout> | null = null;
+
   spyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    playSpyglassClick();
+    const cardEl = spyBtn.closest('.gd-metric-card-ward');
+
     spyBtn.classList.remove('is-inspecting');
+    cardEl?.classList.remove('is-spyglass-lit');
     void spyBtn.offsetWidth;
     spyBtn.classList.add('is-inspecting');
-    setTimeout(() => spyBtn.classList.remove('is-inspecting'), 1400);
+    cardEl?.classList.add('is-spyglass-lit');
+
+    if (viewfinderEl) {
+      if (wardNames.length === 0) {
+        viewfinderEl.textContent = '0 Wards · Awaiting invite';
+      } else {
+        const idx = wardIdx % wardNames.length;
+        viewfinderEl.textContent = `Ward ${idx + 1}/${wardNames.length} · ${wardNames[idx]}`;
+        wardIdx += 1;
+      }
+      viewfinderEl.classList.add('is-visible');
+    }
+
+    if (inspectTimer) clearTimeout(inspectTimer);
+    inspectTimer = setTimeout(() => {
+      spyBtn.classList.remove('is-inspecting');
+      cardEl?.classList.remove('is-spyglass-lit');
+      viewfinderEl?.classList.remove('is-visible');
+    }, 2600);
   });
   return spyBtn;
 }

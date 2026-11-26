@@ -369,7 +369,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValueRow);
   wardCard.appendChild(wardDesc);
-  wardCard.appendChild(createWardSpyglassProp());
+  wardCard.appendChild(createWardSpyglassProp(wardsList.map((w) => w.name)));
   grid.appendChild(wardCard);
 
   // Metric 2: Pending Actions (Interactive — opens Pending Approvals popup)

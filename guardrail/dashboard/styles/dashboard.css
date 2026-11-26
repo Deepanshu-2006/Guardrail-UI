@@ -26377,13 +26377,21 @@ body.gd-kbd-open .gd-m-shell {
     overflow: visible;
   }
 
+  .gd-prop-ward-spyglass .gd-spyglass-barrel,
   .gd-prop-ward-spyglass .gd-spyglass-extend {
-    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .gd-prop-ward-spyglass:hover .gd-spyglass-extend,
-  .gd-prop-ward-spyglass.is-inspecting .gd-spyglass-extend {
+  .gd-prop-ward-spyglass:hover .gd-spyglass-extend {
     transform: translateX(4px);
+  }
+
+  .gd-prop-ward-spyglass.is-inspecting .gd-spyglass-barrel {
+    transform: rotate(22deg) translateY(-1px);
+  }
+
+  .gd-prop-ward-spyglass.is-inspecting .gd-spyglass-extend {
+    transform: translateX(7px);
   }
 
   .gd-prop-ward-spyglass .gd-spyglass-glint {
@@ -26397,19 +26405,61 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-spyglass-beam {
     position: absolute;
-    left: 44px;
-    top: 10px;
-    width: 90px;
-    height: 52px;
-    background: linear-gradient(115deg, rgba(255, 224, 128, 0.34) 0%, rgba(255, 224, 128, 0) 78%);
-    clip-path: polygon(0 4px, 100% 0, 100% 100%, 0 10px);
+    left: 24px;
+    top: 15px;
+    width: 140px;
+    height: 112px;
+    background: linear-gradient(150deg, rgba(255, 224, 122, 0.52) 0%, rgba(255, 204, 84, 0.18) 52%, rgba(255, 204, 84, 0) 85%);
+    clip-path: polygon(18px 0px, 28px 0px, 100% 100%, 0 100%);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.28s ease;
   }
 
   .gd-prop-ward-spyglass.is-inspecting .gd-spyglass-beam {
     opacity: 1;
+  }
+
+  .gd-spyglass-viewfinder {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px) scale(0.9);
+    background: #273121;
+    color: #FCE28B;
+    border: 1.2px solid #D9A44E;
+    font-family: var(--gd-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow: 0 6px 16px rgba(24, 18, 10, 0.28);
+    transition: opacity 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 20;
+  }
+
+  .gd-spyglass-viewfinder.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  .gd-metric-card-ward .gd-metric-value,
+  .gd-metric-card-ward .gd-metric-desc {
+    transition: color 0.28s ease, text-shadow 0.28s ease, transform 0.28s ease;
+  }
+
+  .gd-metric-card-ward.is-spyglass-lit .gd-metric-desc {
+    color: #5C3D12 !important;
+    text-shadow: 0 0 12px rgba(255, 208, 86, 0.72);
+    transform: translateX(2px);
+  }
+
+  .gd-metric-card-ward.is-spyglass-lit .gd-metric-value {
+    text-shadow: 0 0 14px rgba(255, 208, 86, 0.68);
   }
 
   /* 2. Songbird perched on top of 03 / Enforcement wooden frame */
