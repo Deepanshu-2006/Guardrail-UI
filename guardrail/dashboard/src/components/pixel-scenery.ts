@@ -383,7 +383,7 @@ export function getRealTimeScenery(now: Date = new Date()): SceneryMeta {
  * suspending the aged wooden board from the top of the viewport.
  */
 function buildWeatheredChainSvg(): string {
-  const renderArm = (x1: number, y1: number, x2: number, y2: number): string => {
+  const renderArm = (cls: string, x1: number, y1: number, x2: number, y2: number): string => {
     const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
     const count = 11;
     const parts: string[] = [];
@@ -393,27 +393,27 @@ function buildWeatheredChainSvg(): string {
       const cy = (y1 + (y2 - y1) * t).toFixed(1);
       if (i % 2 === 0) {
         parts.push(
-          `<g transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
+          `<g class="gd-chain-link" transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
             <rect x="-8" y="-3.6" width="16" height="7.2" rx="3.6" fill="none" stroke="#3B3935" stroke-width="2.4"/>
             <rect x="-8" y="-3.6" width="16" height="7.2" rx="3.6" fill="none" stroke="#76726A" stroke-width="0.8" opacity="0.55"/>
           </g>`
         );
       } else {
         parts.push(
-          `<g transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
+          `<g class="gd-chain-link" transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
             <rect x="-7.5" y="-1.7" width="15" height="3.4" rx="1.7" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
             <line x1="-4.5" y1="-0.6" x2="4" y2="-0.6" stroke="#858077" stroke-width="0.7" stroke-linecap="round" opacity="0.6"/>
           </g>`
         );
       }
     }
-    return parts.join('');
+    return `<g class="${cls}">${parts.join('')}</g>`;
   };
 
   return `
     <svg viewBox="0 0 560 128" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
-      <!-- Vertical top forged links extending past top viewport edge down to junction ring -->
-      <g>
+      <!-- Vertical top forged links anchored above viewport edge down to junction ring -->
+      <g class="gd-chain-top">
         <rect x="276.6" y="-34" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
         <rect x="276.6" y="-34" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
         <rect x="278.4" y="-22.5" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
@@ -427,20 +427,22 @@ function buildWeatheredChainSvg(): string {
       </g>
 
       <!-- Twin diagonal weathered iron chains -->
-      ${renderArm(280, 44, 104, 114.5)}
-      ${renderArm(280, 44, 456, 121.5)}
+      ${renderArm('gd-chain-left-arm', 280, 44, 104, 114.5)}
+      ${renderArm('gd-chain-right-arm', 280, 44, 456, 121.5)}
 
       <!-- Central forged iron ring -->
-      <circle cx="280" cy="44" r="7.6" fill="none" stroke="#3B3935" stroke-width="2.8"/>
-      <circle cx="280" cy="44" r="7.6" fill="none" stroke="#7D786E" stroke-width="0.8" opacity="0.55"/>
+      <g class="gd-chain-ring">
+        <circle cx="280" cy="44" r="7.6" fill="none" stroke="#3B3935" stroke-width="2.8"/>
+        <circle cx="280" cy="44" r="7.6" fill="none" stroke="#7D786E" stroke-width="0.8" opacity="0.55"/>
+      </g>
 
       <!-- Left & right forged iron strap brackets anchored into tilted plank top -->
-      <g>
+      <g class="gd-chain-eye-left">
         <circle cx="104" cy="114.5" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
         <path d="M97 115.5 H111 V125 H97 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
         <circle cx="104" cy="120.5" r="1.4" fill="#1F1D1A"/>
       </g>
-      <g>
+      <g class="gd-chain-eye-right">
         <circle cx="456" cy="121.5" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
         <path d="M449 122.5 H463 V132 H449 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
         <circle cx="456" cy="127.5" r="1.4" fill="#1F1D1A"/>
@@ -553,12 +555,16 @@ function buildBrokenWoodBoardSvg(): string {
 
 /**
  * Attaches frame-rate-independent pendulum & grab-release spring physics
- * directly to the hanging wooden board: cursor sweeps brush/nudge the plank,
- * and click-and-drag pulls & flicks it cleanly on its chains.
+ * to the hanging wooden board with live forged-iron chain tracking and two
+ * clickable iron joints: clicking a joint unhooks that side so the board
+ * swings & hangs from the remaining chain, and clicking again re-hooks it.
  */
 function attachWoodBoardSpringPhysics(
   board: HTMLElement,
-  hoverWrap: HTMLElement
+  hoverWrap: HTMLElement,
+  hanger: HTMLElement,
+  leftJointBtn: HTMLButtonElement,
+  rightJointBtn: HTMLButtonElement
 ): void {
   if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function' || typeof board.addEventListener !== 'function') {
     return;
@@ -567,6 +573,14 @@ function attachWoodBoardSpringPhysics(
     return;
   }
 
+  const topDropGroup = hanger.querySelector('.gd-chain-top') as SVGGElement | null;
+  const ringGroup = hanger.querySelector('.gd-chain-ring') as SVGGElement | null;
+  const leftEyeGroup = hanger.querySelector('.gd-chain-eye-left') as SVGGElement | null;
+  const rightEyeGroup = hanger.querySelector('.gd-chain-eye-right') as SVGGElement | null;
+  const leftLinks = Array.from(hanger.querySelectorAll('.gd-chain-left-arm .gd-chain-link')) as SVGGElement[];
+  const rightLinks = Array.from(hanger.querySelectorAll('.gd-chain-right-arm .gd-chain-link')) as SVGGElement[];
+
+  let detachedSide: 'none' | 'left' | 'right' = 'none';
   let swing = 0;
   let tx = 0;
   let ty = 0;
@@ -574,7 +588,14 @@ function attachWoodBoardSpringPhysics(
   let vTx = 0;
   let vTy = 0;
 
+  let looseAngle = 0;
+  let vLooseAngle = 0;
+
+  let hovered = false;
+  let hoverTargetSwing = 0;
+  let hoverTargetTy = 0;
   let dragging = false;
+  let movedEnough = false;
   let activePointerId: number | null = null;
   let dragStartX = 0;
   let dragStartY = 0;
@@ -583,12 +604,113 @@ function attachWoodBoardSpringPhysics(
   let dragTargetSwing = 0;
   let dragTargetTx = 0;
   let dragTargetTy = 0;
+  let cachedBoardWidth = 560;
 
   let rafId: number | null = null;
   let lastTs = 0;
 
   // Rubber-band clamp so chains tighten naturally when pulled hard
   const rubber = (val: number, max: number): number => max * Math.tanh(val / max);
+
+  const getEquilibrium = (): { baseTx: number; baseTy: number; baseSwing: number } => {
+    if (detachedSide === 'left') {
+      return { baseTx: -88, baseTy: 22, baseSwing: -11.5 };
+    }
+    if (detachedSide === 'right') {
+      return { baseTx: 88, baseTy: 22, baseSwing: 11.5 };
+    }
+    return { baseTx: 0, baseTy: 0, baseSwing: 0 };
+  };
+
+  const computeBoardAnchors = (curTx: number, curTy: number, curSwing: number) => {
+    const svgScale = 560 / Math.max(260, Math.min(cachedBoardWidth, 560));
+    const dxSvg = curTx * svgScale;
+    const dySvg = curTy * 1.015;
+    const rad = (curSwing * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    // Pivot matches CSS .gd-wood-hover transform-origin (50% 0% -> SVG 280, 118)
+    const lx0 = -176;
+    const ly0 = -3.5;
+    const rx0 = 176;
+    const ry0 = 3.5;
+
+    const leftX = 280 + dxSvg + lx0 * cos - ly0 * sin;
+    const leftY = 118 + dySvg + lx0 * sin + ly0 * cos;
+    const rightX = 280 + dxSvg + rx0 * cos - ry0 * sin;
+    const rightY = 118 + dySvg + rx0 * sin + ry0 * cos;
+    return { dxSvg, dySvg, leftX, leftY, rightX, rightY };
+  };
+
+  const syncChainGeometry = (curTx: number, curTy: number, curSwing: number, curLooseAngle: number): void => {
+    const { dxSvg, dySvg, leftX, leftY, rightX, rightY } = computeBoardAnchors(curTx, curTy, curSwing);
+
+    let ringX = 280 + dxSvg * 0.28 + curSwing * -0.9;
+    let ringY = 44 + dySvg * 0.36 + Math.abs(dxSvg) * 0.04;
+    if (detachedSide === 'left') {
+      ringX = 280 + (rightX - 280) * 0.56;
+      ringY = 46 + dySvg * 0.32;
+    } else if (detachedSide === 'right') {
+      ringX = 280 + (leftX - 280) * 0.56;
+      ringY = 46 + dySvg * 0.32;
+    }
+
+    if (topDropGroup) {
+      const topAngle = (Math.atan2(ringX - 280, Math.max(40, ringY + 34)) * 180) / Math.PI;
+      const topScale = Math.hypot(ringX - 280, ringY + 34) / 78;
+      topDropGroup.setAttribute(
+        'transform',
+        `translate(280, -34) rotate(${(-topAngle).toFixed(2)}) scale(1, ${topScale.toFixed(3)}) translate(-280, 34)`
+      );
+    }
+
+    if (ringGroup) {
+      ringGroup.setAttribute('transform', `translate(${(ringX - 280).toFixed(1)}, ${(ringY - 44).toFixed(1)})`);
+    }
+
+    if (leftEyeGroup) {
+      leftEyeGroup.setAttribute(
+        'transform',
+        `translate(${(leftX - 104).toFixed(1)}, ${(leftY - 114.5).toFixed(1)}) rotate(${curSwing.toFixed(2)}, 104, 114.5)`
+      );
+    }
+
+    if (rightEyeGroup) {
+      rightEyeGroup.setAttribute(
+        'transform',
+        `translate(${(rightX - 456).toFixed(1)}, ${(rightY - 121.5).toFixed(1)}) rotate(${curSwing.toFixed(2)}, 456, 121.5)`
+      );
+    }
+
+    const updateArm = (links: SVGGElement[], x1: number, y1: number, x2: number, y2: number): void => {
+      if (!links.length) return;
+      const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+      const count = links.length;
+      for (let i = 0; i < count; i++) {
+        const t = (i + 0.5) / (count + 0.15);
+        const cx = x1 + (x2 - x1) * t;
+        const cy = y1 + (y2 - y1) * t;
+        links[i].setAttribute('transform', `translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${angle.toFixed(1)})`);
+      }
+    };
+
+    const looseRad = (curLooseAngle * Math.PI) / 180;
+    if (detachedSide === 'left') {
+      const endX = ringX + Math.sin(looseRad) * 126;
+      const endY = ringY + Math.cos(looseRad) * 126;
+      updateArm(leftLinks, ringX, ringY, endX, endY);
+      updateArm(rightLinks, ringX, ringY, rightX, rightY);
+    } else if (detachedSide === 'right') {
+      const endX = ringX + Math.sin(looseRad) * 126;
+      const endY = ringY + Math.cos(looseRad) * 126;
+      updateArm(leftLinks, ringX, ringY, leftX, leftY);
+      updateArm(rightLinks, ringX, ringY, endX, endY);
+    } else {
+      updateArm(leftLinks, ringX, ringY, leftX, leftY);
+      updateArm(rightLinks, ringX, ringY, rightX, rightY);
+    }
+  };
 
   const step = (ts: number): void => {
     if (!board.isConnected) {
@@ -598,15 +720,15 @@ function attachWoodBoardSpringPhysics(
     const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.032) : 0.016;
     lastTs = ts;
 
-    const targetSwing = dragging ? dragTargetSwing : 0;
-    const targetTx = dragging ? dragTargetTx : 0;
-    const targetTy = dragging ? dragTargetTy : 0;
+    const { baseTx, baseTy, baseSwing } = getEquilibrium();
+    const targetSwing = dragging ? baseSwing + dragTargetSwing : hovered ? baseSwing + hoverTargetSwing : baseSwing;
+    const targetTx = dragging ? baseTx + dragTargetTx : baseTx;
+    const targetTy = dragging ? baseTy + dragTargetTy : hovered ? baseTy + hoverTargetTy : baseTy;
 
-    // Stiffer responsive follow while held; natural heavy pendulum swing on release
-    const kSwing = dragging ? 260 : 95;
-    const dSwing = dragging ? 26 : 5.2;
-    const kPos = dragging ? 300 : 140;
-    const dPos = dragging ? 28 : 11;
+    const kSwing = dragging ? 260 : detachedSide === 'none' ? 105 : 72;
+    const dSwing = dragging ? 25 : detachedSide === 'none' ? 5.5 : 3.4;
+    const kPos = dragging ? 295 : detachedSide === 'none' ? 145 : 105;
+    const dPos = dragging ? 27 : detachedSide === 'none' ? 11 : 6.2;
 
     vSwing += ((targetSwing - swing) * kSwing - vSwing * dSwing) * dt;
     vTx += ((targetTx - tx) * kPos - vTx * dPos) * dt;
@@ -616,29 +738,50 @@ function attachWoodBoardSpringPhysics(
     tx += vTx * dt;
     ty += vTy * dt;
 
+    const targetLooseAngle = detachedSide === 'left' ? -6 : detachedSide === 'right' ? 6 : 0;
+    if (detachedSide !== 'none') {
+      vLooseAngle += ((targetLooseAngle - looseAngle) * 85 - vLooseAngle * 3.4) * dt;
+      looseAngle += vLooseAngle * dt;
+    }
+
+    const looseSettled =
+      detachedSide === 'none' ||
+      (Math.abs(targetLooseAngle - looseAngle) < 0.04 && Math.abs(vLooseAngle) < 0.08);
+
     const settled =
       !dragging &&
-      Math.abs(swing) < 0.01 &&
-      Math.abs(tx) < 0.02 &&
-      Math.abs(ty) < 0.02 &&
-      Math.abs(vSwing) < 0.02 &&
-      Math.abs(vTx) < 0.05 &&
-      Math.abs(vTy) < 0.05;
+      looseSettled &&
+      Math.abs(targetSwing - swing) < 0.015 &&
+      Math.abs(targetTx - tx) < 0.03 &&
+      Math.abs(targetTy - ty) < 0.03 &&
+      Math.abs(vSwing) < 0.03 &&
+      Math.abs(vTx) < 0.06 &&
+      Math.abs(vTy) < 0.06;
 
     if (settled) {
-      swing = 0;
-      tx = 0;
-      ty = 0;
+      swing = targetSwing;
+      tx = targetTx;
+      ty = targetTy;
       vSwing = 0;
       vTx = 0;
       vTy = 0;
-      hoverWrap.style.transform = '';
+      if (detachedSide !== 'none') {
+        looseAngle = targetLooseAngle;
+        vLooseAngle = 0;
+      }
+      if (swing === 0 && tx === 0 && ty === 0) {
+        hoverWrap.style.transform = '';
+      } else {
+        hoverWrap.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotate(${swing.toFixed(3)}deg)`;
+      }
+      syncChainGeometry(tx, ty, swing, looseAngle);
       rafId = null;
       lastTs = 0;
       return;
     }
 
     hoverWrap.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotate(${swing.toFixed(3)}deg)`;
+    syncChainGeometry(tx, ty, swing, looseAngle);
     rafId = requestAnimationFrame(step);
   };
 
@@ -649,21 +792,107 @@ function attachWoodBoardSpringPhysics(
     }
   };
 
+  const updateJointVisualState = (): void => {
+    const isLeftOff = detachedSide === 'left';
+    const isRightOff = detachedSide === 'right';
+    leftJointBtn.classList.toggle('is-detached', isLeftOff);
+    rightJointBtn.classList.toggle('is-detached', isRightOff);
+    leftJointBtn.setAttribute('aria-pressed', isLeftOff ? 'true' : 'false');
+    rightJointBtn.setAttribute('aria-pressed', isRightOff ? 'true' : 'false');
+    leftJointBtn.title = isLeftOff ? 'Re-hook left chain' : isRightOff ? 'Last chain holding' : 'Unhook left chain';
+    rightJointBtn.title = isRightOff ? 'Re-hook right chain' : isLeftOff ? 'Last chain holding' : 'Unhook right chain';
+    leftJointBtn.setAttribute('aria-label', leftJointBtn.title);
+    rightJointBtn.setAttribute('aria-label', rightJointBtn.title);
+    board.classList.toggle('is-dangling', detachedSide !== 'none');
+  };
+
+  const toggleJoint = (side: 'left' | 'right'): void => {
+    const rect = board.getBoundingClientRect();
+    if (rect.width) cachedBoardWidth = rect.width;
+
+    if (detachedSide === side) {
+      // Re-hook this joint cleanly back into horizontal balance
+      const hoistSign = side === 'left' ? 1 : -1;
+      detachedSide = 'none';
+      vSwing += hoistSign * 26;
+      vTy -= 78;
+      vTx += hoistSign * 42;
+      updateJointVisualState();
+      ensureLoop();
+      return;
+    }
+
+    if (detachedSide === 'none') {
+      const { leftX, leftY, rightX, rightY } = computeBoardAnchors(tx, ty, swing);
+      const ringX = 280;
+      const ringY = 44;
+      if (side === 'left') {
+        looseAngle = (Math.atan2(leftX - ringX, Math.max(20, leftY - ringY)) * 180) / Math.PI;
+        vLooseAngle = -45;
+        detachedSide = 'left';
+        vSwing -= 48;
+        vTy += 130;
+        vTx -= 115;
+      } else {
+        looseAngle = (Math.atan2(rightX - ringX, Math.max(20, rightY - ringY)) * 180) / Math.PI;
+        vLooseAngle = 45;
+        detachedSide = 'right';
+        vSwing += 48;
+        vTy += 130;
+        vTx += 115;
+      }
+      updateJointVisualState();
+      ensureLoop();
+      return;
+    }
+
+    // Other joint is already unhooked -> metallic resistance shake on the last surviving joint!
+    const shakeDir = side === 'left' ? -1 : 1;
+    vSwing += shakeDir * 44;
+    vTy += 78;
+    vLooseAngle += shakeDir * 64;
+    const activeBtn = side === 'left' ? leftJointBtn : rightJointBtn;
+    activeBtn.classList.add('is-strained');
+    setTimeout(() => activeBtn.classList.remove('is-strained'), 260);
+    ensureLoop();
+  };
+
+  const wireJointButton = (btn: HTMLButtonElement, side: 'left' | 'right'): void => {
+    btn.addEventListener('pointerdown', (event: PointerEvent) => {
+      event.stopPropagation();
+    });
+    btn.addEventListener('click', (event: MouseEvent) => {
+      event.stopPropagation();
+      toggleJoint(side);
+    });
+  };
+
+  wireJointButton(leftJointBtn, 'left');
+  wireJointButton(rightJointBtn, 'right');
+  updateJointVisualState();
+
   board.addEventListener('pointermove', (event: PointerEvent) => {
+    const rect = board.getBoundingClientRect();
+    if (rect.width) cachedBoardWidth = rect.width;
+
     if (dragging) {
       if (event.pointerId !== activePointerId) return;
       const dx = event.clientX - dragStartX;
       const dy = event.clientY - dragStartY;
-      dragTargetTx = rubber(dx * 0.42, 42);
-      dragTargetTy = Math.max(-10, rubber(dy * 0.38, 26));
-      dragTargetSwing = rubber(-dx * 0.14, 10.5);
+      if (Math.hypot(dx, dy) > 4) movedEnough = true;
+      dragTargetTx = rubber(dx * 0.48, 56);
+      dragTargetTy = Math.max(-14, rubber(dy * 0.44, 34));
+      dragTargetSwing = rubber(-dx * 0.16, 12);
 
       if (lastClientX !== null && lastClientY !== null) {
         const stepX = event.clientX - lastClientX;
         const stepY = event.clientY - lastClientY;
-        vSwing += Math.max(-16, Math.min(16, -stepX * 0.45));
-        vTx += Math.max(-24, Math.min(24, stepX * 1.1));
-        vTy += Math.max(-20, Math.min(20, stepY * 0.9));
+        vSwing += Math.max(-20, Math.min(20, -stepX * 0.55));
+        vTx += Math.max(-28, Math.min(28, stepX * 1.25));
+        vTy += Math.max(-22, Math.min(22, stepY * 1.0));
+        if (detachedSide !== 'none') {
+          vLooseAngle += Math.max(-35, Math.min(35, -stepX * 1.2));
+        }
       }
       lastClientX = event.clientX;
       lastClientY = event.clientY;
@@ -672,44 +901,57 @@ function attachWoodBoardSpringPhysics(
     }
 
     if (event.pointerType === 'touch') return;
+    hovered = true;
+    if (rect.width) {
+      const relX = Math.max(-0.5, Math.min(0.5, (event.clientX - rect.left) / rect.width - 0.5)) * 2;
+      hoverTargetSwing = relX * 2.2;
+      hoverTargetTy = 2.5;
+    }
+
     if (lastClientX === null) {
       lastClientX = event.clientX;
       lastClientY = event.clientY;
+      ensureLoop();
       return;
     }
 
-    // Cursor brush nudges the hanging sign along the direction you sweep
-    const vx = Math.max(-42, Math.min(42, event.clientX - lastClientX));
-    const vy = Math.max(-28, Math.min(28, event.clientY - (lastClientY ?? event.clientY)));
+    // Cursor brush nudges the hanging plank along the direction you sweep
+    const vx = Math.max(-46, Math.min(46, event.clientX - lastClientX));
+    const vy = Math.max(-30, Math.min(30, event.clientY - (lastClientY ?? event.clientY)));
     lastClientX = event.clientX;
     lastClientY = event.clientY;
 
-    if (Math.abs(vx) > 0.5 || Math.abs(vy) > 0.5) {
-      vSwing += -vx * 0.72;
-      vTx += vx * 2.2;
-      vTy += vy * 1.1;
-      ensureLoop();
+    if (Math.abs(vx) > 0.3 || Math.abs(vy) > 0.3) {
+      vSwing += -vx * 0.95;
+      vTx += vx * 2.6;
+      vTy += vy * 1.25;
+      if (detachedSide !== 'none') {
+        vLooseAngle += -vx * 1.3;
+      }
     }
+    ensureLoop();
   });
 
   board.addEventListener('pointerdown', (event: PointerEvent) => {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
+    const rect = board.getBoundingClientRect();
+    if (rect.width) cachedBoardWidth = rect.width;
+
     dragging = true;
+    movedEnough = false;
     activePointerId = event.pointerId;
     dragStartX = event.clientX;
     dragStartY = event.clientY;
     lastClientX = event.clientX;
     lastClientY = event.clientY;
     dragTargetTx = 0;
-    dragTargetTy = 4;
+    dragTargetTy = 5;
     dragTargetSwing = 0;
 
-    // Slight tactile grab settle on initial click
-    const rect = board.getBoundingClientRect();
     if (rect.width) {
       const rel = (event.clientX - rect.left) / rect.width - 0.5;
-      vSwing += rel * 18;
-      vTy += 34;
+      vSwing += rel * 24;
+      vTy += 42;
     }
 
     board.classList.add('is-grabbing');
@@ -723,6 +965,7 @@ function attachWoodBoardSpringPhysics(
 
   const endDrag = (event: PointerEvent): void => {
     if (!dragging || event.pointerId !== activePointerId) return;
+    const wasQuickKnock = !movedEnough;
     dragging = false;
     activePointerId = null;
     dragTargetTx = 0;
@@ -734,6 +977,19 @@ function attachWoodBoardSpringPhysics(
     } catch {
       // Ignore synthetic events
     }
+
+    // Quick click/tap without drag knocks that edge of the board vigorously
+    if (wasQuickKnock) {
+      const rect = board.getBoundingClientRect();
+      const rawRel = rect.width ? (event.clientX - rect.left) / rect.width - 0.5 : 0.25;
+      const lever = Math.abs(rawRel) < 0.08 ? 0.28 : Math.max(-0.5, Math.min(0.5, rawRel));
+      vSwing += lever * 68;
+      vTy += 105;
+      vTx += -lever * 22;
+      if (detachedSide !== 'none') {
+        vLooseAngle += lever * 78;
+      }
+    }
     ensureLoop();
   };
 
@@ -741,9 +997,13 @@ function attachWoodBoardSpringPhysics(
   board.addEventListener('pointercancel', endDrag);
 
   board.addEventListener('pointerleave', () => {
+    hovered = false;
+    hoverTargetSwing = 0;
+    hoverTargetTy = 0;
     if (!dragging) {
       lastClientX = null;
       lastClientY = null;
+      ensureLoop();
     }
   });
 }
@@ -817,12 +1077,21 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   board.appendChild(grain);
   board.appendChild(windowEl);
 
-  hoverWrap.appendChild(hanger);
+  const leftJointBtn = document.createElement('button');
+  leftJointBtn.type = 'button';
+  leftJointBtn.className = 'gd-wood-joint is-left';
+  const rightJointBtn = document.createElement('button');
+  rightJointBtn.type = 'button';
+  rightJointBtn.className = 'gd-wood-joint is-right';
+  board.appendChild(leftJointBtn);
+  board.appendChild(rightJointBtn);
+
   hoverWrap.appendChild(board);
+  swingWrap.appendChild(hanger);
   swingWrap.appendChild(hoverWrap);
   greetingCard.appendChild(swingWrap);
 
-  attachWoodBoardSpringPhysics(board, hoverWrap);
+  attachWoodBoardSpringPhysics(board, hoverWrap, hanger, leftJointBtn, rightJointBtn);
 
   return greetingCard;
 }

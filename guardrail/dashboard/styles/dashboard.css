@@ -22985,7 +22985,7 @@ article.gd-card-collapsed,
 
 .gd-wood-hover {
   position: relative;
-  transform-origin: 50% -130px;
+  transform-origin: 50% 0%;
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -23030,6 +23030,51 @@ article.gd-card-collapsed,
 .gd-wood-board.is-grabbing,
 .gd-wood-board:active {
   cursor: grabbing;
+}
+
+.gd-wood-joint {
+  position: absolute;
+  top: -11px;
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  z-index: 6;
+  transform: translateX(-50%);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.gd-wood-joint.is-left {
+  left: calc(50% - 173px);
+}
+
+.gd-wood-joint.is-right {
+  left: calc(50% + 173px);
+}
+
+.gd-wood-joint:hover,
+.gd-wood-joint:focus-visible {
+  outline: none;
+  background: rgba(245, 243, 236, 0.28);
+  border-color: rgba(255, 232, 179, 0.85);
+  box-shadow: 0 0 0 3px rgba(45, 34, 21, 0.16);
+  transform: translateX(-50%) scale(1.12);
+}
+
+.gd-wood-joint.is-detached {
+  background: rgba(217, 134, 54, 0.22);
+  border-color: rgba(242, 178, 86, 0.92);
+  box-shadow: 0 0 0 3px rgba(217, 134, 54, 0.2);
+}
+
+.gd-wood-joint.is-strained {
+  background: rgba(196, 74, 48, 0.26);
+  border-color: rgba(224, 96, 68, 0.95);
 }
 
 .gd-wood-board::before {
@@ -23119,12 +23164,8 @@ article.gd-card-collapsed,
     margin-top: 26px;
   }
 
-  .gd-wood-swing,
-  .gd-wood-hover {
-    transform-origin: 50% -58px;
-  }
-
   .gd-wood-swing {
+    transform-origin: 50% -58px;
     animation: gd-wood-drop-compact 1500ms ease-in-out both;
   }
 
