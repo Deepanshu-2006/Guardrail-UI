@@ -108,8 +108,8 @@ export function renderOverview(props: OverviewProps): HTMLElement {
 
   const greetingCard = createMergedGreetingWidget();
 
-  header.appendChild(titleGroup);
   header.appendChild(createHeaderLanternProp());
+  header.appendChild(titleGroup);
   header.appendChild(greetingCard);
   section.appendChild(header);
 

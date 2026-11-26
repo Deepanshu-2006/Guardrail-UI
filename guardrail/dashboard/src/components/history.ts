@@ -31,7 +31,6 @@ import { formatTimestamp, getRiskLevelExplanation } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { populateWardAvatar, setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
-import { createHeaderLanternProp } from './interactive-props.js';
 
 export interface DecisionHistoryProps {
   /** Authoritative historical / resolved requests */
@@ -717,7 +716,6 @@ export function renderDecisionHistory(props: DecisionHistoryProps): HTMLElement 
 
   headerActions.className = 'gd-history-header-actions gd-header-actions-inline';
   titleGroup.appendChild(headerActions);
-  header.appendChild(createHeaderLanternProp());
   header.appendChild(createMergedGreetingWidget());
 
   section.appendChild(header);

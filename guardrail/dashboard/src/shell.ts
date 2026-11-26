@@ -29,7 +29,7 @@ import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview, formatWardDisplayName } from './components/overview.js';
 import { createAmbientBackdrop, getRealTimeScenery, markGreetingWidgetSettled } from './components/pixel-scenery.js';
-import { createSidebarGardenCorner } from './components/interactive-props.js';
+import { createLanternFirefliesOverlay } from './components/interactive-props.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
 import { filterRequests } from './components/filters.js';
@@ -1131,6 +1131,7 @@ export class DashboardShell {
         this.isEntryAnimationActive ? 'gd-dashboard-app gd-initial-load' : 'gd-dashboard-app'
       } phase-${desktopScenery.phase}`;
       this.appWrapper.appendChild(createAmbientBackdrop(desktopScenery.phase, 'gd-desktop-ambient'));
+      this.appWrapper.appendChild(createLanternFirefliesOverlay());
 
       // 1. Sidebar (Navigation + Account Profile)
       this.sidebarEl = renderNavigation({
@@ -1150,7 +1151,6 @@ export class DashboardShell {
         onOpenAuth: () => this.openAuthModal(),
         onSignOut: () => this.handleSignOut(),
       });
-      this.sidebarEl.appendChild(createSidebarGardenCorner());
       this.sidebarEl.appendChild(accountArea);
       this.appWrapper.appendChild(this.sidebarEl);
 

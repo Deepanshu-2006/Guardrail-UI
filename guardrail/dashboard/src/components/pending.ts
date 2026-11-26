@@ -17,7 +17,6 @@ import { renderDecisionConfirmation } from './decision-confirmation.js';
 import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isRequestExpired } from './detail.js';
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
-import { createHeaderLanternProp } from './interactive-props.js';
 import { createIcon, populateWardAvatar, setAnimatedHeading } from './icons.js';
 
 export interface PendingApprovalsProps {
@@ -356,7 +355,6 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
 
   headerActions.className = 'gd-pending-header-actions gd-header-actions-inline';
   titleGroup.appendChild(headerActions);
-  header.appendChild(createHeaderLanternProp());
   header.appendChild(createMergedGreetingWidget());
   section.appendChild(header);
 
