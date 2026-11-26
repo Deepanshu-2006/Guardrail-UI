@@ -1,8 +1,9 @@
 /**
  * Guardrail Pairing Code Custom Keyboard
  *
- * Defaults to a giant 3×4 numeric pad tailored for 8-digit Guardrail codes (`XXXX-YYYY`),
- * while supporting a 1-tap `ABC` switch (or auto-switch on paste) for legacy `GR-INV-XXXX-YYYY` codes.
+ * Clean 3×4 numeric dialpad for 8-digit Guardrail codes (`XXXX-YYYY`),
+ * with a 1-tap `ABC` switch (or auto-switch on paste) for legacy `GR-INV-XXXX-YYYY` codes.
+ * Automatically scrolls the pairing field cleanly above the keyboard when opened.
  */
 
 const NUMERIC_ROWS: readonly (readonly string[])[] = [
@@ -128,6 +129,7 @@ export function attachPairingCodeKeyboard(
   let isOpen = false;
   let isDestroyed = false;
   let closeTimer: ReturnType<typeof setTimeout> | null = null;
+  let scrollTimer: ReturnType<typeof setTimeout> | null = null;
   let repeatTimer: ReturnType<typeof setTimeout> | null = null;
   let repeatInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -136,33 +138,13 @@ export function attachPairingCodeKeyboard(
   kbdEl.setAttribute('role', 'region');
   kbdEl.setAttribute('aria-label', 'Ward pairing code keyboard');
 
-  // Top bar: live segmented slots + mode switcher, Clear & Done controls
+  // Slim top accessory strip (status on left; subtle ABC / Clear / Connect / Hide on right)
   const head = document.createElement('div');
   head.className = 'gd-m-kbd-head';
 
-  const preview = document.createElement('div');
-  preview.className = 'gd-m-kbd-preview';
-  preview.setAttribute('aria-hidden', 'true');
-
-  const prefixBadge = document.createElement('span');
-  prefixBadge.className = 'gd-m-kbd-prefix';
-  prefixBadge.textContent = 'GR-INV-';
-  preview.appendChild(prefixBadge);
-
-  const slotEls: HTMLElement[] = [];
-  for (let i = 0; i < 8; i++) {
-    if (i === 4) {
-      const dash = document.createElement('span');
-      dash.className = 'gd-m-kbd-dash';
-      dash.textContent = '-';
-      preview.appendChild(dash);
-    }
-    const slot = document.createElement('span');
-    slot.className = 'gd-m-kbd-slot';
-    slot.textContent = '';
-    slotEls.push(slot);
-    preview.appendChild(slot);
-  }
+  const statusEl = document.createElement('div');
+  statusEl.className = 'gd-m-kbd-status';
+  statusEl.textContent = '8-digit code · 0/8';
 
   const headActions = document.createElement('div');
   headActions.className = 'gd-m-kbd-head-actions';
@@ -175,9 +157,24 @@ export function attachPairingCodeKeyboard(
 
   const clearBtn = document.createElement('button');
   clearBtn.type = 'button';
-  clearBtn.className = 'gd-m-kbd-util-btn';
+  clearBtn.className = 'gd-m-kbd-util-btn is-hidden';
   clearBtn.textContent = 'Clear';
   clearBtn.setAttribute('aria-label', 'Clear pairing code');
+
+  const connectBtn = document.createElement('button');
+  connectBtn.type = 'button';
+  connectBtn.className = 'gd-m-kbd-connect is-hidden';
+  connectBtn.textContent = 'Connect';
+  connectBtn.addEventListener('mousedown', (e) => e.preventDefault());
+  connectBtn.addEventListener('click', () => {
+    if (typeof (form as any).requestSubmit === 'function') {
+      form.requestSubmit();
+    } else if (typeof Event === 'function') {
+      form.dispatchEvent(new Event('submit', { cancelable: true }));
+    } else {
+      form.dispatchEvent({ type: 'submit', preventDefault: () => {} } as any);
+    }
+  });
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -186,10 +183,11 @@ export function attachPairingCodeKeyboard(
   closeBtn.innerHTML =
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
-  headActions.appendChild(modeBtn);
   headActions.appendChild(clearBtn);
+  headActions.appendChild(connectBtn);
+  headActions.appendChild(modeBtn);
   headActions.appendChild(closeBtn);
-  head.appendChild(preview);
+  head.appendChild(statusEl);
   head.appendChild(headActions);
   kbdEl.appendChild(head);
 
@@ -225,7 +223,7 @@ export function attachPairingCodeKeyboard(
 
   const attachBackspaceBehavior = (btn: HTMLButtonElement) => {
     btn.innerHTML =
-      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
     btn.addEventListener('click', () => backspaceChar());
     btn.addEventListener('pointerdown', () => {
       stopBackspaceRepeat();
@@ -313,32 +311,6 @@ export function attachPairingCodeKeyboard(
 
   rowsWrap.appendChild(numericContainer);
   rowsWrap.appendChild(legacyContainer);
-
-  // Footer inside keyboard: status hint + Connect CTA
-  const footer = document.createElement('div');
-  footer.className = 'gd-m-kbd-footer';
-
-  const statusEl = document.createElement('div');
-  statusEl.className = 'gd-m-kbd-status';
-
-  const connectBtn = document.createElement('button');
-  connectBtn.type = 'button';
-  connectBtn.className = 'gd-m-kbd-connect';
-  connectBtn.textContent = 'Connect';
-  connectBtn.addEventListener('mousedown', (e) => e.preventDefault());
-  connectBtn.addEventListener('click', () => {
-    if (typeof (form as any).requestSubmit === 'function') {
-      form.requestSubmit();
-    } else if (typeof Event === 'function') {
-      form.dispatchEvent(new Event('submit', { cancelable: true }));
-    } else {
-      form.dispatchEvent({ type: 'submit', preventDefault: () => {} } as any);
-    }
-  });
-
-  footer.appendChild(statusEl);
-  footer.appendChild(connectBtn);
-  rowsWrap.appendChild(footer);
   kbdEl.appendChild(rowsWrap);
 
   const setStatus = (text: string, tone: 'neutral' | 'error' | 'success' = 'neutral') => {
@@ -353,30 +325,24 @@ export function attachPairingCodeKeyboard(
     input.value = formatted;
 
     setFlagClass(kbdEl, 'is-legacy-mode', mode === 'legacy');
-    setFlagClass(prefixBadge, 'is-hidden', mode !== 'legacy');
     modeBtn.textContent = mode === 'legacy' ? '123' : 'ABC';
     modeBtn.setAttribute(
       'aria-label',
       mode === 'legacy' ? 'Switch to 8-digit numeric keypad' : 'Switch to legacy alphanumeric keyboard'
     );
 
-    for (let i = 0; i < 8; i++) {
-      const slot = slotEls[i];
-      const ch = body[i] || '';
-      slot.textContent = ch;
-      setFlagClass(slot, 'is-filled', Boolean(ch));
-      setFlagClass(slot, 'is-active', isOpen && i === Math.min(body.length, 7) && body.length < 8);
-    }
-
     const ready = body.length === 8;
     clearBtn.disabled = body.length === 0;
+    setFlagClass(clearBtn, 'is-hidden', body.length === 0);
+    setFlagClass(connectBtn, 'is-hidden', !ready);
     setFlagClass(connectBtn, 'is-ready', ready);
+
     setStatus(
       ready
-        ? 'Code ready · Tap Connect'
+        ? 'Ready to connect'
         : mode === 'legacy'
-          ? `Legacy GR-INV- mode · ${body.length}/8`
-          : `Enter 8-digit pairing code · ${body.length}/8`,
+          ? `Legacy code · ${body.length}/8`
+          : `8-digit code · ${body.length}/8`,
       ready ? 'success' : 'neutral'
     );
   };
@@ -434,7 +400,26 @@ export function attachPairingCodeKeyboard(
       // Clipboard read can be blocked on non-HTTPS LAN origins
     }
     if (typeof input.focus === 'function') input.focus();
-    setStatus('Long-press the code field above to paste', 'neutral');
+    setStatus('Long-press code field above to paste', 'neutral');
+  };
+
+  const scrollPairBoxAboveKeyboard = () => {
+    if (typeof window === 'undefined' || typeof pairBox.getBoundingClientRect !== 'function') return;
+    try {
+      const kbdHeight = kbdEl.offsetHeight || (mode === 'legacy' ? 236 : 256);
+      const viewportH = window.innerHeight || 0;
+      if (!viewportH) return;
+      const rect = pairBox.getBoundingClientRect();
+      const targetBottom = viewportH - kbdHeight - 16;
+      if (rect.bottom > targetBottom) {
+        const delta = rect.bottom - targetBottom;
+        if (typeof window.scrollBy === 'function') {
+          window.scrollBy({ top: delta, behavior: 'smooth' });
+        }
+      }
+    } catch {
+      // Ignore in mocked test DOM
+    }
   };
 
   const open = () => {
@@ -453,24 +438,27 @@ export function attachPairingCodeKeyboard(
       requestAnimationFrame(() => {
         if (!isDestroyed && isOpen) {
           kbdEl.classList.add('is-open');
+          scrollPairBoxAboveKeyboard();
         }
       });
     } else {
       kbdEl.classList.add('is-open');
     }
-    if (typeof pairBox.scrollIntoView === 'function') {
-      try {
-        pairBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } catch {
-        // Ignore on older browsers
-      }
-    }
+    if (scrollTimer !== null) clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      if (!isDestroyed && isOpen) scrollPairBoxAboveKeyboard();
+      scrollTimer = null;
+    }, 80);
   };
 
   const close = () => {
     if (!isOpen) return;
     isOpen = false;
     stopBackspaceRepeat();
+    if (scrollTimer !== null) {
+      clearTimeout(scrollTimer);
+      scrollTimer = null;
+    }
     kbdEl.classList.remove('is-open');
     document.body.classList.remove('gd-kbd-open');
     syncUI();
@@ -543,6 +531,10 @@ export function attachPairingCodeKeyboard(
     if (isDestroyed) return;
     isDestroyed = true;
     stopBackspaceRepeat();
+    if (scrollTimer !== null) {
+      clearTimeout(scrollTimer);
+      scrollTimer = null;
+    }
     if (closeTimer !== null) {
       clearTimeout(closeTimer);
       closeTimer = null;
