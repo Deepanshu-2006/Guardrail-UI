@@ -1193,8 +1193,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       listContainer.appendChild(item);
     }
 
-    activitySection.appendChild(listContainer);
-
     if (props.onViewHistory) {
       const viewAllBtn = document.createElement('button');
       viewAllBtn.type = 'button';
@@ -1214,8 +1212,10 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       viewAllBtn.addEventListener('click', () => {
         props.onViewHistory?.();
       });
-      activitySection.appendChild(viewAllBtn);
+      listContainer.appendChild(viewAllBtn);
     }
+
+    activitySection.appendChild(listContainer);
   }
 
   // =========================================================================

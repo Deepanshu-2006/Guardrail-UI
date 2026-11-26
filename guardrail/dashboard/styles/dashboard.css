@@ -24423,3 +24423,172 @@ body.gd-kbd-open .gd-m-shell {
     transition: none;
   }
 }
+
+@media (min-width: 769px) {
+  .gd-nav-link {
+    padding: 10px 12px;
+    margin: 0 -12px;
+    border-radius: 6px;
+    border-left: 3px solid transparent !important;
+  }
+
+  .gd-nav-link:hover {
+    background: rgba(212, 176, 124, 0.08) !important;
+    transform: translateX(2px);
+  }
+
+  .gd-nav-link[aria-current="page"],
+  .gd-nav-link.active {
+    background: linear-gradient(90deg, rgba(204, 158, 92, 0.2) 0%, rgba(204, 158, 92, 0.05) 100%) !important;
+    border-left: 3px solid #D9A44E !important;
+    padding-left: 12px !important;
+    color: #FAF4E6 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 238, 204, 0.1);
+  }
+
+  /* Weathered wooden plank frames around Overview metric cards, Recent Activity & Active Ward Oversight with frosted glass interiors */
+  .gd-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 24px !important;
+    align-items: stretch !important;
+  }
+
+  .gd-overview-main-grid {
+    gap: 44px;
+  }
+
+  .gd-overview-grid .gd-metric-card,
+  .gd-overview-grid .gd-metric-card.gd-metric-card-interactive,
+  .gd-overview-grid .gd-metric-card.gd-metric-card-interactive:not(:first-child),
+  #view-overview .gd-recent-activity-list,
+  #view-overview .gd-overview-col-secondary {
+    position: relative !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 5px !important;
+    border: 1.5px solid #362617 !important;
+    border-bottom-width: 3px !important;
+    animation: none !important;
+    background: rgba(237, 230, 214, 0.36) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    backdrop-filter: blur(12px) !important;
+    box-shadow:
+      0 9px 20px -7px rgba(32, 24, 14, 0.22),
+      0 2px 6px rgba(32, 24, 14, 0.1) !important;
+  }
+
+  .gd-overview-grid .gd-metric-card,
+  .gd-overview-grid .gd-metric-card.gd-metric-card-interactive,
+  .gd-overview-grid .gd-metric-card.gd-metric-card-interactive:not(:first-child) {
+    padding: 19px 21px !important;
+    height: 100% !important;
+    min-height: 146px !important;
+  }
+
+  .gd-overview-grid .gd-metric-header {
+    min-height: 24px;
+    align-items: center;
+  }
+
+  .gd-overview-grid .gd-metric-card:not(:first-child) {
+    padding-left: 21px !important;
+  }
+
+  .gd-overview-grid .gd-metric-card:not(:last-child) {
+    border-right: 1.5px solid #362617 !important;
+  }
+
+  #view-overview .gd-recent-activity-list {
+    padding: 16px 24px 18px !important;
+  }
+
+  #view-overview .gd-overview-col-secondary {
+    padding: 22px 24px !important;
+  }
+
+  #view-overview #gd-overview-recent-activity.is-revealed .gd-recent-activity-list {
+    transition: opacity 0.44s cubic-bezier(0.16, 1, 0.3, 1), transform 0.44s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* Hollow 6.5px weathered oak perimeter frame leaving frosted center clear */
+  .gd-overview-grid .gd-metric-card::before,
+  #view-overview .gd-recent-activity-list::before,
+  #view-overview .gd-overview-col-secondary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 6.5px;
+    box-sizing: border-box;
+    z-index: 2;
+    border-radius: 3.5px;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 3.25px 3.25px, #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
+      radial-gradient(circle at calc(100% - 3.25px) 3.25px, #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
+      radial-gradient(circle at 3.25px calc(100% - 3.25px), #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
+      radial-gradient(circle at calc(100% - 3.25px) calc(100% - 3.25px), #2F2B26 0 1.25px, rgba(235, 210, 172, 0.35) 1.55px, transparent 2px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 150' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L7 7 M320 0 L313 7 M0 150 L7 143 M320 150 L313 143' stroke='%233B2A1A' stroke-width='1.3' opacity='0.6'/%3E%3Cpath d='M14 3 Q110 2 210 4 T308 3 M14 146 Q120 148 230 145 T306 147' stroke='%234E3824' stroke-width='0.9' fill='none' opacity='0.34'/%3E%3Cpath d='M3 20 Q4 75 2.5 128 M317 22 Q315.5 80 317.5 128' stroke='%234E3824' stroke-width='0.8' fill='none' opacity='0.3'/%3E%3Cpath d='M242 0 L239 5 L241 7' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.62'/%3E%3Cpath d='M54 150 L57 145 L55 143' stroke='%232D2014' stroke-width='1.2' fill='none' opacity='0.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+      linear-gradient(180deg, #A78A68 0%, #8E7253 52%, #765B3F 100%);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* Recessed wood inner rim framing the frosted interior */
+  .gd-overview-grid .gd-metric-card::after,
+  #view-overview .gd-recent-activity-list::after,
+  #view-overview .gd-overview-col-secondary::after {
+    content: '';
+    position: absolute;
+    inset: 6.5px;
+    z-index: 2;
+    border-radius: 2.5px;
+    border: 1px solid rgba(48, 33, 19, 0.58);
+    box-shadow:
+      inset 0 1.5px 4px rgba(28, 18, 9, 0.16),
+      0 1px 0 rgba(212, 185, 149, 0.38);
+    pointer-events: none;
+  }
+
+  .gd-overview-grid .gd-metric-card > *,
+  #view-overview .gd-recent-activity-list > *,
+  #view-overview .gd-overview-col-secondary > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .gd-overview-grid .gd-metric-card.gd-metric-card-interactive:hover {
+    transform: translateY(-2px) !important;
+    background: rgba(242, 236, 222, 0.48) !important;
+    box-shadow:
+      0 12px 22px -7px rgba(32, 24, 14, 0.26),
+      0 3px 7px rgba(32, 24, 14, 0.12) !important;
+  }
+
+  .gd-overview-grid .gd-metric-card.gd-metric-card-interactive:focus-visible {
+    box-shadow:
+      0 0 0 2px #273121,
+      0 0 0 4px rgba(39, 49, 33, 0.25),
+      0 10px 22px -7px rgba(32, 24, 14, 0.25) !important;
+  }
+
+  #view-overview .gd-recent-activity-item {
+    border-bottom: 1px dashed rgba(92, 66, 40, 0.24) !important;
+  }
+
+  #view-overview .gd-recent-activity-item:last-child {
+    border-bottom: none !important;
+  }
+
+  #view-overview .gd-recent-activity-list .gd-btn-view-all-history {
+    align-self: flex-start !important;
+    width: fit-content !important;
+    margin-top: 14px !important;
+    padding: 4px 0 !important;
+  }
+}
