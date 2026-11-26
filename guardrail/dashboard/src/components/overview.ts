@@ -1263,7 +1263,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       listContainer.appendChild(viewAllBtn);
     }
 
-    listContainer.appendChild(createActivitySconceProp());
     listContainer.appendChild(createPottedPlantProp());
     activitySection.appendChild(listContainer);
   }
@@ -1279,11 +1278,12 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   colPrimary.className = 'gd-overview-col-primary';
   colPrimary.appendChild(activitySection);
 
-  // Secondary supporting column (5/12): Connect a Ward + Decoupled Architecture
+  // Secondary supporting column (5/12): Active Ward Oversight + Decoupled Architecture
   const colSecondary = document.createElement('div');
   colSecondary.className = 'gd-overview-col-secondary';
   colSecondary.appendChild(wardOversightSection);
   colSecondary.appendChild(callout);
+  colSecondary.appendChild(createActivitySconceProp());
 
   mainGrid.appendChild(colPrimary);
   mainGrid.appendChild(colSecondary);
@@ -1359,8 +1359,8 @@ function setupOverviewScrollReveal(container: HTMLElement): void {
         // Ignore unrendered/zero-dimension elements
         if (rect.height === 0 && rect.width === 0) return;
 
-        // Card is within visible viewport area of the scroll parent
-        if (rect.top < parentBottom - 30 && rect.bottom > parentTop + 20) {
+        // Card (or props mounted on its top rim) is within visible viewport area
+        if (rect.top < parentBottom + 45 && rect.bottom > parentTop + 10) {
           el.classList.add('is-revealed');
         }
       }

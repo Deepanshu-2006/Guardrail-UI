@@ -12,11 +12,27 @@
 let sharedLanternLit = false;
 let sharedPlantStage = 1;
 
+const sharedBirdState = {
+  x: 0,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  heading: -0.35,
+  speed: 170,
+  facing: 1 as 1 | -1,
+  pitch: 0,
+  waypointIdx: 0,
+  frameSpotIdx: 0,
+};
+
 function syncLanternAmbience(): void {
   if (typeof document === 'undefined') return;
   const appEl = document.querySelector('.gd-dashboard-app');
   if (appEl) {
     appEl.classList.toggle('gd-lantern-ambience-on', sharedLanternLit);
+  }
+  if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('gd-lantern-ambience-sync', { detail: { lit: sharedLanternLit } }));
   }
 }
 
@@ -421,20 +437,21 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     return a;
   };
 
-  let x = 0;
-  let y = 0;
-  let vx = 0;
-  let vy = 0;
-  let heading = -0.35;
-  let speed = 170;
-  let facing: 1 | -1 = 1;
-  let pitch = 0;
+  let x = sharedBirdState.x;
+  let y = sharedBirdState.y;
+  let vx = sharedBirdState.vx;
+  let vy = sharedBirdState.vy;
+  let heading = sharedBirdState.heading;
+  let speed = sharedBirdState.speed;
+  let facing: 1 | -1 = sharedBirdState.facing;
+  let pitch = sharedBirdState.pitch;
   let turnBlend = 0;
   let flightClock = 0;
+  let returnClock = 0;
   let wingPhase = 0;
-  let waypointIdx = 0;
+  let waypointIdx = sharedBirdState.waypointIdx;
   let legsBeforeLand = 1;
-  let frameSpotIdx = 0;
+  let frameSpotIdx = sharedBirdState.frameSpotIdx;
   let activeFrameSpot: FrameSpotDef | null = null;
   let perchedUntil = 0;
   let hopSeed = 0;
@@ -445,6 +462,19 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
   let lastTs = 0;
   let rafId: number | null = null;
   let swoopTarget: { x: number; y: number; until: number } | null = null;
+
+  const syncSharedBirdState = () => {
+    sharedBirdState.x = x;
+    sharedBirdState.y = y;
+    sharedBirdState.vx = vx;
+    sharedBirdState.vy = vy;
+    sharedBirdState.heading = heading;
+    sharedBirdState.speed = speed;
+    sharedBirdState.facing = facing;
+    sharedBirdState.pitch = pitch;
+    sharedBirdState.waypointIdx = waypointIdx;
+    sharedBirdState.frameSpotIdx = frameSpotIdx;
+  };
 
   const getOriginMetrics = () => {
     const refEl = svgEl || lanternBtn;
@@ -594,11 +624,13 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
             triggerChirp(activeFrameSpot.getPerchMessage(), 2700);
           }
           const idleBob = Math.sin(perchAge * 3.4) * 1.2;
+          returnClock = 0;
           birdEl.classList.remove('is-flying');
           setWingPose(0, 0, 1, Math.sin(perchAge * 4.5) * 4);
           facing = activeFrameSpot.faceDir;
           birdEl.style.transform = `translate(${x.toFixed(2)}px, ${(y + hopPulse).toFixed(2)}px) scaleX(${facing}) rotate(${idleBob.toFixed(1)}deg)`;
           syncChirpBubblePos(hopPulse);
+          syncSharedBirdState();
           rafId = requestAnimationFrame(step);
           return;
         }
@@ -673,12 +705,14 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
         pitch = 0;
         turnBlend = 0;
         hopSeed = 0;
+        returnClock = 0;
         perchedUntil = ts + 3300 + Math.random() * 500;
         facing = activeFrameSpot!.faceDir;
         birdEl.classList.remove('is-flying');
         setWingPose(0, 0, 1, 0);
         birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(0deg)`;
         syncChirpBubblePos();
+        syncSharedBirdState();
         rafId = requestAnimationFrame(step);
         return;
       }
@@ -763,28 +797,54 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
       pitch += (targetPitch - pitch) * Math.min(1, dt * 11);
 
       const subtlePerspective = 1 - turnBlend * 0.14;
+      returnClock = 0;
       birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${(facing * subtlePerspective).toFixed(3)}) rotate(${pitch.toFixed(1)}deg)`;
       syncChirpBubblePos();
+      syncSharedBirdState();
       rafId = requestAnimationFrame(step);
       return;
     }
 
-    // Extinguished: detach from any frame perch and fly gracefully home to lantern post
+    // Extinguished: clear active targets/perches and fly smoothly & reliably back to lantern perch
+    swoopTarget = null;
     if (perchedUntil > 0 || activeFrameSpot) {
       launchFromCurrentSpot(x > 0 ? -1 : 1);
     }
 
-    if (distHome > 3.2 || (birdEl.classList.contains('is-flying') && distHome > 2.0)) {
+    if (distHome > 3.0) {
       flightClock += dt;
+      returnClock += dt;
+      birdEl.classList.add('is-flying');
+
       const desiredHeading = Math.atan2(-y, -x);
       const headingDiff = normalizeAngle(desiredHeading - heading);
-      const turnRate = Math.max(-4.5, Math.min(4.5, headingDiff * 4.2));
+      const maxTurn = distHome < 75 ? 11.5 : 7.5;
+      const turnRate = Math.max(-maxTurn, Math.min(maxTurn, headingDiff * 6.5));
       heading = normalizeAngle(heading + turnRate * dt);
 
-      const approachSpeed = distHome > 95 ? 230 : Math.max(42, distHome * 2.1);
-      speed += (approachSpeed - speed) * Math.min(1, dt * 5);
+      const align = Math.max(0.28, Math.cos(headingDiff * 0.55));
+      const baseSpeed =
+        distHome > 180
+          ? 275
+          : distHome > 95
+            ? 235
+            : Math.max(20, distHome * 2.5);
+      const targetSpeed = baseSpeed * align;
+      speed += (targetSpeed - speed) * Math.min(1, dt * 6.5);
       vx = Math.cos(heading) * speed;
       vy = Math.sin(heading) * speed;
+
+      // Smooth terminal glide pull inside 40px so bird never orbits (0, 0)
+      if (distHome < 40 || returnClock > 3.2) {
+        const pull = distHome < 40 ? 1 - distHome / 40 : 0.45;
+        const glideSpeed = returnClock > 3.2 ? Math.max(baseSpeed, 240) : baseSpeed;
+        const hx = (-x / distHome) * glideSpeed;
+        const hy = (-y / distHome) * glideSpeed;
+        const blend = Math.min(1, pull * 0.7 + dt * 8);
+        vx += (hx - vx) * blend;
+        vy += (hy - vy) * blend;
+      }
+
       x += vx * dt;
       y += vy * dt;
 
@@ -806,8 +866,10 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
         distHome < 68
           ? -16 * (1 - distHome / 68)
           : Math.max(-55, Math.min(55, Math.atan2(vy, horizSpeed) * (180 / Math.PI) * 0.75));
+      pitch = flarePitch;
       birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(${flarePitch.toFixed(1)}deg)`;
       syncChirpBubblePos();
+      syncSharedBirdState();
       rafId = requestAnimationFrame(step);
       return;
     }
@@ -823,9 +885,12 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     pitch = 0;
     turnBlend = 0;
     flightClock = 0;
+    returnClock = 0;
     waypointIdx = 0;
     activeFrameSpot = null;
     perchedUntil = 0;
+    swoopTarget = null;
+    syncSharedBirdState();
     birdEl.classList.remove('is-flying');
     birdEl.style.transform = 'translate(0px, 0px) scaleX(1) rotate(0deg)';
     setWingPose(0, 0, 1, 0);
@@ -841,22 +906,32 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     }
   };
 
-  if (sharedLanternLit) {
+  if (Math.hypot(x, y) > 3.0) {
+    birdEl.classList.add('is-flying');
+    birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(${pitch.toFixed(1)}deg)`;
+    ensureRunning();
+  } else if (sharedLanternLit) {
     ensureRunning();
   }
 
   lanternBtn.addEventListener('click', () => {
     if (lanternBtn.classList.contains('is-lit')) {
-      heading = -0.55;
-      speed = 195;
-      vx = Math.cos(heading) * speed;
-      vy = Math.sin(heading) * speed;
+      returnClock = 0;
+      if (Math.hypot(x, y) <= 4) {
+        heading = -0.55;
+        speed = 195;
+        vx = Math.cos(heading) * speed;
+        vy = Math.sin(heading) * speed;
+      }
       waypointIdx = 0;
       legsBeforeLand = 1;
       activeFrameSpot = null;
       perchedUntil = 0;
       nextChirpAt = flightClock + 2.8;
       triggerChirp('Tweet-tweet! ♪');
+    } else {
+      returnClock = 0;
+      swoopTarget = null;
     }
     ensureRunning();
   });
@@ -2153,16 +2228,31 @@ export function attachInteractiveHeadingSprings(
     window.addEventListener('gd-pending-storm-sync', onFlipOrSync);
   }
 
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function' && mode === 'thermal') {
+    const onLanternSync = () => {
+      if (!document.contains(titleEl)) return;
+      if (isActiveFn()) {
+        for (let i = 0; i < states.length; i++) {
+          states[i].vy -= 42 - i * 2;
+        }
+        ensureRunning();
+      }
+    };
+    window.addEventListener('gd-lantern-ambience-sync', onLanternSync);
+  }
+
   if (typeof window !== 'undefined' && typeof MutationObserver === 'function') {
     requestAnimationFrame(() => {
       if (!document.contains(titleEl)) return;
       const appEl = document.querySelector('.gd-dashboard-app');
-      const pendingEl = titleEl.closest('.gd-view-section');
-      const targets = [appEl, pendingEl].filter(Boolean) as Element[];
+      const sectionEl = titleEl.closest('.gd-view-section');
+      const targets = [appEl, sectionEl].filter(Boolean) as Element[];
       if (targets.length) {
         const obs = new MutationObserver(() => {
           if (!document.contains(titleEl)) {
-            obs.disconnect();
+            queueMicrotask(() => {
+              if (!document.contains(titleEl)) obs.disconnect();
+            });
             return;
           }
           if (isActiveFn()) {

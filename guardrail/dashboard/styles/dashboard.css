@@ -26060,6 +26060,8 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-dashboard-app.gd-lantern-ambience-on #overview-title .gd-char {
     color: #2B2A1E;
+    animation: none !important;
+    opacity: 1 !important;
     text-shadow:
       -2px 0 calc(8px + var(--char-glow, 0) * 12px) rgba(255, 212, 92, calc(0.56 - var(--char-idx, 0) * 0.04 + var(--char-glow, 0) * 0.35)),
       4px 3px 6px rgba(34, 24, 12, 0.2),
@@ -26269,11 +26271,11 @@ body.gd-kbd-open .gd-m-shell {
     animation: gd-prop-nudge 0.42s ease;
   }
 
-  /* 1.6 Watchman's Iron Brazier / Candle Sconce atop Recent Activity (top-left) */
+  /* 1.6 Watchman's Iron Brazier / Candle Sconce atop Active Ward Oversight wooden frame */
   .gd-prop-btn.gd-prop-activity-sconce {
     position: absolute !important;
     top: -39px;
-    left: 20px;
+    right: 28px;
     z-index: 6 !important;
     overflow: visible;
   }

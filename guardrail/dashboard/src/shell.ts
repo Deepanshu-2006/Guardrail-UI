@@ -1262,11 +1262,20 @@ export class DashboardShell {
 
     // During active entrance window on the same view, preserve mounted DOM for views with in-place updaters
     // unless Overview transitioned from empty/single-ward to populated/multi-ward data.
-    const overviewNeedsStructuralRerender = currentView === 'overview' && existingActiveSection && (
-      (Boolean(existingActiveSection.querySelector('.gd-empty-state, .gd-placeholder')) && this.state.historyRequests.length > 0) ||
-      (!existingActiveSection.querySelector('.gd-action-required-banner, .gd-btn-review-pending') && this.state.pendingRequests.length > 0) ||
-      (!existingActiveSection.querySelector('.gd-multi-ward-badge') && this.getConnectedWards().length > 1)
-    );
+    const overviewNeedsStructuralRerender = currentView === 'overview' && existingActiveSection && (() => {
+      const currentWards = this.getConnectedWards();
+      const expectedVisibleKeys = currentWards.length > 0 ? Math.min(4, currentWards.length) : 1;
+      const renderedKeys = existingActiveSection.querySelectorAll('.gd-prop-ward-keyrack .gd-ward-key').length;
+      const mailboxHasMail = Boolean(existingActiveSection.querySelector('.gd-prop-mailbox.has-mail'));
+      const expectedHasMail = this.state.pendingRequests.length > 0;
+      return (
+        (Boolean(existingActiveSection.querySelector('.gd-empty-state, .gd-placeholder')) && this.state.historyRequests.length > 0) ||
+        (!existingActiveSection.querySelector('.gd-action-required-banner, .gd-btn-review-pending') && expectedHasMail) ||
+        (!existingActiveSection.querySelector('.gd-multi-ward-badge') && currentWards.length > 1) ||
+        (renderedKeys > 0 && (renderedKeys !== expectedVisibleKeys || (currentWards.length === 0) !== Boolean(existingActiveSection.querySelector('.gd-prop-ward-keyrack .gd-ward-key.is-empty')))) ||
+        (Boolean(existingActiveSection.querySelector('.gd-prop-mailbox')) && mailboxHasMail !== expectedHasMail)
+      );
+    })();
     const canPreserveInPlace = (currentView === 'overview' && !overviewNeedsStructuralRerender) || currentView === 'settings';
     if (!isInitialMount && !isViewChange && isViewEntering && existingActiveSection && !this.state.errorMessage && canPreserveInPlace) {
       this.hasPendingDataUpdateDuringEntrance = true;
@@ -1293,10 +1302,24 @@ export class DashboardShell {
           if (wardDesc) {
             if (wardCount === 0) {
               wardDesc.textContent = 'Awaiting ward invitation';
-            } else if (wardCount === 1) {
-              wardDesc.textContent = `Reviewer for ${connectedWards[0].name}`;
             } else {
-              wardDesc.textContent = `Reviewer for ${connectedWards.map(w => w.name).join(', ')}`;
+              while (wardDesc.firstChild) {
+                wardDesc.removeChild(wardDesc.firstChild);
+              }
+              const introSpan = document.createElement('span');
+              introSpan.textContent = 'Reviewer for ';
+              wardDesc.appendChild(introSpan);
+              connectedWards.forEach((w, idx) => {
+                if (idx > 0) {
+                  const sepSpan = document.createElement('span');
+                  sepSpan.textContent = ', ';
+                  wardDesc.appendChild(sepSpan);
+                }
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'gd-ward-inline-name';
+                nameSpan.textContent = w.name;
+                wardDesc.appendChild(nameSpan);
+              });
             }
           }
         }
