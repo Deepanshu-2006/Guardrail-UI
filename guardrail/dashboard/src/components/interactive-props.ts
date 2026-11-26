@@ -8381,8 +8381,28 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
   let bottomStrike = 0;
   let cradlePress = 0;
   let bottomGongTriggered = false;
+  let strikeTimerElapsed = -1;
+  let nextStrikeIndex = 0;
+  let gongFlexEnergy = 0;
+  let pendOverdrive = 0;
+  let acousticWaveProgress = -1;
+  let leftTelltaleRad = 0;
+  let rightTelltaleRad = 0;
+  let lastGongScreen = { x: -999, y: -999 };
+  let lastPendScreen = { x: -999, y: -999 };
+  const pendTrail: number[] = [];
   const cardPhases = new WeakMap<HTMLElement, number>();
   const lastPropRingMs = new WeakMap<HTMLElement, number>();
+  const chimeNotes: Array<{
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    maxLife: number;
+    glyph: string;
+    rot: number;
+  }> = [];
   const brassMotes: Array<{
     x: number;
     y: number;
@@ -8392,6 +8412,53 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     maxLife: number;
     size: number;
   }> = [];
+
+  const STRIKE_BEATS = [0.02, 0.26, 0.5, 0.74] as const;
+  const STRIKE_PIPES = [0, 1, 2, 0] as const;
+  const NOTE_GLYPHS = ['♪', '♩', '♫', '♪'] as const;
+  const pipeEnergies = [0, 0, 0];
+
+  const triggerBottomChimeSequence = (withAudio = true) => {
+    gongStrikePulse = 1;
+    bottomStrike = 1;
+    strikeTimerElapsed = 0;
+    nextStrikeIndex = 0;
+    gongFlexEnergy = 0.85;
+    acousticWaveProgress = 0;
+    pendOverdrive = Math.max(pendOverdrive, 0.65);
+
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0.0, freq: 329.63, dur: 0.72, peak: 0.024 },
+        { delay: 0.0, freq: 659.25, dur: 0.36, peak: 0.008 },
+        { delay: 0.24, freq: 293.66, dur: 0.72, peak: 0.022 },
+        { delay: 0.48, freq: 261.63, dur: 0.78, peak: 0.024 },
+        { delay: 0.72, freq: 196.0, dur: 1.4, peak: 0.028 },
+        { delay: 0.72, freq: 392.0, dur: 0.9, peak: 0.01 },
+      ]);
+    }
+  };
+
+  const triggerPendulumOverdrive = (withAudio = true) => {
+    pendOverdrive = 1;
+    bottomStrike = Math.max(bottomStrike, 0.85);
+    windSurge = Math.max(windSurge, 0.75);
+    if (withAudio) {
+      playQuickTones([
+        { delay: 0.0, freq: 880, endFreq: 1320, dur: 0.14, peak: 0.016, type: 'triangle' },
+        { delay: 0.09, freq: 1174.66, dur: 0.28, peak: 0.014 },
+      ]);
+    }
+  };
+
+  window.addEventListener('click', (e: MouseEvent) => {
+    if (!document.contains(canvas) || !isWorkshopActive() || !isSettingsVisible()) return;
+    if (Math.hypot(e.clientX - lastGongScreen.x, e.clientY - lastGongScreen.y) < 42) {
+      triggerBottomChimeSequence(true);
+    } else if (Math.hypot(e.clientX - lastPendScreen.x, e.clientY - lastPendScreen.y) < 44) {
+      triggerPendulumOverdrive(true);
+    }
+  });
 
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -8599,74 +8666,114 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.restore();
   };
 
-  const drawChimeGongAndHammer = (
-    cx: number,
-    cy: number,
+  const drawTubularChimeOrgan = (
+    railX: number,
+    rackCenterX: number,
+    baseY: number,
+    energies: readonly number[],
     hammerSwing: number,
-    surgeGlow: number,
+    isHovered: boolean,
     alpha: number,
   ) => {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Subtle soft shadow behind gong spiral
-    ctx.fillStyle = 'rgba(24, 16, 8, 0.16)';
-    ctx.beginPath();
-    ctx.arc(cx + 2, cy + 2.5, 22, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Turned cast-iron gong mounting boss
-    ctx.fillStyle = '#2E3A46';
-    ctx.strokeStyle = '#182028';
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Blued-steel & aged brass cathedral coil resonator (3.25 concentric turns)
-    const turns = 3.25;
-    const steps = 64;
-    ctx.beginPath();
-    for (let i = 0; i <= steps; i += 1) {
-      const t = i / steps;
-      const a = t * turns * Math.PI * 2 - Math.PI * 0.35;
-      const r = 6.2 + t * 14.5;
-      const px = cx + Math.cos(a) * r;
-      const py = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.strokeStyle = surgeGlow > 0.08 ? '#E6B957' : '#8A6B36';
-    ctx.lineWidth = 2.0;
+    // Corner bronze bracket linking the left chain/pulley seamlessly into the tubular chime rack
+    ctx.strokeStyle = '#4A320D';
+    ctx.lineWidth = 4.2;
     ctx.lineCap = 'round';
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(255, 240, 192, 0.45)';
-    ctx.lineWidth = 0.7;
-    ctx.stroke();
-
-    // Brass collar jewel in center
-    ctx.fillStyle = '#E0B452';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.arc(cx, cy, 2.1, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(railX, baseY - 12);
+    ctx.lineTo(railX, baseY + 6);
+    ctx.lineTo(rackCenterX + 22, baseY + 6);
+    ctx.stroke();
 
-    // Articulated copper-stemmed striker hammer below-left of outer coil
+    ctx.strokeStyle = '#C9983A';
+    ctx.lineWidth = 1.9;
+    ctx.stroke();
+
+    // Subtle hover highlight under rack
+    if (isHovered) {
+      ctx.fillStyle = 'rgba(235, 192, 88, 0.18)';
+      ctx.beginPath();
+      ctx.roundRect(rackCenterX - 24, baseY + 1, 52, 46, 8);
+      ctx.fill();
+    }
+
+    // Dark-oak & forged brass suspension crossbar supporting 3 Westminster chime pipes
+    ctx.fillStyle = '#332210';
+    ctx.strokeStyle = '#1E1308';
+    ctx.lineWidth = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(rackCenterX - 20, baseY + 2.5, 40, 6, 2);
+    ctx.fill();
+    ctx.stroke();
+
+    const pipeSpecs = [
+      { dx: -13, h: 36, w: 6.4 },
+      { dx: -2, h: 30, w: 6.0 },
+      { dx: 9, h: 24, w: 5.6 },
+    ];
+
+    pipeSpecs.forEach((p, idx) => {
+      const e = energies[idx] ?? 0;
+      const vib = e > 0.02 ? Math.sin(clock * 62 + idx) * e * 1.15 : 0;
+      const px = rackCenterX + p.dx + vib;
+      const py = baseY + 8.5;
+
+      // Golden resonant glow behind actively vibrating chime pipe
+      if (e > 0.04) {
+        ctx.fillStyle = `rgba(238, 192, 82, ${(e * 0.42).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.roundRect(px - p.w * 0.5 - 3, py - 1, p.w + 6, p.h + 3, 4);
+        ctx.fill();
+      }
+
+      // Soft cast shadow
+      ctx.fillStyle = 'rgba(22, 14, 6, 0.24)';
+      ctx.beginPath();
+      ctx.roundRect(px - p.w * 0.5 + 1.8, py + 1.5, p.w, p.h, 2.2);
+      ctx.fill();
+
+      // Suspension pin
+      ctx.fillStyle = '#E8BE5E';
+      ctx.fillRect(px - 1.1, py - 2, 2.2, 2.5);
+
+      // Lathe-turned polished brass tubular chime pipe
+      const pg = ctx.createLinearGradient(px - p.w * 0.5, py, px + p.w * 0.5, py);
+      pg.addColorStop(0, '#785012');
+      pg.addColorStop(0.32, e > 0.1 ? '#FFF6BE' : '#FAE194');
+      pg.addColorStop(0.7, '#C58E2E');
+      pg.addColorStop(1, '#4B2F08');
+      ctx.fillStyle = pg;
+      ctx.strokeStyle = e > 0.2 ? '#7C5310' : '#3C2507';
+      ctx.lineWidth = 0.85;
+      ctx.beginPath();
+      ctx.roundRect(px - p.w * 0.5, py, p.w, p.h, 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Acoustic collar band near upper quarter of pipe
+      ctx.fillStyle = 'rgba(72, 46, 10, 0.5)';
+      ctx.fillRect(px - p.w * 0.48, py + 6, p.w * 0.96, 1.4);
+    });
+
+    // Pivoting brass-and-felt Westminster mallet mounted beside the rightmost chime pipe
     ctx.save();
-    ctx.translate(cx - 17, cy + 15);
-    ctx.rotate(-0.45 + hammerSwing * 0.34);
-    ctx.strokeStyle = '#B87A3E';
-    ctx.lineWidth = 1.6;
+    ctx.translate(rackCenterX + 22, baseY + 26);
+    ctx.rotate(0.42 - hammerSwing * 0.65);
+    ctx.strokeStyle = '#9C5E28';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(7.5, -13);
+    ctx.lineTo(-4.5, -13.5);
     ctx.stroke();
-    ctx.fillStyle = '#9F3B2A';
-    ctx.strokeStyle = '#3B1E10';
-    ctx.lineWidth = 0.8;
+    ctx.fillStyle = '#A83222';
+    ctx.strokeStyle = '#33140A';
+    ctx.lineWidth = 0.85;
     ctx.beginPath();
-    ctx.roundRect(4.5, -16.5, 6.2, 4.4, 1.5);
+    ctx.roundRect(-8.2, -16.5, 6.4, 4.4, 1.5);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -8712,39 +8819,65 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.restore();
   };
 
-  const drawPendulumBeatScale = (px: number, py: number, len: number, alpha: number) => {
+  const drawPendulumBeatScale = (
+    px: number,
+    py: number,
+    len: number,
+    pendRad: number,
+    leftNeedleRad: number,
+    rightNeedleRad: number,
+    overdrive: number,
+    alpha: number,
+  ) => {
     ctx.save();
     ctx.globalAlpha = alpha;
-    const arcR = len + 12;
-    const startA = Math.PI * 0.5 - 0.32;
-    const endA = Math.PI * 0.5 + 0.32;
+    const arcR = len + 10;
+    const startA = Math.PI * 0.5 - 0.34;
+    const endA = Math.PI * 0.5 + 0.34;
 
     // Ivory/brass graduated beat-degree plate arc behind the bob sweep
-    ctx.strokeStyle = 'rgba(146, 108, 42, 0.52)';
-    ctx.lineWidth = 4.6;
+    ctx.strokeStyle = 'rgba(132, 94, 34, 0.65)';
+    ctx.lineWidth = 5.0;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.arc(px, py, arcR, startA, endA);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(248, 236, 198, 0.78)';
-    ctx.lineWidth = 2.6;
+    ctx.strokeStyle = 'rgba(250, 240, 208, 0.90)';
+    ctx.lineWidth = 2.8;
     ctx.beginPath();
     ctx.arc(px, py, arcR, startA + 0.02, endA - 0.02);
     ctx.stroke();
 
-    // Precision degree tick marks along arc
-    ctx.strokeStyle = '#533A14';
-    ctx.lineWidth = 0.85;
+    // Precision degree tick marks along arc — glow gold as the bob passes zero-center
+    const centerFlash = Math.max(0, 1 - Math.abs(pendRad) / 0.08) * overdrive;
     for (let i = -3; i <= 3; i += 1) {
       const a = Math.PI * 0.5 + i * 0.095;
-      const r0 = arcR - (i === 0 ? 3.2 : 1.9);
-      const r1 = arcR + (i === 0 ? 3.2 : 1.9);
+      const r0 = arcR - (i === 0 ? 3.5 : 2.0);
+      const r1 = arcR + (i === 0 ? 3.5 : 2.0);
+      ctx.strokeStyle = i === 0 && centerFlash > 0.25 ? '#F5C94C' : '#4E3510';
+      ctx.lineWidth = i === 0 && centerFlash > 0.25 ? 1.6 : 0.9;
       ctx.beginPath();
       ctx.moveTo(px + Math.cos(a) * r0, py + Math.sin(a) * r0);
       ctx.lineTo(px + Math.cos(a) * r1, py + Math.sin(a) * r1);
       ctx.stroke();
     }
+
+    // Twin blued-steel / brass chronometer peak-amplitude telltale needles sliding along scale
+    for (const needleRad of [leftNeedleRad, rightNeedleRad]) {
+      const na = Math.PI * 0.5 - needleRad;
+      ctx.strokeStyle = '#2B3E52';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(na) * (arcR - 5), py + Math.sin(na) * (arcR - 5));
+      ctx.lineTo(px + Math.cos(na) * (arcR + 5), py + Math.sin(na) * (arcR + 5));
+      ctx.stroke();
+      ctx.fillStyle = '#E6B752';
+      ctx.beginPath();
+      ctx.arc(px + Math.cos(na) * (arcR + 5.5), py + Math.sin(na) * (arcR + 5.5), 1.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
   };
 
@@ -8772,7 +8905,21 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
       bottomStrike = 0;
       cradlePress = 0;
       bottomGongTriggered = false;
+      strikeTimerElapsed = -1;
+      nextStrikeIndex = 0;
+      gongFlexEnergy = 0;
+      pendOverdrive = 0;
+      acousticWaveProgress = -1;
+      leftTelltaleRad = 0;
+      rightTelltaleRad = 0;
+      pendTrail.length = 0;
+      chimeNotes.length = 0;
       brassMotes.length = 0;
+      pipeEnergies[0] = 0;
+      pipeEnergies[1] = 0;
+      pipeEnergies[2] = 0;
+      lastGongScreen = { x: -999, y: -999 };
+      lastPendScreen = { x: -999, y: -999 };
       ctx.clearRect(0, 0, width, height);
       rafId = null;
       lastTs = 0;
@@ -8792,7 +8939,26 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     lastScrollTop = curScrollTop;
     scrollEnergy = Math.max(0, scrollEnergy - dt * 2.8);
     gongStrikePulse = Math.max(0, gongStrikePulse - dt * 0.65);
-    bottomStrike = Math.max(0, bottomStrike - dt * 0.42);
+    bottomStrike = Math.max(0, bottomStrike - dt * 0.38);
+    gongFlexEnergy = Math.max(0, gongFlexEnergy - dt * 2.1);
+    pendOverdrive = Math.max(0, pendOverdrive - dt * 0.28);
+    pipeEnergies[0] = Math.max(0, pipeEnergies[0] - dt * 1.45);
+    pipeEnergies[1] = Math.max(0, pipeEnergies[1] - dt * 1.45);
+    pipeEnergies[2] = Math.max(0, pipeEnergies[2] - dt * 1.45);
+
+    if (strikeTimerElapsed >= 0) {
+      strikeTimerElapsed += dt;
+      if (strikeTimerElapsed > 1.3) {
+        strikeTimerElapsed = -1;
+      }
+    }
+    if (acousticWaveProgress >= 0) {
+      acousticWaveProgress += dt * 1.35;
+      if (acousticWaveProgress >= 1) {
+        acousticWaveProgress = -1;
+        pendOverdrive = 1;
+      }
+    }
 
     const targetDeploy = active ? 1 : 0;
     deploy += (targetDeploy - deploy) * Math.min(1, dt * (active ? 5.2 : 4.2));
@@ -8804,6 +8970,10 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
       prevWeightDocY = null;
       cradlePress = 0;
       bottomGongTriggered = false;
+      strikeTimerElapsed = -1;
+      acousticWaveProgress = -1;
+      pendTrail.length = 0;
+      chimeNotes.length = 0;
       brassMotes.length = 0;
     }
 
@@ -8838,9 +9008,9 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
         const rightRailX = Math.min(clipRight - 10, firstCard.right + 15);
         const slideOut = 1 - ease;
 
-        // 1. Articulated Brass Pull-Chains & Scroll-Synchronized Counterweights (top gears -> bottom base)
+        // 1. Continuous Brass Chains running cleanly down to corner pulley sheaves just under lastCard
         const topRailY = firstCard.top + 27;
-        const botRailY = lastCard.bottom - 22;
+        const botRailY = lastCard.bottom - 10;
 
         if (botRailY > topRailY + 24) {
           const maxScroll = scrollContainer
@@ -8849,7 +9019,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           const scrollRatio = Math.min(1, Math.max(0, curScrollTop / maxScroll));
 
           const minWeightY = topRailY + 76;
-          const maxWeightY = Math.max(minWeightY + 12, botRailY - 46);
+          const maxWeightY = Math.max(minWeightY + 12, botRailY - 56);
           const minWeightDocY = minWeightY + curScrollTop;
           const maxWeightDocY = maxWeightY + curScrollTop;
 
@@ -8880,10 +9050,20 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           cradlePress += ((seatedAtBottom ? 1 : 0) - cradlePress) * Math.min(1, dt * 11);
           const pressPush = cradlePress * 4.5;
 
-          // Machined spring-damper catch cradles waiting at the bottom of both rails
-          if (botRailY - 12 > clipTop && botRailY - 22 < clipBot) {
-            drawWeightCradleStop(leftRailX, maxWeightY + 31, cradlePress, ease * 0.88);
-            drawWeightCradleStop(rightRailX, maxWeightY + 31, cradlePress, ease * 0.88);
+          // Machined spring-damper catch cradles waiting above bottom mechanisms + brass actuator push-rods down to botRailY
+          if (botRailY - 12 > clipTop && maxWeightY - 8 < clipBot) {
+            for (const rx of [leftRailX, rightRailX]) {
+              drawWeightCradleStop(rx, maxWeightY + 31, cradlePress, ease * 0.9);
+              ctx.save();
+              ctx.globalAlpha = ease * 0.72;
+              ctx.strokeStyle = '#9C7022';
+              ctx.lineWidth = 1.3;
+              ctx.beginPath();
+              ctx.moveTo(rx, maxWeightY + 42);
+              ctx.lineTo(rx, botRailY);
+              ctx.stroke();
+              ctx.restore();
+            }
           }
 
           if (leftWeightY + 34 > clipTop && leftWeightY - 8 < clipBot) {
@@ -8918,18 +9098,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           if (seatedAtBottom) {
             if (!bottomGongTriggered) {
               bottomGongTriggered = true;
-              gongStrikePulse = 1;
-              bottomStrike = 1;
-
-              // Warm Westminster 4-note Grandfather Clock chime cadence when both weights seat at bottom
-              playQuickTones([
-                { delay: 0.0, freq: 329.63, dur: 0.72, peak: 0.022 },
-                { delay: 0.0, freq: 659.25, dur: 0.36, peak: 0.008 },
-                { delay: 0.24, freq: 293.66, dur: 0.72, peak: 0.02 },
-                { delay: 0.48, freq: 261.63, dur: 0.78, peak: 0.022 },
-                { delay: 0.72, freq: 196.0, dur: 1.35, peak: 0.026 },
-                { delay: 0.72, freq: 392.0, dur: 0.85, peak: 0.009 },
-              ]);
+              triggerBottomChimeSequence(true);
 
               // Spawn subtle warm antique brass/dust flecks rising from both weight seats
               const spawnCoords = [
@@ -9022,105 +9191,280 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           drawMetallicGear(leftGx, leftGy, medBronzePath, 21.5, 14.2, 5, subRad, false, ease * 0.86);
         }
 
-        // 3. BOTTOM ONLY: Cathedral Chime Gong & 3-Rod Harrison Gridiron Pendulum anchored cleanly along bottom outer rails
+        // 3. BOTTOM ONLY: Tubular Brass Westminster Chimes (Left) & Gridiron Regulator Pendulum (Right) seated cleanly under corners
         const lastRevealed =
           !lastEntry.el.classList.contains('gd-scroll-reveal') ||
           lastEntry.el.classList.contains('is-revealed');
 
         if (lastRevealed && lastCard.bottom >= clipTop - 95 && lastCard.top <= clipBot + 95) {
-          // Bottom-left: Cathedral brass chime gong spiral + copper striker hammer + expanding sound waves on touchdown
-          const gongX = leftRailX - 2 + slideOut * 22;
-          const gongY = lastCard.bottom - 22;
-          const strikeEnergy = Math.max(windSurge, gongStrikePulse);
-          const hammerPulse = Math.max(0, Math.sin(clock * Math.PI * 0.85) > 0.92 ? 1 : 0);
-          const hammerSwing =
-            strikeEnergy > 0.15 ? Math.sin(clock * 16) * strikeEnergy : hammerPulse * 0.8;
+          const chimeRackX = lastCard.left + 32;
+          const baseBottomY = lastCard.bottom;
+          const pendPivotX = lastCard.right - 34;
+          const pendPivotY = baseBottomY + 8;
 
-          if (bottomStrike > 0.03) {
+          // Center-Bottom: Turned Brass Regulator Tie-Rod & Engraved Escutcheon Medallion bridging Left Chimes <-> Right Pendulum
+          const bridgeY = baseBottomY + 5.5;
+          if (bridgeY >= clipTop && bridgeY <= clipBot) {
+            ctx.save();
+            ctx.globalAlpha = ease * 0.72;
+            ctx.strokeStyle = '#6A4714';
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.moveTo(chimeRackX + 20, bridgeY);
+            ctx.lineTo(pendPivotX - 10, bridgeY);
+            ctx.stroke();
+            ctx.strokeStyle = '#E0B452';
+            ctx.lineWidth = 1.0;
+            ctx.stroke();
+
+            const midX = (chimeRackX + 20 + (pendPivotX - 10)) * 0.5;
+            ctx.fillStyle = '#3B270D';
+            ctx.strokeStyle = '#D9A744';
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.arc(midX, bridgeY, 4.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#9E2222';
+            ctx.beginPath();
+            ctx.arc(midX, bridgeY, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Bottom-Left: 3-Pipe Tubular Westminster Chimes joined directly into left chain pulley bracket
+          lastGongScreen = { x: chimeRackX, y: baseBottomY + 24 };
+          const gongHovered = Math.hypot(pointerX - lastGongScreen.x, pointerY - lastGongScreen.y) < 42;
+
+          let beatKick = 0;
+          if (strikeTimerElapsed >= 0) {
+            if (nextStrikeIndex < STRIKE_BEATS.length && strikeTimerElapsed >= STRIKE_BEATS[nextStrikeIndex]) {
+              gongFlexEnergy = 1;
+              const pipeIdx = STRIKE_PIPES[nextStrikeIndex % STRIKE_PIPES.length];
+              pipeEnergies[pipeIdx] = 1;
+              chimeNotes.push({
+                x: chimeRackX + (pipeIdx - 1) * 11,
+                y: baseBottomY + 2,
+                vx: (Math.random() - 0.5) * 14,
+                vy: -(24 + Math.random() * 14),
+                life: 0,
+                maxLife: 1.55,
+                glyph: NOTE_GLYPHS[nextStrikeIndex % NOTE_GLYPHS.length],
+                rot: (Math.random() - 0.5) * 0.25,
+              });
+              nextStrikeIndex += 1;
+            }
+            for (const beatT of STRIKE_BEATS) {
+              const delta = strikeTimerElapsed - beatT;
+              if (delta >= -0.08 && delta <= 0.14) {
+                beatKick = Math.max(beatKick, 1 - Math.abs(delta) / 0.14);
+              }
+            }
+          }
+
+          const hammerSwing =
+            beatKick > 0
+              ? beatKick * 1.15
+              : Math.max(0, Math.sin(clock * Math.PI * 0.85) > 0.92 ? 0.45 : 0);
+
+          if (bottomStrike > 0.03 || gongFlexEnergy > 0.05) {
             for (let w = 0; w < 3; w += 1) {
-              const p = (1 - bottomStrike + w * 0.24) % 1;
-              const ringAlpha = (1 - p) * bottomStrike * 0.45 * ease;
+              const p = (1 - Math.max(bottomStrike, gongFlexEnergy) + w * 0.24) % 1;
+              const ringAlpha = (1 - p) * Math.max(bottomStrike, gongFlexEnergy) * 0.5 * ease;
               if (ringAlpha > 0.01) {
                 ctx.save();
                 ctx.strokeStyle = `rgba(214, 162, 56, ${ringAlpha.toFixed(3)})`;
-                ctx.lineWidth = 1.3;
+                ctx.lineWidth = 1.45;
                 ctx.beginPath();
-                ctx.arc(gongX, gongY, 18 + p * 34, 0, Math.PI * 2);
+                ctx.arc(chimeRackX, baseBottomY + 24, 18 + p * 32, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.restore();
               }
             }
           }
 
-          drawChimeGongAndHammer(gongX, gongY, hammerSwing, strikeEnergy, ease * 0.88);
+          drawTubularChimeOrgan(
+            leftRailX,
+            chimeRackX,
+            baseBottomY,
+            pipeEnergies,
+            hammerSwing,
+            gongHovered,
+            ease * 0.96,
+          );
 
-          // Bottom-right: Beat degree scale + 3-rod Harrison gridiron pendulum & lenticular bob (amplified sweep on touchdown)
-          const pendPivotX = rightRailX + 1 - slideOut * 22;
-          const pendPivotY = lastCard.top + 8;
-          const pendLen = Math.min(78, Math.max(54, lastCard.height * 0.68));
-          const pendAmp = 11.5 + bottomStrike * 8.5;
-          const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * pendAmp * ease;
+          // Bottom-Right: Corner bracket + Brass Escapement Crown + Ivory Beat Plate + 3-Rod Gridiron Pendulum
+          ctx.save();
+          ctx.globalAlpha = ease * 0.94;
+          ctx.strokeStyle = '#4A320D';
+          ctx.lineWidth = 4.2;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(rightRailX, baseBottomY - 10);
+          ctx.lineTo(rightRailX, baseBottomY + 6);
+          ctx.lineTo(pendPivotX, baseBottomY + 6);
+          ctx.stroke();
+          ctx.strokeStyle = '#C9983A';
+          ctx.lineWidth = 1.9;
+          ctx.stroke();
+          ctx.restore();
+
+          const pendLen = 38;
+          const pendAmp = 12.5 + pendOverdrive * 11.5;
+          const pendSwingDeg = Math.sin(clock * Math.PI * (1.15 + pendOverdrive * 0.22)) * pendAmp * ease;
           const pendRad = (pendSwingDeg * Math.PI) / 180;
+          lastPendScreen = {
+            x: pendPivotX - Math.sin(-pendRad) * pendLen,
+            y: pendPivotY + Math.cos(-pendRad) * pendLen,
+          };
+          const pendHovered = Math.hypot(pointerX - lastPendScreen.x, pointerY - lastPendScreen.y) < 44;
 
-          drawPendulumBeatScale(pendPivotX, pendPivotY, pendLen, ease * 0.78);
+          // Record luminous persistence sweep trail during pendulum overdrive
+          if (pendOverdrive > 0.05 || pendHovered) {
+            pendTrail.push(pendRad);
+            if (pendTrail.length > 14) pendTrail.shift();
+          } else if (pendTrail.length > 0) {
+            pendTrail.shift();
+          }
+
+          // Track & relax chronometer peak-amplitude telltale needles along the beat scale
+          if (pendRad > leftTelltaleRad) leftTelltaleRad = pendRad;
+          else leftTelltaleRad += (0.14 - leftTelltaleRad) * Math.min(1, dt * (pendOverdrive > 0.1 ? 0.35 : 1.6));
+          if (pendRad < rightTelltaleRad) rightTelltaleRad = pendRad;
+          else rightTelltaleRad += (-0.14 - rightTelltaleRad) * Math.min(1, dt * (pendOverdrive > 0.1 ? 0.35 : 1.6));
+
+          // Golden acoustic shock-pulse bridging across bottom tie-rod from Left Chimes -> Right Pendulum
+          if (acousticWaveProgress >= 0 && acousticWaveProgress < 1) {
+            const bx = chimeRackX + 20 + (pendPivotX - 10 - (chimeRackX + 20)) * acousticWaveProgress;
+            const by = bridgeY;
+            ctx.save();
+            const grad = ctx.createRadialGradient(bx, by, 1, bx, by, 20);
+            grad.addColorStop(0, 'rgba(255, 232, 148, 0.96)');
+            grad.addColorStop(0.5, 'rgba(218, 166, 56, 0.56)');
+            grad.addColorStop(1, 'rgba(218, 166, 56, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(bx, by, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          drawPendulumBeatScale(
+            pendPivotX,
+            pendPivotY,
+            pendLen,
+            pendRad,
+            leftTelltaleRad,
+            rightTelltaleRad,
+            Math.max(pendOverdrive, pendHovered ? 0.65 : 0),
+            ease * 0.92,
+          );
+
+          // Brass escapement pivot crown connecting right bracket directly into pendulum rod
+          ctx.save();
+          ctx.globalAlpha = ease * 0.96;
+          ctx.fillStyle = '#3B270D';
+          ctx.fillRect(pendPivotX - 6, pendPivotY - 3.5, 12, 6.5);
+          ctx.fillStyle = '#ECC05A';
+          ctx.strokeStyle = '#3B2507';
+          ctx.lineWidth = 0.85;
+          ctx.beginPath();
+          ctx.arc(pendPivotX, pendPivotY, 4.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#9E2222';
+          ctx.beginPath();
+          ctx.arc(pendPivotX, pendPivotY, 1.55, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // Fading burnished-gold persistence trail behind the sweeping bob
+          if (pendTrail.length > 1) {
+            for (let t = 0; t < pendTrail.length - 1; t += 1) {
+              const frac = (t + 1) / pendTrail.length;
+              const tr = pendTrail[t];
+              const tx = pendPivotX + Math.sin(tr) * pendLen;
+              const ty = pendPivotY + Math.cos(tr) * pendLen;
+              ctx.save();
+              ctx.globalAlpha = frac * Math.max(pendOverdrive, pendHovered ? 0.5 : 0.2) * 0.38 * ease;
+              ctx.fillStyle = '#EBC058';
+              ctx.beginPath();
+              ctx.arc(tx, ty, 6 + frac * 4.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
 
           ctx.save();
           ctx.translate(pendPivotX, pendPivotY);
           ctx.rotate(-pendRad);
-          ctx.globalAlpha = ease * 0.9;
+          ctx.globalAlpha = ease * 0.96;
+
+          if (pendHovered || pendOverdrive > 0.2) {
+            ctx.fillStyle = `rgba(235, 192, 88, ${(0.30 * Math.max(pendOverdrive, pendHovered ? 0.78 : 0)).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(0, pendLen, 16, 0, Math.PI * 2);
+            ctx.fill();
+          }
 
           // Temperature-compensated 3-rod Harrison gridiron lyre frame
           ctx.strokeStyle = '#C99535';
-          ctx.lineWidth = 1.4;
+          ctx.lineWidth = 1.45;
           ctx.beginPath();
-          ctx.moveTo(-2.6, 0);
-          ctx.lineTo(-2.6, pendLen - 8);
-          ctx.moveTo(2.6, 0);
-          ctx.lineTo(2.6, pendLen - 8);
+          ctx.moveTo(-2.5, 0);
+          ctx.lineTo(-2.5, pendLen - 5);
+          ctx.moveTo(2.5, 0);
+          ctx.lineTo(2.5, pendLen - 5);
           ctx.stroke();
 
-          ctx.strokeStyle = '#536A80';
-          ctx.lineWidth = 1.4;
+          ctx.strokeStyle = '#4B647C';
+          ctx.lineWidth = 1.45;
           ctx.beginPath();
           ctx.moveTo(0, 0);
-          ctx.lineTo(0, pendLen + 14);
+          ctx.lineTo(0, pendLen + 11);
           ctx.stroke();
 
           // Cross-brace bridge bar halfway down rod
           ctx.fillStyle = '#8F621A';
-          ctx.fillRect(-4.2, pendLen * 0.5, 8.4, 2.4);
+          ctx.fillRect(-4.0, pendLen * 0.5, 8.0, 2.2);
 
           // Bob cast shadow
-          ctx.fillStyle = 'rgba(24, 16, 8, 0.24)';
+          ctx.fillStyle = 'rgba(24, 16, 8, 0.28)';
           ctx.beginPath();
-          ctx.arc(2.5, pendLen + 2.5, 13, 0, Math.PI * 2);
+          ctx.arc(2.2, pendLen + 2.2, 11.2, 0, Math.PI * 2);
           ctx.fill();
 
-          // Polished lenticular brass pendulum bob + rating nut below
-          const bobGrad = ctx.createRadialGradient(-4, pendLen - 4, 1.5, 0, pendLen, 13.5);
-          bobGrad.addColorStop(0, '#FFF5C4');
-          bobGrad.addColorStop(0.55, '#DAA23B');
+          // Polished lenticular brass pendulum bob + sunburst inner rim + rating nut below
+          const bobGrad = ctx.createRadialGradient(-3.5, pendLen - 3.5, 1.5, 0, pendLen, 11.8);
+          bobGrad.addColorStop(0, '#FFF6C8');
+          bobGrad.addColorStop(0.55, '#DDA53B');
           bobGrad.addColorStop(1, '#6E4810');
           ctx.fillStyle = bobGrad;
           ctx.strokeStyle = '#3D2607';
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 1.05;
           ctx.beginPath();
-          ctx.arc(0, pendLen, 13, 0, Math.PI * 2);
+          ctx.arc(0, pendLen, 11.2, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
 
-          ctx.strokeStyle = 'rgba(255, 248, 212, 0.58)';
-          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = 'rgba(255, 248, 212, 0.68)';
+          ctx.lineWidth = 0.85;
           ctx.beginPath();
-          ctx.arc(0, pendLen, 9.2, 0, Math.PI * 2);
+          ctx.arc(0, pendLen, 7.6, 0, Math.PI * 2);
           ctx.stroke();
 
+          ctx.fillStyle = '#9E2222';
+          ctx.beginPath();
+          ctx.arc(0, pendLen, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+
           ctx.fillStyle = '#B8842E';
-          ctx.fillRect(-2.4, pendLen + 12.8, 4.8, 3.2);
+          ctx.fillRect(-2.2, pendLen + 10.8, 4.4, 2.8);
           ctx.restore();
         }
 
-        // 4. Warm brass dust flecks released gently when both weights seat into bottom cradles
+        // 4. Warm brass dust flecks & antique ink chime glyphs released from the bottom gong & seats
         for (let i = brassMotes.length - 1; i >= 0; i -= 1) {
           const m = brassMotes[i];
           m.life += dt;
@@ -9138,6 +9482,35 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
           ctx.beginPath();
           ctx.arc(m.x, m.y, m.size, 0, Math.PI * 2);
           ctx.fill();
+          ctx.restore();
+        }
+
+        for (let i = chimeNotes.length - 1; i >= 0; i -= 1) {
+          const n = chimeNotes[i];
+          n.life += dt;
+          if (n.life >= n.maxLife) {
+            chimeNotes.splice(i, 1);
+            continue;
+          }
+          n.x += n.vx * dt;
+          n.y += n.vy * dt;
+          n.vy *= Math.pow(0.55, dt);
+          const fade = Math.sin((n.life / n.maxLife) * Math.PI);
+          ctx.save();
+          ctx.translate(n.x, n.y);
+          ctx.rotate(n.rot + Math.sin(n.life * 4.5) * 0.12);
+          ctx.globalAlpha = fade * ease * 0.96;
+          ctx.fillStyle = 'rgba(252, 245, 228, 0.92)';
+          ctx.strokeStyle = 'rgba(139, 93, 20, 0.55)';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.arc(0, -4, 8.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.font = '700 13px Georgia, serif';
+          ctx.fillStyle = '#6B430B';
+          ctx.textAlign = 'center';
+          ctx.fillText(n.glyph, 0, 0);
           ctx.restore();
         }
 
