@@ -71,10 +71,11 @@ export function createHeaderLanternProp(): HTMLElement {
           <path d="M25 2 L12 6 L18 3.2 L13 0.5 L25 0 Z" fill="#25211D" stroke="#181512" stroke-width="0.8" stroke-linejoin="round"/>
         </g>
 
-        <!-- Delicate legs/claws (visible when perched, tucked in flight) -->
+        <!-- Delicate legs/claws + contact shadow (visible when perched, tucked in flight) -->
         <g class="gd-bird-legs">
-          <path d="M32 5 L31.5 10 M30.5 10 L33 10" stroke="#2D2219" stroke-width="1.2" stroke-linecap="round"/>
-          <path d="M36 5 L35.5 10 M34.5 10 L37 10" stroke="#2D2219" stroke-width="1.2" stroke-linecap="round"/>
+          <ellipse cx="34" cy="10.4" rx="5.5" ry="1.3" fill="rgba(22, 16, 10, 0.24)"/>
+          <path d="M32 5 L31.5 10 M30.2 10 L33 10" stroke="#2D2219" stroke-width="1.25" stroke-linecap="round"/>
+          <path d="M36 5 L35.5 10 M34.4 10 L37.2 10" stroke="#2D2219" stroke-width="1.25" stroke-linecap="round"/>
         </g>
 
         <!-- Streamlined body & warm rufous breast -->
@@ -286,16 +287,89 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     rx: number;
     yOffset: number;
     faceDir: 1 | -1;
-    perchPhrase: string;
+    getPerchMessage: () => string;
   }
 
+  const readCardMetricText = (selector: string): string => {
+    if (typeof document === 'undefined') return '';
+    const el = document.querySelector(selector);
+    return el?.textContent?.trim() ?? '';
+  };
+
   const FRAME_SPOTS: FrameSpotDef[] = [
-    { selector: '#view-overview .gd-wood-board', rx: 0.22, yOffset: 2, faceDir: 1, perchPhrase: 'Cozy sign! ♪' },
-    { selector: '#view-overview .gd-metric-card-ward', rx: 0.78, yOffset: 1, faceDir: -1, perchPhrase: 'Watching! ♪' },
-    { selector: '#view-overview .gd-metric-card-approvals', rx: 0.28, yOffset: 1, faceDir: 1, perchPhrase: 'All clear! ♪' },
-    { selector: '#view-overview .gd-protection-status-card', rx: 0.84, yOffset: 1, faceDir: -1, perchPhrase: 'Tweet-tweet! ♪' },
-    { selector: '#view-overview .gd-overview-col-secondary', rx: 0.28, yOffset: 1, faceDir: 1, perchPhrase: '♪ Chirp-chirp!' },
+    {
+      selector: '#view-overview .gd-wood-board',
+      rx: 0.86,
+      yOffset: 3.5,
+      faceDir: -1,
+      getPerchMessage: () => {
+        const now = new Date();
+        const t = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const hr = now.getHours();
+        const greet =
+          hr < 5 || hr >= 21
+            ? 'Good Night'
+            : hr < 12
+              ? 'Good Morning'
+              : hr < 17
+                ? 'Good Afternoon'
+                : 'Good Evening';
+        return `${t} · ${greet} ♪`;
+      },
+    },
+    {
+      selector: '#view-overview .gd-metric-card-ward',
+      rx: 0.72,
+      yOffset: 2.5,
+      faceDir: -1,
+      getPerchMessage: () => {
+        const raw = readCardMetricText('#view-overview .gd-metric-card-ward .gd-metric-value') || '0';
+        const n = Number(raw);
+        return `${raw} Ward${n === 1 ? '' : 's'} Connected ♪`;
+      },
+    },
+    {
+      selector: '#view-overview .gd-metric-card-approvals',
+      rx: 0.28,
+      yOffset: 2.5,
+      faceDir: 1,
+      getPerchMessage: () => {
+        const raw = readCardMetricText('#view-overview .gd-metric-card-approvals .gd-metric-value') || '0';
+        const n = Number(raw);
+        if (n === 0) return '0 Need Review · All Clear ♪';
+        return `${raw} Request${n === 1 ? '' : 's'} Need${n === 1 ? 's' : ''} Review! ♪`;
+      },
+    },
+    {
+      selector: '#view-overview .gd-overview-grid .gd-metric-card:nth-child(3)',
+      rx: 0.24,
+      yOffset: 2.5,
+      faceDir: 1,
+      getPerchMessage: () => {
+        const raw =
+          readCardMetricText('#view-overview .gd-overview-grid .gd-metric-card:nth-child(3) .gd-metric-value') ||
+          'Active';
+        return `Enforcement ${raw} ♪`;
+      },
+    },
+    {
+      selector: '#view-overview .gd-recent-activity-list',
+      rx: 0.3,
+      yOffset: 2.5,
+      faceDir: 1,
+      getPerchMessage: () => {
+        const count =
+          typeof document !== 'undefined'
+            ? document.querySelectorAll('#view-overview .gd-recent-activity-item').length
+            : 0;
+        return count === 0
+          ? 'No Recent Activity ♪'
+          : `${count} Recent Decision${count === 1 ? '' : 's'} ♪`;
+      },
+    },
   ];
+
+  const svgEl = lanternBtn.querySelector('.gd-prop-svg') as SVGElement | null;
 
   const normalizeAngle = (rad: number) => {
     let a = rad;
@@ -316,7 +390,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
   let flightClock = 0;
   let wingPhase = 0;
   let waypointIdx = 0;
-  let legsBeforeLand = 2;
+  let legsBeforeLand = 1;
   let frameSpotIdx = 0;
   let activeFrameSpot: FrameSpotDef | null = null;
   let perchedUntil = 0;
@@ -329,7 +403,20 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
   let rafId: number | null = null;
   let swoopTarget: { x: number; y: number; until: number } | null = null;
 
-  const triggerChirp = (customPhrase?: string | null) => {
+  const getOriginMetrics = () => {
+    const refEl = svgEl || lanternBtn;
+    const sRect = refEl.getBoundingClientRect();
+    const scale = sRect.width > 0 ? sRect.width / 88 : 1;
+    return {
+      left: sRect.left,
+      top: sRect.top,
+      scale,
+      perchScreenX: sRect.left + 34 * scale,
+      perchScreenY: sRect.top + 10 * scale,
+    };
+  };
+
+  const triggerChirp = (customPhrase?: string | null, durationMs = 1500) => {
     const phrase = customPhrase || CHIRP_PHRASES[chirpCounter % CHIRP_PHRASES.length];
     playBirdChirp(chirpCounter);
     chirpCounter += 1;
@@ -341,7 +428,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
       if (chirpHideTimer) clearTimeout(chirpHideTimer);
       chirpHideTimer = setTimeout(() => {
         chirpEl.classList.remove('is-visible');
-      }, 1500);
+      }, durationMs);
     }
   };
 
@@ -363,37 +450,36 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     return { minX, maxX, minY, maxY };
   };
 
-  const lRectTopSafe = () => {
-    try {
-      return lanternBtn.getBoundingClientRect().top;
-    } catch {
-      return 40;
-    }
-  };
-
   const getFrameSpotCoords = (spot: FrameSpotDef): { x: number; y: number } | null => {
     if (typeof document === 'undefined') return null;
     const el = document.querySelector(spot.selector) as HTMLElement | null;
     if (!el) return null;
     const fRect = el.getBoundingClientRect();
     if (fRect.width < 40 || fRect.height < 20) return null;
-    const lRect = lanternBtn.getBoundingClientRect();
+    const origin = getOriginMetrics();
+    // Compensate for the hanging wood sign's slight -0.95deg counter-clockwise rotation
+    const tiltOffset =
+      spot.selector.includes('gd-wood-board')
+        ? (1 - spot.rx) * fRect.width * Math.sin(0.95 * (Math.PI / 180))
+        : 0;
+    const screenX = fRect.left + fRect.width * spot.rx;
+    const screenY = fRect.top + spot.yOffset + tiltOffset;
     return {
-      x: fRect.left + fRect.width * spot.rx - (lRect.left + 34),
-      y: fRect.top + spot.yOffset - (lRect.top + 10),
+      x: (screenX - origin.perchScreenX) / origin.scale,
+      y: (screenY - origin.perchScreenY) / origin.scale,
     };
   };
 
   const pickNextFrameSpot = (): FrameSpotDef | null => {
-    const lTop = lRectTopSafe();
+    const origin = getOriginMetrics();
     const viewH = typeof window !== 'undefined' ? window.innerHeight : 800;
     for (let i = 0; i < FRAME_SPOTS.length; i++) {
       const idx = (frameSpotIdx + i) % FRAME_SPOTS.length;
       const candidate = FRAME_SPOTS[idx];
       const coords = getFrameSpotCoords(candidate);
       if (coords) {
-        const viewY = coords.y + lTop + 10;
-        if (viewY > 32 && viewY < viewH - 42) {
+        const screenY = coords.y * origin.scale + origin.perchScreenY;
+        if (screenY > 28 && screenY < viewH - 36) {
           frameSpotIdx = (idx + 1) % FRAME_SPOTS.length;
           return candidate;
         }
@@ -454,15 +540,15 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
             x = coords.x;
             y = coords.y;
           }
-          const perchAge = 3.2 - (perchedUntil - ts) / 1000;
-          // Playful tiny perch hop in the middle of the rest
+          const perchAge = 3.3 - (perchedUntil - ts) / 1000;
+          // Playful tiny perch hop right as it settles onto the frame
           const hopPulse =
-            perchAge > 1.1 && perchAge < 1.38
-              ? -Math.sin(((perchAge - 1.1) / 0.28) * Math.PI) * 5.5
+            perchAge > 0.25 && perchAge < 0.53
+              ? -Math.sin(((perchAge - 0.25) / 0.28) * Math.PI) * 5.0
               : 0;
-          if (perchAge > 1.05 && hopSeed === 0) {
+          if (perchAge > 0.2 && hopSeed === 0) {
             hopSeed = 1;
-            triggerChirp(activeFrameSpot.perchPhrase);
+            triggerChirp(activeFrameSpot.getPerchMessage(), 2700);
           }
           const idleBob = Math.sin(perchAge * 3.4) * 1.2;
           birdEl.classList.remove('is-flying');
@@ -477,7 +563,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
         const prevDir = activeFrameSpot.faceDir;
         launchFromCurrentSpot(prevDir);
         hopSeed = 0;
-        legsBeforeLand = 2 + Math.floor(Math.random() * 2);
+        legsBeforeLand = 1;
         nextChirpAt = flightClock + 2.6 + Math.random() * 1.8;
       }
 
@@ -537,7 +623,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
         pitch = 0;
         turnBlend = 0;
         hopSeed = 0;
-        perchedUntil = ts + 2900 + Math.random() * 900;
+        perchedUntil = ts + 3300 + Math.random() * 500;
         facing = activeFrameSpot!.faceDir;
         birdEl.classList.remove('is-flying');
         setWingPose(0, 0, 1, 0);
@@ -716,7 +802,7 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
       vx = Math.cos(heading) * speed;
       vy = Math.sin(heading) * speed;
       waypointIdx = 0;
-      legsBeforeLand = 2;
+      legsBeforeLand = 1;
       activeFrameSpot = null;
       perchedUntil = 0;
       nextChirpAt = flightClock + 2.8;

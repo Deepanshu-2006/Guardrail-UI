@@ -25256,6 +25256,11 @@ body.gd-kbd-open .gd-m-shell {
     z-index: 65;
   }
 
+  .gd-prop-header-lantern.is-lit:hover,
+  .gd-prop-header-lantern.is-lit:active {
+    transform: none;
+  }
+
   .gd-prop-header-lantern .gd-prop-svg {
     overflow: visible;
   }
