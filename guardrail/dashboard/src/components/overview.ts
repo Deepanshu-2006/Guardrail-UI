@@ -17,7 +17,15 @@
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
-import { attachInteractiveHeadingSprings, createHeaderLanternProp, createPerchedBirdProp, createPottedPlantProp } from './interactive-props.js';
+import {
+  attachInteractiveHeadingSprings,
+  createActivitySconceProp,
+  createApprovalsMailboxProp,
+  createHeaderLanternProp,
+  createPottedPlantProp,
+  createWardSpyglassProp,
+  createWoodBoardBellProp,
+} from './interactive-props.js';
 import { showConnectWardModal } from './connect-modal.js';
 import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
@@ -108,6 +116,10 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   titleGroup.appendChild(subtitle);
 
   const greetingCard = createMergedGreetingWidget();
+  const woodBoardEl = greetingCard.querySelector('.gd-wood-board');
+  if (woodBoardEl) {
+    woodBoardEl.appendChild(createWoodBoardBellProp());
+  }
 
   header.appendChild(createHeaderLanternProp());
   header.appendChild(titleGroup);
@@ -357,6 +369,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   wardCard.appendChild(wardHeader);
   wardCard.appendChild(wardValueRow);
   wardCard.appendChild(wardDesc);
+  wardCard.appendChild(createWardSpyglassProp());
   grid.appendChild(wardCard);
 
   // Metric 2: Pending Actions (Interactive — opens Pending Approvals popup)
@@ -458,6 +471,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   pendingCard.appendChild(pendingHeader);
   pendingCard.appendChild(pendingValueRow);
   pendingCard.appendChild(pendingDesc);
+  pendingCard.appendChild(createApprovalsMailboxProp(props.pendingCount, triggerPendingModal));
   grid.appendChild(pendingCard);
 
   // Metric 3: Enforcement / Security Posture
@@ -501,7 +515,6 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   statusCard.appendChild(statusHeader);
   statusCard.appendChild(statusValueRow);
   statusCard.appendChild(statusDesc);
-  statusCard.appendChild(createPerchedBirdProp());
   grid.appendChild(statusCard);
 
   section.appendChild(grid);
@@ -1219,6 +1232,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       listContainer.appendChild(viewAllBtn);
     }
 
+    listContainer.appendChild(createActivitySconceProp());
     listContainer.appendChild(createPottedPlantProp());
     activitySection.appendChild(listContainer);
   }
