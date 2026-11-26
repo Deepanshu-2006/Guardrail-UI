@@ -267,43 +267,63 @@ function playBirdChirp(variant = 0): void {
   }
 }
 
-/**
- * Synthesizes a crystalline Edo-glass Japanese Fūrin (wind chime) tone via Web Audio API.
- * Uses delicate high-Q glass partials with a subtle dual-mode shimmer beat and soft wood tap.
- */
-function playJapaneseFurinChime(intensity = 1, pitchOffset = 0, baseFreqOverride?: number): void {
+function ensureUnlockedBirdAudioCtx(): AudioContext | null {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return null;
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
+    if (!AudioCtx) return null;
     if (!sharedBirdAudioCtx) sharedBirdAudioCtx = new AudioCtx();
     if (sharedBirdAudioCtx.state === 'suspended') {
       void sharedBirdAudioCtx.resume().catch(() => {});
     }
-    if (sharedBirdAudioCtx.state !== 'running') return;
-    const vol = Math.max(0.22, Math.min(1.15, intensity));
-    const now = sharedBirdAudioCtx.currentTime;
-    const baseFreq = (baseFreqOverride ?? 1760) + pitchOffset;
-    const partials = [
-      { freq: baseFreq, peak: 0.022 * vol, decay: 1.75 },
-      { freq: baseFreq * 1.0032, peak: 0.017 * vol, decay: 1.55 },
-      { freq: baseFreq * 2.01, peak: 0.0085 * vol, decay: 0.72 },
-      { freq: baseFreq * 2.86, peak: 0.004 * vol, decay: 0.28 },
-    ];
-    for (const p of partials) {
-      const osc = sharedBirdAudioCtx.createOscillator();
-      const gain = sharedBirdAudioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(p.freq, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.linearRampToValueAtTime(p.peak, now + 0.0035);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
-      osc.connect(gain);
-      gain.connect(sharedBirdAudioCtx.destination);
-      osc.start(now);
-      osc.stop(now + p.decay + 0.02);
+    return sharedBirdAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Synthesizes a crystalline Edo-glass Japanese Fūrin (wind chime) tone via Web Audio API.
+ * Uses delicate high-Q glass partials with a dual-mode shimmer beat and crisp ceramic tap.
+ */
+function playJapaneseFurinChime(intensity = 1, pitchOffset = 0, baseFreqOverride?: number): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx) return;
+
+    const triggerPartials = () => {
+      if (ctx.state !== 'running') return;
+      const vol = Math.max(0.28, Math.min(1.2, intensity));
+      const now = ctx.currentTime;
+      const baseFreq = (baseFreqOverride ?? 1760) + pitchOffset;
+      const partials = [
+        { freq: baseFreq, peak: 0.042 * vol, decay: 1.85 },
+        { freq: baseFreq * 1.0032, peak: 0.032 * vol, decay: 1.6 },
+        { freq: baseFreq * 2.01, peak: 0.015 * vol, decay: 0.78 },
+        { freq: baseFreq * 2.86, peak: 0.007 * vol, decay: 0.28 },
+        { freq: baseFreq * 3.92, peak: 0.0035 * vol, decay: 0.09 },
+      ];
+      for (const p of partials) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(p.freq, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(p.peak, now + 0.003);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + p.decay + 0.02);
+      }
+    };
+
+    if (ctx.state === 'running') {
+      triggerPartials();
+    } else if (ctx.state === 'suspended') {
+      void ctx.resume().then(triggerPartials).catch(() => {});
     }
   } catch {
     // Ignore audio errors cleanly
@@ -1297,79 +1317,117 @@ export function createWoodBoardFurinProp(): HTMLElement {
     stripStiff: number;
   }
 
-  const SVG_W = 56;
-  const SVG_H = 90;
+  const SVG_W = 66;
+  const SVG_H = 98;
 
   const FURIN_SPECS: FurinSpec[] = [
     {
-      // Classic Sky-Celadon Goldfish Edo-glass Fūrin
-      cx: 28,
-      cordEndY: 10,
-      domeR: 12.2,
-      domeH: 19.5,
-      stripH: 37,
+      // Hand-blown Sky-Celadon Goldfish (Edo Kingyo) Fūrin
+      cx: 33,
+      cordEndY: 13.5,
+      domeR: 13.8,
+      domeH: 23.5,
+      stripH: 43,
       freq: 1760.0,
       glassGrad: 'gd-furin-glass-celadon',
-      rimStroke: 'rgba(74, 106, 112, 0.68)',
-      cordStroke: '#C73E2B',
-      naturalStiff: 26,
-      stripStiff: 20,
+      rimStroke: 'rgba(64, 98, 104, 0.72)',
+      cordStroke: '#B83123',
+      naturalStiff: 25,
+      stripStiff: 19,
       motif: `
-        <path d="M31.5 25.5 C30.8 22, 32.2 19, 33.8 16.5" stroke="#537858" stroke-width="0.95" stroke-linecap="round" opacity="0.74"/>
-        <ellipse cx="23.8" cy="21" rx="2.4" ry="1.3" transform="rotate(-14 23.8 21)" fill="#DE5741" opacity="0.84"/>
-        <path d="M21.6 21.6 L19.4 20.5 L19.9 23.2 Z" fill="#E66F59" opacity="0.78"/>
+        <!-- Inner hand-painted waterweed fronds (matsumo) -->
+        <path d="M39.5 34.5 C38.6 29.5, 40.4 25.0, 42.4 21.8" stroke="#4D7556" stroke-width="1.05" stroke-linecap="round" opacity="0.72"/>
+        <path d="M38.2 35.0 C37.0 31.2, 37.5 27.5, 39.0 24.8" stroke="#648D69" stroke-width="0.8" stroke-linecap="round" opacity="0.62"/>
+        <!-- Hand-painted Edo Kingyo (Calico Goldfish) with flowing fins -->
+        <path d="M23.5 28.0 C21.2 26.8, 19.8 25.4, 20.6 24.4 C21.6 25.3, 22.8 26.4, 24.2 27.3 Z" fill="#E96B52" opacity="0.74"/>
+        <path d="M23.3 28.4 C20.8 28.8, 19.4 29.8, 20.5 30.9 C21.8 30.1, 22.8 29.2, 24.1 28.7 Z" fill="#D94B34" opacity="0.76"/>
+        <ellipse cx="27.2" cy="26.8" rx="3.4" ry="1.85" transform="rotate(-18 27.2 26.8)" fill="#E2523A" opacity="0.86"/>
+        <ellipse cx="26.8" cy="26.2" rx="1.6" ry="0.7" transform="rotate(-18 26.8 26.2)" fill="#F99F84" opacity="0.68"/>
+        <circle cx="29.4" cy="25.9" r="0.45" fill="#1E2321" opacity="0.85"/>
+        <!-- Tiny rising glass air bubbles -->
+        <circle cx="32.2" cy="22.8" r="0.65" fill="#FFFFFF" opacity="0.72"/>
+        <circle cx="33.5" cy="20.4" r="0.45" fill="#FFFFFF" opacity="0.64"/>
       `,
     },
   ];
 
   const wavesHtml = FURIN_SPECS.map(
     (s, i) =>
-      `<span class="gd-furin-wave" data-wave-idx="${i}" style="left:${s.cx}px;top:${(s.cordEndY + s.domeH * 0.55).toFixed(1)}px;" aria-hidden="true"></span>`
+      `<span class="gd-furin-wave" data-wave-idx="${i}" style="left:${s.cx}px;top:${(s.cordEndY + s.domeH * 0.48).toFixed(1)}px;" aria-hidden="true"></span>`
   ).join('');
 
   const chimesSvg = FURIN_SPECS.map((s, i) => {
     const cx = s.cx;
-    const dTop = s.cordEndY + 1;
+    const dTop = s.cordEndY;
     const dBot = dTop + s.domeH;
     const rx = s.domeR;
-    const clapY = dBot - 2.6;
-    const stripTop = dBot + 5.5;
+    const mouthRx = rx * 0.85;
+    const mouthRy = 3.5;
+    const clapY = dBot - 2.4;
+    const stripTop = dBot + 7.2;
     const stripBot = stripTop + s.stripH;
-    const stripHalfW = 4.2 + (i % 2) * 0.7;
+    const stripHalfW = 5.4;
 
     return `
-      <!-- Screw eyelet mounting into wooden board -->
-      <rect x="${cx - 2.6}" y="0" width="5.2" height="2.8" rx="0.9" fill="#3B2E22" stroke="#1E160E" stroke-width="0.8"/>
-      <circle cx="${cx}" cy="3.8" r="1.4" fill="none" stroke="#C99A49" stroke-width="1.05"/>
+      <!-- Aged forged-brass ceiling screw-eye anchoring beneath the wood rim -->
+      <rect x="${cx - 4.4}" y="0" width="8.8" height="3.2" rx="1.1" fill="#3B2D20" stroke="#1E160E" stroke-width="0.85"/>
+      <line x1="${cx - 3.2}" y1="1.1" x2="${cx + 3.2}" y2="1.1" stroke="#8C6A3A" stroke-width="0.6" opacity="0.65"/>
+      <circle cx="${cx}" cy="4.8" r="1.8" fill="none" stroke="url(#gd-furin-brass)" stroke-width="1.2"/>
 
-      <!-- Link 1: Glass Dome (${i}) -->
-      <g class="gd-furin-dome" data-chime-idx="${i}" style="transform-origin: ${cx}px 4px;">
-        <rect x="${cx - rx - 3}" y="3" width="${(rx + 3) * 2}" height="${stripBot - 2}" fill="transparent"/>
-        <line x1="${cx}" y1="4.6" x2="${cx}" y2="${dTop}" stroke="${s.cordStroke}" stroke-width="1.35" stroke-linecap="round"/>
-        <circle cx="${cx}" cy="${dTop - 0.8}" r="1.5" fill="${s.cordStroke}" stroke="#6B190E" stroke-width="0.6"/>
+      <!-- Link 1: Open-mouthed Edo-Glass Bell (${i}) -->
+      <g class="gd-furin-dome" data-chime-idx="${i}" style="transform-origin: ${cx}px 4.8px;">
+        <rect x="${cx - rx - 4}" y="3" width="${(rx + 4) * 2}" height="${stripBot}" fill="transparent"/>
+        <!-- Braided vermilion kumihimo cord & glazed ceramic stopper bead -->
+        <line x1="${cx}" y1="5.8" x2="${cx}" y2="${dTop + 0.5}" stroke="${s.cordStroke}" stroke-width="1.45" stroke-linecap="round"/>
+        <circle cx="${cx}" cy="${dTop - 1.1}" r="1.9" fill="url(#gd-furin-bead)" stroke="#2E4B52" stroke-width="0.65"/>
+        <circle cx="${cx - 0.55}" cy="${dTop - 1.65}" r="0.55" fill="#FFFFFF" opacity="0.8"/>
 
-        <!-- Link 2: Inner Porcelain Clapper -->
+        <!-- Back Interior Wall & Hollow Open-Bottom Rim (visible behind clapper) -->
+        <path d="M${cx} ${dTop} C${cx - rx * 0.68} ${dTop + 0.6}, ${cx - rx} ${dTop + s.domeH * 0.36}, ${cx - rx} ${dBot - 4.5} C${cx - rx} ${dBot - 2.0}, ${cx - mouthRx} ${dBot - 0.6}, ${cx - mouthRx} ${dBot} A${mouthRx.toFixed(2)} ${mouthRy} 0 0 0 ${cx + mouthRx} ${dBot} C${cx + mouthRx} ${dBot - 0.6}, ${cx + rx} ${dBot - 2.0}, ${cx + rx} ${dBot - 4.5} C${cx + rx} ${dTop + s.domeH * 0.36}, ${cx + rx * 0.68} ${dTop + 0.6}, ${cx} ${dTop} Z" fill="url(#${s.glassGrad})"/>
+        <path d="M${cx - mouthRx} ${dBot} A${mouthRx.toFixed(2)} ${mouthRy} 0 0 1 ${cx + mouthRx} ${dBot}" stroke="rgba(54, 88, 94, 0.34)" stroke-width="0.85" fill="rgba(126, 178, 184, 0.14)"/>
+
+        <!-- Link 2: Suspended Porcelain Clapper inside glass cavity -->
         <g class="gd-furin-clapper" data-clapper-idx="${i}" style="transform-origin: ${cx}px ${dTop + 1.5}px;">
-          <line x1="${cx}" y1="${dTop + 1}" x2="${cx}" y2="${dBot + 1.6}" stroke="#9C2D1E" stroke-width="0.85" stroke-linecap="round"/>
-          <circle cx="${cx}" cy="${clapY}" r="2.05" fill="#F2D79B" stroke="#785220" stroke-width="0.7"/>
-          <circle cx="${cx - 0.6}" cy="${clapY - 0.6}" r="0.65" fill="#FFFFFF" opacity="0.85"/>
+          <line x1="${cx}" y1="${dTop + 1.2}" x2="${cx}" y2="${dBot + 2.2}" stroke="#9E2C1D" stroke-width="0.9" stroke-linecap="round"/>
+          <!-- Glazed ceramic clapper bead with subtle specular spot -->
+          <ellipse cx="${cx}" cy="${clapY}" rx="2.35" ry="2.65" fill="url(#gd-furin-clapper-glaze)" stroke="#755226" stroke-width="0.72"/>
+          <circle cx="${cx - 0.7}" cy="${clapY - 0.85}" r="0.75" fill="#FFFFFF" opacity="0.88"/>
 
-          <!-- Link 3: Washi Paper Tanzaku Strip -->
-          <g class="gd-furin-tanzaku" data-strip-idx="${i}" style="transform-origin: ${cx}px ${dBot + 1.6}px;">
-            <line x1="${cx}" y1="${dBot + 1.6}" x2="${cx}" y2="${stripTop}" stroke="#A63423" stroke-width="0.8"/>
-            <path d="M${cx - stripHalfW} ${stripTop} L${cx + stripHalfW} ${stripTop} L${cx + stripHalfW - 0.3} ${stripBot} L${cx} ${stripBot - 1.8} L${cx - stripHalfW + 0.3} ${stripBot} Z" fill="url(#gd-furin-washi)" stroke="#BBA37B" stroke-width="0.8" stroke-linejoin="round"/>
-            <path d="M${cx - stripHalfW + 1.4} ${stripTop + 9} Q${cx} ${stripTop + 7.2}, ${cx + stripHalfW - 1.4} ${stripTop + 9.4}" stroke="rgba(86, 134, 146, 0.38)" stroke-width="0.95" fill="none" stroke-linecap="round"/>
-            <rect x="${cx + 0.4}" y="${stripBot - 7.5}" width="2.7" height="2.7" rx="0.35" fill="#C43B29" opacity="0.85"/>
-            <circle cx="${cx}" cy="${stripTop + 1.6}" r="0.75" fill="#9E2D1E"/>
+          <!-- Link 3: Echizen Washi Paper Tanzaku Strip -->
+          <g class="gd-furin-tanzaku" data-strip-idx="${i}" style="transform-origin: ${cx}px ${dBot + 2.2}px;">
+            <line x1="${cx}" y1="${dBot + 2.2}" x2="${cx}" y2="${stripTop}" stroke="#A63222" stroke-width="0.9" stroke-linecap="round"/>
+            <!-- Washi paper slip with subtle 3D fold shading & deckle bottom -->
+            <path d="M${cx - stripHalfW} ${stripTop} L${cx + stripHalfW} ${stripTop} L${cx + stripHalfW + 0.35} ${stripBot - 1.2} Q${cx + 2.2} ${stripBot + 0.6}, ${cx} ${stripBot - 1.5} Q${cx - 2.4} ${stripBot + 0.5}, ${cx - stripHalfW - 0.2} ${stripBot - 0.8} Z" fill="url(#gd-furin-washi)" stroke="#B7A07B" stroke-width="0.78" stroke-linejoin="round"/>
+            <!-- Subtle glass-mouth shadow cast across top of washi paper -->
+            <rect x="${cx - stripHalfW + 0.5}" y="${stripTop + 0.4}" width="${(stripHalfW * 2 - 1).toFixed(1)}" height="3.2" fill="rgba(78, 68, 52, 0.12)"/>
+            <!-- Sumi-e indigo mist brush strokes -->
+            <path d="M${cx - stripHalfW + 1.5} ${stripTop + 13} Q${cx - 0.6} ${stripTop + 11.2}, ${cx + stripHalfW - 1.4} ${stripTop + 13.6}" stroke="rgba(76, 124, 138, 0.40)" stroke-width="1.05" fill="none" stroke-linecap="round"/>
+            <path d="M${cx - stripHalfW + 2.0} ${stripTop + 17.5} Q${cx + 0.5} ${stripTop + 16.0}, ${cx + stripHalfW - 1.8} ${stripTop + 18.2}" stroke="rgba(76, 124, 138, 0.25)" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+            <!-- Traditional cinnabar hanko seal stamp -->
+            <rect x="${cx + 0.9}" y="${stripBot - 9.2}" width="3.0" height="3.0" rx="0.4" fill="#BA3524" opacity="0.86"/>
+            <path d="M${cx + 1.6} ${stripBot - 8.2} H${cx + 3.2} M${cx + 2.4} ${stripBot - 8.5} V${stripBot - 6.8}" stroke="#FCF7EB" stroke-width="0.45" opacity="0.72"/>
+            <!-- Tiny brass hatome paper grommet ring -->
+            <circle cx="${cx}" cy="${stripTop + 2.0}" r="1.05" fill="#DFBE74" stroke="#85632B" stroke-width="0.55"/>
+            <circle cx="${cx}" cy="${stripTop + 2.0}" r="0.45" fill="#8C2316"/>
           </g>
         </g>
 
-        <!-- Handblown Glass Dome -->
-        <path d="M${cx} ${dTop} C${cx - rx * 0.72} ${dTop + 0.5}, ${cx - rx} ${dTop + s.domeH * 0.42}, ${cx - rx} ${dBot - 3.6} C${cx - rx} ${dBot - 1.2}, ${cx - rx * 0.72} ${dBot}, ${cx} ${dBot} C${cx + rx * 0.72} ${dBot}, ${cx + rx} ${dBot - 1.2}, ${cx + rx} ${dBot - 3.6} C${cx + rx} ${dTop + s.domeH * 0.42}, ${cx + rx * 0.72} ${dTop + 0.5}, ${cx} ${dTop} Z" fill="url(#${s.glassGrad})" stroke="${s.rimStroke}" stroke-width="0.95"/>
-        <ellipse class="gd-furin-amber-glow" cx="${cx}" cy="${dTop + s.domeH * 0.52}" rx="${(rx * 0.84).toFixed(1)}" ry="${(s.domeH * 0.4).toFixed(1)}" fill="url(#gd-furin-amber)"/>
+        <!-- Night Watch warm amber inner light glow -->
+        <ellipse class="gd-furin-amber-glow" cx="${cx}" cy="${dTop + s.domeH * 0.50}" rx="${(rx * 0.80).toFixed(1)}" ry="${(s.domeH * 0.39).toFixed(1)}" fill="url(#gd-furin-amber)"/>
+
+        <!-- Hand-painted Edo goldfish & waterweed on inner glass wall -->
         ${s.motif}
-        <path d="M${cx - rx * 0.68} ${dTop + 3.2} C${cx - rx * 0.8} ${dTop + s.domeH * 0.38}, ${cx - rx * 0.8} ${dBot - 6}, ${cx - rx * 0.7} ${dBot - 3.5}" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" opacity="0.82"/>
-        <path d="M${cx - rx * 0.9} ${dBot - 2.6} C${cx - rx * 0.6} ${dBot - 0.6}, ${cx + rx * 0.6} ${dBot - 0.6}, ${cx + rx * 0.9} ${dBot - 2.6}" stroke="rgba(56, 84, 90, 0.48)" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+
+        <!-- Front Hand-Blown Glass Refraction Shell & Specular Highlights -->
+        <path d="M${cx} ${dTop} C${cx - rx * 0.68} ${dTop + 0.6}, ${cx - rx} ${dTop + s.domeH * 0.36}, ${cx - rx} ${dBot - 4.5} C${cx - rx} ${dBot - 2.0}, ${cx - mouthRx} ${dBot - 0.6}, ${cx - mouthRx} ${dBot} A${mouthRx.toFixed(2)} ${mouthRy} 0 0 0 ${cx + mouthRx} ${dBot} C${cx + mouthRx} ${dBot - 0.6}, ${cx + rx} ${dBot - 2.0}, ${cx + rx} ${dBot - 4.5} C${cx + rx} ${dTop + s.domeH * 0.36}, ${cx + rx * 0.68} ${dTop + 0.6}, ${cx} ${dTop} Z" fill="url(#gd-furin-glass-shell)" stroke="${s.rimStroke}" stroke-width="0.9"/>
+        <!-- Primary window specular crescent -->
+        <path d="M${cx - rx * 0.66} ${dTop + 4.4} C${cx - rx * 0.80} ${dTop + s.domeH * 0.38}, ${cx - rx * 0.78} ${dBot - 7.5}, ${cx - rx * 0.60} ${dBot - 3.6}" stroke="url(#gd-furin-spec)" stroke-width="2.1" stroke-linecap="round"/>
+        <ellipse cx="${cx - rx * 0.44}" cy="${dTop + 3.4}" rx="1.6" ry="0.85" transform="rotate(-24 ${cx - rx * 0.44} ${dTop + 3.4})" fill="#FFFFFF" opacity="0.86"/>
+        <!-- Secondary cool bounce catchlight on right cheek -->
+        <path d="M${cx + rx * 0.70} ${dTop + 7.5} C${cx + rx * 0.80} ${dTop + s.domeH * 0.48}, ${cx + rx * 0.74} ${dBot - 6.5}, ${cx + rx * 0.56} ${dBot - 3.8}" stroke="rgba(232, 250, 250, 0.58)" stroke-width="1.15" stroke-linecap="round"/>
+        <!-- Crisp beveled cut-glass front lip (kuchimoto) -->
+        <path d="M${cx - mouthRx + 0.5} ${dBot + 0.2} A${mouthRx.toFixed(2)} ${mouthRy} 0 0 0 ${cx + mouthRx - 0.5} ${dBot + 0.2}" stroke="rgba(255, 255, 255, 0.78)" stroke-width="1.05" fill="none" stroke-linecap="round"/>
+        <path d="M${cx - mouthRx} ${dBot + 0.6} A${mouthRx.toFixed(2)} ${mouthRy} 0 0 0 ${cx + mouthRx} ${dBot + 0.6}" stroke="rgba(54, 86, 92, 0.55)" stroke-width="0.85" fill="none" stroke-linecap="round"/>
       </g>
     `;
   }).join('');
@@ -1378,21 +1436,47 @@ export function createWoodBoardFurinProp(): HTMLElement {
     ${wavesHtml}
     <svg class="gd-prop-svg" width="${SVG_W}" height="${SVG_H}" viewBox="0 0 ${SVG_W} ${SVG_H}" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="gd-furin-glass-celadon" cx="34%" cy="32%" r="68%">
-          <stop offset="0%" stop-color="rgba(255, 255, 255, 0.88)"/>
-          <stop offset="30%" stop-color="rgba(218, 242, 241, 0.72)"/>
-          <stop offset="72%" stop-color="rgba(164, 210, 214, 0.44)"/>
-          <stop offset="100%" stop-color="rgba(116, 166, 174, 0.56)"/>
+        <linearGradient id="gd-furin-brass" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#E7C67A"/>
+          <stop offset="55%" stop-color="#BA8E42"/>
+          <stop offset="100%" stop-color="#765520"/>
+        </linearGradient>
+        <radialGradient id="gd-furin-bead" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#9BD0D6"/>
+          <stop offset="55%" stop-color="#4B8B96"/>
+          <stop offset="100%" stop-color="#27505A"/>
+        </radialGradient>
+        <radialGradient id="gd-furin-glass-celadon" cx="36%" cy="32%" r="70%">
+          <stop offset="0%" stop-color="rgba(255, 255, 255, 0.30)"/>
+          <stop offset="48%" stop-color="rgba(212, 240, 240, 0.42)"/>
+          <stop offset="84%" stop-color="rgba(150, 202, 208, 0.56)"/>
+          <stop offset="100%" stop-color="rgba(100, 154, 162, 0.64)"/>
+        </radialGradient>
+        <radialGradient id="gd-furin-glass-shell" cx="34%" cy="30%" r="72%">
+          <stop offset="0%" stop-color="rgba(255, 255, 255, 0.16)"/>
+          <stop offset="58%" stop-color="rgba(224, 246, 246, 0.08)"/>
+          <stop offset="86%" stop-color="rgba(156, 206, 212, 0.34)"/>
+          <stop offset="100%" stop-color="rgba(96, 150, 158, 0.52)"/>
+        </radialGradient>
+        <linearGradient id="gd-furin-spec" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255, 255, 255, 0.94)"/>
+          <stop offset="65%" stop-color="rgba(255, 255, 255, 0.58)"/>
+          <stop offset="100%" stop-color="rgba(255, 255, 255, 0.12)"/>
+        </linearGradient>
+        <radialGradient id="gd-furin-clapper-glaze" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#FFF7DC"/>
+          <stop offset="58%" stop-color="#EED192"/>
+          <stop offset="100%" stop-color="#B98A42"/>
         </radialGradient>
         <radialGradient id="gd-furin-amber" cx="50%" cy="62%" r="60%">
           <stop offset="0%" stop-color="rgba(255, 224, 134, 0.72)"/>
           <stop offset="65%" stop-color="rgba(242, 184, 72, 0.32)"/>
           <stop offset="100%" stop-color="rgba(242, 184, 72, 0)"/>
         </radialGradient>
-        <linearGradient id="gd-furin-washi" x1="0%" y1="0%" x2="12%" y2="100%">
-          <stop offset="0%" stop-color="#FCF7EB"/>
-          <stop offset="55%" stop-color="#F5EAD2"/>
-          <stop offset="100%" stop-color="#E7D6B3"/>
+        <linearGradient id="gd-furin-washi" x1="0%" y1="0%" x2="100%" y2="6%">
+          <stop offset="0%" stop-color="#FDF9EE"/>
+          <stop offset="58%" stop-color="#F6ECD5"/>
+          <stop offset="100%" stop-color="#E5D3AF"/>
         </linearGradient>
       </defs>
       ${chimesSvg}
@@ -1431,6 +1515,7 @@ export function createWoodBoardFurinProp(): HTMLElement {
   let hasUserGesture = false;
   let furinRaf: number | null = null;
   let lastPointerX: number | null = null;
+  let lastPointerY: number | null = null;
 
   const emitChimeWave = (idx: number, strength: number, withAudio: boolean) => {
     const waveEl = waveEls[idx];
@@ -1525,7 +1610,8 @@ export function createWoodBoardFurinProp(): HTMLElement {
       if (clapperEl) clapperEl.style.transform = `rotate(${(st.clapAngle - st.domeAngle).toFixed(2)}deg)`;
       if (tanzakuEl) {
         const skew = Math.max(-6, Math.min(6, st.stripVel * 0.032));
-        tanzakuEl.style.transform = `rotate(${(st.stripAngle - st.clapAngle).toFixed(2)}deg) skewX(${skew.toFixed(2)}deg)`;
+        const flutterScaleX = (1 - Math.min(0.14, Math.abs(st.stripVel) * 0.0005)).toFixed(3);
+        tanzakuEl.style.transform = `rotate(${(st.stripAngle - st.clapAngle).toFixed(2)}deg) skewX(${skew.toFixed(2)}deg) scaleX(${flutterScaleX})`;
       }
     }
 
@@ -1594,11 +1680,10 @@ export function createWoodBoardFurinProp(): HTMLElement {
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     const unlockOnGesture = () => {
       hasUserGesture = true;
-      if (sharedBirdAudioCtx && sharedBirdAudioCtx.state === 'suspended') {
-        void sharedBirdAudioCtx.resume().catch(() => {});
-      }
+      ensureUnlockedBirdAudioCtx();
     };
     window.addEventListener('pointerdown', unlockOnGesture, { passive: true });
+    window.addEventListener('keydown', unlockOnGesture, { passive: true });
 
     const onBellEvent = () => {
       if (!document.contains(furinBtn)) {
@@ -1609,59 +1694,78 @@ export function createWoodBoardFurinProp(): HTMLElement {
     };
     window.addEventListener('gd-nightwatch-bell-ring', onBellEvent);
 
-    // Brush cursor past the chime to sway it smoothly with real physics & ring cleanly
-    const onCursorGlide = (ev: MouseEvent) => {
-      if (!document.contains(furinBtn)) {
-        window.removeEventListener('mousemove', onCursorGlide);
-        window.removeEventListener('pointerdown', unlockOnGesture);
-        return;
-      }
-      const dxCursor = lastPointerX !== null ? ev.clientX - lastPointerX : 0;
-      lastPointerX = ev.clientX;
-      if (Math.abs(dxCursor) < 1.2) return;
-
+    const brushChimeAtPoint = (clientX: number, clientY: number, dxCursor: number, dyCursor: number, forceRing = false) => {
       const rect = furinBtn.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
       if (
-        ev.clientX < rect.left - 24 ||
-        ev.clientX > rect.right + 24 ||
-        ev.clientY < rect.top - 16 ||
-        ev.clientY > rect.bottom + 24
+        clientX < rect.left - 28 ||
+        clientX > rect.right + 28 ||
+        clientY < rect.top - 16 ||
+        clientY > rect.bottom + 24
       ) {
         return;
       }
 
       hasUserGesture = true;
       const scaleX = rect.width / SVG_W;
+      const scaleY = rect.height / SVG_H;
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const dir = dxCursor >= 0 ? 1 : -1;
-      const speedNorm = Math.min(1.15, Math.max(0.35, Math.abs(dxCursor) / 14));
+      const moveMag = Math.hypot(dxCursor, dyCursor);
+      const directionalDelta =
+        Math.abs(dxCursor) >= 0.45 ? dxCursor : (clientX < rect.left + rect.width * 0.5 ? 5 : -5);
+      const dir = directionalDelta >= 0 ? 1 : -1;
+      const speedNorm = Math.min(1.18, Math.max(0.42, (forceRing ? Math.max(8, moveMag) : moveMag) / 13));
 
       for (let i = 0; i < FURIN_SPECS.length; i += 1) {
         const s = FURIN_SPECS[i];
         const chimeScreenX = rect.left + s.cx * scaleX;
-        const chimeScreenY = rect.top + (s.cordEndY + s.domeH + s.stripH * 0.45) * (rect.height / SVG_H);
-        const distX = Math.abs(ev.clientX - chimeScreenX);
-        const distY = Math.abs(ev.clientY - chimeScreenY);
+        const chimeScreenY = rect.top + (s.cordEndY + (s.domeH + s.stripH) * 0.45) * scaleY;
+        const distX = Math.abs(clientX - chimeScreenX);
+        const distY = Math.abs(clientY - chimeScreenY);
 
-        if (distX < 28 && distY < 56) {
-          const prox = 1 - distX / 28;
+        if (distX < 34 && distY < 60) {
+          const prox = 1 - distX / 34;
           const st = states[i];
-          const push = Math.max(-210, Math.min(210, dxCursor * 10.5)) * prox;
+          const push = Math.max(-220, Math.min(220, directionalDelta * 10.5)) * prox;
           st.stripVel += push;
-          st.clapVel += push * 0.42;
-          st.domeVel += push * 0.14;
+          st.clapVel += push * 0.45;
+          st.domeVel += push * 0.16;
 
-          // Sound crisp glass chime when cursor crosses right past it
-          if (distX < 18 && nowMs - st.lastBrushAt > 170) {
+          // Sound crisp crystal chime when gliding cursor brushes past the bell or strip
+          if ((distX < 25 || forceRing) && nowMs - st.lastBrushAt > 175) {
             st.lastBrushAt = nowMs;
             st.lastChimeAt = nowMs;
-            emitChimeWave(i, 0.55 + 0.45 * speedNorm, true);
-            st.clapVel -= dir * 135 * speedNorm;
+            emitChimeWave(i, 0.62 + 0.45 * speedNorm, true);
+            st.clapVel -= dir * 145 * speedNorm;
           }
           ensurePhysics();
         }
       }
+    };
+
+    furinBtn.addEventListener('pointerenter', (ev) => {
+      if (!document.contains(furinBtn)) return;
+      const dx = lastPointerX !== null ? ev.clientX - lastPointerX : 7;
+      const dy = lastPointerY !== null ? ev.clientY - lastPointerY : 0;
+      lastPointerX = ev.clientX;
+      lastPointerY = ev.clientY;
+      brushChimeAtPoint(ev.clientX, ev.clientY, dx, dy, true);
+    });
+
+    // Brush cursor past the chime (horizontally, vertically, or diagonally) to sway & ring cleanly
+    const onCursorGlide = (ev: MouseEvent) => {
+      if (!document.contains(furinBtn)) {
+        window.removeEventListener('mousemove', onCursorGlide);
+        window.removeEventListener('pointerdown', unlockOnGesture);
+        window.removeEventListener('keydown', unlockOnGesture);
+        return;
+      }
+      const dxCursor = lastPointerX !== null ? ev.clientX - lastPointerX : 0;
+      const dyCursor = lastPointerY !== null ? ev.clientY - lastPointerY : 0;
+      lastPointerX = ev.clientX;
+      lastPointerY = ev.clientY;
+      if (Math.hypot(dxCursor, dyCursor) < 0.8) return;
+      brushChimeAtPoint(ev.clientX, ev.clientY, dxCursor, dyCursor, false);
     };
     window.addEventListener('mousemove', onCursorGlide, { passive: true });
   }

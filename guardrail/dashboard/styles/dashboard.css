@@ -26347,8 +26347,8 @@ body.gd-kbd-open .gd-m-shell {
   .gd-prop-btn.gd-prop-board-furin,
   .gd-prop-btn.gd-prop-board-bell {
     position: absolute !important;
-    bottom: -80px;
-    right: 18px;
+    bottom: -94px;
+    right: 28px;
     z-index: 6 !important;
     overflow: visible;
   }
@@ -26360,6 +26360,7 @@ body.gd-kbd-open .gd-m-shell {
 
   .gd-prop-board-furin .gd-prop-svg {
     overflow: visible;
+    filter: drop-shadow(0 5px 8px rgba(32, 36, 26, 0.20));
   }
 
   .gd-prop-board-furin .gd-furin-amber-glow {
