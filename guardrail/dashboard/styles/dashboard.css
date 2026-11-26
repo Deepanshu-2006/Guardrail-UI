@@ -23193,6 +23193,58 @@ article.gd-card-collapsed,
   transform: none !important;
 }
 
+.gd-m-ambient:not(.gd-desktop-ambient) .gd-m-bg-horizon {
+  width: 220%;
+  right: auto;
+  transform: translate3d(calc(var(--gd-pan-idx, 3) * -18%), 0, 0);
+  transition: transform 580ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.gd-m-ambient:not(.gd-desktop-ambient) .gd-m-mote {
+  margin-left: calc(var(--gd-pan-idx, 3) * -4%);
+  transition: margin-left 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gd-m-ambient:not(.gd-desktop-ambient) .gd-m-beam {
+  right: calc(-20% + var(--gd-pan-idx, 3) * 8%);
+  transition: right 640ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* macOS Spaces dual-pane continuous screen slide */
+.gd-m-space-viewport {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  overflow: hidden;
+  flex: 1;
+}
+
+.gd-m-space-track {
+  display: flex;
+  align-items: flex-start;
+  width: 200%;
+  will-change: transform;
+}
+
+.gd-m-space-track.is-sliding {
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gd-m-space-track > .gd-m-space-pane {
+  flex: 0 0 50%;
+  width: 50%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.gd-m-space-track .gd-m-greeting.gd-m-scenery,
+.gd-m-space-track .gd-m-greeting.gd-m-scenery .gd-char {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 .gd-m-main.is-tab-entering > *:nth-child(3) {
   animation: gd-m-child-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 280ms both;
 }

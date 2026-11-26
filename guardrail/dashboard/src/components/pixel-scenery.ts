@@ -473,12 +473,17 @@ export function createAmbientBackdrop(phase: SceneryPhase, extraClass: string = 
 
   const horizon = document.createElement('div');
   horizon.className = 'gd-m-bg-horizon';
-  horizon.innerHTML = `<svg viewBox="0 0 96 22" preserveAspectRatio="none" shape-rendering="crispEdges">
-    <path d="M0 14 H14 V11 H24 V8 H36 V11 H48 V13 H62 V9 H74 V6 H86 V10 H96 V22 H0 Z" fill="currentColor" opacity="0.42"/>
-    <path d="M0 17 H10 V15 H22 V17 H38 V14 H50 V16 H68 V13 H82 V15 H96 V22 H0 Z" fill="currentColor" opacity="0.72"/>
+  horizon.innerHTML = `<svg viewBox="0 0 240 22" preserveAspectRatio="none" shape-rendering="crispEdges">
+    <path d="M0 14 H14 V11 H24 V8 H36 V11 H48 V13 H62 V9 H74 V6 H86 V10 H102 V12 H118 V7 H132 V10 H148 V13 H164 V8 H178 V5 H192 V9 H210 V12 H226 V8 H240 V22 H0 Z" fill="currentColor" opacity="0.42"/>
+    <path d="M0 17 H10 V15 H22 V17 H38 V14 H50 V16 H68 V13 H82 V15 H98 V17 H114 V14 H130 V16 H146 V13 H162 V15 H180 V17 H198 V14 H216 V16 H240 V22 H0 Z" fill="currentColor" opacity="0.72"/>
     <rect x="11" y="10" width="1" height="5" fill="currentColor"/><rect x="9" y="11" width="5" height="2" fill="currentColor"/><rect x="10" y="9" width="3" height="2" fill="currentColor"/>
+    <rect x="44" y="12" width="1" height="4" fill="currentColor"/><rect x="42" y="13" width="5" height="2" fill="currentColor"/><rect x="43" y="11" width="3" height="2" fill="currentColor"/>
     <rect x="77" y="9" width="1" height="5" fill="currentColor"/><rect x="75" y="10" width="5" height="2" fill="currentColor"/><rect x="76" y="8" width="3" height="2" fill="currentColor"/>
     <rect x="87" y="11" width="1" height="4" fill="currentColor"/><rect x="85" y="12" width="5" height="2" fill="currentColor"/><rect x="86" y="10" width="3" height="2" fill="currentColor"/>
+    <rect x="122" y="9" width="1" height="5" fill="currentColor"/><rect x="120" y="10" width="5" height="2" fill="currentColor"/><rect x="121" y="8" width="3" height="2" fill="currentColor"/>
+    <rect x="155" y="11" width="1" height="4" fill="currentColor"/><rect x="153" y="12" width="5" height="2" fill="currentColor"/><rect x="154" y="10" width="3" height="2" fill="currentColor"/>
+    <rect x="184" y="8" width="1" height="6" fill="currentColor"/><rect x="182" y="9" width="5" height="2" fill="currentColor"/><rect x="183" y="7" width="3" height="2" fill="currentColor"/>
+    <rect x="218" y="10" width="1" height="5" fill="currentColor"/><rect x="216" y="11" width="5" height="2" fill="currentColor"/><rect x="217" y="9" width="3" height="2" fill="currentColor"/>
   </svg>`;
   layer.appendChild(horizon);
 

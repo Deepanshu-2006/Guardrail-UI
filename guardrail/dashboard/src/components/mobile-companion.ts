@@ -644,7 +644,12 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   const scenery = getRealTimeScenery(now);
   const shell = document.createElement('div');
   shell.className = `gd-m-shell phase-${scenery.phase}`;
-  shell.appendChild(createAmbientBackdrop(scenery.phase));
+  const ambient = createAmbientBackdrop(scenery.phase);
+  const tabPanOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
+  if (ambient.style && typeof ambient.style.setProperty === 'function') {
+    ambient.style.setProperty('--gd-pan-idx', String(tabPanOrder[props.activeTab] ?? 3));
+  }
+  shell.appendChild(ambient);
 
   const {
     activeTab,

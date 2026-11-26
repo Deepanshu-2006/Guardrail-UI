@@ -136,6 +136,7 @@ export class DashboardShell {
   private mobileWardFilter: string = 'ALL';
   private lastMobileTabRendered: MobileTab | null = null;
   private mobileMountTimestamp: number = 0;
+  private mobileSpaceSlideTimer: ReturnType<typeof setTimeout> | null = null;
   private isMobileViewportMode: boolean = false;
   private resizeHandler: (() => void) | null = null;
   private onlineHandler: (() => void) | null = null;
@@ -729,6 +730,22 @@ export class DashboardShell {
         // In-place update inside existingShell: never detach ambient, dock, topbar, or booting greeting
         existingShell.classList.toggle('is-ambient-update', isSameTabUpdate && !isBootSettling);
 
+        const tabOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
+        if (existingAmbient?.style && typeof existingAmbient.style.setProperty === 'function') {
+          existingAmbient.style.setProperty('--gd-pan-idx', String(tabOrder[this.mobileTab] ?? 3));
+        }
+
+        // If a previous Space slide is mid-flight, settle it cleanly before starting a new one
+        const activeSpaceViewport = existingShell.querySelector('.gd-m-space-viewport') as HTMLElement | null;
+        if (activeSpaceViewport) {
+          if (this.mobileSpaceSlideTimer) {
+            clearTimeout(this.mobileSpaceSlideTimer);
+            this.mobileSpaceSlideTimer = null;
+          }
+          const currentMain = activeSpaceViewport.querySelector('.gd-m-main:last-child') || existingMain;
+          activeSpaceViewport.replaceWith(currentMain);
+        }
+
         const freshTopbar = mobileView.querySelector('.gd-m-topbar');
         const freshPillStrip = freshTopbar?.querySelector('.gd-m-ward-pills');
         if (isSameTabUpdate && existingTopbar && existingPillStrip && freshTopbar && freshPillStrip) {
@@ -806,14 +823,47 @@ export class DashboardShell {
                 existingMain.appendChild(ch);
               }
             }
-          } else {
-            if (isTabSwitch) {
-              const tabOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
-              const prevIdx = this.lastMobileTabRendered ? tabOrder[this.lastMobileTabRendered] : 3;
-              const nextIdx = tabOrder[this.mobileTab];
-              const dirClass = nextIdx >= prevIdx ? 'is-tab-entering-right' : 'is-tab-entering-left';
-              freshMain.classList.add('is-tab-entering', dirClass);
+          } else if (isTabSwitch && typeof requestAnimationFrame === 'function') {
+            const prevIdx = this.lastMobileTabRendered ? tabOrder[this.lastMobileTabRendered] : 3;
+            const nextIdx = tabOrder[this.mobileTab];
+            const movingRight = nextIdx >= prevIdx;
+
+            const viewport = document.createElement('div');
+            viewport.className = 'gd-m-space-viewport';
+            const track = document.createElement('div');
+            track.className = 'gd-m-space-track';
+
+            existingMain.classList.remove('is-tab-entering', 'is-tab-entering-right', 'is-tab-entering-left');
+            existingMain.classList.add('gd-m-space-pane');
+            freshMain.classList.add('gd-m-space-pane');
+
+            if (movingRight) {
+              track.appendChild(existingMain.cloneNode(true));
+              track.appendChild(freshMain);
+              track.style.transform = 'translate3d(0%, 0, 0)';
+            } else {
+              track.appendChild(freshMain);
+              track.appendChild(existingMain.cloneNode(true));
+              track.style.transform = 'translate3d(-50%, 0, 0)';
             }
+
+            viewport.appendChild(track);
+            existingMain.replaceWith(viewport);
+            void track.offsetWidth;
+
+            requestAnimationFrame(() => {
+              track.classList.add('is-sliding');
+              track.style.transform = movingRight ? 'translate3d(-50%, 0, 0)' : 'translate3d(0%, 0, 0)';
+            });
+
+            this.mobileSpaceSlideTimer = setTimeout(() => {
+              this.mobileSpaceSlideTimer = null;
+              if (viewport.parentNode) {
+                freshMain.classList.remove('gd-m-space-pane');
+                viewport.replaceWith(freshMain);
+              }
+            }, 540);
+          } else {
             existingMain.replaceWith(freshMain);
           }
         }
