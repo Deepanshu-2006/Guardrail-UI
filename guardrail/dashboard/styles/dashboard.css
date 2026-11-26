@@ -27161,32 +27161,31 @@ body.gd-kbd-open .gd-m-shell {
     100% { transform: translateX(0) scale(1); background-color: transparent; }
   }
 
-  /* 5. Settings Brass Clockwork Escapement & Blueprint Drafting Mode */
+  /* 5. Settings Brass Clockwork Escapement & Tucked-Under Cabinet Gears (z-index: 4 behind cards) */
   .gd-prop-settings-clockwork {
     flex-shrink: 0;
     margin-right: 2px;
     align-self: center;
-    z-index: 15 !important;
   }
 
-  .gd-prop-settings-clockwork .gd-cw-wax-bead {
-    transform-origin: 38px 85px;
-    transition: transform 0.25s ease, filter 0.3s ease;
-  }
-
-  .gd-prop-settings-clockwork.is-open .gd-cw-wax-bead {
-    transform: scale(1.18);
-    filter: drop-shadow(0 0 5px rgba(236, 62, 42, 0.72));
-  }
-
-  .gd-settings-wax {
+  .gd-settings-cabinet-clockwork {
     position: fixed;
     left: 0;
     top: 0;
     width: 100vw;
     height: 100vh;
     pointer-events: none;
-    z-index: 12;
+    z-index: 4;
+  }
+
+  .gd-dashboard-app.gd-settings-workshop-on .gd-main-content {
+    position: relative;
+    z-index: 6;
+  }
+
+  .gd-dashboard-app.gd-settings-workshop-on #view-settings .gd-card {
+    background: linear-gradient(180deg, rgba(251, 246, 235, 0.94) 0%, rgba(244, 236, 218, 0.94) 100%) !important;
+    transition: background 0.35s ease, box-shadow 0.28s ease;
   }
 
   .gd-clockwork-note {
