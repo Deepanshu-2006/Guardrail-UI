@@ -8363,10 +8363,14 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
   let width = 800;
   let height = 600;
   let deploy = 0; // 0 = tucked invisibly behind wood borders, 1 = deployed & running
+  let windSurge = 0;
   let clock = 0;
   let gearAngle = 0;
   let lastTs = 0;
   let rafId: number | null = null;
+  let pointerX = -999;
+  let pointerY = -999;
+  const cardPhases = new WeakMap<HTMLElement, number>();
 
   const resize = () => {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -8378,10 +8382,19 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
   };
   resize();
   window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener(
+    'mousemove',
+    (e: MouseEvent) => {
+      if (!document.contains(canvas)) return;
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+    },
+    { passive: true },
+  );
 
-  const largeBrassPath = buildHorologicalGearPath(0, 0, 29, 23.8, 18);
-  const medBronzePath = buildHorologicalGearPath(0, 0, 20.5, 16.5, 13);
-  const smallPinionPath = buildHorologicalGearPath(0, 0, 15.5, 12.2, 10);
+  const largeBrassPath = buildHorologicalGearPath(0, 0, 30, 24.5, 18);
+  const medBronzePath = buildHorologicalGearPath(0, 0, 21.5, 17.2, 13);
+  const smallPinionPath = buildHorologicalGearPath(0, 0, 16, 12.6, 10);
 
   const drawMetallicGear = (
     cx: number,
@@ -8401,58 +8414,111 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.globalAlpha = alpha;
 
     // Grounded soft shadow on wall behind card
-    ctx.fillStyle = 'rgba(24, 16, 8, 0.16)';
+    ctx.fillStyle = 'rgba(24, 16, 8, 0.18)';
     ctx.beginPath();
-    ctx.arc(2.5, 3, outerR * 0.94, 0, Math.PI * 2);
+    ctx.arc(2.8, 3.2, outerR * 0.94, 0, Math.PI * 2);
     ctx.fill();
 
     // Brushed metallic tooth & rim fill
     const g = ctx.createLinearGradient(-outerR, -outerR, outerR, outerR);
     if (isSteel) {
-      g.addColorStop(0, '#89A4BE');
-      g.addColorStop(0.5, '#466079');
-      g.addColorStop(1, '#212F3D');
+      g.addColorStop(0, '#96B2CD');
+      g.addColorStop(0.5, '#48637D');
+      g.addColorStop(1, '#1E2C3A');
     } else {
-      g.addColorStop(0, '#F8E39A');
-      g.addColorStop(0.42, '#CE9838');
-      g.addColorStop(0.84, '#885A14');
-      g.addColorStop(1, '#4B3008');
+      g.addColorStop(0, '#FFF1AF');
+      g.addColorStop(0.38, '#D59D3B');
+      g.addColorStop(0.82, '#8C5D14');
+      g.addColorStop(1, '#4A2F07');
     }
     ctx.fillStyle = g;
     ctx.fill(new Path2D(pathStr));
-    ctx.strokeStyle = isSteel ? 'rgba(22, 34, 46, 0.78)' : 'rgba(62, 38, 8, 0.72)';
+    ctx.strokeStyle = isSteel ? 'rgba(20, 30, 42, 0.8)' : 'rgba(60, 36, 7, 0.76)';
     ctx.lineWidth = 0.95;
     ctx.stroke(new Path2D(pathStr));
 
-    // Recessed inner ring & clockmaker spokes
-    ctx.fillStyle = 'rgba(32, 24, 14, 0.22)';
+    // Machined inner bevel step + recessed ring
+    ctx.fillStyle = 'rgba(28, 20, 12, 0.24)';
     ctx.beginPath();
     ctx.arc(0, 0, innerR, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = isSteel ? 'rgba(164, 194, 222, 0.45)' : 'rgba(255, 240, 180, 0.48)';
-    ctx.lineWidth = 0.85;
+    ctx.strokeStyle = isSteel ? 'rgba(176, 206, 232, 0.5)' : 'rgba(255, 242, 186, 0.56)';
+    ctx.lineWidth = 0.9;
     ctx.stroke();
 
-    ctx.strokeStyle = isSteel ? '#4B647D' : '#9E6E20';
+    // Fine watchmaker spokes & rim screws
+    ctx.strokeStyle = isSteel ? '#506B84' : '#9E6E20';
     ctx.lineWidth = Math.max(1.8, outerR * 0.11);
     ctx.lineCap = 'round';
     ctx.beginPath();
     for (let i = 0; i < spokes; i += 1) {
       const a = (i * Math.PI * 2) / spokes;
-      ctx.moveTo(Math.cos(a) * (outerR * 0.16), Math.sin(a) * (outerR * 0.16));
+      ctx.moveTo(Math.cos(a) * (outerR * 0.18), Math.sin(a) * (outerR * 0.18));
       ctx.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
     }
     ctx.stroke();
 
-    // Brass collet arbor & rivet dot
-    ctx.fillStyle = isSteel ? '#DFB256' : '#FCE6A2';
+    // Turned brass collet arbor + gleaming horological ruby pivot jewel
+    ctx.fillStyle = isSteel ? '#E4B85B' : '#FCE6A2';
     ctx.beginPath();
-    ctx.arc(0, 0, outerR * 0.19, 0, Math.PI * 2);
+    ctx.arc(0, 0, outerR * 0.21, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(52, 34, 10, 0.65)';
-    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = 'rgba(52, 34, 10, 0.7)';
+    ctx.lineWidth = 0.75;
     ctx.stroke();
 
+    ctx.fillStyle = '#9E2222';
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(1.8, outerR * 0.085), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 224, 218, 0.8)';
+    ctx.beginPath();
+    ctx.arc(-outerR * 0.025, -outerR * 0.025, Math.max(0.65, outerR * 0.03), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  };
+
+  const drawPulleyAndChain = (x: number, y1: number, y2: number, linkShift: number, alpha: number) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Top & bottom grooved brass pulley sheave wheels
+    for (const py of [y1, y2]) {
+      ctx.fillStyle = '#53370E';
+      ctx.beginPath();
+      ctx.arc(x, py, 5.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#E5B85A';
+      ctx.beginPath();
+      ctx.arc(x, py, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2B1B06';
+      ctx.beginPath();
+      ctx.arc(x, py, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Individual articulated brass oval chain links between sheaves
+    const step = 6.2;
+    const offset = ((linkShift % step) + step) % step;
+    for (let cy = y1 + 4 + offset; cy < y2 - 4; cy += step) {
+      const idx = Math.floor((cy - y1) / step);
+      if (idx % 2 === 0) {
+        ctx.strokeStyle = '#8F6822';
+        ctx.lineWidth = 1.15;
+        ctx.beginPath();
+        ctx.ellipse(x, cy, 1.55, 2.75, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#583C10';
+        ctx.lineWidth = 1.35;
+        ctx.beginPath();
+        ctx.moveTo(x, cy - 2.4);
+        ctx.lineTo(x, cy + 2.4);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   };
 
@@ -8460,32 +8526,43 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.save();
     ctx.globalAlpha = alpha;
     // Soft shadow
-    ctx.fillStyle = 'rgba(24, 16, 8, 0.18)';
+    ctx.fillStyle = 'rgba(24, 16, 8, 0.20)';
     ctx.beginPath();
-    ctx.roundRect(x - w * 0.5 + 2, y + 2, w, h, 2.5);
+    ctx.roundRect(x - w * 0.5 + 2.2, y + 2.2, w, h, 2.5);
     ctx.fill();
 
-    // Vertical brass weight cylinder
+    // Vertical brass weight cylinder with lathe sheen
     const wg = ctx.createLinearGradient(x - w * 0.5, y, x + w * 0.5, y);
-    wg.addColorStop(0, '#7C5414');
-    wg.addColorStop(0.32, '#F6DC8C');
+    wg.addColorStop(0, '#785012');
+    wg.addColorStop(0.32, '#FAE296');
     wg.addColorStop(0.68, '#C99232');
-    wg.addColorStop(1, '#4D3109');
+    wg.addColorStop(1, '#4B2F08');
     ctx.fillStyle = wg;
-    ctx.strokeStyle = 'rgba(58, 36, 8, 0.8)';
+    ctx.strokeStyle = 'rgba(58, 36, 8, 0.82)';
     ctx.lineWidth = 0.9;
     ctx.beginPath();
     ctx.roundRect(x - w * 0.5, y, w, h, 2.5);
     ctx.fill();
     ctx.stroke();
 
-    // Chamfered top cap & suspension eyelet
-    ctx.fillStyle = '#4B320B';
-    ctx.fillRect(x - w * 0.32, y - 2.5, w * 0.64, 2.5);
+    // Turned lathe band grooves along cylinder
+    ctx.strokeStyle = 'rgba(66, 42, 10, 0.36)';
+    ctx.lineWidth = 0.7;
     ctx.beginPath();
-    ctx.arc(x, y - 4, 2.2, 0, Math.PI * 2);
-    ctx.strokeStyle = '#B88630';
-    ctx.lineWidth = 1.1;
+    ctx.moveTo(x - w * 0.44, y + 6);
+    ctx.lineTo(x + w * 0.44, y + 6);
+    ctx.moveTo(x - w * 0.44, y + h - 6);
+    ctx.lineTo(x + w * 0.44, y + h - 6);
+    ctx.stroke();
+
+    // Stepped finial caps & brass suspension hook
+    ctx.fillStyle = '#4B320B';
+    ctx.fillRect(x - w * 0.34, y - 2.8, w * 0.68, 2.8);
+    ctx.fillRect(x - w * 0.28, y + h, w * 0.56, 2.2);
+    ctx.beginPath();
+    ctx.arc(x, y - 4.8, 2.2, 0, Math.PI * 2);
+    ctx.strokeStyle = '#C49234';
+    ctx.lineWidth = 1.15;
     ctx.stroke();
     ctx.restore();
   };
@@ -8505,6 +8582,7 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
 
     if (!settingsVisible) {
       deploy = 0;
+      windSurge = 0;
       ctx.clearRect(0, 0, width, height);
       rafId = null;
       lastTs = 0;
@@ -8513,118 +8591,153 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
 
     const targetDeploy = active ? 1 : 0;
     deploy += (targetDeploy - deploy) * Math.min(1, dt * (active ? 5.2 : 4.2));
-    gearAngle = (gearAngle + dt * (18 + deploy * 22)) % 3600;
+    windSurge = Math.max(0, windSurge - dt * 0.9);
+    gearAngle = (gearAngle + dt * (18 + deploy * 22 + windSurge * 125)) % 3600;
 
     ctx.clearRect(0, 0, width, height);
 
     if (deploy > 0.015) {
       const ease = 1 - Math.pow(1 - deploy, 3);
-      const cards = (
+      const cardEls = (
         Array.from(document.querySelectorAll('#view-settings .gd-card')) as HTMLElement[]
       )
-        .map((el) => el.getBoundingClientRect())
-        .filter((r) => r.width > 0 && r.height > 0 && r.bottom > -40 && r.top < height + 60);
+        .map((el) => ({ el, r: el.getBoundingClientRect() }))
+        .filter(({ r }) => r.width > 0 && r.height > 0 && r.bottom > -40 && r.top < height + 60);
 
-      if (cards.length > 0) {
-        const firstCard = cards[0];
-        const leftRailX = Math.max(246, firstCard.left - 14);
-        const rightRailX = Math.min(width - 14, firstCard.right + 14);
+      if (cardEls.length > 0) {
+        const firstCard = cardEls[0].r;
+        const lastCard = cardEls[cardEls.length - 1].r;
+        const leftRailX = Math.max(246, firstCard.left - 15);
+        const rightRailX = Math.min(width - 15, firstCard.right + 15);
 
-        // 1. Vertical Brass Pull-Chains connecting cards behind left & right cabinet margins
-        const topRailY = Math.max(80, firstCard.top + 18);
-        const lastCard = cards[cards.length - 1];
+        // 1. Articulated Brass Pull-Chains, Pulley Sheaves & Opposing Counterweight Cylinders
+        const topRailY = Math.max(82, firstCard.top + 18);
         const botRailY = Math.min(height - 24, lastCard.bottom - 18);
 
         if (botRailY > topRailY + 24) {
-          ctx.save();
-          ctx.globalAlpha = ease * 0.56;
-          ctx.strokeStyle = '#7A5820';
-          ctx.lineWidth = 1.35;
-          ctx.setLineDash([4, 3]);
-          ctx.beginPath();
-          ctx.moveTo(leftRailX, topRailY);
-          ctx.lineTo(leftRailX, botRailY);
-          ctx.moveTo(rightRailX, topRailY);
-          ctx.lineTo(rightRailX, botRailY);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.restore();
-
-          // Opposing Grandfather Counterweight Cylinders gliding quietly along left & right chains
-          const travelSpan = Math.min(90, Math.max(20, (botRailY - topRailY) * 0.28));
+          const travelSpan = Math.min(92, Math.max(20, (botRailY - topRailY) * 0.28));
           const drift = Math.sin(clock * 0.42) * travelSpan * 0.5;
+          drawPulleyAndChain(leftRailX, topRailY, botRailY, drift, ease * 0.78);
+          drawPulleyAndChain(rightRailX, topRailY, botRailY, -drift, ease * 0.78);
+
           const midY = (topRailY + botRailY) * 0.5;
-          drawCounterweight(leftRailX, midY - 40 + drift, 9, 28, ease * 0.84);
-          drawCounterweight(rightRailX, midY + 12 - drift, 9, 28, ease * 0.84);
+          drawCounterweight(leftRailX, midY - 40 + drift, 9.5, 29, ease * 0.88);
+          drawCounterweight(rightRailX, midY + 12 - drift, 9.5, 29, ease * 0.88);
         }
 
-        // 2. Tucked-Under Brass Corner Gears sliding smoothly out from behind alternating card corners
-        cards.forEach((r, idx) => {
+        // 2. Tucked-Under Brass Corner Gears & Anchor Ratchet Pawls behind alternating corners
+        cardEls.forEach(({ el, r }, idx) => {
+          const hovered =
+            pointerX >= r.left && pointerX <= r.right && pointerY >= r.top && pointerY <= r.bottom;
+          const prevPhase = cardPhases.get(el) ?? 0;
+          const cardSpinDelta = dt * (hovered ? 36 : 0) + windSurge * dt * 45;
+          const localPhase = (prevPhase + cardSpinDelta) % 3600;
+          cardPhases.set(el, localPhase);
+
+          const baseDeg = gearAngle + localPhase;
           const slideOut = 1 - ease;
           if (idx % 2 === 0) {
-            // Top-right corner: Large 18T brass wheel meshed with 10T steel pinion
             const gx = r.right + 4 - slideOut * 28;
-            const gy = r.top + 26;
-            drawMetallicGear(gx, gy, largeBrassPath, 29, 19.5, 6, (gearAngle * Math.PI) / 180, false, ease * 0.86);
+            const gy = r.top + 27;
+            const mainRad = (baseDeg * Math.PI) / 180;
+            drawMetallicGear(gx, gy, largeBrassPath, 30, 20.2, 6, mainRad, false, ease * 0.88);
             drawMetallicGear(
-              gx + 14,
-              gy + 37,
+              gx + 14.5,
+              gy + 38,
               smallPinionPath,
-              15.5,
-              10.2,
+              16,
+              10.5,
               4,
-              (-gearAngle * 1.8 * Math.PI) / 180 + 0.2,
+              -mainRad * 1.8 + 0.2,
               true,
-              ease * 0.84,
+              ease * 0.86,
             );
+
+            // Tiny clicking steel ratchet pawl resting against outer wheel crown
+            const pawlTick = Math.sin(mainRad * 18) * 0.14;
+            ctx.save();
+            ctx.translate(gx + 22, gy - 23);
+            ctx.rotate(0.55 + pawlTick);
+            ctx.globalAlpha = ease * 0.82;
+            ctx.fillStyle = '#3C4D5E';
+            ctx.strokeStyle = '#18212A';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(0, -2.5);
+            ctx.lineTo(11, 0);
+            ctx.lineTo(2, 2.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
           } else {
-            // Left edge corner: Medium 13T bronze wheel tucked cleanly behind lower-left wood rim
             const gx = r.left - 3 + slideOut * 22;
             const gy = r.bottom - 26;
-            drawMetallicGear(gx, gy, medBronzePath, 20.5, 13.5, 5, (-gearAngle * 1.38 * Math.PI) / 180, false, ease * 0.84);
+            const subRad = (-baseDeg * 1.38 * Math.PI) / 180;
+            drawMetallicGear(gx, gy, medBronzePath, 21.5, 14.2, 5, subRad, false, ease * 0.86);
           }
         });
 
-        // 3. Steady Swinging Brass Grandfather Pendulum arcing below the first focal card rim (visible between cards or right flank)
+        // 3. 3-Rod Brass & Steel Gridiron Grandfather Pendulum arcing behind right flank
         const pendPivotX = rightRailX - 2;
-        const pendPivotY = Math.min(height - 90, firstCard.bottom - 6);
-        const pendLen = 68;
-        const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * 11 * ease;
+        const pendPivotY = Math.min(height - 96, firstCard.bottom - 6);
+        const pendLen = 72;
+        const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * 11.5 * ease;
         const pendRad = (pendSwingDeg * Math.PI) / 180;
-        const bobX = pendPivotX + Math.sin(pendRad) * pendLen;
-        const bobY = pendPivotY + Math.cos(pendRad) * pendLen;
 
         ctx.save();
-        ctx.globalAlpha = ease * 0.88;
-        ctx.strokeStyle = '#4D3511';
-        ctx.lineWidth = 1.9;
+        ctx.translate(pendPivotX, pendPivotY);
+        ctx.rotate(-pendRad);
+        ctx.globalAlpha = ease * 0.9;
+
+        // Temperature-compensated 3-rod Harrison gridiron lyre frame
+        ctx.strokeStyle = '#C99535';
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(pendPivotX, pendPivotY);
-        ctx.lineTo(bobX, bobY);
+        ctx.moveTo(-2.6, 0);
+        ctx.lineTo(-2.6, pendLen - 8);
+        ctx.moveTo(2.6, 0);
+        ctx.lineTo(2.6, pendLen - 8);
         ctx.stroke();
 
-        // Bob shadow + turned brass lenticular disc
-        ctx.fillStyle = 'rgba(24, 16, 8, 0.22)';
+        ctx.strokeStyle = '#536A80';
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.arc(bobX + 2.5, bobY + 2.5, 12.5, 0, Math.PI * 2);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, pendLen + 14);
+        ctx.stroke();
+
+        // Cross-brace bridge bar halfway down rod
+        ctx.fillStyle = '#8F621A';
+        ctx.fillRect(-4.2, pendLen * 0.5, 8.4, 2.4);
+
+        // Bob cast shadow
+        ctx.fillStyle = 'rgba(24, 16, 8, 0.24)';
+        ctx.beginPath();
+        ctx.arc(2.5, pendLen + 2.5, 13, 0, Math.PI * 2);
         ctx.fill();
 
-        const bobGrad = ctx.createRadialGradient(bobX - 4, bobY - 4, 1.5, bobX, bobY, 13);
-        bobGrad.addColorStop(0, '#FFF4C0');
-        bobGrad.addColorStop(0.55, '#D9A13B');
+        // Polished lenticular brass pendulum bob + rating nut below
+        const bobGrad = ctx.createRadialGradient(-4, pendLen - 4, 1.5, 0, pendLen, 13.5);
+        bobGrad.addColorStop(0, '#FFF5C4');
+        bobGrad.addColorStop(0.55, '#DAA23B');
         bobGrad.addColorStop(1, '#6E4810');
         ctx.fillStyle = bobGrad;
         ctx.strokeStyle = '#3D2607';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(bobX, bobY, 12.5, 0, Math.PI * 2);
+        ctx.arc(0, pendLen, 13, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(255, 248, 212, 0.55)';
-        ctx.lineWidth = 0.75;
+
+        ctx.strokeStyle = 'rgba(255, 248, 212, 0.58)';
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.arc(bobX, bobY, 8.8, 0, Math.PI * 2);
+        ctx.arc(0, pendLen, 9.2, 0, Math.PI * 2);
         ctx.stroke();
+
+        ctx.fillStyle = '#B8842E';
+        ctx.fillRect(-2.4, pendLen + 12.8, 4.8, 3.2);
         ctx.restore();
       }
     }
@@ -8645,7 +8758,11 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     }
   };
 
-  window.addEventListener('gd-workshop-toggle', () => ensureRunning());
+  window.addEventListener('gd-workshop-toggle', (ev: Event) => {
+    const custom = ev as CustomEvent<{ open?: boolean }>;
+    if (custom?.detail?.open) windSurge = 1.0;
+    ensureRunning();
+  });
 
   if (typeof MutationObserver === 'function') {
     requestAnimationFrame(() => {
