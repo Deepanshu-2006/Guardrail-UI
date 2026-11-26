@@ -25285,8 +25285,155 @@ body.gd-kbd-open .gd-m-shell {
     91% { transform: rotate(4deg); }
   }
 
-  #view-overview .gd-section-header.gd-overview-header-split .gd-section-title-group {
+  #view-overview .gd-section-header.gd-overview-header-split .gd-section-title-group,
+  #view-pending .gd-section-header.gd-overview-header-split .gd-section-title-group {
     margin-right: auto;
+  }
+
+  /* Pending Approvals Hourglass & Watchful Barn Owl */
+  .gd-prop-pending-hourglass {
+    flex-shrink: 0;
+    margin-right: 6px;
+    align-self: center;
+  }
+
+  .gd-prop-pending-hourglass .gd-hourglass-aura {
+    position: absolute;
+    width: 110px;
+    height: 110px;
+    top: -6px;
+    left: -22px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(246, 194, 84, 0.45) 0%, rgba(246, 194, 84, 0) 70%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .gd-prop-pending-hourglass.is-flowing .gd-hourglass-aura {
+    opacity: 1;
+  }
+
+  .gd-prop-pending-hourglass .gd-hourglass-stream {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .gd-prop-pending-hourglass.is-flowing .gd-hourglass-stream {
+    opacity: 1;
+    animation: gd-sand-stream 0.55s linear infinite;
+  }
+
+  @keyframes gd-sand-stream {
+    0%   { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -10; }
+  }
+
+  #view-pending.gd-pending-hourglass-on #pending-title {
+    cursor: pointer;
+    perspective: 520px;
+    user-select: none;
+  }
+
+  #view-pending #pending-title .gd-char {
+    display: inline-block;
+    will-change: transform;
+    transform-style: preserve-3d;
+    transition: color 0.4s ease, text-shadow 0.4s ease;
+  }
+
+  #view-pending.gd-pending-hourglass-on #pending-title .gd-char {
+    color: #3A2E1A;
+    text-shadow:
+      -2px 0 calc(8px + var(--char-glow, 0) * 10px) rgba(246, 194, 84, calc(0.5 + var(--char-glow, 0) * 0.35)),
+      3px 2px 5px rgba(34, 24, 12, 0.16);
+  }
+
+  #view-pending .gd-empty-state,
+  #view-pending .gd-detail-pane {
+    position: relative;
+    overflow: visible;
+  }
+
+  .gd-prop-btn.gd-prop-pending-owl {
+    position: absolute !important;
+    top: -60px;
+    right: 22px;
+    z-index: 8 !important;
+    overflow: visible;
+  }
+
+  .gd-prop-pending-owl .gd-prop-svg {
+    overflow: visible;
+  }
+
+  .gd-prop-pending-owl .gd-owl-wing-left,
+  .gd-prop-pending-owl .gd-owl-wing-right {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  .gd-prop-pending-owl.is-swooping .gd-owl-wing-left,
+  .gd-prop-pending-owl.is-swooping .gd-owl-wing-right {
+    opacity: 1;
+  }
+
+  .gd-prop-pending-owl.is-swooping .gd-owl-wing-left {
+    animation: gd-owl-flap-left 0.22s ease-in-out infinite alternate;
+  }
+
+  .gd-prop-pending-owl.is-swooping .gd-owl-wing-right {
+    animation: gd-owl-flap-right 0.22s ease-in-out infinite alternate;
+  }
+
+  .gd-prop-pending-owl.is-swooping .gd-owl-wing-folded,
+  .gd-prop-pending-owl.is-swooping .gd-owl-talons {
+    opacity: 0;
+  }
+
+  .gd-owl-eyelid {
+    transform-origin: center top;
+    transform: scaleY(0);
+    animation: gd-owl-blink 5.5s ease-in-out infinite;
+  }
+
+  .gd-owl-note {
+    position: absolute;
+    bottom: calc(100% + 2px);
+    right: 0;
+    background: #273121;
+    color: #FAF4E6;
+    font-family: var(--gd-font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    box-shadow: 0 4px 10px rgba(24, 31, 20, 0.22);
+  }
+
+  .gd-owl-note.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @keyframes gd-owl-flap-left {
+    0%   { transform: rotate(-8deg) scaleY(0.88); }
+    100% { transform: rotate(28deg) scaleY(1.1); }
+  }
+
+  @keyframes gd-owl-flap-right {
+    0%   { transform: rotate(8deg) scaleY(0.88); }
+    100% { transform: rotate(-28deg) scaleY(1.1); }
+  }
+
+  @keyframes gd-owl-blink {
+    0%, 92%, 100% { transform: scaleY(0); }
+    95%, 97%      { transform: scaleY(1); }
   }
 
   .gd-prop-lantern .gd-lantern-glow {

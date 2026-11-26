@@ -568,3 +568,509 @@ export function createSidebarGardenCorner(): HTMLElement {
   shelf.appendChild(pinwheelBtn);
   return shelf;
 }
+
+let sharedHourglassFlowing = false;
+
+/**
+ * Shared spring-physics & 3D letter-flip interaction for animated page headings
+ * when their companion prop (Overview Lantern or Pending Hourglass) is active.
+ */
+export function attachInteractiveHeadingSprings(
+  titleEl: HTMLElement,
+  isActiveFn: () => boolean,
+  onLetterClick?: (charRect: DOMRect) => void,
+): void {
+  const chars = Array.from(titleEl.querySelectorAll('.gd-char')) as HTMLElement[];
+  if (!chars.length || typeof requestAnimationFrame !== 'function') return;
+
+  interface CharSpring {
+    x: number;
+    y: number;
+    rot: number;
+    flip: number;
+    vx: number;
+    vy: number;
+    vrot: number;
+    vflip: number;
+    glow: number;
+  }
+
+  const states: CharSpring[] = chars.map(() => ({
+    x: 0,
+    y: 0,
+    rot: 0,
+    flip: 0,
+    vx: 0,
+    vy: 0,
+    vrot: 0,
+    vflip: 0,
+    glow: 0,
+  }));
+
+  let pointerX: number | null = null;
+  let pointerY: number | null = null;
+  let lastPointerX: number | null = null;
+  let rafId: number | null = null;
+  let lastTs = 0;
+  let clock = 0;
+
+  const spawnLetterSparks = (ch: HTMLElement) => {
+    if (typeof document === 'undefined') return;
+    const rect = ch.getBoundingClientRect();
+    for (let i = 0; i < 6; i++) {
+      const spark = document.createElement('span');
+      spark.className = 'gd-heading-spark';
+      const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 1.9;
+      const speed = 24 + Math.random() * 34;
+      spark.style.left = `${rect.left + rect.width * 0.5}px`;
+      spark.style.top = `${rect.top + rect.height * 0.45}px`;
+      spark.style.setProperty('--sx', `${(Math.cos(angle) * speed).toFixed(1)}px`);
+      spark.style.setProperty('--sy', `${(Math.sin(angle) * speed - 12).toFixed(1)}px`);
+      document.body.appendChild(spark);
+      setTimeout(() => spark.remove(), 750);
+    }
+  };
+
+  const step = (ts: number) => {
+    if (typeof document !== 'undefined' && !document.contains(titleEl)) {
+      rafId = null;
+      return;
+    }
+
+    const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
+    lastTs = ts;
+    clock += dt;
+
+    const active = isActiveFn();
+    let anyMoving = active;
+
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
+      const s = states[i];
+
+      let targetX = 0;
+      let targetY = 0;
+      let targetRot = 0;
+      let targetGlow = 0;
+
+      if (active) {
+        targetY = Math.sin(clock * 2.1 + i * 0.75) * 2.6 - 1.5;
+        targetRot = Math.cos(clock * 1.5 + i * 0.9) * 1.8;
+
+        if (pointerX !== null && pointerY !== null) {
+          const rect = ch.getBoundingClientRect();
+          const cx = rect.left + rect.width * 0.5;
+          const cy = rect.top + rect.height * 0.5;
+          const dx = cx - pointerX;
+          const dy = cy - pointerY;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 85) {
+            const force = 1 - dist / 85;
+            targetX += (dx / Math.max(12, dist)) * force * 11;
+            targetY += (dy / Math.max(12, dist)) * force * 9 - force * 5;
+            targetRot += (dx >= 0 ? 1 : -1) * force * 12;
+            targetGlow = force;
+          }
+        }
+      }
+
+      s.vx += ((targetX - s.x) * 140 - s.vx * 11) * dt;
+      s.vy += ((targetY - s.y) * 140 - s.vy * 11) * dt;
+      s.vrot += ((targetRot - s.rot) * 130 - s.vrot * 10) * dt;
+      s.vflip += ((0 - s.flip) * 95 - s.vflip * 9) * dt;
+
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.rot += s.vrot * dt;
+      s.flip += s.vflip * dt;
+      s.glow += (targetGlow - s.glow) * Math.min(1, dt * 12);
+
+      if (
+        Math.abs(s.x) > 0.05 || Math.abs(s.y) > 0.05 ||
+        Math.abs(s.rot) > 0.05 || Math.abs(s.flip) > 0.2 ||
+        Math.abs(s.vx) > 0.1 || Math.abs(s.vy) > 0.1
+      ) {
+        anyMoving = true;
+      }
+
+      ch.style.transform = `translate3d(${s.x.toFixed(2)}px, ${s.y.toFixed(2)}px, 0) rotate(${s.rot.toFixed(2)}deg) rotateY(${s.flip.toFixed(1)}deg)`;
+      ch.style.setProperty('--char-glow', s.glow.toFixed(2));
+    }
+
+    if (anyMoving) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      for (const ch of chars) {
+        ch.style.transform = '';
+        ch.style.removeProperty('--char-glow');
+      }
+      rafId = null;
+      lastTs = 0;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null) {
+      lastTs = 0;
+      rafId = requestAnimationFrame(step);
+    }
+  };
+
+  if (isActiveFn()) {
+    ensureRunning();
+  }
+
+  titleEl.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!isActiveFn()) return;
+    pointerX = e.clientX;
+    pointerY = e.clientY;
+    const vxPointer = lastPointerX !== null ? e.clientX - lastPointerX : 0;
+    lastPointerX = e.clientX;
+
+    if (Math.abs(vxPointer) > 2) {
+      for (let i = 0; i < chars.length; i++) {
+        const rect = chars[i].getBoundingClientRect();
+        const dist = Math.hypot(rect.left + rect.width * 0.5 - e.clientX, rect.top + rect.height * 0.5 - e.clientY);
+        if (dist < 64) {
+          const k = 1 - dist / 64;
+          states[i].vx += vxPointer * 1.4 * k;
+          states[i].vy -= Math.abs(vxPointer) * 0.6 * k;
+          states[i].vrot += vxPointer * 0.9 * k;
+        }
+      }
+    }
+    ensureRunning();
+  });
+
+  titleEl.addEventListener('mouseleave', () => {
+    pointerX = null;
+    pointerY = null;
+    lastPointerX = null;
+  });
+
+  titleEl.addEventListener('click', (e: MouseEvent) => {
+    if (!isActiveFn()) return;
+    let clickedIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < chars.length; i++) {
+      const rect = chars[i].getBoundingClientRect();
+      const d = Math.abs(rect.left + rect.width * 0.5 - e.clientX);
+      if (d < bestDist) {
+        bestDist = d;
+        clickedIdx = i;
+      }
+    }
+
+    for (let i = 0; i < chars.length; i++) {
+      const hop = Math.abs(i - clickedIdx);
+      const decay = Math.max(0.25, 1 - hop * 0.16);
+      states[i].vy -= 140 * decay;
+      states[i].vrot += (i < clickedIdx ? -1 : 1) * 160 * decay;
+      if (i === clickedIdx) {
+        states[i].flip += 360;
+        spawnLetterSparks(chars[i]);
+      }
+    }
+
+    if (onLetterClick) {
+      onLetterClick(chars[clickedIdx].getBoundingClientRect());
+    }
+    ensureRunning();
+  });
+
+  if (typeof window !== 'undefined' && typeof MutationObserver === 'function') {
+    const appEl = document.querySelector('.gd-dashboard-app');
+    const pendingEl = titleEl.closest('.gd-view-section');
+    const targets = [appEl, pendingEl].filter(Boolean) as Element[];
+    if (targets.length) {
+      const obs = new MutationObserver(() => {
+        if (!document.contains(titleEl)) {
+          obs.disconnect();
+          return;
+        }
+        if (isActiveFn()) {
+          for (let i = 0; i < states.length; i++) {
+            states[i].vy -= 55 - i * 3;
+          }
+          ensureRunning();
+        }
+      });
+      for (const t of targets) {
+        obs.observe(t, { attributes: true, attributeFilter: ['class'] });
+      }
+    }
+  }
+}
+
+/**
+ * Articulated Brass & Oak Sand Hourglass placed beside the Pending Approvals heading.
+ * Clicking flips it 180° with spring overshoot, starts flowing golden sand,
+ * and awakens the Pending Approvals heading characters.
+ */
+export function createPendingHourglassProp(): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `gd-prop-btn gd-prop-pending-hourglass${sharedHourglassFlowing ? ' is-flowing' : ''}`;
+  btn.setAttribute('aria-label', 'Flip decision hourglass');
+  btn.setAttribute('aria-pressed', sharedHourglassFlowing ? 'true' : 'false');
+  btn.title = sharedHourglassFlowing ? 'Click to pause hourglass' : 'Click to flip hourglass';
+  btn.tabIndex = -1;
+
+  btn.innerHTML = `
+    <span class="gd-hourglass-aura" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="64" height="96" viewBox="0 0 64 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g class="gd-hourglass-frame" style="transform-origin: 32px 48px;">
+        <!-- Turned Oak Top & Bottom Caps -->
+        <rect x="11" y="10" width="42" height="7.5" rx="2" fill="#765B3F" stroke="#362617" stroke-width="1.5"/>
+        <rect x="14" y="17.5" width="36" height="3.5" rx="1" fill="#A78A68" stroke="#362617" stroke-width="1.1"/>
+        <rect x="11" y="78.5" width="42" height="7.5" rx="2" fill="#765B3F" stroke="#362617" stroke-width="1.5"/>
+        <rect x="14" y="75" width="36" height="3.5" rx="1" fill="#A78A68" stroke="#362617" stroke-width="1.1"/>
+
+        <!-- Brass Pillars & Finials -->
+        <line x1="16.5" y1="21" x2="16.5" y2="75" stroke="#C99A49" stroke-width="2.6"/>
+        <line x1="47.5" y1="21" x2="47.5" y2="75" stroke="#C99A49" stroke-width="2.6"/>
+        <circle cx="16.5" cy="21" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
+        <circle cx="47.5" cy="21" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
+        <circle cx="16.5" cy="75" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
+        <circle cx="47.5" cy="75" r="2" fill="#E5BA5C" stroke="#5A3F18" stroke-width="0.9"/>
+
+        <!-- Twin Glass Bulbs -->
+        <path d="M21 21 C21 37, 29 43.5, 30.5 48 C29 52.5, 21 59, 21 75 L43 75 C43 59, 35 52.5, 33.5 48 C35 43.5, 43 37, 43 21 Z" fill="rgba(248, 244, 232, 0.45)" stroke="#3B3228" stroke-width="1.4"/>
+
+        <!-- Upper & Lower Golden Sand Mounds -->
+        <path class="gd-hourglass-sand-top" d="M23.5 31 Q32 34.5 40.5 31 C39.5 39, 34.5 44, 32 47 C29.5 44, 24.5 39, 23.5 31 Z" fill="#E6B856"/>
+        <path class="gd-hourglass-sand-bottom" d="M22.5 74 C24 67.5, 28.5 63.5, 32 63.5 C35.5 63.5, 40 67.5, 41.5 74 Z" fill="#D99B38"/>
+
+        <!-- Falling Sand Stream (active when flowing) -->
+        <line class="gd-hourglass-stream" x1="32" y1="48" x2="32" y2="65" stroke="#F6CA5E" stroke-width="1.6" stroke-dasharray="2.5 2.5"/>
+
+        <!-- Glass Specular Highlight -->
+        <path d="M24 24 C24 34, 28 39, 30 43" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
+        <path d="M24 71 C24 63, 27 57, 29.5 53" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+      </g>
+    </svg>
+  `;
+
+  const frameEl = btn.querySelector('.gd-hourglass-frame') as SVGGElement | null;
+  let targetAngle = sharedHourglassFlowing ? 180 : 0;
+  let angle = targetAngle;
+  let vel = 0;
+  let rafId: number | null = null;
+
+  const syncSectionClass = () => {
+    const viewEl = btn.closest('#view-pending');
+    if (viewEl) {
+      viewEl.classList.toggle('gd-pending-hourglass-on', sharedHourglassFlowing);
+    }
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(syncSectionClass);
+  }
+
+  const stepSpin = () => {
+    if (typeof document !== 'undefined' && !document.contains(btn)) {
+      rafId = null;
+      return;
+    }
+    const accel = (targetAngle - angle) * 0.14;
+    vel = (vel + accel) * 0.82;
+    angle += vel;
+    if (frameEl) {
+      frameEl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+    }
+    if (Math.abs(targetAngle - angle) > 0.25 || Math.abs(vel) > 0.25) {
+      rafId = requestAnimationFrame(stepSpin);
+    } else {
+      angle = targetAngle;
+      vel = 0;
+      if (frameEl) frameEl.style.transform = `rotate(${targetAngle}deg)`;
+      rafId = null;
+    }
+  };
+
+  btn.addEventListener('click', () => {
+    sharedHourglassFlowing = !sharedHourglassFlowing;
+    targetAngle += 180;
+    btn.classList.toggle('is-flowing', sharedHourglassFlowing);
+    btn.setAttribute('aria-pressed', sharedHourglassFlowing ? 'true' : 'false');
+    btn.title = sharedHourglassFlowing ? 'Click to pause hourglass' : 'Click to flip hourglass';
+    syncSectionClass();
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      rafId = requestAnimationFrame(stepSpin);
+    }
+  });
+
+  return btn;
+}
+
+/**
+ * Watchful Barn Owl perched on top of the Pending Approvals detail or empty-state frame.
+ * - Head smoothly tracks the user's pointer across Pending Approvals.
+ * - Leans attentively when hovering Approve / Reject.
+ * - Click spreads its wings and performs a brief physics-driven swoop arc.
+ */
+export function createPendingOwlProp(): HTMLElement {
+  const owlBtn = document.createElement('button');
+  owlBtn.type = 'button';
+  owlBtn.className = 'gd-prop-btn gd-prop-pending-owl';
+  owlBtn.setAttribute('aria-label', 'Interact with watchful barn owl');
+  owlBtn.title = 'Click the watchful owl';
+  owlBtn.tabIndex = -1;
+
+  const notes = ['Eyes on it', 'Take your time', 'Verify destination', 'Staying sharp'];
+  let noteIdx = 0;
+  let noteTimer: ReturnType<typeof setTimeout> | null = null;
+
+  owlBtn.innerHTML = `
+    <span class="gd-owl-note" aria-hidden="true"></span>
+    <svg class="gd-prop-svg" width="74" height="72" viewBox="0 0 74 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g class="gd-owl-body" style="transform-origin: 37px 62px;">
+        <!-- Spread Wings (visible during click swoop) -->
+        <g class="gd-owl-wing-left" style="transform-origin: 28px 36px;">
+          <path d="M29 36 C16 28, 5 30, 2 39 C10 43, 19 45, 28 44 Z" fill="#8C6B4E" stroke="#2D2219" stroke-width="1.1" stroke-linejoin="round"/>
+        </g>
+        <g class="gd-owl-wing-right" style="transform-origin: 46px 36px;">
+          <path d="M45 36 C58 28, 69 30, 72 39 C64 43, 55 45, 46 44 Z" fill="#8C6B4E" stroke="#2D2219" stroke-width="1.1" stroke-linejoin="round"/>
+        </g>
+
+        <!-- Tail feathers -->
+        <path d="M31 55 L28 65 L37 63 L46 65 L43 55 Z" fill="#6F533B" stroke="#2D2219" stroke-width="1" stroke-linejoin="round"/>
+
+        <!-- Torso & speckled cream breast -->
+        <path d="M25 32 C23 44, 26 57, 37 58 C48 57, 51 44, 49 32 C46 27, 28 27, 25 32 Z" fill="#9E7958" stroke="#2D2219" stroke-width="1.15"/>
+        <path d="M29.5 34 C28 43, 30 53, 37 54.5 C44 53, 46 43, 44.5 34 Z" fill="#F2EAD9"/>
+        <circle cx="34" cy="41" r="0.9" fill="#7D5E44" opacity="0.65"/>
+        <circle cx="40" cy="43" r="0.9" fill="#7D5E44" opacity="0.65"/>
+        <circle cx="36.5" cy="48" r="0.9" fill="#7D5E44" opacity="0.65"/>
+
+        <!-- Folded wings (perched) -->
+        <path class="gd-owl-wing-folded" d="M25 33 C22 42, 24 52, 29 55 C30 48, 30 39, 28 33 Z" fill="#7D5D42" stroke="#2D2219" stroke-width="1"/>
+        <path class="gd-owl-wing-folded" d="M49 33 C52 42, 50 52, 45 55 C44 48, 44 39, 46 33 Z" fill="#7D5D42" stroke="#2D2219" stroke-width="1"/>
+
+        <!-- Talons gripping frame -->
+        <g class="gd-owl-talons">
+          <path d="M32 57 L31 64 M29.5 64 L33 64" stroke="#C99A49" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M42 57 L43 64 M41 64 L44.5 64" stroke="#C99A49" stroke-width="1.6" stroke-linecap="round"/>
+        </g>
+
+        <!-- Articulated Barn Owl Head (tracks cursor) -->
+        <g class="gd-owl-head" style="transform-origin: 37px 26px;">
+          <path d="M23 22 C23 11, 51 11, 51 22 C51 31, 44 35, 37 35 C30 35, 23 31, 23 22 Z" fill="#A68160" stroke="#2D2219" stroke-width="1.15"/>
+          <!-- Heart-shaped facial disc -->
+          <path d="M26 21 C26 14.5, 34.5 14.5, 37 18.5 C39.5 14.5, 48 14.5, 48 21 C48 28, 41 32, 37 32.5 C33 32, 26 28, 26 21 Z" fill="#F7F1E5" stroke="#8C6849" stroke-width="0.9"/>
+          <!-- Expressive dark eyes + catchlights -->
+          <circle cx="32" cy="22" r="2.3" fill="#1B1612"/>
+          <circle cx="42" cy="22" r="2.3" fill="#1B1612"/>
+          <circle cx="32.7" cy="21.2" r="0.7" fill="#FFFFFF"/>
+          <circle cx="42.7" cy="21.2" r="0.7" fill="#FFFFFF"/>
+          <!-- Animated blink eyelids -->
+          <rect class="gd-owl-eyelid" x="29.4" y="19.5" width="5.2" height="5" rx="2" fill="#E8DEC8"/>
+          <rect class="gd-owl-eyelid" x="39.4" y="19.5" width="5.2" height="5" rx="2" fill="#E8DEC8"/>
+          <!-- Small hooked beak -->
+          <path d="M35.5 24 L38.5 24 L37 28 Z" fill="#D4A458" stroke="#5A3F18" stroke-width="0.7" stroke-linejoin="round"/>
+        </g>
+      </g>
+    </svg>
+  `;
+
+  const headEl = owlBtn.querySelector('.gd-owl-head') as SVGGElement | null;
+  const bodyEl = owlBtn.querySelector('.gd-owl-body') as SVGGElement | null;
+  const noteBubble = owlBtn.querySelector('.gd-owl-note') as HTMLElement | null;
+
+  let headRot = 0;
+  let targetHeadRot = 0;
+  let headX = 0;
+  let targetHeadX = 0;
+  let swoopY = 0;
+  let swoopVelY = 0;
+  let swoopClock = -1;
+  let rafId: number | null = null;
+
+  const stepOwl = () => {
+    if (typeof document !== 'undefined' && !document.contains(owlBtn)) {
+      rafId = null;
+      return;
+    }
+
+    headRot += (targetHeadRot - headRot) * 0.16;
+    headX += (targetHeadX - headX) * 0.16;
+
+    if (headEl) {
+      headEl.style.transform = `translateX(${headX.toFixed(2)}px) rotate(${headRot.toFixed(2)}deg)`;
+    }
+
+    if (swoopClock >= 0) {
+      swoopClock += 0.016;
+      const accelY = (0 - swoopY) * 0.12;
+      swoopVelY = (swoopVelY + accelY) * 0.86;
+      swoopY += swoopVelY;
+      if (bodyEl) {
+        bodyEl.style.transform = `translateY(${swoopY.toFixed(2)}px)`;
+      }
+      if (swoopClock > 0.75 && Math.abs(swoopY) < 0.3 && Math.abs(swoopVelY) < 0.3) {
+        swoopClock = -1;
+        swoopY = 0;
+        swoopVelY = 0;
+        owlBtn.classList.remove('is-swooping');
+        if (bodyEl) bodyEl.style.transform = '';
+      }
+    }
+
+    const moving =
+      Math.abs(targetHeadRot - headRot) > 0.1 ||
+      Math.abs(targetHeadX - headX) > 0.05 ||
+      swoopClock >= 0;
+
+    if (moving && typeof requestAnimationFrame === 'function') {
+      rafId = requestAnimationFrame(stepOwl);
+    } else {
+      rafId = null;
+    }
+  };
+
+  const ensureRunning = () => {
+    if (rafId === null && typeof requestAnimationFrame === 'function') {
+      rafId = requestAnimationFrame(stepOwl);
+    }
+  };
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const onMove = (e: MouseEvent) => {
+      if (!document.contains(owlBtn)) {
+        window.removeEventListener('mousemove', onMove);
+        return;
+      }
+      const rect = owlBtn.getBoundingClientRect();
+      const ox = rect.left + rect.width * 0.5;
+      const oy = rect.top + rect.height * 0.35;
+      const dx = e.clientX - ox;
+      const dy = e.clientY - oy;
+      targetHeadRot = Math.max(-16, Math.min(16, dx * 0.035));
+      targetHeadX = Math.max(-2.5, Math.min(2.5, dx * 0.008));
+      if (dy > 140) targetHeadRot *= 0.7;
+      ensureRunning();
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+  }
+
+  owlBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    swoopClock = 0;
+    swoopVelY = -5.4;
+    owlBtn.classList.add('is-swooping');
+    ensureRunning();
+
+    if (noteBubble) {
+      noteBubble.textContent = notes[noteIdx % notes.length];
+      noteIdx += 1;
+      noteBubble.classList.add('is-visible');
+      if (noteTimer) clearTimeout(noteTimer);
+      noteTimer = setTimeout(() => {
+        noteBubble.classList.remove('is-visible');
+      }, 1500);
+    }
+  });
+
+  return owlBtn;
+}

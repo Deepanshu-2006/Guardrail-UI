@@ -17,7 +17,7 @@
 import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactProfile, ViewStatus } from '../types.js';
 import { createIcon, setAnimatedHeading } from './icons.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
-import { createHeaderLanternProp, createPerchedBirdProp, createPottedPlantProp } from './interactive-props.js';
+import { attachInteractiveHeadingSprings, createHeaderLanternProp, createPerchedBirdProp, createPottedPlantProp } from './interactive-props.js';
 import { showConnectWardModal } from './connect-modal.js';
 import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
@@ -1249,251 +1249,25 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   return section;
 }
 
-/**
- * Out-of-the-box spring-physics & living-lantern interaction for the Overview heading:
- * - When the lantern is lit, letters gently float on warm rising air currents.
- * - Moving the cursor across the letters acts like a warm breeze, pushing and
- *   tilting each character with damped spring-physics bounce-back.
- * - Clicking any letter flips it in 3D, releases golden ember sparks, and calls
- *   the flying swallow to swoop past that letter.
- */
 function attachOverviewHeadingLightInteraction(titleEl: HTMLElement): void {
-  const chars = Array.from(titleEl.querySelectorAll('.gd-char')) as HTMLElement[];
-  if (!chars.length || typeof requestAnimationFrame !== 'function') return;
-
-  interface CharSpring {
-    x: number;
-    y: number;
-    rot: number;
-    flip: number;
-    vx: number;
-    vy: number;
-    vrot: number;
-    vflip: number;
-    glow: number;
-  }
-
-  const states: CharSpring[] = chars.map(() => ({
-    x: 0,
-    y: 0,
-    rot: 0,
-    flip: 0,
-    vx: 0,
-    vy: 0,
-    vrot: 0,
-    vflip: 0,
-    glow: 0,
-  }));
-
-  let pointerX: number | null = null;
-  let pointerY: number | null = null;
-  let lastPointerX: number | null = null;
-  let rafId: number | null = null;
-  let lastTs = 0;
-  let clock = 0;
-
-  const isLit = () =>
-    typeof document !== 'undefined' &&
-    Boolean(document.querySelector('.gd-dashboard-app.gd-lantern-ambience-on'));
-
-  const spawnLetterSparks = (ch: HTMLElement) => {
-    if (typeof document === 'undefined') return;
-    const rect = ch.getBoundingClientRect();
-    for (let i = 0; i < 6; i++) {
-      const spark = document.createElement('span');
-      spark.className = 'gd-heading-spark';
-      const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 1.9;
-      const speed = 24 + Math.random() * 34;
-      spark.style.left = `${rect.left + rect.width * 0.5}px`;
-      spark.style.top = `${rect.top + rect.height * 0.45}px`;
-      spark.style.setProperty('--sx', `${(Math.cos(angle) * speed).toFixed(1)}px`);
-      spark.style.setProperty('--sy', `${(Math.sin(angle) * speed - 12).toFixed(1)}px`);
-      document.body.appendChild(spark);
-      setTimeout(() => spark.remove(), 750);
-    }
-  };
-
-  const step = (ts: number) => {
-    if (typeof document !== 'undefined' && !document.contains(titleEl)) {
-      rafId = null;
-      return;
-    }
-
-    const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
-    lastTs = ts;
-    clock += dt;
-
-    const lit = isLit();
-    let anyMoving = lit;
-
-    for (let i = 0; i < chars.length; i++) {
-      const ch = chars[i];
-      const s = states[i];
-
-      let targetX = 0;
-      let targetY = 0;
-      let targetRot = 0;
-      let targetGlow = 0;
-
-      if (lit) {
-        // Gentle warm-air thermal buoyancy per character
-        targetY = Math.sin(clock * 2.1 + i * 0.75) * 2.6 - 1.5;
-        targetRot = Math.cos(clock * 1.5 + i * 0.9) * 1.8;
-
-        if (pointerX !== null && pointerY !== null) {
-          const rect = ch.getBoundingClientRect();
-          const cx = rect.left + rect.width * 0.5;
-          const cy = rect.top + rect.height * 0.5;
-          const dx = cx - pointerX;
-          const dy = cy - pointerY;
-          const dist = Math.hypot(dx, dy);
-          if (dist < 85) {
-            const force = (1 - dist / 85);
-            targetX += (dx / Math.max(12, dist)) * force * 11;
-            targetY += (dy / Math.max(12, dist)) * force * 9 - force * 5;
-            targetRot += (dx >= 0 ? 1 : -1) * force * 12;
-            targetGlow = force;
-          }
-        }
+  attachInteractiveHeadingSprings(
+    titleEl,
+    () =>
+      typeof document !== 'undefined' &&
+      Boolean(document.querySelector('.gd-dashboard-app.gd-lantern-ambience-on')),
+    (targetRect) => {
+      if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+        window.dispatchEvent(
+          new CustomEvent('gd-lantern-bird-swoop', {
+            detail: {
+              clientX: targetRect.left + targetRect.width * 0.5,
+              clientY: targetRect.top,
+            },
+          }),
+        );
       }
-
-      // Spring-damper integration
-      s.vx += ((targetX - s.x) * 140 - s.vx * 11) * dt;
-      s.vy += ((targetY - s.y) * 140 - s.vy * 11) * dt;
-      s.vrot += ((targetRot - s.rot) * 130 - s.vrot * 10) * dt;
-      s.vflip += ((0 - s.flip) * 95 - s.vflip * 9) * dt;
-
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.rot += s.vrot * dt;
-      s.flip += s.vflip * dt;
-      s.glow += (targetGlow - s.glow) * Math.min(1, dt * 12);
-
-      if (
-        Math.abs(s.x) > 0.05 || Math.abs(s.y) > 0.05 ||
-        Math.abs(s.rot) > 0.05 || Math.abs(s.flip) > 0.2 ||
-        Math.abs(s.vx) > 0.1 || Math.abs(s.vy) > 0.1
-      ) {
-        anyMoving = true;
-      }
-
-      ch.style.transform = `translate3d(${s.x.toFixed(2)}px, ${s.y.toFixed(2)}px, 0) rotate(${s.rot.toFixed(2)}deg) rotateY(${s.flip.toFixed(1)}deg)`;
-      ch.style.setProperty('--char-glow', s.glow.toFixed(2));
-    }
-
-    if (anyMoving) {
-      rafId = requestAnimationFrame(step);
-    } else {
-      for (const ch of chars) {
-        ch.style.transform = '';
-        ch.style.removeProperty('--char-glow');
-      }
-      rafId = null;
-      lastTs = 0;
-    }
-  };
-
-  const ensureRunning = () => {
-    if (rafId === null) {
-      lastTs = 0;
-      rafId = requestAnimationFrame(step);
-    }
-  };
-
-  if (isLit()) {
-    ensureRunning();
-  }
-
-  titleEl.addEventListener('mousemove', (e: MouseEvent) => {
-    if (!isLit()) return;
-    pointerX = e.clientX;
-    pointerY = e.clientY;
-    const vxPointer = lastPointerX !== null ? e.clientX - lastPointerX : 0;
-    lastPointerX = e.clientX;
-
-    // Impart subtle wind impulse as cursor sweeps across letters
-    if (Math.abs(vxPointer) > 2) {
-      for (let i = 0; i < chars.length; i++) {
-        const rect = chars[i].getBoundingClientRect();
-        const dist = Math.hypot(rect.left + rect.width * 0.5 - e.clientX, rect.top + rect.height * 0.5 - e.clientY);
-        if (dist < 64) {
-          const k = 1 - dist / 64;
-          states[i].vx += vxPointer * 1.4 * k;
-          states[i].vy -= Math.abs(vxPointer) * 0.6 * k;
-          states[i].vrot += vxPointer * 0.9 * k;
-        }
-      }
-    }
-    ensureRunning();
-  });
-
-  titleEl.addEventListener('mouseleave', () => {
-    pointerX = null;
-    pointerY = null;
-    lastPointerX = null;
-  });
-
-  titleEl.addEventListener('click', (e: MouseEvent) => {
-    if (!isLit()) return;
-    let clickedIdx = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < chars.length; i++) {
-      const rect = chars[i].getBoundingClientRect();
-      const d = Math.abs(rect.left + rect.width * 0.5 - e.clientX);
-      if (d < bestDist) {
-        bestDist = d;
-        clickedIdx = i;
-      }
-    }
-
-    // Ripple 3D flip + upward pop outward from clicked letter
-    for (let i = 0; i < chars.length; i++) {
-      const hop = Math.abs(i - clickedIdx);
-      const decay = Math.max(0.25, 1 - hop * 0.16);
-      states[i].vy -= 140 * decay;
-      states[i].vrot += (i < clickedIdx ? -1 : 1) * 160 * decay;
-      if (i === clickedIdx) {
-        states[i].flip += 360;
-        spawnLetterSparks(chars[i]);
-      }
-    }
-
-    // Call the flying swallow to swoop past the clicked letter
-    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-      const targetRect = chars[clickedIdx].getBoundingClientRect();
-      window.dispatchEvent(
-        new CustomEvent('gd-lantern-bird-swoop', {
-          detail: {
-            clientX: targetRect.left + targetRect.width * 0.5,
-            clientY: targetRect.top,
-          },
-        }),
-      );
-    }
-
-    ensureRunning();
-  });
-
-  // Wake up the thermal float automatically whenever the lantern is toggled on
-  if (typeof window !== 'undefined' && typeof MutationObserver === 'function') {
-    const appEl = document.querySelector('.gd-dashboard-app');
-    if (appEl) {
-      const obs = new MutationObserver(() => {
-        if (!document.contains(titleEl)) {
-          obs.disconnect();
-          return;
-        }
-        if (isLit()) {
-          // Subtle upward ignition pop across all letters
-          for (let i = 0; i < states.length; i++) {
-            states[i].vy -= 55 - i * 4;
-          }
-          ensureRunning();
-        }
-      });
-      obs.observe(appEl, { attributes: true, attributeFilter: ['class'] });
-    }
-  }
+    },
+  );
 }
 
 /**

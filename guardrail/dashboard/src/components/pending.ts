@@ -18,6 +18,7 @@ import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isReque
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { createIcon, populateWardAvatar, setAnimatedHeading } from './icons.js';
+import { attachInteractiveHeadingSprings, createPendingHourglassProp, createPendingOwlProp } from './interactive-props.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
@@ -297,9 +298,11 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   title.id = 'pending-title';
   title.className = 'gd-section-title';
   setAnimatedHeading(title, 'Pending Approvals');
+  attachInteractiveHeadingSprings(title, () => section.classList.contains('gd-pending-hourglass-on'));
   titleRow.appendChild(title);
 
   titleGroup.appendChild(titleRow);
+  header.appendChild(createPendingHourglassProp());
   header.appendChild(titleGroup);
 
   // Header Actions (Sync time & Refresh button)
@@ -605,6 +608,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       emptyDesc.className = 'gd-empty-desc gd-placeholder-text';
       emptyDesc.textContent = 'All actions have been evaluated. You are completely caught up.';
 
+      emptyPlaceholder.appendChild(createPendingOwlProp());
       emptyPlaceholder.appendChild(iconWrap);
       emptyPlaceholder.appendChild(emptyHeadline);
       emptyPlaceholder.appendChild(emptyDesc);
@@ -840,6 +844,7 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
           detailPane.className = 'gd-detail-pane gd-decision-dossier-box gd-detail-animating-in';
           detailPane.setAttribute('role', 'region');
           detailPane.setAttribute('aria-label', `Review and decide on ${selectedReq.actionDescription}`);
+          detailPane.appendChild(createPendingOwlProp());
 
           // 1. Decision Dossier Header
           const dossierHeader = document.createElement('div');
