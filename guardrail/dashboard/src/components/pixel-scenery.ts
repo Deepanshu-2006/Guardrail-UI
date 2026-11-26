@@ -255,14 +255,17 @@ function buildEveningSvg(): string {
     pixelPine(64, 27, 7, '#121811', '#0D120C', 'a'),
     pixelPine(79, 27, 8, '#121811', '#0D120C', 'b'),
     pixelPine(88, 27, 6, '#121811', '#0D120C', 'a'),
-    // tiny warm cabin silhouette, chimney smoke & lit window
+    // tiny warm cabin silhouette, chimney smoke, twin lit windows & lakeside campfire
     rect(71, 24, 5, 3, '#141913'),
     rect(70, 23, 7, 1, '#0E120D'),
     `<g class="gd-px-smoke-1">${rect(74, 21, 1, 1, '#C27453')}</g>`,
     `<g class="gd-px-smoke-2">${rect(74, 21, 1, 1, '#D6894F')}</g>`,
     `<g class="gd-px-smoke-3">${rect(74, 21, 1, 1, '#8E5854')}</g>`,
-    `<g class="gd-px-window-halo">${rect(72, 24, 4, 3, '#F6BF58')}</g>`,
-    `<g class="gd-px-window">${rect(73, 25, 2, 1, '#F6BF58')}</g>`,
+    `<g class="gd-px-window-halo">${rect(71, 23, 6, 4, '#F6BF58')}</g>`,
+    `<g class="gd-px-window">${rect(72, 25, 2, 1, '#F6BF58')}${rect(75, 25, 1, 1, '#FFD982')}</g>`,
+    `<g class="gd-px-campfire-halo">${rect(54, 24, 7, 5, '#FF9E3B')}</g>`,
+    `<g class="gd-px-campfire-logs">${rect(56, 28, 3, 1, '#2D1D11')}</g>`,
+    `<g class="gd-px-campfire-flame">${rect(56, 27, 3, 1, '#FF8A2B')}${rect(57, 26, 1, 1, '#FFE48C')}</g>`,
   ].join('');
 
   return `<svg viewBox="0 0 96 34" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">${sky}${sun}${clouds}${farHills}${foreGround}</svg>`;
@@ -327,14 +330,18 @@ function buildNightSvg(): string {
     pixelPine(77, 27, 9, '#090E0B', '#070A08', 'b'),
     pixelPine(86, 27, 6, '#090E0B', '#070A08', 'a'),
     pixelPine(91, 27, 8, '#090E0B', '#070A08', 'b'),
-    // tiny warm cabin window glow & chimney smoke
-    rect(69, 24, 5, 3, '#131A15'),
-    rect(68, 23, 7, 1, '#0A0F0C'),
-    `<g class="gd-px-smoke-1">${rect(72, 21, 1, 1, '#9EB09E')}</g>`,
-    `<g class="gd-px-smoke-2">${rect(72, 21, 1, 1, '#D5DEC9')}</g>`,
-    `<g class="gd-px-smoke-3">${rect(72, 21, 1, 1, '#9EB09E')}</g>`,
-    `<g class="gd-px-window-halo">${rect(70, 24, 4, 3, '#EBB04E')}</g>`,
-    `<g class="gd-px-window">${rect(71, 25, 2, 1, '#EBB04E')}</g>`,
+    // tiny warm cabin window glow, chimney smoke & cozy woodland campfire
+    rect(69, 24, 6, 3, '#131A15'),
+    rect(68, 23, 8, 1, '#0A0F0C'),
+    `<g class="gd-px-smoke-1">${rect(73, 21, 1, 1, '#9EB09E')}</g>`,
+    `<g class="gd-px-smoke-2">${rect(73, 21, 1, 1, '#D5DEC9')}</g>`,
+    `<g class="gd-px-smoke-3">${rect(73, 21, 1, 1, '#9EB09E')}</g>`,
+    `<g class="gd-px-window-halo">${rect(69, 23, 6, 4, '#EBB04E')}</g>`,
+    `<g class="gd-px-window">${rect(70, 25, 2, 1, '#EBB04E')}${rect(73, 25, 1, 1, '#FFE18A')}</g>`,
+    // forest campfire beside clearing
+    `<g class="gd-px-campfire-halo">${rect(52, 24, 7, 5, '#FF9E3B')}</g>`,
+    `<g class="gd-px-campfire-logs">${rect(54, 28, 3, 1, '#2D1D11')}</g>`,
+    `<g class="gd-px-campfire-flame">${rect(54, 27, 3, 1, '#FF8A2B')}${rect(55, 26, 1, 1, '#FFE694')}</g>`,
     // forest fireflies
     `<g class="gd-px-firefly-1">${rect(60, 26, 1, 1, '#EBB04E')}</g>`,
     `<g class="gd-px-firefly-2">${rect(75, 25, 1, 1, '#D5DEC9')}</g>`,
@@ -1627,6 +1634,15 @@ export function createAmbientBackdrop(phase: SceneryPhase, extraClass: string = 
     <rect x="234" y="18" width="2" height="2" fill="var(--sc-glow)" opacity="0.8"/>
     <rect x="394" y="19" width="2" height="2" fill="var(--sc-roof)" opacity="0.72"/>
     <rect x="548" y="18" width="2" height="2" fill="var(--sc-glow)" opacity="0.85"/>
+    <!-- Lakeside Campfires glowing warmly along the town ridge when lantern is lit -->
+    <g class="gd-px-bg-campfire">
+      <rect x="160" y="19" width="6" height="2" fill="#2A1B10"/>
+      <rect x="161" y="16" width="4" height="3" fill="#FF8E2B" class="gd-px-bg-campfire-flame"/>
+      <rect x="162" y="14" width="2" height="3" fill="#FFE688" class="gd-px-bg-campfire-flame"/>
+      <rect x="464" y="19" width="6" height="2" fill="#2A1B10"/>
+      <rect x="465" y="16" width="4" height="3" fill="#FF8E2B" class="gd-px-bg-campfire-flame"/>
+      <rect x="466" y="14" width="2" height="3" fill="#FFE688" class="gd-px-bg-campfire-flame"/>
+    </g>
   </svg>`;
   layer.appendChild(fore);
 
