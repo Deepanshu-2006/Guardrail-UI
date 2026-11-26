@@ -379,31 +379,30 @@ export function getRealTimeScenery(now: Date = new Date()): SceneryMeta {
 }
 
 /**
- * Builds a chunky, cartoonish iron-and-brass Y-chain assembly that suspends
- * the wooden greeting sign from the top of the viewport.
+ * Builds a realistic weathered forged-iron Y-chain and bracket assembly
+ * suspending the aged wooden board from the top of the viewport.
  */
-function buildCartoonChainSvg(): string {
+function buildWeatheredChainSvg(): string {
   const renderArm = (x1: number, y1: number, x2: number, y2: number): string => {
     const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-    const count = 8;
+    const count = 11;
     const parts: string[] = [];
     for (let i = 0; i < count; i++) {
-      const t = (i + 0.6) / (count + 0.2);
+      const t = (i + 0.5) / (count + 0.15);
       const cx = (x1 + (x2 - x1) * t).toFixed(1);
       const cy = (y1 + (y2 - y1) * t).toFixed(1);
       if (i % 2 === 0) {
         parts.push(
           `<g transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
-            <rect x="-10" y="-5" width="20" height="10" rx="5" fill="#636D66" stroke="#241B12" stroke-width="2.4"/>
-            <rect x="-5" y="-1.6" width="10" height="3.2" rx="1.6" fill="#F5F3EC" stroke="#241B12" stroke-width="1.4"/>
-            <path d="M-6,-3 H4" stroke="#CBD4CB" stroke-width="1.5" stroke-linecap="round"/>
+            <rect x="-8" y="-3.6" width="16" height="7.2" rx="3.6" fill="none" stroke="#3B3935" stroke-width="2.4"/>
+            <rect x="-8" y="-3.6" width="16" height="7.2" rx="3.6" fill="none" stroke="#76726A" stroke-width="0.8" opacity="0.55"/>
           </g>`
         );
       } else {
         parts.push(
           `<g transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
-            <rect x="-9" y="-2.8" width="18" height="5.6" rx="2.8" fill="#464F49" stroke="#241B12" stroke-width="2.2"/>
-            <line x1="-4.5" y1="-0.8" x2="3.5" y2="-0.8" stroke="#A6B1A7" stroke-width="1.3" stroke-linecap="round"/>
+            <rect x="-7.5" y="-1.7" width="15" height="3.4" rx="1.7" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+            <line x1="-4.5" y1="-0.6" x2="4" y2="-0.6" stroke="#858077" stroke-width="0.7" stroke-linecap="round" opacity="0.6"/>
           </g>`
         );
       }
@@ -413,72 +412,148 @@ function buildCartoonChainSvg(): string {
 
   return `
     <svg viewBox="0 0 560 128" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
-      <!-- Top ceiling mounting bracket & bolt heads -->
-      <rect x="256" y="-2" width="48" height="14" rx="5" fill="#464F49" stroke="#241B12" stroke-width="2.6"/>
-      <line x1="262" y1="3" x2="298" y2="3" stroke="#9AA59B" stroke-width="1.6" stroke-linecap="round"/>
-      <circle cx="265" cy="5.5" r="2.2" fill="#E3AD47" stroke="#241B12" stroke-width="1.4"/>
-      <circle cx="295" cy="5.5" r="2.2" fill="#E3AD47" stroke="#241B12" stroke-width="1.4"/>
+      <!-- Top forged ceiling bracket -->
+      <rect x="262" y="-1" width="36" height="9" rx="2" fill="#3D3A36" stroke="#23211E" stroke-width="1"/>
+      <line x1="265" y1="2.5" x2="295" y2="2.5" stroke="#6E6A63" stroke-width="0.8" opacity="0.55"/>
+      <circle cx="269" cy="4" r="1.4" fill="#23211E"/>
+      <circle cx="291" cy="4" r="1.4" fill="#23211E"/>
 
-      <!-- Vertical top chain drop to central iron ring -->
+      <!-- Vertical top forged links down to junction ring -->
       <g>
-        <rect x="275.5" y="9" width="9" height="19" rx="4.5" fill="#636D66" stroke="#241B12" stroke-width="2.4"/>
-        <rect x="278.5" y="13.5" width="3" height="10" rx="1.5" fill="#F5F3EC" stroke="#241B12" stroke-width="1.4"/>
-        <rect x="277" y="24" width="6" height="16" rx="3" fill="#464F49" stroke="#241B12" stroke-width="2.2"/>
-        <line x1="278.8" y1="27" x2="278.8" y2="35" stroke="#A6B1A7" stroke-width="1.2" stroke-linecap="round"/>
+        <rect x="276.6" y="7" width="6.8" height="14" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
+        <rect x="276.6" y="7" width="6.8" height="14" rx="3.4" fill="none" stroke="#76726A" stroke-width="0.75" opacity="0.55"/>
+        <rect x="278.4" y="18.5" width="3.2" height="13" rx="1.6" fill="#46433E" stroke="#262421" stroke-width="0.9"/>
+        <rect x="276.6" y="28.5" width="6.8" height="13" rx="3.4" fill="none" stroke="#3B3935" stroke-width="2.3"/>
       </g>
 
-      <!-- Diagonal left & right cartoon chains -->
-      ${renderArm(280, 44, 84, 117)}
-      ${renderArm(280, 44, 476, 117)}
+      <!-- Twin diagonal weathered iron chains -->
+      ${renderArm(280, 44, 104, 114.5)}
+      ${renderArm(280, 44, 456, 121.5)}
 
-      <!-- Central chunky iron junction ring -->
-      <circle cx="280" cy="44" r="10.5" fill="#636D66" stroke="#241B12" stroke-width="2.6"/>
-      <circle cx="280" cy="44" r="4.2" fill="#F5F3EC" stroke="#241B12" stroke-width="2"/>
-      <path d="M274,38 A8,8 0 0,1 285,37.5" stroke="#D5DDD4" stroke-width="1.8" stroke-linecap="round"/>
+      <!-- Central forged iron ring -->
+      <circle cx="280" cy="44" r="7.6" fill="none" stroke="#3B3935" stroke-width="2.8"/>
+      <circle cx="280" cy="44" r="7.6" fill="none" stroke="#7D786E" stroke-width="0.8" opacity="0.55"/>
 
-      <!-- Left & right brass eyelet rings mounted on top of the wooden board -->
+      <!-- Left & right forged iron strap brackets anchored into tilted plank top -->
       <g>
-        <circle cx="84" cy="116" r="8.5" fill="#E6AD45" stroke="#241B12" stroke-width="2.5"/>
-        <circle cx="84" cy="116" r="3.4" fill="#F5F3EC" stroke="#241B12" stroke-width="1.8"/>
-        <rect x="73" y="118" width="22" height="10" rx="4" fill="#C98A32" stroke="#241B12" stroke-width="2.4"/>
-        <circle cx="79" cy="123" r="1.6" fill="#241B12"/>
-        <circle cx="89" cy="123" r="1.6" fill="#241B12"/>
+        <circle cx="104" cy="114.5" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
+        <path d="M97 115.5 H111 V125 H97 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
+        <circle cx="104" cy="120.5" r="1.4" fill="#1F1D1A"/>
       </g>
       <g>
-        <circle cx="476" cy="116" r="8.5" fill="#E6AD45" stroke="#241B12" stroke-width="2.5"/>
-        <circle cx="476" cy="116" r="3.4" fill="#F5F3EC" stroke="#241B12" stroke-width="1.8"/>
-        <rect x="465" y="118" width="22" height="10" rx="4" fill="#C98A32" stroke="#241B12" stroke-width="2.4"/>
-        <circle cx="471" cy="123" r="1.6" fill="#241B12"/>
-        <circle cx="481" cy="123" r="1.6" fill="#241B12"/>
+        <circle cx="456" cy="121.5" r="5.5" fill="none" stroke="#4D4841" stroke-width="2.4"/>
+        <path d="M449 122.5 H463 V132 H449 Z" fill="#3B3833" stroke="#22201D" stroke-width="1"/>
+        <circle cx="456" cy="127.5" r="1.4" fill="#1F1D1A"/>
       </g>
     </svg>
   `;
 }
 
 /**
- * Builds stylized cartoon oak grain streaks, plank seam and knots on the wooden board.
+ * Builds a weathered, slightly broken 3-plank timber board with chipped corners,
+ * hairline wood splits, subtle natural grain, and forged iron nails.
  */
-function buildCartoonWoodGrainSvg(): string {
+function buildBrokenWoodBoardSvg(): string {
   return `
-    <svg viewBox="0 0 600 180" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-      <!-- Top bevel highlight -->
-      <path d="M18 6 H582" stroke="#F0BD7E" stroke-width="4" stroke-linecap="round" opacity="0.45"/>
-      <!-- Horizontal plank seam -->
-      <path d="M6 92 Q190 90 360 93 T594 91" stroke="#4B2B14" stroke-width="2.2" opacity="0.34"/>
-      <!-- Cartoon wood grain curves -->
-      <path d="M24 22 Q95 16 175 23 T310 19" stroke="#683D1D" stroke-width="2.4" stroke-linecap="round" opacity="0.28"/>
-      <path d="M350 21 Q440 27 572 19" stroke="#683D1D" stroke-width="2.2" stroke-linecap="round" opacity="0.28"/>
-      <path d="M22 162 Q130 156 260 163 T455 158 T578 164" stroke="#683D1D" stroke-width="2.4" stroke-linecap="round" opacity="0.3"/>
-      <!-- Stylized cartoon wood knots -->
-      <ellipse cx="48" cy="160" rx="14" ry="4.5" stroke="#5B3417" stroke-width="2" opacity="0.32"/>
-      <ellipse cx="536" cy="20" rx="16" ry="5" stroke="#5B3417" stroke-width="2" opacity="0.32"/>
+    <svg viewBox="0 0 600 184" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="gd-plank-a" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#A78A68"/>
+          <stop offset="100%" stop-color="#8B7051"/>
+        </linearGradient>
+        <linearGradient id="gd-plank-b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#9A7E5D"/>
+          <stop offset="100%" stop-color="#7F6447"/>
+        </linearGradient>
+        <linearGradient id="gd-plank-c" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#8F7353"/>
+          <stop offset="100%" stop-color="#745A3F"/>
+        </linearGradient>
+        <clipPath id="gd-broken-board-shape">
+          <!-- Weathered horizontal plank silhouette with chipped top-right notch, left gouge, and broken bottom-left corner -->
+          <path d="
+            M 6 6
+            L 210 5 L 216 9 L 224 5
+            L 516 5 L 525 14 L 539 10 L 551 5 L 593 6
+            L 596 42 L 592 48 L 596 56 L 595 62
+            L 599 65 L 597 104 L 593 111 L 598 118 L 595 125
+            L 597 174 L 589 178 L 434 179 L 427 173 L 421 179
+            L 84 179 L 74 171 L 63 177 L 52 169 L 36 178 L 7 177
+            L 4 128 L 8 124 L 4 119
+            L 5 95 L 11 89 L 5 82 L 4 64
+            L 7 61 L 4 56 Z
+          "/>
+        </clipPath>
+      </defs>
+
+      <g clip-path="url(#gd-broken-board-shape)">
+        <!-- 3 weathered horizontal planks -->
+        <rect x="0" y="0" width="600" height="63" fill="url(#gd-plank-a)"/>
+        <rect x="0" y="63" width="600" height="62" fill="url(#gd-plank-b)"/>
+        <rect x="0" y="125" width="600" height="60" fill="url(#gd-plank-c)"/>
+
+        <!-- Subtle worn bevel highlights & dark underside depth -->
+        <path d="M0 7 H600" stroke="#C5AB89" stroke-width="1.6" opacity="0.45"/>
+        <path d="M0 176 H600" stroke="#44301E" stroke-width="3" opacity="0.42"/>
+
+        <!-- Plank separation grooves -->
+        <path d="M0 63 Q180 62 380 63.5 T600 62.5" stroke="#3B2A1A" stroke-width="2" opacity="0.62"/>
+        <path d="M0 65 Q180 64 380 65.5 T600 64.5" stroke="#BFA380" stroke-width="1" opacity="0.28"/>
+        <path d="M0 125 Q210 126 420 124.5 T600 125.5" stroke="#3B2A1A" stroke-width="2" opacity="0.62"/>
+        <path d="M0 127 Q210 128 420 126.5 T600 127.5" stroke="#BFA380" stroke-width="1" opacity="0.28"/>
+
+        <!-- Subtle aged wood grain fibers (natural, restrained) -->
+        <g stroke="#4E3824" stroke-linecap="round" opacity="0.2">
+          <path d="M18 14 Q145 12 290 15 T510 13" stroke-width="1.1"/>
+          <path d="M35 28 Q190 31 360 27 T580 30" stroke-width="0.9"/>
+          <path d="M16 47 Q130 45 275 48 T565 46" stroke-width="1"/>
+          <path d="M24 76 Q170 73 330 77 T575 74" stroke-width="1"/>
+          <path d="M18 106 Q160 109 340 105 T582 108" stroke-width="0.9"/>
+          <path d="M22 141 Q150 139 305 142 T560 140" stroke-width="1.1"/>
+          <path d="M40 158 Q200 161 380 156 T570 159" stroke-width="0.9"/>
+        </g>
+
+        <!-- Weathered cracks & splinter fissures -->
+        <!-- Crack from top-right chipped notch -->
+        <path d="M532 11 L524 22 L528 29 L518 39" stroke="#2D2014" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
+        <path d="M533 11 L525 22" stroke="#C5AB89" stroke-width="0.8" opacity="0.35"/>
+        <!-- Crack from bottom-left broken corner -->
+        <path d="M52 169 L60 155 L56 146 L65 137" stroke="#2D2014" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.78"/>
+        <path d="M53.5 169 L61.5 155" stroke="#BD9F7B" stroke-width="0.8" opacity="0.32"/>
+        <!-- Small bottom-right notch split -->
+        <path d="M427 173 L431 160 L426 151" stroke="#2D2014" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/>
+        <!-- Left edge minor split -->
+        <path d="M11 89 L25 91 L34 88" stroke="#2D2014" stroke-width="1.4" stroke-linecap="round" opacity="0.58"/>
+
+        <!-- Outer dark weathered timber border -->
+        <path d="
+          M 6 6
+          L 210 5 L 216 9 L 224 5
+          L 516 5 L 525 14 L 539 10 L 551 5 L 593 6
+          L 596 42 L 592 48 L 596 56 L 595 62
+          L 599 65 L 597 104 L 593 111 L 598 118 L 595 125
+          L 597 174 L 589 178 L 434 179 L 427 173 L 421 179
+          L 84 179 L 74 171 L 63 177 L 52 169 L 36 178 L 7 177
+          L 4 128 L 8 124 L 4 119
+          L 5 95 L 11 89 L 5 82 L 4 64
+          L 7 61 L 4 56 Z
+        " stroke="#362617" stroke-width="2.2" fill="none"/>
+      </g>
+
+      <!-- Matte dark forged nails holding the planks -->
+      <g fill="#2F2B26" stroke="#1E1B18" stroke-width="0.8">
+        <rect x="13" y="13" width="4.2" height="4.2" rx="1"/>
+        <rect x="582" y="13" width="4.2" height="4.2" rx="1"/>
+        <rect x="13" y="164" width="4.2" height="4.2" rx="1"/>
+        <rect x="582" y="164" width="4.2" height="4.2" rx="1"/>
+      </g>
     </svg>
   `;
 }
 
 /**
- * Creates the cartoonish hanging wooden-board pixel scenery + time + greeting
- * element displayed on the right side of desktop page headers.
+ * Creates the weathered, slightly broken hanging wooden-board pixel scenery +
+ * time + greeting element displayed on the right side of desktop page headers.
  */
 export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement {
   const scenery = getRealTimeScenery(now);
@@ -490,7 +565,7 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   const hanger = document.createElement('div');
   hanger.className = 'gd-wood-hanger';
   hanger.setAttribute('aria-hidden', 'true');
-  hanger.innerHTML = buildCartoonChainSvg();
+  hanger.innerHTML = buildWeatheredChainSvg();
 
   const board = document.createElement('div');
   board.className = 'gd-wood-board';
@@ -498,15 +573,7 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   const grain = document.createElement('div');
   grain.className = 'gd-wood-grain';
   grain.setAttribute('aria-hidden', 'true');
-  grain.innerHTML = buildCartoonWoodGrainSvg();
-
-  const rivetPositions = ['tl', 'tr', 'bl', 'br'] as const;
-  for (const pos of rivetPositions) {
-    const rivet = document.createElement('span');
-    rivet.className = `gd-wood-rivet is-${pos}`;
-    rivet.setAttribute('aria-hidden', 'true');
-    board.appendChild(rivet);
-  }
+  grain.innerHTML = buildBrokenWoodBoardSvg();
 
   const windowEl = document.createElement('div');
   windowEl.className = 'gd-wood-board-window';

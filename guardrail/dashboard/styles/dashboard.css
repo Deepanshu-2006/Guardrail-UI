@@ -22975,13 +22975,13 @@ article.gd-card-collapsed,
   left: 0;
   right: 0;
   top: -116px;
-  height: 124px;
+  height: 126px;
   z-index: 4;
   pointer-events: none;
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  filter: drop-shadow(0 4px 4px rgba(34, 21, 10, 0.16));
+  filter: drop-shadow(0 3px 3px rgba(27, 24, 18, 0.14));
 }
 
 .gd-wood-hanger svg {
@@ -22994,17 +22994,15 @@ article.gd-card-collapsed,
 
 .gd-wood-board {
   position: relative;
-  padding: 13px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #CC8B4F 0%, #B4723B 54%, #9C5E2D 100%);
-  border: 3px solid #352010;
-  border-bottom-width: 8px;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 224, 179, 0.52),
-    inset 0 -3px 0 rgba(69, 39, 17, 0.45),
-    0 14px 26px -8px rgba(36, 22, 10, 0.34),
-    0 4px 10px rgba(36, 22, 10, 0.14);
-  overflow: hidden;
+  padding: 15px 17px 17px;
+  border-radius: 3px;
+  background: transparent;
+  border: none;
+  transform: rotate(-0.95deg);
+  filter:
+    drop-shadow(0 12px 20px rgba(32, 24, 14, 0.24))
+    drop-shadow(0 3px 5px rgba(32, 24, 14, 0.14));
+  overflow: visible;
 }
 
 .gd-wood-grain {
@@ -23020,37 +23018,21 @@ article.gd-card-collapsed,
   display: block;
 }
 
-.gd-wood-rivet {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  z-index: 5;
-  pointer-events: none;
-  background: radial-gradient(circle at 35% 32%, #FFE5A3 0%, #D99B38 58%, #915E17 100%);
-  border: 1.8px solid #352010;
-  box-shadow: 0 1px 0 rgba(255, 225, 176, 0.4);
-}
-
-.gd-wood-rivet.is-tl { top: 7px; left: 7px; }
-.gd-wood-rivet.is-tr { top: 7px; right: 7px; }
-.gd-wood-rivet.is-bl { bottom: 7px; left: 7px; }
-.gd-wood-rivet.is-br { bottom: 7px; right: 7px; }
-
 .gd-wood-board-window {
   position: relative;
   z-index: 1;
   overflow: hidden;
-  border-radius: 11px;
-  padding: 28px 34px;
+  border-radius: 4px;
+  padding: 26px 32px;
   min-height: 146px;
   display: flex;
   align-items: center;
   background: var(--gd-bg-canvas, #F5F3EC);
-  border: 2.5px solid #4A2D16;
+  border: 1.5px solid rgba(48, 33, 19, 0.72);
   box-shadow:
-    inset 0 3px 7px rgba(34, 20, 9, 0.32),
-    0 1px 0 rgba(255, 224, 179, 0.42);
+    inset 0 2px 7px rgba(28, 18, 9, 0.36),
+    inset 0 0 0 1px rgba(255, 244, 224, 0.16),
+    0 1px 0 rgba(212, 185, 149, 0.32);
 }
 
 .gd-header-actions-inline {
