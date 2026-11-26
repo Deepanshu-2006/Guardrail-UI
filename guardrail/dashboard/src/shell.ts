@@ -135,6 +135,7 @@ export class DashboardShell {
   private mobileTab: MobileTab = 'queue';
   private mobileWardFilter: string = 'ALL';
   private lastMobileTabRendered: MobileTab | null = null;
+  private mobileMountTimestamp: number = 0;
   private isMobileViewportMode: boolean = false;
   private resizeHandler: (() => void) | null = null;
   private onlineHandler: (() => void) | null = null;
@@ -670,6 +671,9 @@ export class DashboardShell {
       this.workspaceEl = null;
 
       const existingShell = this.rootContainer.querySelector('.gd-m-shell') as HTMLElement | null;
+      if (!existingShell) {
+        this.mobileMountTimestamp = Date.now();
+      }
       const existingAmbient = existingShell?.querySelector('.gd-m-ambient') as HTMLElement | null;
       const existingTopbar = existingShell?.querySelector('.gd-m-topbar') as HTMLElement | null;
       const existingPillStrip = existingShell?.querySelector('.gd-m-ward-pills') as HTMLElement | null;
@@ -717,84 +721,107 @@ export class DashboardShell {
         onLoadWardPolicy: (wardId) => this.fetchWardPolicyForMobile(wardId),
       });
 
-      // Keep ambient backdrop continuous across tab switches & polls so clouds/motes never jump
-      if (existingAmbient) {
-        const freshAmbient = mobileView.querySelector('.gd-m-ambient');
-        if (freshAmbient) {
-          existingAmbient.className = freshAmbient.className;
-          freshAmbient.replaceWith(existingAmbient);
-        }
-      }
-
-      if (isSameTabUpdate) {
-        mobileView.classList.add('is-ambient-update');
-      } else if (isTabSwitch) {
-        const nextMain = mobileView.querySelector('.gd-m-main');
-        const tabOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
-        const prevIdx = this.lastMobileTabRendered ? tabOrder[this.lastMobileTabRendered] : 3;
-        const nextIdx = tabOrder[this.mobileTab];
-        const dirClass = nextIdx >= prevIdx ? 'is-tab-entering-right' : 'is-tab-entering-left';
-        nextMain?.classList.add('is-tab-entering', dirClass);
-      }
-
-      // Keep top bar & its ward-pill glider mounted in-place on same-tab ward switches so the glider glides natively
+      const isBootSettling = Date.now() - this.mobileMountTimestamp < 1200;
       let preservedPillStrip: HTMLElement | null = null;
-      const freshTopbar = mobileView.querySelector('.gd-m-topbar');
-      const freshPillStrip = freshTopbar?.querySelector('.gd-m-ward-pills');
-      if (isSameTabUpdate && existingTopbar && existingPillStrip && freshTopbar && freshPillStrip) {
-        const activeWard = this.mobileWardFilter || 'ALL';
-        const existingPills = Array.from(existingPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
-        const freshPills = Array.from(freshPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
-        if (existingPills.length === freshPills.length) {
-          existingPills.forEach((pill, i) => {
-            const wardId = pill.dataset?.wardId ?? 'ALL';
-            const isActive = wardId === activeWard;
-            pill.classList.toggle('active', isActive);
-            pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            const freshCount = freshPills[i]?.querySelector('.gd-m-pill-count')?.textContent ?? null;
-            const existingCountEl = pill.querySelector('.gd-m-pill-count');
-            if (existingCountEl && freshCount) existingCountEl.textContent = freshCount;
-          });
-          freshTopbar.replaceWith(existingTopbar);
-          preservedPillStrip = existingPillStrip;
-        }
-      }
-
-      // Keep bottom dock mounted in-place across all mobile renders so the dock glider & icons animate natively
       let preservedPillDock: HTMLElement | null = null;
-      const freshDockWrap = mobileView.querySelector('.gd-m-dock-wrap');
-      if (existingDockWrap && existingPillDock && freshDockWrap) {
-        const dockBtns = Array.from(existingPillDock.querySelectorAll('.gd-m-dock-btn')) as HTMLElement[];
-        dockBtns.forEach((btn) => {
-          const isActive = (btn.dataset?.tabId ?? '') === this.mobileTab;
-          btn.classList.toggle('active', isActive);
-          btn.setAttribute('aria-current', isActive ? 'page' : 'false');
-        });
-        const existingCircle = existingDockWrap.querySelector('.gd-m-dock-circle') as HTMLElement | null;
-        const freshCircle = freshDockWrap.querySelector('.gd-m-dock-circle') as HTMLElement | null;
-        if (existingCircle && freshCircle) {
-          const isQueue = this.mobileTab === 'queue';
-          existingCircle.classList.toggle('active', isQueue);
-          existingCircle.setAttribute('aria-current', isQueue ? 'page' : 'false');
-          existingCircle.setAttribute('aria-label', freshCircle.getAttribute('aria-label') || 'Pending queue');
-          const existingBadge = existingCircle.querySelector('.gd-m-dock-circle-badge');
-          const freshBadge = freshCircle.querySelector('.gd-m-dock-circle-badge');
-          if (existingBadge && freshBadge) {
-            existingBadge.textContent = freshBadge.textContent;
-          } else if (existingBadge && !freshBadge) {
-            existingBadge.remove();
-          } else if (!existingBadge && freshBadge) {
-            existingCircle.appendChild(freshBadge.cloneNode(true));
+
+      if (existingShell && existingMain) {
+        // In-place update inside existingShell: never detach ambient, dock, topbar, or booting greeting
+        existingShell.classList.toggle('is-ambient-update', isSameTabUpdate && !isBootSettling);
+
+        const freshTopbar = mobileView.querySelector('.gd-m-topbar');
+        const freshPillStrip = freshTopbar?.querySelector('.gd-m-ward-pills');
+        if (isSameTabUpdate && existingTopbar && existingPillStrip && freshTopbar && freshPillStrip) {
+          const activeWard = this.mobileWardFilter || 'ALL';
+          const existingPills = Array.from(existingPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+          const freshPills = Array.from(freshPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+          if (existingPills.length === freshPills.length) {
+            existingPills.forEach((pill, i) => {
+              const wardId = pill.dataset?.wardId ?? 'ALL';
+              const isActive = wardId === activeWard;
+              pill.classList.toggle('active', isActive);
+              pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+              const freshCount = freshPills[i]?.querySelector('.gd-m-pill-count')?.textContent ?? null;
+              const existingCountEl = pill.querySelector('.gd-m-pill-count');
+              if (existingCountEl && freshCount) existingCountEl.textContent = freshCount;
+            });
+            preservedPillStrip = existingPillStrip;
+          } else {
+            existingTopbar.replaceWith(freshTopbar);
+          }
+        } else if (existingTopbar && freshTopbar) {
+          existingTopbar.replaceWith(freshTopbar);
+        }
+
+        if (existingDockWrap && existingPillDock) {
+          const freshDockWrap = mobileView.querySelector('.gd-m-dock-wrap');
+          const dockBtns = Array.from(existingPillDock.querySelectorAll('.gd-m-dock-btn')) as HTMLElement[];
+          dockBtns.forEach((btn) => {
+            const isActive = (btn.dataset?.tabId ?? '') === this.mobileTab;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-current', isActive ? 'page' : 'false');
+          });
+          const existingCircle = existingDockWrap.querySelector('.gd-m-dock-circle') as HTMLElement | null;
+          const freshCircle = freshDockWrap?.querySelector('.gd-m-dock-circle') as HTMLElement | null;
+          if (existingCircle && freshCircle) {
+            const isQueue = this.mobileTab === 'queue';
+            existingCircle.classList.toggle('active', isQueue);
+            existingCircle.setAttribute('aria-current', isQueue ? 'page' : 'false');
+            existingCircle.setAttribute('aria-label', freshCircle.getAttribute('aria-label') || 'Pending queue');
+            const existingBadge = existingCircle.querySelector('.gd-m-dock-circle-badge');
+            const freshBadge = freshCircle.querySelector('.gd-m-dock-circle-badge');
+            if (existingBadge && freshBadge) {
+              existingBadge.textContent = freshBadge.textContent;
+            } else if (existingBadge && !freshBadge) {
+              existingBadge.remove();
+            } else if (!existingBadge && freshBadge) {
+              existingCircle.appendChild(freshBadge.cloneNode(true));
+            }
+          }
+          preservedPillDock = existingPillDock;
+        }
+
+        const freshMain = mobileView.querySelector('.gd-m-main') as HTMLElement | null;
+        if (freshMain) {
+          const existingGreeting = existingMain.querySelector('.gd-m-greeting.gd-m-scenery') as HTMLElement | null;
+          const freshGreeting = freshMain.querySelector('.gd-m-greeting.gd-m-scenery') as HTMLElement | null;
+
+          if (isSameTabUpdate && isBootSettling && existingGreeting && freshGreeting) {
+            // Keep initial greeting untouched in live DOM so character reveal never restarts or blinks
+            const existingSub = existingGreeting.querySelector('.gd-m-greet-sub');
+            const freshSub = freshGreeting.querySelector('.gd-m-greet-sub');
+            if (existingSub && freshSub && existingSub.getAttribute('aria-label') !== freshSub.getAttribute('aria-label')) {
+              existingSub.textContent = freshSub.getAttribute('aria-label') || '';
+              existingSub.setAttribute('aria-label', existingSub.textContent);
+            }
+            const children = Array.from(existingMain.children);
+            for (const ch of children) {
+              if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== existingGreeting) {
+                ch.remove();
+              }
+            }
+            for (const ch of Array.from(freshMain.children)) {
+              if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== freshGreeting) {
+                existingMain.appendChild(ch);
+              }
+            }
+          } else {
+            if (isTabSwitch) {
+              const tabOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
+              const prevIdx = this.lastMobileTabRendered ? tabOrder[this.lastMobileTabRendered] : 3;
+              const nextIdx = tabOrder[this.mobileTab];
+              const dirClass = nextIdx >= prevIdx ? 'is-tab-entering-right' : 'is-tab-entering-left';
+              freshMain.classList.add('is-tab-entering', dirClass);
+            }
+            existingMain.replaceWith(freshMain);
           }
         }
-        freshDockWrap.replaceWith(existingDockWrap);
-        preservedPillDock = existingPillDock;
+      } else {
+        while (this.rootContainer.firstChild) {
+          this.rootContainer.removeChild(this.rootContainer.firstChild);
+        }
+        this.rootContainer.appendChild(mobileView);
       }
-
-      while (this.rootContainer.firstChild) {
-        this.rootContainer.removeChild(this.rootContainer.firstChild);
-      }
-      this.rootContainer.appendChild(mobileView);
 
       if (preservedPillStrip || preservedPillDock) {
         const runSync = () => {

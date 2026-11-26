@@ -23172,8 +23172,47 @@ article.gd-card-collapsed,
   animation: gd-m-tab-enter-left 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.gd-m-main.is-tab-entering > *:nth-child(2) {
+.gd-m-main.is-tab-entering > *:nth-child(2):not(.gd-m-greeting) {
   animation: gd-m-header-wipe 380ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+}
+
+/* PWA Greeting Card: Character-by-character typewriter/reveal animation */
+@keyframes gd-m-char-reveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.gd-m-greeting.gd-m-scenery {
+  animation: gd-greeting-card-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gd-m-greeting.gd-m-scenery .gd-char {
+  display: inline-block;
+  white-space: pre;
+}
+
+.gd-m-greeting.gd-m-scenery .gd-m-scenery-time .gd-char {
+  animation: gd-m-char-reveal 260ms cubic-bezier(0.22, 1, 0.36, 1) calc(80ms + var(--char-idx, 0) * 28ms) both;
+}
+
+.gd-m-greeting.gd-m-scenery .gd-m-greet-title .gd-char {
+  animation: gd-m-char-reveal 300ms cubic-bezier(0.22, 1, 0.36, 1) calc(160ms + var(--char-idx, 0) * 32ms) both;
+}
+
+.gd-m-greeting.gd-m-scenery .gd-m-greet-sub .gd-char {
+  animation: gd-m-char-reveal 260ms cubic-bezier(0.22, 1, 0.36, 1) calc(340ms + var(--char-idx, 0) * 14ms) both;
+}
+
+.gd-m-shell.is-ambient-update .gd-m-greeting.gd-m-scenery .gd-char {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .gd-m-main.is-tab-entering > *:nth-child(3) {
@@ -23260,6 +23299,7 @@ article.gd-card-collapsed,
   .gd-m-main.is-tab-entering .gd-m-queue-list > *,
   .gd-m-main.is-tab-entering .gd-m-history-results > *,
   .gd-m-main.is-tab-entering .gd-m-wards-list > *,
+  .gd-m-greeting.gd-m-scenery .gd-char,
   .gd-m-history-sheet-overlay,
   .gd-mobile-action-sheet-backdrop,
   .gd-m-history-sheet,

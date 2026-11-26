@@ -15,7 +15,7 @@ import {
   RiskLevel,
   TrustedContactPolicySummary,
 } from '../types.js';
-import { createIcon } from './icons.js';
+import { createIcon, setAnimatedHeading } from './icons.js';
 import { formatTimestamp, isRequestExpired } from './detail.js';
 import { createAmbientBackdrop, getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
 
@@ -913,23 +913,25 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     clockDot.className = 'gd-px-clock-dot';
     clockDot.setAttribute('aria-hidden', 'true');
     const clockText = document.createElement('span');
-    clockText.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setAnimatedHeading(clockText, now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     clockLine.appendChild(clockDot);
     clockLine.appendChild(clockText);
 
     const greetTitle = document.createElement('h1');
     greetTitle.className = 'gd-m-greet-title';
-    greetTitle.textContent = scenery.greeting;
+    setAnimatedHeading(greetTitle, scenery.greeting);
 
     const greetSub = document.createElement('p');
     greetSub.className = 'gd-m-greet-sub';
+    let subText = '';
     if (props.isBackendUnavailable && pendingRequests.length === 0) {
-      greetSub.textContent = 'Connection paused — tap refresh';
+      subText = 'Connection paused — tap refresh';
     } else if (filteredPending.length === 0) {
-      greetSub.textContent = `All ${connectedWards.length || 1} protected wards clear`;
+      subText = `All ${connectedWards.length || 1} protected wards clear`;
     } else {
-      greetSub.textContent = `${filteredPending.length} ${filteredPending.length === 1 ? 'request' : 'requests'} awaiting decision`;
+      subText = `${filteredPending.length} ${filteredPending.length === 1 ? 'request' : 'requests'} awaiting decision`;
     }
+    setAnimatedHeading(greetSub, subText);
 
     sceneContent.appendChild(clockLine);
     sceneContent.appendChild(greetTitle);
