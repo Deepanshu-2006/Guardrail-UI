@@ -406,16 +406,54 @@ export function attachPairingCodeKeyboard(
   const scrollPairBoxAboveKeyboard = () => {
     if (typeof window === 'undefined' || typeof pairBox.getBoundingClientRect !== 'function') return;
     try {
-      const kbdHeight = kbdEl.offsetHeight || (mode === 'legacy' ? 236 : 256);
-      const viewportH = window.innerHeight || 0;
+      const kbdHeight = kbdEl.offsetHeight || (mode === 'legacy' ? 240 : 260);
+      const viewportH = window.innerHeight || document.documentElement?.clientHeight || 0;
       if (!viewportH) return;
       const rect = pairBox.getBoundingClientRect();
-      const targetBottom = viewportH - kbdHeight - 16;
-      if (rect.bottom > targetBottom) {
-        const delta = rect.bottom - targetBottom;
-        if (typeof window.scrollBy === 'function') {
-          window.scrollBy({ top: delta, behavior: 'smooth' });
+      const targetBottom = viewportH - kbdHeight - 20;
+      if (rect.bottom <= targetBottom) return;
+      const delta = Math.ceil(rect.bottom - targetBottom);
+
+      // Walk ancestors plus document scroll roots to find the active vertical scroll container
+      const candidates: HTMLElement[] = [];
+      let cur: HTMLElement | null = pairBox.parentElement;
+      while (cur) {
+        candidates.push(cur);
+        cur = cur.parentElement;
+      }
+      if (document.scrollingElement && !candidates.includes(document.scrollingElement as HTMLElement)) {
+        candidates.push(document.scrollingElement as HTMLElement);
+      }
+      if (document.body && !candidates.includes(document.body)) candidates.push(document.body);
+      if (document.documentElement && !candidates.includes(document.documentElement)) {
+        candidates.push(document.documentElement);
+      }
+
+      let scrolled = false;
+      for (const el of candidates) {
+        if (el.scrollHeight > el.clientHeight + 2) {
+          const style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : null;
+          const oy = style?.overflowY || '';
+          const canScrollContainer =
+            el === document.scrollingElement ||
+            el === document.body ||
+            el === document.documentElement ||
+            oy === 'auto' ||
+            oy === 'scroll';
+          if (!canScrollContainer) continue;
+
+          if (typeof el.scrollBy === 'function') {
+            el.scrollBy({ top: delta, behavior: 'smooth' });
+          } else {
+            el.scrollTop = el.scrollTop + delta;
+          }
+          scrolled = true;
+          break;
         }
+      }
+
+      if (!scrolled && typeof window.scrollBy === 'function') {
+        window.scrollBy({ top: delta, behavior: 'smooth' });
       }
     } catch {
       // Ignore in mocked test DOM
@@ -444,11 +482,6 @@ export function attachPairingCodeKeyboard(
     } else {
       kbdEl.classList.add('is-open');
     }
-    if (scrollTimer !== null) clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(() => {
-      if (!isDestroyed && isOpen) scrollPairBoxAboveKeyboard();
-      scrollTimer = null;
-    }, 80);
   };
 
   const close = () => {
