@@ -23189,30 +23189,30 @@ article.gd-card-collapsed,
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(237, 230, 214, 0.72) 0%,
-    rgba(237, 230, 214, 0.56) 36%,
-    rgba(237, 230, 214, 0.16) 62%,
-    rgba(237, 230, 214, 0) 82%
+    rgba(237, 230, 214, 0.88) 0%,
+    rgba(237, 230, 214, 0.78) 42%,
+    rgba(237, 230, 214, 0.52) 72%,
+    rgba(237, 230, 214, 0.34) 100%
   );
 }
 
 .gd-m-ambient.phase-evening .gd-m-ambient-veil {
   background: linear-gradient(
     180deg,
-    rgba(237, 224, 206, 0.72) 0%,
-    rgba(237, 224, 206, 0.52) 38%,
-    rgba(237, 224, 206, 0.14) 64%,
-    rgba(237, 224, 206, 0) 84%
+    rgba(237, 224, 206, 0.88) 0%,
+    rgba(237, 224, 206, 0.76) 42%,
+    rgba(237, 224, 206, 0.50) 72%,
+    rgba(237, 224, 206, 0.34) 100%
   );
 }
 
 .gd-m-ambient.phase-night .gd-m-ambient-veil {
   background: linear-gradient(
     180deg,
-    rgba(229, 226, 212, 0.72) 0%,
-    rgba(229, 226, 212, 0.52) 38%,
-    rgba(229, 226, 212, 0.12) 64%,
-    rgba(229, 226, 212, 0) 84%
+    rgba(229, 226, 212, 0.88) 0%,
+    rgba(229, 226, 212, 0.76) 42%,
+    rgba(229, 226, 212, 0.48) 72%,
+    rgba(229, 226, 212, 0.32) 100%
   );
 }
 
@@ -23226,31 +23226,47 @@ article.gd-card-collapsed,
 }
 
 .gd-m-bg-sky {
-  top: 28px;
-  height: 250px;
+  top: 52px;
+  height: 118px;
   z-index: 1;
-  opacity: 0.88;
+  opacity: 0.34;
+  filter: saturate(0.55) contrast(0.8);
 }
 
 .gd-m-bg-far {
-  bottom: 185px;
-  height: 290px;
+  bottom: 66px;
+  height: 104px;
   z-index: 2;
-  opacity: 0.74;
+  opacity: 0.36;
+  filter: saturate(0.5) contrast(0.75);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 45%, #000 90%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.55) 45%, #000 90%);
 }
 
 .gd-m-bg-horizon {
   bottom: 0;
-  height: 390px;
+  height: 146px;
   z-index: 3;
-  opacity: 0.92;
+  opacity: 0.58;
+  filter: saturate(0.58) contrast(0.8);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 24%, #000 55%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 24%, #000 55%);
 }
 
 .gd-m-bg-fore {
   bottom: 0;
-  height: 112px;
+  height: 46px;
   z-index: 4;
-  opacity: 0.86;
+  opacity: 0.48;
+  filter: saturate(0.55) contrast(0.8);
+}
+
+.gd-m-ambient:not(.gd-desktop-ambient) .gd-m-mote {
+  opacity: 0.18;
+}
+
+.gd-m-ambient:not(.gd-desktop-ambient) .gd-m-beam {
+  opacity: 0.32;
 }
 
 .gd-m-bg-sky svg,
@@ -23746,4 +23762,263 @@ article.gd-card-collapsed,
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(31, 41, 26, 0.11);
   box-shadow: 0 4px 16px rgba(20, 27, 17, 0.08);
+}
+
+/* ====================================================================
+   CUSTOM GUARDRAIL PAIRING CODE KEYBOARD (.gd-m-code-kbd)
+   ==================================================================== */
+body.gd-kbd-open .gd-m-dock-wrap {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.gd-kbd-open .gd-m-shell {
+  padding-bottom: calc(320px + env(safe-area-inset-bottom, 0px));
+}
+
+.gd-m-code-kbd {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 1250;
+  width: 100%;
+  max-width: 560px;
+  box-sizing: border-box;
+  padding: 10px 8px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(235, 228, 210, 0.96);
+  backdrop-filter: blur(20px) saturate(135%);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  border-top: 1px solid rgba(31, 41, 26, 0.14);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -10px 34px rgba(20, 27, 17, 0.14);
+  transform: translate3d(-50%, 104%, 0);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.gd-m-code-kbd.is-open {
+  transform: translate3d(-50%, 0, 0);
+}
+
+.gd-m-kbd-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 10px;
+}
+
+.gd-m-kbd-preview {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.gd-m-kbd-prefix {
+  font-family: var(--gd-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #1F291A;
+  padding: 4px 6px;
+  border-radius: 7px;
+  background: rgba(31, 41, 26, 0.09);
+  flex-shrink: 0;
+}
+
+.gd-m-kbd-dash {
+  font-family: var(--gd-font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: #5E6957;
+  padding: 0 1px;
+}
+
+.gd-m-kbd-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 27px;
+  border-radius: 7px;
+  background: rgba(250, 246, 236, 0.84);
+  border: 1px solid rgba(31, 41, 26, 0.14);
+  font-family: var(--gd-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #141B11;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.gd-m-kbd-slot.is-filled {
+  background: #FAF6EC;
+  border-color: rgba(31, 41, 26, 0.34);
+}
+
+.gd-m-kbd-slot.is-active {
+  border-color: #1F291A;
+  box-shadow: 0 0 0 2px rgba(31, 41, 26, 0.15);
+  background: #FFFFFF;
+}
+
+.gd-m-kbd-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gd-m-kbd-util-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 41, 26, 0.14);
+  background: rgba(250, 246, 236, 0.85);
+  color: #1F291A;
+  font-family: var(--gd-font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.gd-m-kbd-util-btn:disabled {
+  opacity: 0.42;
+}
+
+.gd-m-kbd-close-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 41, 26, 0.14);
+  background: rgba(250, 246, 236, 0.85);
+  color: #1F291A;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.gd-m-kbd-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gd-m-kbd-row {
+  display: flex;
+  justify-content: center;
+  gap: 4.5px;
+  width: 100%;
+}
+
+.gd-m-kbd-row.is-9 {
+  padding: 0 5%;
+  box-sizing: border-box;
+}
+
+.gd-m-kbd-key {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 43px;
+  padding: 0;
+  border: 1px solid rgba(31, 41, 26, 0.1);
+  border-radius: 9px;
+  background: #FAF6EC;
+  color: #141B11;
+  font-family: var(--gd-font-sans);
+  font-size: 16.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1.5px 0 rgba(31, 41, 26, 0.18);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 80ms ease, background-color 80ms ease;
+}
+
+.gd-m-kbd-key.is-digit {
+  height: 39px;
+  background: #F1EBD9;
+  font-family: var(--gd-font-mono);
+  font-size: 15.5px;
+  font-weight: 700;
+}
+
+.gd-m-kbd-key.is-action {
+  flex: 1.55 1 0;
+  background: #D7CEB7;
+  color: #1F291A;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.gd-m-kbd-key:active {
+  transform: scale(0.93) translateY(1px);
+  background: #DDD5BF;
+}
+
+.gd-m-kbd-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 4px 0;
+}
+
+.gd-m-kbd-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: #53604B;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-m-kbd-status.is-error {
+  color: #9A2B22;
+}
+
+.gd-m-kbd-status.is-success {
+  color: #1F291A;
+  font-weight: 600;
+}
+
+.gd-m-kbd-connect {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(31, 41, 26, 0.28);
+  color: #FAF6EC;
+  font-family: var(--gd-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  transition: background-color 180ms ease, transform 100ms ease;
+}
+
+.gd-m-kbd-connect.is-ready {
+  background: #1F291A;
+}
+
+.gd-m-kbd-connect:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-m-code-kbd {
+    transition: none;
+  }
 }

@@ -9,7 +9,7 @@
  * 5. Web Push notification handling and rich native lock-screen alert interactions.
  */
 
-const CACHE_NAME = 'guardrail-caretaker-pwa-v1';
+const CACHE_NAME = 'guardrail-caretaker-pwa-v3';
 
 const STATIC_SHELL_ASSETS = [
   '/',

@@ -895,6 +895,75 @@ async function runPwaCompanionTests() {
     );
   }
 
+  // =========================================================================
+  // Suite 11: Custom Ward Pairing Code Keyboard (GR-INV-XXXX-YYYY)
+  // =========================================================================
+  console.log('\n▶ Test Suite 11: Custom Ward Pairing Code Keyboard');
+  {
+    const { renderMobileCompanion } = await import('../components/mobile-companion.js');
+    const { extractPairingCodeBody, formatPairingCodeValue } = await import('../components/pairing-code-keyboard.js');
+
+    assert(extractPairingCodeBody('gr-inv-u6ga-4wzy') === 'U6GA4WZY', 'Normalizes lowercase GR-INV code');
+    assert(
+      extractPairingCodeBody('http://192.168.0.100:5173/?invite=GR-INV-4B7K-9MP2') === '4B7K9MP2',
+      'Extracts pairing code from invite URL'
+    );
+    assert(formatPairingCodeValue('U6GA4WZY') === 'GR-INV-U6GA-4WZY', 'Formats 8-char body as GR-INV-XXXX-YYYY');
+
+    let submittedCode = '';
+    const wardsView = renderMobileCompanion({
+      activeTab: 'wards',
+      profile: {
+        actorId: 'tc_dave',
+        assignedWardId: 'usr_alice',
+        assignedWardName: 'Alice Johnson',
+        isAuthenticated: true,
+      },
+      pendingRequests: [],
+      historyRequests: [],
+      connectedWards: [{ id: 'usr_alice', name: 'Alice Johnson', email: 'alice@example.com' }],
+      activeWardFilter: 'ALL',
+      isRefreshing: false,
+      isBackendUnavailable: false,
+      onSelectTab: () => {},
+      onSelectWardFilter: () => {},
+      onOpenRequestSheet: () => {},
+      onRefresh: () => {},
+      onConnectWard: async (code) => {
+        submittedCode = code;
+        return { success: true, message: 'Connected!' };
+      },
+    });
+
+    const pairInput = wardsView.querySelector<HTMLInputElement>('#gd-m-pair-input');
+    assert(pairInput !== null, 'Renders ward pairing input');
+    assert(pairInput?.getAttribute('inputmode') === 'none', 'Suppresses native OS QWERTY keyboard via inputmode="none"');
+
+    pairInput?.dispatchEvent({ type: 'focus' } as any);
+    const kbd = (globalThis as any).document.body.querySelector('.gd-m-code-kbd');
+    assert(kbd !== null, 'Opens custom pairing code keyboard when input receives focus');
+
+    const keys = kbd?.querySelectorAll('.gd-m-kbd-key') || [];
+    const findKey = (label: string) =>
+      keys.find((k: any) => (k.textContent || '').trim() === label) as HTMLElement | undefined;
+
+    for (const ch of ['4', 'B', '7', 'K', '9', 'M', 'P', '2']) {
+      findKey(ch)?.click();
+    }
+    assert(pairInput?.value === 'GR-INV-4B7K-9MP2', 'Custom keypad auto-prefixes GR-INV- and auto-inserts hyphen');
+
+    const bsKey = kbd?.querySelector('.is-backspace') as HTMLElement | null;
+    bsKey?.click();
+    assert(pairInput?.value === 'GR-INV-4B7K-9MP', 'Backspace removes last code character');
+    findKey('3')?.click();
+    assert(pairInput?.value === 'GR-INV-4B7K-9MP3', 'Appends replacement character cleanly');
+
+    const kbdConnectBtn = kbd?.querySelector('.gd-m-kbd-connect') as HTMLElement | null;
+    kbdConnectBtn?.click();
+    await new Promise((r) => setTimeout(r, 15));
+    assert(submittedCode === 'GR-INV-4B7K-9MP3', 'Submitting from custom keyboard delivers normalized GR-INV code');
+  }
+
   console.log('\n======================================================');
   console.log('🎉 ALL PWA COMPANION & MOBILE UX ASSERTIONS PASSED!');
   console.log('======================================================\n');

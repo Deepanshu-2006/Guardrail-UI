@@ -19,6 +19,7 @@ import { createIcon, setAnimatedHeading } from './icons.js';
 import { formatTimestamp, isRequestExpired } from './detail.js';
 import { createAmbientBackdrop, getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
 import { setupInteractiveBottomSheet } from './mobile-sheet-utils.js';
+import { attachPairingCodeKeyboard, closeActivePairingKeyboard } from './pairing-code-keyboard.js';
 
 function formatWardDisplayName(name?: string | null, requesterId?: string | null): string {
   if (name && name.trim()) return name.trim();
@@ -631,6 +632,7 @@ function openNotificationPromptSheet(
 }
 
 export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement {
+  closeActivePairingKeyboard();
   const now = new Date();
   const scenery = getRealTimeScenery(now);
   const shell = document.createElement('div');
@@ -1365,24 +1367,68 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
     if (props.onConnectWard) {
       const pairBox = document.createElement('form');
       pairBox.className = 'gd-m-pair-box';
-      pairBox.innerHTML = `
-        <label class="gd-m-section-kicker" for="gd-m-pair-input">Pair another ward</label>
-        <div class="gd-m-pair-row">
-          <input id="gd-m-pair-input" class="gd-m-pair-input" type="text" placeholder="GR-INV-XXXX-YYYY" autocomplete="off" />
-          <button type="submit" class="gd-m-pair-btn">Connect</button>
-        </div>
-        <div class="gd-m-pair-msg" aria-live="polite"></div>
-      `;
-      const input = pairBox.querySelector<HTMLInputElement>('#gd-m-pair-input')!;
-      const msgEl = pairBox.querySelector<HTMLElement>('.gd-m-pair-msg')!;
+
+      const pairLabel = document.createElement('label');
+      pairLabel.className = 'gd-m-section-kicker';
+      pairLabel.setAttribute('for', 'gd-m-pair-input');
+      pairLabel.textContent = 'Pair another ward';
+
+      const pairRow = document.createElement('div');
+      pairRow.className = 'gd-m-pair-row';
+
+      const input = document.createElement('input');
+      input.id = 'gd-m-pair-input';
+      input.className = 'gd-m-pair-input';
+      input.type = 'text';
+      input.setAttribute('inputmode', 'none');
+      input.setAttribute('placeholder', 'GR-INV-XXXX-YYYY');
+      input.setAttribute('autocomplete', 'off');
+      input.setAttribute('autocapitalize', 'characters');
+      input.setAttribute('spellcheck', 'false');
+      input.value = '';
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'gd-m-pair-btn';
+      submitBtn.textContent = 'Connect';
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'gd-m-pair-msg';
+      msgEl.setAttribute('aria-live', 'polite');
+
+      pairRow.appendChild(input);
+      pairRow.appendChild(submitBtn);
+      pairBox.appendChild(pairLabel);
+      pairBox.appendChild(pairRow);
+      pairBox.appendChild(msgEl);
+
+      const pairingKeyboard = attachPairingCodeKeyboard({
+        input,
+        pairBox,
+        form: pairBox,
+        msgEl,
+      });
       pairBox.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = input.value.trim().toUpperCase();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        const code = (input.value || '').trim().toUpperCase();
         if (!code) return;
+        if (code.startsWith('GR-INV-') && code.length < 16) {
+          const hint = 'Enter all 8 characters (GR-INV-XXXX-YYYY).';
+          msgEl.textContent = hint;
+          pairingKeyboard.setStatus(hint, 'error');
+          return;
+        }
         msgEl.textContent = 'Connecting...';
+        pairingKeyboard.setStatus('Connecting...', 'neutral');
         const res = await props.onConnectWard!(code);
-        msgEl.textContent = res.message || (res.success ? 'Ward connected.' : 'Unable to pair.');
-        if (res.success) input.value = '';
+        const msg = res.message || (res.success ? 'Ward connected.' : 'Unable to pair.');
+        msgEl.textContent = msg;
+        if (res.success) {
+          pairingKeyboard.reset();
+          pairingKeyboard.close();
+        } else {
+          pairingKeyboard.setStatus(msg, 'error');
+        }
       });
       main.appendChild(pairBox);
     }
