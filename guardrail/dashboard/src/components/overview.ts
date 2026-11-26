@@ -331,10 +331,21 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   wardDesc.className = 'gd-metric-desc';
   if (wardCount === 0) {
     wardDesc.textContent = 'Awaiting ward invitation';
-  } else if (wardCount === 1) {
-    wardDesc.textContent = `Reviewer for ${wardsList[0].name}`;
   } else {
-    wardDesc.textContent = `Reviewer for ${wardsList.map(w => w.name).join(', ')}`;
+    const introSpan = document.createElement('span');
+    introSpan.textContent = 'Reviewer for ';
+    wardDesc.appendChild(introSpan);
+    wardsList.forEach((w, idx) => {
+      if (idx > 0) {
+        const sepSpan = document.createElement('span');
+        sepSpan.textContent = ', ';
+        wardDesc.appendChild(sepSpan);
+      }
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'gd-ward-inline-name';
+      nameSpan.textContent = w.name;
+      wardDesc.appendChild(nameSpan);
+    });
   }
 
   const triggerWardsModal = () => {
