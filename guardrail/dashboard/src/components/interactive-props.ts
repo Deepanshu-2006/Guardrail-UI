@@ -580,6 +580,7 @@ export function attachInteractiveHeadingSprings(
   titleEl: HTMLElement,
   isActiveFn: () => boolean,
   onLetterClick?: (charRect: DOMRect) => void,
+  mode: 'thermal' | 'wind-banner' = 'thermal',
 ): void {
   const chars = Array.from(titleEl.querySelectorAll('.gd-char')) as HTMLElement[];
   if (!chars.length || typeof requestAnimationFrame !== 'function') return;
@@ -655,8 +656,21 @@ export function attachInteractiveHeadingSprings(
       let targetGlow = 0;
 
       if (active) {
-        targetY = Math.sin(clock * 2.1 + i * 0.75) * 2.6 - 1.5;
-        targetRot = Math.cos(clock * 1.5 + i * 0.9) * 1.8;
+        if (mode === 'wind-banner') {
+          const t = i / Math.max(1, chars.length - 1);
+          const loose = Math.pow(t, 1.15);
+          const gustStrength = 0.85 + Math.sin(clock * 2.4) * 0.35 + Math.sin(clock * 5.8) * 0.18;
+          const wave = Math.sin(clock * 8.2 - i * 0.44);
+          const waveDeriv = Math.cos(clock * 8.2 - i * 0.44);
+
+          // Left end ('P') stays pinned; right end ('s') whips & streams loosely in the wind like a ribbon
+          targetX = loose * (14 + gustStrength * 14) + wave * loose * 4.5;
+          targetY = -loose * (8 + gustStrength * 10) + wave * loose * (11 + gustStrength * 6);
+          targetRot = loose * 6 + waveDeriv * loose * (13 + gustStrength * 8);
+        } else {
+          targetY = Math.sin(clock * 2.1 + i * 0.75) * 2.6 - 1.5;
+          targetRot = Math.cos(clock * 1.5 + i * 0.9) * 1.8;
+        }
 
         if (pointerX !== null && pointerY !== null) {
           const rect = ch.getBoundingClientRect();
@@ -666,7 +680,8 @@ export function attachInteractiveHeadingSprings(
           const dy = cy - pointerY;
           const dist = Math.hypot(dx, dy);
           if (dist < 85) {
-            const force = 1 - dist / 85;
+            const pinScale = mode === 'wind-banner' ? (0.15 + 0.85 * Math.pow(i / Math.max(1, chars.length - 1), 1.1)) : 1;
+            const force = (1 - dist / 85) * pinScale;
             targetX += (dx / Math.max(12, dist)) * force * 11;
             targetY += (dy / Math.max(12, dist)) * force * 9 - force * 5;
             targetRot += (dx >= 0 ? 1 : -1) * force * 12;
@@ -675,9 +690,11 @@ export function attachInteractiveHeadingSprings(
         }
       }
 
-      s.vx += ((targetX - s.x) * 140 - s.vx * 11) * dt;
-      s.vy += ((targetY - s.y) * 140 - s.vy * 11) * dt;
-      s.vrot += ((targetRot - s.rot) * 130 - s.vrot * 10) * dt;
+      const kSpring = active ? 140 : 220;
+      const kDamp = active ? 11 : 16;
+      s.vx += ((targetX - s.x) * kSpring - s.vx * kDamp) * dt;
+      s.vy += ((targetY - s.y) * kSpring - s.vy * kDamp) * dt;
+      s.vrot += ((targetRot - s.rot) * (active ? 130 : 210) - s.vrot * (active ? 10 : 15)) * dt;
       s.vflip += ((0 - s.flip) * 95 - s.vflip * 9) * dt;
 
       s.x += s.vx * dt;
@@ -779,27 +796,50 @@ export function attachInteractiveHeadingSprings(
     ensureRunning();
   });
 
-  if (typeof window !== 'undefined' && typeof MutationObserver === 'function') {
-    const appEl = document.querySelector('.gd-dashboard-app');
-    const pendingEl = titleEl.closest('.gd-view-section');
-    const targets = [appEl, pendingEl].filter(Boolean) as Element[];
-    if (targets.length) {
-      const obs = new MutationObserver(() => {
-        if (!document.contains(titleEl)) {
-          obs.disconnect();
-          return;
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function' && mode === 'wind-banner') {
+    const onFlipOrSync = (ev: Event) => {
+      if (!document.contains(titleEl)) return;
+      if (ev.type === 'gd-hourglass-flip') {
+        for (let i = 0; i < states.length; i++) {
+          const loose = Math.pow(i / Math.max(1, states.length - 1), 1.2);
+          states[i].vx += 95 * loose;
+          states[i].vy -= 75 * loose;
+          states[i].vrot += 90 * loose;
         }
-        if (isActiveFn()) {
-          for (let i = 0; i < states.length; i++) {
-            states[i].vy -= 55 - i * 3;
-          }
-          ensureRunning();
-        }
-      });
-      for (const t of targets) {
-        obs.observe(t, { attributes: true, attributeFilter: ['class'] });
       }
-    }
+      if (isActiveFn() || ev.type === 'gd-hourglass-flip') {
+        ensureRunning();
+      }
+    };
+    window.addEventListener('gd-hourglass-flip', onFlipOrSync);
+    window.addEventListener('gd-pending-storm-sync', onFlipOrSync);
+  }
+
+  if (typeof window !== 'undefined' && typeof MutationObserver === 'function') {
+    requestAnimationFrame(() => {
+      if (!document.contains(titleEl)) return;
+      const appEl = document.querySelector('.gd-dashboard-app');
+      const pendingEl = titleEl.closest('.gd-view-section');
+      const targets = [appEl, pendingEl].filter(Boolean) as Element[];
+      if (targets.length) {
+        const obs = new MutationObserver(() => {
+          if (!document.contains(titleEl)) {
+            obs.disconnect();
+            return;
+          }
+          if (isActiveFn()) {
+            for (let i = 0; i < states.length; i++) {
+              states[i].vy -= 55 - i * 2;
+            }
+            ensureRunning();
+          }
+        });
+        for (const t of targets) {
+          obs.observe(t, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (isActiveFn()) ensureRunning();
+      }
+    });
   }
 }
 
@@ -976,9 +1016,12 @@ export function createPendingHourglassProp(): HTMLElement {
     if (typeof document !== 'undefined') {
       const appEl = document.querySelector('.gd-dashboard-app');
       if (appEl) {
-        const isPendingActive = Boolean(viewEl && viewEl.classList.contains('active'));
-        appEl.classList.toggle('gd-pending-sandstorm-on', flowing && isPendingActive);
+        const isPendingMounted = Boolean(viewEl && document.contains(viewEl));
+        appEl.classList.toggle('gd-pending-sandstorm-on', flowing && isPendingMounted);
       }
+    }
+    if (flowing && typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('gd-pending-storm-sync'));
     }
   };
 
@@ -1106,9 +1149,9 @@ export function createPendingHourglassProp(): HTMLElement {
     const dt = lastTs ? Math.min(0.035, (ts - lastTs) / 1000) : 0.016;
     lastTs = ts;
 
-    // Weighted brass trunnion pivot physics
-    const angAccel = (targetAngle - angle) * 0.11;
-    angVel = (angVel + angAccel) * 0.84;
+    // Crisp, weighted brass trunnion pivot physics (settles cleanly without wild overshoot)
+    const angAccel = (targetAngle - angle) * 0.22;
+    angVel = (angVel + angAccel) * 0.75;
     angle += angVel;
     if (frameEl) {
       frameEl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
@@ -1119,10 +1162,10 @@ export function createPendingHourglassProp(): HTMLElement {
     const flippedOdd = (Math.round(targetAngle / 180) % 2) !== 0;
     const upperSand = flippedOdd ? 1 - bulbASand : bulbASand;
 
-    // Sand pours from whichever bulb is physically UP into the empty/lower bulb
-    const pouring = upperSand > 0.002 && absDiff < 38;
+    // Start pouring immediately as the glass passes horizontal (< 105 deg from target)
+    const pouring = upperSand > 0.002 && absDiff < 105;
     if (pouring) {
-      const drain = dt / 16;
+      const drain = dt / 22; // 22-second realistic pour
       bulbASand = flippedOdd
         ? Math.min(1, bulbASand + drain)
         : Math.max(0, bulbASand - drain);
@@ -1174,8 +1217,14 @@ export function createPendingHourglassProp(): HTMLElement {
     // Flip 180° — sand stays in its current bulb, which is now physically on top!
     targetAngle += 180;
     sharedHourglassAngle = targetAngle;
-    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-      window.dispatchEvent(new CustomEvent('gd-hourglass-flip'));
+    const nextOdd = (Math.round(targetAngle / 180) % 2) !== 0;
+    const nextUpper = nextOdd ? 1 - bulbASand : bulbASand;
+    if (nextUpper > 0.002) {
+      // Activate storm & heading immediately on click so there is zero delay
+      syncSectionClass(true);
+      if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('gd-hourglass-flip'));
+      }
     }
     ensureRunning();
   });
@@ -1359,19 +1408,31 @@ export function createPendingSandstormOverlay(): HTMLElement {
       ctx.globalAlpha = 1;
     }
 
-    // Physical pendulum swing on the hanging greeting board during sandstorm gusts
+    // Physical pendulum swing + turbulent jiggle + 3D wind-pressure tilt on the hanging greeting board
     const boardEl = document.querySelector('#view-pending .gd-overview-greeting-card .gd-wood-board') as HTMLElement | null;
     if (boardEl) {
-      const windTorque = active
-        ? (2.4 + gust * 4.2 + Math.sin(clock * 2.9) * 1.8 + Math.sin(clock * 5.7) * 0.9)
+      const gustWave = active
+        ? Math.max(0.25, 0.55 + Math.sin(clock * 2.4) * 0.35 + Math.sin(clock * 6.1) * 0.22)
         : 0;
-      const boardAccel = windTorque * 3.8 - boardAngle * 14 - boardVel * 2.4;
+      const windTorque = active
+        ? (3.2 + gust * 5.4 + Math.sin(clock * 3.1) * 2.4 + Math.sin(clock * 7.3) * 1.2)
+        : 0;
+      const boardAccel = windTorque * 4.4 - boardAngle * 15 - boardVel * 2.1;
       boardVel += boardAccel * dt;
       boardAngle += boardVel * dt;
-      if (Math.abs(boardAngle) > 0.03 || Math.abs(boardVel) > 0.05) {
+
+      const jiggleX = active ? Math.sin(clock * 18.5) * gustWave * 1.35 : 0;
+      const jiggleY = active ? Math.cos(clock * 22.0) * gustWave * 0.85 : 0;
+      const jiggleRot = active ? Math.sin(clock * 15.2) * gustWave * 0.75 : 0;
+      const tiltX = active ? 2.5 + Math.sin(clock * 4.8) * gustWave * 3.2 : 0;
+      const tiltY = active ? -2.0 - Math.cos(clock * 3.9) * gustWave * 2.8 : 0;
+
+      if (active || Math.abs(boardAngle) > 0.03 || Math.abs(boardVel) > 0.05) {
         boardEl.style.transformOrigin = '50% -26px';
-        boardEl.style.transform = `translateX(${(boardAngle * 1.1).toFixed(2)}px) rotate(${boardAngle.toFixed(2)}deg)`;
-      } else if (!active) {
+        boardEl.style.transform =
+          `perspective(760px) translate3d(${(boardAngle * 1.35 + jiggleX).toFixed(2)}px, ${jiggleY.toFixed(2)}px, 0) ` +
+          `rotate(${(boardAngle + jiggleRot).toFixed(2)}deg) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+      } else {
         boardAngle = 0;
         boardVel = 0;
         boardEl.style.transform = '';
@@ -1433,63 +1494,113 @@ export function createPendingOwlProp(): HTMLElement {
   owlBtn.tabIndex = -1;
 
   const notes = ['Eyes on it', 'Take your time', 'Verify destination', 'Staying sharp'];
+  const stormNotes = ['Dusty out here!', 'Holding the perch!', 'Eyes shielded!', 'Riding the gusts!'];
   let noteIdx = 0;
+  let stormNoteIdx = 0;
   let noteTimer: ReturnType<typeof setTimeout> | null = null;
 
   owlBtn.innerHTML = `
     <span class="gd-owl-note" aria-hidden="true"></span>
-    <svg class="gd-prop-svg" width="74" height="72" viewBox="0 0 74 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g class="gd-owl-body" style="transform-origin: 37px 62px;">
-        <!-- Spread Wings (visible during click swoop) -->
+    <span class="gd-owl-dust" aria-hidden="true">
+      <span class="gd-owl-mote gd-owl-mote-1"></span>
+      <span class="gd-owl-mote gd-owl-mote-2"></span>
+      <span class="gd-owl-mote gd-owl-mote-3"></span>
+      <span class="gd-owl-mote gd-owl-mote-4"></span>
+      <span class="gd-owl-mote gd-owl-mote-5"></span>
+    </span>
+    <svg class="gd-prop-svg" width="92" height="88" viewBox="0 0 74 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gd-owl-plumage" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#B98E66"/>
+          <stop offset="55%" stop-color="#9A724F"/>
+          <stop offset="100%" stop-color="#765539"/>
+        </linearGradient>
+        <linearGradient id="gd-owl-wing-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#A8805B"/>
+          <stop offset="65%" stop-color="#7F5E42"/>
+          <stop offset="100%" stop-color="#5B422D"/>
+        </linearGradient>
+        <radialGradient id="gd-owl-disc" cx="50%" cy="45%" r="55%">
+          <stop offset="0%" stop-color="#FFFBF2"/>
+          <stop offset="75%" stop-color="#F5ECDC"/>
+          <stop offset="100%" stop-color="#E4D4BA"/>
+        </radialGradient>
+      </defs>
+      <g class="gd-owl-body" style="transform-origin: 37px 63px;">
+        <!-- Layered Spread Wings (visible during click swoop & gust balancing) -->
         <g class="gd-owl-wing-left" style="transform-origin: 28px 36px;">
-          <path d="M29 36 C16 28, 5 30, 2 39 C10 43, 19 45, 28 44 Z" fill="#8C6B4E" stroke="#2D2219" stroke-width="1.1" stroke-linejoin="round"/>
+          <path d="M29 35 C15 24, 3 27, 0 38 C7 42.5, 16 45, 28 44 Z" fill="url(#gd-owl-wing-grad)" stroke="#2A1F16" stroke-width="1.05" stroke-linejoin="round"/>
+          <path d="M6 34 L22 38 M4 38 L20 41 M9 41 L24 42" stroke="#4D3725" stroke-width="0.75" opacity="0.6" stroke-linecap="round"/>
         </g>
         <g class="gd-owl-wing-right" style="transform-origin: 46px 36px;">
-          <path d="M45 36 C58 28, 69 30, 72 39 C64 43, 55 45, 46 44 Z" fill="#8C6B4E" stroke="#2D2219" stroke-width="1.1" stroke-linejoin="round"/>
+          <path d="M45 35 C59 24, 71 27, 74 38 C67 42.5, 58 45, 46 44 Z" fill="url(#gd-owl-wing-grad)" stroke="#2A1F16" stroke-width="1.05" stroke-linejoin="round"/>
+          <path d="M68 34 L52 38 M70 38 L54 41 M65 41 L50 42" stroke="#4D3725" stroke-width="0.75" opacity="0.6" stroke-linecap="round"/>
         </g>
 
-        <!-- Tail feathers -->
-        <path d="M31 55 L28 65 L37 63 L46 65 L43 55 Z" fill="#6F533B" stroke="#2D2219" stroke-width="1" stroke-linejoin="round"/>
+        <!-- Barred tail feathers -->
+        <path d="M30 55 L26.5 66.5 L33 64.5 L37 66 L41 64.5 L47.5 66.5 L44 55 Z" fill="#6B4F37" stroke="#2A1F16" stroke-width="0.95" stroke-linejoin="round"/>
+        <line x1="29.5" y1="61" x2="44.5" y2="61" stroke="#4A3422" stroke-width="0.8" opacity="0.55"/>
 
-        <!-- Torso & speckled cream breast -->
-        <path d="M25 32 C23 44, 26 57, 37 58 C48 57, 51 44, 49 32 C46 27, 28 27, 25 32 Z" fill="#9E7958" stroke="#2D2219" stroke-width="1.15"/>
-        <path d="M29.5 34 C28 43, 30 53, 37 54.5 C44 53, 46 43, 44.5 34 Z" fill="#F2EAD9"/>
-        <circle cx="34" cy="41" r="0.9" fill="#7D5E44" opacity="0.65"/>
-        <circle cx="40" cy="43" r="0.9" fill="#7D5E44" opacity="0.65"/>
-        <circle cx="36.5" cy="48" r="0.9" fill="#7D5E44" opacity="0.65"/>
+        <!-- Rounded torso & warm speckled ivory breast -->
+        <path d="M24 31 C22 44, 25.5 58, 37 59 C48.5 58, 52 44, 50 31 C47 26, 27 26, 24 31 Z" fill="url(#gd-owl-plumage)" stroke="#2A1F16" stroke-width="1.1"/>
+        <path d="M29 33 C27.2 43, 29.5 54, 37 55.5 C44.5 54, 46.8 43, 45 33 Z" fill="url(#gd-owl-disc)"/>
+        <circle cx="33.5" cy="40" r="0.85" fill="#7D5E44" opacity="0.6"/>
+        <circle cx="40.5" cy="41.5" r="0.85" fill="#7D5E44" opacity="0.6"/>
+        <circle cx="36.5" cy="46.5" r="0.85" fill="#7D5E44" opacity="0.65"/>
+        <circle cx="32.8" cy="49" r="0.7" fill="#7D5E44" opacity="0.5"/>
+        <circle cx="41.2" cy="49.5" r="0.7" fill="#7D5E44" opacity="0.5"/>
 
         <!-- Folded wings (perched) -->
-        <path class="gd-owl-wing-folded" d="M25 33 C22 42, 24 52, 29 55 C30 48, 30 39, 28 33 Z" fill="#7D5D42" stroke="#2D2219" stroke-width="1"/>
-        <path class="gd-owl-wing-folded" d="M49 33 C52 42, 50 52, 45 55 C44 48, 44 39, 46 33 Z" fill="#7D5D42" stroke="#2D2219" stroke-width="1"/>
+        <path class="gd-owl-wing-folded" d="M24.2 32 C20.8 42, 23 53, 28.8 56 C30 48, 30 39, 27.8 32 Z" fill="url(#gd-owl-wing-grad)" stroke="#2A1F16" stroke-width="0.95"/>
+        <path class="gd-owl-wing-folded" d="M49.8 32 C53.2 42, 51 53, 45.2 56 C44 48, 44 39, 46.2 32 Z" fill="url(#gd-owl-wing-grad)" stroke="#2A1F16" stroke-width="0.95"/>
 
-        <!-- Talons gripping frame -->
+        <!-- Talons firmly gripping frame rail -->
         <g class="gd-owl-talons">
-          <path d="M32 57 L31 64 M29.5 64 L33 64" stroke="#C99A49" stroke-width="1.6" stroke-linecap="round"/>
-          <path d="M42 57 L43 64 M41 64 L44.5 64" stroke="#C99A49" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M32 57.5 L31 64.5 M29 64.5 L33.5 64.5" stroke="#D19F4C" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M42 57.5 L43 64.5 M40.5 64.5 L45 64.5" stroke="#D19F4C" stroke-width="1.7" stroke-linecap="round"/>
         </g>
 
-        <!-- Articulated Barn Owl Head (tracks cursor) -->
+        <!-- Articulated Barn Owl Head with amber irises & feathered facial disc -->
         <g class="gd-owl-head" style="transform-origin: 37px 26px;">
-          <path d="M23 22 C23 11, 51 11, 51 22 C51 31, 44 35, 37 35 C30 35, 23 31, 23 22 Z" fill="#A68160" stroke="#2D2219" stroke-width="1.15"/>
+          <path d="M22 21.5 C22 10, 52 10, 52 21.5 C52 31, 44.5 35.5, 37 35.5 C29.5 35.5, 22 31, 22 21.5 Z" fill="url(#gd-owl-plumage)" stroke="#2A1F16" stroke-width="1.1"/>
           <!-- Heart-shaped facial disc -->
-          <path d="M26 21 C26 14.5, 34.5 14.5, 37 18.5 C39.5 14.5, 48 14.5, 48 21 C48 28, 41 32, 37 32.5 C33 32, 26 28, 26 21 Z" fill="#F7F1E5" stroke="#8C6849" stroke-width="0.9"/>
-          <!-- Expressive dark eyes + catchlights -->
-          <circle cx="32" cy="22" r="2.3" fill="#1B1612"/>
-          <circle cx="42" cy="22" r="2.3" fill="#1B1612"/>
-          <circle cx="32.7" cy="21.2" r="0.7" fill="#FFFFFF"/>
-          <circle cx="42.7" cy="21.2" r="0.7" fill="#FFFFFF"/>
+          <path d="M25.2 20.8 C25.2 13.8, 34.2 13.8, 37 18.2 C39.8 13.8, 48.8 13.8, 48.8 20.8 C48.8 28, 41.5 32.5, 37 33 C32.5 32.5, 25.2 28, 25.2 20.8 Z" fill="url(#gd-owl-disc)" stroke="#9A653F" stroke-width="0.95"/>
+          <!-- Expressive amber irises + deep pupils + catchlights -->
+          <circle cx="31.8" cy="21.8" r="2.75" fill="#D89A3C" stroke="#4F3518" stroke-width="0.5"/>
+          <circle cx="42.2" cy="21.8" r="2.75" fill="#D89A3C" stroke="#4F3518" stroke-width="0.5"/>
+          <circle cx="31.8" cy="21.8" r="1.55" fill="#14110E"/>
+          <circle cx="42.2" cy="21.8" r="1.55" fill="#14110E"/>
+          <circle cx="32.5" cy="20.9" r="0.7" fill="#FFFFFF"/>
+          <circle cx="42.9" cy="20.9" r="0.7" fill="#FFFFFF"/>
           <!-- Animated blink eyelids -->
-          <rect class="gd-owl-eyelid" x="29.4" y="19.5" width="5.2" height="5" rx="2" fill="#E8DEC8"/>
-          <rect class="gd-owl-eyelid" x="39.4" y="19.5" width="5.2" height="5" rx="2" fill="#E8DEC8"/>
-          <!-- Small hooked beak -->
-          <path d="M35.5 24 L38.5 24 L37 28 Z" fill="#D4A458" stroke="#5A3F18" stroke-width="0.7" stroke-linejoin="round"/>
+          <rect class="gd-owl-eyelid" x="28.8" y="18.8" width="6" height="6" rx="2.5" fill="#E8DAC0"/>
+          <rect class="gd-owl-eyelid" x="39.2" y="18.8" width="6" height="6" rx="2.5" fill="#E8DAC0"/>
+          <!-- Curved amber-horn beak -->
+          <path d="M35.2 23.8 Q37 23.2 38.8 23.8 L37 28.6 Z" fill="#DDA952" stroke="#5A3F18" stroke-width="0.7" stroke-linejoin="round"/>
+        </g>
+
+        <!-- Protective Windward Wing-Shield (raised across left side during sandstorm) -->
+        <g class="gd-owl-wing-shield" style="transform-origin: 25px 38px;">
+          <path d="M24.5 47 C19 34, 20.5 19.5, 31.5 17.5 C34 25, 33.5 36.5, 30 47 Z" fill="url(#gd-owl-wing-grad)" stroke="#2A1F16" stroke-width="1.05" stroke-linejoin="round"/>
+          <path d="M23.5 25.5 L30.5 32 M22.5 32 L29.5 38.5 M23.5 38.5 L29 44" stroke="#4D3725" stroke-width="0.8" opacity="0.65" stroke-linecap="round"/>
         </g>
       </g>
     </svg>
   `;
 
+  const showNote = (text: string, durationMs = 2400) => {
+    if (!noteBubble) return;
+    noteBubble.textContent = text;
+    noteBubble.classList.add('is-visible');
+    if (noteTimer) clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => {
+      noteBubble.classList.remove('is-visible');
+    }, durationMs);
+  };
+
   const headEl = owlBtn.querySelector('.gd-owl-head') as SVGGElement | null;
   const bodyEl = owlBtn.querySelector('.gd-owl-body') as SVGGElement | null;
+  const shieldEl = owlBtn.querySelector('.gd-owl-wing-shield') as SVGGElement | null;
   const noteBubble = owlBtn.querySelector('.gd-owl-note') as HTMLElement | null;
 
   let headRot = 0;
@@ -1500,6 +1611,9 @@ export function createPendingOwlProp(): HTMLElement {
   let swoopVelY = 0;
   let swoopClock = -1;
   let stormClock = 0;
+  let nextAutoNoteAt = 0.85;
+  let shakeClock = -1;
+  let wasStorming = false;
   let rafId: number | null = null;
 
   const isStorming = () =>
@@ -1513,18 +1627,48 @@ export function createPendingOwlProp(): HTMLElement {
     }
 
     const storming = isStorming();
+    if (wasStorming && !storming) {
+      // Trigger a natural post-storm feather shake when the sand clears
+      shakeClock = 0;
+      nextAutoNoteAt = 0.85;
+    }
+    wasStorming = storming;
+
     if (storming) {
       stormClock += 0.016;
+      if (stormClock >= nextAutoNoteAt) {
+        showNote(stormNotes[stormNoteIdx % stormNotes.length], 2500);
+        stormNoteIdx += 1;
+        nextAutoNoteAt = stormClock + 5.6;
+      }
     } else {
       stormClock = 0;
+      nextAutoNoteAt = 0.85;
+    }
+
+    if (shakeClock >= 0) {
+      shakeClock += 0.016;
+      if (shakeClock > 0.55) shakeClock = -1;
     }
 
     headRot += (targetHeadRot - headRot) * 0.16;
     headX += (targetHeadX - headX) * 0.16;
 
+    const shakeAngle = shakeClock >= 0 ? Math.sin(shakeClock * 42) * 11 * (1 - shakeClock / 0.55) : 0;
+
     if (headEl) {
-      const windHeadTilt = storming ? -4.5 + Math.sin(stormClock * 7.5) * 1.6 : 0;
-      headEl.style.transform = `translateX(${headX.toFixed(2)}px) rotate(${(headRot + windHeadTilt).toFixed(2)}deg)`;
+      const windHeadTilt = storming ? -9.5 + Math.sin(stormClock * 8.4) * 2.8 + Math.cos(stormClock * 16.0) * 0.9 : 0;
+      const windDuckY = storming ? 2.2 + Math.abs(Math.sin(stormClock * 3.1)) * 1.3 : 0;
+      headEl.style.transform = `translate(${(headX + (storming ? 1.5 : 0)).toFixed(2)}px, ${windDuckY.toFixed(2)}px) rotate(${(headRot + windHeadTilt + shakeAngle).toFixed(2)}deg)`;
+    }
+
+    if (shieldEl) {
+      if (storming) {
+        const shieldBob = Math.sin(stormClock * 7.2) * 4;
+        shieldEl.style.transform = `rotate(${(-4 + shieldBob).toFixed(1)}deg)`;
+      } else {
+        shieldEl.style.transform = '';
+      }
     }
 
     if (swoopClock >= 0) {
@@ -1533,7 +1677,7 @@ export function createPendingOwlProp(): HTMLElement {
       swoopVelY = (swoopVelY + accelY) * 0.86;
       swoopY += swoopVelY;
       if (bodyEl) {
-        bodyEl.style.transform = `translateY(${swoopY.toFixed(2)}px)`;
+        bodyEl.style.transform = `translateY(${swoopY.toFixed(2)}px) rotate(${(shakeAngle * 0.45).toFixed(2)}deg)`;
       }
       if (swoopClock > 0.75 && Math.abs(swoopY) < 0.3 && Math.abs(swoopVelY) < 0.3) {
         swoopClock = -1;
@@ -1544,16 +1688,23 @@ export function createPendingOwlProp(): HTMLElement {
       }
     } else if (bodyEl) {
       if (storming) {
-        // Brace & crouch against wind gusts on the wooden rail
-        const gustBuffet = Math.sin(stormClock * 6.2) * 1.2 + Math.sin(stormClock * 2.9) * 1.4;
-        bodyEl.style.transform = `translate(${(1.2 + gustBuffet * 0.35).toFixed(2)}px, 3px) rotate(${(-4.5 + gustBuffet).toFixed(2)}deg)`;
+        const gustPeak = Math.sin(stormClock * 2.4) * 0.5 + 0.5;
+        const flutter = Math.sin(stormClock * 14.5) * (0.8 + gustPeak * 1.4);
+        const lean = -7.5 - gustPeak * 4.5 + flutter + shakeAngle * 0.35;
+        const crouchY = 3.2 + gustPeak * 1.4;
+        const shiftX = 2.0 + gustPeak * 1.6 + Math.sin(stormClock * 9.2) * 0.7;
+        bodyEl.style.transform = `translate(${shiftX.toFixed(2)}px, ${crouchY.toFixed(2)}px) rotate(${lean.toFixed(2)}deg)`;
+        owlBtn.classList.toggle('is-wind-bracing', gustPeak > 0.65);
+        owlBtn.classList.toggle('is-shielding', gustPeak <= 0.65);
       } else {
-        bodyEl.style.transform = '';
+        owlBtn.classList.remove('is-wind-bracing', 'is-shielding');
+        bodyEl.style.transform = shakeClock >= 0 ? `rotate(${(shakeAngle * 0.45).toFixed(2)}deg)` : '';
       }
     }
 
     const moving =
       storming ||
+      shakeClock >= 0 ||
       Math.abs(targetHeadRot - headRot) > 0.1 ||
       Math.abs(targetHeadX - headX) > 0.05 ||
       swoopClock >= 0;
@@ -1617,19 +1768,23 @@ export function createPendingOwlProp(): HTMLElement {
 
   owlBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    swoopClock = 0;
-    swoopVelY = -5.4;
-    owlBtn.classList.add('is-swooping');
+    const storming = isStorming();
+    if (storming) {
+      shakeClock = 0;
+    } else {
+      swoopClock = 0;
+      swoopVelY = -5.4;
+      owlBtn.classList.add('is-swooping');
+    }
     ensureRunning();
 
-    if (noteBubble) {
-      noteBubble.textContent = notes[noteIdx % notes.length];
+    if (storming) {
+      const pool = stormNotes;
+      showNote(pool[stormNoteIdx % pool.length], 2000);
+      stormNoteIdx += 1;
+    } else {
+      showNote(notes[noteIdx % notes.length], 1600);
       noteIdx += 1;
-      noteBubble.classList.add('is-visible');
-      if (noteTimer) clearTimeout(noteTimer);
-      noteTimer = setTimeout(() => {
-        noteBubble.classList.remove('is-visible');
-      }, 1500);
     }
   });
 

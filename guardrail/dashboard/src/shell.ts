@@ -28,7 +28,7 @@ import { renderNavigation } from './components/navigation.js';
 import { renderAccountArea } from './components/account.js';
 import { renderAuthModal } from './components/auth-modal.js';
 import { renderOverview, formatWardDisplayName } from './components/overview.js';
-import { createAmbientBackdrop, getRealTimeScenery, markGreetingWidgetSettled } from './components/pixel-scenery.js';
+import { createAmbientBackdrop, getRealTimeScenery, resetGreetingWidgetEntrance } from './components/pixel-scenery.js';
 import { createLanternFirefliesOverlay, createPendingSandstormOverlay } from './components/interactive-props.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
@@ -53,11 +53,7 @@ export class DashboardShell {
   private topHeaderEl: HTMLElement | null = null;
   private headerTitleEl: HTMLElement | null = null;
   private headerActionsEl: HTMLElement | null = null;
-  private statusPillEl: HTMLElement | null = null;
-  private statusDotEl: HTMLElement | null = null;
-  private statusTextEl: HTMLElement | null = null;
   private mockBadgeEl: HTMLElement | null = null;
-  private envBadgeEl: HTMLElement | null = null;
   private mainContentEl: HTMLElement | null = null;
   private liveAnnouncerEl: HTMLElement | null = null;
   private isMobileSidebarOpen: boolean = false;
@@ -1185,16 +1181,6 @@ export class DashboardShell {
       this.headerActionsEl = document.createElement('div');
       this.headerActionsEl.className = 'gd-header-actions';
 
-      this.statusPillEl = document.createElement('div');
-      this.statusDotEl = document.createElement('span');
-      this.statusDotEl.className = 'gd-status-dot';
-      this.statusDotEl.setAttribute('aria-hidden', 'true');
-
-      this.statusTextEl = document.createElement('span');
-      this.statusPillEl.appendChild(this.statusDotEl);
-      this.statusPillEl.appendChild(this.statusTextEl);
-      this.headerActionsEl.appendChild(this.statusPillEl);
-
       this.updateHeaderStatusPill();
 
       this.topHeaderEl.appendChild(headerLeft);
@@ -1696,35 +1682,10 @@ export class DashboardShell {
   }
 
   /**
-   * Updates the top header status indicator pill, dot, and environment/mock badges in-place
-   * without recreating or re-animating the header element.
+   * Updates optional top-header mock service badge in-place.
    */
   private updateHeaderStatusPill(): void {
-    if (!this.statusPillEl || !this.statusTextEl || !this.headerActionsEl) return;
-
-    const pillModifier = this.isBackendUnavailable
-      ? 'unavailable'
-      : this.isRefreshing
-      ? 'syncing'
-      : this.state.contactProfile?.isAuthenticated
-      ? 'authenticated'
-      : 'portal';
-    this.statusPillEl.className = `gd-status-pill ${pillModifier}`;
-    this.statusPillEl.setAttribute('role', 'status');
-
-    if (this.isBackendUnavailable) {
-      this.statusTextEl.textContent = this.state.contactProfile?.isAuthenticated
-        ? 'Verified Reviewer (Offline)'
-        : 'Backend Unavailable';
-    } else if (this.isRefreshing) {
-      this.statusTextEl.textContent = this.state.contactProfile?.isAuthenticated
-        ? 'Verified Reviewer (Syncing...)'
-        : 'Synchronizing...';
-    } else {
-      this.statusTextEl.textContent = this.state.contactProfile?.isAuthenticated
-        ? 'Verified Reviewer'
-        : 'Reviewer Portal';
-    }
+    if (!this.headerActionsEl) return;
 
     const isMock = Boolean(
       this.state.isMockService ||
@@ -1742,26 +1703,6 @@ export class DashboardShell {
     } else if (this.mockBadgeEl) {
       this.mockBadgeEl.remove();
       this.mockBadgeEl = null;
-    }
-
-    const env =
-      this.state.environment ||
-      (typeof this.apiClient?.getEnvironment === 'function'
-        ? this.apiClient.getEnvironment()
-        : undefined);
-    if (env && env !== 'production') {
-      if (!this.envBadgeEl) {
-        this.envBadgeEl = document.createElement('span');
-        this.envBadgeEl.className = `gd-env-badge gd-env-${env}`;
-        this.envBadgeEl.textContent = env.toUpperCase();
-        this.headerActionsEl.appendChild(this.envBadgeEl);
-      } else {
-        this.envBadgeEl.className = `gd-env-badge gd-env-${env}`;
-        this.envBadgeEl.textContent = env.toUpperCase();
-      }
-    } else if (this.envBadgeEl) {
-      this.envBadgeEl.remove();
-      this.envBadgeEl = null;
     }
   }
 
@@ -1837,7 +1778,7 @@ export class DashboardShell {
       this.appWrapper.classList.remove('gd-pending-sandstorm-on');
     }
 
-    markGreetingWidgetSettled();
+    resetGreetingWidgetEntrance();
     this.state.activeView = view;
     this.startViewEntrance(view);
     if (updateHash && typeof window !== 'undefined') {
@@ -4578,11 +4519,7 @@ export class DashboardShell {
     this.topHeaderEl = null;
     this.headerTitleEl = null;
     this.headerActionsEl = null;
-    this.statusPillEl = null;
-    this.statusDotEl = null;
-    this.statusTextEl = null;
     this.mockBadgeEl = null;
-    this.envBadgeEl = null;
     this.sidebarEl = null;
     this.mainContentEl = null;
     this.appWrapper = null;

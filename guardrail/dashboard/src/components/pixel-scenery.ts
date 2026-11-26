@@ -1173,6 +1173,19 @@ export function markGreetingWidgetSettled(): void {
 }
 
 /**
+ * Resets the settled flag when switching pages so the hanging wooden greeting
+ * board replays its drop-and-swing entrance animation on each page transition,
+ * while background data polls on the same page remain steady.
+ */
+export function resetGreetingWidgetEntrance(): void {
+  greetingWidgetIntroSettled = false;
+  if (greetingWidgetIntroTimer !== null) {
+    clearTimeout(greetingWidgetIntroTimer);
+    greetingWidgetIntroTimer = null;
+  }
+}
+
+/**
  * Creates the weathered, slightly broken hanging wooden-board pixel scenery +
  * time + greeting element displayed on the right side of desktop page headers.
  */

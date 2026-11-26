@@ -18,7 +18,7 @@ import { formatExpirationInfo, formatTimestamp, getRiskLevelExplanation, isReque
 import { filterRequests, renderFilterBar, renderFilterEmptyState, renderWardSwitcher } from './filters.js';
 import { createMergedGreetingWidget } from './pixel-scenery.js';
 import { createIcon, populateWardAvatar, setAnimatedHeading } from './icons.js';
-import { attachInteractiveHeadingSprings, createPendingHourglassProp, createPendingOwlProp } from './interactive-props.js';
+import { createPendingHourglassProp, createPendingOwlProp } from './interactive-props.js';
 
 export interface PendingApprovalsProps {
   requests: readonly ApprovalRequest[];
@@ -298,7 +298,12 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
   title.id = 'pending-title';
   title.className = 'gd-section-title';
   setAnimatedHeading(title, 'Pending Approvals');
-  attachInteractiveHeadingSprings(title, () => section.classList.contains('gd-pending-hourglass-on'));
+  const titleChars = Array.from(title.querySelectorAll('.gd-char')) as HTMLElement[];
+  titleChars.forEach((ch, idx) => {
+    const t = idx / Math.max(1, titleChars.length - 1);
+    const loose = Math.pow(t, 1.2);
+    ch.style?.setProperty?.('--loose', loose.toFixed(3));
+  });
   titleRow.appendChild(title);
 
   titleGroup.appendChild(titleRow);
@@ -608,7 +613,36 @@ export function renderPendingApprovals(props: PendingApprovalsProps): HTMLElemen
       emptyDesc.className = 'gd-empty-desc gd-placeholder-text';
       emptyDesc.textContent = 'All actions have been evaluated. You are completely caught up.';
 
+      const emptySandLayer = document.createElement('div');
+      emptySandLayer.className = 'gd-box-sand-layer';
+      emptySandLayer.setAttribute('aria-hidden', 'true');
+      emptySandLayer.innerHTML = `
+        <span class="gd-box-glass-dust"></span>
+        <svg class="gd-box-sand-drift" viewBox="0 0 560 44" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="gd-box-dune-back" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(229, 177, 72, 0.25)"/>
+              <stop offset="55%" stop-color="rgba(217, 152, 48, 0.42)"/>
+              <stop offset="100%" stop-color="rgba(185, 123, 34, 0.56)"/>
+            </linearGradient>
+            <linearGradient id="gd-box-dune-front" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(248, 218, 122, 0.52)"/>
+              <stop offset="65%" stop-color="rgba(229, 177, 72, 0.72)"/>
+              <stop offset="100%" stop-color="rgba(196, 134, 42, 0.85)"/>
+            </linearGradient>
+          </defs>
+          <path d="M0 44 L0 36 Q120 26 240 31 T460 18 Q515 11 560 14 L560 44 Z" fill="url(#gd-box-dune-back)"/>
+          <path d="M0 44 L0 39 Q160 33 300 35 T505 22 Q538 18 560 21 L560 44 Z" fill="url(#gd-box-dune-front)"/>
+          <circle cx="95" cy="39" r="1" fill="#FFF2B8" opacity="0.7"/>
+          <circle cx="218" cy="37" r="0.9" fill="#9E6214" opacity="0.55"/>
+          <circle cx="372" cy="33" r="1.1" fill="#FFF2B8" opacity="0.75"/>
+          <circle cx="484" cy="27" r="1" fill="#FFF2B8" opacity="0.8"/>
+          <circle cx="528" cy="24" r="1.2" fill="#9E6214" opacity="0.6"/>
+        </svg>
+      `;
+
       emptyPlaceholder.appendChild(createPendingOwlProp());
+      emptyPlaceholder.appendChild(emptySandLayer);
       emptyPlaceholder.appendChild(iconWrap);
       emptyPlaceholder.appendChild(emptyHeadline);
       emptyPlaceholder.appendChild(emptyDesc);
