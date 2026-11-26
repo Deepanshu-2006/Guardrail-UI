@@ -136,6 +136,9 @@ export class DashboardShell {
   private mobileWardFilter: string = 'ALL';
   private lastMobileTabRendered: MobileTab | null = null;
   private mobileMountTimestamp: number = 0;
+  private mobileInitialOpenTimer: ReturnType<typeof setTimeout> | null = null;
+  private hasCompletedMobileInitialOpen: boolean = false;
+  private lastMobileRenderSig: string | null = null;
   private mobileSpaceSlideTimer: ReturnType<typeof setTimeout> | null = null;
   private isMobileViewportMode: boolean = false;
   private resizeHandler: (() => void) | null = null;
@@ -674,6 +677,12 @@ export class DashboardShell {
       const existingShell = this.rootContainer.querySelector('.gd-m-shell') as HTMLElement | null;
       if (!existingShell) {
         this.mobileMountTimestamp = Date.now();
+        this.hasCompletedMobileInitialOpen = false;
+        this.lastMobileRenderSig = null;
+        if (this.mobileInitialOpenTimer) {
+          clearTimeout(this.mobileInitialOpenTimer);
+          this.mobileInitialOpenTimer = null;
+        }
       }
       const existingAmbient = existingShell?.querySelector('.gd-m-ambient') as HTMLElement | null;
       const existingTopbar = existingShell?.querySelector('.gd-m-topbar') as HTMLElement | null;
@@ -687,20 +696,36 @@ export class DashboardShell {
       const prevScrollY = typeof window.scrollY === 'number' ? window.scrollY : 0;
       const prevMainScrollTop = existingMain ? existingMain.scrollTop : 0;
 
+      const connectedWardsForSig = this.getConnectedWards();
+      const clockBucket = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const mobileRenderSig = JSON.stringify({
+        tab: this.mobileTab,
+        ward: this.mobileWardFilter || 'ALL',
+        auth: this.state.contactProfile?.isAuthenticated ? this.state.contactProfile.actorId : 'anon',
+        offline: this.isBackendUnavailable,
+        wards: connectedWardsForSig.map((w) => `${w.id}:${w.name || ''}:${w.email || ''}`),
+        pending: this.state.pendingRequests.map((r) => `${r.id}:${r.status}:${r.riskLevel}:${r.actionDescription}:${r.expiresAt || ''}`),
+        history: this.state.historyRequests.map((r) => `${r.id}:${r.status}:${r.resolvedAt || r.createdAt || ''}`),
+        push: `${Boolean(this.state.pushStatus?.isSupported)}:${this.state.pushStatus?.permission}:${Boolean(this.state.pushStatus?.isSubscribed)}:${Boolean(this.state.isSubscribingPush)}:${this.state.pushActionMessage || ''}`,
+        clock: clockBucket,
+      });
+
       const mobileView = renderMobileCompanion({
         activeTab: this.mobileTab,
         profile: this.state.contactProfile,
         pendingRequests: this.state.pendingRequests,
         historyRequests: this.state.historyRequests,
-        connectedWards: this.getConnectedWards(),
+        connectedWards: connectedWardsForSig,
         activeWardFilter: this.mobileWardFilter,
         isRefreshing: this.isRefreshing,
         isBackendUnavailable: this.isBackendUnavailable,
         onSelectTab: (tab) => {
+          if (this.mobileTab === tab && this.lastMobileTabRendered === tab) return;
           this.mobileTab = tab;
           this.render();
         },
         onSelectWardFilter: (wardId) => {
+          if (this.mobileWardFilter === wardId) return;
           this.mobileWardFilter = wardId;
           this.render();
         },
@@ -722,12 +747,21 @@ export class DashboardShell {
         onLoadWardPolicy: (wardId) => this.fetchWardPolicyForMobile(wardId),
       });
 
-      const isBootSettling = Date.now() - this.mobileMountTimestamp < 1200;
+      const isBootSettling =
+        !this.hasCompletedMobileInitialOpen && Date.now() - this.mobileMountTimestamp < 1150;
       let preservedPillStrip: HTMLElement | null = null;
       let preservedPillDock: HTMLElement | null = null;
 
       if (existingShell && existingMain) {
-        // In-place update inside existingShell: never detach ambient, dock, topbar, or booting greeting
+        // Initial entrance animations belong strictly to initial open; drop is-initial-open on tab switch or once settled
+        if (isTabSwitch || !isBootSettling) {
+          this.hasCompletedMobileInitialOpen = true;
+          if (this.mobileInitialOpenTimer) {
+            clearTimeout(this.mobileInitialOpenTimer);
+            this.mobileInitialOpenTimer = null;
+          }
+          existingShell.classList.remove('is-initial-open');
+        }
         existingShell.classList.toggle('is-ambient-update', isSameTabUpdate && !isBootSettling);
 
         const tabOrder: Record<MobileTab, number> = { history: 0, wards: 1, settings: 2, queue: 3 };
@@ -742,32 +776,75 @@ export class DashboardShell {
             clearTimeout(this.mobileSpaceSlideTimer);
             this.mobileSpaceSlideTimer = null;
           }
-          const currentMain = activeSpaceViewport.querySelector('.gd-m-main:last-child') || existingMain;
+          const currentMain = (activeSpaceViewport.querySelector('.gd-m-space-target')
+            || activeSpaceViewport.querySelector('.gd-m-main:last-child')
+            || existingMain) as HTMLElement;
+          currentMain.classList.remove('gd-m-space-pane', 'gd-m-space-target');
+          currentMain.classList.add('gd-m-settled');
           activeSpaceViewport.replaceWith(currentMain);
         }
 
+        // Preserve outer topbar chrome (avatar + refresh button) across tab switches
         const freshTopbar = mobileView.querySelector('.gd-m-topbar');
-        const freshPillStrip = freshTopbar?.querySelector('.gd-m-ward-pills');
-        if (isSameTabUpdate && existingTopbar && existingPillStrip && freshTopbar && freshPillStrip) {
-          const activeWard = this.mobileWardFilter || 'ALL';
-          const existingPills = Array.from(existingPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
-          const freshPills = Array.from(freshPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
-          if (existingPills.length === freshPills.length) {
-            existingPills.forEach((pill, i) => {
-              const wardId = pill.dataset?.wardId ?? 'ALL';
-              const isActive = wardId === activeWard;
-              pill.classList.toggle('active', isActive);
-              pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
-              const freshCount = freshPills[i]?.querySelector('.gd-m-pill-count')?.textContent ?? null;
-              const existingCountEl = pill.querySelector('.gd-m-pill-count');
-              if (existingCountEl && freshCount) existingCountEl.textContent = freshCount;
-            });
-            preservedPillStrip = existingPillStrip;
-          } else {
-            existingTopbar.replaceWith(freshTopbar);
+        if (existingTopbar && freshTopbar) {
+          const existingRefresh = existingTopbar.querySelector('.gd-m-refresh-btn');
+          if (existingRefresh) {
+            existingRefresh.classList.toggle('spinning', this.isRefreshing);
           }
-        } else if (existingTopbar && freshTopbar) {
-          existingTopbar.replaceWith(freshTopbar);
+          const existingAvatar = existingTopbar.querySelector('.gd-m-avatar-btn');
+          const freshAvatar = freshTopbar.querySelector('.gd-m-avatar-btn');
+          if (existingAvatar && freshAvatar && existingAvatar.textContent !== freshAvatar.textContent) {
+            existingAvatar.innerHTML = freshAvatar.innerHTML;
+          }
+
+          const freshPillStrip = freshTopbar.querySelector('.gd-m-ward-pills') as HTMLElement | null;
+          const existingTopGreeting = existingTopbar.querySelector('.gd-m-top-greeting-pill') as HTMLElement | null;
+          const freshTopGreeting = freshTopbar.querySelector('.gd-m-top-greeting-pill') as HTMLElement | null;
+
+          if (existingPillStrip && freshPillStrip) {
+            const activeWard = this.mobileWardFilter || 'ALL';
+            const existingPills = Array.from(existingPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+            const freshPills = Array.from(freshPillStrip.querySelectorAll('.gd-m-pill')) as HTMLElement[];
+            if (existingPills.length === freshPills.length) {
+              existingPills.forEach((pill, i) => {
+                const wardId = pill.dataset?.wardId ?? 'ALL';
+                const isActive = wardId === activeWard;
+                pill.classList.toggle('active', isActive);
+                pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                const freshCountEl = freshPills[i]?.querySelector('.gd-m-pill-count');
+                const existingCountEl = pill.querySelector('.gd-m-pill-count');
+                if (existingCountEl && freshCountEl) {
+                  existingCountEl.textContent = freshCountEl.textContent;
+                } else if (existingCountEl && !freshCountEl) {
+                  existingCountEl.remove();
+                } else if (!existingCountEl && freshCountEl) {
+                  pill.appendChild(freshCountEl.cloneNode(true));
+                }
+              });
+              preservedPillStrip = existingPillStrip;
+            } else {
+              existingPillStrip.replaceWith(freshPillStrip);
+            }
+          } else if (existingTopGreeting && freshTopGreeting) {
+            const eLabel = existingTopGreeting.querySelector('.gd-m-top-greeting-label');
+            const fLabel = freshTopGreeting.querySelector('.gd-m-top-greeting-label');
+            if (eLabel && fLabel && eLabel.textContent !== fLabel.textContent) {
+              eLabel.textContent = fLabel.textContent;
+            }
+            const eTime = existingTopGreeting.querySelector('.gd-m-top-greeting-time');
+            const fTime = freshTopGreeting.querySelector('.gd-m-top-greeting-time');
+            if (eTime && fTime && eTime.textContent !== fTime.textContent) {
+              eTime.textContent = fTime.textContent;
+            }
+          } else {
+            const existingMiddle = existingPillStrip || existingTopGreeting;
+            const freshMiddle = freshPillStrip || freshTopGreeting;
+            if (existingMiddle && freshMiddle) {
+              existingMiddle.replaceWith(freshMiddle);
+            } else {
+              existingTopbar.replaceWith(freshTopbar);
+            }
+          }
         }
 
         if (existingDockWrap && existingPillDock) {
@@ -800,7 +877,8 @@ export class DashboardShell {
 
         const freshMain = mobileView.querySelector('.gd-m-main') as HTMLElement | null;
         if (freshMain) {
-          const existingGreeting = existingMain.querySelector('.gd-m-greeting.gd-m-scenery') as HTMLElement | null;
+          const activeMainNow = (existingShell.querySelector('.gd-m-main') as HTMLElement | null) || existingMain;
+          const existingGreeting = activeMainNow.querySelector('.gd-m-greeting.gd-m-scenery') as HTMLElement | null;
           const freshGreeting = freshMain.querySelector('.gd-m-greeting.gd-m-scenery') as HTMLElement | null;
 
           if (isSameTabUpdate && isBootSettling && existingGreeting && freshGreeting) {
@@ -811,16 +889,25 @@ export class DashboardShell {
               existingSub.textContent = freshSub.getAttribute('aria-label') || '';
               existingSub.setAttribute('aria-label', existingSub.textContent);
             }
-            const children = Array.from(existingMain.children);
-            for (const ch of children) {
-              if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== existingGreeting) {
-                ch.remove();
+            const getContentSig = (el: Element): string => {
+              const ids = Array.from(el.querySelectorAll('[data-request-id]')).map((n) => n.getAttribute('data-request-id') || '');
+              const hasEmpty = Boolean(el.querySelector('.gd-m-empty-card'));
+              const hasHero = Boolean(el.querySelector('.gd-m-hero-card'));
+              const hasOffline = Boolean(el.querySelector('.gd-m-offline-banner'));
+              return `${hasOffline ? 'O' : ''}${hasEmpty ? 'E' : ''}${hasHero ? 'H' : ''}:${ids.join(',')}`;
+            };
+            if (getContentSig(activeMainNow) !== getContentSig(freshMain)) {
+              const children = Array.from(activeMainNow.children);
+              for (const ch of children) {
+                if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== existingGreeting) {
+                  ch.remove();
+                }
               }
-            }
-            for (const ch of Array.from(freshMain.children)) {
-              if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== freshGreeting) {
-                (ch as HTMLElement).classList?.add('gd-m-boot-reveal');
-                existingMain.appendChild(ch);
+              for (const ch of Array.from(freshMain.children)) {
+                if (!ch.classList.contains('gd-m-ptr-indicator') && ch !== freshGreeting) {
+                  (ch as HTMLElement).classList?.add('gd-m-boot-reveal');
+                  activeMainNow.appendChild(ch);
+                }
               }
             }
           } else if (isTabSwitch && typeof requestAnimationFrame === 'function') {
@@ -833,22 +920,24 @@ export class DashboardShell {
             const track = document.createElement('div');
             track.className = 'gd-m-space-track';
 
-            existingMain.classList.remove('is-tab-entering', 'is-tab-entering-right', 'is-tab-entering-left');
-            existingMain.classList.add('gd-m-space-pane');
-            freshMain.classList.add('gd-m-space-pane');
+            activeMainNow.classList.remove('is-tab-entering', 'is-tab-entering-right', 'is-tab-entering-left', 'gd-m-space-target');
+            activeMainNow.querySelectorAll('.gd-m-boot-reveal').forEach((n) => n.classList.remove('gd-m-boot-reveal'));
+            activeMainNow.classList.add('gd-m-space-pane', 'gd-m-settled');
+            freshMain.classList.add('gd-m-space-pane', 'gd-m-space-target', 'gd-m-settled');
+
+            viewport.appendChild(track);
+            activeMainNow.replaceWith(viewport);
 
             if (movingRight) {
-              track.appendChild(existingMain.cloneNode(true));
+              track.appendChild(activeMainNow);
               track.appendChild(freshMain);
               track.style.transform = 'translate3d(0%, 0, 0)';
             } else {
               track.appendChild(freshMain);
-              track.appendChild(existingMain.cloneNode(true));
+              track.appendChild(activeMainNow);
               track.style.transform = 'translate3d(-50%, 0, 0)';
             }
 
-            viewport.appendChild(track);
-            existingMain.replaceWith(viewport);
             void track.offsetWidth;
 
             requestAnimationFrame(() => {
@@ -856,26 +945,43 @@ export class DashboardShell {
               track.style.transform = movingRight ? 'translate3d(-50%, 0, 0)' : 'translate3d(0%, 0, 0)';
             });
 
-            this.mobileSpaceSlideTimer = setTimeout(() => {
-              this.mobileSpaceSlideTimer = null;
+            let settled = false;
+            const finishSlide = () => {
+              if (settled) return;
+              settled = true;
+              if (this.mobileSpaceSlideTimer) {
+                clearTimeout(this.mobileSpaceSlideTimer);
+                this.mobileSpaceSlideTimer = null;
+              }
               if (viewport.parentNode) {
-                freshMain.classList.remove('gd-m-space-pane');
+                freshMain.classList.remove('gd-m-space-pane', 'gd-m-space-target');
+                freshMain.classList.add('gd-m-settled');
                 viewport.replaceWith(freshMain);
               }
-            }, 540);
-          } else {
-            existingMain.replaceWith(freshMain);
+            };
+            track.addEventListener('transitionend', (ev) => {
+              if (ev.target === track) finishSlide();
+            }, { once: true });
+            this.mobileSpaceSlideTimer = setTimeout(finishSlide, 430);
+          } else if (this.lastMobileRenderSig !== mobileRenderSig) {
+            freshMain.classList.add('gd-m-settled');
+            activeMainNow.replaceWith(freshMain);
           }
         }
       } else {
         mobileView.classList.add('is-initial-open');
-        const initialMain = mobileView.querySelector('.gd-m-main');
-        initialMain?.classList.add('is-tab-entering', 'is-tab-entering-right');
         while (this.rootContainer.firstChild) {
           this.rootContainer.removeChild(this.rootContainer.firstChild);
         }
         this.rootContainer.appendChild(mobileView);
+        this.mobileInitialOpenTimer = setTimeout(() => {
+          this.hasCompletedMobileInitialOpen = true;
+          this.rootContainer.querySelector('.gd-m-shell')?.classList.remove('is-initial-open');
+          this.mobileInitialOpenTimer = null;
+        }, 1150);
       }
+
+      this.lastMobileRenderSig = mobileRenderSig;
 
       if (preservedPillStrip || preservedPillDock) {
         const runSync = () => {
@@ -913,6 +1019,16 @@ export class DashboardShell {
     if (this.isMobileViewportMode) {
       this.isMobileViewportMode = false;
       this.lastMobileTabRendered = null;
+      this.hasCompletedMobileInitialOpen = false;
+      this.lastMobileRenderSig = null;
+      if (this.mobileInitialOpenTimer) {
+        clearTimeout(this.mobileInitialOpenTimer);
+        this.mobileInitialOpenTimer = null;
+      }
+      if (this.mobileSpaceSlideTimer) {
+        clearTimeout(this.mobileSpaceSlideTimer);
+        this.mobileSpaceSlideTimer = null;
+      }
       this.appWrapper = null;
     }
 
