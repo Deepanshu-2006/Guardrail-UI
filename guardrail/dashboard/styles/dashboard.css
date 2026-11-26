@@ -26347,8 +26347,8 @@ body.gd-kbd-open .gd-m-shell {
   .gd-prop-btn.gd-prop-board-furin,
   .gd-prop-btn.gd-prop-board-bell {
     position: absolute !important;
-    bottom: -76px;
-    right: 22px;
+    bottom: -80px;
+    right: 18px;
     z-index: 6 !important;
     overflow: visible;
   }
@@ -26368,15 +26368,13 @@ body.gd-kbd-open .gd-m-shell {
   }
 
   .gd-dashboard-app.gd-lantern-ambience-on .gd-prop-board-furin .gd-furin-amber-glow {
-    opacity: 0.65;
+    opacity: 0.68;
   }
 
   .gd-furin-wave {
     position: absolute;
-    left: 50%;
-    top: 21px;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     border: 1.4px solid rgba(176, 224, 226, 0.85);
     box-shadow: 0 0 8px rgba(212, 245, 245, 0.45);
@@ -26390,7 +26388,7 @@ body.gd-kbd-open .gd-m-shell {
     box-shadow: 0 0 8px rgba(246, 206, 118, 0.45);
   }
 
-  .gd-prop-board-furin.is-ringing .gd-furin-wave {
+  .gd-furin-wave.is-ringing {
     animation: gd-furin-ring-wave 0.88s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
