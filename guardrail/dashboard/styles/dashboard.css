@@ -27178,14 +27178,15 @@ body.gd-kbd-open .gd-m-shell {
     z-index: 4;
   }
 
-  .gd-dashboard-app.gd-settings-workshop-on .gd-main-content {
+  .gd-dashboard-app.gd-settings-workshop-on .gd-main-workspace {
     position: relative;
     z-index: 6;
   }
 
   .gd-dashboard-app.gd-settings-workshop-on #view-settings .gd-card {
-    background: linear-gradient(180deg, rgba(251, 246, 235, 0.94) 0%, rgba(244, 236, 218, 0.94) 100%) !important;
-    transition: background 0.35s ease, box-shadow 0.28s ease;
+    position: relative;
+    z-index: 2;
+    transition: box-shadow 0.28s ease;
   }
 
   .gd-clockwork-note {

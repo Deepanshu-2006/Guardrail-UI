@@ -8479,12 +8479,21 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.restore();
   };
 
-  const drawPulleyAndChain = (x: number, y1: number, y2: number, linkShift: number, alpha: number) => {
+  const drawPulleyAndChain = (
+    x: number,
+    y1: number,
+    y2: number,
+    clipTop: number,
+    clipBot: number,
+    linkShift: number,
+    alpha: number,
+  ) => {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Top & bottom grooved brass pulley sheave wheels
+    // Top & bottom grooved brass pulley sheave wheels (only drawn if inside clip bounds)
     for (const py of [y1, y2]) {
+      if (py < clipTop - 14 || py > clipBot + 14) continue;
       ctx.fillStyle = '#53370E';
       ctx.beginPath();
       ctx.arc(x, py, 5.2, 0, Math.PI * 2);
@@ -8499,11 +8508,13 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
       ctx.fill();
     }
 
-    // Individual articulated brass oval chain links between sheaves
+    // Individual articulated brass oval chain links anchored strictly relative to y1 (locked on scroll!)
     const step = 6.2;
-    const offset = ((linkShift % step) + step) % step;
-    for (let cy = y1 + 4 + offset; cy < y2 - 4; cy += step) {
-      const idx = Math.floor((cy - y1) / step);
+    const visStart = Math.max(y1 + 4, clipTop - 14);
+    const visEnd = Math.min(y2 - 4, clipBot + 14);
+    const phaseShift = ((linkShift % step) + step) % step;
+    const firstIdx = Math.max(0, Math.floor((visStart - y1 - phaseShift) / step));
+    for (let cy = y1 + phaseShift + firstIdx * step, idx = firstIdx; cy <= visEnd; cy += step, idx += 1) {
       if (idx % 2 === 0) {
         ctx.strokeStyle = '#8F6822';
         ctx.lineWidth = 1.15;
@@ -8567,6 +8578,117 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
     ctx.restore();
   };
 
+  const drawChimeGongAndHammer = (
+    cx: number,
+    cy: number,
+    hammerSwing: number,
+    surgeGlow: number,
+    alpha: number,
+  ) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Subtle soft shadow behind gong spiral
+    ctx.fillStyle = 'rgba(24, 16, 8, 0.16)';
+    ctx.beginPath();
+    ctx.arc(cx + 2, cy + 2.5, 22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Turned cast-iron gong mounting boss
+    ctx.fillStyle = '#2E3A46';
+    ctx.strokeStyle = '#182028';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Blued-steel & aged brass cathedral coil resonator (3.25 concentric turns)
+    const turns = 3.25;
+    const steps = 64;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i += 1) {
+      const t = i / steps;
+      const a = t * turns * Math.PI * 2 - Math.PI * 0.35;
+      const r = 6.2 + t * 14.5;
+      const px = cx + Math.cos(a) * r;
+      const py = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = surgeGlow > 0.08 ? '#E6B957' : '#8A6B36';
+    ctx.lineWidth = 2.0;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255, 240, 192, 0.45)';
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+
+    // Brass collar jewel in center
+    ctx.fillStyle = '#E0B452';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Articulated copper-stemmed striker hammer below-left of outer coil
+    ctx.save();
+    ctx.translate(cx - 17, cy + 15);
+    ctx.rotate(-0.45 + hammerSwing * 0.34);
+    ctx.strokeStyle = '#B87A3E';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(7.5, -13);
+    ctx.stroke();
+    ctx.fillStyle = '#9F3B2A';
+    ctx.strokeStyle = '#3B1E10';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.roundRect(4.5, -16.5, 6.2, 4.4, 1.5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
+  };
+
+  const drawPendulumBeatScale = (px: number, py: number, len: number, alpha: number) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const arcR = len + 12;
+    const startA = Math.PI * 0.5 - 0.32;
+    const endA = Math.PI * 0.5 + 0.32;
+
+    // Ivory/brass graduated beat-degree plate arc behind the bob sweep
+    ctx.strokeStyle = 'rgba(146, 108, 42, 0.52)';
+    ctx.lineWidth = 4.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(px, py, arcR, startA, endA);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(248, 236, 198, 0.78)';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(px, py, arcR, startA + 0.02, endA - 0.02);
+    ctx.stroke();
+
+    // Precision degree tick marks along arc
+    ctx.strokeStyle = '#533A14';
+    ctx.lineWidth = 0.85;
+    for (let i = -3; i <= 3; i += 1) {
+      const a = Math.PI * 0.5 + i * 0.095;
+      const r0 = arcR - (i === 0 ? 3.2 : 1.9);
+      const r1 = arcR + (i === 0 ? 3.2 : 1.9);
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(a) * r0, py + Math.sin(a) * r0);
+      ctx.lineTo(px + Math.cos(a) * r1, py + Math.sin(a) * r1);
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
   const step = (ts: number) => {
     if (!document.contains(canvas)) {
       rafId = null;
@@ -8598,146 +8720,189 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
 
     if (deploy > 0.015) {
       const ease = 1 - Math.pow(1 - deploy, 3);
-      const cardEls = (
+      const viewEl = document.getElementById('view-settings');
+      const scrollContainer = (viewEl?.closest('.gd-content-body') ??
+        viewEl?.closest('.gd-main-workspace')) as HTMLElement | null;
+      const scRect = scrollContainer ? scrollContainer.getBoundingClientRect() : null;
+      const clipLeft = scRect ? Math.max(0, scRect.left) : 240;
+      const clipTop = scRect ? Math.max(0, scRect.top) : 0;
+      const clipRight = scRect ? Math.min(width, scRect.right) : width;
+      const clipBot = scRect ? Math.min(height, scRect.bottom) : height;
+
+      // Read Settings cards in document order
+      const allCards = (
         Array.from(document.querySelectorAll('#view-settings .gd-card')) as HTMLElement[]
       )
         .map((el) => ({ el, r: el.getBoundingClientRect() }))
-        .filter(({ r }) => r.width > 0 && r.height > 0 && r.bottom > -40 && r.top < height + 60);
+        .filter(({ r }) => r.width > 0 && r.height > 0);
 
-      if (cardEls.length > 0) {
-        const firstCard = cardEls[0].r;
-        const lastCard = cardEls[cardEls.length - 1].r;
-        const leftRailX = Math.max(246, firstCard.left - 15);
-        const rightRailX = Math.min(width - 15, firstCard.right + 15);
+      if (allCards.length > 0 && clipBot > clipTop && clipRight > clipLeft) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(clipLeft, clipTop, clipRight - clipLeft, clipBot - clipTop);
+        ctx.clip();
 
-        // 1. Articulated Brass Pull-Chains, Pulley Sheaves & Opposing Counterweight Cylinders
-        const topRailY = Math.max(82, firstCard.top + 18);
-        const botRailY = Math.min(height - 24, lastCard.bottom - 18);
+        const firstEntry = allCards[0];
+        const lastEntry = allCards[allCards.length - 1];
+        const firstCard = firstEntry.r;
+        const lastCard = lastEntry.r;
+        const leftRailX = Math.max(clipLeft + 10, firstCard.left - 15);
+        const rightRailX = Math.min(clipRight - 10, firstCard.right + 15);
+        const slideOut = 1 - ease;
+
+        // 1. Articulated Brass Pull-Chains, Pulley Sheaves & Opposing Counterweight Cylinders (document-locked)
+        const topRailY = firstCard.top + 22;
+        const botRailY = lastCard.bottom - 22;
 
         if (botRailY > topRailY + 24) {
           const travelSpan = Math.min(92, Math.max(20, (botRailY - topRailY) * 0.28));
           const drift = Math.sin(clock * 0.42) * travelSpan * 0.5;
-          drawPulleyAndChain(leftRailX, topRailY, botRailY, drift, ease * 0.78);
-          drawPulleyAndChain(rightRailX, topRailY, botRailY, -drift, ease * 0.78);
+          drawPulleyAndChain(leftRailX, topRailY, botRailY, clipTop, clipBot, drift, ease * 0.78);
+          drawPulleyAndChain(rightRailX, topRailY, botRailY, clipTop, clipBot, -drift, ease * 0.78);
 
-          const midY = (topRailY + botRailY) * 0.5;
-          drawCounterweight(leftRailX, midY - 40 + drift, 9.5, 29, ease * 0.88);
-          drawCounterweight(rightRailX, midY + 12 - drift, 9.5, 29, ease * 0.88);
+          const leftWeightY = firstCard.top + 145 + drift;
+          const rightWeightY = firstCard.top + Math.max(240, firstCard.height + 70) - drift;
+          if (leftWeightY + 34 > clipTop && leftWeightY - 8 < clipBot) {
+            drawCounterweight(leftRailX, leftWeightY, 9.5, 29, ease * 0.88);
+          }
+          if (rightWeightY + 34 > clipTop && rightWeightY - 8 < clipBot) {
+            drawCounterweight(rightRailX, rightWeightY, 9.5, 29, ease * 0.88);
+          }
         }
 
-        // 2. Tucked-Under Brass Corner Gears & Anchor Ratchet Pawls behind alternating corners
-        cardEls.forEach(({ el, r }, idx) => {
-          const hovered =
-            pointerX >= r.left && pointerX <= r.right && pointerY >= r.top && pointerY <= r.bottom;
-          const prevPhase = cardPhases.get(el) ?? 0;
-          const cardSpinDelta = dt * (hovered ? 36 : 0) + windSurge * dt * 45;
+        // 2. TOP ONLY: Crown Clockwork Gear Train tucked behind the top card corners (zero gear spam down the page)
+        if (firstCard.bottom >= clipTop - 70 && firstCard.top <= clipBot + 70) {
+          const topHovered =
+            pointerX >= firstCard.left &&
+            pointerX <= firstCard.right &&
+            pointerY >= firstCard.top &&
+            pointerY <= firstCard.bottom;
+          const prevPhase = cardPhases.get(firstEntry.el) ?? 0;
+          const cardSpinDelta = dt * (topHovered ? 36 : 0) + windSurge * dt * 45;
           const localPhase = (prevPhase + cardSpinDelta) % 3600;
-          cardPhases.set(el, localPhase);
+          cardPhases.set(firstEntry.el, localPhase);
 
           const baseDeg = gearAngle + localPhase;
-          const slideOut = 1 - ease;
-          if (idx % 2 === 0) {
-            const gx = r.right + 4 - slideOut * 28;
-            const gy = r.top + 27;
-            const mainRad = (baseDeg * Math.PI) / 180;
-            drawMetallicGear(gx, gy, largeBrassPath, 30, 20.2, 6, mainRad, false, ease * 0.88);
-            drawMetallicGear(
-              gx + 14.5,
-              gy + 38,
-              smallPinionPath,
-              16,
-              10.5,
-              4,
-              -mainRad * 1.8 + 0.2,
-              true,
-              ease * 0.86,
-            );
+          const mainRad = (baseDeg * Math.PI) / 180;
+          const subRad = (-baseDeg * 1.38 * Math.PI) / 180;
 
-            // Tiny clicking steel ratchet pawl resting against outer wheel crown
-            const pawlTick = Math.sin(mainRad * 18) * 0.14;
-            ctx.save();
-            ctx.translate(gx + 22, gy - 23);
-            ctx.rotate(0.55 + pawlTick);
-            ctx.globalAlpha = ease * 0.82;
-            ctx.fillStyle = '#3C4D5E';
-            ctx.strokeStyle = '#18212A';
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(0, -2.5);
-            ctx.lineTo(11, 0);
-            ctx.lineTo(2, 2.8);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-          } else {
-            const gx = r.left - 3 + slideOut * 22;
-            const gy = r.bottom - 26;
-            const subRad = (-baseDeg * 1.38 * Math.PI) / 180;
-            drawMetallicGear(gx, gy, medBronzePath, 21.5, 14.2, 5, subRad, false, ease * 0.86);
-          }
-        });
+          // Top-right crown gear + blued-steel pinion + ratchet pawl
+          const rightGx = firstCard.right + 11 - slideOut * 28;
+          const rightGy = firstCard.top + 27;
+          drawMetallicGear(rightGx, rightGy, largeBrassPath, 30, 20.2, 6, mainRad, false, ease * 0.88);
+          drawMetallicGear(
+            rightGx + 14.5,
+            rightGy + 38,
+            smallPinionPath,
+            16,
+            10.5,
+            4,
+            -mainRad * 1.8 + 0.2,
+            true,
+            ease * 0.86,
+          );
 
-        // 3. 3-Rod Brass & Steel Gridiron Grandfather Pendulum arcing behind right flank
-        const pendPivotX = rightRailX - 2;
-        const pendPivotY = Math.min(height - 96, firstCard.bottom - 6);
-        const pendLen = 72;
-        const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * 11.5 * ease;
-        const pendRad = (pendSwingDeg * Math.PI) / 180;
+          const pawlTick = Math.sin(mainRad * 18) * 0.14;
+          ctx.save();
+          ctx.translate(rightGx + 22, rightGy - 23);
+          ctx.rotate(0.55 + pawlTick);
+          ctx.globalAlpha = ease * 0.82;
+          ctx.fillStyle = '#3C4D5E';
+          ctx.strokeStyle = '#18212A';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(0, -2.5);
+          ctx.lineTo(11, 0);
+          ctx.lineTo(2, 2.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
 
-        ctx.save();
-        ctx.translate(pendPivotX, pendPivotY);
-        ctx.rotate(-pendRad);
-        ctx.globalAlpha = ease * 0.9;
+          // Top-left secondary escapement wheel peeking symmetrically behind top card
+          const leftGx = firstCard.left - 11 + slideOut * 22;
+          const leftGy = firstCard.bottom - 26;
+          drawMetallicGear(leftGx, leftGy, medBronzePath, 21.5, 14.2, 5, subRad, false, ease * 0.86);
+        }
 
-        // Temperature-compensated 3-rod Harrison gridiron lyre frame
-        ctx.strokeStyle = '#C99535';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(-2.6, 0);
-        ctx.lineTo(-2.6, pendLen - 8);
-        ctx.moveTo(2.6, 0);
-        ctx.lineTo(2.6, pendLen - 8);
-        ctx.stroke();
+        // 3. BOTTOM ONLY: Cathedral Chime Gong & 3-Rod Harrison Gridiron Pendulum anchored cleanly along bottom outer rails
+        const lastRevealed =
+          !lastEntry.el.classList.contains('gd-scroll-reveal') ||
+          lastEntry.el.classList.contains('is-revealed');
 
-        ctx.strokeStyle = '#536A80';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, pendLen + 14);
-        ctx.stroke();
+        if (lastRevealed && lastCard.bottom >= clipTop - 95 && lastCard.top <= clipBot + 95) {
+          // Bottom-left: Cathedral brass chime gong spiral + copper striker hammer (clear of transparent card text)
+          const gongX = leftRailX - 2 + slideOut * 22;
+          const gongY = lastCard.bottom - 22;
+          const hammerPulse = Math.max(0, Math.sin(clock * Math.PI * 0.85) > 0.92 ? 1 : 0);
+          const hammerSwing = windSurge > 0.15 ? Math.sin(clock * 14) * windSurge : hammerPulse * 0.8;
+          drawChimeGongAndHammer(gongX, gongY, hammerSwing, windSurge, ease * 0.88);
 
-        // Cross-brace bridge bar halfway down rod
-        ctx.fillStyle = '#8F621A';
-        ctx.fillRect(-4.2, pendLen * 0.5, 8.4, 2.4);
+          // Bottom-right: Beat degree scale + 3-rod Harrison gridiron pendulum & lenticular bob
+          const pendPivotX = rightRailX + 1 - slideOut * 22;
+          const pendPivotY = lastCard.top + 8;
+          const pendLen = Math.min(78, Math.max(54, lastCard.height * 0.68));
+          const pendSwingDeg = Math.sin(clock * Math.PI * 1.15) * 11.5 * ease;
+          const pendRad = (pendSwingDeg * Math.PI) / 180;
 
-        // Bob cast shadow
-        ctx.fillStyle = 'rgba(24, 16, 8, 0.24)';
-        ctx.beginPath();
-        ctx.arc(2.5, pendLen + 2.5, 13, 0, Math.PI * 2);
-        ctx.fill();
+          drawPendulumBeatScale(pendPivotX, pendPivotY, pendLen, ease * 0.78);
 
-        // Polished lenticular brass pendulum bob + rating nut below
-        const bobGrad = ctx.createRadialGradient(-4, pendLen - 4, 1.5, 0, pendLen, 13.5);
-        bobGrad.addColorStop(0, '#FFF5C4');
-        bobGrad.addColorStop(0.55, '#DAA23B');
-        bobGrad.addColorStop(1, '#6E4810');
-        ctx.fillStyle = bobGrad;
-        ctx.strokeStyle = '#3D2607';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(0, pendLen, 13, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+          ctx.save();
+          ctx.translate(pendPivotX, pendPivotY);
+          ctx.rotate(-pendRad);
+          ctx.globalAlpha = ease * 0.9;
 
-        ctx.strokeStyle = 'rgba(255, 248, 212, 0.58)';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.arc(0, pendLen, 9.2, 0, Math.PI * 2);
-        ctx.stroke();
+          // Temperature-compensated 3-rod Harrison gridiron lyre frame
+          ctx.strokeStyle = '#C99535';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(-2.6, 0);
+          ctx.lineTo(-2.6, pendLen - 8);
+          ctx.moveTo(2.6, 0);
+          ctx.lineTo(2.6, pendLen - 8);
+          ctx.stroke();
 
-        ctx.fillStyle = '#B8842E';
-        ctx.fillRect(-2.4, pendLen + 12.8, 4.8, 3.2);
+          ctx.strokeStyle = '#536A80';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, pendLen + 14);
+          ctx.stroke();
+
+          // Cross-brace bridge bar halfway down rod
+          ctx.fillStyle = '#8F621A';
+          ctx.fillRect(-4.2, pendLen * 0.5, 8.4, 2.4);
+
+          // Bob cast shadow
+          ctx.fillStyle = 'rgba(24, 16, 8, 0.24)';
+          ctx.beginPath();
+          ctx.arc(2.5, pendLen + 2.5, 13, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Polished lenticular brass pendulum bob + rating nut below
+          const bobGrad = ctx.createRadialGradient(-4, pendLen - 4, 1.5, 0, pendLen, 13.5);
+          bobGrad.addColorStop(0, '#FFF5C4');
+          bobGrad.addColorStop(0.55, '#DAA23B');
+          bobGrad.addColorStop(1, '#6E4810');
+          ctx.fillStyle = bobGrad;
+          ctx.strokeStyle = '#3D2607';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(0, pendLen, 13, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 248, 212, 0.58)';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.arc(0, pendLen, 9.2, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#B8842E';
+          ctx.fillRect(-2.4, pendLen + 12.8, 4.8, 3.2);
+          ctx.restore();
+        }
+
         ctx.restore();
       }
     }
