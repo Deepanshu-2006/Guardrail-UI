@@ -8017,6 +8017,7 @@ textarea:focus-visible,
 
 .gd-desktop-ambient {
   left: 254px;
+  opacity: 0.64;
 }
 
 .gd-desktop-ambient .gd-m-bg-horizon {
@@ -8549,6 +8550,7 @@ textarea:focus-visible,
 
 .gd-desktop-ambient {
   left: 254px;
+  opacity: 0.64;
 }
 
 .gd-desktop-ambient .gd-m-bg-horizon {
@@ -15077,6 +15079,7 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+  opacity: 0.64;
 }
 
 .gd-desktop-ambient .gd-m-bg-horizon {
@@ -15609,6 +15612,7 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+  opacity: 0.64;
 }
 
 .gd-desktop-ambient .gd-m-bg-horizon {
@@ -21651,6 +21655,7 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+  opacity: 0.64;
 }
 
 .gd-desktop-ambient .gd-m-bg-horizon {
@@ -22183,6 +22188,7 @@ article.gd-card-collapsed,
 
 .gd-desktop-ambient {
   left: 254px;
+  opacity: 0.64;
 }
 
 .gd-desktop-ambient .gd-m-bg-horizon {
@@ -22933,28 +22939,118 @@ article.gd-card-collapsed,
   flex: 0 1 auto;
 }
 
+@media (min-width: 769px) {
+  .gd-top-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 12;
+  }
+
+  .gd-top-header .gd-header-actions {
+    pointer-events: auto;
+    padding: 8px 18px;
+    margin: -8px -18px;
+    background: radial-gradient(closest-side, rgba(245, 243, 236, 0.92) 60%, rgba(245, 243, 236, 0) 100%);
+  }
+
+  .gd-content-body {
+    padding-top: 98px;
+  }
+}
+
 .gd-overview-greeting-card {
   position: relative;
-  overflow: hidden;
-  border-radius: 0;
-  padding: 38px 46px;
+  overflow: visible;
   width: 100%;
-  min-height: 176px;
+  flex: 1 1 480px;
+  max-width: 600px;
+  transform-origin: 50% -116px;
+}
+
+.gd-wood-hanger {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -116px;
+  height: 124px;
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  filter: drop-shadow(0 4px 4px rgba(34, 21, 10, 0.16));
+}
+
+.gd-wood-hanger svg {
+  width: 100%;
+  max-width: 560px;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.gd-wood-board {
+  position: relative;
+  padding: 13px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #CC8B4F 0%, #B4723B 54%, #9C5E2D 100%);
+  border: 3px solid #352010;
+  border-bottom-width: 8px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 224, 179, 0.52),
+    inset 0 -3px 0 rgba(69, 39, 17, 0.45),
+    0 14px 26px -8px rgba(36, 22, 10, 0.34),
+    0 4px 10px rgba(36, 22, 10, 0.14);
+  overflow: hidden;
+}
+
+.gd-wood-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gd-wood-grain svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gd-wood-rivet {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(circle at 35% 32%, #FFE5A3 0%, #D99B38 58%, #915E17 100%);
+  border: 1.8px solid #352010;
+  box-shadow: 0 1px 0 rgba(255, 225, 176, 0.4);
+}
+
+.gd-wood-rivet.is-tl { top: 7px; left: 7px; }
+.gd-wood-rivet.is-tr { top: 7px; right: 7px; }
+.gd-wood-rivet.is-bl { bottom: 7px; left: 7px; }
+.gd-wood-rivet.is-br { bottom: 7px; right: 7px; }
+
+.gd-wood-board-window {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 11px;
+  padding: 28px 34px;
+  min-height: 146px;
   display: flex;
   align-items: center;
-  flex: 1 1 520px;
-  max-width: 660px;
-  border: none;
-  box-shadow: none;
-  background: transparent;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image:
-    linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
-  mask-composite: intersect;
+  background: var(--gd-bg-canvas, #F5F3EC);
+  border: 2.5px solid #4A2D16;
+  box-shadow:
+    inset 0 3px 7px rgba(34, 20, 9, 0.32),
+    0 1px 0 rgba(255, 224, 179, 0.42);
 }
 
 .gd-header-actions-inline {
@@ -22997,6 +23093,18 @@ article.gd-card-collapsed,
   background: #F6BF58;
 }
 
+@media (max-width: 1140px) and (min-width: 769px) {
+  .gd-overview-greeting-card {
+    margin-top: 26px;
+    transform-origin: 50% -54px;
+  }
+
+  .gd-wood-hanger {
+    top: -64px;
+    height: 70px;
+  }
+}
+
 @media (max-width: 860px) {
   .gd-overview-greeting-card {
     width: 100%;
@@ -23004,17 +23112,35 @@ article.gd-card-collapsed,
   }
 }
 
-/* Greeting card choreographed entry animation (Horizon Bloom + Staggered Pixel Type) */
+@media (hover: hover) {
+  @keyframes gd-wood-hover-sway {
+    0% { transform: rotate(0deg); }
+    30% { transform: rotate(1.1deg); }
+    70% { transform: rotate(-0.7deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  .gd-overview-greeting-card:hover {
+    animation: gd-wood-hover-sway 1.4s cubic-bezier(0.37, 0, 0.63, 1);
+  }
+}
+
+/* Greeting card choreographed entry animation (Cartoon Wooden Sign Swing + Pixel Type) */
 @keyframes gd-greeting-card-enter {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.975);
-    filter: blur(6px);
+    transform: translateY(-10px) rotate(-1.8deg) scale(0.97);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(2px) rotate(0.9deg) scale(1);
+  }
+  80% {
+    transform: translateY(0) rotate(-0.35deg);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0px);
+    transform: translateY(0) rotate(0deg) scale(1);
   }
 }
 
@@ -23043,7 +23169,7 @@ article.gd-card-collapsed,
 }
 
 .gd-overview-greeting-card {
-  animation: gd-greeting-card-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gd-greeting-card-enter 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .gd-overview-greeting-card .gd-px-time-badge {
@@ -23054,20 +23180,22 @@ article.gd-card-collapsed,
   animation: gd-px-greeting-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 230ms both;
 }
 
-/* Overview Hero Greeting Card: Dawn Horizon Wipe + Light Sweep + Spring Pixel Reveal */
+/* Overview Hero Greeting Card: Cartoon Sign Settle + Window Light Sweep + Spring Pixel Reveal */
 @keyframes gd-overview-hero-wipe {
   0% {
     opacity: 0;
-    clip-path: inset(12% 92% 12% 0%);
-    transform: translateX(-10px);
+    transform: translateY(-14px) rotate(-2deg) scale(0.97);
   }
-  20% {
+  55% {
     opacity: 1;
+    transform: translateY(2px) rotate(1.1deg) scale(1);
+  }
+  80% {
+    transform: translateY(0) rotate(-0.4deg);
   }
   100% {
     opacity: 1;
-    clip-path: inset(0% 0% 0% 0%);
-    transform: translateX(0);
+    transform: translateY(0) rotate(0deg) scale(1);
   }
 }
 
@@ -23141,14 +23269,14 @@ article.gd-card-collapsed,
 }
 
 #view-overview .gd-overview-greeting-card {
-  animation: gd-overview-hero-wipe 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gd-overview-hero-wipe 860ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 #view-overview .gd-overview-greeting-card .gd-overview-scenery-art {
   animation: gd-overview-art-settle 920ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-#view-overview .gd-overview-greeting-card::after {
+#view-overview .gd-overview-greeting-card .gd-wood-board-window::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -23180,9 +23308,10 @@ article.gd-card-collapsed,
 
 @media (prefers-reduced-motion: reduce) {
   .gd-overview-greeting-card,
+  .gd-overview-greeting-card:hover,
   .gd-overview-greeting-card .gd-px-time-badge,
   .gd-overview-greeting-card .gd-px-greeting-text,
-  #view-overview .gd-overview-greeting-card::after,
+  #view-overview .gd-overview-greeting-card .gd-wood-board-window::after,
   #view-overview .gd-overview-greeting-card .gd-overview-scenery-art,
   #view-overview .gd-overview-greeting-card .gd-px-clock-dot {
     animation: none;

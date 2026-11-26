@@ -379,7 +379,105 @@ export function getRealTimeScenery(now: Date = new Date()): SceneryMeta {
 }
 
 /**
- * Creates the borderless, background-merged pixel scenery + time + greeting
+ * Builds a chunky, cartoonish iron-and-brass Y-chain assembly that suspends
+ * the wooden greeting sign from the top of the viewport.
+ */
+function buildCartoonChainSvg(): string {
+  const renderArm = (x1: number, y1: number, x2: number, y2: number): string => {
+    const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+    const count = 8;
+    const parts: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const t = (i + 0.6) / (count + 0.2);
+      const cx = (x1 + (x2 - x1) * t).toFixed(1);
+      const cy = (y1 + (y2 - y1) * t).toFixed(1);
+      if (i % 2 === 0) {
+        parts.push(
+          `<g transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
+            <rect x="-10" y="-5" width="20" height="10" rx="5" fill="#636D66" stroke="#241B12" stroke-width="2.4"/>
+            <rect x="-5" y="-1.6" width="10" height="3.2" rx="1.6" fill="#F5F3EC" stroke="#241B12" stroke-width="1.4"/>
+            <path d="M-6,-3 H4" stroke="#CBD4CB" stroke-width="1.5" stroke-linecap="round"/>
+          </g>`
+        );
+      } else {
+        parts.push(
+          `<g transform="translate(${cx},${cy}) rotate(${angle.toFixed(1)})">
+            <rect x="-9" y="-2.8" width="18" height="5.6" rx="2.8" fill="#464F49" stroke="#241B12" stroke-width="2.2"/>
+            <line x1="-4.5" y1="-0.8" x2="3.5" y2="-0.8" stroke="#A6B1A7" stroke-width="1.3" stroke-linecap="round"/>
+          </g>`
+        );
+      }
+    }
+    return parts.join('');
+  };
+
+  return `
+    <svg viewBox="0 0 560 128" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
+      <!-- Top ceiling mounting bracket & bolt heads -->
+      <rect x="256" y="-2" width="48" height="14" rx="5" fill="#464F49" stroke="#241B12" stroke-width="2.6"/>
+      <line x1="262" y1="3" x2="298" y2="3" stroke="#9AA59B" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="265" cy="5.5" r="2.2" fill="#E3AD47" stroke="#241B12" stroke-width="1.4"/>
+      <circle cx="295" cy="5.5" r="2.2" fill="#E3AD47" stroke="#241B12" stroke-width="1.4"/>
+
+      <!-- Vertical top chain drop to central iron ring -->
+      <g>
+        <rect x="275.5" y="9" width="9" height="19" rx="4.5" fill="#636D66" stroke="#241B12" stroke-width="2.4"/>
+        <rect x="278.5" y="13.5" width="3" height="10" rx="1.5" fill="#F5F3EC" stroke="#241B12" stroke-width="1.4"/>
+        <rect x="277" y="24" width="6" height="16" rx="3" fill="#464F49" stroke="#241B12" stroke-width="2.2"/>
+        <line x1="278.8" y1="27" x2="278.8" y2="35" stroke="#A6B1A7" stroke-width="1.2" stroke-linecap="round"/>
+      </g>
+
+      <!-- Diagonal left & right cartoon chains -->
+      ${renderArm(280, 44, 84, 117)}
+      ${renderArm(280, 44, 476, 117)}
+
+      <!-- Central chunky iron junction ring -->
+      <circle cx="280" cy="44" r="10.5" fill="#636D66" stroke="#241B12" stroke-width="2.6"/>
+      <circle cx="280" cy="44" r="4.2" fill="#F5F3EC" stroke="#241B12" stroke-width="2"/>
+      <path d="M274,38 A8,8 0 0,1 285,37.5" stroke="#D5DDD4" stroke-width="1.8" stroke-linecap="round"/>
+
+      <!-- Left & right brass eyelet rings mounted on top of the wooden board -->
+      <g>
+        <circle cx="84" cy="116" r="8.5" fill="#E6AD45" stroke="#241B12" stroke-width="2.5"/>
+        <circle cx="84" cy="116" r="3.4" fill="#F5F3EC" stroke="#241B12" stroke-width="1.8"/>
+        <rect x="73" y="118" width="22" height="10" rx="4" fill="#C98A32" stroke="#241B12" stroke-width="2.4"/>
+        <circle cx="79" cy="123" r="1.6" fill="#241B12"/>
+        <circle cx="89" cy="123" r="1.6" fill="#241B12"/>
+      </g>
+      <g>
+        <circle cx="476" cy="116" r="8.5" fill="#E6AD45" stroke="#241B12" stroke-width="2.5"/>
+        <circle cx="476" cy="116" r="3.4" fill="#F5F3EC" stroke="#241B12" stroke-width="1.8"/>
+        <rect x="465" y="118" width="22" height="10" rx="4" fill="#C98A32" stroke="#241B12" stroke-width="2.4"/>
+        <circle cx="471" cy="123" r="1.6" fill="#241B12"/>
+        <circle cx="481" cy="123" r="1.6" fill="#241B12"/>
+      </g>
+    </svg>
+  `;
+}
+
+/**
+ * Builds stylized cartoon oak grain streaks, plank seam and knots on the wooden board.
+ */
+function buildCartoonWoodGrainSvg(): string {
+  return `
+    <svg viewBox="0 0 600 180" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <!-- Top bevel highlight -->
+      <path d="M18 6 H582" stroke="#F0BD7E" stroke-width="4" stroke-linecap="round" opacity="0.45"/>
+      <!-- Horizontal plank seam -->
+      <path d="M6 92 Q190 90 360 93 T594 91" stroke="#4B2B14" stroke-width="2.2" opacity="0.34"/>
+      <!-- Cartoon wood grain curves -->
+      <path d="M24 22 Q95 16 175 23 T310 19" stroke="#683D1D" stroke-width="2.4" stroke-linecap="round" opacity="0.28"/>
+      <path d="M350 21 Q440 27 572 19" stroke="#683D1D" stroke-width="2.2" stroke-linecap="round" opacity="0.28"/>
+      <path d="M22 162 Q130 156 260 163 T455 158 T578 164" stroke="#683D1D" stroke-width="2.4" stroke-linecap="round" opacity="0.3"/>
+      <!-- Stylized cartoon wood knots -->
+      <ellipse cx="48" cy="160" rx="14" ry="4.5" stroke="#5B3417" stroke-width="2" opacity="0.32"/>
+      <ellipse cx="536" cy="20" rx="16" ry="5" stroke="#5B3417" stroke-width="2" opacity="0.32"/>
+    </svg>
+  `;
+}
+
+/**
+ * Creates the cartoonish hanging wooden-board pixel scenery + time + greeting
  * element displayed on the right side of desktop page headers.
  */
 export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement {
@@ -388,6 +486,30 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
 
   const greetingCard = document.createElement('div');
   greetingCard.className = `gd-overview-greeting-card phase-${scenery.phase} ${scenery.isDarkScene ? 'is-dark' : 'is-light'}`;
+
+  const hanger = document.createElement('div');
+  hanger.className = 'gd-wood-hanger';
+  hanger.setAttribute('aria-hidden', 'true');
+  hanger.innerHTML = buildCartoonChainSvg();
+
+  const board = document.createElement('div');
+  board.className = 'gd-wood-board';
+
+  const grain = document.createElement('div');
+  grain.className = 'gd-wood-grain';
+  grain.setAttribute('aria-hidden', 'true');
+  grain.innerHTML = buildCartoonWoodGrainSvg();
+
+  const rivetPositions = ['tl', 'tr', 'bl', 'br'] as const;
+  for (const pos of rivetPositions) {
+    const rivet = document.createElement('span');
+    rivet.className = `gd-wood-rivet is-${pos}`;
+    rivet.setAttribute('aria-hidden', 'true');
+    board.appendChild(rivet);
+  }
+
+  const windowEl = document.createElement('div');
+  windowEl.className = 'gd-wood-board-window';
 
   const sceneArt = document.createElement('div');
   sceneArt.className = 'gd-overview-scenery-art';
@@ -418,9 +540,15 @@ export function createMergedGreetingWidget(now: Date = new Date()): HTMLElement 
   cardContent.appendChild(timeChip);
   cardContent.appendChild(greetingText);
 
-  greetingCard.appendChild(sceneArt);
-  greetingCard.appendChild(sceneScrim);
-  greetingCard.appendChild(cardContent);
+  windowEl.appendChild(sceneArt);
+  windowEl.appendChild(sceneScrim);
+  windowEl.appendChild(cardContent);
+
+  board.appendChild(grain);
+  board.appendChild(windowEl);
+
+  greetingCard.appendChild(hanger);
+  greetingCard.appendChild(board);
 
   return greetingCard;
 }
