@@ -50,6 +50,7 @@ export function createHeaderLanternProp(): HTMLElement {
   lanternBtn.title = sharedLanternLit ? 'Click to extinguish lantern' : 'Click to light lantern';
   lanternBtn.tabIndex = -1;
   lanternBtn.innerHTML = `
+    <span class="gd-lantern-note" aria-hidden="true">${sharedLanternLit ? 'Call bird' : 'Light lantern'}</span>
     <span class="gd-lantern-glow" aria-hidden="true"></span>
     <span class="gd-lantern-cone" aria-hidden="true"></span>
     <span class="gd-lantern-embers" aria-hidden="true">
@@ -146,6 +147,7 @@ export function createHeaderLanternProp(): HTMLElement {
   `;
 
   const headEl = lanternBtn.querySelector('.gd-lantern-head') as SVGGElement | null;
+  const noteEl = lanternBtn.querySelector('.gd-lantern-note') as HTMLElement | null;
   let headAngle = 0;
   let headVel = 0;
   let headRaf: number | null = null;
@@ -178,10 +180,18 @@ export function createHeaderLanternProp(): HTMLElement {
   };
 
   if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => syncLanternAmbience());
+    requestAnimationFrame(() => {
+      syncLanternAmbience();
+      const viewEl = typeof lanternBtn.closest === 'function' ? lanternBtn.closest('#view-overview') : null;
+      if (viewEl?.classList?.contains('gd-view-initial-enter')) {
+        impulsePendulum(1.6);
+      }
+    });
   }
 
-  attachLanternBirdFlight(lanternBtn);
+  attachLanternBirdFlight(lanternBtn, () => {
+    impulsePendulum(1.35);
+  });
 
   lanternBtn.addEventListener('mouseenter', () => {
     impulsePendulum(1.1);
@@ -192,6 +202,9 @@ export function createHeaderLanternProp(): HTMLElement {
     lanternBtn.classList.toggle('is-lit', sharedLanternLit);
     lanternBtn.setAttribute('aria-pressed', sharedLanternLit ? 'true' : 'false');
     lanternBtn.title = sharedLanternLit ? 'Click to extinguish lantern' : 'Click to light lantern';
+    if (noteEl) {
+      noteEl.textContent = sharedLanternLit ? 'Call bird' : 'Light lantern';
+    }
     syncLanternAmbience();
     impulsePendulum(sharedLanternLit ? 3.2 : -2.4);
 
@@ -337,7 +350,7 @@ function playJapaneseFurinChime(intensity = 1, pitchOffset = 0, baseFreqOverride
  * - Naturally lands on wooden UI frames across Overview, perches & chirps, then flies on
  * - Smooth flare return-to-perch when lantern is extinguished
  */
-function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
+function attachLanternBirdFlight(lanternBtn: HTMLElement, onPerchLand?: () => void): void {
   const birdEl = lanternBtn.querySelector('.gd-lantern-bird') as SVGGElement | null;
   const nearWing = lanternBtn.querySelector('.gd-bird-wing-near') as SVGGElement | null;
   const farWing = lanternBtn.querySelector('.gd-bird-wing-far') as SVGGElement | null;
@@ -484,6 +497,8 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
   let nextChirpAt = 0.6;
   let chirpCounter = 0;
   let chirpHideTimer: ReturnType<typeof setTimeout> | null = null;
+  let introDelayTimer: ReturnType<typeof setTimeout> | null = null;
+  let isIntroFlying = false;
   let lastTs = 0;
   let rafId: number | null = null;
   let swoopTarget: { x: number; y: number; until: number } | null = null;
@@ -900,6 +915,8 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     }
 
     // Landed softly on lantern arm
+    const wasIntroFlying = isIntroFlying;
+    isIntroFlying = false;
     x = 0;
     y = 0;
     vx = 0;
@@ -916,10 +933,22 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     perchedUntil = 0;
     swoopTarget = null;
     syncSharedBirdState();
+    birdEl.style.opacity = '';
     birdEl.classList.remove('is-flying');
     birdEl.style.transform = 'translate(0px, 0px) scaleX(1) rotate(0deg)';
     setWingPose(0, 0, 1, 0);
     if (chirpEl) chirpEl.classList.remove('is-visible');
+    if (wasIntroFlying) {
+      onPerchLand?.();
+      if (birdEl.classList) {
+        birdEl.classList.remove('is-perch-hop');
+        if (typeof birdEl.getBoundingClientRect === 'function') birdEl.getBoundingClientRect();
+        birdEl.classList.add('is-perch-hop');
+        setTimeout(() => {
+          birdEl.classList?.remove('is-perch-hop');
+        }, 480);
+      }
+    }
     rafId = null;
     lastTs = 0;
   };
@@ -937,9 +966,47 @@ function attachLanternBirdFlight(lanternBtn: HTMLElement): void {
     ensureRunning();
   } else if (sharedLanternLit) {
     ensureRunning();
+  } else {
+    // On Overview initial/tab entry: render the lantern post & pop pill first, then fly the bird cleanly in to land on top!
+    requestAnimationFrame(() => {
+      if (typeof document !== 'undefined' && !document.contains(lanternBtn)) return;
+      const viewEl = typeof lanternBtn.closest === 'function' ? lanternBtn.closest('#view-overview') : null;
+      const isEntering = Boolean(viewEl?.classList?.contains('gd-view-initial-enter'));
+      if (!isEntering || lanternBtn.classList.contains('is-lit')) return;
+
+      birdEl.style.opacity = '0';
+      introDelayTimer = setTimeout(() => {
+        introDelayTimer = null;
+        if (typeof document !== 'undefined' && !document.contains(lanternBtn)) return;
+        if (lanternBtn.classList.contains('is-lit')) {
+          birdEl.style.opacity = '';
+          return;
+        }
+        isIntroFlying = true;
+        x = 320;
+        y = -82;
+        facing = -1;
+        heading = Math.PI - 0.28;
+        speed = 260;
+        vx = Math.cos(heading) * speed;
+        vy = Math.sin(heading) * speed;
+        pitch = 0;
+        returnClock = 0;
+        birdEl.style.opacity = '1';
+        birdEl.classList.add('is-flying');
+        birdEl.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scaleX(${facing}) rotate(0deg)`;
+        ensureRunning();
+      }, 680);
+    });
   }
 
   lanternBtn.addEventListener('click', () => {
+    if (introDelayTimer) {
+      clearTimeout(introDelayTimer);
+      introDelayTimer = null;
+    }
+    isIntroFlying = false;
+    birdEl.style.opacity = '';
     if (lanternBtn.classList.contains('is-lit')) {
       returnClock = 0;
       if (Math.hypot(x, y) <= 4) {
