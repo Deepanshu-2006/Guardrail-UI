@@ -23174,12 +23174,46 @@ article.gd-card-collapsed,
   transform: none !important;
 }
 
-/* Creative Multi-Plane Continuous Parallax Pixel World */
+/* Creative 5-Layer Panoramic 4-Biome Living Pixel Diorama */
 .gd-m-beam-wrap,
 .gd-m-mote-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.gd-m-ambient-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(237, 230, 214, 0.72) 0%,
+    rgba(237, 230, 214, 0.56) 36%,
+    rgba(237, 230, 214, 0.16) 62%,
+    rgba(237, 230, 214, 0) 82%
+  );
+}
+
+.gd-m-ambient.phase-evening .gd-m-ambient-veil {
+  background: linear-gradient(
+    180deg,
+    rgba(237, 224, 206, 0.72) 0%,
+    rgba(237, 224, 206, 0.52) 38%,
+    rgba(237, 224, 206, 0.14) 64%,
+    rgba(237, 224, 206, 0) 84%
+  );
+}
+
+.gd-m-ambient.phase-night .gd-m-ambient-veil {
+  background: linear-gradient(
+    180deg,
+    rgba(229, 226, 212, 0.72) 0%,
+    rgba(229, 226, 212, 0.52) 38%,
+    rgba(229, 226, 212, 0.12) 64%,
+    rgba(229, 226, 212, 0) 84%
+  );
 }
 
 .gd-m-bg-sky,
@@ -23192,25 +23226,31 @@ article.gd-card-collapsed,
 }
 
 .gd-m-bg-sky {
-  top: 52px;
-  height: 156px;
-  opacity: 0.72;
+  top: 28px;
+  height: 250px;
+  z-index: 1;
+  opacity: 0.88;
 }
 
 .gd-m-bg-far {
-  bottom: 24px;
-  height: 224px;
-  opacity: 0.56;
+  bottom: 185px;
+  height: 290px;
+  z-index: 2;
+  opacity: 0.74;
 }
 
 .gd-m-bg-horizon {
-  height: 178px;
+  bottom: 0;
+  height: 390px;
+  z-index: 3;
+  opacity: 0.92;
 }
 
 .gd-m-bg-fore {
   bottom: 0;
-  height: 82px;
-  opacity: 0.58;
+  height: 112px;
+  z-index: 4;
+  opacity: 0.86;
 }
 
 .gd-m-bg-sky svg,
@@ -23221,31 +23261,94 @@ article.gd-card-collapsed,
   display: block;
 }
 
-/* Phase harmonies across all parallax planes */
-.gd-m-ambient.phase-morning .gd-m-bg-sky { color: #CBBF9B; }
-.gd-m-ambient.phase-afternoon .gd-m-bg-sky { color: #B4C2AE; }
-.gd-m-ambient.phase-evening .gd-m-bg-sky { color: #CCA086; }
-.gd-m-ambient.phase-night .gd-m-bg-sky { color: #7F8E7D; }
+/* Rich multi-tone seasonal/time-of-day diorama tokens */
+.gd-m-ambient.phase-morning {
+  --sc-sun: #F0B851;
+  --sc-glow: #FFD777;
+  --sc-cloud-hi: #FAF6ED;
+  --sc-cloud-mid: #EAE2CC;
+  --sc-cloud-sh: #D5CAB0;
+  --sc-far-hi: #DCE0CE;
+  --sc-far-mid: #BAC6AE;
+  --sc-far-sh: #9AA88F;
+  --sc-far-mist: #E7DFCA;
+  --sc-hill-light: #93A67F;
+  --sc-hill-mid: #829671;
+  --sc-hill-dark: #637556;
+  --sc-stone-light: #D6C9AD;
+  --sc-stone-shade: #B8A98B;
+  --sc-wood: #7B5D45;
+  --sc-roof: #B86E4A;
+  --sc-water-hi: #B2C7BC;
+  --sc-water-deep: #8DA699;
+  --sc-fore: #586A4D;
+}
 
-.gd-m-ambient.phase-morning .gd-m-bg-far { color: #CFC7AE; }
-.gd-m-ambient.phase-afternoon .gd-m-bg-far { color: #C1CBB7; }
-.gd-m-ambient.phase-evening .gd-m-bg-far { color: #CFB9A2; }
-.gd-m-ambient.phase-night .gd-m-bg-far { color: #A6AE9E; }
+.gd-m-ambient.phase-afternoon {
+  --sc-sun: #F5C75B;
+  --sc-glow: #FFE28C;
+  --sc-cloud-hi: #FAF7EE;
+  --sc-cloud-mid: #E3EAE0;
+  --sc-cloud-sh: #C7D4C3;
+  --sc-far-hi: #DAE5D6;
+  --sc-far-mid: #AEBEA9;
+  --sc-far-sh: #8D9F88;
+  --sc-far-mist: #E5E7DA;
+  --sc-hill-light: #89A37C;
+  --sc-hill-mid: #748E68;
+  --sc-hill-dark: #566E4C;
+  --sc-stone-light: #D5CBB3;
+  --sc-stone-shade: #B3A88E;
+  --sc-wood: #735A44;
+  --sc-roof: #AD6848;
+  --sc-water-hi: #A5C3BA;
+  --sc-water-deep: #7FA398;
+  --sc-fore: #4B6042;
+}
 
-.gd-m-ambient.phase-morning .gd-m-bg-fore { color: #B6AD92; }
-.gd-m-ambient.phase-afternoon .gd-m-bg-fore { color: #A7B39C; }
-.gd-m-ambient.phase-evening .gd-m-bg-fore { color: #B59B82; }
-.gd-m-ambient.phase-night .gd-m-bg-fore { color: #969E8F; }
+.gd-m-ambient.phase-evening {
+  --sc-sun: #E97E49;
+  --sc-glow: #FFBE64;
+  --sc-cloud-hi: #F5DFCA;
+  --sc-cloud-mid: #E3BDA4;
+  --sc-cloud-sh: #C79B82;
+  --sc-far-hi: #DFC3AC;
+  --sc-far-mid: #BC9F8D;
+  --sc-far-sh: #95796B;
+  --sc-far-mist: #E5CEB7;
+  --sc-hill-light: #948269;
+  --sc-hill-mid: #7D6D58;
+  --sc-hill-dark: #5B5041;
+  --sc-stone-light: #CFB8A0;
+  --sc-stone-shade: #AB927B;
+  --sc-wood: #6B4938;
+  --sc-roof: #B4563B;
+  --sc-water-hi: #C0A69B;
+  --sc-water-deep: #8C7873;
+  --sc-fore: #4A4338;
+}
 
-.gd-m-ambient.phase-morning .gd-m-bg-accent { fill: #D99B38; }
-.gd-m-ambient.phase-afternoon .gd-m-bg-accent { fill: #C9983A; }
-.gd-m-ambient.phase-evening .gd-m-bg-accent { fill: #DF8745; }
-.gd-m-ambient.phase-night .gd-m-bg-accent { fill: #F4BE5B; }
-
-.gd-m-ambient.phase-morning .gd-m-bg-water { fill: #A4B8AA; }
-.gd-m-ambient.phase-afternoon .gd-m-bg-water { fill: #98B2A9; }
-.gd-m-ambient.phase-evening .gd-m-bg-water { fill: #B39F96; }
-.gd-m-ambient.phase-night .gd-m-bg-water { fill: #697C73; }
+.gd-m-ambient.phase-night {
+  --sc-sun: #E3ECD8;
+  --sc-glow: #F4BE5B;
+  --sc-cloud-hi: #CFD7C8;
+  --sc-cloud-mid: #B5C0AF;
+  --sc-cloud-sh: #95A291;
+  --sc-far-hi: #BAC3B3;
+  --sc-far-mid: #94A08F;
+  --sc-far-sh: #73806F;
+  --sc-far-mist: #D8DDD0;
+  --sc-hill-light: #6E7E69;
+  --sc-hill-mid: #596955;
+  --sc-hill-dark: #3F4E3C;
+  --sc-stone-light: #A9AC9E;
+  --sc-stone-shade: #888D7F;
+  --sc-wood: #54463B;
+  --sc-roof: #7C4F43;
+  --sc-water-hi: #788E85;
+  --sc-water-deep: #546A61;
+  --sc-fore: #313E2E;
+}
 
 @keyframes gd-px-bg-wind {
   0% { transform: rotate(0deg); }
@@ -23258,35 +23361,72 @@ article.gd-card-collapsed,
 }
 
 @keyframes gd-px-bg-water {
-  0%, 100% { transform: translateX(0px); opacity: 0.28; }
-  50% { transform: translateX(2px); opacity: 0.52; }
+  0%, 100% { transform: translateX(0px); opacity: 0.34; }
+  50% { transform: translateX(3px); opacity: 0.68; }
 }
 
 @keyframes gd-px-bg-smoke {
-  0% { transform: translateY(0px); opacity: 0.48; }
-  50% { transform: translateY(-2px); opacity: 0.28; }
-  100% { transform: translateY(-3px); opacity: 0.08; }
+  0% { transform: translateY(0px); opacity: 0.52; }
+  50% { transform: translateY(-2px); opacity: 0.32; }
+  100% { transform: translateY(-4px); opacity: 0.08; }
 }
 
 @keyframes gd-px-bg-birds {
   0%, 100% { transform: translate3d(0px, 0px, 0); }
-  50% { transform: translate3d(3px, -1px, 0); }
+  50% { transform: translate3d(4px, -1.5px, 0); }
+}
+
+@keyframes gd-px-bg-tram {
+  0% { transform: translateX(-16px); }
+  50% { transform: translateX(92px); }
+  100% { transform: translateX(-16px); }
+}
+
+@keyframes gd-px-bg-gondola {
+  0%, 100% { transform: translate3d(-24px, -2px, 0); }
+  50% { transform: translate3d(28px, 3px, 0); }
+}
+
+@keyframes gd-px-bg-balloon {
+  0%, 100% { transform: translate3d(0px, 0px, 0); }
+  50% { transform: translate3d(6px, -4px, 0); }
+}
+
+@keyframes gd-px-bg-lantern-float {
+  0%, 100% { transform: translate3d(0px, 0px, 0); opacity: 0.72; }
+  50% { transform: translate3d(2px, -6px, 0); opacity: 0.96; }
+}
+
+@keyframes gd-px-bg-sailboat {
+  0%, 100% { transform: translate3d(-12px, 0px, 0); }
+  50% { transform: translate3d(8px, -1px, 0); }
+}
+
+@keyframes gd-px-bg-waterfall {
+  0%, 100% { opacity: 0.55; transform: translateY(0px); }
+  50% { opacity: 0.92; transform: translateY(1px); }
+}
+
+@keyframes gd-px-bg-shooting {
+  0%, 72% { opacity: 0; transform: translate3d(0, 0, 0); }
+  78% { opacity: 0.85; transform: translate3d(-14px, 5px, 0); }
+  84%, 100% { opacity: 0; transform: translate3d(-28px, 10px, 0); }
 }
 
 .gd-px-windmill-blades {
-  animation: gd-px-bg-wind 18s linear infinite;
+  animation: gd-px-bg-wind 16s linear infinite;
 }
 
 .gd-px-lantern-glow {
-  animation: gd-px-bg-lantern 3.2s ease-in-out infinite;
+  animation: gd-px-bg-lantern 3s ease-in-out infinite;
 }
 
 .gd-px-water-shimmer {
-  animation: gd-px-bg-water 4.2s ease-in-out infinite;
+  animation: gd-px-bg-water 3.8s ease-in-out infinite;
 }
 
 .gd-px-bg-smoke {
-  animation: gd-px-bg-smoke 4.4s ease-out infinite;
+  animation: gd-px-bg-smoke 4.2s ease-out infinite;
 }
 
 .gd-px-bg-birds {
@@ -23301,45 +23441,77 @@ article.gd-card-collapsed,
   animation: gd-px-bg-lantern 3.8s ease-in-out -1.4s infinite;
 }
 
+.gd-px-bg-tram {
+  animation: gd-px-bg-tram 22s ease-in-out infinite;
+}
+
+.gd-px-bg-gondola {
+  animation: gd-px-bg-gondola 18s ease-in-out infinite;
+}
+
+.gd-px-bg-balloon {
+  animation: gd-px-bg-balloon 9s ease-in-out infinite;
+}
+
+.gd-px-bg-sky-lanterns {
+  animation: gd-px-bg-lantern-float 7s ease-in-out infinite;
+}
+
+.gd-px-bg-sailboat {
+  animation: gd-px-bg-sailboat 14s ease-in-out infinite;
+}
+
+.gd-px-bg-boat {
+  animation: gd-px-bg-birds 5s ease-in-out infinite;
+}
+
+.gd-px-bg-waterfall {
+  animation: gd-px-bg-waterfall 1.6s steps(2, end) infinite;
+}
+
+.gd-px-bg-shooting {
+  animation: gd-px-bg-shooting 14s linear infinite;
+}
+
 .gd-m-ambient:not(.gd-desktop-ambient) .gd-m-beam-wrap {
-  transform: translate3d(calc((var(--gd-pan-idx, 3) - 2) * -7%), 0, 0);
-  transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate3d(calc((var(--gd-pan-idx, 3) - 2) * -8%), 0, 0);
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 .gd-m-ambient:not(.gd-desktop-ambient) .gd-m-bg-sky {
-  width: 150%;
-  transform: translate3d(calc(var(--gd-pan-idx, 3) * -10%), 0, 0);
-  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  width: 240%;
+  transform: translate3d(calc(var(--gd-pan-idx, 3) * -18%), 0, 0);
+  transition: transform 580ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 .gd-m-ambient:not(.gd-desktop-ambient) .gd-m-mote-layer {
   width: 140%;
-  transform: translate3d(calc(var(--gd-pan-idx, 3) * -9%), 0, 0);
-  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate3d(calc(var(--gd-pan-idx, 3) * -11%), 0, 0);
+  transition: transform 550ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 .gd-m-ambient:not(.gd-desktop-ambient) .gd-m-bg-far {
-  width: 200%;
-  transform: translate3d(calc(var(--gd-pan-idx, 3) * -15%), 0, 0);
-  transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  width: 300%;
+  transform: translate3d(calc(var(--gd-pan-idx, 3) * -21%), 0, 0);
+  transition: transform 530ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 .gd-m-ambient:not(.gd-desktop-ambient) .gd-m-bg-horizon {
-  width: 240%;
+  width: 400%;
   right: auto;
-  transform: translate3d(calc(var(--gd-pan-idx, 3) * -18.5%), 0, 0);
-  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate3d(calc(var(--gd-pan-idx, 3) * -25%), 0, 0);
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 .gd-m-ambient:not(.gd-desktop-ambient) .gd-m-bg-fore {
-  width: 280%;
-  transform: translate3d(calc(var(--gd-pan-idx, 3) * -21%), 0, 0);
-  transition: transform 430ms cubic-bezier(0.22, 1, 0.36, 1);
+  width: 460%;
+  transform: translate3d(calc(var(--gd-pan-idx, 3) * -26%), 0, 0);
+  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
@@ -23350,7 +23522,15 @@ article.gd-card-collapsed,
   .gd-px-bg-smoke,
   .gd-px-bg-birds,
   .gd-px-bg-twinkle-a,
-  .gd-px-bg-twinkle-b {
+  .gd-px-bg-twinkle-b,
+  .gd-px-bg-tram,
+  .gd-px-bg-gondola,
+  .gd-px-bg-balloon,
+  .gd-px-bg-sky-lanterns,
+  .gd-px-bg-sailboat,
+  .gd-px-bg-boat,
+  .gd-px-bg-waterfall,
+  .gd-px-bg-shooting {
     animation: none !important;
   }
 }
