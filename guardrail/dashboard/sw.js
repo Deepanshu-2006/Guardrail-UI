@@ -9,7 +9,7 @@
  * 5. Web Push notification handling and rich native lock-screen alert interactions.
  */
 
-const CACHE_NAME = 'guardrail-caretaker-pwa-v161';
+const CACHE_NAME = 'guardrail-caretaker-pwa-v167';
 
 const STATIC_SHELL_ASSETS = [
   '/',
@@ -17,6 +17,9 @@ const STATIC_SHELL_ASSETS = [
   '/manifest.webmanifest',
   '/styles/dashboard.css',
   '/dist/dashboard.js',
+  '/audio/sword-fight.mp3',
+  '/audio/volcano-eruption.mp3',
+  '/audio/dinosaur-roar.mp3',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-128.png',

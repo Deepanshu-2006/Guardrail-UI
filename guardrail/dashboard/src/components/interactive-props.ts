@@ -297,6 +297,636 @@ function ensureUnlockedBirdAudioCtx(): AudioContext | null {
   }
 }
 
+let sharedHistoryNoiseBuf: AudioBuffer | null = null;
+let sharedHistorySfxBus: GainNode | null = null;
+
+function getHistorySfxBus(ctx: AudioContext): GainNode {
+  if (sharedHistorySfxBus && sharedHistorySfxBus.context === ctx) {
+    return sharedHistorySfxBus;
+  }
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(1, ctx.currentTime);
+  master.connect(ctx.destination);
+  sharedHistorySfxBus = master;
+  return master;
+}
+
+function setHistorySfxBusActive(enabled: boolean): void {
+  try {
+    const ctx = sharedBirdAudioCtx;
+    if (!ctx || !sharedHistorySfxBus || sharedHistorySfxBus.context !== ctx) return;
+    const t = ctx.currentTime;
+    sharedHistorySfxBus.gain.cancelScheduledValues(t);
+    sharedHistorySfxBus.gain.setTargetAtTime(enabled ? 1 : 0.0001, t, enabled ? 0.08 : 0.06);
+  } catch {
+    // Ignore audio errors cleanly
+  }
+}
+
+function getHistoryNoiseBuffer(ctx: AudioContext): AudioBuffer {
+  if (sharedHistoryNoiseBuf && sharedHistoryNoiseBuf.sampleRate === ctx.sampleRate) {
+    return sharedHistoryNoiseBuf;
+  }
+  const len = Math.floor(ctx.sampleRate * 1.6);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i += 1) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  sharedHistoryNoiseBuf = buf;
+  return buf;
+}
+
+/** Synthesizes one steam locomotive piston chug + railbed thump. */
+function playTrainChugSfx(weight: number, accent: boolean): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+    const vol = Math.min(1, Math.max(0.15, weight)) * (accent ? 0.052 : 0.032);
+
+    const src = ctx.createBufferSource();
+    src.buffer = getHistoryNoiseBuffer(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(accent ? 520 : 680, now);
+    bp.frequency.exponentialRampToValueAtTime(accent ? 1280 : 1040, now + 0.14);
+    bp.Q.value = 1.4;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + (accent ? 0.19 : 0.13));
+
+    src.connect(bp);
+    bp.connect(gain);
+    gain.connect(bus);
+    src.start(now, Math.random() * 0.4, 0.22);
+
+    // Subtle cast-iron railbed tie bump on accented beats
+    if (accent) {
+      const thud = ctx.createOscillator();
+      const thudG = ctx.createGain();
+      thud.type = 'triangle';
+      thud.frequency.setValueAtTime(98, now);
+      thud.frequency.exponentialRampToValueAtTime(44, now + 0.09);
+      thudG.gain.setValueAtTime(vol * 0.68, now);
+      thudG.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+      thud.connect(thudG);
+      thudG.connect(bus);
+      thud.start(now);
+      thud.stop(now + 0.11);
+    }
+  } catch {
+    // Ignore audio errors
+  }
+}
+
+/** Synthesizes a nostalgic multi-chime brass locomotive steam whistle ("WHOOO-whoo!"). */
+function playTrainWhistleSfx(): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+
+    const blast = (offset: number, dur: number, vol: number) => {
+      const t0 = now + offset;
+      const t1 = t0 + dur;
+      for (const freq of [369.99, 466.16, 554.37]) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq * 0.985, t0);
+        osc.frequency.linearRampToValueAtTime(freq, t0 + 0.06);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.96, t1);
+
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + 0.05);
+        g.gain.setValueAtTime(vol * 0.9, Math.max(t0 + 0.06, t1 - 0.09));
+        g.gain.exponentialRampToValueAtTime(0.0001, t1);
+
+        osc.connect(g);
+        g.connect(bus);
+        osc.start(t0);
+        osc.stop(t1 + 0.02);
+      }
+
+      // Breathy escaping steam hiss behind the brass chord
+      const hiss = ctx.createBufferSource();
+      hiss.buffer = getHistoryNoiseBuffer(ctx);
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(1450, t0);
+      bp.Q.value = 1.8;
+      const hg = ctx.createGain();
+      hg.gain.setValueAtTime(0.0001, t0);
+      hg.gain.linearRampToValueAtTime(vol * 0.45, t0 + 0.04);
+      hg.gain.exponentialRampToValueAtTime(0.0001, t1);
+      hiss.connect(bp);
+      bp.connect(hg);
+      hg.connect(bus);
+      hiss.start(t0, Math.random() * 0.3, dur + 0.02);
+    };
+
+    blast(0, 0.34, 0.016);
+    blast(0.42, 0.56, 0.019);
+  } catch {
+    // Ignore audio errors
+  }
+}
+
+type HistoryAudioKey = 'sword' | 'volcano' | 'roar';
+
+interface HistoryAudioTrackState {
+  url: string;
+  buffer: AudioBuffer | null;
+  loadPromise: Promise<void> | null;
+  source: AudioBufferSourceNode | null;
+  gain: GainNode | null;
+  startedAt: number | null;
+}
+
+const HISTORY_AUDIO_TRACKS: Record<HistoryAudioKey, HistoryAudioTrackState> = {
+  sword: { url: '/audio/sword-fight.mp3', buffer: null, loadPromise: null, source: null, gain: null, startedAt: null },
+  volcano: { url: '/audio/volcano-eruption.mp3', buffer: null, loadPromise: null, source: null, gain: null, startedAt: null },
+  roar: { url: '/audio/dinosaur-roar.mp3', buffer: null, loadPromise: null, source: null, gain: null, startedAt: null },
+};
+
+function hasDecodedHistoryTrack(key: HistoryAudioKey): boolean {
+  return Boolean(HISTORY_AUDIO_TRACKS[key].buffer);
+}
+
+function preloadHistoryAudioTrack(key: HistoryAudioKey, ctx: AudioContext | null): void {
+  try {
+    const track = HISTORY_AUDIO_TRACKS[key];
+    if (!ctx || track.buffer || track.loadPromise) return;
+    if (typeof fetch !== 'function') return;
+    track.loadPromise = fetch(track.url)
+      .then((res) => (res.ok ? res.arrayBuffer() : null))
+      .then((buf) => (buf ? ctx.decodeAudioData(buf) : null))
+      .then((decoded) => {
+        if (decoded) track.buffer = decoded;
+      })
+      .catch(() => {
+        track.loadPromise = null;
+      });
+  } catch {
+    HISTORY_AUDIO_TRACKS[key].loadPromise = null;
+  }
+}
+
+function preloadAllHistoryAudioTracks(ctx: AudioContext | null): void {
+  preloadHistoryAudioTrack('sword', ctx);
+  preloadHistoryAudioTrack('volcano', ctx);
+  preloadHistoryAudioTrack('roar', ctx);
+}
+
+function stopHistoryAudioTrack(key: HistoryAudioKey, immediate = false): void {
+  try {
+    const track = HISTORY_AUDIO_TRACKS[key];
+    const src = track.source;
+    const gain = track.gain;
+    track.source = null;
+    track.gain = null;
+    track.startedAt = null;
+    if (!src) return;
+    const ctx = sharedBirdAudioCtx;
+    if (gain && ctx && !immediate) {
+      const t = ctx.currentTime;
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setTargetAtTime(0.0001, t, 0.045);
+      src.stop(t + 0.18);
+    } else {
+      src.stop();
+    }
+  } catch {
+    // Ignore stop errors if already ended
+  }
+}
+
+function stopAllHistoryAudioTracks(immediate = false): void {
+  stopHistoryAudioTrack('sword', immediate);
+  stopHistoryAudioTrack('volcano', immediate);
+  stopHistoryAudioTrack('roar', immediate);
+}
+
+function syncLoopingHistoryTrack(
+  key: HistoryAudioKey,
+  weight: number,
+  active: boolean,
+  maxGain = 0.56,
+): void {
+  try {
+    const track = HISTORY_AUDIO_TRACKS[key];
+    if (!active || weight <= 0.025) {
+      if (track.source) stopHistoryAudioTrack(key, false);
+      return;
+    }
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    preloadHistoryAudioTrack(key, ctx);
+    if (!track.buffer) return;
+
+    const now = ctx.currentTime;
+    const targetGain = Math.min(0.75, Math.max(0.04, weight * maxGain));
+    if (!track.source || !track.gain || track.gain.context !== ctx) {
+      stopHistoryAudioTrack(key, true);
+      const bus = getHistorySfxBus(ctx);
+      const src = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      src.buffer = track.buffer;
+      src.loop = true;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(targetGain, now + 0.14);
+      src.connect(gain);
+      gain.connect(bus);
+      src.start(now, 0);
+      src.onended = () => {
+        if (track.source === src) {
+          track.source = null;
+          track.gain = null;
+        }
+      };
+      track.source = src;
+      track.gain = gain;
+      track.startedAt = now;
+    } else {
+      track.gain.gain.setTargetAtTime(targetGain, now, 0.07);
+    }
+  } catch {
+    // Ignore audio errors
+  }
+}
+
+function playHistoryAudioOneShot(key: HistoryAudioKey, gainLevel = 0.62): boolean {
+  try {
+    const track = HISTORY_AUDIO_TRACKS[key];
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return false;
+    preloadHistoryAudioTrack(key, ctx);
+    if (!track.buffer) return false;
+
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+    const src = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    src.buffer = track.buffer;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(Math.min(0.85, Math.max(0.05, gainLevel)), now + 0.04);
+    src.connect(gain);
+    gain.connect(bus);
+    src.start(now, 0);
+
+    track.source = src;
+    track.gain = gain;
+    track.startedAt = now;
+    src.onended = () => {
+      if (track.source === src) {
+        track.source = null;
+        track.gain = null;
+        track.startedAt = null;
+      }
+    };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Computes normalized [0..1] T-Rex roar intensity strictly locked to the
+ * two bellow peaks in /audio/dinosaur-roar.mp3 (~0.4s primary peak, ~1.8s surge, tapering by 3.65s).
+ */
+function getDinoRoarAudioEnvelope(fallbackElapsed: number): { level: number; vibe: number } {
+  const roarTrack = HISTORY_AUDIO_TRACKS.roar;
+  let elapsed = fallbackElapsed;
+  if (roarTrack.source && roarTrack.startedAt !== null && sharedBirdAudioCtx) {
+    elapsed = sharedBirdAudioCtx.currentTime - roarTrack.startedAt;
+  }
+  if (elapsed < 0 || elapsed > 3.85) return { level: 0, vibe: 0 };
+
+  let level = 0;
+  if (elapsed < 0.36) {
+    // Rapid jaw snap open into main bellow
+    const u = elapsed / 0.36;
+    level = u * u * (3 - 2 * u);
+  } else if (elapsed < 1.25) {
+    // Sustained furious opening roar peak (0.36s -> 1.25s)
+    level = 1 - ((elapsed - 0.36) / 0.89) * 0.28;
+  } else if (elapsed < 1.54) {
+    // Brief breath intake dip before second surge
+    const u = (elapsed - 1.25) / 0.29;
+    level = 0.72 - u * 0.36;
+  } else if (elapsed < 1.84) {
+    // Second roar surge peaking cleanly at 1.84s
+    const u = (elapsed - 1.54) / 0.3;
+    level = 0.36 + u * 0.56;
+  } else if (elapsed < 2.85) {
+    // Sustained lower growl
+    const u = (elapsed - 1.84) / 1.01;
+    level = 0.92 - u * 0.48;
+  } else {
+    // Gradual jaw close as roar fades out by 3.65s
+    const u = Math.min(1, (elapsed - 2.85) / 0.85);
+    level = 0.44 * (1 - u);
+  }
+
+  const vibe = level > 0.3 ? Math.sin(elapsed * 44) * level : 0;
+  return { level: Math.max(0, Math.min(1, level)), vibe };
+}
+
+/** Synthesizes a sharp, resonant steel-on-steel medieval sword clash & parry ring (fallback when MP3 not decoded). */
+function playSwordClashSfx(heavy: boolean): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+    const vol = heavy ? 0.092 : 0.072;
+
+    const triggerBladeRing = (t0: number, ampScale: number, pitchScale: number) => {
+      // Paired inharmonic spring-steel blade modes for authentic metallic shimmer
+      const partials = heavy
+        ? [1020, 1034, 1565, 2380, 2402, 3490, 4760]
+        : [1160, 1176, 1785, 2640, 2665, 3820, 5140];
+      for (let i = 0; i < partials.length; i += 1) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = i % 3 === 0 ? 'triangle' : 'sine';
+        const f0 = partials[i] * pitchScale * (0.985 + Math.random() * 0.03);
+        osc.frequency.setValueAtTime(f0, t0);
+        osc.frequency.exponentialRampToValueAtTime(f0 * 0.975, t0 + 0.48);
+
+        const amp = (vol * ampScale) / (1 + i * 0.42);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(amp, t0 + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.24 + (partials.length - i) * 0.065);
+        osc.connect(g);
+        g.connect(bus);
+        osc.start(t0);
+        osc.stop(t0 + 0.72);
+      }
+
+      // Edge-sliding steel "SHING!" sweep + bright spark impact burst
+      const zing = ctx.createOscillator();
+      const zg = ctx.createGain();
+      zing.type = 'sawtooth';
+      zing.frequency.setValueAtTime(2100 * pitchScale, t0);
+      zing.frequency.exponentialRampToValueAtTime(4300 * pitchScale, t0 + 0.055);
+      const zbp = ctx.createBiquadFilter();
+      zbp.type = 'bandpass';
+      zbp.frequency.setValueAtTime(3400, t0);
+      zbp.Q.value = 2.2;
+      zg.gain.setValueAtTime(0.0001, t0);
+      zg.gain.linearRampToValueAtTime(vol * ampScale * 0.52, t0 + 0.005);
+      zg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.095);
+      zing.connect(zbp);
+      zbp.connect(zg);
+      zg.connect(bus);
+      zing.start(t0);
+      zing.stop(t0 + 0.11);
+
+      const src = ctx.createBufferSource();
+      src.buffer = getHistoryNoiseBuffer(ctx);
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'bandpass';
+      hp.frequency.setValueAtTime(3600 * pitchScale, t0);
+      hp.Q.value = 1.25;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(vol * ampScale * 1.45, t0);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.095);
+      src.connect(hp);
+      hp.connect(ng);
+      ng.connect(bus);
+      src.start(t0, Math.random() * 0.45, 0.11);
+    };
+
+    // Main impact + rapid secondary parry lock ("CLANG-tink!")
+    triggerBladeRing(now, 1.0, 1.0);
+    if (heavy || Math.random() < 0.6) {
+      triggerBladeRing(now + 0.072, 0.56, 1.18);
+    }
+
+    if (heavy) {
+      const thud = ctx.createOscillator();
+      const tg = ctx.createGain();
+      thud.type = 'sine';
+      thud.frequency.setValueAtTime(158, now);
+      thud.frequency.exponentialRampToValueAtTime(46, now + 0.12);
+      tg.gain.setValueAtTime(vol * 0.85, now);
+      tg.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
+      thud.connect(tg);
+      tg.connect(bus);
+      thud.start(now);
+      thud.stop(now + 0.14);
+    }
+  } catch {
+    // Ignore audio errors
+  }
+}
+
+/** Synthesizes sandy Egyptian horse hoofbeats + wooden chariot axle rattle. */
+function playEgyptGallopSfx(weight: number, hoofSubBeat: number): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+    const scale = Math.min(1, Math.max(0.15, weight));
+    const accent = hoofSubBeat === 0 ? 1.15 : hoofSubBeat === 1 ? 0.85 : 0.72;
+    const vol = 0.042 * scale * accent;
+
+    // Warm hollow hoof impact into compacted desert sand
+    const osc = ctx.createOscillator();
+    const og = ctx.createGain();
+    osc.type = 'triangle';
+    const baseF = hoofSubBeat === 0 ? 195 : hoofSubBeat === 1 ? 225 : 178;
+    osc.frequency.setValueAtTime(baseF, now);
+    osc.frequency.exponentialRampToValueAtTime(64, now + 0.055);
+    og.gain.setValueAtTime(0.0001, now);
+    og.gain.linearRampToValueAtTime(vol, now + 0.006);
+    og.gain.exponentialRampToValueAtTime(0.0001, now + 0.068);
+    osc.connect(og);
+    og.connect(bus);
+    osc.start(now);
+    osc.stop(now + 0.075);
+
+    // Sandy gravel scuff & wooden chariot wheel chatter
+    const src = ctx.createBufferSource();
+    src.buffer = getHistoryNoiseBuffer(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(hoofSubBeat === 2 ? 920 : 1280, now);
+    bp.Q.value = 1.3;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, now);
+    ng.gain.linearRampToValueAtTime(vol * 0.55, now + 0.008);
+    ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.062);
+    src.connect(bp);
+    bp.connect(ng);
+    ng.connect(bus);
+    src.start(now, Math.random() * 0.6, 0.07);
+  } catch {
+    // Ignore audio errors
+  }
+}
+
+/** Synthesizes a powerful rumbling volcanic eruption surge & crackling ejected lava rocks. */
+function playVolcanoEruptionSfx(intensity = 1): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+    const vol = Math.min(1.25, Math.max(0.35, intensity)) * 0.135;
+
+    // Punchy explosive caldera blast + deep sub-bass earthquake drop
+    const boom = ctx.createOscillator();
+    const bg = ctx.createGain();
+    boom.type = 'triangle';
+    boom.frequency.setValueAtTime(132, now);
+    boom.frequency.exponentialRampToValueAtTime(38, now + 0.95);
+    bg.gain.setValueAtTime(0.0001, now);
+    bg.gain.linearRampToValueAtTime(vol * 1.15, now + 0.06);
+    bg.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
+    boom.connect(bg);
+    bg.connect(bus);
+    boom.start(now);
+    boom.stop(now + 1.1);
+
+    // Wide full-bodied pyroclastic thunder roar audible on both laptop speakers & headphones
+    const roar = ctx.createBufferSource();
+    roar.buffer = getHistoryNoiseBuffer(ctx);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(1150, now);
+    lp.frequency.exponentialRampToValueAtTime(210, now + 1.25);
+    lp.Q.value = 0.85;
+    const rg = ctx.createGain();
+    rg.gain.setValueAtTime(0.0001, now);
+    rg.gain.linearRampToValueAtTime(vol * 0.92, now + 0.08);
+    rg.gain.exponentialRampToValueAtTime(0.0001, now + 1.32);
+    roar.connect(lp);
+    lp.connect(rg);
+    rg.connect(bus);
+    roar.start(now, Math.random() * 0.25, 1.38);
+
+    // Crackling volcanic magma & flying boulder bursts
+    for (let k = 0; k < 5; k += 1) {
+      const tCrack = now + 0.05 + k * 0.14 + Math.random() * 0.06;
+      const crk = ctx.createBufferSource();
+      crk.buffer = getHistoryNoiseBuffer(ctx);
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(1250 + k * 390, tCrack);
+      bp.Q.value = 1.8;
+      const cg = ctx.createGain();
+      cg.gain.setValueAtTime(vol * 0.48, tCrack);
+      cg.gain.exponentialRampToValueAtTime(0.0001, tCrack + 0.085);
+      crk.connect(bp);
+      bp.connect(cg);
+      cg.connect(bus);
+      crk.start(tCrack, Math.random() * 0.45, 0.095);
+    }
+  } catch {
+    // Ignore audio errors
+  }
+}
+
+/** Synthesizes a fierce formant-shaped T-Rex dinosaur roar with coarse vocal growl & snarl. */
+function playDinosaurRoarSfx(pitchScale = 1): void {
+  try {
+    const ctx = ensureUnlockedBirdAudioCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    const bus = getHistorySfxBus(ctx);
+
+    const oscMain = ctx.createOscillator();
+    const oscSub = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const formant = ctx.createBiquadFilter();
+    const lowWarmth = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    // Swooping primal beast pitch: inhales/lunges up then drops into deep bellow
+    oscMain.type = 'sawtooth';
+    oscMain.frequency.setValueAtTime(215 * pitchScale, now);
+    oscMain.frequency.linearRampToValueAtTime(305 * pitchScale, now + 0.18);
+    oscMain.frequency.exponentialRampToValueAtTime(118 * pitchScale, now + 0.85);
+    oscMain.frequency.exponentialRampToValueAtTime(68 * pitchScale, now + 1.25);
+
+    oscSub.type = 'square';
+    oscSub.frequency.setValueAtTime(108 * pitchScale, now);
+    oscSub.frequency.linearRampToValueAtTime(152 * pitchScale, now + 0.18);
+    oscSub.frequency.exponentialRampToValueAtTime(59 * pitchScale, now + 0.85);
+    oscSub.frequency.exponentialRampToValueAtTime(38 * pitchScale, now + 1.25);
+
+    // Coarse throat growl vibrato FM
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(36, now);
+    lfo.frequency.linearRampToValueAtTime(21, now + 1.1);
+    lfoGain.gain.setValueAtTime(26 * pitchScale, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(oscMain.frequency);
+
+    // Open-mouth jaw vowel formant sweeping wide to cut clearly above eruption rumble
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(540, now);
+    formant.frequency.linearRampToValueAtTime(1420, now + 0.22);
+    formant.frequency.exponentialRampToValueAtTime(420, now + 1.2);
+    formant.Q.value = 2.4;
+
+    lowWarmth.type = 'lowpass';
+    lowWarmth.frequency.setValueAtTime(1750, now);
+    lowWarmth.exponentialRampToValueAtTime(620, now + 1.22);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.145, now + 0.11);
+    gain.gain.setValueAtTime(0.125, now + 0.52);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.28);
+
+    const subGain = ctx.createGain();
+    subGain.gain.setValueAtTime(0.55, now);
+
+    oscMain.connect(formant);
+    formant.connect(gain);
+    oscSub.connect(lowWarmth);
+    lowWarmth.connect(subGain);
+    subGain.connect(gain);
+    gain.connect(bus);
+
+    // Raspy breathy dinosaur snarl hiss
+    const snarl = ctx.createBufferSource();
+    snarl.buffer = getHistoryNoiseBuffer(ctx);
+    const sbp = ctx.createBiquadFilter();
+    sbp.type = 'bandpass';
+    sbp.frequency.setValueAtTime(1180, now);
+    sbp.frequency.linearRampToValueAtTime(1680, now + 0.22);
+    sbp.frequency.exponentialRampToValueAtTime(520, now + 1.15);
+    sbp.Q.value = 1.5;
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0.0001, now);
+    sg.gain.linearRampToValueAtTime(0.072, now + 0.12);
+    sg.gain.exponentialRampToValueAtTime(0.0001, now + 1.12);
+    snarl.connect(sbp);
+    sbp.connect(sg);
+    sg.connect(bus);
+
+    oscMain.start(now);
+    oscMain.stop(now + 1.32);
+    oscSub.start(now);
+    oscSub.stop(now + 1.32);
+    lfo.start(now);
+    lfo.stop(now + 1.32);
+    snarl.start(now, Math.random() * 0.2, 1.18);
+  } catch {
+    // Ignore audio errors
+  }
+}
+
 /**
  * Synthesizes a crystalline Edo-glass Japanese Fūrin (wind chime) tone via Web Audio API.
  * Uses delicate high-Q glass partials with a dual-mode shimmer beat and crisp ceramic tap.
@@ -4466,6 +5096,14 @@ export function createHistoryPocketWatchProp(): HTMLElement {
     sharedWatchOpen = !sharedWatchOpen;
     swingVel += sharedWatchOpen ? -78 : 78;
     syncSectionClass(sharedWatchOpen);
+    if (sharedWatchOpen) {
+      const ctx = ensureUnlockedBirdAudioCtx();
+      preloadAllHistoryAudioTracks(ctx);
+      setHistorySfxBusActive(true);
+    } else {
+      setHistorySfxBusActive(false);
+      stopAllHistoryAudioTracks(false);
+    }
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
       window.dispatchEvent(new CustomEvent('gd-watch-toggle', { detail: { open: sharedWatchOpen } }));
     }
@@ -5221,9 +5859,81 @@ export function createHistoryRewindOverlay(): HTMLElement {
   let dustEmitAcc = 0;
   let volcanoEmitAcc = 0;
   let lastClashBeat = -1;
+  let lastAudioChugStep = -1;
+  let playedWhistleCycle = -1;
+  let lastAudioGallopStep = -1;
+  let lastAudioVolcanoStep = -1;
+  let lastDinoRoarStep = -1;
   let pointerX = -999;
   let pointerY = -999;
   let volcanoSurge = 0;
+
+  const updateHistoryEraAudio = (
+    weights: readonly [number, number, number, number],
+    eraIdx: number,
+    eraT: number,
+    isActive: boolean,
+    transitionPulse: number,
+  ) => {
+    setHistorySfxBusActive(isActive);
+    if (!isActive) {
+      stopAllHistoryAudioTracks(false);
+      lastAudioChugStep = -1;
+      playedWhistleCycle = -1;
+      lastAudioGallopStep = -1;
+      lastAudioVolcanoStep = -1;
+      lastDinoRoarStep = -1;
+      return;
+    }
+
+    const [wSteam, wKnights, wEgypt, wVolcano] = weights;
+
+    // Knights Fight (1420 AD): play authentic sword-fight MP3 synced smoothly to era weight
+    syncLoopingHistoryTrack('sword', wKnights, isActive, 0.56);
+
+    // 1. Steam Locomotive (1885 AD): chugging pistons + brass train whistle
+    if (wSteam > 0.14) {
+      const chugStep = Math.floor(clock * 5.2);
+      if (chugStep !== lastAudioChugStep) {
+        lastAudioChugStep = chugStep;
+        playTrainChugSfx(wSteam * (1 - transitionPulse * 0.25), chugStep % 4 === 0);
+      }
+      if (eraIdx === 0 && eraT >= 0.72 && playedWhistleCycle !== 0) {
+        playedWhistleCycle = 0;
+        playTrainWhistleSfx();
+      }
+    }
+
+    // 2. Ancient Egypt (2500 BC): 3-beat desert horse gallop + rest step (4 slots)
+    if (wEgypt > 0.16) {
+      const gallopStep = Math.floor(clock * 7.8);
+      if (gallopStep !== lastAudioGallopStep) {
+        lastAudioGallopStep = gallopStep;
+        const subBeat = gallopStep % 4;
+        if (subBeat < 3) {
+          playEgyptGallopSfx(wEgypt, subBeat);
+        }
+      }
+    }
+
+    // 3. Cretaceous / Volcanic Era (66M BC): real volcano explosion MP3 + dinosaur roar MP3
+    syncLoopingHistoryTrack('volcano', wVolcano, isActive && hasDecodedHistoryTrack('volcano'), 0.52);
+    if (wVolcano > 0.14) {
+      if (!hasDecodedHistoryTrack('volcano')) {
+        const vSlot = eraIdx === 3 && eraT >= 2.6 ? 2 : 1;
+        if (vSlot !== lastAudioVolcanoStep) {
+          lastAudioVolcanoStep = vSlot;
+          playVolcanoEruptionSfx(vSlot === 2 ? 1.15 : Math.max(0.8, wVolcano));
+        }
+      }
+      if (eraIdx === 3 && eraT >= 0.55 && lastDinoRoarStep !== 1) {
+        lastDinoRoarStep = 1;
+        if (!playHistoryAudioOneShot('roar', 0.68)) {
+          playDinosaurRoarSfx(1.0);
+        }
+      }
+    }
+  };
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener(
@@ -5245,6 +5955,14 @@ export function createHistoryRewindOverlay(): HTMLElement {
         if (!document.contains(canvas) || !isRewindActive() || !isHistoryVisible()) return;
         if (e.clientX > width * 0.48 && e.clientY > height * 0.62) {
           volcanoSurge = 1.0;
+          if (Math.floor(journeyTime / ERA_DURATION) % ERAS.length === 3) {
+            if (!playHistoryAudioOneShot('volcano', 0.56)) {
+              playVolcanoEruptionSfx(1.1);
+            }
+            if (e.clientX < width * 0.76 && !playHistoryAudioOneShot('roar', 0.68)) {
+              playDinosaurRoarSfx();
+            }
+          }
         }
       },
       { passive: true },
@@ -6767,7 +7485,7 @@ export function createHistoryRewindOverlay(): HTMLElement {
     }
 
     // 6. Realistic 3-Phase HEMA / Chivalric Combat Timing & Metallic Clash Sparks
-    const tempo = 1.05 + knightFocus * 0.45;
+    const tempo = 1.24 + knightFocus * 0.52;
     const combatProgress = (clock * tempo) % 3;
     const combatPhase = Math.floor(combatProgress);
     const t = combatProgress - combatPhase;
@@ -6775,8 +7493,11 @@ export function createHistoryRewindOverlay(): HTMLElement {
     const strikePeak = Math.sin(smoothT * Math.PI);
     const clashBeat = Math.floor(clock * tempo * 2);
 
-    if ((strikePeak > 0.88 || knightFocus > 0.72) && clashBeat !== lastClashBeat) {
+    if ((strikePeak > 0.82 || knightFocus > 0.72) && clashBeat !== lastClashBeat) {
       lastClashBeat = clashBeat;
+      if (alpha > 0.25 && isRewindActive() && !hasDecodedHistoryTrack('sword')) {
+        playSwordClashSfx(combatPhase === 2 || knightFocus > 0.72);
+      }
       const sx = duelCenterX + (combatPhase === 0 ? 4 : -4);
       const sy = groundY - (combatPhase === 2 ? 42 : 56);
       for (let k = 0; k < 18; k++) {
@@ -7456,9 +8177,9 @@ export function createHistoryRewindOverlay(): HTMLElement {
     // Interactive proximity reactions (cursor near T-Rex, Triceratops, or Volcano)
     const trexFocus = Math.max(0, 1 - Math.hypot(pointerX - (txBase + 25), pointerY - (groundY - 58)) / 185);
     const triFocus = Math.max(0, 1 - Math.hypot(pointerX - triX, pointerY - (groundY - 42)) / 165);
-    const naturalRoarWave = Math.pow(Math.max(0, Math.sin(clock * 1.65)), 2.2);
-    const activeRoar = Math.min(1, Math.max(naturalRoarWave, trexFocus * 1.15));
-    const tremor = (activeRoar > 0.72 || volcanoSurge > 0.3) ? Math.sin(clock * 46) * (1.3 + volcanoSurge * 1.6) : 0;
+    const { level: audioRoarLevel, vibe: roarVibe } = getDinoRoarAudioEnvelope(eraT - 0.55);
+    const activeRoar = Math.min(1, Math.max(audioRoarLevel, trexFocus * 0.95));
+    const tremor = (activeRoar > 0.52 || volcanoSurge > 0.3) ? Math.sin(clock * 46) * (1.2 + activeRoar * 1.1 + volcanoSurge * 1.5) : 0;
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -7715,12 +8436,12 @@ export function createHistoryRewindOverlay(): HTMLElement {
     ctx.bezierCurveTo(-60, -56 + tailWaveMid * 0.8, -18, -68, 34 + lungeFwdX * 0.5, -80 - activeRoar * 6);
     ctx.stroke();
 
-    // Detailed Tyrannosaur Skull (Tilts & Thrusts aggressively during roar / hover!)
+    // Detailed Tyrannosaur Skull (Throws head back & opens jaws wide in exact sync with roar MP3!)
     ctx.save();
-    ctx.translate(33 + lungeFwdX * 0.55, -74 - activeRoar * 6);
+    ctx.translate(33 + lungeFwdX * 0.55, -74 - activeRoar * 7);
     const headPitch = trexFocus > 0.1
-      ? Math.max(-0.32, Math.min(0.24, Math.atan2(pointerY - (groundY - 96), pointerX - (txBase + 60)) * 0.28))
-      : -activeRoar * 0.22 + Math.sin(clock * 2.2) * 0.06;
+      ? Math.max(-0.34, Math.min(0.24, Math.atan2(pointerY - (groundY - 96), pointerX - (txBase + 60)) * 0.28))
+      : -activeRoar * 0.32 + roarVibe * 0.045 + Math.sin(clock * 2.2) * 0.04;
     ctx.rotate(headPitch);
 
     ctx.fillStyle = rexSkinGrad;
@@ -7762,8 +8483,8 @@ export function createHistoryRewindOverlay(): HTMLElement {
 
     ctx.save();
     ctx.translate(2, 2);
-    ctx.rotate(0.06 + activeRoar * 0.46);
-    if (activeRoar > 0.25) {
+    ctx.rotate(0.05 + activeRoar * 0.62 + roarVibe * 0.06);
+    if (activeRoar > 0.2) {
       ctx.fillStyle = '#521D12';
       ctx.beginPath();
       ctx.moveTo(0, -1);
@@ -7782,6 +8503,21 @@ export function createHistoryRewindOverlay(): HTMLElement {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+
+    // Subtle visual shockwave breath arcs bursting out of jaw during peak roar bellow
+    if (activeRoar > 0.52) {
+      const waveBurst = (clock * 3.8) % 1;
+      for (let r = 0; r < 2; r += 1) {
+        const rp = (waveBurst + r * 0.48) % 1;
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 198, 112, ${((1 - rp) * 0.42 * activeRoar).toFixed(2)})`;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(38 + rp * 22, 6, 8 + rp * 18, -0.45, 0.55);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
     ctx.restore();
 
     // Muscular Two-Clawed Forelimb
@@ -8145,6 +8881,8 @@ export function createHistoryRewindOverlay(): HTMLElement {
       active && introRemaining <= 0.15 && journeyTime >= ERA_DURATION && currentEraT < TRANSITION_DUR;
     const transitionNorm = isSwitchingEra ? currentEraT / TRANSITION_DUR : 0;
     const transitionPulse = isSwitchingEra ? Math.sin(transitionNorm * Math.PI) : 0;
+
+    updateHistoryEraAudio(eraWeights, currentEraIdx, currentEraT, isEraActive, transitionPulse);
 
     if (rewindAlpha > 0.01 || eraPlumes.length > 0 || eraSparks.length > 0) {
       // 1. Rotating antique Roman-numeral clockwork rings (accelerate during epoch transitions)
