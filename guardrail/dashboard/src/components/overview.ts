@@ -26,7 +26,7 @@ import {
   createWardKeyRackProp,
   createWoodBoardBellProp,
 } from './interactive-props.js';
-import { showConnectWardModal } from './connect-modal.js';
+import { showConnectWardModal, showDisconnectWardModal } from './connect-modal.js';
 import { renderPendingApprovalsModal } from './pending-approvals-modal.js';
 import { renderWardsControlModal } from './wards-control-modal.js';
 
@@ -907,7 +907,15 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       cancelBtn.textContent = 'Cancel';
 
       confirmBtn.addEventListener('click', () => {
-        props.onDisconnectWard?.(wardId);
+        showDisconnectWardModal({
+          wardId,
+          wardName: displayName,
+          wardEmail: singleWard.email,
+          onDisconnect: async (id) => {
+            await props.onDisconnectWard?.(id);
+            return { success: true };
+          },
+        });
       });
 
       cancelBtn.addEventListener('click', () => {

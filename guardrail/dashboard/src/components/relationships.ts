@@ -20,7 +20,7 @@ import {
   ViewStatus,
 } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
-import { showConnectWardModal } from './connect-modal.js';
+import { showConnectWardModal, showDisconnectWardModal } from './connect-modal.js';
 import { setAnimatedHeading } from './icons.js';
 import { createSettingsRibbonClaspProp } from './interactive-props.js';
 
@@ -321,7 +321,24 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
         cancelBtn.textContent = 'Cancel';
 
         confirmBtn.addEventListener('click', () => {
-          props.onDisconnectWard?.(props.profile?.assignedWardId);
+          const targetWardId = props.profile?.assignedWardId;
+          confirmBtn.disabled = true;
+          cancelBtn.disabled = true;
+          confirmBtn.textContent = 'Disconnecting...';
+          showDisconnectWardModal({
+            wardId: targetWardId,
+            wardName: props.profile?.assignedWardName,
+            wardEmail: props.profile?.assignedWardEmail,
+            onDisconnect: async (id) => {
+              await props.onDisconnectWard?.(id);
+              return { success: true };
+            },
+            onClose: () => {
+              confirmBtn.disabled = false;
+              cancelBtn.disabled = false;
+              confirmBtn.textContent = 'Confirm Disconnect';
+            },
+          });
         });
 
         cancelBtn.addEventListener('click', () => {
@@ -460,7 +477,21 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
           cancelBtn.disabled = true;
           confirmBtn.textContent = 'Processing...';
           if (isWard) {
-            props.onDisconnectWard?.(wardId);
+            showDisconnectWardModal({
+              wardId,
+              wardName: contact.wardName || formatWardDisplayName(undefined, wardId),
+              wardEmail: contact.wardEmail,
+              onDisconnect: async (id) => {
+                await props.onDisconnectWard?.(id);
+                return { success: true };
+              },
+              onClose: () => {
+                alreadySubmitted = false;
+                confirmBtn.disabled = false;
+                cancelBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm Disconnect';
+              },
+            });
           } else {
             await props.onRevokeTrustedContact?.(contact.id);
           }

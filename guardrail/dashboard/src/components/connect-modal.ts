@@ -426,3 +426,241 @@ export function showConnectWardModal(options: ConnectWardModalOptions): () => vo
 
   return close;
 }
+
+export interface DisconnectWardModalOptions {
+  readonly wardId?: string;
+  readonly wardName?: string;
+  readonly wardEmail?: string;
+  readonly onDisconnect: (wardId?: string) => Promise<{
+    success: boolean;
+    error?: string;
+  } | void> | void;
+  readonly onSuccess?: (wardId?: string) => void;
+  readonly onClose?: () => void;
+}
+
+function createModalLoaderBox(strokeColor = '#273121', successColor = '#3E562A'): HTMLElement {
+  const animBox = document.createElement('div');
+  animBox.className = 'gd-auth-anim-box';
+  animBox.id = 'gd-connect-loader-anim';
+
+  const halo = document.createElement('div');
+  halo.className = 'gd-loader-halo';
+  halo.id = 'gd-connect-loader-halo';
+  animBox.appendChild(halo);
+
+  const circleSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  circleSvg.setAttribute('class', 'gd-auth-circle-svg');
+  circleSvg.setAttribute('width', '72');
+  circleSvg.setAttribute('height', '72');
+  circleSvg.setAttribute('viewBox', '0 0 72 72');
+  circleSvg.innerHTML = `
+    <circle class="gd-loader-bg-track" cx="36" cy="36" r="30" fill="none" stroke="rgba(39, 49, 33, 0.12)" stroke-width="3.5" />
+    <circle class="gd-loader-circle" cx="36" cy="36" r="30" fill="none" stroke="${strokeColor}" stroke-width="3.5" stroke-linecap="round" />
+  `;
+  animBox.appendChild(circleSvg);
+
+  const tickSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  tickSvg.setAttribute('class', 'gd-auth-tick-svg');
+  tickSvg.setAttribute('width', '72');
+  tickSvg.setAttribute('height', '72');
+  tickSvg.setAttribute('viewBox', '0 0 72 72');
+  tickSvg.innerHTML = `
+    <path class="gd-loader-tick-path" fill="none" stroke="${successColor}" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M22 37 L32 47 L51 25" />
+    <path class="gd-loader-error-path" fill="none" stroke="#962828" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" d="M25 25 L47 47 M47 25 L25 47" />
+  `;
+  animBox.appendChild(tickSvg);
+
+  return animBox;
+}
+
+/**
+ * Displays the animated Disconnecting -> Disconnected popup modal when unlinking a ward.
+ */
+export function showDisconnectWardModal(options: DisconnectWardModalOptions): () => void {
+  const displayWard =
+    options.wardName ||
+    (options.wardId?.startsWith('usr_') ? options.wardId.slice(4) : options.wardId) ||
+    'Selected Ward';
+
+  if (typeof document === 'undefined' || !document.body) {
+    void Promise.resolve(options.onDisconnect(options.wardId)).then((result) => {
+      if (!result || result.success) {
+        options.onSuccess?.(options.wardId);
+      }
+      options.onClose?.();
+    });
+    return () => {};
+  }
+
+  const existing = document.getElementById('gd-connect-modal-root');
+  if (existing) {
+    existing.remove();
+  }
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'gd-connect-modal-root';
+  backdrop.className = 'gd-modal-backdrop gd-auth-modal-backdrop gd-connect-backdrop';
+  backdrop.setAttribute('role', 'dialog');
+  backdrop.setAttribute('aria-modal', 'true');
+  backdrop.setAttribute('aria-labelledby', 'gd-connect-modal-title');
+
+  const card = document.createElement('div');
+  card.className = 'gd-auth-modal-card gd-connect-modal-card';
+
+  let isClosed = false;
+  let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const close = () => {
+    if (isClosed) return;
+    isClosed = true;
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
+    document.removeEventListener('keydown', handleKeyDown);
+    card.classList.add('gd-fade-out');
+    backdrop.classList.add('gd-fade-out');
+    setTimeout(() => {
+      backdrop.remove();
+      options.onClose?.();
+    }, 180);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      close();
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'gd-auth-modal-close-btn';
+  closeBtn.setAttribute('aria-label', 'Close dialog');
+  closeBtn.appendChild(createIcon('x'));
+  closeBtn.addEventListener('click', close);
+  card.appendChild(closeBtn);
+
+  const content = document.createElement('div');
+  content.className = 'gd-connect-modal-content';
+
+  const animBox = createModalLoaderBox('#8A3B2A', '#3E562A');
+  content.appendChild(animBox);
+
+  const title = document.createElement('h2');
+  title.id = 'gd-connect-modal-title';
+  title.className = 'gd-connect-title';
+  title.textContent = 'Disconnecting Ward';
+
+  const subtitle = document.createElement('p');
+  subtitle.className = 'gd-connect-subtitle';
+  subtitle.innerHTML = `Removing authorized caretaker oversight for<br><span class="gd-connect-code-display">${displayWard}</span>`;
+
+  content.appendChild(title);
+  content.appendChild(subtitle);
+
+  const actionArea = document.createElement('div');
+  actionArea.className = 'gd-connect-action-area';
+
+  const disconnectingStatus = document.createElement('div');
+  disconnectingStatus.className = 'gd-connect-status-indicator';
+  disconnectingStatus.innerHTML = `
+    <span class="gd-connect-status-text">Unlinking portal access in progress...</span>
+  `;
+  actionArea.appendChild(disconnectingStatus);
+  content.appendChild(actionArea);
+
+  card.appendChild(content);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+
+  void (async () => {
+    try {
+      const [result] = await Promise.all([
+        Promise.resolve(options.onDisconnect(options.wardId)),
+        new Promise((resolve) => setTimeout(resolve, 3200)),
+      ]);
+
+      if (isClosed) return;
+
+      const succeeded = !result || result.success;
+      if (succeeded) {
+        animBox.classList.add('gd-success');
+
+        title.textContent = 'Disconnected!';
+        subtitle.textContent = `Caretaker oversight for ${displayWard} has been unlinked from your portal.`;
+
+        actionArea.innerHTML = '';
+
+        const summaryBox = document.createElement('div');
+        summaryBox.className = 'gd-connect-meta-list';
+        summaryBox.innerHTML = `
+          <div class="gd-connect-meta-row">
+            <span class="gd-connect-meta-label">Unlinked Ward</span>
+            <span class="gd-connect-meta-value gd-mono">${displayWard}</span>
+          </div>
+          ${options.wardEmail ? `
+          <div class="gd-connect-meta-row">
+            <span class="gd-connect-meta-label">Ward Email</span>
+            <span class="gd-connect-meta-value">${options.wardEmail}</span>
+          </div>` : ''}
+          <div class="gd-connect-meta-row">
+            <span class="gd-connect-meta-label">Authority</span>
+            <span class="gd-connect-meta-value">Unlinked</span>
+          </div>
+          <div class="gd-connect-meta-row">
+            <span class="gd-connect-meta-label">Review Queue</span>
+            <span class="gd-connect-meta-value">Cleared</span>
+          </div>
+        `;
+        actionArea.appendChild(summaryBox);
+
+        const continueBtn = document.createElement('button');
+        continueBtn.type = 'button';
+        continueBtn.className = 'gd-btn-connect-modal-action';
+        continueBtn.textContent = 'Continue to Dashboard →';
+        continueBtn.addEventListener('click', () => {
+          options.onSuccess?.(options.wardId);
+          close();
+        });
+        actionArea.appendChild(continueBtn);
+
+        autoCloseTimer = setTimeout(() => {
+          if (!isClosed) {
+            options.onSuccess?.(options.wardId);
+            close();
+          }
+        }, 5000);
+      } else {
+        animBox.classList.add('gd-error');
+        title.textContent = 'Disconnect Failed';
+        subtitle.textContent = result?.error || 'Could not unlink this ward right now.';
+        actionArea.innerHTML = '';
+
+        const closeErrorBtn = document.createElement('button');
+        closeErrorBtn.type = 'button';
+        closeErrorBtn.className = 'gd-btn-connect-modal-action gd-btn-retry';
+        closeErrorBtn.textContent = 'Close';
+        closeErrorBtn.addEventListener('click', close);
+        actionArea.appendChild(closeErrorBtn);
+      }
+    } catch (err: unknown) {
+      if (isClosed) return;
+      animBox.classList.add('gd-error');
+      title.textContent = 'Disconnect Failed';
+      subtitle.textContent =
+        err instanceof Error ? err.message : 'An unexpected error occurred while disconnecting.';
+      actionArea.innerHTML = '';
+
+      const closeErrorBtn = document.createElement('button');
+      closeErrorBtn.type = 'button';
+      closeErrorBtn.className = 'gd-btn-connect-modal-action gd-btn-retry';
+      closeErrorBtn.textContent = 'Close';
+      closeErrorBtn.addEventListener('click', close);
+      actionArea.appendChild(closeErrorBtn);
+    }
+  })();
+
+  return close;
+}

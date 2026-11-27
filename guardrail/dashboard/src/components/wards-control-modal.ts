@@ -8,7 +8,7 @@
 
 import { ApprovalRequest } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
-import { showConnectWardModal } from './connect-modal.js';
+import { showConnectWardModal, showDisconnectWardModal } from './connect-modal.js';
 import { populateWardAvatar } from './icons.js';
 
 export interface WardSummary {
@@ -334,16 +334,24 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
         topRow.style.display = 'flex';
       });
 
-      confirmYesBtn.addEventListener('click', async () => {
+      confirmYesBtn.addEventListener('click', () => {
         confirmYesBtn.disabled = true;
         confirmNoBtn.disabled = true;
         confirmYesBtn.textContent = 'Disconnecting...';
-        try {
-          await props.onDisconnectWard?.(ward.id);
-        } catch {
-          confirmYesBtn.textContent = 'Failed';
-          confirmNoBtn.disabled = false;
-        }
+        showDisconnectWardModal({
+          wardId: ward.id,
+          wardName: formatWardDisplayName(ward.name, ward.id),
+          wardEmail: ward.email,
+          onDisconnect: async (id) => {
+            await props.onDisconnectWard?.(id || ward.id);
+            return { success: true };
+          },
+          onClose: () => {
+            confirmYesBtn.disabled = false;
+            confirmNoBtn.disabled = false;
+            confirmYesBtn.textContent = 'Yes, Disconnect';
+          },
+        });
       });
 
       actionsRow.appendChild(reviewBtn);

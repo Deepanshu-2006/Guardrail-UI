@@ -415,6 +415,9 @@ async function runTests(): Promise<void> {
   assertTrue(confirmYesBtn !== null, 'Confirm Yes button exists');
   confirmYesBtn?.click();
   assertEquals(disconnectedWardId, 'usr_bob', 'Confirming disconnect calls onDisconnectWard with usr_bob');
+  const wardsDisconnectModal = mockDocument.getElementById('gd-connect-modal-root');
+  assertTrue(wardsDisconnectModal !== null, 'Wards Control disconnect opens Disconnecting popup modal');
+  wardsDisconnectModal?.querySelector('.gd-auth-modal-close-btn')?.click();
 
   // ---------------------------------------------------------------------------
   // Suite 4: Quick Pairing Section
@@ -567,6 +570,48 @@ async function runTests(): Promise<void> {
     assertEquals(settingsModal?.querySelector('#gd-connect-modal-title')?.textContent, 'Connecting to Ward', 'Settings Connecting popup shows Connecting to Ward title');
     settingsModal?.querySelector('.gd-auth-modal-close-btn')?.click();
   }
+
+  // ---------------------------------------------------------------------------
+  // Suite 9: Settings "Disconnect Ward" Opens Disconnecting Popup & Animation
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Test Suite 9: Settings "Disconnect Ward" Disconnecting Popup');
+  const settingsDisconnectedIds: Array<string | undefined> = [];
+  const relDisconnectSection = renderRelationshipManagementSection({
+    profile: { actorId: 'tc_deepanshu', role: 'TRUSTED_CONTACT', isAuthenticated: true },
+    connectedUsers: [
+      {
+        id: 'tc_deepanshu',
+        contactId: 'tc_deepanshu',
+        userId: 'usr_alice',
+        wardId: 'usr_alice',
+        wardName: 'Alice Johnson',
+        wardEmail: 'alice@example.com',
+        relationshipLabel: 'Designated Caretaker',
+        status: TrustedContactStatus.ACTIVE,
+        createdAt: '2026-11-28T00:00:00.000Z',
+      },
+    ],
+    connectedUsersStatus: 'idle' as ViewStatus,
+    connectedUsersError: null,
+    invitations: [],
+    invitationsStatus: 'idle' as ViewStatus,
+    invitationsError: null,
+    onDisconnectWard: (wId?: string) => {
+      settingsDisconnectedIds.push(wId);
+    },
+  });
+
+  const relDisconnectBtn = relDisconnectSection.querySelector('.gd-btn-revoke');
+  const relConfirmDisconnectBtn = relDisconnectSection.querySelector('.gd-btn-revoke-confirm');
+  assertTrue(relDisconnectBtn !== null && relConfirmDisconnectBtn !== null, 'Settings Disconnect Ward & Confirm Disconnect buttons exist');
+  relDisconnectBtn?.click();
+  relConfirmDisconnectBtn?.click();
+  assertEquals(settingsDisconnectedIds, ['usr_alice'], 'Settings Confirm Disconnect invokes onDisconnectWard for target ward');
+  const disconnectModal = mockDocument.getElementById('gd-connect-modal-root');
+  assertTrue(disconnectModal !== null, 'Settings Confirm Disconnect opens Disconnecting popup modal');
+  assertTrue(disconnectModal?.querySelector('#gd-connect-loader-anim') !== null, 'Settings Disconnecting popup renders circular loader animation');
+  assertEquals(disconnectModal?.querySelector('#gd-connect-modal-title')?.textContent, 'Disconnecting Ward', 'Settings Disconnecting popup shows Disconnecting Ward title');
+  disconnectModal?.querySelector('.gd-auth-modal-close-btn')?.click();
 
   console.log('\n======================================================');
   console.log('🎉 ALL WARDS CONTROL MODAL TESTS PASSED (100%)!');
