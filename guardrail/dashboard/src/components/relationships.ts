@@ -123,9 +123,31 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   usersTitle.className = 'gd-section-title';
   setAnimatedHeading(usersTitle, 'Connected Users & Trusted Contacts');
 
-  // Calculate connected count: explicit contacts list + assigned ward if present
+  // Deduplicate connected users and avoid double-counting the primary assigned ward
   const hasAssignedWard = Boolean(props.profile?.assignedWardId);
-  const totalConnectedCount = props.connectedUsers.length + (hasAssignedWard ? 1 : 0);
+  const isReviewerRole = props.profile?.role === 'TRUSTED_CONTACT';
+  const primaryAssignedWardId = props.profile?.assignedWardId?.toLowerCase();
+  const seenKeys = new Set<string>();
+  const visibleContacts: TrustedContact[] = [];
+
+  for (const contact of props.connectedUsers) {
+    const wardId = contact.wardId || contact.userId;
+    const isWard = isReviewerRole && Boolean(contact.wardName || (wardId && wardId !== props.profile?.actorId));
+    if (isWard && primaryAssignedWardId && wardId && wardId.toLowerCase() === primaryAssignedWardId) {
+      continue;
+    }
+    const dedupeKey = isWard && wardId
+      ? `ward:${wardId.toLowerCase()}`
+      : `contact:${String(contact.contactId || contact.id || '').toLowerCase()}:${String(wardId || '').toLowerCase()}`;
+    if (seenKeys.has(dedupeKey)) {
+      continue;
+    }
+    seenKeys.add(dedupeKey);
+    visibleContacts.push(contact);
+  }
+
+  // Calculate connected count: deduplicated visible contacts + primary assigned ward if present
+  const totalConnectedCount = visibleContacts.length + (hasAssignedWard ? 1 : 0);
 
   const usersBadge = document.createElement('span');
   usersBadge.className = 'gd-settings-badge gd-badge-active';
@@ -213,9 +235,6 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       const list = document.createElement('div');
       list.className = 'gd-relationships-list';
       list.id = 'gd-connected-users-list';
-
-    const isReviewerRole = props.profile?.role === 'TRUSTED_CONTACT';
-    const primaryAssignedWardId = props.profile?.assignedWardId?.toLowerCase();
 
     // 1A. If current profile has an assigned ward (e.g. reviewer viewing their assigned ward)
     if (hasAssignedWard && props.profile?.assignedWardId) {
@@ -330,14 +349,10 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       list.appendChild(wardItem);
     }
 
-    // 1B. Render each authoritative TrustedContact from backend registry
-    for (const contact of props.connectedUsers) {
+    // 1B. Render each deduplicated TrustedContact from backend registry
+    for (const contact of visibleContacts) {
       const wardId = contact.wardId || contact.userId;
       const isWard = isReviewerRole && Boolean(contact.wardName || (wardId && wardId !== props.profile?.actorId));
-
-      if (isWard && primaryAssignedWardId && wardId && wardId.toLowerCase() === primaryAssignedWardId) {
-        continue;
-      }
       const contactItem = document.createElement('div');
       const isRevoked = contact.status === TrustedContactStatus.REVOKED;
       contactItem.className = `gd-relationship-item ${isWard ? 'ward-item' : 'contact-item'} ${isRevoked ? 'is-revoked' : ''}`;

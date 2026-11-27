@@ -1018,24 +1018,65 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       response.setHeader('cache-control', 'no-store');
       response.setHeader('x-content-type-options', 'nosniff');
 
-      const db = (runtime.contactRegistry as any)?.database;
-      const contacts: any[] = [];
-      if (db) {
-        const rows = db.prepare("SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' ORDER BY rowid").all() as { payload_json: string }[];
-        if (rows && rows.length > 0) {
-          for (const r of rows) {
+      void (async () => {
+        try {
+          let callerActorId: string | null = null;
+          const authHeader = request.headers.authorization;
+          const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.slice(7).trim()
+            : '';
+          if (token && options.tokenVerifier) {
             try {
-              contacts.push(JSON.parse(r.payload_json));
+              const auth = await options.tokenVerifier.verifyToken(token);
+              if (auth?.isAuthenticated && auth.actorId) {
+                callerActorId = auth.actorId;
+              }
             } catch {}
           }
-        }
-      }
 
-      response.statusCode = 200;
-      response.end(JSON.stringify({
-        success: true,
-        data: contacts,
-      }));
+          const db = (runtime.contactRegistry as any)?.database;
+          const contacts: any[] = [];
+          if (db) {
+            let rows: { payload_json: string }[] = [];
+            if (callerActorId) {
+              rows = db.prepare(
+                "SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' AND (id = ? OR user_id = ?) ORDER BY rowid"
+              ).all(callerActorId, callerActorId) as { payload_json: string }[];
+            }
+            if (!rows || rows.length === 0) {
+              rows = db.prepare(
+                "SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' ORDER BY rowid"
+              ).all() as { payload_json: string }[];
+            }
+
+            const deduped = new Map<string, any>();
+            for (const r of rows) {
+              try {
+                const parsed = JSON.parse(r.payload_json);
+                const wId = String(parsed.wardId || parsed.userId || '').toLowerCase();
+                const cId = String(parsed.contactId || parsed.id || '').toLowerCase();
+                const key = callerActorId ? `${wId}:${cId}` : (wId || cId);
+                if (!deduped.has(key)) {
+                  deduped.set(key, parsed);
+                }
+              } catch {}
+            }
+            contacts.push(...deduped.values());
+          }
+
+          response.statusCode = 200;
+          response.end(JSON.stringify({
+            success: true,
+            data: contacts,
+          }));
+        } catch (err: any) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({
+            success: false,
+            error: { message: err?.message || 'Failed to load trusted contacts' },
+          }));
+        }
+      })();
       return;
     }
 
