@@ -27256,7 +27256,17 @@ body.gd-kbd-open .gd-m-shell {
     transition: filter 0.55s ease;
   }
 
+  #view-history #history-title .gd-char {
+    display: inline-block;
+    white-space: pre;
+    transform-origin: 50% 62%;
+  }
+
   .gd-dashboard-app.gd-history-rewind-on #history-title .gd-char {
+    display: inline-block;
+    white-space: pre;
+    opacity: 1;
+    animation: none;
     background-image: linear-gradient(
       180deg,
       var(--era-c0, #3A2C1C) 0%,

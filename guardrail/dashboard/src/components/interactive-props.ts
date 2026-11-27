@@ -2604,42 +2604,48 @@ export function attachInteractiveHeadingSprings(
           const tickRot = Math.cos(snapped * 1.15 + i * 0.85) * 1.5;
 
           // 1. Steam Locomotive: rhythmic chugging piston wave & boiler exhaust pop
-          const chugPhase = clock * 5.8 - u * 2.1;
+          const chugPhase = clock * 5.8 - u * 2.4;
           const exhaust = Math.pow(Math.max(0, Math.sin(clock * 2.9)), 8);
-          const steamX = Math.cos(chugPhase) * 2.4 + exhaust * 1.6;
-          const steamY = Math.sin(chugPhase) * 2.8 - 1.4 - exhaust * 3.4;
-          const steamRot = Math.cos(chugPhase) * 3.2;
-          const steamSx = 1 - exhaust * 0.03;
-          const steamSy = 1 + exhaust * 0.055;
+          const steamX = Math.cos(chugPhase) * 4.4 + exhaust * 2.6;
+          const steamY = Math.sin(chugPhase) * 4.6 - 2.0 - exhaust * 5.2;
+          const steamRot = Math.cos(chugPhase) * 5.2;
+          const steamSx = 1 - exhaust * 0.045;
+          const steamSy = 1 + exhaust * 0.085;
 
           // 2. Knights Age (Blood): heavy viscous sag, lub-dub heartbeat heave & sword-clash tremor
           const hb =
-            Math.pow(Math.max(0, Math.sin(clock * 3.1)), 6) * 0.75 +
-            Math.pow(Math.max(0, Math.sin(clock * 3.1 - 0.55)), 8) * 0.55;
+            Math.pow(Math.max(0, Math.sin(clock * 3.1)), 6) * 0.78 +
+            Math.pow(Math.max(0, Math.sin(clock * 3.1 - 0.55)), 8) * 0.58;
           const clash = Math.pow(Math.max(0, Math.sin(clock * 1.25)), 18);
-          const knightsX = Math.sin(clock * 46 + i * 1.1) * clash * 2.6;
-          const knightsY = 2.4 + Math.sin(clock * 1.4 + i * 0.8) * 1.5 + hb * 2.2;
-          const knightsRot = Math.sin(clock * 1.1 + i * 0.9) * 1.6 + Math.cos(clock * 42 + i) * clash * 3.2;
-          const knightsSx = 1 - 0.025 - hb * 0.015;
-          const knightsSy = 1 + 0.055 + hb * 0.04;
+          const knightsX = Math.sin(clock * 46 + i * 1.1) * clash * 4.8;
+          const knightsY = 3.8 + Math.sin(clock * 1.6 + i * 0.8) * 2.4 + hb * 3.8;
+          const knightsRot = Math.sin(clock * 1.3 + i * 0.9) * 2.8 + Math.cos(clock * 42 + i) * clash * 5.4;
+          const knightsSx = 1 - 0.036 - hb * 0.025;
+          const knightsSy = 1 + 0.075 + hb * 0.065;
 
           // 3. Ancient Egypt (Dust & Sand): warm khamsin wind wave flowing left-to-right
           const gustWave = 0.6 + 0.4 * Math.sin(clock * 1.6);
-          const dunePhase = clock * 3.8 - u * 4.4;
-          const egyptX = Math.cos(dunePhase * 0.75) * 2.6 + gustWave * 2.4;
-          const egyptY = Math.sin(dunePhase) * (2.6 + gustWave * 1.1) - 0.8;
-          const egyptRot = 2.2 + Math.sin(dunePhase) * (3.6 + gustWave * 1.2);
-          const egyptSx = 1 + Math.sin(dunePhase) * 0.03;
-          const egyptSy = 1 - Math.sin(dunePhase) * 0.025;
+          const dunePhase = clock * 4.0 - u * 4.6;
+          const egyptX = Math.cos(dunePhase * 0.75) * 4.4 + gustWave * 4.0;
+          const egyptY = Math.sin(dunePhase) * (4.4 + gustWave * 1.8) - 1.2;
+          const egyptRot = 3.2 + Math.sin(dunePhase) * (5.6 + gustWave * 1.8);
+          const egyptSx = 1 + Math.sin(dunePhase) * 0.045;
+          const egyptSy = 1 - Math.sin(dunePhase) * 0.038;
 
-          // 4. Volcanic Age (Fire): blistering upward flame shimmer & caldera tremble
-          const quake = Math.pow(Math.max(0, Math.sin(clock * 1.4)), 14);
-          const flameDance = Math.sin(clock * 10.5 + i * 1.45) * 2.5 + Math.cos(clock * 16.2 + i * 2.3) * 1.3;
-          const volcanoX = Math.sin(clock * 9.2 + i * 1.7) * 1.5 + Math.sin(clock * 54 + i) * quake * 3.2;
-          const volcanoY = -3.4 + flameDance - quake * 1.4;
-          const volcanoRot = Math.sin(clock * 12.8 + i * 1.9) * 3.9;
-          const volcanoSx = 1 - Math.sin(clock * 14 + i * 1.7) * 0.028;
-          const volcanoSy = 1 + Math.sin(clock * 14 + i * 1.7) * 0.065;
+          // 4. Volcanic Age (Fire): sweeping tectonic eruption wave + buoyant flame dance
+          const shockCycle = (clock * 0.66) % 1;
+          const shockDist = u - shockCycle;
+          const eruption = Math.exp(-(shockDist * shockDist) * 26);
+          const thermalWave = Math.sin(clock * 6.4 - u * 5.4) * 3.6 + Math.cos(clock * 11.2 + i * 1.9) * 1.6;
+          const volcanoX =
+            Math.cos(clock * 5.5 - u * 4.2) * 1.8 +
+            Math.sin(clock * 44 + i * 1.3) * eruption * 3.0;
+          const volcanoY = -2.4 + thermalWave - eruption * 9.2;
+          const volcanoRot =
+            Math.sin(clock * 7.4 - u * 4.4) * 4.6 +
+            (shockDist >= 0 ? -1 : 1) * eruption * 7.2;
+          const volcanoSx = 1 - Math.sin(clock * 8.2 - u * 4.8) * 0.035 + eruption * 0.065;
+          const volcanoSy = 1 + Math.sin(clock * 8.2 - u * 4.8) * 0.055 + eruption * 0.16;
 
           targetX = wSteam * steamX + wKnights * knightsX + wEgypt * egyptX + wVolcano * volcanoX;
           targetY = wTick * tickY + wSteam * steamY + wKnights * knightsY + wEgypt * egyptY + wVolcano * volcanoY;
@@ -2817,6 +2823,24 @@ export function attachInteractiveHeadingSprings(
       }
     };
     window.addEventListener('gd-lantern-ambience-sync', onLanternSync);
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function' && mode === 'history-eras') {
+    const onHistoryWatchToggle = (ev: Event) => {
+      if (!document.contains(titleEl)) {
+        window.removeEventListener('gd-watch-toggle', onHistoryWatchToggle);
+        return;
+      }
+      const nextOpen = (ev as CustomEvent<{ open?: boolean }>).detail?.open;
+      if (nextOpen || isActiveFn()) {
+        for (let i = 0; i < states.length; i++) {
+          states[i].vy -= 46 - i * 1.5;
+          states[i].vrot += (i % 2 === 0 ? -1 : 1) * 34;
+        }
+        ensureRunning();
+      }
+    };
+    window.addEventListener('gd-watch-toggle', onHistoryWatchToggle);
   }
 
   if (typeof window !== 'undefined' && typeof MutationObserver === 'function') {
@@ -4656,35 +4680,35 @@ export function createHistoryRewindOverlay(): HTMLElement {
       [96, 112, 124],
       [246, 46, 46],
       [250, 218, 138],
-      [255, 250, 186],
+      [54, 12, 4],
     ],
     c1: [
       [31, 24, 17],
       [48, 59, 68],
       [168, 8, 8],
       [208, 146, 52],
-      [255, 128, 22],
+      [204, 42, 6],
     ],
     c2: [
       [22, 16, 11],
       [104, 72, 42],
       [68, 2, 2],
       [114, 68, 18],
-      [148, 18, 4],
+      [255, 176, 28],
     ],
     glowTop: [
       [255, 220, 150, 0],
       [248, 250, 252, 0.85],
       [255, 115, 115, 0.26],
       [255, 236, 178, 0.42],
-      [255, 164, 38, 0.94],
+      [255, 124, 24, 0.36],
     ],
     glowBottom: [
       [218, 158, 52, 0.22],
       [235, 242, 246, 0.72],
       [130, 5, 5, 0.66],
       [194, 138, 48, 0.56],
-      [220, 42, 4, 0.78],
+      [248, 92, 10, 0.72],
     ],
   } as const;
 
@@ -4999,54 +5023,82 @@ export function createHistoryRewindOverlay(): HTMLElement {
       ctx.restore();
     }
 
-    // 2. Volcanic Era: Multi-layered additive flame tongues roaring off letter crowns
+    // 2. Volcanic Era: Organic S-curving licking flames & magma heat wisps off glyph tops
     if (wVolcano > 0.02) {
       const vAlpha = alpha * Math.pow(wVolcano, 0.85);
+      const shockCycle = (clock * 0.66) % 1;
       ctx.save();
       for (let i = 0; i < charRects.length; i += 1) {
         const cr = charRects[i].r;
-        const seed = i * 1.73;
-        const baseX = cr.left + cr.width * 0.5;
-        const baseY = cr.top + 11;
-        const sway = Math.sin(clock * 12.2 + seed) * 4.4 + Math.cos(clock * 8.1 + seed * 1.5) * 2.4;
-        const flameH = (16 + Math.sin(clock * 15.2 + seed * 2.1) * 6.5 + (i % 2) * 4.2) * (0.55 + 0.45 * wVolcano);
-        const flameW = Math.max(6, cr.width * 0.52);
+        const u = i / Math.max(1, charRects.length - 1);
+        const shockDist = u - shockCycle;
+        const eruption = Math.exp(-(shockDist * shockDist) * 26);
 
-        // Soft warm magma halo glow behind glyph top
-        ctx.globalAlpha = vAlpha * 0.45;
-        const glowGrad = ctx.createRadialGradient(baseX, baseY - 2, 1, baseX, baseY - 4, flameW * 1.9);
-        glowGrad.addColorStop(0, 'rgba(255, 134, 24, 0.8)');
-        glowGrad.addColorStop(1, 'rgba(255, 78, 12, 0)');
-        ctx.fillStyle = glowGrad;
-        ctx.beginPath();
-        ctx.arc(baseX, baseY - 4, flameW * 1.9, 0, Math.PI * 2);
-        ctx.fill();
+        // Organic staggered heights & tongue clusters so fire dances fluidly across letters
+        const waveCycle = 0.52 + 0.48 * Math.sin(clock * 4.8 + i * 1.9);
+        const tongueCount = i % 2 === 0 || eruption > 0.25 ? 2 : 1;
+        for (let t = 0; t < tongueCount; t += 1) {
+          const seed = i * 2.13 + t * 3.7;
+          const baseX = cr.left + cr.width * (t === 0 ? 0.45 : 0.74);
+          const baseY = cr.top + 8;
+          const curlMid = Math.sin(clock * 9.5 + seed) * 5.2;
+          const curlTip = Math.sin(clock * 12.8 + seed * 1.6) * 7.6 + Math.cos(clock * 7.4 + seed) * 3.0;
+          const flameH =
+            (10 + waveCycle * 10 + eruption * 16 + t * 5) *
+            (0.45 + 0.55 * wVolcano);
+          const flameW = Math.max(3.6, cr.width * (0.28 - t * 0.08));
 
-        // Outer red-orange undulating flame tongue
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = vAlpha * 0.64;
-        const fg = ctx.createLinearGradient(baseX, baseY + 4, baseX + sway, baseY - flameH);
-        fg.addColorStop(0, '#D92604');
-        fg.addColorStop(0.45, '#FF7A12');
-        fg.addColorStop(1, 'rgba(255, 224, 112, 0)');
-        ctx.fillStyle = fg;
-        ctx.beginPath();
-        ctx.moveTo(baseX - flameW, baseY + 4);
-        ctx.quadraticCurveTo(baseX - flameW * 0.72 + sway * 0.25, baseY - flameH * 0.52, baseX + sway, baseY - flameH);
-        ctx.quadraticCurveTo(baseX + flameW * 0.72 + sway * 0.25, baseY - flameH * 0.52, baseX + flameW, baseY + 4);
-        ctx.closePath();
-        ctx.fill();
+          // S-curved asymmetrical flame wisp
+          ctx.globalAlpha = vAlpha * (0.76 - t * 0.16);
+          const fg = ctx.createLinearGradient(baseX, baseY + 2, baseX + curlTip, baseY - flameH);
+          fg.addColorStop(0, '#C92403');
+          fg.addColorStop(0.42, '#F7630C');
+          fg.addColorStop(0.8, '#FFC438');
+          fg.addColorStop(1, 'rgba(255, 232, 132, 0)');
+          ctx.fillStyle = fg;
+          ctx.beginPath();
+          ctx.moveTo(baseX - flameW, baseY + 2);
+          ctx.bezierCurveTo(
+            baseX - flameW * 0.9 + curlMid * 0.5,
+            baseY - flameH * 0.34,
+            baseX - flameW * 0.15 - curlMid,
+            baseY - flameH * 0.68,
+            baseX + curlTip,
+            baseY - flameH,
+          );
+          ctx.bezierCurveTo(
+            baseX + flameW * 0.35 + curlMid * 0.9,
+            baseY - flameH * 0.62,
+            baseX + flameW * 0.95 + curlMid * 0.3,
+            baseY - flameH * 0.28,
+            baseX + flameW,
+            baseY + 2,
+          );
+          ctx.closePath();
+          ctx.fill();
 
-        // Incandescent pale butter-gold inner flame core
-        ctx.globalAlpha = vAlpha * 0.72;
-        ctx.fillStyle = '#FFEA96';
-        ctx.beginPath();
-        ctx.moveTo(baseX - flameW * 0.42, baseY + 3);
-        ctx.quadraticCurveTo(baseX - flameW * 0.22, baseY - flameH * 0.34, baseX + sway * 0.62, baseY - flameH * 0.64);
-        ctx.quadraticCurveTo(baseX + flameW * 0.22, baseY - flameH * 0.34, baseX + flameW * 0.42, baseY + 3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
+          // Sleek bright core rib inside primary tongues
+          if (t === 0) {
+            ctx.globalAlpha = vAlpha * 0.8;
+            ctx.fillStyle = '#FFF0A0';
+            ctx.beginPath();
+            ctx.moveTo(baseX - flameW * 0.36, baseY + 1);
+            ctx.quadraticCurveTo(
+              baseX + curlMid * 0.35,
+              baseY - flameH * 0.36,
+              baseX + curlTip * 0.48,
+              baseY - flameH * 0.56,
+            );
+            ctx.quadraticCurveTo(
+              baseX + flameW * 0.28 + curlMid * 0.25,
+              baseY - flameH * 0.28,
+              baseX + flameW * 0.36,
+              baseY + 1,
+            );
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
       }
       ctx.restore();
     }
