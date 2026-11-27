@@ -90,6 +90,15 @@ export interface WaitingStatusDetails {
 
   /** Max reconnection attempts */
   maxReconnectAttempts?: number;
+
+  /** Connection state override for pending/review indicators */
+  connectionStatus?: 'connected' | 'reconnecting' | 'offline';
+
+  /** Optional connection or delivery status message */
+  connectionMessage?: string;
+
+  /** Optional retry callback for expired or failed deliveries */
+  onRetry?: () => void;
 }
 
 export interface WarningModalProps {
@@ -2711,6 +2720,24 @@ export function updateWaitingScreenStatus(
           '<span class="gr-pulse-dot-green"></span><span>Safe mode active • Waiting for response</span>'
         );
       }
+
+      if (footerActions && !footerActions.querySelector('.gr-btn-cancel-request')) {
+        footerActions.innerHTML = '';
+        const cancelReqBtn = document.createElement('button');
+        cancelReqBtn.type = 'button';
+        cancelReqBtn.className = 'gr-btn gr-btn-cancel gr-btn-cancel-request';
+        cancelReqBtn.textContent = 'Cancel Request';
+        cancelReqBtn.setAttribute('title', 'Cancel this approval request and safely exit');
+        cancelReqBtn.addEventListener('click', () => {
+          if (currentModalProps?.onCancelRequest) {
+            currentModalProps.onCancelRequest();
+          } else {
+            dismissWarningModal();
+            currentModalProps?.onCancel?.();
+          }
+        });
+        footerActions.appendChild(cancelReqBtn);
+      }
       break;
     }
 
@@ -3109,6 +3136,105 @@ export function updateWaitingScreenStatus(
       updateSyncIndicators(
         '<span class="gr-dot-muted"></span><span>Expired</span>',
         '<span class="gr-dot-muted"></span><span>Request expired • Action blocked</span>'
+      );
+
+      if (footerActions) {
+        footerActions.innerHTML = '';
+        if (details?.onRetry) {
+          const retryBtn = document.createElement('button');
+          retryBtn.type = 'button';
+          retryBtn.className = 'gr-btn gr-btn-continue';
+          retryBtn.textContent = 'Retry Request';
+          retryBtn.addEventListener('click', () => {
+            details.onRetry!();
+          });
+          footerActions.appendChild(retryBtn);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'gr-btn gr-btn-cancel';
+        closeBtn.textContent = 'Close';
+        closeBtn.addEventListener('click', () => {
+          dismissWarningModal();
+        });
+        footerActions.appendChild(closeBtn);
+
+        currentFocusableElements = details?.onRetry ? [footerActions.children[0] as any, closeBtn] : [closeBtn];
+        try {
+          closeBtn.focus();
+        } catch {}
+      }
+      break;
+    }
+
+    case 'failed': {
+      if (card) card.classList.add('gr-card-expired');
+      if (headerLeft) {
+        headerLeft.innerHTML = `
+          <div class="gr-warning-badge gr-badge-expired">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="gr-header-titles">
+            <span class="gr-header-category"><span>GUARDRAIL APPROVAL WORKFLOW</span></span>
+            <span class="gr-header-context gr-waiting-context">Delivery Failed</span>
+          </div>
+        `;
+      }
+      if (contextLabel) contextLabel.textContent = 'Delivery Failed';
+      if (title) title.textContent = 'Request Could Not Be Sent';
+      if (subtitle) {
+        const failureText =
+          details?.reason ||
+          details?.connectionMessage ||
+          details?.syncStatusMessage ||
+          'We could not deliver this approval request to your caretaker right now. This action remains safely held.';
+        subtitle.textContent = failureText;
+      }
+      if (pill) {
+        pill.className = 'gr-waiting-pill gr-pill-expired';
+        pill.innerHTML = '<span>!</span><span>Delivery Failed</span>';
+      }
+
+      if (stepper) {
+        const failReason = escapeText(
+          details?.reason ||
+            details?.connectionMessage ||
+            details?.syncStatusMessage ||
+            'Could not reach Guardrail backend'
+        );
+        stepper.innerHTML = `
+          <div class="gr-step-item gr-step-expired">
+            <div class="gr-step-icon gr-step-icon-expired">!</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Request Not Delivered</span>
+              <span class="gr-step-desc">${failReason}</span>
+            </div>
+          </div>
+          <div class="gr-step-item">
+            <div class="gr-step-icon gr-step-icon-pending">○</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Caretaker Review</span>
+              <span class="gr-step-desc">Waiting for successful request submission</span>
+            </div>
+          </div>
+          <div class="gr-step-item">
+            <div class="gr-step-icon gr-step-icon-pending">○</div>
+            <div class="gr-step-content">
+              <span class="gr-step-title">Website Access</span>
+              <span class="gr-step-desc">Access Locked • Action remains held</span>
+            </div>
+          </div>
+        `;
+      }
+
+      updateSyncIndicators(
+        '<span class="gr-dot-muted"></span><span>Delivery failed</span>',
+        '<span class="gr-dot-muted"></span><span>Not delivered • Action remains held</span>'
       );
 
       if (footerActions) {

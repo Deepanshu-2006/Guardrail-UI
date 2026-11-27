@@ -1237,13 +1237,27 @@ export class DashboardShell {
           this.sidebarEl.appendChild(accountArea);
         }
 
-        const pendingBadge = this.sidebarEl.querySelector('a[href="#pending"] .gd-nav-badge, .gd-nav-link[href="#pending"] .gd-nav-badge') as HTMLElement | null;
-        if (pendingBadge) {
-          pendingBadge.textContent = String(this.state.pendingRequests.length);
-          pendingBadge.style.display = this.state.pendingRequests.length > 0 ? '' : 'none';
-        }
-
         const navLinks = this.sidebarEl.querySelectorAll('.gd-nav-link, a.gd-nav-item');
+        const pendingLink = Array.from(navLinks).find(
+          (link) => link.getAttribute('href') === '#pending'
+        ) as HTMLElement | undefined;
+        if (pendingLink) {
+          let pendingBadge = pendingLink.querySelector('.gd-nav-badge') as HTMLElement | null;
+          const pendingCount = this.state.pendingRequests.length;
+          if (pendingCount > 0) {
+            if (!pendingBadge) {
+              pendingBadge = document.createElement('span');
+              pendingBadge.className = 'gd-nav-badge';
+              pendingLink.appendChild(pendingBadge);
+            }
+            pendingBadge.textContent = String(pendingCount);
+            pendingBadge.setAttribute('aria-label', `${pendingCount} pending items`);
+            pendingBadge.style.display = '';
+          } else if (pendingBadge) {
+            pendingBadge.textContent = '0';
+            pendingBadge.style.display = 'none';
+          }
+        }
         navLinks.forEach((link) => {
           const href = link.getAttribute('href');
           if (href === `#${this.state.activeView}`) {

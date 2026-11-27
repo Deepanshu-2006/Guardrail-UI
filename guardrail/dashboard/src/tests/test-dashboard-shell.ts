@@ -4847,6 +4847,62 @@ async function runDashboardTests() {
     settingsShell.destroy();
   }
 
+  // ---------------------------------------------------------------------------
+  // Test Suite 56: Important Action Required Banner & Dynamic Sidebar Pending Count
+  // ---------------------------------------------------------------------------
+  {
+    console.log('\n▶ Test Suite 56: Sidebar Pending Count & Important Alert Styling');
+    let returnPending = false;
+    const asyncPendingClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-contact-token',
+      fetchFn: async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes('/api/v1/approvals/pending')) {
+          return createMockResponse(200, {
+            success: true,
+            data: returnPending
+              ? [{ ...SAMPLE_REQUEST, id: 'apr_imp_1' }, { ...SAMPLE_REQUEST, id: 'apr_imp_2' }]
+              : [],
+          });
+        }
+        return createMockResponse(200, { success: true, data: [] });
+      },
+    });
+
+    const pendingShell = new DashboardShell({
+      container: rootElement,
+      initialView: 'overview',
+      initialProfile: {
+        actorId: 'tc_1',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        isAuthenticated: true,
+      },
+      apiClient: asyncPendingClient,
+      autoFetch: false,
+      pollIntervalMs: 0,
+    });
+
+    assert(
+      rootElement.querySelector('.gd-nav-badge') === null,
+      'Sidebar badge is hidden/absent when initial pending count is 0'
+    );
+
+    returnPending = true;
+    await pendingShell.fetchPendingRequests();
+
+    const dynamicBadge = rootElement.querySelector('.gd-nav-badge') as MockDOMElement | null;
+    assert(dynamicBadge !== null, 'Sidebar creates pending count badge beside Pending Approvals once requests load');
+    assertEquals(dynamicBadge?.textContent, '2', 'Sidebar badge displays exact pending approval count');
+
+    const importantTag = rootElement.querySelector('.gd-notif-important-tag');
+    assert(importantTag !== null, 'Action Required banner displays IMPORTANT pending indicator');
+    assert(importantTag?.textContent.includes('IMPORTANT') ?? false, 'Indicator labels pending approvals as IMPORTANT');
+
+    pendingShell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');

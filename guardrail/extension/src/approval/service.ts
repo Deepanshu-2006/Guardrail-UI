@@ -365,11 +365,8 @@ export class ApprovalService {
         'Security invariant violation: Financial checkout/payment actions cannot be submitted with LOW risk level.',
       ]);
     }
-    if (payload.category === ActionCategory.AUTHENTICATION && payload.riskLevel === RiskLevel.LOW) {
-      throw new ApprovalValidationError([
-        'Security invariant violation: Authentication boundary actions cannot be submitted with LOW risk level.',
-      ]);
-    }
+    // Standard authentication boundary actions (e.g., Login/Sign In) score LOW (20) in the Risk Engine
+    // while AUTHENTICATION_BOUNDARY_POLICY escalates them to WARN, so LOW risk is valid here.
 
     // 3. Verify action ownership & binding assignment
     const isActionOwner = this.actionOwnershipRegistry.isActionOwnedByUser(

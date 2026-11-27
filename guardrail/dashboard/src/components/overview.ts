@@ -556,13 +556,30 @@ export function renderOverview(props: OverviewProps): HTMLElement {
   if (props.pendingCount > 0) {
     const notifItem = document.createElement('div');
     notifItem.className = 'gd-notification-item gd-notif-warning';
+    notifItem.setAttribute('role', 'alert');
+
+    const alertLead = document.createElement('div');
+    alertLead.className = 'gd-notif-alert-emblem';
+    alertLead.setAttribute('aria-hidden', 'true');
+    alertLead.appendChild(createIcon('alert-triangle'));
+    notifItem.appendChild(alertLead);
 
     const notifContent = document.createElement('div');
     notifContent.className = 'gd-notif-content';
 
+    const titleRow = document.createElement('div');
+    titleRow.className = 'gd-notif-title-row';
+
     const notifTitle = document.createElement('h3');
     notifTitle.className = 'gd-notif-title';
     notifTitle.textContent = 'Action Required';
+
+    const urgentTag = document.createElement('span');
+    urgentTag.className = 'gd-notif-important-tag';
+    urgentTag.innerHTML = `<span class="gd-notif-pulse-dot" aria-hidden="true"></span>IMPORTANT · ${props.pendingCount} PENDING`;
+
+    titleRow.appendChild(notifTitle);
+    titleRow.appendChild(urgentTag);
 
     const notifMsg = document.createElement('p');
     notifMsg.className = 'gd-notif-text';
@@ -570,7 +587,7 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       props.pendingCount > 1 ? 's' : ''
     } awaiting your evaluation.`;
 
-    notifContent.appendChild(notifTitle);
+    notifContent.appendChild(titleRow);
     notifContent.appendChild(notifMsg);
     notifItem.appendChild(notifContent);
 

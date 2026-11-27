@@ -584,6 +584,93 @@ async function handleCancelApproval(action: GuardrailAction): Promise<void> {
 /**
  * Displays the Guardrail Warning Dialog with comprehensive Caretaker Approval workflow.
  */
+function formatApprovalSubmissionFailure(error?: { code?: string; message?: string }): string {
+  if (error?.code === 'UNAUTHENTICATED') {
+    return 'Sign in via the Guardrail extension popup to deliver requests to your caretaker.';
+  }
+  if (error?.code === 'NO_ACTIVE_TRUSTED_CONTACT') {
+    return 'No active caretaker is connected to your Guardrail account yet.';
+  }
+  if (error?.message && error.message.trim()) {
+    return error.message.trim();
+  }
+  return 'Could not deliver request to your caretaker dashboard • Action remains safely held.';
+}
+
+function dispatchBackendApprovalAndPoll(
+  action: GuardrailAction,
+  risk: RiskAssessment,
+  stagingContext: StagingActionContext
+): void {
+  const reportSubmissionFailure = (error?: { code?: string; message?: string }) => {
+    if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
+      return;
+    }
+    activeApprovalSession.status = 'failed';
+    updateWaitingScreenStatus('failed', {
+      reason: formatApprovalSubmissionFailure(error),
+      submittedAt: activeApprovalSession.submittedAt,
+      onRetry: () => {
+        if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) return;
+        activeApprovalSession.status = 'pending';
+        updateWaitingScreenStatus('pending', {
+          submittedAt: activeApprovalSession.submittedAt,
+        });
+        dispatchBackendApprovalAndPoll(action, risk, stagingContext);
+      },
+    });
+  };
+
+  dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
+    .then((response) => {
+      console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
+      if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) {
+        return;
+      }
+
+      if (response && response.success && response.request && response.request.id) {
+        const reqId = response.request.id;
+        activeApprovalSession.requestId = reqId;
+        activeApprovalSession.status = 'pending';
+
+        updateWaitingScreenStatus('pending', {
+          requestId: reqId,
+          submittedAt: activeApprovalSession.submittedAt,
+        });
+        startWaitingStatusPolling(reqId, action);
+
+        const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+        const domain = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : '';
+        const pageUrl = typeof window !== 'undefined' && window.location?.href ? window.location.href : '';
+        const destUrl = action.element?.targetUrl || action.element?.formAction || pageUrl;
+
+        void defaultRecoveryManager.saveStagedAction({
+          actionId: action.id,
+          requestId: reqId,
+          origin,
+          url: pageUrl,
+          domain,
+          description: latestStagingContext?.description || action.description || 'Action awaiting caretaker review',
+          category: action.category,
+          riskLevel: risk.riskLevel,
+          status: 'pending',
+          destinationUrl: destUrl,
+          elementId: action.element?.id,
+        });
+        return;
+      }
+
+      console.warn('[Guardrail UI] Approval delivery rejected or incomplete:', response);
+      reportSubmissionFailure(response?.error);
+    })
+    .catch((err) => {
+      console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
+      reportSubmissionFailure({
+        message: err instanceof Error ? err.message : undefined,
+      });
+    });
+}
+
 function presentWarningWithApproval(
   action: GuardrailAction,
   risk: RiskAssessment,
@@ -651,48 +738,7 @@ function presentWarningWithApproval(
         };
 
         // 3. Dispatch real backend approval submission to background service worker
-        dispatchSubmitApprovalRequestToBackground(action.id, stagingContext)
-          .then((response) => {
-            console.log('[Guardrail UI] Caretaker approval request dispatched to backend:', response);
-            if (response && response.request && response.request.id) {
-              const reqId = response.request.id;
-              if (activeApprovalSession && activeApprovalSession.action.id === action.id) {
-                activeApprovalSession.requestId = reqId;
-              }
-              updateWaitingScreenStatus('pending', {
-                requestId: reqId,
-                submittedAt: activeApprovalSession?.submittedAt,
-              });
-              startWaitingStatusPolling(reqId, action);
-
-              const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-              const domain = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : '';
-              const pageUrl = typeof window !== 'undefined' && window.location?.href ? window.location.href : '';
-              const destUrl = action.element?.targetUrl || action.element?.formAction || pageUrl;
-
-              void defaultRecoveryManager.saveStagedAction({
-                actionId: action.id,
-                requestId: reqId,
-                origin,
-                url: pageUrl,
-                domain,
-                description: latestStagingContext?.description || action.description || 'Action awaiting caretaker review',
-                category: action.category,
-                riskLevel: risk.level,
-                status: 'pending',
-                destinationUrl: destUrl,
-                elementId: action.element?.id,
-              });
-            }
-          })
-          .catch((err) => {
-            console.warn('[Guardrail UI] Caretaker approval backend dispatch failed:', err);
-            updateWaitingScreenStatus('pending', {
-              connectionStatus: 'offline',
-              connectionMessage: 'Sync connection unavailable • Action remains safely held',
-              submittedAt: activeApprovalSession?.submittedAt,
-            });
-          });
+        dispatchBackendApprovalAndPoll(action, risk, stagingContext);
 
         // 4. Also dispatch local intent and DOM event for UI synchronization
         const intent = createApprovalRequestIntent(stagingContext, heldRecord);
