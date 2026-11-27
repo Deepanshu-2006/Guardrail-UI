@@ -606,6 +606,9 @@ async function handleCancelApproval(action: GuardrailAction): Promise<void> {
  * Displays the Guardrail Warning Dialog with comprehensive Caretaker Approval workflow.
  */
 function formatApprovalSubmissionFailure(error?: { code?: string; message?: string }): string {
+  if (error?.code === 'RUNTIME_UNAVAILABLE') {
+    return 'Guardrail was updated or reloaded. Refresh this tab to reconnect before sending requests.';
+  }
   if (error?.code === 'UNAUTHENTICATED') {
     return 'Sign in via the Guardrail extension popup to deliver requests to your caretaker.';
   }
@@ -628,10 +631,15 @@ function dispatchBackendApprovalAndPoll(
       return;
     }
     activeApprovalSession.status = 'failed';
+    const isRuntimeDisconnected = error?.code === 'RUNTIME_UNAVAILABLE';
     updateWaitingScreenStatus('failed', {
       reason: formatApprovalSubmissionFailure(error),
       submittedAt: activeApprovalSession.submittedAt,
       onRetry: () => {
+        if (isRuntimeDisconnected && typeof window !== 'undefined') {
+          window.location.reload();
+          return;
+        }
         if (!activeApprovalSession || activeApprovalSession.action.id !== action.id) return;
         activeApprovalSession.status = 'pending';
         updateWaitingScreenStatus('pending', {
@@ -2006,62 +2014,90 @@ export async function checkColdRestartRecovery(): Promise<void> {
     if (!record) return;
 
     if (record.status === 'approved') {
-      mountRecoveryBanner({
-        record,
-        onReviewAndContinue: (rec) => {
-          dismissRecoveryBanner();
+      let displayRecord = {
+        ...record,
+        approver: resolveApproverDisplayName({ decidedBy: record.approver }),
+      };
+      let decisionReason: string | undefined;
 
-          const recoveredAction: GuardrailAction = {
-            id: rec.actionId,
-            type: ActionType.CLICK,
-            category: rec.category,
-            description: rec.description,
-            timestamp: rec.submittedAt,
-            page: { url: rec.url, origin: rec.origin, hostname: rec.domain },
-            element: rec.destinationUrl ? { targetUrl: rec.destinationUrl, id: rec.elementId } : undefined,
-          };
+      const showBannerForRecord = (recToShow: typeof displayRecord) => {
+        mountRecoveryBanner({
+          record: recToShow,
+          onReviewAndContinue: (rec) => {
+            dismissRecoveryBanner();
 
-          activeApprovalSession = {
-            action: recoveredAction,
-            risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
-            decision: { response: ResponseAction.WARN, reasons: [] },
-            requestId: rec.requestId,
-            status: 'approved',
-            hasExecutedContinuation: false,
-            submittedAt: rec.submittedAt,
-          };
+            const recoveredAction: GuardrailAction = {
+              id: rec.actionId,
+              type: ActionType.CLICK,
+              category: rec.category,
+              description: rec.description,
+              timestamp: rec.submittedAt,
+              page: { url: rec.url, origin: rec.origin, hostname: rec.domain },
+              element: rec.destinationUrl ? { targetUrl: rec.destinationUrl, id: rec.elementId } : undefined,
+            };
 
-          showWarningModal({
-            action: recoveredAction,
-            risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
-            decision: { response: ResponseAction.WARN, reasons: [] },
-            onCloseWaiting: () => {
-              dismissWarningModal();
-            },
-            onCancelRequest: () => {
-              void defaultRecoveryManager.clearRecovery(rec.actionId);
-              dismissWarningModal();
-            },
-          });
+            activeApprovalSession = {
+              action: recoveredAction,
+              risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
+              decision: { response: ResponseAction.WARN, reasons: [] },
+              requestId: rec.requestId,
+              status: 'approved',
+              hasExecutedContinuation: false,
+              submittedAt: rec.submittedAt,
+            };
 
-          updateWaitingScreenStatus('approved', {
-            requestId: rec.requestId,
-            approver: rec.approver || 'Trusted Contact',
-            submittedAt: rec.submittedAt,
-            onProceed: () => {
-              void defaultRecoveryManager.clearRecovery(rec.actionId);
-              dismissWarningModal();
-              if (rec.destinationUrl && typeof window !== 'undefined') {
-                window.location.href = rec.destinationUrl;
-              }
-            },
-          });
-        },
-        onDismiss: (rec) => {
-          dismissRecoveryBanner();
-          void defaultRecoveryManager.clearRecovery(rec.actionId);
-        },
-      });
+            showWarningModal({
+              action: recoveredAction,
+              risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
+              decision: { response: ResponseAction.WARN, reasons: [] },
+              onCloseWaiting: () => {
+                dismissWarningModal();
+              },
+              onCancelRequest: () => {
+                void defaultRecoveryManager.clearRecovery(rec.actionId);
+                dismissWarningModal();
+              },
+            });
+
+            updateWaitingScreenStatus('approved', {
+              requestId: rec.requestId,
+              approver: resolveApproverDisplayName({ decidedBy: rec.approver }),
+              reason: decisionReason,
+              submittedAt: rec.submittedAt,
+              onProceed: () => {
+                void defaultRecoveryManager.clearRecovery(rec.actionId);
+                dismissWarningModal();
+                if (rec.destinationUrl && typeof window !== 'undefined') {
+                  window.location.href = rec.destinationUrl;
+                }
+              },
+            });
+          },
+          onDismiss: (rec) => {
+            dismissRecoveryBanner();
+            void defaultRecoveryManager.clearRecovery(rec.actionId);
+          },
+        });
+      };
+
+      showBannerForRecord(displayRecord);
+
+      if (record.requestId && typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          { type: 'GUARDRAIL_GET_APPROVAL_STATUS', requestId: record.requestId },
+          (res: any) => {
+            const dec = res?.request?.decision;
+            if (!dec) return;
+            decisionReason = dec.decisionReason || dec.reason || decisionReason;
+            const resolvedName = resolveApproverDisplayName(dec);
+            if (resolvedName && resolvedName !== displayRecord.approver) {
+              displayRecord = { ...displayRecord, approver: resolvedName };
+              void defaultRecoveryManager.updateStagedActionStatus(record.actionId, 'approved', resolvedName);
+              showBannerForRecord(displayRecord);
+            }
+          }
+        );
+      }
     } else if (record.status === 'pending') {
       showPendingApprovalPill({
         domain: record.domain,

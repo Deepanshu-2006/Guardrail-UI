@@ -522,7 +522,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 14px;
       z-index: 2147483647;
       animation: grFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
@@ -534,6 +534,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
       border-radius: 16px;
       width: 100%;
       max-width: 580px;
+      max-height: calc(100vh - 28px);
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 32px 72px -12px rgba(24, 28, 20, 0.38),
                   0 4px 16px rgba(24, 28, 20, 0.1);
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -1162,7 +1165,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-views-container {
       position: relative;
       width: 100%;
-      overflow: hidden;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
       transition: height 0.42s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -1221,7 +1227,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: 
         radial-gradient(circle at 50% 45%, rgba(240, 140, 110, 0.12) 0%, transparent 65%),
         linear-gradient(180deg, #322119 0%, #251710 100%) !important;
-      padding: 16px 28px 18px 28px !important;
+      padding: 12px 26px 14px 26px !important;
       text-align: center !important;
       box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
@@ -1235,7 +1241,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: 
         radial-gradient(circle at 50% 45%, rgba(74, 222, 128, 0.12) 0%, transparent 65%),
         linear-gradient(180deg, #1E331D 0%, #172716 100%) !important;
-      padding: 16px 28px 18px 28px !important;
+      padding: 12px 26px 14px 26px !important;
       text-align: center !important;
       box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
@@ -1249,7 +1255,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-hero-rejected .gr-waiting-header,
     .gr-hero-approved .gr-waiting-header {
       padding: 0 !important;
-      margin-bottom: 10px !important;
+      margin-bottom: 4px !important;
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
@@ -1311,17 +1317,17 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-waiting-medallion {
       display: none;
       justify-content: center;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
 
     .gd-moment-badge-circle {
-      width: 50px !important;
-      height: 50px !important;
+      width: 44px !important;
+      height: 44px !important;
       border-radius: 50% !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      margin: 0 auto 10px auto !important;
+      margin: 0 auto 4px auto !important;
       position: relative !important;
       animation: gdCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
     }
@@ -1427,7 +1433,45 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-card-rejected .gr-waiting-body,
     .gr-card-approved .gr-waiting-body {
-      padding: 18px 28px 22px 28px !important;
+      padding: 14px 26px 12px 26px !important;
+      max-height: none;
+      overflow: visible;
+    }
+
+    .gr-card-rejected .gr-destination-card,
+    .gr-card-approved .gr-destination-card {
+      padding: 11px 16px !important;
+      margin-bottom: 12px !important;
+    }
+
+    .gr-card-rejected .gr-waiting-status-card,
+    .gr-card-approved .gr-waiting-status-card {
+      padding: 12px 16px !important;
+      margin-bottom: 10px !important;
+    }
+
+    .gr-card-rejected .gr-waiting-stepper,
+    .gr-card-approved .gr-waiting-stepper {
+      gap: 9px;
+      margin-top: 4px;
+    }
+
+    .gr-card-rejected .gr-guidance-note,
+    .gr-card-approved .gr-guidance-note {
+      font-size: 12.5px;
+      line-height: 1.4;
+      margin-bottom: 2px;
+    }
+
+    .gr-card-rejected .gr-waiting-details,
+    .gr-card-approved .gr-waiting-details {
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+
+    .gr-card-rejected .gr-waiting-footer,
+    .gr-card-approved .gr-waiting-footer {
+      padding: 12px 26px 14px !important;
     }
 
     /* Destination card rejection override: warm clay palette, no green */
@@ -1729,8 +1773,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-caretaker-note {
-      margin-top: 12px;
-      padding: 10px 12px;
+      margin-top: 8px;
+      padding: 8px 12px;
       border-radius: 8px;
       background: rgba(255, 252, 245, 0.85);
       border: 1px solid #E2D7C0;
