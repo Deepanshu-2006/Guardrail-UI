@@ -546,6 +546,7 @@ export function showDisconnectWardModal(options: DisconnectWardModalOptions): ()
   content.className = 'gd-connect-modal-content';
 
   const animBox = createModalLoaderBox('#8A3B2A', '#3E562A');
+  animBox.classList.add('gd-disconnecting');
   content.appendChild(animBox);
 
   const title = document.createElement('h2');
@@ -579,13 +580,14 @@ export function showDisconnectWardModal(options: DisconnectWardModalOptions): ()
     try {
       const [result] = await Promise.all([
         Promise.resolve(options.onDisconnect(options.wardId)),
-        new Promise((resolve) => setTimeout(resolve, 3200)),
+        new Promise((resolve) => setTimeout(resolve, 2200)),
       ]);
 
       if (isClosed) return;
 
       const succeeded = !result || result.success;
       if (succeeded) {
+        animBox.classList.remove('gd-disconnecting');
         animBox.classList.add('gd-success');
 
         title.textContent = 'Disconnected!';

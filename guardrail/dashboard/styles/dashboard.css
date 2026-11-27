@@ -17192,6 +17192,9 @@ article.gd-card-collapsed,
   stroke-dashoffset: 135;
   transition: stroke-dashoffset 0.45s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.35s ease;
 }
+.gd-auth-anim-box.gd-disconnecting .gd-loader-circle {
+  stroke: #8A3B2A;
+}
 .gd-auth-anim-box .gd-loader-tick-path {
   stroke: #3E562A;
   stroke-dasharray: 48;

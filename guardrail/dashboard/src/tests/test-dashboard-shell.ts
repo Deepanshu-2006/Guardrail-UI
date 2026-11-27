@@ -4788,6 +4788,65 @@ async function runDashboardTests() {
     shell.destroy();
   }
 
+  // ---------------------------------------------------------------------------
+  // Test Suite 55: Settings Initial Entrance Renders All Connected Wards Immediately
+  // ---------------------------------------------------------------------------
+  {
+    console.log('\n▶ Test Suite 55: Settings Initial Load Updates From 1 Fallback Ward to All Wards');
+    const mockMultiClient = new ApprovalApiClient({
+      baseUrl: 'http://localhost:3000',
+      tokenProvider: () => 'valid-contact-token',
+      fetchFn: async (url: string | URL | Request) => {
+        const u = String(url);
+        if (u.includes('/api/v1/trusted-contacts')) {
+          return createMockResponse(200, {
+            success: true,
+            data: [
+              { id: 'tc_1', contactId: 'tc_1', userId: 'usr_alice', wardId: 'usr_alice', wardName: 'Alice Johnson', status: 'ACTIVE', createdAt: new Date().toISOString() },
+              { id: 'tc_1', contactId: 'tc_1', userId: 'usr_bob', wardId: 'usr_bob', wardName: 'Bob Williams', status: 'ACTIVE', createdAt: new Date().toISOString() },
+              { id: 'tc_1', contactId: 'tc_1', userId: 'usr_deepanshu', wardId: 'usr_deepanshu', wardName: 'Deepanshu Khatri', status: 'ACTIVE', createdAt: new Date().toISOString() },
+              { id: 'tc_1', contactId: 'tc_1', userId: 'usr_balle', wardId: 'usr_balle', wardName: 'Balleballepurrr', status: 'ACTIVE', createdAt: new Date().toISOString() },
+            ],
+          });
+        }
+        return createMockResponse(200, { success: true, data: [] });
+      },
+    });
+
+    const settingsShell = new DashboardShell({
+      container: rootElement,
+      initialView: 'settings',
+      initialProfile: {
+        actorId: 'tc_1',
+        role: 'TRUSTED_CONTACT',
+        assignedWardId: 'usr_alice',
+        assignedWardName: 'Alice Johnson',
+        isAuthenticated: true,
+      },
+      apiClient: mockMultiClient,
+      autoFetch: false,
+      pollIntervalMs: 0,
+    });
+
+    assertEquals(
+      rootElement.querySelectorAll('#gd-connected-users-list .gd-relationship-item').length,
+      1,
+      'Initially shows 1 fallback ward while relationships are not yet fetched'
+    );
+
+    await settingsShell.fetchRelationships();
+
+    assertEquals(
+      rootElement.querySelectorAll('#gd-connected-users-list .gd-relationship-item').length,
+      4,
+      'Immediately renders all 4 connected wards on Settings during entrance window without switching pages'
+    );
+    const badge = rootElement.querySelector('#gd-connected-users-card .gd-settings-badge');
+    assertEquals(badge?.textContent, '4 Active', 'Settings connected users badge updates immediately to 4 Active');
+
+    settingsShell.destroy();
+  }
+
   console.log('\n======================================================');
   console.log(`Dashboard Shell Component Tests Complete: ${passedTests}/${totalTests} tests passed.`);
   console.log('======================================================\n');

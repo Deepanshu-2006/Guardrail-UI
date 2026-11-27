@@ -596,10 +596,16 @@ async function runTests(): Promise<void> {
     invitations: [],
     invitationsStatus: 'idle' as ViewStatus,
     invitationsError: null,
+    actionMessage: { type: 'info', text: 'Ward usr_alice disconnected.' },
     onDisconnectWard: (wId?: string) => {
       settingsDisconnectedIds.push(wId);
     },
   });
+
+  assertTrue(
+    relDisconnectSection.querySelector('.gd-relationship-feedback-banner') === null,
+    'Suppresses inline disconnect feedback banner since popup modal displays status'
+  );
 
   const relDisconnectBtn = relDisconnectSection.querySelector('.gd-btn-revoke');
   const relConfirmDisconnectBtn = relDisconnectSection.querySelector('.gd-btn-revoke-confirm');
@@ -611,6 +617,9 @@ async function runTests(): Promise<void> {
   assertTrue(disconnectModal !== null, 'Settings Confirm Disconnect opens Disconnecting popup modal');
   assertTrue(disconnectModal?.querySelector('#gd-connect-loader-anim') !== null, 'Settings Disconnecting popup renders circular loader animation');
   assertEquals(disconnectModal?.querySelector('#gd-connect-modal-title')?.textContent, 'Disconnecting Ward', 'Settings Disconnecting popup shows Disconnecting Ward title');
+  await new Promise((r) => setTimeout(r, 2300));
+  assertEquals(disconnectModal?.querySelector('#gd-connect-modal-title')?.textContent, 'Disconnected!', 'Transitions from Disconnecting Ward to Disconnected! with completion state');
+  assertTrue(disconnectModal?.querySelector('#gd-connect-loader-anim')?.classList.contains('gd-success'), 'Completion checkmark animation activates on Disconnected!');
   disconnectModal?.querySelector('.gd-auth-modal-close-btn')?.click();
 
   console.log('\n======================================================');

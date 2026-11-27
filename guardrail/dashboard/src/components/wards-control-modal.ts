@@ -456,9 +456,9 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
         }
       },
       onSuccess: () => {
-        statusFeedback.textContent = 'Connected successfully!';
-        statusFeedback.className = 'gd-wards-pair-feedback success';
-        statusFeedback.style.display = 'block';
+        statusFeedback.textContent = '';
+        statusFeedback.className = 'gd-wards-pair-feedback';
+        statusFeedback.style.display = 'none';
         pairInput.value = '';
       },
       onClose: () => {

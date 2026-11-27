@@ -1279,7 +1279,26 @@ export class DashboardShell {
         (Boolean(existingActiveSection.querySelector('.gd-prop-mailbox')) && mailboxHasMail !== expectedHasMail)
       );
     })();
-    const canPreserveInPlace = (currentView === 'overview' && !overviewNeedsStructuralRerender) || currentView === 'settings';
+    const settingsNeedsStructuralRerender = currentView === 'settings' && existingActiveSection && (() => {
+      const renderedContacts = existingActiveSection.querySelectorAll('#gd-connected-users-list .gd-relationship-item').length;
+      const dedupedKeys = new Set<string>();
+      for (const c of this.state.connectedUsers) {
+        const key = (c.wardId || c.userId || '').trim().toLowerCase() || (c.contactId || c.id || '').trim().toLowerCase();
+        if (key) dedupedKeys.add(key);
+      }
+      const expectedContacts = dedupedKeys.size > 0
+        ? dedupedKeys.size
+        : this.getConnectedWards().length;
+      const hasEmptyPlaceholder = Boolean(existingActiveSection.querySelector('#gd-connected-users-empty'));
+      return (
+        renderedContacts !== expectedContacts ||
+        (hasEmptyPlaceholder && expectedContacts > 0) ||
+        Boolean(this.state.relationshipActionMessage)
+      );
+    })();
+    const canPreserveInPlace =
+      (currentView === 'overview' && !overviewNeedsStructuralRerender) ||
+      (currentView === 'settings' && !settingsNeedsStructuralRerender);
     if (!isInitialMount && !isViewChange && isViewEntering && existingActiveSection && !this.state.errorMessage && canPreserveInPlace) {
       this.hasPendingDataUpdateDuringEntrance = true;
 
@@ -2753,8 +2772,12 @@ export class DashboardShell {
   public closeAuthModal(): void {
     if (typeof document === 'undefined') return;
     document.querySelectorAll('#gd-auth-modal-root, .gd-auth-modal-backdrop, .gd-modal-backdrop').forEach((el) => {
-      // Do not prematurely remove the connected/signing-in confirmation modal if it is active
-      if (el.querySelector('.gd-connected-card')) {
+      // Do not prematurely remove the connected/signing-in/ward-pairing/disconnecting confirmation modal if it is active
+      if (
+        (el as HTMLElement).id === 'gd-connect-modal-root' ||
+        el.classList.contains('gd-connect-backdrop') ||
+        el.querySelector('.gd-connected-card')
+      ) {
         return;
       }
       el.remove();
@@ -4344,12 +4367,17 @@ export class DashboardShell {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ wardId: currentWardId }),
+          signal: typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+            ? AbortSignal.timeout(4000)
+            : undefined,
         });
       } catch (err) {
         console.warn('[Dashboard] Disconnect ward request error:', err);
       }
-      await this.fetchRelationships({ isBackground: true });
-      await this.fetchPendingRequests(true);
+      await Promise.allSettled([
+        this.fetchRelationships({ isBackground: true }),
+        this.fetchPendingRequests({ isBackground: true }),
+      ]);
     }
     this.render();
   }

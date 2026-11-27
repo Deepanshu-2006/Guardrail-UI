@@ -87,8 +87,13 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
   container.className = 'gd-relationships-container';
   container.id = 'gd-relationships-container';
 
-  // Action / Feedback Message Banner
-  if (props.actionMessage) {
+  // Action / Feedback Message Banner (suppress redundant connect/disconnect banners handled by popup modals)
+  const shouldRenderActionBanner = Boolean(
+    props.actionMessage &&
+      (props.actionMessage.type === 'error' ||
+        !/\b(connected|disconnected)\b/i.test(props.actionMessage.text))
+  );
+  if (props.actionMessage && shouldRenderActionBanner) {
     const feedbackBanner = document.createElement('div');
     feedbackBanner.className = `gd-relationship-feedback-banner gd-feedback-${props.actionMessage.type}`;
     feedbackBanner.setAttribute('role', 'alert');
@@ -602,9 +607,9 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
               };
             }
           },
-          onSuccess: (wardId) => {
-            feedback.className = 'gd-setup-feedback success';
-            feedback.textContent = `Successfully connected to ward ${wardId}!`;
+          onSuccess: () => {
+            feedback.className = 'gd-setup-feedback';
+            feedback.textContent = '';
             input.value = '';
           },
           onClose: () => {

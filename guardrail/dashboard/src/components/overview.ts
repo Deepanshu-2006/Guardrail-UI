@@ -769,9 +769,9 @@ export function renderOverview(props: OverviewProps): HTMLElement {
             };
           }
         },
-        onSuccess: (wardId) => {
-          feedback.className = 'gd-setup-feedback success';
-          feedback.textContent = `Successfully connected to ward ${wardId}! Pending approval requests will now appear in your review queue.`;
+        onSuccess: () => {
+          feedback.className = 'gd-setup-feedback';
+          feedback.textContent = '';
           input.value = '';
         },
         onClose: () => {
