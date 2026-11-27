@@ -439,7 +439,11 @@ export interface DisconnectWardModalOptions {
   readonly onClose?: () => void;
 }
 
-function createModalLoaderBox(strokeColor = '#273121', successColor = '#3E562A'): HTMLElement {
+function createModalLoaderBox(
+  strokeColor = '#273121',
+  successColor = '#3E562A',
+  successVariant: 'tick' | 'unlink' = 'tick'
+): HTMLElement {
   const animBox = document.createElement('div');
   animBox.className = 'gd-auth-anim-box';
   animBox.id = 'gd-connect-loader-anim';
@@ -465,8 +469,12 @@ function createModalLoaderBox(strokeColor = '#273121', successColor = '#3E562A')
   tickSvg.setAttribute('width', '72');
   tickSvg.setAttribute('height', '72');
   tickSvg.setAttribute('viewBox', '0 0 72 72');
+  const successPathMarkup =
+    successVariant === 'unlink'
+      ? `<path class="gd-loader-unlink-path" fill="none" stroke="${successColor}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" d="M39 27 L42 24 A6 6 0 0 1 50.5 32.5 L47.5 35.5 M33 45 L30 48 A6 6 0 0 1 21.5 39.5 L24.5 36.5 M25 25 L47 47" />`
+      : `<path class="gd-loader-tick-path" fill="none" stroke="${successColor}" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M22 37 L32 47 L51 25" />`;
   tickSvg.innerHTML = `
-    <path class="gd-loader-tick-path" fill="none" stroke="${successColor}" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M22 37 L32 47 L51 25" />
+    ${successPathMarkup}
     <path class="gd-loader-error-path" fill="none" stroke="#962828" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" d="M25 25 L47 47 M47 25 L25 47" />
   `;
   animBox.appendChild(tickSvg);
@@ -545,7 +553,7 @@ export function showDisconnectWardModal(options: DisconnectWardModalOptions): ()
   const content = document.createElement('div');
   content.className = 'gd-connect-modal-content';
 
-  const animBox = createModalLoaderBox('#8A3B2A', '#3E562A');
+  const animBox = createModalLoaderBox('#8A3B2A', '#8A3B2A', 'unlink');
   animBox.classList.add('gd-disconnecting');
   content.appendChild(animBox);
 
@@ -588,7 +596,7 @@ export function showDisconnectWardModal(options: DisconnectWardModalOptions): ()
       const succeeded = !result || result.success;
       if (succeeded) {
         animBox.classList.remove('gd-disconnecting');
-        animBox.classList.add('gd-success');
+        animBox.classList.add('gd-disconnected');
 
         title.textContent = 'Disconnected!';
         subtitle.textContent = `Caretaker oversight for ${displayWard} has been unlinked from your portal.`;

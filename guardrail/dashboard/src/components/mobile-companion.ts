@@ -20,6 +20,7 @@ import { formatTimestamp, isRequestExpired } from './detail.js';
 import { createAmbientBackdrop, getRealTimeScenery, SceneryPhase } from './pixel-scenery.js';
 import { setupInteractiveBottomSheet } from './mobile-sheet-utils.js';
 import { attachPairingCodeKeyboard, closeActivePairingKeyboard } from './pairing-code-keyboard.js';
+import { showConnectWardModal, showDisconnectWardModal } from './connect-modal.js';
 
 function formatWardDisplayName(name?: string | null, requesterId?: string | null): string {
   if (name && name.trim()) return name.trim();
@@ -55,7 +56,15 @@ export interface MobileCompanionProps {
   onSelectWardFilter: (wardId: string) => void;
   onOpenRequestSheet: (requestId: string) => void;
   onRefresh: () => void;
-  onConnectWard?: (code: string) => Promise<{ success: boolean; message?: string }>;
+  onConnectWard?: (code: string) => Promise<{
+    success: boolean;
+    message?: string;
+    wardId?: string;
+    wardName?: string;
+    wardEmail?: string;
+    error?: string;
+  }>;
+  onDisconnectWard?: (wardId: string) => Promise<void> | void;
   onOpenAuth?: () => void;
   onSignOut?: () => void;
   pushStatus?: {
@@ -1353,9 +1362,10 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         (r) => (r.requesterId || '').toLowerCase() === ward.id.toLowerCase()
       ).length;
 
-      const row = document.createElement('button');
-      row.type = 'button';
+      const row = document.createElement('div');
       row.className = 'gd-m-row';
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
 
       const avatar = document.createElement('span');
       avatar.className = 'gd-m-ward-avatar';
@@ -1375,13 +1385,37 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       info.appendChild(nameEl);
       info.appendChild(subEl);
 
-      const badge = document.createElement('span');
-      badge.className = `gd-m-ward-count ${pCount > 0 ? 'urgent' : ''}`;
-      badge.textContent = pCount > 0 ? `${pCount} pending` : 'Clear';
+      const actionsWrap = document.createElement('div');
+      actionsWrap.className = 'gd-m-ward-actions';
+
+      if (pCount > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'gd-m-ward-count urgent';
+        badge.textContent = `${pCount} pending`;
+        actionsWrap.appendChild(badge);
+      }
+
+      const disconnectBtn = document.createElement('button');
+      disconnectBtn.type = 'button';
+      disconnectBtn.className = 'gd-m-ward-disconnect-btn';
+      disconnectBtn.textContent = 'Disconnect';
+      disconnectBtn.setAttribute('aria-label', `Disconnect ${formatWardDisplayName(ward.name, ward.id)}`);
+      disconnectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showDisconnectWardModal({
+          wardId: ward.id,
+          wardName: formatWardDisplayName(ward.name, ward.id),
+          wardEmail: ward.email,
+          onDisconnect: async (id) => {
+            await props.onDisconnectWard?.(id);
+          },
+        });
+      });
+      actionsWrap.appendChild(disconnectBtn);
 
       row.appendChild(avatar);
       row.appendChild(info);
-      row.appendChild(badge);
+      row.appendChild(actionsWrap);
       row.addEventListener('click', () => {
         if (props.onLoadWardPolicy) {
           openWardPolicySheet(ward, pCount, props.onLoadWardPolicy, () => {
@@ -1460,17 +1494,25 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
           pairingKeyboard.setStatus(hint, 'error');
           return;
         }
-        msgEl.textContent = 'Connecting...';
-        pairingKeyboard.setStatus('Connecting...', 'neutral');
-        const res = await props.onConnectWard!(normalizedCode);
-        const msg = res.message || (res.success ? 'Ward connected.' : 'Unable to pair.');
-        msgEl.textContent = msg;
-        if (res.success) {
-          pairingKeyboard.reset();
-          pairingKeyboard.close();
-        } else {
-          pairingKeyboard.setStatus(msg, 'error');
-        }
+        msgEl.textContent = '';
+        pairingKeyboard.close();
+        showConnectWardModal({
+          code: normalizedCode,
+          onConnect: async (codeToConnect) => {
+            const res = await props.onConnectWard!(codeToConnect);
+            return {
+              success: res.success,
+              wardId: res.wardId,
+              wardName: res.wardName,
+              wardEmail: res.wardEmail,
+              error: res.error || (!res.success ? res.message : undefined),
+            };
+          },
+          onSuccess: () => {
+            pairingKeyboard.reset();
+            msgEl.textContent = '';
+          },
+        });
       });
       main.appendChild(pairBox);
     }

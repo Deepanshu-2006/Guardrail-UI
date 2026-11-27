@@ -1234,7 +1234,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: 
         radial-gradient(circle at 50% 45%, rgba(240, 140, 110, 0.12) 0%, transparent 65%),
         linear-gradient(180deg, #322119 0%, #251710 100%) !important;
-      padding: 12px 26px 14px 26px !important;
+      padding: 24px 32px 34px 32px !important;
       text-align: center !important;
       box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
@@ -1493,9 +1493,21 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-card-rejected .gr-destination-card {
       background: #FDF4F0 !important;
       border: 1.5px solid #F0D5CA !important;
-      padding: 14px 18px !important;
-      margin-bottom: 18px !important;
+      padding: 12px 16px !important;
+      margin-bottom: 12px !important;
       box-shadow: 0 1px 4px rgba(46, 27, 19, 0.04) !important;
+    }
+
+    .gr-card-rejected .gr-btn-cancel {
+      background-color: #322119;
+      border-color: #322119;
+      color: #FAF7F0;
+    }
+
+    .gr-card-rejected .gr-btn-cancel:hover:not(:disabled) {
+      background-color: #251710;
+      border-color: #251710;
+      color: #FFFFFF;
     }
 
     .gr-card-rejected .gr-destination-label {
@@ -3083,8 +3095,7 @@ export function updateWaitingScreenStatus(
       if (title) title.textContent = 'Request Declined';
       if (subtitle) {
         const approverBy = details?.approver ? ` by ${escapeText(details.approver)}` : '';
-        const reasonText = details?.reason ? ` Note: “${escapeText(details.reason)}”.` : '';
-        subtitle.textContent = `This action was declined${approverBy}.${reasonText} Access to the requested destination remains blocked.`;
+        subtitle.textContent = `This action was declined${approverBy}. Access to the requested destination remains blocked.`;
       }
       if (pill) {
         pill.className = 'gr-waiting-pill gr-pill-rejected';

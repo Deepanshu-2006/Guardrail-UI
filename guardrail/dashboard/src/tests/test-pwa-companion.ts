@@ -239,6 +239,9 @@ const mockDocument = {
   createElement(tag: string): MockDOMElement {
     return new MockDOMElement(tag);
   },
+  createElementNS(_ns: string, tag: string): MockDOMElement {
+    return new MockDOMElement(tag);
+  },
   getElementById(id: string): MockDOMElement | null {
     return rootBody.querySelector(`#${id}`);
   },

@@ -561,13 +561,13 @@ function updatePopupToUnpairedState(): void {
 
   const liveStatus = document.getElementById('pairing-live-status');
   if (liveStatus) {
-    liveStatus.style.display = '';
+    liveStatus.style.display = 'none';
     liveStatus.innerHTML = '';
     liveStatus.className = 'pairing-live-status';
   }
   const pairingFooter = liveStatus?.closest('.pairing-footer') as HTMLElement | null;
   if (pairingFooter) {
-    pairingFooter.style.display = '';
+    pairingFooter.style.display = 'none';
   }
 
   if (typeof localStorage !== 'undefined') {

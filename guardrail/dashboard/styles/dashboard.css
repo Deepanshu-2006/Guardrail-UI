@@ -8288,6 +8288,33 @@ textarea:focus-visible,
   color: #9A2B22;
 }
 
+.gd-m-ward-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gd-m-ward-disconnect-btn {
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(163, 59, 49, 0.08);
+  border: 1px solid rgba(163, 59, 49, 0.22);
+  color: #8F2B2B;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.gd-m-ward-disconnect-btn:active {
+  background: rgba(163, 59, 49, 0.18);
+  transform: scale(0.97);
+}
+
 .gd-m-pair-box {
   display: flex;
   flex-direction: column;
@@ -15350,6 +15377,33 @@ article.gd-card-collapsed,
   color: #9A2B22;
 }
 
+.gd-m-ward-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gd-m-ward-disconnect-btn {
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(163, 59, 49, 0.08);
+  border: 1px solid rgba(163, 59, 49, 0.22);
+  color: #8F2B2B;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.gd-m-ward-disconnect-btn:active {
+  background: rgba(163, 59, 49, 0.18);
+  transform: scale(0.97);
+}
+
 .gd-m-pair-box {
   display: flex;
   flex-direction: column;
@@ -17263,6 +17317,33 @@ article.gd-card-collapsed,
   stroke: #3E562A !important;
   opacity: 1 !important;
   animation: gd-draw-tick 0.42s 0.16s cubic-bezier(0.65, 0, 0.45, 1) forwards !important;
+}
+.gd-auth-anim-box .gd-loader-unlink-path {
+  stroke: #8A3B2A;
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  opacity: 0;
+}
+.gd-auth-anim-box.gd-disconnected .gd-loader-halo {
+  background: radial-gradient(circle, rgba(138, 59, 42, 0.16) 0%, transparent 72%);
+  transform: scale(1.1);
+}
+.gd-auth-anim-box.gd-disconnected .gd-auth-circle-svg {
+  animation: none;
+  transform: rotate(-90deg);
+}
+.gd-auth-anim-box.gd-disconnected .gd-loader-circle {
+  stroke: #8A3B2A !important;
+  stroke-dasharray: 188.5 !important;
+  stroke-dashoffset: 0 !important;
+}
+.gd-auth-anim-box.gd-disconnected .gd-loader-unlink-path {
+  stroke: #8A3B2A !important;
+  opacity: 1 !important;
+  animation: gd-draw-unlink 0.45s 0.14s cubic-bezier(0.65, 0, 0.45, 1) forwards !important;
+}
+@keyframes gd-draw-unlink {
+  to { stroke-dashoffset: 0; }
 }
 
 /* Error Mode */
@@ -22010,6 +22091,33 @@ article.gd-card-collapsed,
 .gd-m-ward-count.urgent {
   background: rgba(163, 59, 49, 0.13);
   color: #9A2B22;
+}
+
+.gd-m-ward-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gd-m-ward-disconnect-btn {
+  font-family: var(--gd-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(163, 59, 49, 0.08);
+  border: 1px solid rgba(163, 59, 49, 0.22);
+  color: #8F2B2B;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.gd-m-ward-disconnect-btn:active {
+  background: rgba(163, 59, 49, 0.18);
+  transform: scale(0.97);
 }
 
 .gd-m-pair-box {

@@ -740,6 +740,7 @@ export class DashboardShell {
           void this.refresh();
         },
         onConnectWard: (this.apiClient || this.isMockService()) ? (code) => this.connectInvitation(code) : undefined,
+        onDisconnectWard: (wardId) => this.disconnectWard(wardId),
         onOpenAuth: () => this.openAuthModal(),
         onSignOut: () => this.handleSignOut(),
         pushStatus: this.state.pushStatus,
