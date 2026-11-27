@@ -861,7 +861,14 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       addWardLink.addEventListener('click', () => {
         showConnectWardModal({
           onConnect: async (code) => {
-            return await props.onConnectInvitation!(code);
+            try {
+              return await props.onConnectInvitation!(code);
+            } catch (err: unknown) {
+              return {
+                success: false,
+                error: err instanceof Error ? err.message : 'An unexpected error occurred while connecting.',
+              };
+            }
           },
         });
       });
@@ -985,7 +992,14 @@ export function renderOverview(props: OverviewProps): HTMLElement {
       addBtn.addEventListener('click', () => {
         showConnectWardModal({
           onConnect: async (code) => {
-            return await props.onConnectInvitation!(code);
+            try {
+              return await props.onConnectInvitation!(code);
+            } catch (err: unknown) {
+              return {
+                success: false,
+                error: err instanceof Error ? err.message : 'An unexpected error occurred while connecting.',
+              };
+            }
           },
         });
       });

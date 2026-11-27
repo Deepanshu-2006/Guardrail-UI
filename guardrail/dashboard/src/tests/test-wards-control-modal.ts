@@ -188,11 +188,14 @@ const mockDocument = {
   createElement(tag: string) {
     return new MockDOMElement(tag);
   },
+  createElementNS(_ns: string, tag: string) {
+    return new MockDOMElement(tag);
+  },
   getElementById(id: string) {
-    return null;
+    return mockDocument.body.querySelector(`#${id}`);
   },
   querySelectorAll(sel: string) {
-    return [];
+    return mockDocument.body.querySelectorAll(sel);
   },
   body: new MockDOMElement('BODY'),
   addEventListener() {},
@@ -468,6 +471,52 @@ async function runTests(): Promise<void> {
   const photoImg = photoModal.querySelector('.gd-ward-control-avatar-img') as any;
   assertTrue(photoImg !== null, 'Renders .gd-ward-control-avatar-img when ward imageUrl is provided');
   assertEquals(photoImg?.src, 'https://example.com/ward-photo.jpg', 'Ward avatar image src matches real account image');
+
+  // ---------------------------------------------------------------------------
+  // Suite 7: "+ Connect Another Ward" Prompts for Pairing Code Before Connecting
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Test Suite 7: Overview "+ Connect Another Ward" Code Prompt');
+  const submittedCodes: string[] = [];
+  const multiOverview = renderOverview({
+    profile: { actorId: 'tc_deepanshu', role: 'TRUSTED_CONTACT', isAuthenticated: true },
+    pendingCount: 0,
+    pendingRequests: [],
+    connectedWards: mockWards,
+    onConnectInvitation: async (code: string) => {
+      submittedCodes.push(code);
+      return { success: true, wardId: 'usr_new_ward', wardName: 'New Ward' };
+    },
+  });
+
+  const addAnotherBtn = multiOverview.querySelector('.gd-link-add-ward');
+  assertTrue(addAnotherBtn !== null, 'Overview renders "+ Connect Another Ward" button');
+  addAnotherBtn?.click();
+
+  const connectModalRoot = mockDocument.getElementById('gd-connect-modal-root');
+  assertTrue(connectModalRoot !== null, 'Clicking "+ Connect Another Ward" opens connect modal');
+  const modalTitle = connectModalRoot?.querySelector('#gd-connect-modal-title');
+  assertEquals(modalTitle?.textContent, 'Connect Another Ward', 'Modal starts in code-entry step instead of connecting immediately');
+  assertEquals(submittedCodes.length, 0, 'Does NOT call onConnectInvitation with undefined before user enters a code');
+
+  const codeInput = connectModalRoot?.querySelector('#gd-connect-modal-code-input') as any;
+  assertTrue(codeInput !== null, 'Code entry input is rendered inside modal');
+  const modalForm = connectModalRoot?.querySelector('form');
+  assertTrue(modalForm !== null, 'Code entry form is rendered inside modal');
+
+  // Invalid format stays on code-entry step
+  if (codeInput && modalForm) {
+    codeInput.value = 'bad';
+    modalForm.dispatchEvent({ type: 'submit' });
+    assertEquals(submittedCodes.length, 0, 'Rejects invalid code format without calling backend');
+
+    // Valid 8-digit code normalizes to XXXX-YYYY and starts connection
+    codeInput.value = '48291735';
+    modalForm.dispatchEvent({ type: 'submit' });
+    assertEquals(submittedCodes, ['4829-1735'], 'Normalizes entered code and submits to onConnectInvitation');
+    const connectingTitle = connectModalRoot?.querySelector('#gd-connect-modal-title');
+    assertEquals(connectingTitle?.textContent, 'Connecting to Ward', 'Transitions cleanly to Connecting to Ward state after valid code');
+    connectModalRoot?.querySelector('.gd-auth-modal-close-btn')?.click();
+  }
 
   console.log('\n======================================================');
   console.log('🎉 ALL WARDS CONTROL MODAL TESTS PASSED (100%)!');
