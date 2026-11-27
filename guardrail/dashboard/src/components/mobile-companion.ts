@@ -22,6 +22,165 @@ import { setupInteractiveBottomSheet } from './mobile-sheet-utils.js';
 import { attachPairingCodeKeyboard, closeActivePairingKeyboard } from './pairing-code-keyboard.js';
 import { showConnectWardModal, showDisconnectWardModal } from './connect-modal.js';
 
+function extractPairingCodeFromQr(rawValue: string): string | null {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return null;
+  const inviteMatch = trimmed.match(/[?&]invite=([^&#\s]+)/i);
+  const candidate = inviteMatch?.[1] ? decodeURIComponent(inviteMatch[1]).trim() : trimmed;
+  const upper = candidate.toUpperCase();
+  const normalized = /^\d{8}$/.test(upper) ? `${upper.slice(0, 4)}-${upper.slice(4, 8)}` : upper;
+  if (/^(?:\d{4}-\d{4}|GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}|INV-[A-Z0-9_-]+)$/.test(normalized)) {
+    return normalized;
+  }
+  return null;
+}
+
+function openQrScannerModal(onCodeDetected: (code: string) => void): void {
+  if (typeof document === 'undefined' || !document.body) return;
+  document.getElementById('gd-qr-scanner-root')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'gd-qr-scanner-root';
+  backdrop.className = 'gd-qr-scanner-backdrop';
+  backdrop.setAttribute('role', 'dialog');
+  backdrop.setAttribute('aria-modal', 'true');
+  backdrop.setAttribute('aria-label', 'Scan Pairing QR Code');
+
+  const card = document.createElement('div');
+  card.className = 'gd-qr-scanner-card';
+
+  const header = document.createElement('div');
+  header.className = 'gd-qr-scanner-header';
+
+  const titleEl = document.createElement('span');
+  titleEl.className = 'gd-qr-scanner-title';
+  titleEl.textContent = 'Scan Pairing QR';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'gd-qr-scanner-close';
+  closeBtn.setAttribute('aria-label', 'Close scanner');
+  closeBtn.textContent = '✕';
+
+  header.appendChild(titleEl);
+  header.appendChild(closeBtn);
+
+  const viewport = document.createElement('div');
+  viewport.className = 'gd-qr-scanner-viewport';
+
+  const video = document.createElement('video');
+  video.className = 'gd-qr-scanner-video';
+  video.setAttribute('playsinline', '');
+  video.setAttribute('autoplay', '');
+  video.muted = true;
+
+  const frame = document.createElement('div');
+  frame.className = 'gd-qr-scanner-frame';
+
+  viewport.appendChild(video);
+  viewport.appendChild(frame);
+
+  const statusEl = document.createElement('div');
+  statusEl.className = 'gd-qr-scanner-status';
+  statusEl.textContent = 'Point camera at the QR code in Guardrail';
+
+  card.appendChild(header);
+  card.appendChild(viewport);
+  card.appendChild(statusEl);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+
+  let stream: MediaStream | null = null;
+  let rafId: number | null = null;
+  let closed = false;
+
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      stream = null;
+    }
+    document.removeEventListener('keydown', onKeyDown);
+    backdrop.remove();
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') cleanup();
+  };
+  document.addEventListener('keydown', onKeyDown);
+  closeBtn.addEventListener('click', cleanup);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) cleanup();
+  });
+
+  const BarcodeDetectorCtor = (window as unknown as {
+    BarcodeDetector?: new (opts: { formats: string[] }) => {
+      detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
+    };
+  }).BarcodeDetector;
+
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    statusEl.classList.add('error');
+    statusEl.textContent =
+      'Camera requires HTTPS or localhost (adb reverse tcp:5173 tcp:5173). Enter the 8-digit code manually.';
+    return;
+  }
+
+  if (!BarcodeDetectorCtor) {
+    statusEl.classList.add('error');
+    statusEl.textContent =
+      'Live QR scanning is not supported in this browser. Use your phone Camera app or enter the 8-digit code.';
+    return;
+  }
+
+  const detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+
+  void navigator.mediaDevices
+    .getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+    .then(async (mediaStream) => {
+      if (closed) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      stream = mediaStream;
+      video.srcObject = mediaStream;
+      await video.play();
+
+      let lastScanAt = 0;
+      const scanLoop = (ts: number) => {
+        if (closed) return;
+        if (ts - lastScanAt >= 180 && video.readyState >= 2) {
+          lastScanAt = ts;
+          void detector
+            .detect(video)
+            .then((codes) => {
+              if (closed) return;
+              for (const entry of codes) {
+                const parsed = entry.rawValue ? extractPairingCodeFromQr(entry.rawValue) : null;
+                if (parsed) {
+                  cleanup();
+                  onCodeDetected(parsed);
+                  return;
+                }
+              }
+            })
+            .catch(() => {
+              // Ignore transient frame decode errors
+            });
+        }
+        rafId = requestAnimationFrame(scanLoop);
+      };
+      rafId = requestAnimationFrame(scanLoop);
+    })
+    .catch(() => {
+      if (closed) return;
+      statusEl.classList.add('error');
+      statusEl.textContent = 'Camera permission denied. Allow camera access or enter the 8-digit code.';
+    });
+}
+
 function formatWardDisplayName(name?: string | null, requesterId?: string | null): string {
   if (name && name.trim()) return name.trim();
   if (!requesterId) return 'Protected Ward';
@@ -1435,10 +1594,29 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
       const pairBox = document.createElement('form');
       pairBox.className = 'gd-m-pair-box';
 
+      const pairHeader = document.createElement('div');
+      pairHeader.className = 'gd-m-pair-header';
+
       const pairLabel = document.createElement('label');
       pairLabel.className = 'gd-m-section-kicker';
       pairLabel.setAttribute('for', 'gd-m-pair-input');
       pairLabel.textContent = 'Pair another ward';
+
+      const scanQrBtn = document.createElement('button');
+      scanQrBtn.type = 'button';
+      scanQrBtn.className = 'gd-m-scan-qr-btn';
+      scanQrBtn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 14h3v3h-3zM20 14v3h-3M14 20h6"/>
+        </svg>
+        <span>Scan QR</span>
+      `;
+
+      pairHeader.appendChild(pairLabel);
+      pairHeader.appendChild(scanQrBtn);
 
       const pairRow = document.createElement('div');
       pairRow.className = 'gd-m-pair-row';
@@ -1465,7 +1643,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
 
       pairRow.appendChild(input);
       pairRow.appendChild(submitBtn);
-      pairBox.appendChild(pairLabel);
+      pairBox.appendChild(pairHeader);
       pairBox.appendChild(pairRow);
       pairBox.appendChild(msgEl);
 
@@ -1475,6 +1653,36 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
         form: pairBox,
         msgEl,
       });
+
+      const connectWithPopup = (codeToPair: string) => {
+        msgEl.textContent = '';
+        pairingKeyboard.close();
+        showConnectWardModal({
+          code: codeToPair,
+          onConnect: async (codeToConnect) => {
+            const res = await props.onConnectWard!(codeToConnect);
+            return {
+              success: res.success,
+              wardId: res.wardId,
+              wardName: res.wardName,
+              wardEmail: res.wardEmail,
+              error: res.error || (!res.success ? res.message : undefined),
+            };
+          },
+          onSuccess: () => {
+            pairingKeyboard.reset();
+            msgEl.textContent = '';
+          },
+        });
+      };
+
+      scanQrBtn.addEventListener('click', () => {
+        pairingKeyboard.close();
+        openQrScannerModal((scannedCode) => {
+          connectWithPopup(scannedCode);
+        });
+      });
+
       pairBox.addEventListener('submit', async (e) => {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         const rawCode = (input.value || '').trim().toUpperCase();
@@ -1494,25 +1702,7 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
           pairingKeyboard.setStatus(hint, 'error');
           return;
         }
-        msgEl.textContent = '';
-        pairingKeyboard.close();
-        showConnectWardModal({
-          code: normalizedCode,
-          onConnect: async (codeToConnect) => {
-            const res = await props.onConnectWard!(codeToConnect);
-            return {
-              success: res.success,
-              wardId: res.wardId,
-              wardName: res.wardName,
-              wardEmail: res.wardEmail,
-              error: res.error || (!res.success ? res.message : undefined),
-            };
-          },
-          onSuccess: () => {
-            pairingKeyboard.reset();
-            msgEl.textContent = '';
-          },
-        });
+        connectWithPopup(normalizedCode);
       });
       main.appendChild(pairBox);
     }
