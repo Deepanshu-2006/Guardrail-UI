@@ -212,6 +212,23 @@ export function createHeaderLanternProp(): HTMLElement {
     void lanternBtn.offsetWidth;
     lanternBtn.classList.add('is-toggled');
   });
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const onLanternReset = (ev: Event) => {
+      if (typeof document !== 'undefined' && !document.contains(lanternBtn)) {
+        window.removeEventListener('gd-lantern-ambience-sync', onLanternReset);
+        return;
+      }
+      const lit = (ev as CustomEvent<{ lit?: boolean }>).detail?.lit;
+      if (lit === false) {
+        lanternBtn.classList.remove('is-lit', 'is-toggled');
+        lanternBtn.setAttribute('aria-pressed', 'false');
+        lanternBtn.title = 'Click to light lantern';
+        if (noteEl) noteEl.textContent = 'Light lantern';
+      }
+    };
+    window.addEventListener('gd-lantern-ambience-sync', onLanternReset);
+  }
   return lanternBtn;
 }
 
@@ -4236,20 +4253,24 @@ export function createPendingSandstormOverlay(): HTMLElement {
 
     const active = isStormActive();
     const pendingVisible = isPendingViewVisible();
-    if (!pendingVisible && lingerLeaves.length > 0) {
-      lingerLeaves.length = 0;
-    }
-    if (wasStormActive && !active && pendingVisible) {
+    if (!pendingVisible) {
+      if (lingerLeaves.length > 0) lingerLeaves.length = 0;
+      stormAlpha = 0;
+      closingSurge = 0;
+      wasStormActive = false;
+    } else if (wasStormActive && !active) {
       spawnLingerLeaves();
     }
-    wasStormActive = active;
+    if (pendingVisible) wasStormActive = active;
 
     if (closingSurge > 0) {
       closingSurge = Math.max(0, closingSurge - dt);
     }
 
-    const targetAlpha = active ? 1 : 0;
-    stormAlpha += (targetAlpha - stormAlpha) * Math.min(1, dt * (active ? 4.8 : 3.0));
+    const targetAlpha = active && pendingVisible ? 1 : 0;
+    stormAlpha = pendingVisible
+      ? stormAlpha + (targetAlpha - stormAlpha) * Math.min(1, dt * (active ? 4.8 : 3.0))
+      : 0;
     // Dramatic natural wind surges while active, plus an intensified farewell gust during Option-2 calm-down
     const waveGust = active
       ? closingSurge > 0
@@ -8873,10 +8894,16 @@ export function createHistoryRewindOverlay(): HTMLElement {
     if (wasRewindActive && !active && historyVisible) {
       spawnLingerPages();
     }
-    wasRewindActive = active;
+    wasRewindActive = active && historyVisible;
 
-    const targetAlpha = active ? 1 : 0;
-    rewindAlpha += (targetAlpha - rewindAlpha) * Math.min(1, dt * (active ? 4.2 : 2.5));
+    const targetAlpha = active && historyVisible ? 1 : 0;
+    if (!historyVisible) {
+      rewindAlpha = 0;
+      journeyTime = 0;
+      introRemaining = 0;
+    } else {
+      rewindAlpha += (targetAlpha - rewindAlpha) * Math.min(1, dt * (active ? 4.2 : 2.5));
+    }
 
     const effectiveJourneyTime = Math.min(journeyTime, TOTAL_CYCLE_DURATION - 0.001);
     const currentEraIdx = Math.floor(effectiveJourneyTime / ERA_DURATION) % ERAS.length;
@@ -11516,6 +11543,14 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
       }
     }
 
+    if (!document.querySelector('#view-settings.active') && !active) {
+      deploy = 0;
+      notes.length = 0;
+      ctx.clearRect(0, 0, width, height);
+      rafId = null;
+      lastTs = 0;
+      return;
+    }
     if (active || deploy > 0.015) {
       rafId = requestAnimationFrame(step);
     } else {
@@ -11555,4 +11590,52 @@ export function createSettingsCabinetClockworkOverlay(): HTMLElement {
   }
 
   return canvas;
+}
+
+/**
+ * Stops all active page-level interactive prop animations, overlays, audio tracks,
+ * and shared states when navigating away to another dashboard page.
+ */
+export function stopAllInteractivePropAnimations(): void {
+  sharedLanternLit = false;
+  sharedHourglassAngle = 0;
+  sharedBulbASand = 0;
+  sharedStormCalmingRemaining = 0;
+  sharedWatchOpen = false;
+  sharedWorkshopOpen = false;
+  historyEraLiveState.active = false;
+  historyEraLiveState.weights = [0, 0, 0, 0];
+
+  stopAllHistoryAudioTracks(true);
+  setHistorySfxBusActive(false);
+
+  if (typeof document !== 'undefined') {
+    const appEl = document.querySelector?.('.gd-dashboard-app');
+    if (appEl) {
+      appEl.classList?.remove?.(
+        'gd-lantern-ambience-on',
+        'gd-pending-sandstorm-on',
+        'gd-history-rewind-on',
+        'gd-settings-workshop-on',
+      );
+      if (typeof appEl.removeAttribute === 'function') {
+        appEl.removeAttribute('data-history-era');
+      }
+    }
+    const titleEl = typeof document.getElementById === 'function' ? document.getElementById('history-title') : null;
+    if (titleEl?.style && typeof titleEl.style.removeProperty === 'function') {
+      titleEl.style.removeProperty('--era-c0');
+      titleEl.style.removeProperty('--era-c1');
+      titleEl.style.removeProperty('--era-c2');
+      titleEl.style.removeProperty('--era-glow-top');
+      titleEl.style.removeProperty('--era-glow-bottom');
+    }
+  }
+
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('gd-lantern-ambience-sync', { detail: { lit: false } }));
+    window.dispatchEvent(new CustomEvent('gd-pending-storm-sync'));
+    window.dispatchEvent(new CustomEvent('gd-watch-toggle', { detail: { open: false } }));
+    window.dispatchEvent(new CustomEvent('gd-workshop-toggle', { detail: { open: false } }));
+  }
 }

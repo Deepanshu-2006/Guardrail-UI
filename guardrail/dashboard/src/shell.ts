@@ -34,6 +34,7 @@ import {
   createLanternFirefliesOverlay,
   createPendingSandstormOverlay,
   createSettingsCabinetClockworkOverlay,
+  stopAllInteractivePropAnimations,
 } from './components/interactive-props.js';
 import { renderPendingApprovals } from './components/pending.js';
 import { renderDecisionHistory, renderHistoryRecordDetail } from './components/history.js';
@@ -1804,15 +1805,7 @@ export class DashboardShell {
 
     if (this.state.activeView === view) return;
 
-    if (view !== 'pending' && this.appWrapper) {
-      this.appWrapper.classList.remove('gd-pending-sandstorm-on');
-    }
-    if (view !== 'history' && this.appWrapper) {
-      this.appWrapper.classList.remove('gd-history-rewind-on');
-    }
-    if (view !== 'settings' && this.appWrapper) {
-      this.appWrapper.classList.remove('gd-settings-workshop-on');
-    }
+    stopAllInteractivePropAnimations();
 
     resetGreetingWidgetEntrance();
     this.state.activeView = view;
