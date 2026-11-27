@@ -8439,6 +8439,29 @@ textarea:focus-visible,
   color: #8F2B2B;
 }
 
+.gd-mobile-decision-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  background: rgba(20, 27, 17, 0.56);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: gd-fade-in 0.2s ease both;
+}
+
+.gd-mobile-decision-backdrop .gd-decision-moment {
+  width: 100%;
+  max-width: 380px;
+}
+
+.gd-mobile-decision-backdrop.gd-fade-out {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
 .gd-m-pair-row {
   display: flex;
   gap: 8px;
@@ -15639,6 +15662,29 @@ article.gd-card-collapsed,
   color: #8F2B2B;
 }
 
+.gd-mobile-decision-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  background: rgba(20, 27, 17, 0.56);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: gd-fade-in 0.2s ease both;
+}
+
+.gd-mobile-decision-backdrop .gd-decision-moment {
+  width: 100%;
+  max-width: 380px;
+}
+
+.gd-mobile-decision-backdrop.gd-fade-out {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
 .gd-m-pair-row {
   display: flex;
   gap: 8px;
@@ -22464,6 +22510,29 @@ article.gd-card-collapsed,
 
 .gd-qr-scanner-status.error {
   color: #8F2B2B;
+}
+
+.gd-mobile-decision-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  background: rgba(20, 27, 17, 0.56);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: gd-fade-in 0.2s ease both;
+}
+
+.gd-mobile-decision-backdrop .gd-decision-moment {
+  width: 100%;
+  max-width: 380px;
+}
+
+.gd-mobile-decision-backdrop.gd-fade-out {
+  opacity: 0;
+  transition: opacity 0.18s ease;
 }
 
 .gd-m-pair-row {

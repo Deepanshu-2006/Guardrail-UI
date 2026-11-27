@@ -639,6 +639,9 @@ if (typeof document !== 'undefined') {
                   if (currentEmail && typeof localStorage !== 'undefined') {
                     localStorage.setItem('guardrail_user_email', currentEmail);
                   }
+                  const assignedWards = Array.isArray((payload.data as any)?.assignedWards)
+                    ? (payload.data as any).assignedWards
+                    : undefined;
                   shell.setProfile({
                     actorId: payload.data.actorId,
                     role: payload.data.role,
@@ -651,7 +654,9 @@ if (typeof document !== 'undefined') {
                     assignedWardId: (payload.data as any)?.assignedWardId || undefined,
                     assignedWardName: (payload.data as any)?.assignedWardName || undefined,
                     assignedWardEmail: (payload.data as any)?.assignedWardEmail || undefined,
+                    assignedWards,
                   });
+                  void shell.refresh();
                 }
               })
               .catch(() => {});

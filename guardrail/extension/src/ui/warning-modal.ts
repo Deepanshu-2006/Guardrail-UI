@@ -744,7 +744,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     /* Top Masthead with prominent warning icon and clean close trigger */
     .gr-header {
-      padding: 20px 34px 14px;
+      padding: 18px 28px 10px;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -825,7 +825,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     /* Main Content Body */
     .gr-body {
-      padding: 6px 34px 26px;
+      padding: 4px 28px 18px;
       max-height: 72vh;
       overflow-y: auto;
     }
@@ -833,12 +833,33 @@ export function showWarningModal(props: WarningModalProps): () => void {
     /* Primary Warning Message */
     .gr-title {
       font-family: 'Instrument Serif', Georgia, serif;
-      font-size: 38px;
+      font-size: 31px;
       font-weight: 400;
       color: #25291F;
       letter-spacing: -0.02em;
       line-height: 1.15;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+    }
+
+    .gr-view-warning .gr-destination-pill,
+    .gr-view-warning .gr-guidance-note,
+    .gr-view-warning .gr-diagnostics {
+      display: none;
+    }
+
+    .gr-view-warning .gr-destination-card {
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+
+    .gr-view-warning .gr-section {
+      padding: 12px 16px;
+      margin-bottom: 0;
+    }
+
+    .gr-view-warning .gr-footer {
+      padding: 14px 28px 18px;
+      border-top: 1px solid #EAE4D3;
     }
 
     .gr-subtitle {

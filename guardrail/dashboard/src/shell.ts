@@ -48,6 +48,7 @@ import { renderMobileActionSheet } from './components/mobile-action-sheet.js';
 import { MobileTab, renderMobileCompanion } from './components/mobile-companion.js';
 import { renderPendingApprovalsModal } from './components/pending-approvals-modal.js';
 import { renderWardsControlModal } from './components/wards-control-modal.js';
+import { renderDecisionConfirmation } from './components/decision-confirmation.js';
 
 export class DashboardShell {
   private readonly rootContainer: HTMLElement;
@@ -756,7 +757,8 @@ export class DashboardShell {
       if (!this.hasPromptedMobileAuth && !this.state.contactProfile?.isAuthenticated && !this.isMockService()) {
         this.hasPromptedMobileAuth = true;
         queueMicrotask(() => {
-          if (!this.isDestroyed && !this.state.contactProfile?.isAuthenticated) {
+          const hasExistingAuthModal = typeof document !== 'undefined' && Boolean(document.getElementById('gd-auth-modal-root'));
+          if (!this.isDestroyed && !this.state.contactProfile?.isAuthenticated && !hasExistingAuthModal) {
             this.openAuthModal();
           }
         });
@@ -808,8 +810,8 @@ export class DashboardShell {
           }
           const existingAvatar = existingTopbar.querySelector('.gd-m-avatar-btn');
           const freshAvatar = freshTopbar.querySelector('.gd-m-avatar-btn');
-          if (existingAvatar && freshAvatar && existingAvatar.textContent !== freshAvatar.textContent) {
-            existingAvatar.innerHTML = freshAvatar.innerHTML;
+          if (existingAvatar && freshAvatar && (existingAvatar.className !== freshAvatar.className || existingAvatar.innerHTML !== freshAvatar.innerHTML)) {
+            existingAvatar.replaceWith(freshAvatar);
           }
 
           const existingRoller = existingTopbar.querySelector('.gd-m-top-roller') as HTMLElement | null;
@@ -3623,12 +3625,18 @@ export class DashboardShell {
         wardName,
         isSubmitting: this.isSubmittingDecision,
         onApprove: async (id, reason) => {
-          await this.submitDecision(id, 'APPROVED', reason);
+          const resolved = await this.submitDecision(id, 'APPROVED', reason);
           this.closeMobileActionSheet();
+          if (resolved) {
+            this.showMobileDecisionConfirmation(resolved, 'APPROVED');
+          }
         },
         onReject: async (id, reason) => {
-          await this.submitDecision(id, 'REJECTED', reason);
+          const resolved = await this.submitDecision(id, 'REJECTED', reason);
           this.closeMobileActionSheet();
+          if (resolved) {
+            this.showMobileDecisionConfirmation(resolved, 'REJECTED');
+          }
         },
         onClose: () => {
           this.closeMobileActionSheet();
@@ -3655,6 +3663,52 @@ export class DashboardShell {
         sheetEl.remove();
       }
     }
+  }
+
+  private showMobileDecisionConfirmation(request: ApprovalRequest, decision: 'APPROVED' | 'REJECTED'): void {
+    if (typeof document === 'undefined' || !document.body) return;
+    document.getElementById('gd-mobile-decision-popup')?.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'gd-mobile-decision-popup';
+    backdrop.className = 'gd-mobile-decision-backdrop';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+
+    let isClosed = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const close = () => {
+      if (isClosed) return;
+      isClosed = true;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      document.removeEventListener('keydown', onKey);
+      backdrop.classList.add('gd-fade-out');
+      setTimeout(() => backdrop.remove(), 180);
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey);
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) close();
+    });
+
+    const card = renderDecisionConfirmation({
+      request,
+      decision,
+      decidedAt: request.resolvedAt || request.decision?.decidedAt || new Date(),
+      onDismiss: close,
+    });
+    card.addEventListener('click', close);
+
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+
+    timer = setTimeout(close, 2600);
   }
 
   /**
