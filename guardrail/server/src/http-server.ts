@@ -1021,6 +1021,7 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       void (async () => {
         try {
           let callerActorId: string | null = null;
+          let callerRole: string | null = null;
           const authHeader = request.headers.authorization;
           const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
             ? authHeader.slice(7).trim()
@@ -1030,33 +1031,53 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
               const auth = await options.tokenVerifier.verifyToken(token);
               if (auth?.isAuthenticated && auth.actorId) {
                 callerActorId = auth.actorId;
+                callerRole = auth.role;
               }
             } catch {}
+          }
+
+          if (!callerActorId) {
+            response.statusCode = 401;
+            response.end(JSON.stringify({
+              success: false,
+              error: {
+                code: 'UNAUTHENTICATED',
+                message: 'Valid Bearer authentication token required.',
+                statusCode: 401,
+              },
+            }));
+            return;
           }
 
           const db = (runtime.contactRegistry as any)?.database;
           const contacts: any[] = [];
           if (db) {
             let rows: { payload_json: string }[] = [];
-            if (callerActorId) {
+            if (callerRole === 'USER') {
+              rows = db.prepare(
+                "SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' AND user_id = ? ORDER BY rowid"
+              ).all(callerActorId) as { payload_json: string }[];
+            } else if (callerRole === 'TRUSTED_CONTACT') {
+              rows = db.prepare(
+                "SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' AND id = ? ORDER BY rowid"
+              ).all(callerActorId) as { payload_json: string }[];
+            } else {
               rows = db.prepare(
                 "SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' AND (id = ? OR user_id = ?) ORDER BY rowid"
               ).all(callerActorId, callerActorId) as { payload_json: string }[];
-            }
-            if (!rows || rows.length === 0) {
-              rows = db.prepare(
-                "SELECT payload_json FROM trusted_contacts WHERE status = 'ACTIVE' ORDER BY rowid"
-              ).all() as { payload_json: string }[];
             }
 
             const deduped = new Map<string, any>();
             for (const r of rows) {
               try {
                 const parsed = JSON.parse(r.payload_json);
-                const wId = String(parsed.wardId || parsed.userId || '').toLowerCase();
-                const cId = String(parsed.contactId || parsed.id || '').toLowerCase();
-                const key = callerActorId ? `${wId}:${cId}` : (wId || cId);
-                if (!deduped.has(key)) {
+                const wId = String(parsed.wardId || parsed.userId || '').trim().toLowerCase();
+                const cId = String(parsed.contactId || parsed.id || '').trim().toLowerCase();
+                const cEmail = String(parsed.contactEmail || '').trim().toLowerCase();
+                const key = callerRole === 'USER'
+                  ? (cEmail || cId)
+                  : (wId || cId);
+                if (key && !deduped.has(key)) {
                   deduped.set(key, parsed);
                 }
               } catch {}

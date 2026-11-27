@@ -102,66 +102,6 @@ export async function initializePopup(): Promise<void> {
     // safe fallback
   }
 
-  // Check cached guardian contacts from local storage to display paired state on frame 0
-  let cachedContacts: ActiveGuardianContact[] | null = null;
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const localItem = localStorage.getItem('guardrailActiveContacts');
-      if (localItem) {
-        const parsed = JSON.parse(localItem);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          cachedContacts = parsed;
-        }
-      }
-    }
-    if (!cachedContacts && typeof chrome !== 'undefined' && chrome.storage?.local) {
-      const items = await new Promise<Record<string, unknown>>((resolve) => {
-        chrome.storage.local.get(['guardrailActiveContacts'], resolve);
-      });
-      if (typeof items.guardrailActiveContacts === 'string') {
-        const parsed = JSON.parse(items.guardrailActiveContacts);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          cachedContacts = parsed;
-        }
-      } else if (Array.isArray(items.guardrailActiveContacts) && items.guardrailActiveContacts.length > 0) {
-        cachedContacts = items.guardrailActiveContacts as ActiveGuardianContact[];
-      }
-    }
-  } catch {}
-
-const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLZDNQRGk4NWtqbU42TERzYWhtZVljckxaQkUtdGFFUFNnXzdYd0FYSU1mRUd6clVFcz1zMTAwMC1jIiwicyI6InViRllhQ2hLbGtQS2FXR0hCTVRBODNqVmozVW5RV00zQ0FScVVnSTlxSWcifQ';
-
-  // If in development and no contacts cached yet, provide default paired guardian Deepanshu Khatri
-  if (cachedContacts) {
-    cachedContacts = cachedContacts.map((c) => {
-      if (
-        c.contactEmail?.includes('balleballepurrr') ||
-        c.contactName?.includes('Balleballepurrr') ||
-        c.name?.includes('Balleballepurrr') ||
-        c.contactAvatarUrl?.includes('LookpQ') ||
-        c.avatarUrl?.includes('LookpQ')
-      ) {
-        return {
-          ...c,
-          name: 'Deepanshu Khatri',
-          contactName: 'Deepanshu Khatri',
-          contactEmail: 'deepanshukhatri20061972@gmail.com',
-          contactAvatarUrl: DEEPANSHU_CLERK_AVATAR,
-          avatarUrl: DEEPANSHU_CLERK_AVATAR,
-          relationshipLabel: 'Designated Caretaker',
-        };
-      }
-      return c;
-    });
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem('guardrailActiveContacts', JSON.stringify(cachedContacts));
-      } catch {}
-    }
-  } else {
-    cachedContacts = null;
-  }
-
   // 1. Resolve and render ward identity FIRST, and sync to backend
   const identity = await verifyWardIdentity();
   renderWardAccountCard(identity);
@@ -169,12 +109,50 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
     await syncWardIdentityToBackend(identity);
   }
 
+  // Check cached guardian contacts only if scoped to the current authenticated ward identity
+  let cachedContacts: ActiveGuardianContact[] | null = null;
+  try {
+    let rawCache: unknown = null;
+    if (typeof localStorage !== 'undefined') {
+      const localItem = localStorage.getItem('guardrailActiveContacts');
+      if (localItem) {
+        rawCache = JSON.parse(localItem);
+      }
+    }
+    if (!rawCache && typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const items = await new Promise<Record<string, unknown>>((resolve) => {
+        chrome.storage.local.get(['guardrailActiveContacts'], resolve);
+      });
+      if (typeof items.guardrailActiveContacts === 'string') {
+        rawCache = JSON.parse(items.guardrailActiveContacts);
+      } else if (items.guardrailActiveContacts && typeof items.guardrailActiveContacts === 'object') {
+        rawCache = items.guardrailActiveContacts;
+      }
+    }
+    if (
+      rawCache &&
+      !Array.isArray(rawCache) &&
+      typeof rawCache === 'object' &&
+      'actorId' in rawCache &&
+      'contacts' in rawCache &&
+      (rawCache as { actorId?: string }).actorId === (identity?.actorId ?? null) &&
+      Array.isArray((rawCache as { contacts?: unknown }).contacts)
+    ) {
+      const deduped = deduplicateGuardianContacts((rawCache as { contacts: ActiveGuardianContact[] }).contacts);
+      if (deduped.length > 0) {
+        cachedContacts = deduped;
+      }
+    } else {
+      clearCachedActiveContacts();
+    }
+  } catch {}
+
   // 2. Render status into popup DOM - starts compact (360px) looking exactly like before
   renderPopupStatus(report, onboardingState, isBackendLive, identity);
 
   if (cachedContacts && cachedContacts.length > 0) {
     const primaryContact = cachedContacts[0];
-    const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
+    const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
     updatePopupToPairedState(primaryName, cachedContacts);
   } else {
     updatePopupToUnpairedState();
@@ -184,7 +162,7 @@ const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcm
   const coverage = await checkActiveGuardianCoverage();
   if (coverage.isLinked && coverage.contacts.length > 0) {
     const primaryContact = coverage.contacts[0];
-    const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
+    const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
     updatePopupToPairedState(primaryName, coverage.contacts);
   } else {
     updatePopupToUnpairedState();
@@ -212,6 +190,39 @@ export interface ActiveGuardianContact {
   contactAvatarUrl?: string;
   avatarUrl?: string;
   relationshipLabel?: string;
+}
+
+const DEEPANSHU_CLERK_AVATAR = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLZDNQRGk4NWtqbU42TERzYWhtZVljckxaQkUtdGFFUFNnXzdYd0FYSU1mRUd6clVFcz1zMTAwMC1jIiwicyI6InViRllhQ2hLbGtQS2FXR0hCTVRBODNqVmozVW5RV00zQ0FScVVnSTlxSWcifQ';
+
+/**
+ * Deduplicates guardian contact entries by normalized email or fallback contact ID.
+ */
+function deduplicateGuardianContacts(contacts: readonly ActiveGuardianContact[]): ActiveGuardianContact[] {
+  const seen = new Set<string>();
+  const unique: ActiveGuardianContact[] = [];
+  for (let i = 0; i < contacts.length; i++) {
+    const c = contacts[i];
+    const emailKey = (c.contactEmail || '').trim().toLowerCase();
+    const idKey = (c.id || '').trim().toLowerCase();
+    const nameKey = (c.contactName || c.name || '').trim().toLowerCase();
+    const dedupKey = emailKey || idKey || nameKey || `idx_${i}`;
+    if (!seen.has(dedupKey)) {
+      seen.add(dedupKey);
+      unique.push(c);
+    }
+  }
+  return unique;
+}
+
+function clearCachedActiveContacts(): void {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem('guardrailActiveContacts');
+    } catch {}
+  }
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    chrome.storage.local.remove(['guardrailActiveContacts']);
+  }
 }
 
 /**
@@ -260,30 +271,32 @@ async function checkActiveGuardianCoverage(): Promise<{
       }
       const body = (await res.json()) as { success: boolean; data?: any[] };
       const rawList = Array.isArray(body.data) ? body.data : [];
-      const contacts: ActiveGuardianContact[] = rawList.map((c) => {
-        const isBalle =
-          (c.contactEmail || '').includes('balleballepurrr') ||
-          (c.contactName || '').includes('Balleballepurrr') ||
-          (c.name || '').includes('Balleballepurrr') ||
-          (c.contactAvatarUrl || '').includes('LookpQ') ||
-          (c.avatarUrl || '').includes('LookpQ');
-        const avatar = isBalle
-          ? DEEPANSHU_CLERK_AVATAR
-          : (c.contactAvatarUrl || c.avatarUrl || DEEPANSHU_CLERK_AVATAR);
+      const mappedContacts: ActiveGuardianContact[] = rawList.map((c) => {
+        const contactName = c.contactName || c.name || c.contactEmail || 'Designated Caretaker';
+        const contactEmail = typeof c.contactEmail === 'string' ? c.contactEmail : '';
+        const avatar = c.contactAvatarUrl || c.avatarUrl || undefined;
         return {
           id: String(c.id || c.contactId || ''),
-          name: isBalle ? 'Deepanshu Khatri' : (c.contactName || c.name || 'Deepanshu Khatri'),
-          contactName: isBalle ? 'Deepanshu Khatri' : (c.contactName || 'Deepanshu Khatri'),
-          contactEmail: isBalle ? 'deepanshukhatri20061972@gmail.com' : (c.contactEmail || 'deepanshukhatri20061972@gmail.com'),
+          name: contactName,
+          contactName,
+          contactEmail,
           contactAvatarUrl: avatar,
           avatarUrl: avatar,
           relationshipLabel: c.relationshipLabel || 'Designated Caretaker',
         };
       });
+      const contacts = deduplicateGuardianContacts(mappedContacts);
+
+      const currentIdentity = await verifyWardIdentity(baseUrl);
+      const cacheRecord = JSON.stringify({
+        actorId: currentIdentity?.actorId ?? null,
+        contacts,
+      });
+
       if (typeof localStorage !== 'undefined') {
         try {
           if (contacts.length > 0) {
-            localStorage.setItem('guardrailActiveContacts', JSON.stringify(contacts));
+            localStorage.setItem('guardrailActiveContacts', cacheRecord);
           } else {
             localStorage.removeItem('guardrailActiveContacts');
           }
@@ -291,7 +304,7 @@ async function checkActiveGuardianCoverage(): Promise<{
       }
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
         if (contacts.length > 0) {
-          chrome.storage.local.set({ guardrailActiveContacts: JSON.stringify(contacts) });
+          chrome.storage.local.set({ guardrailActiveContacts: cacheRecord });
         } else {
           chrome.storage.local.remove(['guardrailActiveContacts']);
         }
@@ -473,18 +486,19 @@ function updatePopupToPairedState(
   caretakerName = 'Caretaker',
   contacts: ActiveGuardianContact[] = []
 ): void {
+  const uniqueContacts = deduplicateGuardianContacts(contacts);
   const onboardingBanner = document.getElementById('onboarding-banner');
   const onboardingTitle = document.getElementById('onboarding-status-title');
   const onboardingDesc = document.getElementById('onboarding-status-desc');
   const btnOpenOnboarding = document.getElementById('btn-open-onboarding') as HTMLButtonElement | null;
 
-  const isPaired = contacts.length > 0;
+  const isPaired = uniqueContacts.length > 0;
   if (onboardingBanner) onboardingBanner.className = isPaired ? 'onboarding-banner completed' : 'onboarding-banner';
   if (onboardingTitle) onboardingTitle.textContent = isPaired ? 'Guardian Linked' : 'Caretaker Pairing';
-  const resolvedName = contacts[0]?.contactName || contacts[0]?.name || caretakerName;
+  const resolvedName = uniqueContacts[0]?.contactName || uniqueContacts[0]?.name || caretakerName;
   const newDesc =
-    contacts.length > 1
-      ? `Protected by ${contacts.length} Guardians ✓`
+    uniqueContacts.length > 1
+      ? `Protected by ${uniqueContacts.length} Guardians ✓`
       : `Protected by ${resolvedName} ✓`;
   savedDescBeforeOpen = newDesc;
   if (onboardingDesc) {
@@ -499,7 +513,7 @@ function updatePopupToPairedState(
     }
   }
 
-  renderActiveGuardians(contacts);
+  renderActiveGuardians(uniqueContacts);
 
   // When contacts are linked, remove the redundant connected status pill from the footer
   const liveStatus = document.getElementById('pairing-live-status');
@@ -570,6 +584,7 @@ function updatePopupToUnpairedState(): void {
  * Renders currently connected guardians in the left pairing flyout.
  */
 function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
+  const uniqueContacts = deduplicateGuardianContacts(contacts);
   const section = document.getElementById('active-guardians-section');
   const list = document.getElementById('active-guardians-list');
   const countEl = document.getElementById('active-guardians-count');
@@ -578,16 +593,16 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
 
   if (!section || !list) return;
 
-  if (contacts.length > 0) {
+  if (uniqueContacts.length > 0) {
     section.style.display = 'flex';
     const kickerEl = section.querySelector('.pairing-kicker');
     if (kickerEl) {
-      kickerEl.textContent = contacts.length > 1 ? 'LINKED GUARDIANS' : 'LINKED GUARDIAN';
+      kickerEl.textContent = uniqueContacts.length > 1 ? 'LINKED GUARDIANS' : 'LINKED GUARDIAN';
     }
     if (countEl) {
-      if (contacts.length > 1) {
+      if (uniqueContacts.length > 1) {
         countEl.style.display = 'inline';
-        countEl.textContent = `${contacts.length} Connected`;
+        countEl.textContent = `${uniqueContacts.length} Connected`;
       } else {
         countEl.style.display = 'none';
       }
@@ -595,30 +610,20 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
     if (titleEl) titleEl.textContent = 'Trusted Contacts';
     if (subtitleEl) subtitleEl.textContent = 'Active guardians & device pairing';
 
-    list.innerHTML = contacts
+    list.innerHTML = uniqueContacts
       .map((c, idx) => {
         const rawName = c.contactName || c.name;
-        const displayName = rawName && !rawName.startsWith('usr_') && !rawName.startsWith('tc_') && !rawName.includes('Balleballepurrr')
+        const displayName = rawName && !rawName.startsWith('usr_') && !rawName.startsWith('tc_')
           ? rawName
-          : 'Deepanshu Khatri';
-        const displayEmail = c.contactEmail && !c.contactEmail.includes('balleballepurrr')
-          ? c.contactEmail
-          : 'deepanshukhatri20061972@gmail.com';
-        const initial = displayName && displayName !== 'Designated Caretaker'
+          : (c.contactEmail || 'Designated Caretaker');
+        const displayEmail = c.contactEmail || '';
+        const initial = displayName
           ? displayName.charAt(0).toUpperCase()
-          : 'D';
-        let avatarUrl = c.contactAvatarUrl || c.avatarUrl;
-        if (!avatarUrl || avatarUrl.includes('LookpQ') || avatarUrl.includes('balleballepurrr')) {
-          avatarUrl = DEEPANSHU_CLERK_AVATAR;
-        }
+          : 'G';
+        const avatarUrl = c.contactAvatarUrl || c.avatarUrl;
         const avatarContent = avatarUrl
-          ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}" class="active-guardian-avatar-img" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/a/ACg8ocKd3PDi85kjmN6LDsahmeYcrLZBE-taEPSg_7XwAXIMfEGzrUEs=s1000-c';" />`
-          : (initial
-            ? `<span class="active-guardian-initial">${initial}</span>`
-            : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>`);
+          ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}" class="active-guardian-avatar-img" onerror="this.onerror=null; this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex';" /><span class="active-guardian-initial" style="display:none;">${initial}</span>`
+          : `<span class="active-guardian-initial">${initial}</span>`;
 
         return `
         <div class="active-guardian-item">
@@ -632,7 +637,7 @@ function renderActiveGuardians(contacts: ActiveGuardianContact[]): void {
             </div>
           </div>
           ${
-            idx === contacts.length - 1
+            idx === uniqueContacts.length - 1
               ? `
           <button type="button" class="btn-add-contact-compact" id="btn-add-another-contact" title="Add another contact">
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -699,6 +704,7 @@ function setupPopupActions(): void {
       try {
         const identity = await authenticateWardWithGoogle();
         if (identity) {
+          clearCachedActiveContacts();
           renderWardAccountCard(identity);
           await syncWardIdentityToBackend(identity);
           const wardVal = document.getElementById('ext-ward-val');
@@ -709,7 +715,7 @@ function setupPopupActions(): void {
           const coverage = await checkActiveGuardianCoverage();
           if (coverage.isLinked && coverage.contacts.length > 0) {
             const primaryContact = coverage.contacts[0];
-            const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Deepanshu Khatri';
+            const primaryName = primaryContact?.contactName || primaryContact?.name || primaryContact?.id || 'Caretaker';
             updatePopupToPairedState(primaryName, coverage.contacts);
           } else {
             updatePopupToUnpairedState();
@@ -909,7 +915,7 @@ export function closePairingPanel(): void {
 
   const isPaired = document.getElementById('onboarding-banner')?.classList.contains('completed');
   const targetBtn = getPairingButtonDefaultText();
-  const targetDesc = savedDescBeforeOpen || (isPaired ? 'Protected by Deepanshu Khatri ✓' : 'Not Connected');
+  const targetDesc = savedDescBeforeOpen || (isPaired ? 'Protected by Caretaker ✓' : 'Not Connected');
   if (!isPaired) {
     savedDescBeforeOpen = '';
   }
