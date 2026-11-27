@@ -862,6 +862,30 @@ export function showWarningModal(props: WarningModalProps): () => void {
       border-top: 1px solid #EAE4D3;
     }
 
+    .gr-card-waiting .gr-guidance-note,
+    .gr-card-waiting .gr-waiting-details {
+      display: none;
+    }
+
+    .gr-card-waiting .gr-waiting-body {
+      padding: 4px 28px 18px;
+    }
+
+    .gr-card-waiting .gr-destination-card {
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+
+    .gr-card-waiting .gr-waiting-status-card {
+      padding: 14px 16px;
+      margin-bottom: 0;
+    }
+
+    .gr-card-waiting .gr-waiting-footer {
+      padding: 14px 28px 18px;
+      border-top: 1px solid #EAE4D3;
+    }
+
     .gr-subtitle {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 14.5px;
@@ -1644,8 +1668,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-waiting-stepper {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-top: 6px;
+      gap: 14px;
+      margin-top: 8px;
     }
 
     .gr-step-item {
@@ -1661,7 +1685,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       left: 13px;
       transform: translateX(-50%);
       top: 28px;
-      bottom: -7px;
+      bottom: -11px;
       width: 2px;
       background: #E2D7C0;
       border-radius: 1px;

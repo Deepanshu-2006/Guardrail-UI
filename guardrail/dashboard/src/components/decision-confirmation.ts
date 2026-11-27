@@ -100,9 +100,12 @@ export function renderDecisionConfirmation(props: DecisionConfirmationProps): HT
   const brandTag = document.createElement('div');
   brandTag.className = 'gd-moment-brand-tag';
   brandTag.innerHTML = `
-    <svg class="gd-moment-brand-shield" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      ${isApproved ? '<path d="M9 12l2 2 4-4"/>' : '<path d="M12 8v4M12 16h.01"/>'}
+    <svg class="gd-moment-brand-shield" width="18" height="18" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#EDE6D6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#EDE6D6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="22" y="34" width="56" height="32" rx="16" fill="#EDE6D6"/>
+      <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#1E331D" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#1E331D" stroke="#EDE6D6" stroke-width="3.5" stroke-linejoin="round"/>
     </svg>
     <span class="gd-moment-brand-text">GUARDRAIL</span>
   `;

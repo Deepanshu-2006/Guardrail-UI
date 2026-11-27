@@ -8454,7 +8454,52 @@ textarea:focus-visible,
 
 .gd-mobile-decision-backdrop .gd-decision-moment {
   width: 100%;
-  max-width: 380px;
+  max-width: 330px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-hero {
+  padding: 18px 20px 22px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-badge-circle {
+  width: 54px !important;
+  height: 54px !important;
+  margin: 10px auto 12px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-title {
+  font-size: 22px !important;
+  margin-bottom: 4px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-subtitle {
+  font-size: 13px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-details-tier {
+  padding: 14px 20px 16px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-action-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-action-desc {
+  white-space: normal !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  text-align: left !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-progress-header {
+  display: none !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-progress-wrap {
+  padding-top: 2px !important;
 }
 
 .gd-mobile-decision-backdrop.gd-fade-out {
@@ -15677,7 +15722,52 @@ article.gd-card-collapsed,
 
 .gd-mobile-decision-backdrop .gd-decision-moment {
   width: 100%;
-  max-width: 380px;
+  max-width: 330px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-hero {
+  padding: 18px 20px 22px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-badge-circle {
+  width: 54px !important;
+  height: 54px !important;
+  margin: 10px auto 12px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-title {
+  font-size: 22px !important;
+  margin-bottom: 4px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-subtitle {
+  font-size: 13px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-details-tier {
+  padding: 14px 20px 16px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-action-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-action-desc {
+  white-space: normal !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  text-align: left !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-progress-header {
+  display: none !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-progress-wrap {
+  padding-top: 2px !important;
 }
 
 .gd-mobile-decision-backdrop.gd-fade-out {
@@ -22527,7 +22617,52 @@ article.gd-card-collapsed,
 
 .gd-mobile-decision-backdrop .gd-decision-moment {
   width: 100%;
-  max-width: 380px;
+  max-width: 330px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-hero {
+  padding: 18px 20px 22px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-badge-circle {
+  width: 54px !important;
+  height: 54px !important;
+  margin: 10px auto 12px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-title {
+  font-size: 22px !important;
+  margin-bottom: 4px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-subtitle {
+  font-size: 13px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-details-tier {
+  padding: 14px 20px 16px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-action-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-action-desc {
+  white-space: normal !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  text-align: left !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-progress-header {
+  display: none !important;
+}
+
+.gd-mobile-decision-backdrop .gd-moment-progress-wrap {
+  padding-top: 2px !important;
 }
 
 .gd-mobile-decision-backdrop.gd-fade-out {
