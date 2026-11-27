@@ -1496,17 +1496,14 @@ export function showWarningModal(props: WarningModalProps): () => void {
       margin-bottom: 12px !important;
     }
 
-    .gr-card-approved .gr-destination-header-row .gr-waiting-pill,
     .gr-card-approved .gr-waiting-status-card .gr-section-heading,
     .gr-card-approved .gr-waiting-status-card .gr-waiting-stepper,
     .gr-card-approved .gr-guidance-note,
     .gr-card-approved .gr-waiting-details,
-    .gr-card-approved .gr-footer-status,
     .gr-card-rejected .gr-waiting-status-card .gr-section-heading,
     .gr-card-rejected .gr-waiting-status-card .gr-waiting-stepper,
     .gr-card-rejected .gr-guidance-note,
-    .gr-card-rejected .gr-waiting-details,
-    .gr-card-rejected .gr-footer-status {
+    .gr-card-rejected .gr-waiting-details {
       display: none !important;
     }
 
@@ -1530,7 +1527,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-card-rejected .gr-waiting-footer,
     .gr-card-approved .gr-waiting-footer {
-      justify-content: flex-end !important;
+      justify-content: space-between !important;
       padding: 14px 28px 18px !important;
     }
 
@@ -1792,15 +1789,23 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-waiting-pill.gr-pill-approved {
-      color: #364B24;
-      background: #E4ECD8;
-      border-color: #B8C7A5;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #4A6331;
+      background: transparent;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      letter-spacing: 0.08em;
     }
 
     .gr-waiting-pill.gr-pill-rejected {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: #8F2B2B;
-      background: #FDE8E8;
-      border-color: #F8B4B4;
+      background: transparent;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      letter-spacing: 0.08em;
     }
 
     .gr-waiting-pill.gr-pill-cancelled {
@@ -3009,9 +3014,12 @@ export function updateWaitingScreenStatus(
       if (headerLeft) {
         headerLeft.innerHTML = `
           <div class="gr-hero-brand-tag">
-            <svg class="gr-hero-brand-shield approved" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <path d="M9 12l2 2 4-4"/>
+            <svg class="gr-hero-brand-shield approved" width="18" height="18" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#EDE6D6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#EDE6D6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="22" y="34" width="56" height="32" rx="16" fill="#EDE6D6"/>
+              <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#1E331D" stroke-width="5" stroke-linecap="round"/>
+              <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#1E331D" stroke="#EDE6D6" stroke-width="3.5" stroke-linejoin="round"/>
             </svg>
             <span class="gr-hero-brand-text">GUARDRAIL</span>
           </div>
@@ -3117,9 +3125,12 @@ export function updateWaitingScreenStatus(
       if (headerLeft) {
         headerLeft.innerHTML = `
           <div class="gr-hero-brand-tag">
-            <svg class="gr-hero-brand-shield rejected" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <path d="M12 8v4M12 16h.01"/>
+            <svg class="gr-hero-brand-shield rejected" width="18" height="18" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M 16 38 V 26 C 16 19 21 14 28 14 H 72 C 79 14 84 19 84 26 V 38" stroke="#EDE6D6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M 16 62 V 74 C 16 81 21 86 28 86 H 72 C 79 86 84 81 84 74 V 62" stroke="#EDE6D6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="22" y="34" width="56" height="32" rx="16" fill="#EDE6D6"/>
+              <path d="M 43 45 L 53 55 M 53 45 L 43 55" stroke="#322119" stroke-width="5" stroke-linecap="round"/>
+              <path d="M 64 45 L 82 63 L 73.5 65.5 L 78.5 76 L 73.5 78.5 L 68.5 68 L 61.5 74 Z" fill="#322119" stroke="#EDE6D6" stroke-width="3.5" stroke-linejoin="round"/>
             </svg>
             <span class="gr-hero-brand-text">GUARDRAIL</span>
           </div>
