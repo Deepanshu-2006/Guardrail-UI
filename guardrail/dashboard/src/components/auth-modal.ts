@@ -1072,8 +1072,10 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
   let subtitleEl = document.getElementById('gd-auth-status-subtitle');
   let detailsContainer = document.getElementById('gd-auth-connected-details');
 
+  const wasFreshlyMounted = !backdrop || !card || !animBox || !titleEl || !subtitleEl || !detailsContainer;
+
   // If connecting modal is not already in DOM, mount it first
-  if (!backdrop || !card || !animBox || !titleEl || !subtitleEl || !detailsContainer) {
+  if (wasFreshlyMounted) {
     backdrop = showConnectingModal();
     card = backdrop.querySelector('.gd-auth-modal-card') as HTMLElement | null;
     animBox = document.getElementById('gd-auth-loader-anim');
@@ -1084,7 +1086,15 @@ export function showConnectedModal(profile: TrustedContactProfile, onDismiss?: (
 
   // 1. Animate loader ring into tick with theme colors
   if (animBox) {
-    animBox.classList.add('gd-success');
+    if (wasFreshlyMounted && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          animBox?.classList.add('gd-success');
+        });
+      });
+    } else {
+      animBox.classList.add('gd-success');
+    }
   }
 
   // 2. Transition titles with refined typography

@@ -271,7 +271,7 @@ if (typeof document !== 'undefined') {
     }
 
     const effectiveToken = storageToken || null;
-    const tokenProvider: TokenProvider | undefined = globalProvider ?? (effectiveToken ? async () => {
+    const tokenProvider: TokenProvider = globalProvider ?? (async () => {
       if (typeof window !== 'undefined' && (window as any).Clerk?.session?.getToken) {
         try {
           const liveToken = await (window as any).Clerk.session.getToken();
@@ -284,7 +284,7 @@ if (typeof document !== 'undefined') {
         } catch {}
       }
       return (typeof localStorage !== 'undefined' ? localStorage.getItem('guardrail_auth_token') : null) || effectiveToken || '';
-    } : undefined);
+    });
 
     const parsedJwt = effectiveToken ? parseJwtProfile(effectiveToken, storedEmail) : null;
     const initialProfile: TrustedContactProfile | null = (isOAuthRedirect && !storedName && !storageToken)

@@ -840,13 +840,33 @@ export function renderMobileCompanion(props: MobileCompanionProps): HTMLElement 
   const avatarBtn = document.createElement('button');
   avatarBtn.type = 'button';
   avatarBtn.className = 'gd-m-avatar-btn';
-  avatarBtn.setAttribute('aria-label', 'Open account and settings');
-  if (profile?.isAuthenticated && profile.actorId && !/^(usr_|user_)/i.test(profile.actorId)) {
-    avatarBtn.textContent = getInitials(profile.actorId);
+  const openAuthOrSettings = () => {
+    if (props.onOpenAuth) {
+      props.onOpenAuth();
+    } else {
+      props.onSelectTab('settings');
+    }
+  };
+  if (profile?.isAuthenticated) {
+    avatarBtn.setAttribute('aria-label', 'Open account');
+    const avatarPhoto = profile.avatarUrl || profile.imageUrl;
+    if (avatarPhoto) {
+      const img = document.createElement('img');
+      img.className = 'gd-m-avatar-img';
+      img.src = avatarPhoto;
+      img.alt = profile.fullName || 'Account avatar';
+      avatarBtn.appendChild(img);
+    } else {
+      avatarBtn.textContent = getInitials(profile.fullName || profile.email || profile.actorId || 'TC');
+    }
+    avatarBtn.addEventListener('click', openAuthOrSettings);
   } else {
-    avatarBtn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    avatarBtn.classList.add('gd-m-signin-pill');
+    avatarBtn.setAttribute('aria-label', 'Sign in to Guardrail');
+    avatarBtn.setAttribute('title', 'Sign in');
+    avatarBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Sign in</span>`;
+    avatarBtn.addEventListener('click', openAuthOrSettings);
   }
-  avatarBtn.addEventListener('click', () => props.onSelectTab('settings'));
   topBar.appendChild(avatarBtn);
 
   const topRoller = document.createElement('div');

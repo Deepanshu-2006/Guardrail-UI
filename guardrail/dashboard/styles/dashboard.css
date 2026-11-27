@@ -24624,6 +24624,25 @@ article.gd-card-collapsed,
   }
 }
 
+.gd-m-avatar-btn.gd-m-signin-pill {
+  width: auto;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 999px;
+  font-family: var(--gd-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gd-m-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
 .gd-m-top-roller {
   position: relative;
   flex: 1;

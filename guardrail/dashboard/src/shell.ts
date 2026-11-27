@@ -81,6 +81,7 @@ export class DashboardShell {
   private readonly detailedRequestsCache: Map<string, ApprovalRequest> = new Map();
   private isDetailLoading: boolean = false;
   private detailErrorMessage: string | null = null;
+  private hasPromptedMobileAuth: boolean = false;
 
   private setCachedRequest(id: string, req: ApprovalRequest): void {
     if (this.detailedRequestsCache.has(id)) {
@@ -751,6 +752,15 @@ export class DashboardShell {
         onSendTestPush: () => this.handleSendTestPush(),
         onLoadWardPolicy: (wardId) => this.fetchWardPolicyForMobile(wardId),
       });
+
+      if (!this.hasPromptedMobileAuth && !this.state.contactProfile?.isAuthenticated && !this.isMockService()) {
+        this.hasPromptedMobileAuth = true;
+        queueMicrotask(() => {
+          if (!this.isDestroyed && !this.state.contactProfile?.isAuthenticated) {
+            this.openAuthModal();
+          }
+        });
+      }
 
       const isBootSettling =
         !this.hasCompletedMobileInitialOpen && Date.now() - this.mobileMountTimestamp < 1150;
@@ -1905,6 +1915,12 @@ export class DashboardShell {
    */
   public async fetchPendingRequests(options?: { isBackground?: boolean; skipRender?: boolean }): Promise<void> {
     if (this.isDestroyed) return;
+    if (!this.state.contactProfile?.isAuthenticated && !this.isMockService() && this.apiClient) {
+      this.state.pendingRequests = [];
+      this.state.pendingStatus = 'empty';
+      if (!options?.skipRender) this.render();
+      return;
+    }
 
     if (this.activeFetchPromise) {
       return this.activeFetchPromise;
@@ -3012,6 +3028,7 @@ export class DashboardShell {
       }
     }
     this.setProfile(profile);
+    void this.syncAuthoritativeProfile({ isBackground: false });
     void this.refresh();
   }
 
@@ -3023,7 +3040,18 @@ export class DashboardShell {
       localStorage.removeItem('guardrail_auth_token');
       localStorage.removeItem('guardrail_user_email');
       localStorage.removeItem('guardrail_user_avatar');
+      localStorage.removeItem('guardrail_user_name');
+      localStorage.removeItem('guardrail_assigned_wards');
+      localStorage.removeItem('guardrail_assigned_ward_id');
+      localStorage.removeItem('guardrail_assigned_ward_name');
+      localStorage.removeItem('guardrail_assigned_ward_email');
     }
+    this.state.connectedUsers = [];
+    this.state.invitations = [];
+    this.state.pendingRequests = [];
+    this.state.historyRequests = [];
+    this.state.selectedRequestId = null;
+    this.detailedRequestsCache.clear();
     this.setProfile(null);
     void this.refresh();
   }
@@ -3044,6 +3072,12 @@ export class DashboardShell {
    */
   public async fetchHistoryRequests(options?: { isBackground?: boolean; page?: number; skipRender?: boolean }): Promise<void> {
     if (this.isDestroyed || !this.apiClient) return;
+    if (!this.state.contactProfile?.isAuthenticated && !this.isMockService()) {
+      this.state.historyRequests = [];
+      this.state.historyStatus = 'empty';
+      if (!options?.skipRender) this.render();
+      return;
+    }
 
     if (this.activeHistoryFetchPromise) {
       return this.activeHistoryFetchPromise;
@@ -3653,6 +3687,13 @@ export class DashboardShell {
     if (!this.apiClient || this.isDestroyed) {
       return;
     }
+    if (!this.state.contactProfile?.isAuthenticated && !this.isMockService()) {
+      this.state.connectedUsers = [];
+      this.state.invitations = [];
+      this.state.connectedUsersStatus = 'empty';
+      if (!options?.skipRender) this.render();
+      return;
+    }
 
     const skipRender = options?.skipRender ?? false;
 
@@ -4207,6 +4248,9 @@ export class DashboardShell {
    * Resolves list of all active connected wards for multi-ward switching, filtering, and oversight.
    */
   public getConnectedWards(): Array<{ id: string; name: string; email?: string; relationshipLabel?: string; imageUrl?: string; avatarUrl?: string }> {
+    if (!this.state.contactProfile?.isAuthenticated && !this.isMockService()) {
+      return [];
+    }
     const map = new Map<string, { id: string; name: string; email?: string; relationshipLabel?: string; imageUrl?: string; avatarUrl?: string }>();
     if (this.state.contactProfile?.assignedWardId) {
       const id = this.state.contactProfile.assignedWardId;
