@@ -17434,6 +17434,85 @@ article.gd-card-collapsed,
   border-color: #962828;
 }
 
+/* Code Entry Step inside Connect Modal */
+.gd-connect-entry-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.gd-connect-entry-input {
+  flex: none !important;
+  width: 100%;
+  height: 48px;
+  box-sizing: border-box;
+  background: #FFFFFF;
+  border: 1.5px solid #CFC8B8;
+  border-radius: 10px;
+  padding: 12px 16px;
+  text-align: center;
+  font-family: var(--gd-font-mono, 'IBM Plex Mono', monospace);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #1E2719;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.gd-connect-entry-input::placeholder {
+  color: #A5A99B;
+  font-weight: 500;
+}
+
+.gd-connect-entry-input:focus {
+  outline: none;
+  border-color: var(--gd-deep-olive, #273121);
+  box-shadow: 0 0 0 3px rgba(39, 49, 33, 0.09);
+}
+
+.gd-connect-entry-input.gd-input-error {
+  border-color: #B93838;
+  box-shadow: 0 0 0 3px rgba(185, 56, 56, 0.10);
+}
+
+.gd-connect-entry-feedback {
+  margin: 0;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.gd-connect-entry-feedback:not(:empty) {
+  margin-top: 8px;
+}
+
+.gd-connect-entry-submit {
+  margin-top: 14px;
+  height: 46px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2F3B27 0%, #232D1E 100%);
+  box-shadow: 0 3px 10px rgba(39, 49, 33, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  border: 1px solid #1E2719;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+}
+
+.gd-connect-entry-submit:hover {
+  background: linear-gradient(180deg, #36452D 0%, #263120 100%);
+  box-shadow: 0 6px 16px rgba(39, 49, 33, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.gd-btn-connect-arrow {
+  display: inline-block;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gd-connect-entry-submit:hover .gd-btn-connect-arrow {
+  transform: translateX(3px);
+}
+
 .gd-fade-out {
   opacity: 0 !important;
   transform: scale(0.97) translateY(4px) !important;

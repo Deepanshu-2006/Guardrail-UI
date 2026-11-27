@@ -31,10 +31,19 @@ export interface ConnectWardModalOptions {
  * Validates and normalizes an invitation / pairing code.
  */
 function normalizePairingCode(raw: string): { valid: boolean; normalized?: string; error?: string } {
-  const cleaned = raw.trim().toUpperCase();
+  let cleaned = raw.trim();
   if (!cleaned) {
     return { valid: false, error: 'Please enter an invitation code.' };
   }
+  const inviteParamMatch = cleaned.match(/[?&]invite=([^&#\s]+)/i);
+  if (inviteParamMatch?.[1]) {
+    try {
+      cleaned = decodeURIComponent(inviteParamMatch[1]).trim();
+    } catch {
+      cleaned = inviteParamMatch[1].trim();
+    }
+  }
+  cleaned = cleaned.toUpperCase();
   const normalized = /^\d{8}$/.test(cleaned)
     ? `${cleaned.slice(0, 4)}-${cleaned.slice(4, 8)}`
     : cleaned;
@@ -151,35 +160,49 @@ export function showConnectWardModal(options: ConnectWardModalOptions): () => vo
     actionArea.className = 'gd-connect-action-area';
 
     const form = document.createElement('form');
-    form.style.width = '100%';
+    form.className = 'gd-connect-entry-form';
     form.noValidate = true;
 
     const input = document.createElement('input');
     input.type = 'text';
     input.id = 'gd-connect-modal-code-input';
-    input.className = 'gd-setup-input gd-mono';
+    input.className = 'gd-setup-input gd-mono gd-connect-entry-input';
     input.placeholder = '4829-1735';
-    input.maxLength = 32;
+    input.maxLength = 64;
     input.autocomplete = 'off';
+    input.setAttribute('spellcheck', 'false');
     input.value = prefillCode;
-    input.style.cssText =
-      'width: 100%; box-sizing: border-box; text-align: center; letter-spacing: 0.12em; font-size: 16px;';
 
     const feedback = document.createElement('div');
-    feedback.className = 'gd-setup-feedback';
-    feedback.style.marginBottom = '14px';
+    feedback.className = 'gd-setup-feedback gd-connect-entry-feedback';
 
+    let lastLen = prefillCode.length;
     input.addEventListener('input', () => {
+      const rawVal = input.value;
+      const isDeleting = rawVal.length < lastLen;
+      if (/^[\d-\s]+$/.test(rawVal)) {
+        const digits = rawVal.replace(/\D/g, '').slice(0, 8);
+        if (digits.length > 4) {
+          input.value = `${digits.slice(0, 4)}-${digits.slice(4)}`;
+        } else if (digits.length === 4 && !isDeleting && rawVal.endsWith('-')) {
+          input.value = `${digits}-`;
+        } else {
+          input.value = digits;
+        }
+      }
+      lastLen = input.value.length;
+
+      input.classList.remove('gd-input-error');
       if (feedback.textContent) {
-        feedback.className = 'gd-setup-feedback';
+        feedback.className = 'gd-setup-feedback gd-connect-entry-feedback';
         feedback.textContent = '';
       }
     });
 
     const submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
-    submitBtn.className = 'gd-btn-connect-modal-action';
-    submitBtn.textContent = 'Connect Ward →';
+    submitBtn.className = 'gd-btn-connect-modal-action gd-connect-entry-submit';
+    submitBtn.innerHTML = '<span>Connect Ward</span><span class="gd-btn-connect-arrow" aria-hidden="true">→</span>';
 
     form.appendChild(input);
     form.appendChild(feedback);
@@ -189,7 +212,8 @@ export function showConnectWardModal(options: ConnectWardModalOptions): () => vo
       e.preventDefault();
       const validation = normalizePairingCode(input.value);
       if (!validation.valid || !validation.normalized) {
-        feedback.className = 'gd-setup-feedback error';
+        input.classList.add('gd-input-error');
+        feedback.className = 'gd-setup-feedback gd-connect-entry-feedback error';
         feedback.textContent = validation.error || 'Please enter a valid pairing code.';
         if (typeof input.focus === 'function') input.focus();
         return;
