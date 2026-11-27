@@ -512,8 +512,8 @@ export function renderFilterBar(options: FilterBarOptions): HTMLElement {
     countEl.appendChild(clearBtn);
   }
 
-  controlsRow.appendChild(countEl);
   container.appendChild(controlsRow);
+  container.appendChild(countEl);
 
   return container;
 }

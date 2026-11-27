@@ -214,6 +214,11 @@ export interface ApprovalDecisionMetadata {
   readonly decidedBy: string;
 
   /**
+   * Optional human-readable display name of the decision-maker.
+   */
+  readonly decidedByName?: string;
+
+  /**
    * ISO 8601 UTC timestamp when the decision was committed.
    */
   readonly decidedAt: string;
@@ -404,6 +409,9 @@ export interface SubmitApprovalDecisionInput {
 
   /** Authenticated decision-maker identity (trusted contact ID) */
   readonly decidedBy: string;
+
+  /** Optional human-readable display name of the decision-maker */
+  readonly decidedByName?: string;
 
   /** Optional decision timestamp override (defaults to server current time) */
   readonly decidedAt?: string;

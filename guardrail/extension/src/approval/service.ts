@@ -525,7 +525,60 @@ export class ApprovalService {
       throw new ApprovalBindingReassignmentError(request.id, binding.actionId, request.actionId);
     }
 
-    return request;
+    return this.enrichDecisionMakerName(request);
+  }
+
+  private resolveDecisionMakerName(
+    requesterId: string,
+    decidedBy: string,
+    explicitFullName?: string
+  ): string | undefined {
+    const looksOpaqueId = (val: string) =>
+      /^(usr|tc|adm)_[a-zA-Z0-9_-]{6,}$/.test(val.trim()) ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(val.trim());
+
+    if (explicitFullName && explicitFullName.trim() && !looksOpaqueId(explicitFullName)) {
+      return explicitFullName.trim();
+    }
+
+    if (typeof this.contactRegistry.getTrustedContactsForUser === 'function') {
+      try {
+        const contacts = this.contactRegistry.getTrustedContactsForUser(requesterId);
+        const matched = contacts.find(
+          (c) =>
+            (c.contactId === decidedBy || (c as any).id === decidedBy) &&
+            typeof c.contactName === 'string' &&
+            c.contactName.trim().length > 0
+        );
+        if (matched?.contactName && !looksOpaqueId(matched.contactName)) {
+          return matched.contactName.trim();
+        }
+      } catch {
+        // Ignore registry lookup errors
+      }
+    }
+
+    return !looksOpaqueId(decidedBy) ? decidedBy.trim() : undefined;
+  }
+
+  private enrichDecisionMakerName(request: ApprovalRequest): ApprovalRequest {
+    if (!request.decision || request.decision.decidedByName) {
+      return request;
+    }
+    const resolvedName = this.resolveDecisionMakerName(
+      request.requesterId,
+      request.decision.decidedBy
+    );
+    if (!resolvedName) {
+      return request;
+    }
+    return Object.freeze({
+      ...request,
+      decision: Object.freeze({
+        ...request.decision,
+        decidedByName: resolvedName,
+      }),
+    });
   }
 
   /**
@@ -1007,12 +1060,18 @@ export class ApprovalService {
     // 4. Authoritative decision record (overwrite client-supplied IDs)
     const decidedAt = resolveTimestamp(this.timeProvider);
     const decidedBy = authContext.actorId;
+    const decidedByName = this.resolveDecisionMakerName(
+      request.requesterId,
+      decidedBy,
+      (authContext as { fullName?: string }).fullName
+    );
 
     const resolved = resolveApprovalRequest(
       request,
       {
         decision,
         decidedBy,
+        ...(decidedByName ? { decidedByName } : {}),
         decidedAt,
         decisionReason: decisionInput?.decisionReason,
       },

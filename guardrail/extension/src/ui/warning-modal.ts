@@ -1722,6 +1722,48 @@ export function showWarningModal(props: WarningModalProps): () => void {
       100% { box-shadow: 0 0 0 0 rgba(168, 121, 50, 0); }
     }
 
+    .gr-sync-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gr-caretaker-note {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(255, 252, 245, 0.85);
+      border: 1px solid #E2D7C0;
+      border-left: 3px solid #556B3A;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .gr-caretaker-note.gr-note-rejected {
+      border-left-color: #8F2B2B;
+      background: rgba(253, 242, 242, 0.75);
+      border-color: #F3C6C6;
+    }
+
+    .gr-caretaker-note-label {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #616658;
+    }
+
+    .gr-caretaker-note-text {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #25291F;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
     .gr-footer-status {
       display: flex;
       align-items: center;
@@ -1733,6 +1775,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-pulse-dot-green {
+      display: inline-block;
+      flex-shrink: 0;
       width: 7px;
       height: 7px;
       border-radius: 50%;
@@ -2611,9 +2655,23 @@ export function updateWaitingScreenStatus(
   const approverVal = viewWaiting.querySelector('.gr-diag-approver') as HTMLElement | null;
   const timeVal = viewWaiting.querySelector('.gr-diag-time') as HTMLElement | null;
   const stepper = viewWaiting.querySelector('.gr-waiting-stepper') as HTMLElement | null;
+  const statusCard = viewWaiting.querySelector('.gr-waiting-status-card') as HTMLElement | null;
   const footerActions = viewWaiting.querySelector('.gr-footer-actions') as HTMLElement | null;
   const waitingBadge = viewWaiting.querySelector('.gr-waiting-badge') as HTMLElement | null;
   const statusHeadingSync = viewWaiting.querySelector('.gr-sync-tag') as HTMLElement | null;
+
+  statusCard?.querySelector('.gr-caretaker-note')?.remove();
+  const renderCaretakerNote = (noteText?: string, variant: 'approved' | 'rejected' = 'approved') => {
+    const cleaned = noteText?.trim();
+    if (!cleaned || !statusCard) return;
+    const noteEl = document.createElement('div');
+    noteEl.className = variant === 'rejected' ? 'gr-caretaker-note gr-note-rejected' : 'gr-caretaker-note';
+    noteEl.innerHTML = `
+      <span class="gr-caretaker-note-label">Caretaker Note</span>
+      <span class="gr-caretaker-note-text">“${escapeText(cleaned)}”</span>
+    `;
+    statusCard.appendChild(noteEl);
+  };
 
   if (details?.requestId && reqIdVal) {
     reqIdVal.textContent = details.requestId;
@@ -2875,9 +2933,11 @@ export function updateWaitingScreenStatus(
         `;
       }
 
+      renderCaretakerNote(details?.reason, 'approved');
+
       updateSyncIndicators(
-        '<span class="gr-pulse-dot-green"></span><span>Decision Received</span>',
-        '<span class="gr-pulse-dot-green"></span><span>Approved • Ready to continue</span>'
+        '<span>Decision Received</span>',
+        '<span>✓ Approved • Ready to continue</span>'
       );
 
       if (footerActions) {
@@ -2942,8 +3002,9 @@ export function updateWaitingScreenStatus(
       if (contextLabel) contextLabel.textContent = 'Request Declined';
       if (title) title.textContent = 'Request Declined';
       if (subtitle) {
-        const reasonText = details?.reason ? ` Reason: ${escapeText(details.reason)}.` : '';
-        subtitle.textContent = `This action has not been authorized.${reasonText} Access to the requested destination remains blocked.`;
+        const approverBy = details?.approver ? ` by ${escapeText(details.approver)}` : '';
+        const reasonText = details?.reason ? ` Note: “${escapeText(details.reason)}”.` : '';
+        subtitle.textContent = `This action was declined${approverBy}.${reasonText} Access to the requested destination remains blocked.`;
       }
       if (pill) {
         pill.className = 'gr-waiting-pill gr-pill-rejected';
@@ -2952,7 +3013,9 @@ export function updateWaitingScreenStatus(
       }
 
       if (stepper) {
-        const declineDesc = details?.reason ? `Declined: ${escapeText(details.reason)}` : 'Declined by caretaker';
+        const declineDesc = details?.approver
+          ? `Declined by ${escapeText(details.approver)}`
+          : (details?.reason ? `Declined: ${escapeText(details.reason)}` : 'Declined by caretaker');
         stepper.innerHTML = `
           <div class="gr-step-item gr-step-done">
             <div class="gr-step-icon gr-step-icon-done">✓</div>
@@ -2978,9 +3041,11 @@ export function updateWaitingScreenStatus(
         `;
       }
 
+      renderCaretakerNote(details?.reason, 'rejected');
+
       updateSyncIndicators(
-        '<span class="gr-pulse-dot-red"></span><span>Decision Received</span>',
-        '<span class="gr-pulse-dot-red"></span><span>Request declined by caretaker</span>'
+        '<span>Decision Received</span>',
+        '<span>✕ Request declined by caretaker</span>'
       );
 
       if (footerActions) {

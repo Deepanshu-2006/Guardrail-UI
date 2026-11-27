@@ -200,6 +200,20 @@ function stopWarningStatusPolling(): void {
   }
 }
 
+function resolveApproverDisplayName(decision?: {
+  decidedBy?: string;
+  decidedByName?: string;
+}): string {
+  const named = decision?.decidedByName?.trim();
+  if (named) return named;
+  const raw = decision?.decidedBy?.trim();
+  if (!raw) return 'your designated caretaker';
+  if (/^(usr|tc|adm)_[a-zA-Z0-9_-]{6,}$/.test(raw) || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(raw)) {
+    return 'Trusted Contact';
+  }
+  return raw;
+}
+
 /**
  * Handles terminal status updates (APPROVED, REJECTED, CANCELLED, EXPIRED) authoritatively.
  * Decoupled execution invariant: Rejections and cancellations strictly NEVER continue or navigate.
@@ -228,13 +242,18 @@ function handleAuthoritativeApprovalResolution(
 
   if (status === ApprovalStatus.APPROVED) {
     activeApprovalSession.status = 'approved';
-    const approver = request?.decision?.decidedBy || 'Trusted Contact';
+    const approver = resolveApproverDisplayName(request?.decision as any);
+    const reason =
+      request?.decision?.decisionReason ||
+      (request?.decision as any)?.reason ||
+      undefined;
     void defaultRecoveryManager.updateStagedActionStatus(action.id, 'approved', approver);
 
     updatePendingApprovalPill('approved');
     updateWaitingScreenStatus('approved', {
       requestId,
       approver,
+      reason,
       submittedAt: activeApprovalSession.submittedAt,
       onProceed: () => {
         if (!activeApprovalSession || activeApprovalSession.hasExecutedContinuation) {
@@ -265,16 +284,18 @@ function handleAuthoritativeApprovalResolution(
   } else if (status === ApprovalStatus.REJECTED) {
     activeApprovalSession.status = 'rejected';
     void defaultRecoveryManager.clearRecovery(action.id);
+    const approver = resolveApproverDisplayName(request?.decision as any);
     const reason =
       request?.decision?.decisionReason ||
       (request?.decision as any)?.reason ||
-      'Declined by caretaker';
+      undefined;
 
-    console.log(`[Guardrail UI] Authoritative rejection received for ${requestId}. Reason: "${reason}". Action remains safely blocked.`);
+    console.log(`[Guardrail UI] Authoritative rejection received for ${requestId}. Reason: "${reason || 'Declined by caretaker'}". Action remains safely blocked.`);
 
     // 1. Update UI FIRST so user immediately sees authoritative Access Denied view
     updateWaitingScreenStatus('rejected', {
       requestId,
+      approver,
       reason,
       submittedAt: activeApprovalSession.submittedAt,
     });
@@ -2101,7 +2122,7 @@ export async function checkColdRestartRecovery(): Promise<void> {
               void defaultRecoveryManager.updateStagedActionStatus(
                 record.actionId,
                 'approved',
-                res.approver || 'Trusted Contact'
+                res.request?.decision ? resolveApproverDisplayName(res.request.decision) : (res.approver || 'Trusted Contact')
               ).then(() => {
                 dismissPendingApprovalPill();
                 checkColdRestartRecovery();

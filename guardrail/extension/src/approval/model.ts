@@ -68,6 +68,7 @@ export const PERMITTED_APPROVAL_REQUEST_FIELDS: ReadonlySet<string> = new Set([
 export const PERMITTED_DECISION_FIELDS: ReadonlySet<string> = new Set([
   'decision',
   'decidedBy',
+  'decidedByName',
   'decidedAt',
   'decisionReason',
 ]);
@@ -714,9 +715,12 @@ export function validateApprovalRequest(data: unknown): ApprovalValidationResult
         }
       }
 
-      // Check decisionReason if present
+      // Check decisionReason and optional decidedByName if present
       if (decision.decisionReason !== undefined && typeof decision.decisionReason !== 'string') {
         errors.push('Field "decision.decisionReason" must be a string if provided.');
+      }
+      if (decision.decidedByName !== undefined && typeof decision.decidedByName !== 'string') {
+        errors.push('Field "decision.decidedByName" must be a string if provided.');
       }
     }
   }
@@ -970,6 +974,7 @@ export function resolveApprovalRequest(
   const decision: ApprovalDecisionMetadata = Object.freeze({
     decision: decisionInput.decision,
     decidedBy: decisionInput.decidedBy.trim(),
+    ...(decisionInput.decidedByName?.trim() ? { decidedByName: decisionInput.decidedByName.trim() } : {}),
     decidedAt,
     decisionReason: decisionInput.decisionReason?.trim(),
   });
