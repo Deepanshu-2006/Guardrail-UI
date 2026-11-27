@@ -8,6 +8,7 @@
 
 import { ApprovalRequest } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
+import { showConnectWardModal } from './connect-modal.js';
 import { populateWardAvatar } from './icons.js';
 
 export interface WardSummary {
@@ -408,46 +409,56 @@ export function renderWardsControlModal(props: WardsControlModalProps): HTMLElem
   statusFeedback.className = 'gd-wards-pair-feedback';
   statusFeedback.style.display = 'none';
 
-  pairForm.addEventListener('submit', async (e) => {
+  pairForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const code = pairInput.value.trim().toUpperCase();
-    if (!code) {
+    const rawCode = pairInput.value.trim().toUpperCase();
+    if (!rawCode) {
       statusFeedback.textContent = 'Please enter a pairing code.';
       statusFeedback.className = 'gd-wards-pair-feedback error';
       statusFeedback.style.display = 'block';
       return;
     }
 
+    const code = /^\d{8}$/.test(rawCode)
+      ? `${rawCode.slice(0, 4)}-${rawCode.slice(4, 8)}`
+      : rawCode;
+
+    if (!props.onConnectInvitation) {
+      statusFeedback.textContent = 'Service unavailable.';
+      statusFeedback.className = 'gd-wards-pair-feedback error';
+      statusFeedback.style.display = 'block';
+      return;
+    }
+
     pairSubmit.disabled = true;
+    pairInput.disabled = true;
     pairSubmit.textContent = 'Connecting...';
     statusFeedback.style.display = 'none';
 
-    try {
-      if (props.onConnectInvitation) {
-        const result = await props.onConnectInvitation(code);
-        if (result.success) {
-          statusFeedback.textContent = `Connected successfully!`;
-          statusFeedback.className = 'gd-wards-pair-feedback success';
-          statusFeedback.style.display = 'block';
-          pairInput.value = '';
-        } else {
-          statusFeedback.textContent = result.error || 'Failed to connect. Check code.';
-          statusFeedback.className = 'gd-wards-pair-feedback error';
-          statusFeedback.style.display = 'block';
+    showConnectWardModal({
+      code,
+      onConnect: async (enteredCode) => {
+        try {
+          return await props.onConnectInvitation!(enteredCode);
+        } catch (err: any) {
+          return {
+            success: false,
+            error: err?.message || 'Connection failed.',
+          };
         }
-      } else {
-        statusFeedback.textContent = 'Service unavailable.';
-        statusFeedback.className = 'gd-wards-pair-feedback error';
+      },
+      onSuccess: () => {
+        statusFeedback.textContent = 'Connected successfully!';
+        statusFeedback.className = 'gd-wards-pair-feedback success';
         statusFeedback.style.display = 'block';
-      }
-    } catch (err: any) {
-      statusFeedback.textContent = err?.message || 'Connection failed.';
-      statusFeedback.className = 'gd-wards-pair-feedback error';
-      statusFeedback.style.display = 'block';
-    } finally {
-      pairSubmit.disabled = false;
-      pairSubmit.textContent = 'Connect Ward';
-    }
+        pairInput.value = '';
+      },
+      onClose: () => {
+        pairSubmit.disabled = false;
+        pairInput.disabled = false;
+        pairSubmit.textContent = 'Connect Ward';
+      },
+    });
   });
 
   pairSection.appendChild(pairHeader);

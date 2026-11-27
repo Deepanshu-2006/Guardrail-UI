@@ -16,7 +16,8 @@
 
 import { renderWardsControlModal } from '../components/wards-control-modal.js';
 import { renderOverview } from '../components/overview.js';
-import { ApprovalRequest, ApprovalStatus, RiskLevel } from '../types.js';
+import { renderRelationshipManagementSection } from '../components/relationships.js';
+import { ApprovalRequest, ApprovalStatus, RiskLevel, TrustedContactStatus, ViewStatus } from '../types.js';
 
 // =============================================================================
 // DOM Simulation for Node.js
@@ -430,6 +431,9 @@ async function runTests(): Promise<void> {
   assertTrue(pairForm !== null, 'Pairing form exists');
   pairForm?.dispatchEvent({ type: 'submit' });
   assertEquals(connectedCode, 'TEST-CODE', 'Pairing form capitalizes and submits invitation code');
+  const wardsConnectModal = mockDocument.getElementById('gd-connect-modal-root');
+  assertTrue(wardsConnectModal !== null, 'Wards Control modal pairing opens connecting animation popup');
+  wardsConnectModal?.querySelector('.gd-auth-modal-close-btn')?.click();
 
   // ---------------------------------------------------------------------------
   // Suite 5: Empty State & Close
@@ -516,6 +520,52 @@ async function runTests(): Promise<void> {
     const connectingTitle = connectModalRoot?.querySelector('#gd-connect-modal-title');
     assertEquals(connectingTitle?.textContent, 'Connecting to Ward', 'Transitions cleanly to Connecting to Ward state after valid code');
     connectModalRoot?.querySelector('.gd-auth-modal-close-btn')?.click();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Suite 8: Settings "Connect Another Ward" Opens Connecting Popup & Animation
+  // ---------------------------------------------------------------------------
+  console.log('\n▶ Test Suite 8: Settings "Connect Another Ward" Connecting Popup');
+  const settingsSubmittedCodes: string[] = [];
+  const relSection = renderRelationshipManagementSection({
+    profile: { actorId: 'tc_deepanshu', role: 'TRUSTED_CONTACT', isAuthenticated: true },
+    connectedUsers: [
+      {
+        id: 'tc_deepanshu',
+        contactId: 'tc_deepanshu',
+        userId: 'usr_alice',
+        wardId: 'usr_alice',
+        wardName: 'Alice Johnson',
+        wardEmail: 'alice@example.com',
+        relationshipLabel: 'Designated Caretaker',
+        status: TrustedContactStatus.ACTIVE,
+        createdAt: '2026-11-28T00:00:00.000Z',
+      },
+    ],
+    connectedUsersStatus: 'idle' as ViewStatus,
+    connectedUsersError: null,
+    invitations: [],
+    invitationsStatus: 'idle' as ViewStatus,
+    invitationsError: null,
+    onConnectInvitation: async (code: string) => {
+      settingsSubmittedCodes.push(code);
+      return { success: true, wardId: 'usr_settings_ward' };
+    },
+  });
+
+  const settingsForm = relSection.querySelector('.gd-relationships-connect-form');
+  const settingsInput = settingsForm?.querySelector('.gd-setup-input') as any;
+  assertTrue(settingsForm !== null && settingsInput !== null, 'Settings Connect Another Ward form & input exist');
+  if (settingsForm && settingsInput) {
+    settingsInput.value = '4829-1735';
+    settingsForm.dispatchEvent({ type: 'submit' });
+    assertEquals(settingsSubmittedCodes, ['4829-1735'], 'Settings Connect Ward submits entered code');
+    const settingsModal = mockDocument.getElementById('gd-connect-modal-root');
+    assertTrue(settingsModal !== null, 'Settings Connect Ward opens Connecting popup modal');
+    const loaderAnim = settingsModal?.querySelector('#gd-connect-loader-anim');
+    assertTrue(loaderAnim !== null, 'Settings Connecting popup renders circular loader animation');
+    assertEquals(settingsModal?.querySelector('#gd-connect-modal-title')?.textContent, 'Connecting to Ward', 'Settings Connecting popup shows Connecting to Ward title');
+    settingsModal?.querySelector('.gd-auth-modal-close-btn')?.click();
   }
 
   console.log('\n======================================================');

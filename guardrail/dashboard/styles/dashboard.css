@@ -17094,6 +17094,10 @@ article.gd-card-collapsed,
 /* ====================================================================
    WARD PAIRING & CONNECTION MODAL (CONNECTING & CONNECTED STATES)
    ==================================================================== */
+.gd-modal-backdrop.gd-connect-backdrop {
+  z-index: 1200;
+}
+
 .gd-connect-modal-card {
   position: relative;
   width: 100%;

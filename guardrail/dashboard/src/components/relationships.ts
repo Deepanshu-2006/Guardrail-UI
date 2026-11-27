@@ -20,6 +20,7 @@ import {
   ViewStatus,
 } from '../types.js';
 import { formatWardDisplayName } from './overview.js';
+import { showConnectWardModal } from './connect-modal.js';
 import { setAnimatedHeading } from './icons.js';
 import { createSettingsRibbonClaspProp } from './interactive-props.js';
 
@@ -532,33 +533,55 @@ export function renderRelationshipManagementSection(props: RelationshipsProps): 
       feedback.className = 'gd-setup-feedback';
       form.appendChild(feedback);
 
-      form.addEventListener('submit', async (e) => {
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const code = input.value.trim().toUpperCase();
-        if (!code) {
+        const rawCode = input.value.trim().toUpperCase();
+        if (!rawCode) {
           feedback.className = 'gd-setup-feedback error';
           feedback.textContent = 'Please enter an invitation code.';
           return;
         }
-        btn.disabled = true;
-        btn.textContent = 'Connecting...';
-        try {
-          const res = await props.onConnectInvitation!(code);
-          if (res.success) {
-            feedback.className = 'gd-setup-feedback success';
-            feedback.textContent = `Successfully connected to ward ${res.wardId || code}!`;
-            input.value = '';
-          } else {
-            feedback.className = 'gd-setup-feedback error';
-            feedback.textContent = res.error || 'Failed to connect ward.';
-          }
-        } catch (err: any) {
+
+        const normalized = /^\d{8}$/.test(rawCode)
+          ? `${rawCode.slice(0, 4)}-${rawCode.slice(4, 8)}`
+          : rawCode;
+        const codeRegex = /^(?:\d{4}-\d{4}|GR-INV-[A-Z0-9]{4}-[A-Z0-9]{4}|INV-[A-Z0-9_-]+)$/;
+        if (!codeRegex.test(normalized)) {
           feedback.className = 'gd-setup-feedback error';
-          feedback.textContent = err?.message || 'Connection error.';
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Connect Ward';
+          feedback.textContent =
+            'Invalid pairing code format. Enter an 8-digit code (e.g., 4829-1735).';
+          return;
         }
+
+        btn.disabled = true;
+        input.disabled = true;
+        btn.textContent = 'Connecting...';
+        feedback.className = 'gd-setup-feedback';
+        feedback.textContent = '';
+
+        showConnectWardModal({
+          code: normalized,
+          onConnect: async (code) => {
+            try {
+              return await props.onConnectInvitation!(code);
+            } catch (err: any) {
+              return {
+                success: false,
+                error: err?.message || 'Connection error.',
+              };
+            }
+          },
+          onSuccess: (wardId) => {
+            feedback.className = 'gd-setup-feedback success';
+            feedback.textContent = `Successfully connected to ward ${wardId}!`;
+            input.value = '';
+          },
+          onClose: () => {
+            btn.disabled = false;
+            input.disabled = false;
+            btn.textContent = 'Connect Ward';
+          },
+        });
       });
 
       addSection.appendChild(addTitle);
