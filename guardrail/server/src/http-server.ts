@@ -59,6 +59,21 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       : DEFAULT_ALLOWED_ORIGINS
   );
 
+  const isPrivateLanOrigin = (originHeader: string): boolean => {
+    try {
+      const parsed = new URL(originHeader);
+      const h = parsed.hostname;
+      return (
+        h.endsWith('.local') ||
+        /^192\.168\.\d{1,3}\.\d{1,3}$/.test(h) ||
+        /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(h)
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const isOriginAllowed = (originHeader?: string): boolean => {
     if (!originHeader) return false;
     return (
@@ -67,7 +82,8 @@ export async function startGuardrailHttpServer(options: GuardrailHttpServerOptio
       originHeader.startsWith('chrome-extension://') ||
       originHeader.startsWith('moz-extension://') ||
       originHeader.includes('localhost') ||
-      originHeader.includes('127.0.0.1')
+      originHeader.includes('127.0.0.1') ||
+      (config.environment === 'development' && isPrivateLanOrigin(originHeader))
     );
   };
 

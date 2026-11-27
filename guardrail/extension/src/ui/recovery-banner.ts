@@ -207,7 +207,8 @@ export function mountRecoveryBanner(options: RecoveryBannerOptions): HTMLElement
   dismissBtn.className = 'gd-btn-dismiss';
   dismissBtn.type = 'button';
   dismissBtn.textContent = 'Dismiss';
-  dismissBtn.addEventListener('click', () => {
+  dismissBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     host.remove();
     options.onDismiss(options.record);
   });
@@ -221,7 +222,8 @@ export function mountRecoveryBanner(options: RecoveryBannerOptions): HTMLElement
       <polyline points="9 18 15 12 9 6"></polyline>
     </svg>
   `;
-  reviewBtn.addEventListener('click', () => {
+  reviewBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     host.remove();
     options.onReviewAndContinue(options.record);
   });

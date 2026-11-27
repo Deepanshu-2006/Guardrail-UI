@@ -572,6 +572,13 @@ export function showWarningModal(props: WarningModalProps): () => void {
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
     }
 
+    .gr-card-approved .gr-top-rail,
+    .gr-card-rejected .gr-top-rail,
+    .gr-card-cancelled .gr-top-rail,
+    .gr-card-expired .gr-top-rail {
+      display: none;
+    }
+
     /* Monospace Security Ticker Marquee (Infinitely Scrolling Industrial Ribbon) */
     .gr-ticker-viewport {
       flex: 1;
@@ -1241,7 +1248,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       background: 
         radial-gradient(circle at 50% 45%, rgba(74, 222, 128, 0.12) 0%, transparent 65%),
         linear-gradient(180deg, #1E331D 0%, #172716 100%) !important;
-      padding: 12px 26px 14px 26px !important;
+      padding: 24px 32px 34px 32px !important;
       text-align: center !important;
       box-shadow: none !important;
       border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
@@ -1255,7 +1262,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-hero-rejected .gr-waiting-header,
     .gr-hero-approved .gr-waiting-header {
       padding: 0 !important;
-      margin-bottom: 4px !important;
+      margin-bottom: 18px !important;
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
@@ -1317,17 +1324,17 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-waiting-medallion {
       display: none;
       justify-content: center;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
 
     .gd-moment-badge-circle {
-      width: 44px !important;
-      height: 44px !important;
+      width: 64px !important;
+      height: 64px !important;
       border-radius: 50% !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      margin: 0 auto 4px auto !important;
+      margin: 0 auto 10px auto !important;
       position: relative !important;
       animation: gdCirclePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
     }
@@ -1398,12 +1405,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-hero-rejected .gr-waiting-title,
     .gr-hero-approved .gr-waiting-title {
       font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-      font-size: 21px !important;
+      font-size: 25px !important;
       font-weight: 700 !important;
       letter-spacing: -0.02em !important;
-      line-height: 1.25 !important;
+      line-height: 1.22 !important;
       color: #FAF7F0 !important;
-      margin: 0 0 4px 0 !important;
+      margin: 0 0 8px 0 !important;
       text-align: center !important;
       text-shadow: 0 1px 6px rgba(0, 0, 0, 0.25) !important;
     }
@@ -1411,13 +1418,13 @@ export function showWarningModal(props: WarningModalProps): () => void {
     .gr-hero-rejected .gr-waiting-subtitle,
     .gr-hero-approved .gr-waiting-subtitle {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-      font-size: 13px !important;
+      font-size: 14px !important;
       font-weight: 400 !important;
-      color: rgba(250, 247, 240, 0.80) !important;
-      line-height: 1.4 !important;
+      color: rgba(250, 247, 240, 0.84) !important;
+      line-height: 1.5 !important;
       text-align: center !important;
       margin: 0 auto !important;
-      max-width: 440px !important;
+      max-width: 400px !important;
       letter-spacing: 0.01em !important;
     }
 
@@ -1433,45 +1440,53 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-card-rejected .gr-waiting-body,
     .gr-card-approved .gr-waiting-body {
-      padding: 14px 26px 12px 26px !important;
+      padding: 20px 28px 18px 28px !important;
       max-height: none;
       overflow: visible;
     }
 
     .gr-card-rejected .gr-destination-card,
     .gr-card-approved .gr-destination-card {
-      padding: 11px 16px !important;
+      padding: 12px 16px !important;
       margin-bottom: 12px !important;
+    }
+
+    .gr-card-approved .gr-destination-header-row .gr-waiting-pill,
+    .gr-card-approved .gr-waiting-status-card .gr-section-heading,
+    .gr-card-approved .gr-waiting-status-card .gr-waiting-stepper,
+    .gr-card-approved .gr-guidance-note,
+    .gr-card-approved .gr-waiting-details,
+    .gr-card-approved .gr-footer-status,
+    .gr-card-rejected .gr-waiting-status-card .gr-section-heading,
+    .gr-card-rejected .gr-waiting-status-card .gr-waiting-stepper,
+    .gr-card-rejected .gr-guidance-note,
+    .gr-card-rejected .gr-waiting-details,
+    .gr-card-rejected .gr-footer-status {
+      display: none !important;
     }
 
     .gr-card-rejected .gr-waiting-status-card,
     .gr-card-approved .gr-waiting-status-card {
-      padding: 12px 16px !important;
-      margin-bottom: 10px !important;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
 
-    .gr-card-rejected .gr-waiting-stepper,
-    .gr-card-approved .gr-waiting-stepper {
-      gap: 9px;
-      margin-top: 4px;
+    .gr-card-approved .gr-waiting-status-card:not(:has(.gr-caretaker-note)),
+    .gr-card-rejected .gr-waiting-status-card:not(:has(.gr-caretaker-note)) {
+      display: none !important;
     }
 
-    .gr-card-rejected .gr-guidance-note,
-    .gr-card-approved .gr-guidance-note {
-      font-size: 12.5px;
-      line-height: 1.4;
-      margin-bottom: 2px;
-    }
-
-    .gr-card-rejected .gr-waiting-details,
-    .gr-card-approved .gr-waiting-details {
-      margin-top: 8px;
-      padding-top: 8px;
+    .gr-card-approved .gr-caretaker-note,
+    .gr-card-rejected .gr-caretaker-note {
+      margin-top: 0 !important;
     }
 
     .gr-card-rejected .gr-waiting-footer,
     .gr-card-approved .gr-waiting-footer {
-      padding: 12px 26px 14px !important;
+      justify-content: flex-end !important;
+      padding: 14px 28px 18px !important;
     }
 
     /* Destination card rejection override: warm clay palette, no green */
@@ -1611,10 +1626,12 @@ export function showWarningModal(props: WarningModalProps): () => void {
       content: "";
       position: absolute;
       left: 13px;
-      top: 26px;
-      bottom: -6px;
+      transform: translateX(-50%);
+      top: 28px;
+      bottom: -7px;
       width: 2px;
       background: #E2D7C0;
+      border-radius: 1px;
     }
 
     .gr-step-item.gr-step-done:not(:last-child)::after {
@@ -1773,15 +1790,15 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-caretaker-note {
-      margin-top: 8px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      background: rgba(255, 252, 245, 0.85);
-      border: 1px solid #E2D7C0;
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: rgba(255, 253, 248, 0.72);
+      border: 1px solid #DFD4BC;
       border-left: 3px solid #556B3A;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 4px;
     }
 
     .gr-caretaker-note.gr-note-rejected {
@@ -1801,9 +1818,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
 
     .gr-caretaker-note-text {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 500;
-      color: #25291F;
+      color: #1E2319;
       line-height: 1.45;
       word-break: break-word;
     }
@@ -1834,19 +1851,32 @@ export function showWarningModal(props: WarningModalProps): () => void {
       100% { box-shadow: 0 0 0 0 rgba(85, 107, 58, 0); }
     }
 
+    .gr-card-approved .gr-btn-cancel {
+      background-color: transparent;
+      color: #4A4F42;
+      border: 1.5px solid #CCC6B5;
+      box-shadow: none;
+    }
+
+    .gr-card-approved .gr-btn-cancel:hover:not(:disabled) {
+      background-color: #EFECE2;
+      color: #25291F;
+      border-color: #B8B19E;
+    }
+
     .gr-btn-continue-nav {
-      background-color: #556B3A;
-      color: #FFFFFF;
-      border: 1px solid #556B3A;
-      box-shadow: 0 2px 6px rgba(85, 107, 58, 0.25);
+      background-color: #24381E;
+      color: #FAF7F0;
+      border: 1px solid #24381E;
+      box-shadow: 0 2px 8px rgba(22, 43, 20, 0.25);
     }
 
     .gr-btn-continue-nav:hover:not(:disabled) {
-      background-color: #44562E;
-      border-color: #44562E;
+      background-color: #1B2B16;
+      border-color: #1B2B16;
       color: #FFFFFF;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(85, 107, 58, 0.35);
+      box-shadow: 0 4px 12px rgba(22, 43, 20, 0.35);
     }
 
     @media (max-width: 600px) {
@@ -2703,6 +2733,7 @@ export function updateWaitingScreenStatus(
   const footerActions = viewWaiting.querySelector('.gr-footer-actions') as HTMLElement | null;
   const waitingBadge = viewWaiting.querySelector('.gr-waiting-badge') as HTMLElement | null;
   const statusHeadingSync = viewWaiting.querySelector('.gr-sync-tag') as HTMLElement | null;
+  const guidanceNoteEl = viewWaiting.querySelector('.gr-guidance-note') as HTMLElement | null;
 
   statusCard?.querySelector('.gr-caretaker-note')?.remove();
   const renderCaretakerNote = (noteText?: string, variant: 'approved' | 'rejected' = 'approved') => {
@@ -2979,6 +3010,11 @@ export function updateWaitingScreenStatus(
 
       renderCaretakerNote(details?.reason, 'approved');
 
+      if (guidanceNoteEl) {
+        guidanceNoteEl.textContent =
+          'Your caretaker has approved this request. Click Continue to Website to proceed, or Dismiss to stay on this page.';
+      }
+
       updateSyncIndicators(
         '<span>Decision Received</span>',
         '<span>✓ Approved • Ready to continue</span>'
@@ -3086,6 +3122,11 @@ export function updateWaitingScreenStatus(
       }
 
       renderCaretakerNote(details?.reason, 'rejected');
+
+      if (guidanceNoteEl) {
+        guidanceNoteEl.textContent =
+          'Access to this destination has been blocked per your caretaker’s decision.';
+      }
 
       updateSyncIndicators(
         '<span>Decision Received</span>',

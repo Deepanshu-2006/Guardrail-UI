@@ -30,6 +30,7 @@ import { ApprovalStatus, type ApprovalRequest } from '../types/approval.js';
 import { ApprovalStatusSyncClient, type StatusSyncSubscription } from '../approval/sync-client.js';
 import {
   ActionClassificationResult,
+  ActionType,
   ApprovalRequestResult,
   GuardrailAction,
   InterceptionRecord,
@@ -2019,12 +2020,25 @@ export async function checkColdRestartRecovery(): Promise<void> {
         approver: resolveApproverDisplayName({ decidedBy: record.approver }),
       };
       let decisionReason: string | undefined;
+      let modalOpenedFromRecovery = false;
+      let activeProceedFn: (() => void) | undefined;
+
+      const applyApprovedModal = (rec: typeof displayRecord) => {
+        updateWaitingScreenStatus('approved', {
+          requestId: rec.requestId,
+          approver: resolveApproverDisplayName({ decidedBy: rec.approver }),
+          reason: decisionReason,
+          submittedAt: rec.submittedAt,
+          onProceed: activeProceedFn,
+        });
+      };
 
       const showBannerForRecord = (recToShow: typeof displayRecord) => {
         mountRecoveryBanner({
           record: recToShow,
           onReviewAndContinue: (rec) => {
             dismissRecoveryBanner();
+            modalOpenedFromRecovery = true;
 
             const recoveredAction: GuardrailAction = {
               id: rec.actionId,
@@ -2036,10 +2050,24 @@ export async function checkColdRestartRecovery(): Promise<void> {
               element: rec.destinationUrl ? { targetUrl: rec.destinationUrl, id: rec.elementId } : undefined,
             };
 
+            const recoveredRisk: RiskAssessment = {
+              actionId: rec.actionId,
+              riskLevel: rec.riskLevel,
+              score: 85,
+              reasons: ['Held action approved by caretaker'],
+              matchedRules: [],
+              evaluatedAt: rec.submittedAt,
+            };
+            const recoveredDecision: ResponseDecision = {
+              actionId: rec.actionId,
+              response: ResponseAction.WARN,
+              reasons: [],
+            };
+
             activeApprovalSession = {
               action: recoveredAction,
-              risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
-              decision: { response: ResponseAction.WARN, reasons: [] },
+              risk: recoveredRisk,
+              decision: recoveredDecision,
               requestId: rec.requestId,
               status: 'approved',
               hasExecutedContinuation: false,
@@ -2048,8 +2076,9 @@ export async function checkColdRestartRecovery(): Promise<void> {
 
             showWarningModal({
               action: recoveredAction,
-              risk: { level: rec.riskLevel, score: 85, reasons: ['Held action approved by caretaker'] },
-              decision: { response: ResponseAction.WARN, reasons: [] },
+              risk: recoveredRisk,
+              decision: recoveredDecision,
+              initialState: 'waiting',
               onCloseWaiting: () => {
                 dismissWarningModal();
               },
@@ -2059,19 +2088,15 @@ export async function checkColdRestartRecovery(): Promise<void> {
               },
             });
 
-            updateWaitingScreenStatus('approved', {
-              requestId: rec.requestId,
-              approver: resolveApproverDisplayName({ decidedBy: rec.approver }),
-              reason: decisionReason,
-              submittedAt: rec.submittedAt,
-              onProceed: () => {
-                void defaultRecoveryManager.clearRecovery(rec.actionId);
-                dismissWarningModal();
-                if (rec.destinationUrl && typeof window !== 'undefined') {
-                  window.location.href = rec.destinationUrl;
-                }
-              },
-            });
+            activeProceedFn = () => {
+              void defaultRecoveryManager.clearRecovery(rec.actionId);
+              dismissWarningModal();
+              if (rec.destinationUrl && typeof window !== 'undefined') {
+                window.location.href = rec.destinationUrl;
+              }
+            };
+
+            applyApprovedModal(rec);
           },
           onDismiss: (rec) => {
             dismissRecoveryBanner();
@@ -2088,12 +2113,21 @@ export async function checkColdRestartRecovery(): Promise<void> {
           (res: any) => {
             const dec = res?.request?.decision;
             if (!dec) return;
-            decisionReason = dec.decisionReason || dec.reason || decisionReason;
+            const fetchedReason = dec.decisionReason || dec.reason;
+            if (fetchedReason) {
+              decisionReason = fetchedReason;
+            }
             const resolvedName = resolveApproverDisplayName(dec);
-            if (resolvedName && resolvedName !== displayRecord.approver) {
+            const nameChanged = Boolean(resolvedName && resolvedName !== displayRecord.approver);
+            if (nameChanged) {
               displayRecord = { ...displayRecord, approver: resolvedName };
               void defaultRecoveryManager.updateStagedActionStatus(record.actionId, 'approved', resolvedName);
-              showBannerForRecord(displayRecord);
+              if (!modalOpenedFromRecovery) {
+                showBannerForRecord(displayRecord);
+              }
+            }
+            if (modalOpenedFromRecovery && (fetchedReason || nameChanged)) {
+              applyApprovedModal(displayRecord);
             }
           }
         );
@@ -2113,10 +2147,24 @@ export async function checkColdRestartRecovery(): Promise<void> {
             element: record.destinationUrl ? { targetUrl: record.destinationUrl, id: record.elementId } : undefined,
           };
 
+          const recoveredRisk: RiskAssessment = {
+            actionId: record.actionId,
+            riskLevel: record.riskLevel,
+            score: 85,
+            reasons: ['Action pending caretaker review'],
+            matchedRules: [],
+            evaluatedAt: record.submittedAt,
+          };
+          const recoveredDecision: ResponseDecision = {
+            actionId: record.actionId,
+            response: ResponseAction.WARN,
+            reasons: [],
+          };
+
           activeApprovalSession = {
             action: recoveredAction,
-            risk: { level: record.riskLevel, score: 85, reasons: ['Action pending caretaker review'] },
-            decision: { response: ResponseAction.WARN, reasons: [] },
+            risk: recoveredRisk,
+            decision: recoveredDecision,
             requestId: record.requestId,
             status: 'pending',
             hasExecutedContinuation: false,
@@ -2125,8 +2173,9 @@ export async function checkColdRestartRecovery(): Promise<void> {
 
           showWarningModal({
             action: recoveredAction,
-            risk: { level: record.riskLevel, score: 85, reasons: ['Action pending caretaker review'] },
-            decision: { response: ResponseAction.WARN, reasons: [] },
+            risk: recoveredRisk,
+            decision: recoveredDecision,
+            initialState: 'waiting',
             onCloseWaiting: () => {
               dismissWarningModal();
             },

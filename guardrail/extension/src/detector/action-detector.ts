@@ -170,8 +170,16 @@ export class ActionDetector {
    * Handles generic click events via event delegation.
    */
   private handleClick = (event: MouseEvent): void => {
-    // 0. Exemption for Dashboard & Internal Guardrail Pages
+    // 0. Exemption for Dashboard, Internal Guardrail Pages, and Guardrail UI Shadow Hosts
     if (isDashboardOrInternalPage()) {
+      return;
+    }
+    const rawTarget = event.target as HTMLElement | null;
+    if (
+      rawTarget?.id === 'guardrail-warning-ui-host' ||
+      rawTarget?.id === 'guardrail-recovery-banner-host' ||
+      rawTarget?.id === 'guardrail-pending-pill-host'
+    ) {
       return;
     }
 

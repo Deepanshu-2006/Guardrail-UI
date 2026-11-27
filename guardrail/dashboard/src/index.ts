@@ -33,11 +33,34 @@ export function mountDashboardShell(options: DashboardShellOptions): DashboardSh
   return new DashboardShell(options);
 }
 
+function resolveRuntimeEnvConfig() {
+  const envConfig = resolveEnvironmentConfig();
+  if (
+    envConfig.environment === 'development' &&
+    typeof window !== 'undefined' &&
+    window.location?.hostname &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1' &&
+    window.location.hostname !== '::1'
+  ) {
+    try {
+      const parsed = new URL(envConfig.apiBaseUrl);
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+        parsed.hostname = window.location.hostname;
+        return { ...envConfig, apiBaseUrl: parsed.origin };
+      }
+    } catch {
+      // Keep original apiBaseUrl on parse error
+    }
+  }
+  return envConfig;
+}
+
 /** Mount a live dashboard using a host-provided, verified-identity token provider. */
 export function mountAuthenticatedDashboardShell(
   options: Omit<DashboardShellOptions, 'apiClient' | 'isMockService'> & { readonly tokenProvider: TokenProvider }
 ): DashboardShell {
-  const envConfig = resolveEnvironmentConfig();
+  const envConfig = resolveRuntimeEnvConfig();
   const apiClient = new ApprovalApiClient({
     baseUrl: envConfig.apiBaseUrl,
     environment: envConfig.environment,
@@ -194,7 +217,7 @@ export function extractOAuthRedirectToken(): string | null {
 if (typeof document !== 'undefined') {
   const defaultMountPoint = document.getElementById('dashboard-app');
   if (defaultMountPoint) {
-    const envConfig = resolveEnvironmentConfig();
+    const envConfig = resolveRuntimeEnvConfig();
     const globalProvider = (globalThis as typeof globalThis & { __GUARDRAIL_AUTH_TOKEN_PROVIDER__?: TokenProvider })
       .__GUARDRAIL_AUTH_TOKEN_PROVIDER__;
     const search = typeof window !== 'undefined' ? window.location.search : '';
