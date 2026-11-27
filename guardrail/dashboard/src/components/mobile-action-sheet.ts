@@ -139,10 +139,15 @@ export function renderMobileActionSheet(props: MobileActionSheetProps): HTMLElem
   const reasonsList = document.createElement('ul');
   reasonsList.className = 'gd-sheet-reasons-list';
 
-  const reasons =
+  const rawReasons =
     request.riskReasons && request.riskReasons.length > 0
       ? request.riskReasons
       : ['Initiates high-impact state change requiring explicit trusted contact authorization.'];
+
+  const reasons = rawReasons
+    .map((r) => r.replace(/\.\s*;/g, '.').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 2);
 
   for (const reason of reasons) {
     const li = document.createElement('li');

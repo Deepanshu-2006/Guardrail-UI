@@ -863,8 +863,9 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-card-waiting .gr-guidance-note,
-    .gr-card-waiting .gr-waiting-details {
-      display: none;
+    .gr-card-waiting .gr-waiting-details,
+    .gr-card-waiting .gr-sync-tag {
+      display: none !important;
     }
 
     .gr-card-waiting .gr-waiting-body {
@@ -1541,15 +1542,31 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-card-rejected .gr-btn-cancel {
-      background-color: #322119;
-      border-color: #322119;
-      color: #FAF7F0;
+      background-color: transparent;
+      color: #5E4337;
+      border: 1.5px solid #D8C5BC;
+      box-shadow: none;
     }
 
     .gr-card-rejected .gr-btn-cancel:hover:not(:disabled) {
+      background-color: #F4EAE5;
+      color: #322119;
+      border-color: #C4AAA0;
+    }
+
+    .gr-card-rejected .gr-btn-leave-site {
+      background-color: #322119;
+      border: 1px solid #322119;
+      color: #FAF7F0;
+      box-shadow: 0 2px 8px rgba(37, 23, 16, 0.25);
+    }
+
+    .gr-card-rejected .gr-btn-leave-site:hover:not(:disabled) {
       background-color: #251710;
       border-color: #251710;
       color: #FFFFFF;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 23, 16, 0.35);
     }
 
     .gr-card-rejected .gr-destination-label {
@@ -1681,10 +1698,10 @@ export function showWarningModal(props: WarningModalProps): () => void {
       position: absolute;
       left: 13px;
       transform: translateX(-50%);
-      top: 28px;
+      top: 29px;
       bottom: -11px;
       width: 2px;
-      background: #E2D7C0;
+      background: #DFD4BC;
       border-radius: 1px;
     }
 
@@ -1697,6 +1714,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-step-icon {
+      box-sizing: border-box;
       width: 26px;
       height: 26px;
       border-radius: 50%;
@@ -1707,6 +1725,7 @@ export function showWarningModal(props: WarningModalProps): () => void {
       font-size: 12px;
       font-weight: 700;
       z-index: 1;
+      position: relative;
     }
 
     .gr-step-icon-done {
@@ -1716,16 +1735,24 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     .gr-step-icon-active {
-      background: #F0E8D6;
+      background: #F5EEDB;
       border: 2px solid #A87932;
       color: #A87932;
-      box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.15);
-      animation: grActivePulse 2s infinite ease-in-out;
+      box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.14);
+      animation: grActivePulse 2.2s infinite ease-in-out;
+    }
+
+    .gr-step-icon-active::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #A87932;
     }
 
     .gr-step-icon-pending {
-      background: #E8E6DA;
-      border: 1.5px solid #CCD2C0;
+      background: #ECE8DA;
+      border: 1.5px solid #C9CEBE;
       color: #8C9283;
     }
 
@@ -1742,8 +1769,8 @@ export function showWarningModal(props: WarningModalProps): () => void {
     }
 
     @keyframes grActivePulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(168, 121, 50, 0.15); }
-      50% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(168, 121, 50, 0.25); }
+      0%, 100% { box-shadow: 0 0 0 2px rgba(168, 121, 50, 0.14); }
+      50% { box-shadow: 0 0 0 5px rgba(168, 121, 50, 0.22); }
     }
 
     .gr-step-content {
@@ -3202,18 +3229,41 @@ export function updateWaitingScreenStatus(
 
       if (footerActions) {
         footerActions.innerHTML = '';
+
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.className = 'gr-btn gr-btn-cancel';
+        dismissBtn.textContent = 'Dismiss';
+        dismissBtn.addEventListener('click', () => {
+          dismissWarningModal();
+          if (currentModalProps?.onCancel) {
+            currentModalProps.onCancel();
+          }
+        });
+
         const leaveBtn = document.createElement('button');
         leaveBtn.type = 'button';
-        leaveBtn.className = 'gr-btn gr-btn-cancel';
+        leaveBtn.className = 'gr-btn gr-btn-leave-site';
         leaveBtn.textContent = 'Leave Website';
         leaveBtn.addEventListener('click', () => {
           dismissWarningModal();
           if (currentModalProps?.onCancel) {
             currentModalProps.onCancel();
           }
+          if (typeof window !== 'undefined') {
+            try {
+              if (window.history && window.history.length > 1 && typeof window.history.back === 'function') {
+                window.history.back();
+              } else if (window.location && typeof window.location.replace === 'function') {
+                window.location.replace('about:blank');
+              }
+            } catch {}
+          }
         });
+
+        footerActions.appendChild(dismissBtn);
         footerActions.appendChild(leaveBtn);
-        currentFocusableElements = [leaveBtn];
+        currentFocusableElements = [leaveBtn, dismissBtn];
         try {
           leaveBtn.focus();
         } catch {}

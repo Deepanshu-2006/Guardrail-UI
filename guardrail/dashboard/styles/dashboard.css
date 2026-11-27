@@ -19095,7 +19095,23 @@ article.gd-card-collapsed,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: auto;
+  margin-top: 8px;
+}
+
+.gd-mobile-action-sheet .gd-sheet-decoupling-note,
+.gd-mobile-action-sheet .gd-sheet-category-pill {
+  display: none !important;
+}
+
+.gd-mobile-action-sheet .gd-sheet-risk-box {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.gd-mobile-action-sheet .gd-sheet-reasons-list {
+  font-size: 13px;
+  line-height: 1.45;
+  gap: 6px;
 }
 
 /* Touch-Friendly Action Buttons (Minimum 48px height for WCAG 2.5.5 touch target size) */
@@ -26273,13 +26289,18 @@ body.gd-kbd-open .gd-m-shell {
   }
 
   #view-history .gd-history-header-actions {
-    flex-wrap: wrap;
-    row-gap: 6px;
+    flex-wrap: nowrap;
+    gap: 12px;
   }
 
-  #view-history .gd-history-count-badge,
-  #view-history .gd-last-sync-time {
+  #view-history .gd-history-count-badge {
+    display: none !important;
+  }
+
+  #view-history .gd-last-sync-time,
+  #view-history .gd-btn-refresh {
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Pending Approvals Hourglass, Decision History Pocket Watch & Settings Clockwork */
