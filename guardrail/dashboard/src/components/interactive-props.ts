@@ -3262,20 +3262,16 @@ export function attachInteractiveHeadingSprings(
           const egyptSx = 1 + Math.sin(dunePhase) * 0.045;
           const egyptSy = 1 - Math.sin(dunePhase) * 0.038;
 
-          // 4. Volcanic Age (Fire): sweeping tectonic eruption wave + buoyant flame dance
-          const shockCycle = (clock * 0.66) % 1;
-          const shockDist = u - shockCycle;
-          const eruption = Math.exp(-(shockDist * shockDist) * 26);
-          const thermalWave = Math.sin(clock * 6.4 - u * 5.4) * 3.6 + Math.cos(clock * 11.2 + i * 1.9) * 1.6;
-          const volcanoX =
-            Math.cos(clock * 5.5 - u * 4.2) * 1.8 +
-            Math.sin(clock * 44 + i * 1.3) * eruption * 3.0;
-          const volcanoY = -2.4 + thermalWave - eruption * 9.2;
-          const volcanoRot =
-            Math.sin(clock * 7.4 - u * 4.4) * 4.6 +
-            (shockDist >= 0 ? -1 : 1) * eruption * 7.2;
-          const volcanoSx = 1 - Math.sin(clock * 8.2 - u * 4.8) * 0.035 + eruption * 0.065;
-          const volcanoSy = 1 + Math.sin(clock * 8.2 - u * 4.8) * 0.055 + eruption * 0.16;
+          // 4. Volcanic Age (66M BC): unified tectonic basalt heat-breath & periodic seismic stomp/caldera quake
+          const quake = Math.pow(Math.max(0, Math.sin(clock * 1.85)), 16);
+          const volcanoX = Math.sin(clock * 48 + i * 0.9) * quake * 2.8;
+          const volcanoY =
+            Math.sin(clock * 2.6 - u * 1.3) * 1.3 -
+            0.8 +
+            Math.cos(clock * 42 + i * 1.1) * quake * 1.6;
+          const volcanoRot = Math.sin(clock * 3.1 - u * 1.5) * 1.1 + Math.sin(clock * 38 + i) * quake * 2.2;
+          const volcanoSx = 1 + quake * 0.025;
+          const volcanoSy = 1 + Math.sin(clock * 2.6 - u * 1.3) * 0.015 - quake * 0.02;
 
           targetX = wSteam * steamX + wKnights * knightsX + wEgypt * egyptX + wVolcano * volcanoX;
           targetY = wTick * tickY + wSteam * steamY + wKnights * knightsY + wEgypt * egyptY + wVolcano * volcanoY;
@@ -5318,35 +5314,35 @@ export function createHistoryRewindOverlay(): HTMLElement {
       [96, 112, 124],
       [246, 46, 46],
       [250, 218, 138],
-      [54, 12, 4],
+      [34, 17, 10],
     ],
     c1: [
       [31, 24, 17],
       [48, 59, 68],
       [168, 8, 8],
       [208, 146, 52],
-      [204, 42, 6],
+      [98, 22, 6],
     ],
     c2: [
       [22, 16, 11],
       [104, 72, 42],
       [68, 2, 2],
       [114, 68, 18],
-      [255, 176, 28],
+      [238, 88, 14],
     ],
     glowTop: [
       [255, 220, 150, 0],
       [248, 250, 252, 0.85],
       [255, 115, 115, 0.26],
       [255, 236, 178, 0.42],
-      [255, 124, 24, 0.36],
+      [255, 142, 40, 0.22],
     ],
     glowBottom: [
       [218, 158, 52, 0.22],
       [235, 242, 246, 0.72],
       [130, 5, 5, 0.66],
       [194, 138, 48, 0.56],
-      [248, 92, 10, 0.72],
+      [255, 98, 14, 0.76],
     ],
   } as const;
 
@@ -5661,82 +5657,60 @@ export function createHistoryRewindOverlay(): HTMLElement {
       ctx.restore();
     }
 
-    // 2. Volcanic Era: Organic S-curving licking flames & magma heat wisps off glyph tops
+    // 2. Volcanic Era: Pulsating molten lava fissures & warm caldera under-glow beneath basalt lettering
     if (wVolcano > 0.02) {
       const vAlpha = alpha * Math.pow(wVolcano, 0.85);
-      const shockCycle = (clock * 0.66) % 1;
+      const magmaPulse = 0.74 + 0.26 * Math.sin(clock * 4.4);
+      const quakeGlow = Math.pow(Math.max(0, Math.sin(clock * 1.85)), 16);
+      const yLine = titleRect.bottom - 5;
+      const xStart = titleRect.left + 4;
+      const xEnd = titleRect.right - 4;
+
       ctx.save();
-      for (let i = 0; i < charRects.length; i += 1) {
-        const cr = charRects[i].r;
-        const u = i / Math.max(1, charRects.length - 1);
-        const shockDist = u - shockCycle;
-        const eruption = Math.exp(-(shockDist * shockDist) * 26);
+      // Subtle ambient caldera heat wash tucked right beneath letters
+      ctx.globalAlpha = vAlpha * (0.28 + quakeGlow * 0.26) * magmaPulse;
+      const underGlow = ctx.createLinearGradient(0, yLine - 18, 0, yLine + 14);
+      underGlow.addColorStop(0, 'rgba(255, 112, 24, 0)');
+      underGlow.addColorStop(0.55, 'rgba(242, 74, 12, 0.52)');
+      underGlow.addColorStop(1, 'rgba(180, 32, 6, 0)');
+      ctx.fillStyle = underGlow;
+      ctx.fillRect(xStart - 12, yLine - 18, xEnd - xStart + 24, 32);
 
-        // Organic staggered heights & tongue clusters so fire dances fluidly across letters
-        const waveCycle = 0.52 + 0.48 * Math.sin(clock * 4.8 + i * 1.9);
-        const tongueCount = i % 2 === 0 || eruption > 0.25 ? 2 : 1;
-        for (let t = 0; t < tongueCount; t += 1) {
-          const seed = i * 2.13 + t * 3.7;
-          const baseX = cr.left + cr.width * (t === 0 ? 0.45 : 0.74);
-          const baseY = cr.top + 8;
-          const curlMid = Math.sin(clock * 9.5 + seed) * 5.2;
-          const curlTip = Math.sin(clock * 12.8 + seed * 1.6) * 7.6 + Math.cos(clock * 7.4 + seed) * 3.0;
-          const flameH =
-            (10 + waveCycle * 10 + eruption * 16 + t * 5) *
-            (0.45 + 0.55 * wVolcano);
-          const flameW = Math.max(3.6, cr.width * (0.28 - t * 0.08));
+      // Glowing branching basalt lava fissures running beneath #history-title
+      const fissureSegments: Array<Array<[number, number]>> = [];
+      const segs = 10;
+      const mainCrack: Array<[number, number]> = [];
+      for (let s = 0; s <= segs; s += 1) {
+        const ratio = s / segs;
+        const px = xStart + (xEnd - xStart) * ratio;
+        const jitterY = Math.sin(s * 2.3 + 0.7) * 2.4 + Math.cos(s * 4.1) * 1.2;
+        mainCrack.push([px, yLine + jitterY]);
+      }
+      fissureSegments.push(mainCrack);
+      // Small diagonal lava offshoots branching cleanly downward
+      for (const bFrac of [0.18, 0.46, 0.78]) {
+        const bx = xStart + (xEnd - xStart) * bFrac;
+        fissureSegments.push([
+          [bx, yLine + 0.5],
+          [bx + 9, yLine + 4.5],
+          [bx + 19, yLine + 6.2],
+        ]);
+      }
 
-          // S-curved asymmetrical flame wisp
-          ctx.globalAlpha = vAlpha * (0.76 - t * 0.16);
-          const fg = ctx.createLinearGradient(baseX, baseY + 2, baseX + curlTip, baseY - flameH);
-          fg.addColorStop(0, '#C92403');
-          fg.addColorStop(0.42, '#F7630C');
-          fg.addColorStop(0.8, '#FFC438');
-          fg.addColorStop(1, 'rgba(255, 232, 132, 0)');
-          ctx.fillStyle = fg;
-          ctx.beginPath();
-          ctx.moveTo(baseX - flameW, baseY + 2);
-          ctx.bezierCurveTo(
-            baseX - flameW * 0.9 + curlMid * 0.5,
-            baseY - flameH * 0.34,
-            baseX - flameW * 0.15 - curlMid,
-            baseY - flameH * 0.68,
-            baseX + curlTip,
-            baseY - flameH,
-          );
-          ctx.bezierCurveTo(
-            baseX + flameW * 0.35 + curlMid * 0.9,
-            baseY - flameH * 0.62,
-            baseX + flameW * 0.95 + curlMid * 0.3,
-            baseY - flameH * 0.28,
-            baseX + flameW,
-            baseY + 2,
-          );
-          ctx.closePath();
-          ctx.fill();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const pts of fissureSegments) {
+        ctx.beginPath();
+        pts.forEach(([px, py], idx) => (idx === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+        ctx.globalAlpha = vAlpha * (0.55 + quakeGlow * 0.35) * magmaPulse;
+        ctx.strokeStyle = '#E23B08';
+        ctx.lineWidth = 3.2;
+        ctx.stroke();
 
-          // Sleek bright core rib inside primary tongues
-          if (t === 0) {
-            ctx.globalAlpha = vAlpha * 0.8;
-            ctx.fillStyle = '#FFF0A0';
-            ctx.beginPath();
-            ctx.moveTo(baseX - flameW * 0.36, baseY + 1);
-            ctx.quadraticCurveTo(
-              baseX + curlMid * 0.35,
-              baseY - flameH * 0.36,
-              baseX + curlTip * 0.48,
-              baseY - flameH * 0.56,
-            );
-            ctx.quadraticCurveTo(
-              baseX + flameW * 0.28 + curlMid * 0.25,
-              baseY - flameH * 0.28,
-              baseX + flameW * 0.36,
-              baseY + 1,
-            );
-            ctx.closePath();
-            ctx.fill();
-          }
-        }
+        ctx.globalAlpha = vAlpha * (0.82 + quakeGlow * 0.18) * magmaPulse;
+        ctx.strokeStyle = '#FFCF5C';
+        ctx.lineWidth = 1.05;
+        ctx.stroke();
       }
       ctx.restore();
     }
@@ -5754,18 +5728,26 @@ export function createHistoryRewindOverlay(): HTMLElement {
         p.x += (p.vx + Math.sin(clock * 3.6 + p.seed) * 16) * dt;
         p.y += p.vy * dt;
         p.vx *= Math.pow(0.55, dt);
-        const curR = p.r + p.grow * lifeRatio;
-        const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.15, wSteam);
+        const curR = (p.r + p.grow * lifeRatio) * 1.1;
+        const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.18, wSteam);
         ctx.save();
-        ctx.globalAlpha = fade * 0.62;
-        const sg = ctx.createRadialGradient(p.x, p.y, 0.5, p.x, p.y, curR);
-        sg.addColorStop(0, 'rgba(255, 253, 248, 0.92)');
-        sg.addColorStop(0.55, 'rgba(244, 242, 236, 0.48)');
-        sg.addColorStop(1, 'rgba(232, 232, 228, 0)');
-        ctx.fillStyle = sg;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(-0.18 + Math.sin(p.seed + lifeRatio * 2.4) * 0.14);
+        ctx.scale(1.45 + lifeRatio * 0.65, 0.74);
+        for (let l = 0; l < 2; l += 1) {
+          const ox = l === 0 ? -curR * 0.22 : curR * 0.24;
+          const oy = l === 0 ? curR * 0.08 : -curR * 0.12;
+          const lr = curR * (l === 0 ? 1.0 : 0.84);
+          ctx.globalAlpha = fade * (l === 0 ? 0.32 : 0.24);
+          const sg = ctx.createRadialGradient(ox, oy, lr * 0.04, ox, oy, lr);
+          sg.addColorStop(0, l === 0 ? 'rgba(255, 253, 249, 0.92)' : 'rgba(176, 170, 160, 0.72)');
+          sg.addColorStop(0.45, l === 0 ? 'rgba(232, 228, 220, 0.56)' : 'rgba(146, 140, 132, 0.36)');
+          sg.addColorStop(1, 'rgba(146, 140, 132, 0)');
+          ctx.fillStyle = sg;
+          ctx.beginPath();
+          ctx.arc(ox, oy, lr, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
       } else if (p.mode === 'steam_spark') {
         p.x += (p.vx + Math.sin(clock * 8 + p.seed) * 18) * dt;
@@ -5839,15 +5821,22 @@ export function createHistoryRewindOverlay(): HTMLElement {
         ctx.stroke();
         ctx.restore();
       } else {
-        p.x += (p.vx + Math.sin(clock * 4 + p.seed) * 16) * dt;
-        p.y += p.vy * 0.68 * dt;
-        const curR = p.r + p.grow * lifeRatio;
+        p.x += (p.vx + Math.sin(clock * 3.6 + p.seed) * 16) * dt;
+        p.y += p.vy * 0.65 * dt;
+        const curR = (p.r + p.grow * lifeRatio) * 1.35;
         const fade = Math.sin(lifeRatio * Math.PI) * alpha * Math.max(0.15, wVolcano);
         ctx.save();
-        ctx.globalAlpha = fade * 0.46;
-        ctx.fillStyle = '#33251D';
+        ctx.translate(p.x, p.y);
+        ctx.rotate(-0.12 + Math.sin(p.seed + lifeRatio * 2.1) * 0.2);
+        ctx.scale(1.4 + lifeRatio * 0.55, 0.72);
+        ctx.globalAlpha = fade * 0.28;
+        const ag = ctx.createRadialGradient(0, 0, curR * 0.05, 0, 0, curR);
+        ag.addColorStop(0, 'rgba(46, 30, 20, 0.82)');
+        ag.addColorStop(0.55, 'rgba(92, 56, 34, 0.38)');
+        ag.addColorStop(1, 'rgba(92, 56, 34, 0)');
+        ctx.fillStyle = ag;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, curR, 0, Math.PI * 2);
+        ctx.arc(0, 0, curR, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -6233,17 +6222,49 @@ export function createHistoryRewindOverlay(): HTMLElement {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * 2.2, 0, Math.PI * 2);
         ctx.fill();
+      } else if (p.tone === 'steam' || p.tone === 'soot') {
+        // Photographic wind-sheared volumetric wisps instead of circular cartoon puffs
+        const phase = p.maxAge * 13.7;
+        const stretchX = p.tone === 'steam' ? 1.25 + lifeRatio * 0.95 : 1.05 + lifeRatio * 0.7;
+        const stretchY = p.tone === 'steam' ? 0.76 + lifeRatio * 0.14 : 0.85;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(-0.14 + Math.sin(phase + lifeRatio * 2.1) * 0.18);
+        ctx.scale(stretchX, stretchY);
+
+        for (let lobe = 0; lobe < 3; lobe += 1) {
+          const ang = phase + lobe * 2.09;
+          const ox = Math.cos(ang) * p.r * (0.28 + lifeRatio * 0.2);
+          const oy = Math.sin(ang) * p.r * 0.24;
+          const lr = p.r * (0.72 + (lobe % 2) * 0.22);
+          const g = ctx.createRadialGradient(ox, oy, lr * 0.04, ox, oy, lr);
+          if (p.tone === 'steam') {
+            const lobeAlpha = a * (lobe === 1 ? 0.3 : 0.22);
+            if (lobe === 0) {
+              // Cool ambient-smoke underside depth so mist feels voluminous on cream parchment
+              g.addColorStop(0, `rgba(146, 138, 126, ${(lobeAlpha * 0.95).toFixed(3)})`);
+              g.addColorStop(0.5, `rgba(176, 168, 154, ${(lobeAlpha * 0.45).toFixed(3)})`);
+              g.addColorStop(1, 'rgba(176, 168, 154, 0)');
+            } else {
+              // Feathery diffused sunlit steam vapor veil
+              g.addColorStop(0, `rgba(250, 247, 238, ${Math.min(1, lobeAlpha * 1.15).toFixed(3)})`);
+              g.addColorStop(0.42, `rgba(228, 222, 208, ${(lobeAlpha * 0.62).toFixed(3)})`);
+              g.addColorStop(1, 'rgba(228, 222, 208, 0)');
+            }
+          } else {
+            // Coal-smoke turbulence grading naturally into smoky warm haze
+            const smokeAlpha = a * (lobe === 0 ? 0.34 : 0.22);
+            g.addColorStop(0, `rgba(48, 39, 31, ${smokeAlpha.toFixed(3)})`);
+            g.addColorStop(0.45, `rgba(98, 84, 70, ${(smokeAlpha * 0.48).toFixed(3)})`);
+            g.addColorStop(1, 'rgba(128, 114, 98, 0)');
+          }
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(ox, oy, lr, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
-        const g = ctx.createRadialGradient(p.x - p.r * 0.2, p.y - p.r * 0.2, p.r * 0.12, p.x, p.y, p.r);
-        if (p.tone === 'steam') {
-          g.addColorStop(0, `rgba(255, 252, 242, ${(a * 0.62).toFixed(2)})`);
-          g.addColorStop(0.5, `rgba(235, 222, 198, ${(a * 0.34).toFixed(2)})`);
-          g.addColorStop(1, 'rgba(235, 222, 198, 0)');
-        } else if (p.tone === 'soot') {
-          g.addColorStop(0, `rgba(82, 62, 42, ${(a * 0.38).toFixed(2)})`);
-          g.addColorStop(0.5, `rgba(128, 102, 70, ${(a * 0.2).toFixed(2)})`);
-          g.addColorStop(1, 'rgba(128, 102, 70, 0)');
-        } else if (p.tone === 'ash') {
+        const g = ctx.createRadialGradient(p.x - p.r * 0.24, p.y - p.r * 0.26, p.r * 0.1, p.x, p.y, p.r);
+        if (p.tone === 'ash') {
           g.addColorStop(0, `rgba(54, 32, 18, ${(a * 0.68).toFixed(2)})`);
           g.addColorStop(0.55, `rgba(148, 72, 24, ${(a * 0.32).toFixed(2)})`);
           g.addColorStop(1, 'rgba(92, 52, 26, 0)');
@@ -6287,9 +6308,9 @@ export function createHistoryRewindOverlay(): HTMLElement {
       if (p.tone === 'ember') {
         p.vy += 175 * dt;
       } else if (p.tone === 'steam' || p.tone === 'soot') {
-        p.vx += (-96 - p.vx) * Math.min(1, dt * 1.45);
-        p.vy *= Math.max(0, 1 - dt * 1.35);
-        p.vy -= 4.5 * dt;
+        p.vx += (-104 - p.vx) * Math.min(1, dt * 1.15);
+        p.vy *= Math.max(0, 1 - dt * 0.68);
+        p.vy -= 12 * dt;
         p.r += p.grow * dt;
       } else {
         p.vx += (-18 - p.vx) * Math.min(1, dt * 1.4);
@@ -6322,61 +6343,75 @@ export function createHistoryRewindOverlay(): HTMLElement {
       const wheelAngle = clock * 8.4;
       const chugBurst = Math.pow(0.5 + 0.5 * Math.sin(wheelAngle * 2), 1.4);
       steamEmitAcc += dt;
-      while (steamEmitAcc >= 0.022) {
-        steamEmitAcc -= 0.022;
+      while (steamEmitAcc >= 0.024) {
+        steamEmitAcc -= 0.024;
         const stackX = trainX + 94;
-        const stackY = groundTrackTop - 72;
-        // Dense continuous curling slipstream exhaust hugging boiler & coach roofs
+        const stackY = groundTrackTop - 74;
+        // Tight turbulent chimney blast expanding organically as it meets upper slipstream wind
         eraPlumes.push({
           x: stackX + (Math.random() - 0.5) * 3.5,
-          y: stackY + (Math.random() - 0.5) * 2,
-          vx: -94 - Math.random() * 48,
-          vy: -24 - chugBurst * 26 - Math.random() * 14,
-          r: 5.2 + chugBurst * 3.8,
-          grow: 11 + Math.random() * 7,
+          y: stackY - 2 + (Math.random() - 0.5) * 2,
+          vx: -54 - Math.random() * 48,
+          vy: -(72 + chugBurst * 68 + Math.random() * 28),
+          r: 6 + chugBurst * 5.5,
+          grow: 24 + Math.random() * 14,
           age: 0,
-          maxAge: 1.25 + Math.random() * 0.45,
-          tone: Math.random() < 0.34 ? 'soot' : 'steam',
+          maxAge: 1.75 + Math.random() * 0.85,
+          tone: Math.random() < 0.42 ? 'soot' : 'steam',
         });
-        if (chugBurst > 0.45 || Math.random() < 0.45) {
+        if (chugBurst > 0.3 || Math.random() < 0.72) {
           eraPlumes.push({
-            x: stackX - 4 + (Math.random() - 0.5) * 4,
-            y: stackY - 2,
-            vx: -112 - Math.random() * 42,
-            vy: -16 - chugBurst * 16 - Math.random() * 10,
-            r: 4.5 + Math.random() * 3.2,
-            grow: 12 + Math.random() * 6,
+            x: stackX - 4 + (Math.random() - 0.5) * 7,
+            y: stackY - 5,
+            vx: -84 - Math.random() * 54,
+            vy: -(52 + chugBurst * 54 + Math.random() * 26),
+            r: 7.5 + chugBurst * 6.5,
+            grow: 26 + Math.random() * 14,
             age: 0,
-            maxAge: 1.05 + Math.random() * 0.4,
+            maxAge: 1.65 + Math.random() * 0.75,
             tone: 'steam',
           });
         }
         // Subtle safety-valve wisp atop steam dome
-        if (Math.random() < 0.18) {
+        if (Math.random() < 0.28) {
           eraPlumes.push({
             x: trainX + 46,
-            y: groundTrackTop - 65,
-            vx: -88 - Math.random() * 30,
-            vy: -12 - Math.random() * 10,
-            r: 2.6 + Math.random() * 1.6,
-            grow: 7.5,
+            y: groundTrackTop - 66,
+            vx: -80 - Math.random() * 34,
+            vy: -(24 + Math.random() * 20),
+            r: 4 + Math.random() * 2.5,
+            grow: 14,
             age: 0,
-            maxAge: 0.65 + Math.random() * 0.25,
+            maxAge: 0.95 + Math.random() * 0.35,
             tone: 'steam',
           });
         }
-        // Cylinder drain-cock high-pressure white steam jetting low across the rails
-        if (chugBurst > 0.52) {
+        // Horizontal fan-shaped cylinder drain mist sweeping along ties & rails
+        if (chugBurst > 0.42) {
           eraPlumes.push({
             x: trainX + 86,
             y: groundTrackTop - 9,
-            vx: -125 - Math.random() * 45,
-            vy: -6 + Math.random() * 9,
-            r: 3.4 + Math.random() * 2.4,
-            grow: 13.5,
+            vx: -130 - Math.random() * 58,
+            vy: -12 - Math.random() * 14,
+            r: 5.5 + chugBurst * 3.5,
+            grow: 22,
             age: 0,
-            maxAge: 0.68 + Math.random() * 0.26,
+            maxAge: 0.88 + Math.random() * 0.34,
             tone: 'steam',
+          });
+        }
+        // Occasional glowing coal cinder rising briefly from firebox exhaust
+        if (chugBurst > 0.65 && Math.random() < 0.14) {
+          eraPlumes.push({
+            x: stackX + (Math.random() - 0.5) * 4,
+            y: stackY - 4,
+            vx: -38 - Math.random() * 35,
+            vy: -(68 + Math.random() * 44),
+            r: 0.9 + Math.random() * 0.7,
+            grow: 0,
+            age: 0,
+            maxAge: 0.45 + Math.random() * 0.25,
+            tone: 'ember',
           });
         }
       }
